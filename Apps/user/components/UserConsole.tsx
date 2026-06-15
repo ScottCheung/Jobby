@@ -4,6 +4,8 @@
 
 import { Fragment, useEffect, useMemo, useState, useTransition } from 'react';
 import { api } from '@/lib/api';
+import { H1, H2, H3 } from '@/components/UI/text/typography';
+import CardWithNorth from '@/components/UI/card/CardWithNorth';
 import type {
   AutomationRun,
   JobApplication,
@@ -40,6 +42,8 @@ import {
   Square,
   Play,
   Settings,
+  CheckCircle2,
+  XCircle,
 } from 'lucide-react';
 
 type Tab = 'overview' | 'profile' | 'search' | 'questions' | 'applications';
@@ -275,10 +279,42 @@ export function UserConsole() {
       (item) => item.pipeline_stage === 'interviewing',
     ).length;
     return [
-      { label: 'Applications', value: applications.length },
-      { label: 'Submitted', value: submitted },
-      { label: 'Interviewing', value: interviewing },
-      { label: 'Skipped', value: skipped },
+      {
+        label: 'Applications',
+        value: applications.length,
+        icon: Briefcase,
+        iconColor: 'text-blue-500 dark:text-blue-400',
+        textColor: 'text-blue-600 dark:text-blue-400',
+        bgColor: 'bg-blue-500/10 dark:bg-blue-500/20',
+        borderColor: 'border-blue-500/20',
+      },
+      {
+        label: 'Submitted',
+        value: submitted,
+        icon: CheckCircle2,
+        iconColor: 'text-emerald-500 dark:text-emerald-400',
+        textColor: 'text-emerald-600 dark:text-emerald-400',
+        bgColor: 'bg-emerald-500/10 dark:bg-emerald-500/20',
+        borderColor: 'border-emerald-500/20',
+      },
+      {
+        label: 'Interviewing',
+        value: interviewing,
+        icon: MessageSquareCode,
+        iconColor: 'text-purple-500 dark:text-purple-400',
+        textColor: 'text-purple-600 dark:text-purple-400',
+        bgColor: 'bg-purple-500/10 dark:bg-purple-500/20',
+        borderColor: 'border-purple-500/20',
+      },
+      {
+        label: 'Skipped',
+        value: skipped,
+        icon: XCircle,
+        iconColor: 'text-rose-500 dark:text-rose-400',
+        textColor: 'text-rose-600 dark:text-rose-400',
+        bgColor: 'bg-rose-500/10 dark:bg-rose-500/20',
+        borderColor: 'border-rose-500/20',
+      },
     ];
   }, [applications, questions]);
 
@@ -814,20 +850,37 @@ export function UserConsole() {
           </header>
 
           {/* Stats Bar */}
-          <div className='grid grid-cols-2 md:grid-cols-4 '>
-            {stats.map((item) => (
-              <div
-                className='bg-panel  rounded-2xl p-5 shadow-xs flex flex-col justify-between transition-all duration-300 hover:-translate-y-0.5 hover:shadow-sm'
-                key={item.label}
-              >
-                <strong className='text-3xl font-extrabold text-zinc-900 dark:text-zinc-50 tracking-tight'>
-                  {item.value}
-                </strong>
-                <span className='text-xs font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mt-2 block'>
-                  {item.label}
-                </span>
-              </div>
-            ))}
+          <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 pb-8'>
+            {stats.map((item) => {
+              const Icon = item.icon;
+              return (
+                <CardWithNorth
+                  key={item.label}
+                  title={item.label}
+                  className='transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md'
+                >
+                  <div className='flex items-end justify-between h-full min-h-[80px] pt-2'>
+                    <H1
+                      className={cn(
+                        'text-5xl font-extrabold tracking-tight leading-none',
+                        item.textColor,
+                      )}
+                    >
+                      {item.value}
+                    </H1>
+                    <div
+                      className={cn(
+                        'absolute rounded-xl border',
+                        item.bgColor,
+                        item.borderColor,
+                      )}
+                    >
+                      <Icon className={cn('w-6 h-6', item.iconColor)} />
+                    </div>
+                  </div>
+                </CardWithNorth>
+              );
+            })}
           </div>
 
           {error && (
@@ -850,9 +903,7 @@ export function UserConsole() {
               <div className='cols-span-12 md:col-span-7   bg-panel  rounded-card p-card  '>
                 <div className='flex items-center justify-between mb-2'>
                   <div>
-                    <h2 className='text-base font-bold text-zinc-900 dark:text-zinc-50'>
-                      Application Activity Trend
-                    </h2>
+                    <H2>Application History</H2>
                     <p className='text-xs text-zinc-400 dark:text-zinc-500'>
                       Daily tracking of submitted vs skipped applications
                     </p>
@@ -914,9 +965,7 @@ export function UserConsole() {
               {/* Donut Chart - Span 1 Column */}
               <div className='cols-span-12 md:col-span-5 h-full  bg-panel  rounded-card p-card '>
                 <div>
-                  <h2 className='text-base font-bold text-zinc-900 dark:text-zinc-50 mb-1'>
-                    Application Status Breakdown
-                  </h2>
+                  <H2>Application Status Breakdown</H2>
                   <p className='text-xs text-zinc-400 dark:text-zinc-500 mb-4'>
                     Proportions of all logged job application states
                   </p>
@@ -938,9 +987,7 @@ export function UserConsole() {
               {/* Skip Reasons Card */}
               <div className='cols-span-12 md:col-span-6   bg-panel  rounded-card p-card '>
                 <div>
-                  <h2 className='text-base font-bold text-zinc-900 dark:text-zinc-50 mb-1'>
-                    Top Skip Reasons
-                  </h2>
+                  <H2>Top Skip Reasons</H2>
                   <p className='text-xs text-zinc-400 dark:text-zinc-500 mb-4'>
                     Main constraints preventing automatic job application
                   </p>
@@ -976,9 +1023,7 @@ export function UserConsole() {
               {/* Job Environment & Company Card */}
               <div className='cols-span-12 md:col-span-6   bg-panel  rounded-card p-card '>
                 <div>
-                  <h2 className='text-base font-bold text-zinc-900 dark:text-zinc-50 mb-1'>
-                    Distribution
-                  </h2>
+                  <H2>Distribution</H2>
                   <p className='text-xs text-zinc-400 dark:text-zinc-500 mb-4'>
                     Analysis of top cities and applied companies
                   </p>
@@ -1057,9 +1102,7 @@ export function UserConsole() {
               <div className='cols-span-12 md:col-span-12   bg-panel  rounded-card p-card '>
                 <div className='flex items-center justify-between mb-4'>
                   <div>
-                    <h2 className='text-base font-bold text-zinc-900 dark:text-zinc-50'>
-                      Recent Automation Feed
-                    </h2>
+                    <H2>Recent Automation Feed</H2>
                     <p className='text-xs text-zinc-400 dark:text-zinc-500'>
                       The latest application attempts by the automation bot
                     </p>
@@ -1151,19 +1194,17 @@ export function UserConsole() {
               {/* Row 4: Quick Config & Control Cards */}
 
               {/* Worker Controller Card */}
-              <div className='cols-span-12 md:col-span-4   bg-panel  rounded-card p-card '>
+              <div className='cols-span-12 md:col-span-5   bg-panel  rounded-card p-card '>
                 <div>
                   <div className='flex items-center justify-between mb-4'>
-                    <h2 className='text-lg font-bold text-zinc-900 dark:text-zinc-50 flex items-center gap-2'>
+                    <H3 className='flex items-center gap-2'>
                       <Bot className='w-5 h-5 text-emerald-500' />
                       Worker Console
-                    </h2>
+                    </H3>
                     <span
                       className={cn(
-                        'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wider',
-                        workerIsActive ?
-                          'bg-green-500/10 text-green-600 dark:bg-green-900/20 dark:text-green-400'
-                        : 'bg-zinc-500/10 text-zinc-650 dark:bg-zinc-800/20 dark:text-zinc-400',
+                        'inline-flex items-center bg-panel rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wider',
+                        workerIsActive ? 'bg-primary' : 'bg-panel',
                       )}
                     >
                       {latestRun?.status ?? 'idle'}
@@ -1213,12 +1254,12 @@ export function UserConsole() {
               </div>
 
               {/* Current Search Target Card */}
-              <div className='cols-span-12 md:col-span-8   bg-panel  rounded-card p-card '>
+              <div className='cols-span-12 md:col-span-7   bg-panel  rounded-card p-card '>
                 <div>
-                  <h2 className='text-lg font-bold text-zinc-900 dark:text-zinc-50 mb-4 flex items-center gap-2'>
+                  <H3 className='flex items-center gap-2'>
                     <Search className='w-5 h-5 text-emerald-500' />
                     Search Parameters
-                  </h2>
+                  </H3>
 
                   <div className='space-y-3'>
                     <div>
@@ -1265,71 +1306,70 @@ export function UserConsole() {
                 </div>
 
                 {/* Bot Settings Rules Card */}
-                <div className='bg-panel  rounded-2xl p-6 shadow-xs flex flex-col justify-between'>
-                  <div>
-                    <h2 className='text-lg font-bold text-zinc-900 dark:text-zinc-50 mb-4 flex items-center gap-2'>
-                      <Settings className='w-5 h-5 text-emerald-500' />
-                      Runtime Rules
-                    </h2>
 
-                    <div className='grid grid-cols-2 gap-3'>
-                      <div className='flex flex-col p-2.5 rounded-xl bg-zinc-50/50 dark:bg-zinc-900/30 border border-zinc-100 dark:border-zinc-800/50'>
-                        <span className='text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase'>
-                          Safe Mode
-                        </span>
-                        <span
-                          className={cn(
-                            'text-xs font-semibold mt-1',
-                            runtimeSettings.safe_mode ?
-                              'text-green-600 dark:text-green-400'
-                            : 'text-zinc-400',
-                          )}
-                        >
-                          {runtimeSettings.safe_mode ? 'Enabled' : 'Disabled'}
-                        </span>
-                      </div>
-                      <div className='flex flex-col p-2.5 rounded-xl bg-zinc-50/50 dark:bg-zinc-900/30 border border-zinc-100 dark:border-zinc-800/50'>
-                        <span className='text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase'>
-                          Stealth Mode
-                        </span>
-                        <span
-                          className={cn(
-                            'text-xs font-semibold mt-1',
-                            runtimeSettings.stealth_mode ?
-                              'text-green-600 dark:text-green-400'
-                            : 'text-zinc-400',
-                          )}
-                        >
-                          {runtimeSettings.stealth_mode ? 'Active' : 'Inactive'}
-                        </span>
-                      </div>
-                      <div className='flex flex-col p-2.5 rounded-xl bg-zinc-50/50 dark:bg-zinc-900/30 border border-zinc-100 dark:border-zinc-800/50'>
-                        <span className='text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase'>
-                          Click Interval
-                        </span>
-                        <span className='text-xs font-semibold mt-1 text-zinc-650 dark:text-zinc-350'>
-                          ~{runtimeSettings.click_gap} seconds
-                        </span>
-                      </div>
-                      <div className='flex flex-col p-2.5 rounded-xl bg-zinc-50/50 dark:bg-zinc-900/30 border border-zinc-100 dark:border-zinc-800/50'>
-                        <span className='text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase'>
-                          Visa Required
-                        </span>
-                        <span className='text-xs font-semibold mt-1 text-zinc-650 dark:text-zinc-350'>
-                          {preferences.require_visa || 'No'}
-                        </span>
-                      </div>
+                <div>
+                  <H3 className='flex items-center gap-2'>
+                    <Settings className='w-5 h-5 text-emerald-500' />
+                    Runtime Rules
+                  </H3>
+
+                  <div className='grid grid-cols-2 gap-3'>
+                    <div className='flex flex-col p-2.5 rounded-xl bg-zinc-50/50 dark:bg-zinc-900/30 border border-zinc-100 dark:border-zinc-800/50'>
+                      <span className='text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase'>
+                        Safe Mode
+                      </span>
+                      <span
+                        className={cn(
+                          'text-xs font-semibold mt-1',
+                          runtimeSettings.safe_mode ?
+                            'text-green-600 dark:text-green-400'
+                          : 'text-zinc-400',
+                        )}
+                      >
+                        {runtimeSettings.safe_mode ? 'Enabled' : 'Disabled'}
+                      </span>
+                    </div>
+                    <div className='flex flex-col p-2.5 rounded-xl bg-zinc-50/50 dark:bg-zinc-900/30 border border-zinc-100 dark:border-zinc-800/50'>
+                      <span className='text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase'>
+                        Stealth Mode
+                      </span>
+                      <span
+                        className={cn(
+                          'text-xs font-semibold mt-1',
+                          runtimeSettings.stealth_mode ?
+                            'text-green-600 dark:text-green-400'
+                          : 'text-zinc-400',
+                        )}
+                      >
+                        {runtimeSettings.stealth_mode ? 'Active' : 'Inactive'}
+                      </span>
+                    </div>
+                    <div className='flex flex-col p-2.5 rounded-xl bg-zinc-50/50 dark:bg-zinc-900/30 border border-zinc-100 dark:border-zinc-800/50'>
+                      <span className='text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase'>
+                        Click Interval
+                      </span>
+                      <span className='text-xs font-semibold mt-1 text-zinc-650 dark:text-zinc-350'>
+                        ~{runtimeSettings.click_gap} seconds
+                      </span>
+                    </div>
+                    <div className='flex flex-col p-2.5 rounded-xl bg-zinc-50/50 dark:bg-zinc-900/30 border border-zinc-100 dark:border-zinc-800/50'>
+                      <span className='text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase'>
+                        Visa Required
+                      </span>
+                      <span className='text-xs font-semibold mt-1 text-zinc-650 dark:text-zinc-350'>
+                        {preferences.require_visa || 'No'}
+                      </span>
                     </div>
                   </div>
+                </div>
 
-                  <div className='pt-4 border-t border-zinc-100 dark:border-zinc-800/50 text-right'>
-                    <button
-                      onClick={() => setActiveTab('search')}
-                      className='inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer'
-                    >
-                      Adjust settings <ChevronRight className='w-3 h-3' />
-                    </button>
-                  </div>
+                <div className='pt-4 border-t border-zinc-100 dark:border-zinc-800/50 text-right'>
+                  <button
+                    onClick={() => setActiveTab('search')}
+                    className='inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer'
+                  >
+                    Adjust settings <ChevronRight className='w-3 h-3' />
+                  </button>
                 </div>
               </div>
             </div>

@@ -37,7 +37,7 @@ const CardWithNorth: React.FC<CardWithNorthProps> = ({
           {/* The h3 element is now used for measuring and displaying the title */}
           <h3
             ref={titleRef}
-            className={`relative h-[30px] items-end flex z-10 pl-6  bg-panel group-hover:bg-primary/20 heading-fourth rounded-tl-3xl ${tabClassName}`}
+            className={`relative h-[30px] items-end flex z-10 pl-6  bg-panel group-hover:bg-panel/50 heading-fourth rounded-tl-3xl ${tabClassName}`}
           >
             <div className='-mb-2 font-bold text-primary '>{title}</div>
           </h3>
@@ -53,7 +53,7 @@ const CardWithNorth: React.FC<CardWithNorthProps> = ({
             <path
               d='M0 0H7.0783C14.772 0 21.7836 4.4132 25.111 11.3501L33.8889 29.6498C37.2164 36.5868 44.228 41 51.9217 41H60V42H0V0Z'
               fill='var(--color-panel)'
-              className='group-hover:fill-primary/20'
+              className='group-hover:opacity-50 opacity-100'
             />
           </svg>
         </div>
@@ -62,8 +62,8 @@ const CardWithNorth: React.FC<CardWithNorthProps> = ({
       {/* Content Section */}
       <div
         className={cn(
-          `bg-panel group-hover:bg-primary/20  p-card  min-h-[100px] h-full   overflow-visible ${contentClassName}`,
-          title ? 'rounded-b-3xl rounded-tr-3xl !pt-6 !pl-6' : 'rounded-card',
+          `bg-panel group-hover:bg-panel/50  p-card   h-full   overflow-visible ${contentClassName}`,
+          title ? 'rounded-b-4xl rounded-tr-4xl !pt-6 !pl-6' : 'rounded-card',
         )}
       >
         {children}

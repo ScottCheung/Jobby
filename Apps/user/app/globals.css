@@ -41,7 +41,6 @@ body {
     ),
     linear-gradient(135deg, #f9efe0 0%, #edf5e9 46%, #f7ead6 100%);
   color: var(--ink);
-  font-family: Georgia, 'Times New Roman', serif;
 }
 
 button,
@@ -204,6 +203,7 @@ button {
   font-size: clamp(40px, 7vw, 86px);
   line-height: 0.88;
   letter-spacing: -0.08em;
+  font-family: Georgia, 'Times New Roman', serif;
 }
 
 .hero p {
