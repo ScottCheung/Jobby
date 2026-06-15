@@ -4,6 +4,8 @@
 import os
 import csv
 import time
+import signal
+import atexit
 import pyautogui
 
 # Set CSV field size limit to prevent field size errors
@@ -535,6 +537,27 @@ def run(total_runs: int) -> int:
 chatGPT_tab = False
 linkedIn_tab = False
 
+
+def _shutdown_browser(*_args) -> None:
+    try:
+        linkedin_runtime.close_driver()
+    except Exception as error:
+        critical_error_log("When quitting...", error)
+
+
+def _handle_termination(signum, frame) -> None:
+    _shutdown_browser()
+    raise KeyboardInterrupt
+
+
+atexit.register(_shutdown_browser)
+
+for _sig in (signal.SIGINT, signal.SIGTERM):
+    try:
+        signal.signal(_sig, _handle_termination)
+    except Exception:
+        pass
+
 def main() -> None:
     total_runs = 99
     interrupted = False
@@ -644,10 +667,7 @@ def main() -> None:
             except Exception as e:
                 print_lg("Failed to close AI client:", e)
         ##<
-        try:
-            linkedin_runtime.close_driver()
-        except Exception as e: 
-            critical_error_log("When quitting...", e)
+        _shutdown_browser()
 
 
 if __name__ == "__main__":
