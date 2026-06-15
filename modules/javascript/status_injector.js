@@ -80,9 +80,9 @@
       '#linkedin-bot-status-root.lb-paused .lb-status .lb-orb{width:12px;height:12px;background:radial-gradient(circle at 30% 30%,#cfd6e6,#7f8ca7 68%,#5a6680);box-shadow:0 0 0 6px rgba(127,140,167,.08),0 0 0 1px rgba(255,255,255,.55)}',
       '#linkedin-bot-status-root .lb-copy{position:relative;display:flex;flex-direction:column;min-width:0;flex:1 1 auto;padding-right:4px}',
       '#linkedin-bot-status-root[data-dock^="r"] .lb-copy{align-items:flex-end}',
-      '#linkedin-bot-status-root .lb-kicker{font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:rgba(20,33,61,.5);line-height:12px;margin-bottom:4px}',
+      '#linkedin-bot-status-root .lb-kicker{font-size:8px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:rgba(20,33,61,.3);line-height:8px;}',
       '#linkedin-bot-status-root[data-dock^="r"] .lb-kicker{width:100%;text-align:right}',
-      '#linkedin-bot-status-root .lb-text{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:700;line-height:18px;max-width:min(420px,calc(100vw - 186px));color:#111827}',
+      '#linkedin-bot-status-root .lb-text{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px;font-weight:600;line-height:18px;max-width:min(420px,calc(100vw - 186px));color:#111827}',
       '#linkedin-bot-status-root[data-dock^="r"] .lb-text{text-align:right}',
       '#linkedin-bot-status-root .lb-status:hover{box-shadow:0 20px 50px rgba(15,23,42,.18),0 2px 14px rgba(15,23,42,.08),inset 0 1px 0 rgba(255,255,255,.55)}',
       '#linkedin-bot-status-root .lb-status[data-full]:hover .lb-tooltip{opacity:1;transform:translateY(0);pointer-events:auto}',
@@ -151,7 +151,9 @@
       '@keyframes lbBreathe{0%,100%{transform:scale(.88);opacity:.65}50%{transform:scale(1.08);opacity:1}}',
       '@keyframes lbPulseRing{0%{transform:scale(.7);opacity:.0}20%{opacity:.28}100%{transform:scale(1.32);opacity:0}}',
     ].join('');
-    (document.head || document.body || document.documentElement).appendChild(style);
+    (document.head || document.body || document.documentElement).appendChild(
+      style,
+    );
   }
 
   function applyStyles(node, styles) {
@@ -174,15 +176,23 @@
     var panel = createNode('div', 'lb-panel');
     var panelHead = createNode('div', 'lb-panel-head');
     var panelTitle = createNode('div', 'lb-panel-title');
-    panelTitle.appendChild(createNode('span', 'lb-panel-eyebrow', 'Live Session'));
-    panelTitle.appendChild(createNode('span', 'lb-panel-main', 'Status Timeline'));
+    panelTitle.appendChild(
+      createNode('span', 'lb-panel-eyebrow', 'Live Session'),
+    );
+    panelTitle.appendChild(
+      createNode('span', 'lb-panel-main', 'Status Timeline'),
+    );
 
     var panelActions = createNode('span', 'lb-panel-actions');
     panelActions.appendChild(createNode('span', 'lb-pause-state', 'Running'));
 
     var clearBtn = createNode('button', 'lb-link-btn lb-clear-btn', 'Clear');
     clearBtn.type = 'button';
-    var collapseBtn = createNode('button', 'lb-link-btn lb-collapse-btn', 'Hide');
+    var collapseBtn = createNode(
+      'button',
+      'lb-link-btn lb-collapse-btn',
+      'Hide',
+    );
     collapseBtn.type = 'button';
     panelActions.appendChild(clearBtn);
     panelActions.appendChild(collapseBtn);
@@ -191,13 +201,23 @@
     panelHead.appendChild(panelActions);
 
     var recovery = createNode('div', 'lb-recovery');
-    recovery.appendChild(createNode('div', 'lb-recovery-title', 'Search filters need attention'));
+    recovery.appendChild(
+      createNode('div', 'lb-recovery-title', 'Search filters need attention'),
+    );
     recovery.appendChild(createNode('div', 'lb-recovery-msg', ''));
 
     var recoveryActions = createNode('div', 'lb-recovery-actions');
-    var skipBtn = createNode('button', 'lb-action-btn secondary lb-skip-btn', 'Skip this search');
+    var skipBtn = createNode(
+      'button',
+      'lb-action-btn secondary lb-skip-btn',
+      'Skip this search',
+    );
     skipBtn.type = 'button';
-    var retryBtn = createNode('button', 'lb-action-btn lb-retry-btn', 'Retry filters');
+    var retryBtn = createNode(
+      'button',
+      'lb-action-btn lb-retry-btn',
+      'Retry filters',
+    );
     retryBtn.type = 'button';
     recoveryActions.appendChild(skipBtn);
     recoveryActions.appendChild(retryBtn);
@@ -210,11 +230,20 @@
     stickyBottom.title = 'Jump to latest status';
     stickyBottom.setAttribute('aria-label', 'Jump to latest status');
 
-    var stickySvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    var stickySvg = document.createElementNS(
+      'http://www.w3.org/2000/svg',
+      'svg',
+    );
     stickySvg.setAttribute('viewBox', '0 0 16 16');
-    var stickyPath1 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    var stickyPath1 = document.createElementNS(
+      'http://www.w3.org/2000/svg',
+      'path',
+    );
     stickyPath1.setAttribute('d', 'M8 3v8');
-    var stickyPath2 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    var stickyPath2 = document.createElementNS(
+      'http://www.w3.org/2000/svg',
+      'path',
+    );
     stickyPath2.setAttribute('d', 'M4.5 8.5 8 12l3.5-3.5');
     stickySvg.appendChild(stickyPath1);
     stickySvg.appendChild(stickyPath2);
@@ -282,28 +311,40 @@
     var orbBackground = '#0a66c2';
     var orbBoxShadow = '0 0 0 1px rgba(255,255,255,.55)';
     var dock = root.dataset.dock || 'bl';
-    var horizontalOffset = dock.indexOf('r') >= 0 ? parseInt(root.style.right, 10) : parseInt(root.style.left, 10);
-    var verticalOffset = dock.indexOf('b') >= 0 ? parseInt(root.style.bottom, 10) : parseInt(root.style.top, 10);
+    var horizontalOffset =
+      dock.indexOf('r') >= 0 ?
+        parseInt(root.style.right, 10)
+      : parseInt(root.style.left, 10);
+    var verticalOffset =
+      dock.indexOf('b') >= 0 ?
+        parseInt(root.style.bottom, 10)
+      : parseInt(root.style.top, 10);
 
     if (!Number.isFinite(horizontalOffset)) horizontalOffset = dockOffset;
     if (!Number.isFinite(verticalOffset)) verticalOffset = dockOffset;
 
     if (statusType === 'waiting') {
       orbBackground = 'linear-gradient(135deg,#f7d774,#d49914)';
-      orbBoxShadow = '0 0 0 1px rgba(255,255,255,.55),0 0 14px rgba(212,153,20,.25)';
+      orbBoxShadow =
+        '0 0 0 1px rgba(255,255,255,.55),0 0 14px rgba(212,153,20,.25)';
     } else if (statusType === 'success') {
-      orbBackground = 'radial-gradient(circle at 30% 30%,#b8ffd3,#1ea65a 60%,#13753e)';
-      orbBoxShadow = '0 0 0 1px rgba(255,255,255,.55),0 0 16px rgba(30,166,90,.24)';
+      orbBackground =
+        'radial-gradient(circle at 30% 30%,#b8ffd3,#1ea65a 60%,#13753e)';
+      orbBoxShadow =
+        '0 0 0 1px rgba(255,255,255,.55),0 0 16px rgba(30,166,90,.24)';
     } else if (statusType === 'failed' || paused) {
-      orbBackground = paused
-        ? 'radial-gradient(circle at 30% 30%,#cfd6e6,#7f8ca7 68%,#5a6680)'
+      orbBackground =
+        paused ?
+          'radial-gradient(circle at 30% 30%,#cfd6e6,#7f8ca7 68%,#5a6680)'
         : 'radial-gradient(circle at 30% 30%,#ffb3bf,#cf334d 68%,#8a1731)';
-      orbBoxShadow = paused
-        ? '0 0 0 6px rgba(127,140,167,.08),0 0 0 1px rgba(255,255,255,.55)'
+      orbBoxShadow =
+        paused ?
+          '0 0 0 6px rgba(127,140,167,.08),0 0 0 1px rgba(255,255,255,.55)'
         : '0 0 0 6px rgba(207,51,77,.08),0 0 0 1px rgba(255,255,255,.55)';
     } else if (isActive) {
       orbBackground = 'linear-gradient(135deg,#0a66c2,#4f8cff)';
-      orbBoxShadow = '0 0 0 1px rgba(255,255,255,.75),0 8px 18px rgba(10,102,194,.20)';
+      orbBoxShadow =
+        '0 0 0 1px rgba(255,255,255,.75),0 8px 18px rgba(10,102,194,.20)';
     }
 
     applyDockPosition(root, dock, horizontalOffset, verticalOffset);
@@ -317,12 +358,13 @@
     applyStyles(bubble, {
       position: 'relative',
       display: 'flex',
+      transition: 'all 1s',
       alignItems: 'center',
       gap: '12px',
       maxWidth: 'min(640px, calc(100vw - 28px))',
       minHeight: '60px',
       padding: '10px 12px',
-      borderRadius: '24px',
+      borderRadius: '999px',
       background: '#fff',
       border: '1px solid rgba(15,23,42,.08)',
       boxShadow: '0 18px 44px rgba(15,23,42,.10),0 2px 14px rgba(15,23,42,.05)',
@@ -345,8 +387,15 @@
     });
     applyStyles(orb, {
       display: 'block',
-      width: statusType === 'failed' || paused ? '12px' : statusType === 'active' ? '22px' : '20px',
-      height: statusType === 'failed' || paused ? '12px' : statusType === 'active' ? '22px' : '20px',
+      transition: 'all 1s',
+      width:
+        statusType === 'failed' || paused ? '12px'
+        : statusType === 'active' ? '22px'
+        : '20px',
+      height:
+        statusType === 'failed' || paused ? '12px'
+        : statusType === 'active' ? '22px'
+        : '20px',
       borderRadius: '999px',
       background: orbBackground,
       boxShadow: orbBoxShadow,
@@ -365,21 +414,21 @@
     });
     applyStyles(kicker, {
       display: 'block',
-      fontSize: '10px',
+      fontSize: '8px',
       fontWeight: '800',
       letterSpacing: '.12em',
       textTransform: 'uppercase',
-      color: 'rgba(20,33,61,.5)',
-      lineHeight: '12px',
-      marginBottom: '4px',
+      color: 'rgba(20,33,61,.3)',
+      lineHeight: '8px',
+      paddingBottom: '4px',
     });
     applyStyles(text, {
       display: 'block',
       overflow: 'hidden',
       textOverflow: 'ellipsis',
       whiteSpace: 'nowrap',
-      fontSize: '13px',
-      fontWeight: '700',
+      fontSize: '14px',
+      fontWeight: '600',
       lineHeight: '18px',
       maxWidth: 'min(420px, calc(100vw - 186px))',
       color: '#111827',
@@ -400,8 +449,8 @@
         height: '30px',
         border: '1px solid rgba(255,255,255,.28)',
         borderRadius: '999px',
-      background: '#fff',
-      color: '#172033',
+        background: '#fff',
+        color: '#172033',
         cursor: 'pointer',
         display: 'flex',
         alignItems: 'center',
@@ -421,8 +470,16 @@
       boxShadow: '0 20px 52px rgba(15,23,42,.10),0 2px 14px rgba(15,23,42,.05)',
       pointerEvents: 'auto',
       opacity: expanded ? '1' : '0',
-      maxHeight: expanded ? (root.classList.contains('lb-needs-action') ? '470px' : '380px') : '0',
-      transform: expanded ? 'translateY(0)' : (dock.indexOf('t') === 0 ? 'translateY(-8px)' : 'translateY(8px)'),
+      maxHeight:
+        expanded ?
+          root.classList.contains('lb-needs-action') ?
+            '470px'
+          : '380px'
+        : '0',
+      transform:
+        expanded ? 'translateY(0)'
+        : dock.indexOf('t') === 0 ? 'translateY(-8px)'
+        : 'translateY(8px)',
     });
     applyStyles(panelHead, {
       display: 'flex',
@@ -518,7 +575,8 @@
       bottom: isBottom ? verticalOffset + 'px' : 'auto',
       zIndex: '2147483647',
       pointerEvents: 'none',
-      fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif",
+      fontFamily:
+        "-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif",
     });
   }
 
@@ -531,10 +589,18 @@
     var horizontalOffset = margin;
     var verticalOffset = margin;
     if (dock.indexOf('r') >= 0) {
-      horizontalOffset = clamp(margin, margin, Math.max(margin, window.innerWidth - rect.width - margin));
+      horizontalOffset = clamp(
+        margin,
+        margin,
+        Math.max(margin, window.innerWidth - rect.width - margin),
+      );
     }
     if (dock.indexOf('b') >= 0) {
-      verticalOffset = clamp(margin, margin, Math.max(margin, window.innerHeight - rect.height - margin));
+      verticalOffset = clamp(
+        margin,
+        margin,
+        Math.max(margin, window.innerHeight - rect.height - margin),
+      );
     }
     applyDockPosition(root, dock, horizontalOffset, verticalOffset);
   }
@@ -563,10 +629,18 @@
     var horizontalOffset = margin;
     var verticalOffset = margin;
     if (dock.indexOf('r') >= 0) {
-      horizontalOffset = clamp(margin, margin, Math.max(margin, window.innerWidth - rect.width - margin));
+      horizontalOffset = clamp(
+        margin,
+        margin,
+        Math.max(margin, window.innerWidth - rect.width - margin),
+      );
     }
     if (dock.indexOf('b') >= 0) {
-      verticalOffset = clamp(margin, margin, Math.max(margin, window.innerHeight - rect.height - margin));
+      verticalOffset = clamp(
+        margin,
+        margin,
+        Math.max(margin, window.innerHeight - rect.height - margin),
+      );
     }
     applyDockPosition(root, dock, horizontalOffset, verticalOffset);
     setDockState(root, dock, true);
@@ -602,10 +676,18 @@
 
     handle.addEventListener('pointermove', function (event) {
       if (!dragState || dragState.id !== event.pointerId) return;
-      var maxLeft = Math.max(dockOffset, window.innerWidth - root.offsetWidth - dockOffset);
-      var maxTop = Math.max(dockOffset, window.innerHeight - root.offsetHeight - dockOffset);
-      root.style.left = clamp(event.clientX - dragState.offsetX, dockOffset, maxLeft) + 'px';
-      root.style.top = clamp(event.clientY - dragState.offsetY, dockOffset, maxTop) + 'px';
+      var maxLeft = Math.max(
+        dockOffset,
+        window.innerWidth - root.offsetWidth - dockOffset,
+      );
+      var maxTop = Math.max(
+        dockOffset,
+        window.innerHeight - root.offsetHeight - dockOffset,
+      );
+      root.style.left =
+        clamp(event.clientX - dragState.offsetX, dockOffset, maxLeft) + 'px';
+      root.style.top =
+        clamp(event.clientY - dragState.offsetY, dockOffset, maxTop) + 'px';
       root.style.right = 'auto';
       root.style.bottom = 'auto';
       var liveDock = nearestDock(root);
@@ -768,9 +850,12 @@
       top: list.scrollHeight,
       behavior: smooth ? 'smooth' : 'auto',
     });
-    window.setTimeout(function () {
-      updateBottomButton(root);
-    }, smooth ? 220 : 0);
+    window.setTimeout(
+      function () {
+        updateBottomButton(root);
+      },
+      smooth ? 220 : 0,
+    );
   }
 
   function renderTimeline(root, followBottom) {
@@ -865,7 +950,10 @@
     addHistory(message);
     setPaused(!!window.linkedinBotPaused);
     if (!root.classList.contains('lb-dragging')) {
-      applyInlineFallback(root, { statusType: cls, paused: !!window.linkedinBotPaused });
+      applyInlineFallback(root, {
+        statusType: cls,
+        paused: !!window.linkedinBotPaused,
+      });
     }
     if (root.classList.contains('lb-expanded')) renderTimeline(root, true);
     window.botStatus = message;
