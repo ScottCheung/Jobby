@@ -7,7 +7,8 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.select import Select
 
-from config.questions import learn_from_manual_answers, overwrite_previous_answers, pause_at_failed_question, pause_before_submit, require_visa
+from config.questions import overwrite_previous_answers, pause_at_failed_question, pause_before_submit, require_visa
+from config.settings import learn_from_manual_answers
 from modules.clickers_and_finders import find_by_class, try_xp
 from modules.helpers import sleep
 from modules.linkedin.linkedin_status import bot_status, sync_status_widget, wait_if_bot_paused

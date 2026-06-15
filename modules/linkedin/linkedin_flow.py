@@ -8,7 +8,8 @@ from selenium.webdriver.remote.webelement import WebElement
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
-from config.settings import close_tabs, easy_apply_only, failed_file_name, file_name, logs_folder_path
+from config.search import easy_apply_only
+from config.settings import close_tabs, failed_file_name, file_name, logs_folder_path
 from modules.clickers_and_finders import wait_span_click
 from modules.helpers import truncate_for_csv
 from modules.linkedin.linkedin_status import bot_status, wait_if_bot_paused

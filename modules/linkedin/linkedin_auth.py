@@ -5,8 +5,8 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 
 from config.secrets import password, username
-from modules.clickers_and_finders import find_by_class, try_linkText, try_xp
-from modules.helpers import manual_login_retry, text_input_by_ID
+from modules.clickers_and_finders import find_by_class, text_input_by_ID, try_linkText, try_xp
+from modules.helpers import manual_login_retry
 
 
 _driver = None

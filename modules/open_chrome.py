@@ -23,7 +23,7 @@ from config.questions import default_resume_path
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support.ui import WebDriverWait
 from modules.helpers import find_default_profile_directory, critical_error_log, print_lg
-from selenium.common.exceptions import SessionNotCreatedException
+from selenium.common.exceptions import SessionNotCreatedException, WebDriverException
 from urllib.error import URLError
 
 UC_CACHE_DIR = os.path.expanduser("~/Library/Application Support/undetected_chromedriver")
@@ -110,6 +110,12 @@ def _apply_cdp_stealth(driver) -> None:
 def _should_use_undetected_chromedriver() -> bool:
     if not stealth_mode:
         return False
+    if sys.platform == "darwin":
+        print_lg(
+            "macOS detected. Using standard Selenium startup for stability; "
+            "undetected_chromedriver is being skipped because it can hang before LinkedIn opens."
+        )
+        return False
     if _is_apple_silicon() and not _rosetta_installed():
         print_lg(
             "Apple Silicon detected without Rosetta 2. "
@@ -169,6 +175,21 @@ def _create_driver(options, use_uc: bool):
     return driver
 
 
+def _should_fallback_to_selenium(error: Exception) -> bool:
+    if not _should_use_undetected_chromedriver():
+        return False
+    if isinstance(error, (SessionNotCreatedException, WebDriverException, ConnectionError, TimeoutError)):
+        return True
+    message = str(error).lower()
+    fallback_markers = [
+        "cannot connect to chrome",
+        "chrome not reachable",
+        "session not created",
+        "unable to discover open pages",
+    ]
+    return any(marker in message for marker in fallback_markers)
+
+
 def createChromeSession(isRetry: bool = False):
     make_directories([file_name, failed_file_name, logs_folder_path + "/screenshots", default_resume_path, generated_resume_path + "/temp", data_folder_path, question_cache_file, applications_json_file])
 
@@ -188,7 +209,21 @@ def createChromeSession(isRetry: bool = False):
         print_lg("Logging in with a guest profile, Web history will not be saved!")
         options.add_argument(f"--user-data-dir={get_default_temp_profile()}")
 
-    driver = _create_driver(options, use_uc)
+    try:
+        driver = _create_driver(options, use_uc)
+    except Exception as error:
+        if use_uc and _should_fallback_to_selenium(error):
+            print_lg("Undetected Chrome startup failed. Falling back to standard Selenium mode...")
+            options = _build_chrome_options(False)
+            if isRetry:
+                print_lg("Will login with a guest profile, browsing history will not be saved in the browser!")
+            elif profile_dir and not safe_mode:
+                options.add_argument(f"--user-data-dir={profile_dir}")
+            else:
+                options.add_argument(f"--user-data-dir={get_default_temp_profile()}")
+            driver = _create_driver(options, False)
+        else:
+            raise
     try:
         driver.maximize_window()
     except Exception:
@@ -228,21 +263,26 @@ def _format_chrome_startup_error(error: Exception) -> str:
     )
 
 
-try:
-    options, driver, actions, wait = None, None, None, None
-    options, driver, actions, wait = createChromeSession()
-except SessionNotCreatedException as e:
-    critical_error_log("Failed to create Chrome Session, retrying with guest profile", e)
-    options, driver, actions, wait = createChromeSession(True)
-except Exception as e:
-    msg = _format_chrome_startup_error(e)
-    print_lg(msg)
-    critical_error_log("In Opening Chrome", e)
-    from pyautogui import alert
-    alert(msg, "Error in opening chrome")
-    if driver:
-        try:
-            driver.quit()
-        except Exception:
-            pass
-    exit(1)
+options, driver, actions, wait = None, None, None, None
+
+
+def initialize_chrome_session():
+    global options, driver, actions, wait
+    try:
+        options, driver, actions, wait = createChromeSession()
+    except SessionNotCreatedException as e:
+        critical_error_log("Failed to create Chrome Session, retrying with guest profile", e)
+        options, driver, actions, wait = createChromeSession(True)
+    except Exception as e:
+        msg = _format_chrome_startup_error(e)
+        print_lg(msg)
+        critical_error_log("In Opening Chrome", e)
+        from pyautogui import alert
+        alert(msg, "Error in opening chrome")
+        if driver:
+            try:
+                driver.quit()
+            except Exception:
+                pass
+        raise
+    return options, driver, actions, wait
