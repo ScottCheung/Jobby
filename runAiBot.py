@@ -29,11 +29,13 @@ from modules.open_chrome import *
 from modules.helpers import *
 import modules.linkedin.linkedin_status as linkedin_status
 from modules.linkedin.linkedin_status import *
+import modules.linkedin.linkedin_auth as linkedin_auth
 import modules.linkedin.linkedin_filters as linkedin_filters
 import modules.linkedin.linkedin_job_details as linkedin_job_details
 import modules.linkedin.linkedin_apply as linkedin_apply
 import modules.linkedin.linkedin_jobs as linkedin_jobs
 import modules.linkedin.linkedin_flow as linkedin_flow
+import modules.linkedin.linkedin_runtime as linkedin_runtime
 original_buffer = buffer
 _print_lg = print_lg
 STATUS_WIDGET_VERSION = linkedin_status.WIDGET_VERSION
@@ -62,12 +64,18 @@ from modules.persistence import QuestionCache, ApplicationLogger, resolve_answer
 from modules.persistence import answer_resolver as answer_resolver_module
 from config.custom_questions import custom_questions
 
+unanswered_questions = set()
+question_cache = QuestionCache()
+application_logger = ApplicationLogger()
+
+linkedin_auth.bind_context(driver, wait, print_lg)
 linkedin_filters.bind_context(driver, actions, wait, buffer, print_lg)
 linkedin_job_details.bind_context(driver, print_lg)
 linkedin_apply.bind_context(driver, actions, question_cache, print_lg, unanswered_questions)
 linkedin_jobs.bind_context(driver, actions, buffer, print_lg, None)
 linkedin_flow.bind_context(driver, actions, wait, print_lg, application_logger)
 linkedin_jobs.bind_context(discard_job_func=linkedin_flow.discard_job)
+linkedin_runtime.bind_context(driver, print_lg, buffer, sleep)
 
 if use_AI:
     from modules.ai.openaiConnections import ai_create_openai_client, ai_extract_skills, ai_answer_question, ai_close_openai_client
@@ -94,10 +102,6 @@ last_name = last_name.strip()
 full_name = first_name + " " + middle_name + " " + last_name if middle_name else first_name + " " + last_name
 
 useNewResume = True
-unanswered_questions = set()
-
-question_cache = QuestionCache()
-application_logger = ApplicationLogger()
 
 tabs_count = 1
 easy_applied_count = 0
@@ -136,82 +140,12 @@ about_company_for_ai = None # TODO extract about company for AI
 #>
 
 
-#< Login Functions
-def is_logged_in_LN() -> bool:
-    '''
-    Function to check if user is logged-in in LinkedIn
-    * Returns: `True` if user is logged-in or `False` if not
-    '''
-    if driver.current_url == "https://www.linkedin.com/feed/": return True
-    if try_linkText(driver, "Sign in"): return False
-    if try_xp(driver, '//button[@type="submit" and contains(text(), "Sign in")]'):  return False
-    if try_linkText(driver, "Join now"): return False
-    print_lg("Didn't find Sign in link, so assuming user is logged in!")
-    return True
-
-
-def login_LN() -> None:
-    '''
-    Function to login for LinkedIn
-    * Tries to login using given `username` and `password` from `secrets.py`
-    * If failed, tries to login using saved LinkedIn profile button if available
-    * If both failed, asks user to login manually
-    '''
-    # Find the username and password fields and fill them with user credentials
-    driver.get("https://www.linkedin.com/login")
-    if username == "username@example.com" and password == "example_password":
-        pyautogui.alert("User did not configure username and password in secrets.py, hence can't login automatically! Please login manually!", "Login Manually","Okay")
-        print_lg("User did not configure username and password in secrets.py, hence can't login automatically! Please login manually!")
-        manual_login_retry(is_logged_in_LN, 2)
-        return
-    try:
-        wait.until(EC.presence_of_element_located((By.LINK_TEXT, "Forgot password?")))
-        try:
-            text_input_by_ID(driver, "username", username, 1)
-        except Exception as e:
-            print_lg("Couldn't find username field.")
-            # print_lg(e)
-        try:
-            text_input_by_ID(driver, "password", password, 1)
-        except Exception as e:
-            print_lg("Couldn't find password field.")
-            # print_lg(e)
-        # Find the login submit button and click it
-        driver.find_element(By.XPATH, '//button[@type="submit" and contains(text(), "Sign in")]').click()
-    except Exception as e1:
-        try:
-            profile_button = find_by_class(driver, "profile__details")
-            profile_button.click()
-        except Exception as e2:
-            # print_lg(e1, e2)
-            print_lg("Couldn't Login!")
-
-    try:
-        # Wait until successful redirect, indicating successful login
-        wait.until(EC.url_to_be("https://www.linkedin.com/feed/")) # wait.until(EC.presence_of_element_located((By.XPATH, '//button[normalize-space(.)="Start a post"]')))
-        return print_lg("Login successful!")
-    except Exception as e:
-        print_lg("Seems like login attempt failed! Possibly due to wrong credentials or already logged in! Try logging in manually!")
-        # print_lg(e)
-        manual_login_retry(is_logged_in_LN, 2)
-#>
-
-
-
 def get_applied_job_ids() -> set[str]:
     '''
     Function to get a `set` of applied job's Job IDs
     * Returns a set of Job IDs from existing applied jobs history csv file
     '''
-    job_ids: set[str] = set()
-    try:
-        with open(file_name, 'r', encoding='utf-8') as file:
-            reader = csv.reader(file)
-            for row in reader:
-                job_ids.add(row[0])
-    except FileNotFoundError:
-        print_lg(f"The CSV file '{file_name}' does not exist.")
-    return job_ids
+    return linkedin_auth.get_applied_job_ids(file_name)
 
 
 
@@ -588,21 +522,7 @@ def apply_to_jobs(search_terms: list[str]) -> None:
 
         
 def run(total_runs: int) -> int:
-    if dailyEasyApplyLimitReached:
-        return total_runs
-    print_lg("\n########################################################################################################################\n")
-    print_lg(f"Date and Time: {datetime.now()}")
-    print_lg(f"Cycle number: {total_runs}")
-    print_lg(f"Currently looking for jobs posted within '{date_posted}' and sorting them by '{sort_by}'")
-    apply_to_jobs(search_terms)
-    print_lg("########################################################################################################################\n")
-    if not dailyEasyApplyLimitReached:
-        print_lg("Sleeping for 10 min...")
-        sleep(300)
-        print_lg("Few more min... Gonna start with in next 5 min...")
-        sleep(300)
-    buffer(3)
-    return total_runs + 1
+    return linkedin_runtime.run_cycle(total_runs, dailyEasyApplyLimitReached, date_posted, sort_by, search_terms, apply_to_jobs)
 
 
 
@@ -626,7 +546,8 @@ def main() -> None:
         # Login to LinkedIn
         tabs_count = len(driver.window_handles)
         driver.get("https://www.linkedin.com/login")
-        if not is_logged_in_LN(): login_LN()
+        if not linkedin_auth.is_logged_in():
+            linkedin_auth.login()
         
         linkedIn_tab = driver.current_window_handle
 
@@ -664,14 +585,13 @@ def main() -> None:
         total_runs = run(total_runs)
         while(run_non_stop):
             if cycle_date_posted:
-                date_options = ["Any time", "Past month", "Past week", "Past 24 hours"]
                 global date_posted
-                date_posted = date_options[date_options.index(date_posted)+1 if date_options.index(date_posted)+1 > len(date_options) else -1] if stop_date_cycle_at_24hr else date_options[0 if date_options.index(date_posted)+1 >= len(date_options) else date_options.index(date_posted)+1]
+                date_posted = linkedin_runtime.advance_date_posted(date_posted, stop_date_cycle_at_24hr)
             if alternate_sortby:
                 global sort_by
-                sort_by = "Most recent" if sort_by == "Most relevant" else "Most relevant"
+                sort_by = linkedin_runtime.toggle_sort(sort_by)
                 total_runs = run(total_runs)
-                sort_by = "Most recent" if sort_by == "Most relevant" else "Most relevant"
+                sort_by = linkedin_runtime.toggle_sort(sort_by)
             total_runs = run(total_runs)
             if dailyEasyApplyLimitReached:
                 break
@@ -683,47 +603,8 @@ def main() -> None:
         critical_error_log("In Applier Main", e)
         pyautogui.alert(e,alert_title)
     finally:
-        summary = "Total runs: {}\nJobs Easy Applied: {}\nExternal job links collected: {}\nTotal applied or collected: {}\nFailed jobs: {}\nIrrelevant jobs skipped: {}\n".format(total_runs,easy_applied_count,external_jobs_count,easy_applied_count + external_jobs_count,failed_count,skip_count)
-        print_lg(summary)
-        print_lg("\n\nTotal runs:                     {}".format(total_runs))
-        print_lg("Jobs Easy Applied:              {}".format(easy_applied_count))
-        print_lg("External job links collected:   {}".format(external_jobs_count))
-        print_lg("                              ----------")
-        print_lg("Total applied or collected:     {}".format(easy_applied_count + external_jobs_count))
-        print_lg("\nFailed jobs:                    {}".format(failed_count))
-        print_lg("Irrelevant jobs skipped:        {}\n".format(skip_count))
-        if unanswered_questions:
-            print_lg("\n\nUnanswered questions this session:\n  {}  \n\n".format(";\n".join(str(question) for question in unanswered_questions)))
         manual_learned = question_cache.get_session_manual_learned()
-        if manual_learned:
-            print_lg("\n\nNew questions learned from manual input:\n  {}  \n\n".format(";\n".join(f'{q["label"]} -> {q["answer"]}' for q in manual_learned)))
-        quotes = choice([
-            "Never quit. You're one step closer than before. - Scott Cheung",
-            "All the best with your future interviews, you've got this. - Scott Cheung", 
-            "Keep up with the progress. You got this. - Scott Cheung", 
-            "If you're tired, learn to take rest but never give up. - Scott Cheung",
-            "Success is not final, failure is not fatal, It is the courage to continue that counts. - Winston Churchill (Not a sponsor)",
-            "Believe in yourself and all that you are. Know that there is something inside you that is greater than any obstacle. - Christian D. Larson (Not a sponsor)",
-            "Every job is a self-portrait of the person who does it. Autograph your work with excellence. - Jessica Guidobono (Not a sponsor)",
-            "The only way to do great work is to love what you do. If you haven't found it yet, keep looking. Don't settle. - Steve Jobs (Not a sponsor)",
-            "Opportunities don't happen, you create them. - Chris Grosser (Not a sponsor)",
-            "The road to success and the road to failure are almost exactly the same. The difference is perseverance. - Colin R. Davis (Not a sponsor)",
-            "Obstacles are those frightful things you see when you take your eyes off your goal. - Henry Ford (Not a sponsor)",
-            "The only limit to our realization of tomorrow will be our doubts of today. - Franklin D. Roosevelt (Not a sponsor)",
-            ])
-        sponsors = "Be the first to have your name here!"
-        timeSaved = (easy_applied_count * 80) + (external_jobs_count * 20) + (skip_count * 10)
-        timeSavedMsg = ""
-        if timeSaved > 0:
-            timeSaved += 60
-            timeSavedMsg = f"In this run, you saved approx {round(timeSaved/60)} mins ({timeSaved} secs), please consider supporting the project."
-        msg = f"{quotes}\n\n\n{timeSavedMsg}\nYou can also get your quote and name shown here, or prioritize your bug reports by supporting the project at:\n\nhttps://github.com/sponsors/GodsScion\n\n\nSummary:\n{summary}\n\n\nBest regards,\nScott Cheung\nhttps://www.linkedin.com/in/saivigneshgolla/\n\nTop Sponsors:\n{sponsors}"
-        pyautogui.alert(msg, "Exiting..")
-        print_lg(msg,"Closing the browser...")
-        if tabs_count >= 10:
-            msg = "NOTE: IF YOU HAVE MORE THAN 10 TABS OPENED, PLEASE CLOSE OR BOOKMARK THEM!\n\nOr it's highly likely that application will just open browser and not do anything next time!" 
-            pyautogui.alert(msg,"Info")
-            print_lg("\n"+msg)
+        linkedin_runtime.show_final_summary(total_runs, easy_applied_count, external_jobs_count, failed_count, skip_count, unanswered_questions, manual_learned, tabs_count)
         ##> ------ Yang Li : MARKYangL - Feature ------
         if use_AI and aiClient:
             try:
@@ -738,10 +619,7 @@ def main() -> None:
                 print_lg("Failed to close AI client:", e)
         ##<
         try:
-            if driver:
-                driver.quit()
-        except WebDriverException as e:
-            print_lg("Browser already closed.", e)
+            linkedin_runtime.close_driver()
         except Exception as e: 
             critical_error_log("When quitting...", e)
 
