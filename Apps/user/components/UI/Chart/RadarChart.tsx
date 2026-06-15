@@ -26,8 +26,8 @@ interface RadarChartProps {
   gridType?: 'polygon' | 'circle';
   showLegend?: boolean;
   customTooltip?: React.ReactElement | ((props: any) => React.ReactElement);
-  showDots?: boolean | RechartsRadarProps['dot'];
-  activeDot?: RechartsRadarProps['activeDot'];
+  showDots?: boolean | RechartsRadarProps<any, any>['dot'];
+  activeDot?: RechartsRadarProps<any, any>['activeDot'];
   ValueProps?: any;
 }
 
@@ -89,14 +89,14 @@ const RadarChart = ({
           color
         : COLORS[index % COLORS.length];
 
-      let dotConfig: RechartsRadarProps['dot'] = false;
+      let dotConfig: RechartsRadarProps<any, any>['dot'] = false;
       if (showDots === true) {
         dotConfig = { stroke: seriesColor, fill: seriesColor, r: 3 };
       } else if (typeof showDots === 'object') {
         dotConfig = showDots;
       }
 
-      let activeDotConfig: RechartsRadarProps['activeDot'] = false;
+      let activeDotConfig: RechartsRadarProps<any, any>['activeDot'] = false;
       if (activeDot === true) {
         activeDotConfig = { r: 6, stroke: seriesColor };
       } else if (typeof activeDot === 'object') {
@@ -162,7 +162,7 @@ const RadarChart = ({
               const originalData = payload[0].payload;
               // 转换 payload 以适应 ChartTooltip 的数据结构
               const transformedPayload = payload.map((entry) => ({
-                name: entry.dataKey ? String(entry.dataKey) : undefined, // 使用 dataKey 作为系列名称 (studentA, studentB, etc.)
+                name: typeof entry.dataKey === 'function' ? undefined : entry.dataKey, // 使用 dataKey 作为系列名称 (studentA, studentB, etc.)
                 value: entry.value as number, // 确保 value 是 number 类型
                 color: entry.color || entry.stroke,
                 payload: entry.payload,

@@ -19,6 +19,7 @@ import { PreferencesForm, ProfileForm, RuntimeForm, SearchForm } from './forms';
 import { useTheme } from './theme-provider';
 import { cn } from '../lib/utils';
 import { Chart } from '@/components/UI/Chart';
+import { ToggleGroup } from '@/components/UI/toggle-group';
 import {
   LayoutDashboard,
   User as UserIcon,
@@ -161,7 +162,7 @@ function IconButton({
       aria-label={label}
       title={label}
       className={cn(
-        'p-2 rounded-xl transition-all border border-zinc-200/60 dark:border-zinc-805/60 bg-white hover:bg-zinc-50 text-zinc-500 hover:text-zinc-900 dark:bg-[#181C26] dark:hover:bg-zinc-800/40 dark:text-zinc-400 dark:hover:text-zinc-100 flex items-center justify-center shrink-0 disabled:opacity-40 disabled:pointer-events-none active:scale-[0.96] shadow-xs cursor-pointer',
+        'p-2 rounded-xl transition-all border border-zinc-200/60 dark:border-zinc-805/60 bg-panel hover:bg-zinc-50 text-zinc-500 hover:text-zinc-900 dark:hover:bg-zinc-800/40 dark:text-zinc-400 dark:hover:text-zinc-100 flex items-center justify-center shrink-0 disabled:opacity-40 disabled:pointer-events-none active:scale-[0.96] shadow-xs cursor-pointer',
         danger &&
           'text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-950/20 border-red-100 dark:border-red-900/30',
       )}
@@ -298,10 +299,13 @@ export function UserConsole() {
       const month = String(d.getMonth() + 1).padStart(2, '0');
       const dateVal = String(d.getDate()).padStart(2, '0');
       const dateStr = `${year}-${month}-${dateVal}`;
-      
+
       days.push({
         rawDateStr: dateStr,
-        displayDate: d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+        displayDate: d.toLocaleDateString(undefined, {
+          month: 'short',
+          day: 'numeric',
+        }),
         Submitted: 0,
         Skipped: 0,
       });
@@ -360,13 +364,22 @@ export function UserConsole() {
         totalSkipped += 1;
         const rawReason = app.skip_reason || 'unknown_reason';
         let reason = rawReason;
-        if (reason.includes('blacklist_rules.company') || reason.includes('company_blacklist')) {
+        if (
+          reason.includes('blacklist_rules.company') ||
+          reason.includes('company_blacklist')
+        ) {
           reason = 'Blacklisted Company';
-        } else if (reason.includes('blacklist_rules.title') || reason.includes('title_blacklist')) {
+        } else if (
+          reason.includes('blacklist_rules.title') ||
+          reason.includes('title_blacklist')
+        ) {
           reason = 'Blacklisted Job Title';
         } else if (reason.includes('require_visa') || reason.includes('visa')) {
           reason = 'Visa Sponsorship Required';
-        } else if (reason.includes('years_of_experience') || reason.includes('experience')) {
+        } else if (
+          reason.includes('years_of_experience') ||
+          reason.includes('experience')
+        ) {
           reason = 'Experience Requirements Mismatch';
         } else if (reason.includes('resume') || reason.includes('no_resume')) {
           reason = 'Missing Resume';
@@ -387,31 +400,36 @@ export function UserConsole() {
       .map((name) => ({
         name,
         value: skipReasonCounts[name],
-        percentage: totalSkipped > 0 ? Math.round((skipReasonCounts[name] / totalSkipped) * 100) : 0,
+        percentage:
+          totalSkipped > 0 ?
+            Math.round((skipReasonCounts[name] / totalSkipped) * 100)
+          : 0,
       }))
       .sort((a, b) => b.value - a.value)
       .slice(0, 5);
 
-    const workStyleCounts: Record<string, number> = {};
+    const cityCounts: Record<string, number> = {};
     applications.forEach((app) => {
-      let ws = app.work_style || 'Unknown';
-      ws = ws.charAt(0).toUpperCase() + ws.slice(1).toLowerCase();
-      if (ws === 'On-site') ws = 'Onsite';
-      workStyleCounts[ws] = (workStyleCounts[ws] || 0) + 1;
+      if (app.work_location) {
+        const city = app.work_location.trim();
+        if (city && city.toLowerCase() !== 'unknown') {
+          cityCounts[city] = (cityCounts[city] || 0) + 1;
+        }
+      }
     });
 
-    const wsColors: Record<string, string> = {
-      Remote: '#8b5cf6',
-      Hybrid: '#3b82f6',
-      Onsite: '#ec4899',
-      Unknown: '#71717a',
-    };
-
-    const workStyles = Object.keys(workStyleCounts).map((name) => ({
-      name,
-      value: workStyleCounts[name],
-      fill: wsColors[name] || '#71717a',
-    }));
+    const cityColors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
+    const topCities = Object.keys(cityCounts)
+      .map((name) => ({
+        name,
+        value: cityCounts[name],
+      }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 5)
+      .map((item, index) => ({
+        ...item,
+        fill: cityColors[index % cityColors.length],
+      }));
 
     const companyCounts: Record<string, number> = {};
     applications.forEach((app) => {
@@ -440,7 +458,7 @@ export function UserConsole() {
       trend,
       statusDistribution,
       skipReasons,
-      workStyles,
+      topCities,
       topCompanies,
       recentActivities,
     };
@@ -604,7 +622,7 @@ export function UserConsole() {
       {/* Sidebar */}
       <aside
         className={cn(
-          'h-screen sticky top-0 flex flex-col justify-between bg-white dark:bg-[#181C26] border-r border-zinc-200/50 dark:border-zinc-800/50 p-4 transition-all duration-300 ease-in-out z-20 shrink-0',
+          'h-screen sticky top-0 flex flex-col justify-between bg-panel border-r border-zinc-200/50 dark:border-zinc-800/50 p-4 transition-all duration-300 ease-in-out z-20 shrink-0',
           isCollapsed ? 'w-[80px]' : 'w-[260px]',
         )}
       >
@@ -628,7 +646,7 @@ export function UserConsole() {
 
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className='absolute -right-12 top-1/2 w-12 h-12 rounded-full border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#181C26] flex items-center justify-center text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 shadow-sm z-30 transition-transform hover:scale-105 cursor-pointer'
+            className='absolute -right-12 top-1/2 w-12 h-12 rounded-full border border-zinc-200 dark:border-zinc-800 bg-panel flex items-center justify-center text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 shadow-sm z-30 transition-transform hover:scale-105 cursor-pointer'
           >
             {isCollapsed ?
               <ChevronRight className='w-3.5 h-3.5' />
@@ -654,7 +672,7 @@ export function UserConsole() {
                   'group relative flex items-center gap-3 rounded-xl transition-all duration-200 py-2.5 cursor-pointer',
                   isCollapsed ? 'justify-center px-2' : 'px-3',
                   isActive ?
-                    'bg-zinc-900 text-white dark:bg-white dark:text-zinc-955 shadow-xs font-semibold'
+                    'bg-zinc-900 text-white dark:bg-panel dark:text-zinc-955 shadow-xs font-semibold'
                   : 'text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800/40',
                 )}
                 title={isCollapsed ? tab.label : undefined}
@@ -670,7 +688,7 @@ export function UserConsole() {
                     className={cn(
                       'text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0',
                       isActive ?
-                        'bg-white/10 text-white dark:bg-zinc-900/10 dark:text-zinc-950'
+                        'bg-panel/10 text-white dark:bg-zinc-900/10 dark:text-zinc-950'
                       : 'bg-zinc-100 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500',
                     )}
                   >
@@ -707,7 +725,7 @@ export function UserConsole() {
                 className={cn(
                   'p-1 rounded-md text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-zinc-100 cursor-pointer',
                   theme === 'light' &&
-                    'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-xs',
+                    'bg-panel dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-xs',
                 )}
                 title='Light Theme'
               >
@@ -718,7 +736,7 @@ export function UserConsole() {
                 className={cn(
                   'p-1 rounded-md text-zinc-500 hover:text-zinc-955 dark:text-zinc-400 dark:hover:text-zinc-100 cursor-pointer',
                   theme === 'dark' &&
-                    'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-xs',
+                    'bg-panel dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-xs',
                 )}
                 title='Dark Theme'
               >
@@ -729,7 +747,7 @@ export function UserConsole() {
                 className={cn(
                   'p-1 rounded-md text-zinc-500 hover:text-zinc-955 dark:text-zinc-400 dark:hover:text-zinc-100 cursor-pointer',
                   theme === 'system' &&
-                    'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-xs',
+                    'bg-panel dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-xs',
                 )}
                 title='System Theme'
               >
@@ -779,8 +797,8 @@ export function UserConsole() {
       </aside>
 
       {/* Main Content Area */}
-      <main className='flex-1 min-w-0 p-8 overflow-y-auto'>
-        <div className='max-w-[1200px] mx-auto space-y-8'>
+      <main className='flex-1 min-w-0 p-page overflow-y-auto'>
+        <div className='max-w-[1200px] mx-auto grid gap-8'>
           {/* Hero Header */}
 
           <header className='hero  bg-gradient-to-br from-green-800 via-emerald-900 to-zinc-950'>
@@ -796,10 +814,10 @@ export function UserConsole() {
           </header>
 
           {/* Stats Bar */}
-          <div className='grid grid-cols-2 md:grid-cols-4 gap-4'>
+          <div className='grid grid-cols-2 md:grid-cols-4 '>
             {stats.map((item) => (
               <div
-                className='bg-white dark:bg-[#181C26] border border-zinc-200/60 dark:border-zinc-800/60 rounded-2xl p-5 shadow-xs flex flex-col justify-between transition-all duration-300 hover:-translate-y-0.5 hover:shadow-sm'
+                className='bg-panel  rounded-2xl p-5 shadow-xs flex flex-col justify-between transition-all duration-300 hover:-translate-y-0.5 hover:shadow-sm'
                 key={item.label}
               >
                 <strong className='text-3xl font-extrabold text-zinc-900 dark:text-zinc-50 tracking-tight'>
@@ -826,341 +844,217 @@ export function UserConsole() {
 
           {/* Tab Content Panels */}
           {activeTab === 'overview' && (
-            <div className='space-y-6'>
-              {/* Row 1: Quick Config & Control Cards */}
-              <div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
-                {/* Worker Controller Card */}
-                <div className='bg-white dark:bg-[#181C26] border border-zinc-200/60 dark:border-zinc-800/60 rounded-2xl p-6 shadow-xs flex flex-col justify-between'>
+            <div className='grid grid-cols-12 gap-6'>
+              {/* Row 1: Trend & Distribution Charts */}
+              {/* Trend Chart - Span 2 Columns */}
+              <div className='cols-span-12 md:col-span-7   bg-panel  rounded-card p-card  '>
+                <div className='flex items-center justify-between mb-2'>
                   <div>
-                    <div className='flex items-center justify-between mb-4'>
-                      <h2 className='text-lg font-bold text-zinc-900 dark:text-zinc-50 flex items-center gap-2'>
-                        <Bot className='w-5 h-5 text-emerald-500' />
-                        Worker Console
-                      </h2>
-                      <span
-                        className={cn(
-                          'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wider',
-                          workerIsActive ?
-                            'bg-green-500/10 text-green-600 dark:bg-green-900/20 dark:text-green-400'
-                          : 'bg-zinc-500/10 text-zinc-650 dark:bg-zinc-800/20 dark:text-zinc-400',
-                        )}
-                      >
-                        {latestRun?.status ?? 'idle'}
-                      </span>
-                    </div>
-                    
-                    <p className='text-xs text-zinc-400 dark:text-zinc-500 uppercase font-bold tracking-wider mb-1'>
-                      Latest Log Message
+                    <h2 className='text-base font-bold text-zinc-900 dark:text-zinc-50'>
+                      Application Activity Trend
+                    </h2>
+                    <p className='text-xs text-zinc-400 dark:text-zinc-500'>
+                      Daily tracking of submitted vs skipped applications
                     </p>
-                    <div className='bg-zinc-50 dark:bg-zinc-900/50 rounded-xl p-3 border border-zinc-100 dark:border-zinc-800 min-h-[64px] flex items-center mb-4'>
-                      <p className='text-sm text-zinc-650 dark:text-zinc-300 leading-relaxed italic line-clamp-2'>
-                        {latestRun?.current_message ?? 'No worker runs recorded.'}
-                      </p>
-                    </div>
                   </div>
-
-                  <div className='flex items-center gap-2 pt-2 border-t border-zinc-100 dark:border-zinc-800/50'>
-                    <button
-                      onClick={() => void (workerIsActive ? stopWorker() : startWorker())}
-                      className={cn(
-                        'flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-sm font-semibold text-white shadow-xs cursor-pointer transition-all active:scale-[0.98]',
-                        workerIsActive ?
-                          'bg-gradient-to-tr from-red-650 to-rose-700 hover:from-red-700 hover:to-rose-800'
-                        : 'bg-gradient-to-tr from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800',
-                      )}
-                    >
-                      {workerIsActive ?
-                        <>
-                          <Square className='w-3.5 h-3.5 fill-white' /> Stop Worker
-                        </>
-                      : <>
-                          <Play className='w-3.5 h-3.5 fill-white' /> Start Worker
-                        </>
-                      }
-                    </button>
-                    <button
-                      onClick={loadData}
-                      className='p-2 rounded-xl border border-zinc-200 hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-800 text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 cursor-pointer active:scale-[0.96] transition-all'
-                      title='Refresh data'
-                    >
-                      <RotateCw className='w-4 h-4' />
-                    </button>
-                  </div>
+                  <ToggleGroup
+                    id='trend-range-toggle'
+                    items={[
+                      {
+                        value: '7',
+                        label: '7 Days',
+                        icon: ({ className }) => (
+                          <span
+                            className={cn(
+                              'text-[10px] font-bold flex items-center justify-center',
+                              className,
+                            )}
+                          >
+                            7d
+                          </span>
+                        ),
+                      },
+                      {
+                        value: '30',
+                        label: '30 Days',
+                        icon: ({ className }) => (
+                          <span
+                            className={cn(
+                              'text-[9px] font-bold flex items-center justify-center',
+                              className,
+                            )}
+                          >
+                            30d
+                          </span>
+                        ),
+                      },
+                    ]}
+                    value={String(trendRange)}
+                    onValueChange={(val) =>
+                      setTrendRange(Number(val) as 7 | 30)
+                    }
+                  />
                 </div>
 
-                {/* Current Search Target Card */}
-                <div className='bg-white dark:bg-[#181C26] border border-zinc-200/60 dark:border-zinc-800/60 rounded-2xl p-6 shadow-xs flex flex-col justify-between'>
-                  <div>
-                    <h2 className='text-lg font-bold text-zinc-900 dark:text-zinc-50 mb-4 flex items-center gap-2'>
-                      <Search className='w-5 h-5 text-emerald-500' />
-                      Search Parameters
-                    </h2>
-                    
-                    <div className='space-y-3'>
-                      <div>
-                        <p className='text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider'>
-                          Target Location
-                        </p>
-                        <h3 className='text-sm font-semibold text-zinc-800 dark:text-zinc-200 mt-0.5 truncate'>
-                          {searchProfile.search_location || 'Not configured'}
-                        </h3>
-                      </div>
-                      <div>
-                        <p className='text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider'>
-                          Keywords
-                        </p>
-                        <div className='flex flex-wrap gap-1 mt-1 max-h-[70px] overflow-y-auto pr-1'>
-                          {searchProfile.search_terms && searchProfile.search_terms.length > 0 ?
-                            searchProfile.search_terms.map((term, i) => (
-                              <span key={i} className='text-[10px] px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400 font-medium border border-emerald-100/50 dark:border-emerald-900/30'>
-                                {term}
-                              </span>
-                            ))
-                          : <span className='text-xs text-zinc-400 italic'>No terms added yet</span>
-                          }
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className='pt-4 border-t border-zinc-100 dark:border-zinc-800/50 text-right'>
-                    <button
-                      onClick={() => setActiveTab('search')}
-                      className='inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer'
-                    >
-                      Configure search <ChevronRight className='w-3 h-3' />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Bot Settings Rules Card */}
-                <div className='bg-white dark:bg-[#181C26] border border-zinc-200/60 dark:border-zinc-800/60 rounded-2xl p-6 shadow-xs flex flex-col justify-between'>
-                  <div>
-                    <h2 className='text-lg font-bold text-zinc-900 dark:text-zinc-50 mb-4 flex items-center gap-2'>
-                      <Settings className='w-5 h-5 text-emerald-500' />
-                      Runtime Rules
-                    </h2>
-                    
-                    <div className='grid grid-cols-2 gap-3'>
-                      <div className='flex flex-col p-2.5 rounded-xl bg-zinc-50/50 dark:bg-zinc-900/30 border border-zinc-100 dark:border-zinc-800/50'>
-                        <span className='text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase'>Safe Mode</span>
-                        <span className={cn('text-xs font-semibold mt-1', runtimeSettings.safe_mode ? 'text-green-600 dark:text-green-400' : 'text-zinc-400')}>
-                          {runtimeSettings.safe_mode ? 'Enabled' : 'Disabled'}
-                        </span>
-                      </div>
-                      <div className='flex flex-col p-2.5 rounded-xl bg-zinc-50/50 dark:bg-zinc-900/30 border border-zinc-100 dark:border-zinc-800/50'>
-                        <span className='text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase'>Stealth Mode</span>
-                        <span className={cn('text-xs font-semibold mt-1', runtimeSettings.stealth_mode ? 'text-green-600 dark:text-green-400' : 'text-zinc-400')}>
-                          {runtimeSettings.stealth_mode ? 'Active' : 'Inactive'}
-                        </span>
-                      </div>
-                      <div className='flex flex-col p-2.5 rounded-xl bg-zinc-50/50 dark:bg-zinc-900/30 border border-zinc-100 dark:border-zinc-800/50'>
-                        <span className='text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase'>Click Interval</span>
-                        <span className='text-xs font-semibold mt-1 text-zinc-650 dark:text-zinc-350'>
-                          ~{runtimeSettings.click_gap} seconds
-                        </span>
-                      </div>
-                      <div className='flex flex-col p-2.5 rounded-xl bg-zinc-50/50 dark:bg-zinc-900/30 border border-zinc-100 dark:border-zinc-800/50'>
-                        <span className='text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase'>Visa Required</span>
-                        <span className='text-xs font-semibold mt-1 text-zinc-650 dark:text-zinc-350'>
-                          {preferences.require_visa || 'No'}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className='pt-4 border-t border-zinc-100 dark:border-zinc-800/50 text-right'>
-                    <button
-                      onClick={() => setActiveTab('search')}
-                      className='inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer'
-                    >
-                      Adjust settings <ChevronRight className='w-3 h-3' />
-                    </button>
-                  </div>
+                <div className='w-full h-72 mt-4'>
+                  <Chart
+                    type='area'
+                    data={dashboardData.trend}
+                    xKey='date'
+                    yKeys={['Submitted', 'Skipped']}
+                    showLegend
+                    stacked
+                    gradientFill
+                    showDots='visible'
+                    className='h-full'
+                  />
                 </div>
               </div>
 
-              {/* Row 2: Trend & Distribution Charts */}
-              <div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
-                {/* Trend Chart - Span 2 Columns */}
-                <div className='bg-white dark:bg-[#181C26] border border-zinc-200/60 dark:border-zinc-800/60 rounded-2xl p-6 shadow-xs lg:col-span-2 flex flex-col justify-between'>
-                  <div className='flex items-center justify-between mb-2'>
-                    <div>
-                      <h2 className='text-base font-bold text-zinc-900 dark:text-zinc-50'>
-                        Application Activity Trend
-                      </h2>
-                      <p className='text-xs text-zinc-400 dark:text-zinc-500'>
-                        Daily tracking of submitted vs skipped applications
-                      </p>
-                    </div>
-                    {/* Range Selector */}
-                    <div className='flex bg-zinc-100 dark:bg-zinc-900/60 p-0.5 rounded-lg border border-zinc-200/50 dark:border-zinc-800/50'>
-                      <button
-                        onClick={() => setTrendRange(7)}
-                        className={cn(
-                          'px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer',
-                          trendRange === 7 ?
-                            'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-xs'
-                          : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200',
-                        )}
-                      >
-                        7 Days
-                      </button>
-                      <button
-                        onClick={() => setTrendRange(30)}
-                        className={cn(
-                          'px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer',
-                          trendRange === 30 ?
-                            'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-xs'
-                          : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200',
-                        )}
-                      >
-                        30 Days
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className='w-full h-72 mt-4'>
-                    <Chart
-                      type='area'
-                      data={dashboardData.trend}
-                      xKey='date'
-                      yKeys={['Submitted', 'Skipped']}
-                      showLegend
-                      stacked
-                      gradientFill
-                      showDots='visible'
-                      className='h-full'
-                    />
-                  </div>
+              {/* Donut Chart - Span 1 Column */}
+              <div className='cols-span-12 md:col-span-5 h-full  bg-panel  rounded-card p-card '>
+                <div>
+                  <h2 className='text-base font-bold text-zinc-900 dark:text-zinc-50 mb-1'>
+                    Application Status Breakdown
+                  </h2>
+                  <p className='text-xs text-zinc-400 dark:text-zinc-500 mb-4'>
+                    Proportions of all logged job application states
+                  </p>
                 </div>
 
-                {/* Donut Chart - Span 1 Column */}
-                <div className='bg-white dark:bg-[#181C26] border border-zinc-200/60 dark:border-zinc-800/60 rounded-2xl p-6 shadow-xs flex flex-col justify-between'>
-                  <div>
-                    <h2 className='text-base font-bold text-zinc-900 dark:text-zinc-50 mb-1'>
-                      Application Status Breakdown
-                    </h2>
-                    <p className='text-xs text-zinc-400 dark:text-zinc-500 mb-4'>
-                      Proportions of all logged job application states
-                    </p>
-                  </div>
-
-                  <div className='w-full h-64 flex items-center justify-center relative'>
-                    <Chart
-                      type='pie'
-                      data={dashboardData.statusDistribution}
-                      nameKey='name'
-                      valueKey='value'
-                      showLegend
-                      className='h-full'
-                    />
-                  </div>
+                <div className='w-full flex h-80 items-center justify-center relative'>
+                  <Chart
+                    type='pie'
+                    data={dashboardData.statusDistribution}
+                    nameKey='name'
+                    valueKey='value'
+                    showLegend
+                    className='h-full flex'
+                  />
                 </div>
               </div>
 
-              {/* Row 3: Insights & Work Style Breakdown */}
-              <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
-                {/* Skip Reasons Card */}
-                <div className='bg-white dark:bg-[#181C26] border border-zinc-200/60 dark:border-zinc-800/60 rounded-2xl p-6 shadow-xs flex flex-col justify-between'>
-                  <div>
-                    <h2 className='text-base font-bold text-zinc-900 dark:text-zinc-50 mb-1'>
-                      Top Skip Reasons (Failures)
-                    </h2>
-                    <p className='text-xs text-zinc-400 dark:text-zinc-500 mb-4'>
-                      Main constraints preventing automatic job application
-                    </p>
+              {/* Row 2: Insights & Work Style Breakdown */}
+              {/* Skip Reasons Card */}
+              <div className='cols-span-12 md:col-span-6   bg-panel  rounded-card p-card '>
+                <div>
+                  <h2 className='text-base font-bold text-zinc-900 dark:text-zinc-50 mb-1'>
+                    Top Skip Reasons
+                  </h2>
+                  <p className='text-xs text-zinc-400 dark:text-zinc-500 mb-4'>
+                    Main constraints preventing automatic job application
+                  </p>
 
-                    <div className='space-y-4 mt-2'>
-                      {dashboardData.skipReasons.length > 0 ?
-                        dashboardData.skipReasons.map((item, index) => (
-                          <div key={index} className='space-y-1'>
-                            <div className='flex items-center justify-between text-xs'>
-                              <span className='font-semibold text-zinc-750 dark:text-zinc-300 truncate max-w-[280px]'>
-                                {item.name}
-                              </span>
-                              <span className='text-zinc-500 dark:text-zinc-500 font-mono'>
-                                {item.value} ({item.percentage}%)
-                              </span>
-                            </div>
-                            <div className='w-full bg-zinc-100 dark:bg-zinc-900 h-2 rounded-full overflow-hidden border border-zinc-200/20'>
-                              <div
-                                className='h-full rounded-full bg-gradient-to-r from-amber-400 to-amber-600 dark:from-amber-500 dark:to-amber-700 transition-all duration-1000'
-                                style={{ width: `${item.percentage}%` }}
-                              />
-                            </div>
+                  <div className='space-y-4 mt-2'>
+                    {dashboardData.skipReasons.length > 0 ?
+                      dashboardData.skipReasons.map((item, index) => (
+                        <div key={index} className='space-y-1'>
+                          <div className='flex items-center justify-between text-xs'>
+                            <span className='font-semibold text-zinc-750 dark:text-zinc-300 truncate max-w-[280px]'>
+                              {item.name}
+                            </span>
+                            <span className='text-zinc-500 dark:text-zinc-500 font-mono'>
+                              {item.value} ({item.percentage}%)
+                            </span>
                           </div>
-                        ))
-                      : <div className='py-8 text-center text-zinc-500 dark:text-zinc-500 italic text-sm'>
-                          No skipped applications recorded yet.
+                          <div className='w-full bg-zinc-100 dark:bg-zinc-900 h-2 rounded-full overflow-hidden border border-zinc-200/20'>
+                            <div
+                              className='h-full rounded-full bg-gradient-to-r from-green-400 to-amber-600 dark:from-amber-500 dark:to-amber-700 transition-all duration-1000'
+                              style={{ width: `${item.percentage}%` }}
+                            />
+                          </div>
                         </div>
-                      }
-                    </div>
+                      ))
+                    : <div className='py-8 text-center text-zinc-500 dark:text-zinc-500 italic text-sm'>
+                        No skipped applications recorded yet.
+                      </div>
+                    }
                   </div>
                 </div>
+              </div>
 
-                {/* Job Environment & Company Card */}
-                <div className='bg-white dark:bg-[#181C26] border border-zinc-200/60 dark:border-zinc-800/60 rounded-2xl p-6 shadow-xs flex flex-col justify-between'>
-                  <div>
-                    <h2 className='text-base font-bold text-zinc-900 dark:text-zinc-50 mb-1'>
-                      Work Environment & Companies
-                    </h2>
-                    <p className='text-xs text-zinc-400 dark:text-zinc-500 mb-4'>
-                      Analysis of workplace styles and top applied companies
-                    </p>
+              {/* Job Environment & Company Card */}
+              <div className='cols-span-12 md:col-span-6   bg-panel  rounded-card p-card '>
+                <div>
+                  <h2 className='text-base font-bold text-zinc-900 dark:text-zinc-50 mb-1'>
+                    Distribution
+                  </h2>
+                  <p className='text-xs text-zinc-400 dark:text-zinc-500 mb-4'>
+                    Analysis of top cities and applied companies
+                  </p>
 
-                    <div className='grid grid-cols-1 sm:grid-cols-2 gap-6'>
-                      {/* Workplace style details */}
-                      <div className='space-y-3'>
-                        <h4 className='text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider'>
-                          Workplace styles
-                        </h4>
-                        <div className='space-y-2.5'>
-                          {dashboardData.workStyles && dashboardData.workStyles.length > 0 ?
-                            dashboardData.workStyles.map((item, index) => (
-                              <div key={index} className='flex items-center justify-between text-xs p-2 rounded-lg bg-zinc-50/50 dark:bg-zinc-900/25 border border-zinc-100/50 dark:border-zinc-800/50'>
-                                <div className='flex items-center gap-1.5'>
-                                  <span className='w-2.5 h-2.5 rounded-full' style={{ backgroundColor: item.fill }} />
-                                  <span className='font-semibold text-zinc-700 dark:text-zinc-300'>{item.name}</span>
-                                </div>
-                                <span className='font-mono font-bold text-zinc-900 dark:text-zinc-200'>{item.value}</span>
-                              </div>
-                            ))
-                          : <div className='text-zinc-400 italic text-xs'>No work style data</div>
-                          }
-                        </div>
-                      </div>
-
-                      {/* Top Companies list */}
-                      <div className='space-y-3'>
-                        <h4 className='text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider'>
-                          Top applied companies
-                        </h4>
-                        <div className='space-y-2.5'>
-                          {dashboardData.topCompanies && dashboardData.topCompanies.length > 0 ?
-                            dashboardData.topCompanies.map((comp, index) => (
-                              <div key={index} className='flex items-center justify-between text-xs p-2 rounded-lg bg-zinc-50/50 dark:bg-zinc-900/25 border border-zinc-100/50 dark:border-zinc-800/50'>
-                                <span className='font-semibold text-zinc-700 dark:text-zinc-300 truncate max-w-[110px]' title={comp.name}>
-                                  {comp.name}
-                                </span>
-                                <span className='bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold px-1.5 py-0.5 rounded text-[10px]'>
-                                  {comp.applications} apps
+                  <div className='grid grid-cols-1 sm:grid-cols-2 gap-6'>
+                    {/* Top Cities details */}
+                    <div className='space-y-3'>
+                      <h4 className='text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider'>
+                        Top Cities
+                      </h4>
+                      <div className='space-y-2.5'>
+                        {(
+                          dashboardData.topCities &&
+                          dashboardData.topCities.length > 0
+                        ) ?
+                          dashboardData.topCities.map((item, index) => (
+                            <div
+                              key={index}
+                              className='flex items-center justify-between text-xs p-2 rounded-lg bg-zinc-50/50 dark:bg-zinc-900/25 border border-zinc-100/50 dark:border-zinc-800/50'
+                            >
+                              <div className='flex items-center gap-1.5 min-w-0'>
+                                <span
+                                  className='w-2.5 h-2.5 rounded-full shrink-0'
+                                  style={{ backgroundColor: item.fill }}
+                                />
+                                <span
+                                  className='font-semibold text-zinc-700 dark:text-zinc-300 truncate'
+                                  title={item.name}
+                                >
+                                  {item.name}
                                 </span>
                               </div>
-                            ))
-                          : <div className='text-zinc-400 italic text-xs py-2'>
-                              No submitted companies yet.
+                              <span className='font-mono font-bold text-zinc-900 dark:text-zinc-200 shrink-0 ml-2'>
+                                {item.value}
+                              </span>
                             </div>
-                          }
-                        </div>
+                          ))
+                        : <div className='text-zinc-400 italic text-xs py-2'>
+                            No city data
+                          </div>
+                        }
+                      </div>
+                    </div>
+
+                    {/* Top Companies bar chart */}
+                    <div className='space-y-3 flex flex-col'>
+                      <h4 className='text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider'>
+                        Top applied companies
+                      </h4>
+                      <div className='flex-1 min-h-[180px] w-full mt-2'>
+                        {(
+                          dashboardData.topCompanies &&
+                          dashboardData.topCompanies.length > 0
+                        ) ?
+                          <Chart
+                            type='bar'
+                            data={dashboardData.topCompanies}
+                            xKey='name'
+                            yKey='applications'
+                            layout='vertical'
+                            showXAxis={true}
+                            showYAxis={true}
+                            className='h-full w-full'
+                          />
+                        : <div className='text-zinc-400 italic text-xs py-8 text-center'>
+                            No submitted companies yet.
+                          </div>
+                        }
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Row 4: Recent Activity Feed */}
-              <div className='bg-white dark:bg-[#181C26] border border-zinc-200/60 dark:border-zinc-800/60 rounded-2xl p-6 shadow-xs'>
+              {/* Row 3: Recent Activity Feed */}
+              <div className='cols-span-12 md:col-span-12   bg-panel  rounded-card p-card '>
                 <div className='flex items-center justify-between mb-4'>
                   <div>
                     <h2 className='text-base font-bold text-zinc-900 dark:text-zinc-50'>
@@ -1190,9 +1084,15 @@ export function UserConsole() {
                       </tr>
                     </thead>
                     <tbody className='divide-y divide-zinc-100 dark:divide-zinc-800/50'>
-                      {dashboardData.recentActivities && dashboardData.recentActivities.length > 0 ?
+                      {(
+                        dashboardData.recentActivities &&
+                        dashboardData.recentActivities.length > 0
+                      ) ?
                         dashboardData.recentActivities.map((item) => (
-                          <tr key={item.id} className='text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50/50 dark:hover:bg-zinc-900/10 transition-colors'>
+                          <tr
+                            key={item.id}
+                            className='text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50/50 dark:hover:bg-zinc-900/10 transition-colors'
+                          >
                             <td className='py-3 pr-4'>
                               <div className='font-bold text-zinc-900 dark:text-zinc-100 truncate max-w-xs'>
                                 {item.title || 'Untitled Role'}
@@ -1222,7 +1122,10 @@ export function UserConsole() {
                                 {item.status}
                               </span>
                               {item.skip_reason && (
-                                <p className='text-[9px] text-zinc-400 dark:text-zinc-500 italic max-w-[150px] truncate' title={item.skip_reason}>
+                                <p
+                                  className='text-[9px] text-zinc-400 dark:text-zinc-500 italic max-w-[150px] truncate'
+                                  title={item.skip_reason}
+                                >
                                   {item.skip_reason}
                                 </p>
                               )}
@@ -1233,7 +1136,10 @@ export function UserConsole() {
                           </tr>
                         ))
                       : <tr>
-                          <td colSpan={5} className='py-8 text-center text-zinc-500 dark:text-zinc-500 italic'>
+                          <td
+                            colSpan={5}
+                            className='py-8 text-center text-zinc-500 dark:text-zinc-500 italic'
+                          >
                             No application activities recorded yet.
                           </td>
                         </tr>
@@ -1242,11 +1148,195 @@ export function UserConsole() {
                   </table>
                 </div>
               </div>
+              {/* Row 4: Quick Config & Control Cards */}
+
+              {/* Worker Controller Card */}
+              <div className='cols-span-12 md:col-span-4   bg-panel  rounded-card p-card '>
+                <div>
+                  <div className='flex items-center justify-between mb-4'>
+                    <h2 className='text-lg font-bold text-zinc-900 dark:text-zinc-50 flex items-center gap-2'>
+                      <Bot className='w-5 h-5 text-emerald-500' />
+                      Worker Console
+                    </h2>
+                    <span
+                      className={cn(
+                        'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wider',
+                        workerIsActive ?
+                          'bg-green-500/10 text-green-600 dark:bg-green-900/20 dark:text-green-400'
+                        : 'bg-zinc-500/10 text-zinc-650 dark:bg-zinc-800/20 dark:text-zinc-400',
+                      )}
+                    >
+                      {latestRun?.status ?? 'idle'}
+                    </span>
+                  </div>
+
+                  <p className='text-xs text-zinc-400 dark:text-zinc-500 uppercase font-bold tracking-wider mb-1'>
+                    Latest Log Message
+                  </p>
+                  <div className='bg-zinc-50 dark:bg-zinc-900/50 rounded-xl p-3 border border-zinc-100 dark:border-zinc-800 min-h-[64px] flex items-center mb-4'>
+                    <p className='text-sm text-zinc-650 dark:text-zinc-300 leading-relaxed italic line-clamp-2'>
+                      {latestRun?.current_message ?? 'No worker runs recorded.'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className='flex items-center gap-2 pt-2 border-t border-zinc-100 dark:border-zinc-800/50'>
+                  <button
+                    onClick={() =>
+                      void (workerIsActive ? stopWorker() : startWorker())
+                    }
+                    className={cn(
+                      'flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-sm font-semibold text-white shadow-xs cursor-pointer transition-all active:scale-[0.98]',
+                      workerIsActive ?
+                        'bg-gradient-to-tr from-red-650 to-rose-700 hover:from-red-700 hover:to-rose-800'
+                      : 'bg-gradient-to-tr from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800',
+                    )}
+                  >
+                    {workerIsActive ?
+                      <>
+                        <Square className='w-3.5 h-3.5 fill-white' /> Stop
+                        Worker
+                      </>
+                    : <>
+                        <Play className='w-3.5 h-3.5 fill-white' /> Start Worker
+                      </>
+                    }
+                  </button>
+                  <button
+                    onClick={loadData}
+                    className='p-2 rounded-xl border border-zinc-200 hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-800 text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 cursor-pointer active:scale-[0.96] transition-all'
+                    title='Refresh data'
+                  >
+                    <RotateCw className='w-4 h-4' />
+                  </button>
+                </div>
+              </div>
+
+              {/* Current Search Target Card */}
+              <div className='cols-span-12 md:col-span-8   bg-panel  rounded-card p-card '>
+                <div>
+                  <h2 className='text-lg font-bold text-zinc-900 dark:text-zinc-50 mb-4 flex items-center gap-2'>
+                    <Search className='w-5 h-5 text-emerald-500' />
+                    Search Parameters
+                  </h2>
+
+                  <div className='space-y-3'>
+                    <div>
+                      <p className='text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider'>
+                        Target Location
+                      </p>
+                      <h3 className='text-sm font-semibold text-zinc-800 dark:text-zinc-200 mt-0.5 truncate'>
+                        {searchProfile.search_location || 'Not configured'}
+                      </h3>
+                    </div>
+                    <div>
+                      <p className='text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider'>
+                        Keywords
+                      </p>
+                      <div className='flex flex-wrap gap-1 mt-1 max-h-[70px] overflow-y-auto pr-1'>
+                        {(
+                          searchProfile.search_terms &&
+                          searchProfile.search_terms.length > 0
+                        ) ?
+                          searchProfile.search_terms.map((term, i) => (
+                            <span
+                              key={i}
+                              className='text-[10px] px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400 font-medium border border-emerald-100/50 dark:border-emerald-900/30'
+                            >
+                              {term}
+                            </span>
+                          ))
+                        : <span className='text-xs text-zinc-400 italic'>
+                            No terms added yet
+                          </span>
+                        }
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className='pt-4 border-t border-zinc-100 dark:border-zinc-800/50 text-right'>
+                  <button
+                    onClick={() => setActiveTab('search')}
+                    className='inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer'
+                  >
+                    Configure search <ChevronRight className='w-3 h-3' />
+                  </button>
+                </div>
+
+                {/* Bot Settings Rules Card */}
+                <div className='bg-panel  rounded-2xl p-6 shadow-xs flex flex-col justify-between'>
+                  <div>
+                    <h2 className='text-lg font-bold text-zinc-900 dark:text-zinc-50 mb-4 flex items-center gap-2'>
+                      <Settings className='w-5 h-5 text-emerald-500' />
+                      Runtime Rules
+                    </h2>
+
+                    <div className='grid grid-cols-2 gap-3'>
+                      <div className='flex flex-col p-2.5 rounded-xl bg-zinc-50/50 dark:bg-zinc-900/30 border border-zinc-100 dark:border-zinc-800/50'>
+                        <span className='text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase'>
+                          Safe Mode
+                        </span>
+                        <span
+                          className={cn(
+                            'text-xs font-semibold mt-1',
+                            runtimeSettings.safe_mode ?
+                              'text-green-600 dark:text-green-400'
+                            : 'text-zinc-400',
+                          )}
+                        >
+                          {runtimeSettings.safe_mode ? 'Enabled' : 'Disabled'}
+                        </span>
+                      </div>
+                      <div className='flex flex-col p-2.5 rounded-xl bg-zinc-50/50 dark:bg-zinc-900/30 border border-zinc-100 dark:border-zinc-800/50'>
+                        <span className='text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase'>
+                          Stealth Mode
+                        </span>
+                        <span
+                          className={cn(
+                            'text-xs font-semibold mt-1',
+                            runtimeSettings.stealth_mode ?
+                              'text-green-600 dark:text-green-400'
+                            : 'text-zinc-400',
+                          )}
+                        >
+                          {runtimeSettings.stealth_mode ? 'Active' : 'Inactive'}
+                        </span>
+                      </div>
+                      <div className='flex flex-col p-2.5 rounded-xl bg-zinc-50/50 dark:bg-zinc-900/30 border border-zinc-100 dark:border-zinc-800/50'>
+                        <span className='text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase'>
+                          Click Interval
+                        </span>
+                        <span className='text-xs font-semibold mt-1 text-zinc-650 dark:text-zinc-350'>
+                          ~{runtimeSettings.click_gap} seconds
+                        </span>
+                      </div>
+                      <div className='flex flex-col p-2.5 rounded-xl bg-zinc-50/50 dark:bg-zinc-900/30 border border-zinc-100 dark:border-zinc-800/50'>
+                        <span className='text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase'>
+                          Visa Required
+                        </span>
+                        <span className='text-xs font-semibold mt-1 text-zinc-650 dark:text-zinc-350'>
+                          {preferences.require_visa || 'No'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className='pt-4 border-t border-zinc-100 dark:border-zinc-800/50 text-right'>
+                    <button
+                      onClick={() => setActiveTab('search')}
+                      className='inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer'
+                    >
+                      Adjust settings <ChevronRight className='w-3 h-3' />
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
           {activeTab === 'profile' && (
-            <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
+            <div className='grid grid-cols-1  gap-6'>
               <ProfileForm
                 value={profile}
                 onChange={setProfile}
@@ -1276,7 +1366,7 @@ export function UserConsole() {
           )}
 
           {activeTab === 'questions' && (
-            <div className='bg-white dark:bg-[#181C26] border border-zinc-200/60 dark:border-zinc-800/60 rounded-2xl p-6 shadow-xs'>
+            <div className='bg-panel  rounded-2xl p-6 shadow-xs'>
               <h2 className='text-lg font-bold text-zinc-900 dark:text-zinc-50 mb-4 flex items-center gap-2'>
                 <MessageSquareCode className='w-5 h-5 text-emerald-500' />
                 Question Cache
@@ -1316,7 +1406,7 @@ export function UserConsole() {
                           <td className='py-4 px-4 min-w-[200px]'>
                             <input
                               defaultValue={entry.answer ?? ''}
-                              className='w-full text-sm rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-1.5 focus:bg-white focus:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-900/60 dark:focus:bg-zinc-900 dark:focus:border-zinc-700 focus:outline-none transition-all'
+                              className='w-full text-sm rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-1.5 focus:bg-panel focus:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-900/60 dark:focus:bg-zinc-900 dark:focus:border-zinc-700 focus:outline-none transition-all'
                               onBlur={(event) => {
                                 if (
                                   event.target.value !== (entry.answer ?? '')
@@ -1347,7 +1437,7 @@ export function UserConsole() {
           )}
 
           {activeTab === 'applications' && (
-            <div className='bg-white dark:bg-[#181C26] border border-zinc-200/60 dark:border-zinc-800/60 rounded-2xl p-6 shadow-xs'>
+            <div className='bg-panel  rounded-2xl p-6 shadow-xs'>
               <h2 className='text-lg font-bold text-zinc-900 dark:text-zinc-50 mb-4 flex items-center gap-2'>
                 <Briefcase className='w-5 h-5 text-emerald-500' />
                 Application History
@@ -1362,13 +1452,13 @@ export function UserConsole() {
                       placeholder='Search title, company, job id...'
                       value={searchText}
                       onChange={(event) => setSearchText(event.target.value)}
-                      className='pl-9 pr-4 py-2 w-full text-sm rounded-xl border border-zinc-200 bg-white dark:bg-zinc-950 dark:border-zinc-800 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-750 focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-750 transition-all text-zinc-900 dark:text-zinc-100'
+                      className='pl-9 pr-4 py-2 w-full text-sm rounded-xl border border-zinc-200 bg-panel dark:bg-zinc-950 dark:border-zinc-800 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-750 focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-750 transition-all text-zinc-900 dark:text-zinc-100'
                     />
                   </div>
                   <select
                     value={statusFilter}
                     onChange={(event) => setStatusFilter(event.target.value)}
-                    className='px-3 py-2 text-sm rounded-xl border border-zinc-200 bg-white dark:bg-zinc-950 dark:border-zinc-800 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-750 transition-all text-zinc-900 dark:text-zinc-100 cursor-pointer'
+                    className='px-3 py-2 text-sm rounded-xl border border-zinc-200 bg-panel dark:bg-zinc-950 dark:border-zinc-800 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-750 transition-all text-zinc-900 dark:text-zinc-100 cursor-pointer'
                   >
                     <option value=''>All statuses</option>
                     <option value='submitted'>Submitted</option>
@@ -1554,7 +1644,7 @@ export function UserConsole() {
       </div>
 
       {toast && (
-        <div className='fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-zinc-900 text-white dark:bg-white dark:text-zinc-950 px-4 py-3 rounded-xl shadow-md border border-zinc-800 dark:border-zinc-200 text-xs font-semibold animate-in fade-in slide-in-from-bottom-2 duration-300'>
+        <div className='fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-zinc-900 text-white dark:bg-panel dark:text-zinc-950 px-4 py-3 rounded-xl shadow-md border border-zinc-800 dark:border-zinc-200 text-xs font-semibold animate-in fade-in slide-in-from-bottom-2 duration-300'>
           {toast}
         </div>
       )}

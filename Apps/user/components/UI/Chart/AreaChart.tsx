@@ -25,7 +25,7 @@ interface AreaChartProps {
   showValues?: boolean; // 是否显示值
   showGrid?: boolean; // 是否显示网格线
   gridType?: 'horizontal' | 'vertical' | 'both'; // 网格线类型
-  interpolationType?: any;
+  interpolationType?: RechartsAreaProps<any, any>['type'];
   showLegend?: boolean;
   stacked?: boolean;
   stackOffset?: 'expand' | 'none' | 'silhouette' | 'wiggle';

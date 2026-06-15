@@ -102,3 +102,67 @@
         --color-ring: 251 113 133;
     }
 }
+
+@theme {
+    --color-primary: rgb(var(--color-primary));
+    --color-primary-foreground: rgb(var(--color-primary-foreground));
+    --color-secondary: rgb(var(--color-secondary));
+    --color-secondary-foreground: rgb(var(--color-secondary-foreground));
+    --color-accent: rgb(var(--color-accent));
+    --color-accent-foreground: rgb(var(--color-accent-foreground));
+    
+    --color-ink-primary: var(--color-ink-primary);
+    --color-ink-secondary: var(--color-ink-secondary);
+    --color-ink-muted: var(--color-ink-muted);
+    --color-ink-destructive: var(--color-ink-destructive);
+    
+    --color-ink-error: rgb(var(--color-error));
+    --color-ink-success: rgb(var(--color-success));
+    --color-ink-warning: rgb(var(--color-warning));
+    
+    --color-success: rgb(var(--color-success));
+    --color-warning: rgb(var(--color-warning));
+    --color-error: rgb(var(--color-error));
+    --color-info: rgb(var(--color-info));
+    
+    --color-destructive: rgb(var(--color-error));
+    --color-destructive-foreground: rgb(var(--color-primary-foreground));
+    
+    --color-muted: var(--color-muted);
+    --color-muted-foreground: var(--color-muted-foreground);
+    
+    --color-background: var(--color-background);
+    --color-background-secondary: var(--color-background-secondary);
+    --color-foreground: var(--color-foreground);
+    
+    --color-panel: var(--color-panel);
+    --color-panel-secondary: var(--color-panel-secondary);
+    --color-panel-foreground: var(--color-panel-foreground);
+    
+    --color-popover: var(--color-popover);
+    --color-popover-foreground: var(--color-popover-foreground);
+    
+    --color-border: var(--color-border);
+    --color-input: var(--color-input);
+    --color-ring: rgb(var(--color-ring));
+    
+    --background-image-primary-gradient: var(--primary-gradient);
+
+    /* BorderRadius */
+    --radius-lg: var(--radius-lg);
+    --radius-md: var(--radius-md);
+    --radius-sm: var(--radius-sm);
+    --radius-xl: var(--radius-xl);
+    --radius-2xl: var(--radius-2xl);
+    --radius-3xl: var(--radius-3xl);
+
+    /* Spacing / Padding */
+    --spacing-page: var(--padding-page);
+    --spacing-panel: var(--padding-panel);
+    --spacing-card: var(--padding-card);
+    --spacing-sidebar: var(--padding-sidebar);
+    --spacing-section: var(--padding-section);
+    --spacing-input-x: var(--padding-input-x);
+    --spacing-input-y: var(--padding-input-y);
+    --spacing-table: var(--padding-table);
+}

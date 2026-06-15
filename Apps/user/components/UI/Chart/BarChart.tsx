@@ -27,6 +27,8 @@ interface BarChartProps {
   gridType?: 'horizontal' | 'vertical' | 'both'; // 网格线类型
   isShortFormat?: boolean;
   ValueProps?: any;
+  layout?: 'horizontal' | 'vertical';
+  yAxisWidth?: number;
 }
 
 // Modern color palette with bright, accessible colors
@@ -81,6 +83,8 @@ const BarChart = ({
   showGridY = false,
   gridType = 'both',
   ValueProps,
+  layout = 'horizontal',
+  yAxisWidth,
 }: BarChartProps) => {
   const firstItem = data && data.length > 0 ? data[0] : {};
   const hasMultipleSeries =
@@ -99,7 +103,7 @@ const BarChart = ({
 
   return (
     <ResponsiveContainer width='100%' height='100%'>
-      <RechartsBarChart data={data}>
+      <RechartsBarChart data={data} layout={layout}>
         {showGridX && (
           <CartesianGrid
             strokeDasharray='3 3'
@@ -116,26 +120,49 @@ const BarChart = ({
             horizontal={gridType === 'both' || gridType === 'horizontal'}
           />
         )}
-        {showXAxis && (
-          <XAxis
-            dataKey={xKey}
-            className='text-xs text-ink-secondary'
-            tickLine={false}
-            axisLine={false}
-            // tick={{ fill: 'var(--color-ink-secondary)' }}
-          />
-        )}
-        {showYAxis && (
-          <YAxis
-            className='text-xs text-ink-secondary'
-            tickLine={false}
-            axisLine={false}
-            // tick={{ fill: 'var(--color-ink-secondary)' }}
-            domain={[
-              (dataMin: number) => Math.floor(dataMin * 0.7),
-              (dataMax: number) => Math.ceil(dataMax * 1.1),
-            ]}
-          />
+        {layout === 'vertical' ? (
+          <>
+            {showXAxis && (
+              <XAxis
+                type='number'
+                className='text-xs text-ink-secondary'
+                tickLine={false}
+                axisLine={false}
+              />
+            )}
+            {showYAxis && (
+              <YAxis
+                type='category'
+                dataKey={xKey}
+                className='text-xs text-ink-secondary'
+                tickLine={false}
+                axisLine={false}
+                width={yAxisWidth || 100}
+              />
+            )}
+          </>
+        ) : (
+          <>
+            {showXAxis && (
+              <XAxis
+                dataKey={xKey}
+                className='text-xs text-ink-secondary'
+                tickLine={false}
+                axisLine={false}
+              />
+            )}
+            {showYAxis && (
+              <YAxis
+                className='text-xs text-ink-secondary'
+                tickLine={false}
+                axisLine={false}
+                domain={[
+                  (dataMin: number) => Math.floor(dataMin * 0.7),
+                  (dataMax: number) => Math.ceil(dataMax * 1.1),
+                ]}
+              />
+            )}
+          </>
         )}
         <Tooltip
           content={<ChartTooltip ValueProps={ValueProps} />}
@@ -150,7 +177,7 @@ const BarChart = ({
             dataKey={yKey as string}
             name={yKey as string}
             fill={multiColor ? undefined : color}
-            radius={[999, 999, 999, 999]}
+            radius={layout === 'vertical' ? [0, 6, 6, 0] : [999, 999, 999, 999]}
             animationDuration={1000}
             isAnimationActive={true}
           >

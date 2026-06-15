@@ -1,3 +1,5 @@
+/** @format */
+
 import { cn } from '@/lib/utils';
 import { motion as m, useInView } from 'framer-motion';
 import React, { useRef } from 'react';
@@ -8,9 +10,9 @@ interface ChartWrapperProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 const sizeStyles = {
-  sm: 'h-64',
-  md: 'h-80',
-  lg: 'h-96',
+  sm: 'h-full',
+  md: 'h-full',
+  lg: 'h-full',
 };
 
 const ChartWrapper = ({
@@ -23,11 +25,7 @@ const ChartWrapper = ({
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: '-30% 0px -30% 0px' });
   return (
-    <div
-      ref={ref}
-      className={cn('w-full', className)}
-      {...props}
-    >
+    <div ref={ref} className={cn('w-full', className)} {...props}>
       {title && (
         <h4 className='font-medium text-gray-900 mb-8 text-center text-nowrap'>
           {title}
@@ -50,7 +48,7 @@ const ChartWrapper = ({
           </m.div>
         )}
         {!isInView && (
-          <m.div className='flex animate-pulse h-full w-full items-center justify-center bg-gray-200 rounded-xl'></m.div>
+          <m.div className='flex animate-pulse h-full w-full items-center justify-center bg-ink-secondary rounded-xl'></m.div>
         )}
       </div>
     </div>

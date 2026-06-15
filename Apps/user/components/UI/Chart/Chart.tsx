@@ -24,15 +24,15 @@ export interface ChartProps extends React.HTMLAttributes<HTMLDivElement> {
   showGridX?: boolean; // Prop for BarChart, potentially generalizable
   showGridY?: boolean; // Prop for BarChart, potentially generalizable
   yKeys?: string[];
-  interpolationType?: any;
+  interpolationType?: RechartsAreaProps<any, any>['type'];
   showLegend?: boolean;
   stacked?: boolean;
   stackOffset?: 'expand' | 'none' | 'silhouette' | 'wiggle';
   showDots?: boolean | 'visible' | 'hidden' | object;
   gradientFill?: boolean;
   radarGridType?: 'polygon' | 'circle';
-  radarShowDots?: boolean | RechartsRadarProps['dot'];
-  radarActiveDot?: RechartsRadarProps['activeDot'];
+  radarShowDots?: boolean | RechartsRadarProps<any, any>['dot'];
+  radarActiveDot?: RechartsRadarProps<any, any>['activeDot'];
   nameKey?: string;
   valueKey?: string;
   radialStartAngle?: number;
@@ -42,6 +42,10 @@ export interface ChartProps extends React.HTMLAttributes<HTMLDivElement> {
   radialBarSize?: number;
   radialHoverAnimationDuration?: number;
   ValueProps?: any;
+  layout?: 'horizontal' | 'vertical';
+  showXAxis?: boolean;
+  showYAxis?: boolean;
+  yAxisWidth?: number;
 }
 
 export const Chart = React.forwardRef<HTMLDivElement, ChartProps>(
@@ -77,6 +81,10 @@ export const Chart = React.forwardRef<HTMLDivElement, ChartProps>(
       radialBarSize,
       radialHoverAnimationDuration,
       ValueProps,
+      layout,
+      showXAxis,
+      showYAxis,
+      yAxisWidth,
       ...props
     },
     ref,
@@ -151,6 +159,10 @@ export const Chart = React.forwardRef<HTMLDivElement, ChartProps>(
               showGridX={showGridX}
               showGridY={showGridY}
               ValueProps={ValueProps}
+              layout={layout}
+              showXAxis={showXAxis}
+              showYAxis={showYAxis}
+              yAxisWidth={yAxisWidth}
             />
           );
         case 'line':

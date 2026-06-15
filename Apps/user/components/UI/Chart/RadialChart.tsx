@@ -127,7 +127,7 @@ export const RadialChart: React.FC<RadialChartProps> = ({
           dataKey={valueKey as string}
           angleAxisId={0}
           cornerRadius={barSize / 2}
-          onMouseEnter={(itemData) => setActiveName((itemData as any)[nameKey!])}
+          onMouseEnter={(itemData: any) => setActiveName(itemData[nameKey!])}
           onMouseLeave={() => setActiveName(null)}
           isAnimationActive={true} // Keep animation for initial draw
           animationEasing='ease-in-out' // Smoother animation
