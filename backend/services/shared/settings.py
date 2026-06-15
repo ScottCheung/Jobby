@@ -15,7 +15,7 @@ class AppSettings(BaseSettings):
     api_port: int = Field(default=8000, alias="API_PORT")
     api_reload: bool = Field(default=False, alias="API_RELOAD")
     api_cors_origins: str = Field(
-        default="http://localhost:3000,http://127.0.0.1:3000",
+        default="http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001",
         alias="API_CORS_ORIGINS",
     )
     default_admin_email: str = Field(default="admin@example.local", alias="DEFAULT_ADMIN_EMAIL")

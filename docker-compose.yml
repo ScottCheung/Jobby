@@ -27,7 +27,7 @@ services:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-auto_job}:${POSTGRES_PASSWORD:-auto_job_password}@postgres:5432/${POSTGRES_DB:-auto_job_applier}
       API_HOST: 0.0.0.0
       API_PORT: 8000
-      API_CORS_ORIGINS: ${API_CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
+      API_CORS_ORIGINS: ${API_CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001}
       DEFAULT_ADMIN_EMAIL: ${DEFAULT_ADMIN_EMAIL:-admin@example.local}
       DEFAULT_ADMIN_NAME: ${DEFAULT_ADMIN_NAME:-Local Admin}
       ENABLE_API_LOCAL_WORKER: ${ENABLE_API_LOCAL_WORKER:-false}

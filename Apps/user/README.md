@@ -13,7 +13,7 @@ npm run dev
 Open:
 
 ```text
-http://localhost:3000
+http://localhost:3001
 ```
 
 For local development, the browser should call the API on the host machine:
@@ -33,7 +33,7 @@ docker compose up --build
 Open:
 
 ```text
-http://localhost:3000
+http://localhost:3001
 ```
 
 The browser calls the API through:
