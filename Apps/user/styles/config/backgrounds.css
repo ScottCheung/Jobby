@@ -1,0 +1,30 @@
+@layer base {
+    :root {
+        --color-background: #f3f4f6;
+        --color-background-secondary: #dbdbdb;
+        --color-panel: #ffffff;
+        --color-popover: #ffffff;
+        --color-muted: #f1f5f9;
+    }
+
+    .dark {
+        --color-background: #000000;
+        --color-background-secondary: #1d1d1d;
+        --color-panel: #1f1f1f;
+        --color-popover: #1e1e1e;
+        --color-muted: #1e293b;
+    }
+
+
+}
+
+@layer utilities {
+    .bg-glass {
+        @apply bg-primary/5 backdrop-blur-[20px] dark:bg-primary/20;
+    }
+
+    .bg-glass-secondary {
+        @apply bg-background-secondary/80 backdrop-blur-[12px] dark:bg-background-secondary/60;
+    }
+
+}

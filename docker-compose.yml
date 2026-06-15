@@ -1,0 +1,76 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: auto-job-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-auto_job_applier}
+      POSTGRES_USER: ${POSTGRES_USER:-auto_job}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-auto_job_password}
+    ports:
+      - "${POSTGRES_PORT:-55432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-auto_job} -d ${POSTGRES_DB:-auto_job_applier}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: backend/api.Dockerfile
+    container_name: auto-job-api
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-auto_job}:${POSTGRES_PASSWORD:-auto_job_password}@postgres:5432/${POSTGRES_DB:-auto_job_applier}
+      API_HOST: 0.0.0.0
+      API_PORT: 8000
+      API_CORS_ORIGINS: ${API_CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
+      DEFAULT_ADMIN_EMAIL: ${DEFAULT_ADMIN_EMAIL:-admin@example.local}
+      DEFAULT_ADMIN_NAME: ${DEFAULT_ADMIN_NAME:-Local Admin}
+      ENABLE_API_LOCAL_WORKER: ${ENABLE_API_LOCAL_WORKER:-false}
+    ports:
+      - "${API_PORT:-8000}:8000"
+    volumes:
+      - ./storage/logs:/app/storage/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  user:
+    build:
+      context: ./Apps/user
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000}
+    container_name: auto-job-user
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000}
+    ports:
+      - "${USER_APP_PORT:-3000}:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+
+  adminer:
+    image: adminer:4
+    container_name: auto-job-adminer
+    restart: unless-stopped
+    ports:
+      - "${ADMINER_PORT:-8080}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles:
+      - tools
+
+volumes:
+  postgres_data:

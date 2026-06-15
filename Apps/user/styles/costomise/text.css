@@ -1,0 +1,8 @@
+/* Text Effects */
+.text-gradient {
+    @apply bg-gradient-to-br from-primary to-primary/70 bg-clip-text text-transparent;
+}
+
+.text-gradient-secondary {
+    @apply bg-gradient-to-br from-secondary to-secondary/70 bg-clip-text text-transparent;
+}

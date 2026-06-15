@@ -1,0 +1,14 @@
+@layer utilities {
+    .rounded-card {
+        @apply rounded-xl md:rounded-2xl lg:rounded-3xl;
+    }
+
+    .rounded-button {
+        @apply rounded-full;
+    }
+
+    .rounded-input {
+        @apply rounded-full;
+    }
+
+}

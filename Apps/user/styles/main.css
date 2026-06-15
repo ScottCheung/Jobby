@@ -1,0 +1,18 @@
+/** @format */
+
+@layer utilities;
+
+/* Base Configuration */
+@import './config/palette.css';
+@import './config/backgrounds.css';
+@import './config/text.css';
+@import './config/rounded.css';
+@import './config/radius.css';
+@import './config/spacing.css';
+@import './config/padding.css';
+
+/* Component Customizations */
+@import './costomise/badge.css';
+@import './costomise/text.css';
+@import './costomise/costmise.css';
+@import './costomise/button.css';

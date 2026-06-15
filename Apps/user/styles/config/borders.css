@@ -1,0 +1,8 @@
+@theme {
+    /* Border Widths */
+    --border-thin: 1px;
+    --border-medium: 2px;
+    --border-thick: 4px;
+
+    /* Border Colors - referencing palette variables if needed, or defining new utilities */
+}

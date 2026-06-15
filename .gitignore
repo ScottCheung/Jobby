@@ -33,6 +33,7 @@ apikeys.py
 
 # Node / Frontend build files
 node_modules/
+.next/
 dist/
 build/
 .eslintcache

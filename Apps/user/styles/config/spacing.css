@@ -1,0 +1,26 @@
+@layer base {
+    :root {
+        /* Responsive Padding Tokens */
+
+        /* Page container padding: 1rem on mobile, grows to 2rem on larger screens */
+        --padding-page: clamp(1rem, 5vw, 2rem);
+
+        /* Card/Panel padding: 1rem on mobile, grows to 1.5rem */
+        --padding-card: clamp(1rem, 3vw, 1.5rem);
+
+        --padding-panel: clamp(1rem, 3vw, 1.5rem);
+
+        /* Sidebar padding: Fixed or slightly responsive */
+        --padding-sidebar: clamp(1rem, 2vw, 1.5rem);
+
+        /* Section spacing (gap between major sections) */
+        --padding-section: clamp(1.5rem, 4vw, 2.5rem);
+
+        /* Input/Button padding (usually fixed for consistency) */
+        --padding-input-x: 1rem;
+        --padding-input-y: 0.5rem;
+
+        /* Table cell padding */
+        --padding-table: 1rem;
+    }
+}

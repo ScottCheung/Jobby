@@ -1,0 +1,30 @@
+/** @format */
+
+.drawer-header {
+  @apply flex items-center justify-between mb-3;
+}
+
+.form-body {
+  @apply flex-1 overflow-y-auto custom-scrollbar space-y-6 py-page;
+}
+
+.footer {
+  @apply flex items-center justify-end gap-3;
+}
+
+.input {
+  @apply flex h-[48px] items-center focus:bg-panel justify-between w-full rounded-2xl bg-primary/5 backdrop-blur-[20px] dark:bg-primary/20 text-ink-secondary focus:text-ink-primary border border-transparent focus:border-primary px-4 py-3 text-sm placeholder:text-ink-secondary focus-visible:outline-none focus-visible:border-primary disabled:cursor-not-allowed disabled:opacity-50;
+}
+
+
+.textarea {
+  @apply flex min-h-[48px] items-center focus:bg-panel justify-between w-full rounded-2xl bg-primary/5 backdrop-blur-[20px] dark:bg-primary/20 text-ink-secondary focus:text-ink-primary border border-transparent focus:border-primary px-4 py-3 text-sm placeholder:text-ink-secondary focus-visible:outline-none focus-visible:border-primary disabled:cursor-not-allowed disabled:opacity-50;
+}
+
+.select {
+  @apply flex h-[48px] items-center justify-between w-full text-ink-secondary pl-4 pr-1 py-3 text-sm placeholder:text-ink-secondary focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50;
+}
+
+.wrap {
+  @apply flex flex-wrap gap-3;
+}

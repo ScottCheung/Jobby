@@ -1,0 +1,32 @@
+/**
+ * Badge Component Styles
+ *
+ * @format
+ */
+
+.button-default {
+  @apply bg-primary hover:bg-primary-gradient hover:ring-primary/20 text-primary-foreground;
+}
+
+.button-destructive {
+  @apply bg-destructive text-destructive-foreground hover:bg-destructive/90;
+}
+.button-outline {
+  @apply border border-input bg-background text-ink-primary hover:bg-primary/10 hover:text-primary;
+}
+
+.button-icon {
+  @apply bg-background text-ink-secondary hover:bg-primary/90 hover:text-primary-foreground;
+}
+
+.button-secondary {
+  @apply bg-secondary text-secondary-foreground hover:bg-secondary/80;
+}
+
+.button-ghost {
+  @apply hover:bg-background hover:text-ink-primary;
+}
+
+.button-link {
+  @apply text-primary underline-offset-4 hover:underline;
+}

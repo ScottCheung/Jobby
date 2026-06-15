@@ -1,0 +1,9 @@
+@layer utilities {
+    .p-card {
+        @apply p-page;
+    }
+
+    .p-popover {
+        @apply p-page;
+    }
+}
