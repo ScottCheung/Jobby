@@ -6,7 +6,7 @@
   var rootId = 'linkedin-bot-status-root';
   var styleId = 'linkedin-bot-status-style';
   var storageKey = 'linkedin-bot-status-layout-v1';
-  var widgetVersion = '2026-06-15-inline-status-v10';
+  var widgetVersion = '__LINKEDIN_STATUS_WIDGET_VERSION__';
   var maxHistory = 150;
   var dockOffset = 18;
   var dragState = null;
@@ -55,8 +55,10 @@
     style.setAttribute('data-version', widgetVersion);
     style.textContent = [
       "#linkedin-bot-status-root{position:fixed;left:18px;bottom:18px;z-index:2147483647;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;pointer-events:none;transition:top .26s ease,left .26s ease,transform .28s ease,opacity .28s ease,width .26s ease,max-width .26s ease}",
+      '#linkedin-bot-status-root.lb-dragging,#linkedin-bot-status-root.lb-dragging *{transition:none !important;animation:none !important;scroll-behavior:auto !important}',
       '#linkedin-bot-status-root.lb-dragging{transform:scale(1.015)}',
       '#linkedin-bot-status-root .lb-card{display:flex;flex-direction:column;align-items:flex-start;gap:10px;pointer-events:none;transition:all .26s ease}',
+      '#linkedin-bot-status-root[data-dock^="r"] .lb-card{align-items:flex-end}',
       '#linkedin-bot-status-root .lb-status,#linkedin-bot-status-root .lb-panel{pointer-events:auto}',
       '#linkedin-bot-status-root.lb-compact:not(.lb-expanded) .lb-panel{display:none}',
       '#linkedin-bot-status-root .lb-status{position:relative;display:flex;align-items:center;gap:12px;max-width:min(640px,calc(100vw - 28px));min-height:60px;padding:10px 12px 10px 12px;border-radius:24px;background:#fff;border:1px solid rgba(15,23,42,.08);box-shadow:0 18px 44px rgba(15,23,42,.10),0 2px 14px rgba(15,23,42,.05);color:#14213d;transform:translateY(10px);opacity:0;transition:all .26s ease,opacity .42s ease,transform .42s ease;overflow:hidden;cursor:grab;user-select:none}',
@@ -77,11 +79,15 @@
       '#linkedin-bot-status-root .lb-status.failed .lb-orb{width:12px;height:12px;background:radial-gradient(circle at 30% 30%,#ffb3bf,#cf334d 68%,#8a1731);box-shadow:0 0 0 6px rgba(207,51,77,.08),0 0 0 1px rgba(255,255,255,.55)}',
       '#linkedin-bot-status-root.lb-paused .lb-status .lb-orb{width:12px;height:12px;background:radial-gradient(circle at 30% 30%,#cfd6e6,#7f8ca7 68%,#5a6680);box-shadow:0 0 0 6px rgba(127,140,167,.08),0 0 0 1px rgba(255,255,255,.55)}',
       '#linkedin-bot-status-root .lb-copy{position:relative;display:flex;flex-direction:column;min-width:0;flex:1 1 auto;padding-right:4px}',
+      '#linkedin-bot-status-root[data-dock^="r"] .lb-copy{align-items:flex-end}',
       '#linkedin-bot-status-root .lb-kicker{font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:rgba(20,33,61,.5);line-height:12px;margin-bottom:4px}',
+      '#linkedin-bot-status-root[data-dock^="r"] .lb-kicker{width:100%;text-align:right}',
       '#linkedin-bot-status-root .lb-text{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:700;line-height:18px;max-width:min(420px,calc(100vw - 186px));color:#111827}',
+      '#linkedin-bot-status-root[data-dock^="r"] .lb-text{text-align:right}',
       '#linkedin-bot-status-root .lb-status:hover{box-shadow:0 20px 50px rgba(15,23,42,.18),0 2px 14px rgba(15,23,42,.08),inset 0 1px 0 rgba(255,255,255,.55)}',
       '#linkedin-bot-status-root .lb-status[data-full]:hover .lb-tooltip{opacity:1;transform:translateY(0);pointer-events:auto}',
       '#linkedin-bot-status-root .lb-tooltip{position:absolute;left:0;bottom:calc(100% + 10px);width:max-content;max-width:min(560px,calc(100vw - 24px));padding:10px 12px;border-radius:14px;background:rgba(17,24,39,.9);box-shadow:0 14px 34px rgba(0,0,0,.22);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);color:#f8fafc;font-size:12px;font-weight:600;line-height:17px;white-space:normal;word-break:break-word;opacity:0;transform:translateY(6px);pointer-events:none;transition:opacity .24s ease,transform .24s ease}',
+      '#linkedin-bot-status-root[data-dock^="r"] .lb-tooltip{left:auto;right:0}',
       '#linkedin-bot-status-root .lb-actions{display:flex;align-items:center;gap:6px;flex:0 0 auto;position:relative;z-index:1}',
       '#linkedin-bot-status-root .lb-icon-btn{position:relative;width:30px;height:30px;border:1px solid rgba(255,255,255,.28);border-radius:999px;background:rgba(255,255,255,.5);color:#172033;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;box-shadow:inset 0 1px 0 rgba(255,255,255,.45);transition:transform .25s ease,background .25s ease,border-color .25s ease,box-shadow .25s ease}',
       '#linkedin-bot-status-root .lb-icon-btn:hover{background:rgba(255,255,255,.72);border-color:rgba(255,255,255,.44);box-shadow:0 10px 24px rgba(15,23,42,.12),inset 0 1px 0 rgba(255,255,255,.5)}',
@@ -276,6 +282,11 @@
     var orbBackground = '#0a66c2';
     var orbBoxShadow = '0 0 0 1px rgba(255,255,255,.55)';
     var dock = root.dataset.dock || 'bl';
+    var horizontalOffset = dock.indexOf('r') >= 0 ? parseInt(root.style.right, 10) : parseInt(root.style.left, 10);
+    var verticalOffset = dock.indexOf('b') >= 0 ? parseInt(root.style.bottom, 10) : parseInt(root.style.top, 10);
+
+    if (!Number.isFinite(horizontalOffset)) horizontalOffset = dockOffset;
+    if (!Number.isFinite(verticalOffset)) verticalOffset = dockOffset;
 
     if (statusType === 'waiting') {
       orbBackground = 'linear-gradient(135deg,#f7d774,#d49914)';
@@ -295,20 +306,11 @@
       orbBoxShadow = '0 0 0 1px rgba(255,255,255,.75),0 8px 18px rgba(10,102,194,.20)';
     }
 
-    applyStyles(root, {
-      position: 'fixed',
-      left: root.style.left || dockOffset + 'px',
-      top: root.style.top || '',
-      bottom: root.style.bottom || dockOffset + 'px',
-      right: 'auto',
-      zIndex: '2147483647',
-      pointerEvents: 'none',
-      fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif",
-    });
+    applyDockPosition(root, dock, horizontalOffset, verticalOffset);
     applyStyles(card, {
       display: 'flex',
       flexDirection: dock.indexOf('t') === 0 ? 'column-reverse' : 'column',
-      alignItems: 'flex-start',
+      alignItems: dock.indexOf('r') >= 0 ? 'flex-end' : 'flex-start',
       gap: '10px',
       pointerEvents: 'none',
     });
@@ -356,6 +358,7 @@
       position: 'relative',
       display: 'flex',
       flexDirection: 'column',
+      alignItems: dock.indexOf('r') >= 0 ? 'flex-end' : 'flex-start',
       minWidth: '0',
       flex: '1 1 auto',
       paddingRight: '4px',
@@ -380,6 +383,7 @@
       lineHeight: '18px',
       maxWidth: 'min(420px, calc(100vw - 186px))',
       color: '#111827',
+      textAlign: dock.indexOf('r') >= 0 ? 'right' : 'left',
     });
     applyStyles(actions, {
       display: 'flex',
@@ -481,6 +485,7 @@
 
   function refreshWidgetLayout(root) {
     if (!root) return;
+    if (root.classList.contains('lb-dragging')) return;
     applyInlineFallback(root, {
       statusType: statusClass(window.botStatus || 'Ready'),
       paused: !!window.linkedinBotPaused,
@@ -502,24 +507,41 @@
     refreshWidgetLayout(root);
   }
 
+  function applyDockPosition(root, dock, horizontalOffset, verticalOffset) {
+    var isRight = dock.indexOf('r') >= 0;
+    var isBottom = dock.indexOf('b') >= 0;
+    applyStyles(root, {
+      position: 'fixed',
+      left: isRight ? 'auto' : horizontalOffset + 'px',
+      right: isRight ? horizontalOffset + 'px' : 'auto',
+      top: isBottom ? 'auto' : verticalOffset + 'px',
+      bottom: isBottom ? verticalOffset + 'px' : 'auto',
+      zIndex: '2147483647',
+      pointerEvents: 'none',
+      fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif",
+    });
+  }
+
   function alignRootToDock(root) {
     if (!root) return;
     var dock = (root.dataset && root.dataset.dock) || 'bl';
     if (dock === 'free') return;
     var margin = dockOffset;
     var rect = root.getBoundingClientRect();
-    var maxLeft = Math.max(margin, window.innerWidth - rect.width - margin);
-    var maxTop = Math.max(margin, window.innerHeight - rect.height - margin);
-    var left = dock.indexOf('r') >= 0 ? window.innerWidth - rect.width - margin : margin;
-    var top = dock.indexOf('b') >= 0 ? window.innerHeight - rect.height - margin : margin;
-    root.style.left = clamp(left, margin, maxLeft) + 'px';
-    root.style.top = clamp(top, margin, maxTop) + 'px';
-    root.style.right = 'auto';
-    root.style.bottom = 'auto';
+    var horizontalOffset = margin;
+    var verticalOffset = margin;
+    if (dock.indexOf('r') >= 0) {
+      horizontalOffset = clamp(margin, margin, Math.max(margin, window.innerWidth - rect.width - margin));
+    }
+    if (dock.indexOf('b') >= 0) {
+      verticalOffset = clamp(margin, margin, Math.max(margin, window.innerHeight - rect.height - margin));
+    }
+    applyDockPosition(root, dock, horizontalOffset, verticalOffset);
   }
 
   function scheduleLayoutRealign(root) {
     if (!root) return;
+    if (root.classList.contains('lb-dragging')) return;
     if (layoutRaf) {
       cancelAnimationFrame(layoutRaf);
     }
@@ -538,14 +560,15 @@
     var dock = layout && layout.dock ? layout.dock : 'bl';
     var margin = dockOffset;
     var rect = root.getBoundingClientRect();
-    var maxLeft = Math.max(margin, window.innerWidth - rect.width - margin);
-    var maxTop = Math.max(margin, window.innerHeight - rect.height - margin);
-    var left = dock.indexOf('r') >= 0 ? window.innerWidth - rect.width - margin : margin;
-    var top = dock.indexOf('b') >= 0 ? window.innerHeight - rect.height - margin : margin;
-    root.style.left = clamp(left, margin, maxLeft) + 'px';
-    root.style.top = clamp(top, margin, maxTop) + 'px';
-    root.style.right = 'auto';
-    root.style.bottom = 'auto';
+    var horizontalOffset = margin;
+    var verticalOffset = margin;
+    if (dock.indexOf('r') >= 0) {
+      horizontalOffset = clamp(margin, margin, Math.max(margin, window.innerWidth - rect.width - margin));
+    }
+    if (dock.indexOf('b') >= 0) {
+      verticalOffset = clamp(margin, margin, Math.max(margin, window.innerHeight - rect.height - margin));
+    }
+    applyDockPosition(root, dock, horizontalOffset, verticalOffset);
     setDockState(root, dock, true);
     scheduleLayoutRealign(root);
   }
@@ -841,7 +864,9 @@
     tooltip.textContent = message;
     addHistory(message);
     setPaused(!!window.linkedinBotPaused);
-    applyInlineFallback(root, { statusType: cls, paused: !!window.linkedinBotPaused });
+    if (!root.classList.contains('lb-dragging')) {
+      applyInlineFallback(root, { statusType: cls, paused: !!window.linkedinBotPaused });
+    }
     if (root.classList.contains('lb-expanded')) renderTimeline(root, true);
     window.botStatus = message;
     window.botStatusTime = Date.now();

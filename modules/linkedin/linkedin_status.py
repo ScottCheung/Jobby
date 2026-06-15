@@ -9,6 +9,8 @@ from selenium.webdriver.support.ui import WebDriverWait
 
 
 WIDGET_VERSION = "2026-06-15-inline-status-v10"
+STATUS_WIDGET_FILE = os.path.join("modules", "javascript", "status_injector.js")
+STATUS_WIDGET_VERSION_PLACEHOLDER = "__LINKEDIN_STATUS_WIDGET_VERSION__"
 __all__ = [
     "WIDGET_VERSION",
     "bind_context",
@@ -60,6 +62,20 @@ def _clean_status_text(message) -> str | None:
     return text
 
 
+def _current_widget_version() -> str:
+    try:
+        return str(os.path.getmtime_ns(STATUS_WIDGET_FILE))
+    except Exception:
+        return WIDGET_VERSION
+
+
+def _load_widget_source(widget_version: str) -> str | None:
+    if not os.path.exists(STATUS_WIDGET_FILE):
+        return None
+    with open(STATUS_WIDGET_FILE, "r", encoding="utf-8") as f:
+        return f.read().replace(STATUS_WIDGET_VERSION_PLACEHOLDER, widget_version)
+
+
 def sync_status_widget(driver=None) -> None:
     global _last_widget_sync
     driver = driver or _current_driver()
@@ -71,6 +87,7 @@ def sync_status_widget(driver=None) -> None:
     except Exception:
         return
 
+    widget_version = _current_widget_version()
     now = time.time()
     if now - _last_widget_sync < 0.75:
         return
@@ -78,7 +95,7 @@ def sync_status_widget(driver=None) -> None:
     try:
         is_init = driver.execute_script(
             "return window.linkedinBotStatusInitialized === true && window.linkedinBotStatusVersion === arguments[0];",
-            WIDGET_VERSION,
+            widget_version,
         )
     except Exception:
         is_init = False
@@ -87,17 +104,14 @@ def sync_status_widget(driver=None) -> None:
         _last_widget_sync = now
         return
 
-    js_file = os.path.join("modules", "javascript", "status_injector.js")
-    if not os.path.exists(js_file):
+    js_code = _load_widget_source(widget_version)
+    if not js_code:
         return
-
-    with open(js_file, "r", encoding="utf-8") as f:
-        js_code = f.read()
 
     try:
         driver.execute_script(
             "window.linkedinBotStatusInitialized = true; window.linkedinBotStatusVersion = arguments[0];\n" + js_code,
-            WIDGET_VERSION,
+            widget_version,
         )
         try:
             has_style = driver.execute_script(
