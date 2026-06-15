@@ -13,16 +13,16 @@
 }
 
 .input {
-  @apply flex h-[48px] items-center focus:bg-panel justify-between w-full rounded-2xl bg-primary/5 backdrop-blur-[20px] dark:bg-primary/20 text-ink-secondary focus:text-ink-primary border border-transparent focus:border-primary px-4 py-3 text-sm placeholder:text-ink-secondary focus-visible:outline-none focus-visible:border-primary disabled:cursor-not-allowed disabled:opacity-50;
+  @apply flex h-11 w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3.5 py-2 text-sm text-zinc-950 placeholder:text-zinc-400 focus:bg-white focus:border-zinc-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950/5 disabled:cursor-not-allowed disabled:opacity-50 transition-all dark:border-zinc-800 dark:bg-zinc-900/60 dark:text-zinc-50 dark:placeholder:text-zinc-500 dark:focus:bg-zinc-900 dark:focus:border-zinc-750 dark:focus-visible:ring-white/5;
 }
 
 
 .textarea {
-  @apply flex min-h-[48px] items-center focus:bg-panel justify-between w-full rounded-2xl bg-primary/5 backdrop-blur-[20px] dark:bg-primary/20 text-ink-secondary focus:text-ink-primary border border-transparent focus:border-primary px-4 py-3 text-sm placeholder:text-ink-secondary focus-visible:outline-none focus-visible:border-primary disabled:cursor-not-allowed disabled:opacity-50;
+  @apply flex min-h-[100px] w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3.5 py-2.5 text-sm text-zinc-950 placeholder:text-zinc-400 focus:bg-white focus:border-zinc-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950/5 disabled:cursor-not-allowed disabled:opacity-50 transition-all dark:border-zinc-800 dark:bg-zinc-900/60 dark:text-zinc-50 dark:placeholder:text-zinc-500 dark:focus:bg-zinc-900 dark:focus:border-zinc-750 dark:focus-visible:ring-white/5;
 }
 
 .select {
-  @apply flex h-[48px] items-center justify-between w-full text-ink-secondary pl-4 pr-1 py-3 text-sm placeholder:text-ink-secondary focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50;
+  @apply flex h-11 w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3.5 py-2 text-sm text-zinc-950 placeholder:text-zinc-400 focus:bg-white focus:border-zinc-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950/5 disabled:cursor-not-allowed disabled:opacity-50 transition-all dark:border-zinc-800 dark:bg-zinc-900/60 dark:text-zinc-50 dark:placeholder:text-zinc-500 dark:focus:bg-zinc-900 dark:focus:border-zinc-750 dark:focus-visible:ring-white/5;
 }
 
 .wrap {

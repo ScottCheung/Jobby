@@ -1,3 +1,9 @@
+/** @format */
+
+@import 'tailwindcss';
+
+@variant dark (&:where(.dark, .dark *));
+
 :root {
   --ink: #17211b;
   --muted: #647069;
@@ -22,11 +28,19 @@ body {
   margin: 0;
   min-height: 100%;
   background:
-    radial-gradient(circle at 8% 12%, rgba(242, 193, 95, 0.28), transparent 34%),
-    radial-gradient(circle at 88% 4%, rgba(184, 216, 192, 0.45), transparent 30%),
+    radial-gradient(
+      circle at 8% 12%,
+      rgba(242, 193, 95, 0.28),
+      transparent 34%
+    ),
+    radial-gradient(
+      circle at 88% 4%,
+      rgba(184, 216, 192, 0.45),
+      transparent 30%
+    ),
     linear-gradient(135deg, #f9efe0 0%, #edf5e9 46%, #f7ead6 100%);
   color: var(--ink);
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: Georgia, 'Times New Roman', serif;
 }
 
 button,
@@ -168,14 +182,11 @@ button {
   border-radius: 34px;
   padding: 32px;
   color: #fff8e9;
-  background:
-    linear-gradient(120deg, rgba(23, 74, 54, 0.96), rgba(58, 106, 77, 0.92)),
-    radial-gradient(circle at 82% 12%, rgba(242, 193, 95, 0.7), transparent 32%);
   box-shadow: var(--shadow);
 }
 
 .hero::after {
-  content: "";
+  content: '';
   position: absolute;
   width: 260px;
   height: 260px;
@@ -776,7 +787,7 @@ button {
 }
 
 .launch-worker::before {
-  content: "";
+  content: '';
   position: absolute;
   inset: -6px;
   z-index: -1;
@@ -869,4 +880,126 @@ button {
     right: 14px;
     bottom: 14px;
   }
+}
+
+/* Dark theme style overrides for legacy CSS variables and classes */
+.dark {
+  --ink: #f4f4f5;
+  --muted: #a1a1aa;
+  --line: rgba(255, 255, 255, 0.08);
+  --forest-soft: rgba(23, 74, 54, 0.25);
+}
+
+.dark html,
+.dark body {
+  background: #0E1116;
+  color: #f4f4f5;
+}
+
+.dark .sidebar,
+.dark .panel,
+.dark .card,
+.dark .toolbar {
+  background: #181C26;
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.dark .field input,
+.dark .field textarea,
+.dark .field select {
+  background: rgba(24, 28, 38, 0.6);
+  border-color: rgba(255, 255, 255, 0.08);
+  color: #f4f4f5;
+}
+
+.dark .choice-card {
+  background: rgba(24, 28, 38, 0.6);
+  border-color: rgba(255, 255, 255, 0.08);
+  color: #f4f4f5;
+}
+
+.dark .choice-card:hover,
+.dark .choice-card.active {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: rgba(16, 185, 129, 0.35);
+  color: #34d399;
+}
+
+.dark .toggle-card {
+  background: rgba(24, 28, 38, 0.6);
+  border-color: rgba(255, 255, 255, 0.08);
+  color: #f4f4f5;
+}
+
+.dark .toggle-card:hover,
+.dark .toggle-card.active {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: rgba(16, 185, 129, 0.35);
+  color: #34d399;
+}
+
+.dark .toggle-card-glyph {
+  background: rgba(255, 255, 255, 0.05);
+  color: #34d399;
+}
+
+.dark .toggle-card-switch {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.dark .toggle-card-switch.on {
+  background: #10b981;
+}
+
+.dark .toggle-card-switch span {
+  background: #ffffff;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+.dark .tag-chip {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: rgba(16, 185, 129, 0.25);
+  color: #34d399;
+}
+
+.dark .table th {
+  color: #a1a1aa;
+}
+
+.dark .table td {
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.dark .application-details {
+  background: rgba(24, 28, 38, 0.6);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.dark .progress-step {
+  background: rgba(24, 28, 38, 0.4);
+  border-color: rgba(255, 255, 255, 0.08);
+  color: #a1a1aa;
+}
+
+.dark .progress-step span {
+  background: rgba(255, 255, 255, 0.05);
+  color: #a1a1aa;
+}
+
+.dark .progress-step.active {
+  background: rgba(23, 74, 54, 0.25);
+  border-color: rgba(16, 185, 129, 0.3);
+  color: #34d399;
+}
+
+.dark .progress-step.active span {
+  background: #10b981;
+  color: #ffffff;
+}
+
+.dark .progress-note {
+  background: rgba(242, 193, 95, 0.08);
+  border-color: #bd6b3d;
+  color: #f4f4f5;
 }
