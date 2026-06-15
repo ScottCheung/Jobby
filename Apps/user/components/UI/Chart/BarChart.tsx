@@ -1,3 +1,5 @@
+/** @format */
+
 import {
   Bar,
   CartesianGrid,
@@ -88,7 +90,7 @@ const BarChart = ({
 
   if (!data || data.length === 0 || !xKey || (!hasMultipleSeries && !yKey)) {
     return (
-      <div className='flex h-full w-full items-center justify-center text-muted-foreground'>
+      <div className='flex h-full w-full items-center justify-center text-ink-secondary'>
         BarChart: No data or missing key properties (xKey, and yKey if not
         multi-series).
       </div>
@@ -96,10 +98,7 @@ const BarChart = ({
   }
 
   return (
-    <ResponsiveContainer
-      width='100%'
-      height='100%'
-    >
+    <ResponsiveContainer width='100%' height='100%'>
       <RechartsBarChart data={data}>
         {showGridX && (
           <CartesianGrid
@@ -120,18 +119,18 @@ const BarChart = ({
         {showXAxis && (
           <XAxis
             dataKey={xKey}
-            className='text-xs text-muted-foreground'
+            className='text-xs text-ink-secondary'
             tickLine={false}
             axisLine={false}
-            tick={{ fill: 'var(--muted-foreground)' }}
+            // tick={{ fill: 'var(--color-ink-secondary)' }}
           />
         )}
         {showYAxis && (
           <YAxis
-            className='text-xs text-muted-foreground'
+            className='text-xs text-ink-secondary'
             tickLine={false}
             axisLine={false}
-            tick={{ fill: 'var(--muted-foreground)' }}
+            // tick={{ fill: 'var(--color-ink-secondary)' }}
             domain={[
               (dataMin: number) => Math.floor(dataMin * 0.7),
               (dataMax: number) => Math.ceil(dataMax * 1.1),
@@ -141,14 +140,13 @@ const BarChart = ({
         <Tooltip
           content={<ChartTooltip ValueProps={ValueProps} />}
           cursor={{
-            fill: 'var(--muted-foreground)',
+            fill: 'var(--color-ink-secondary)',
             fillOpacity: 0.05,
           }}
         />
-        {hasMultipleSeries && multiColor ? (
+        {hasMultipleSeries && multiColor ?
           generateMultiBars(data, xKey)
-        ) : (
-          <Bar
+        : <Bar
             dataKey={yKey as string}
             name={yKey as string}
             fill={multiColor ? undefined : color}
@@ -166,7 +164,7 @@ const BarChart = ({
                 />
               ))}
           </Bar>
-        )}
+        }
       </RechartsBarChart>
     </ResponsiveContainer>
   );

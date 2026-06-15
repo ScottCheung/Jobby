@@ -1,3 +1,5 @@
+/** @format */
+
 import {
   CartesianGrid,
   Line,
@@ -86,10 +88,7 @@ const LineChart = ({
     ).length > 1;
 
   return (
-    <ResponsiveContainer
-      width='100%'
-      height='100%'
-    >
+    <ResponsiveContainer width='100%' height='100%'>
       <RechartsLineChart data={data}>
         {showGrid && (
           <CartesianGrid
@@ -102,18 +101,18 @@ const LineChart = ({
         {showXAxis && (
           <XAxis
             dataKey={xKey}
-            className='text-xs text-muted-foreground'
+            className='text-xs text-ink-secondary'
             tickLine={false}
             axisLine={false}
-            tick={{ fill: 'var(--muted-foreground)' }}
+            tick={{ fill: 'var(--color-ink-secondary)' }}
           />
         )}
         {showYAxis && (
           <YAxis
-            className='text-xs text-muted-foreground'
+            className='text-xs text-ink-secondary'
             tickLine={false}
             axisLine={false}
-            tick={{ fill: 'var(--muted-foreground)' }}
+            tick={{ fill: 'var(--color-ink-secondary)' }}
             domain={['dataMin', 'dataMax + 10']}
           />
         )}
@@ -122,10 +121,9 @@ const LineChart = ({
           cursor={false}
         />
 
-        {hasMultipleSeries && multiColor ? (
+        {hasMultipleSeries && multiColor ?
           generateMultiLines(data, xKey)
-        ) : (
-          <Line
+        : <Line
             type='monotone'
             dataKey={yKey as string}
             stroke={color}
@@ -136,7 +134,7 @@ const LineChart = ({
             animationBegin={0}
             isAnimationActive={true}
           />
-        )}
+        }
       </RechartsLineChart>
     </ResponsiveContainer>
   );

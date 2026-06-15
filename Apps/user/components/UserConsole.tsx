@@ -18,6 +18,7 @@ import { ApplicationDetails } from './ApplicationDetails';
 import { PreferencesForm, ProfileForm, RuntimeForm, SearchForm } from './forms';
 import { useTheme } from './theme-provider';
 import { cn } from '../lib/utils';
+import { Chart } from '@/components/UI/Chart';
 import {
   LayoutDashboard,
   User as UserIcon,
@@ -218,7 +219,7 @@ export function UserConsole() {
           api.jobPreferences(),
           api.searchProfile(),
           api.questionCache(),
-          api.applications(statusFilter || undefined),
+          api.applications(), // Fetch all applications so dashboard calculations are complete
           api.latestAutomationRun(),
           api.runtimeSettings(),
         ]);
@@ -242,19 +243,25 @@ export function UserConsole() {
 
   useEffect(() => {
     loadData();
-  }, [statusFilter]);
+  }, []); // Only fetch on mount, filter in memory afterwards
 
   const filteredApplications = useMemo(() => {
+    let result = applications;
+    if (statusFilter) {
+      result = result.filter(
+        (item) => item.status.toLowerCase() === statusFilter.toLowerCase(),
+      );
+    }
     const query = searchText.trim().toLowerCase();
-    if (!query) return applications;
-    return applications.filter((item) =>
+    if (!query) return result;
+    return result.filter((item) =>
       [item.title, item.company, item.job_id, item.status].some((value) =>
         String(value ?? '')
           .toLowerCase()
           .includes(query),
       ),
     );
-  }, [applications, searchText]);
+  }, [applications, statusFilter, searchText]);
 
   const stats = useMemo(() => {
     const skipped = applications.filter((item) =>
@@ -273,6 +280,171 @@ export function UserConsole() {
       { label: 'Skipped', value: skipped },
     ];
   }, [applications, questions]);
+
+  const [trendRange, setTrendRange] = useState<7 | 30>(7);
+
+  const dashboardData = useMemo(() => {
+    interface DayTrend {
+      rawDateStr: string;
+      displayDate: string;
+      Submitted: number;
+      Skipped: number;
+    }
+    const days: DayTrend[] = [];
+    for (let i = trendRange - 1; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const dateVal = String(d.getDate()).padStart(2, '0');
+      const dateStr = `${year}-${month}-${dateVal}`;
+      
+      days.push({
+        rawDateStr: dateStr,
+        displayDate: d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+        Submitted: 0,
+        Skipped: 0,
+      });
+    }
+
+    applications.forEach((app) => {
+      if (!app.date_applied) return;
+      const appDateStr = app.date_applied.split('T')[0];
+      const match = days.find((day) => day.rawDateStr === appDateStr);
+      if (match) {
+        const statusLower = app.status.toLowerCase();
+        if (statusLower.includes('submit')) {
+          match.Submitted += 1;
+        } else if (statusLower.includes('skip')) {
+          match.Skipped += 1;
+        }
+      }
+    });
+
+    const trend = days.map((day) => ({
+      date: day.displayDate,
+      Submitted: day.Submitted,
+      Skipped: day.Skipped,
+    }));
+
+    const statusCounts: Record<string, number> = {};
+    applications.forEach((app) => {
+      let status = 'Other';
+      const s = app.status.toLowerCase();
+      if (s.includes('submit')) status = 'Submitted';
+      else if (s.includes('skip')) status = 'Skipped';
+      else if (s.includes('cancel')) status = 'Cancelled';
+      else if (s.includes('pending')) status = 'Pending';
+      statusCounts[status] = (statusCounts[status] || 0) + 1;
+    });
+
+    const statusColors: Record<string, string> = {
+      Submitted: '#10b981',
+      Skipped: '#f59e0b',
+      Pending: '#3b82f6',
+      Cancelled: '#ef4444',
+      Other: '#71717a',
+    };
+
+    const statusDistribution = Object.keys(statusCounts).map((name) => ({
+      name,
+      value: statusCounts[name],
+      fill: statusColors[name] || '#71717a',
+    }));
+
+    const skipReasonCounts: Record<string, number> = {};
+    let totalSkipped = 0;
+    applications.forEach((app) => {
+      const s = app.status.toLowerCase();
+      if (s.includes('skip')) {
+        totalSkipped += 1;
+        const rawReason = app.skip_reason || 'unknown_reason';
+        let reason = rawReason;
+        if (reason.includes('blacklist_rules.company') || reason.includes('company_blacklist')) {
+          reason = 'Blacklisted Company';
+        } else if (reason.includes('blacklist_rules.title') || reason.includes('title_blacklist')) {
+          reason = 'Blacklisted Job Title';
+        } else if (reason.includes('require_visa') || reason.includes('visa')) {
+          reason = 'Visa Sponsorship Required';
+        } else if (reason.includes('years_of_experience') || reason.includes('experience')) {
+          reason = 'Experience Requirements Mismatch';
+        } else if (reason.includes('resume') || reason.includes('no_resume')) {
+          reason = 'Missing Resume';
+        } else if (reason.includes('whitelist')) {
+          reason = 'Whitelist Check Failed';
+        } else if (reason.startsWith('no_') || reason.includes('missing')) {
+          reason = `Missing required field: ${reason.replace('no_', '').replace('_', ' ')}`;
+        } else {
+          reason = reason
+            .replace(/_/g, ' ')
+            .replace(/\b\w/g, (char) => char.toUpperCase());
+        }
+        skipReasonCounts[reason] = (skipReasonCounts[reason] || 0) + 1;
+      }
+    });
+
+    const skipReasons = Object.keys(skipReasonCounts)
+      .map((name) => ({
+        name,
+        value: skipReasonCounts[name],
+        percentage: totalSkipped > 0 ? Math.round((skipReasonCounts[name] / totalSkipped) * 100) : 0,
+      }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 5);
+
+    const workStyleCounts: Record<string, number> = {};
+    applications.forEach((app) => {
+      let ws = app.work_style || 'Unknown';
+      ws = ws.charAt(0).toUpperCase() + ws.slice(1).toLowerCase();
+      if (ws === 'On-site') ws = 'Onsite';
+      workStyleCounts[ws] = (workStyleCounts[ws] || 0) + 1;
+    });
+
+    const wsColors: Record<string, string> = {
+      Remote: '#8b5cf6',
+      Hybrid: '#3b82f6',
+      Onsite: '#ec4899',
+      Unknown: '#71717a',
+    };
+
+    const workStyles = Object.keys(workStyleCounts).map((name) => ({
+      name,
+      value: workStyleCounts[name],
+      fill: wsColors[name] || '#71717a',
+    }));
+
+    const companyCounts: Record<string, number> = {};
+    applications.forEach((app) => {
+      if (app.status.toLowerCase().includes('submit') && app.company) {
+        companyCounts[app.company] = (companyCounts[app.company] || 0) + 1;
+      }
+    });
+
+    const topCompanies = Object.keys(companyCounts)
+      .map((name) => ({
+        name,
+        applications: companyCounts[name],
+      }))
+      .sort((a, b) => b.applications - a.applications)
+      .slice(0, 5);
+
+    const recentActivities = [...applications]
+      .sort((a, b) => {
+        const da = a.date_applied ? new Date(a.date_applied).getTime() : 0;
+        const db = b.date_applied ? new Date(b.date_applied).getTime() : 0;
+        return db - da;
+      })
+      .slice(0, 5);
+
+    return {
+      trend,
+      statusDistribution,
+      skipReasons,
+      workStyles,
+      topCompanies,
+      recentActivities,
+    };
+  }, [applications, trendRange]);
 
   const saveProfile = async () => {
     setProfile(await api.updateProfile(profile));
@@ -654,80 +826,420 @@ export function UserConsole() {
 
           {/* Tab Content Panels */}
           {activeTab === 'overview' && (
-            <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
-              {/* Current Search Panel */}
-              <div className='bg-white dark:bg-[#181C26] border border-zinc-200/60 dark:border-zinc-800/60 rounded-2xl p-6 shadow-xs flex flex-col justify-between'>
-                <div>
-                  <h2 className='text-lg font-bold text-zinc-900 dark:text-zinc-50 mb-4 flex items-center gap-2'>
-                    <Search className='w-5 h-5 text-emerald-500' />
-                    Current Search
-                  </h2>
-                  <div className='space-y-4'>
-                    <div>
-                      <p className='text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider'>
-                        Location
-                      </p>
-                      <h3 className='text-base font-semibold text-zinc-800 dark:text-zinc-200 mt-1'>
-                        {searchProfile.search_location || 'Not set'}
-                      </h3>
-                    </div>
-                    <div>
-                      <p className='text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider'>
-                        Search terms
-                      </p>
-                      <p className='text-sm text-zinc-600 dark:text-zinc-400 mt-1 leading-relaxed'>
-                        {searchProfile.search_terms.join(', ') ||
-                          'No terms yet'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Worker Status Panel */}
-              <div className='bg-white dark:bg-[#181C26] border border-zinc-200/60 dark:border-zinc-800/60 rounded-2xl p-6 shadow-xs flex flex-col justify-between'>
-                <div>
-                  <h2 className='text-lg font-bold text-zinc-900 dark:text-zinc-50 mb-4 flex items-center gap-2'>
-                    <Bot className='w-5 h-5 text-emerald-500' />
-                    Worker Status
-                  </h2>
-                  <div className='space-y-4'>
-                    <div>
-                      <p className='text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-2'>
-                        State
-                      </p>
+            <div className='space-y-6'>
+              {/* Row 1: Quick Config & Control Cards */}
+              <div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
+                {/* Worker Controller Card */}
+                <div className='bg-white dark:bg-[#181C26] border border-zinc-200/60 dark:border-zinc-800/60 rounded-2xl p-6 shadow-xs flex flex-col justify-between'>
+                  <div>
+                    <div className='flex items-center justify-between mb-4'>
+                      <h2 className='text-lg font-bold text-zinc-900 dark:text-zinc-50 flex items-center gap-2'>
+                        <Bot className='w-5 h-5 text-emerald-500' />
+                        Worker Console
+                      </h2>
                       <span
                         className={cn(
                           'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wider',
-                          (latestRun?.status ?? 'idle') === 'failed' ?
-                            'bg-red-500/10 text-red-600 dark:bg-red-900/20 dark:text-red-400'
-                          : (latestRun?.status ?? 'idle') === 'pending' ?
-                            'bg-amber-500/10 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400'
-                          : 'bg-green-500/10 text-green-600 dark:bg-green-900/20 dark:text-green-400',
+                          workerIsActive ?
+                            'bg-green-500/10 text-green-600 dark:bg-green-900/20 dark:text-green-400'
+                          : 'bg-zinc-500/10 text-zinc-650 dark:bg-zinc-800/20 dark:text-zinc-400',
                         )}
                       >
                         {latestRun?.status ?? 'idle'}
                       </span>
                     </div>
-                    <div>
-                      <p className='text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider'>
-                        Activity Log
-                      </p>
-                      <p className='text-sm text-zinc-600 dark:text-zinc-400 mt-1 leading-relaxed italic'>
-                        {latestRun?.current_message ??
-                          'No worker run has been started from this console yet.'}
+                    
+                    <p className='text-xs text-zinc-400 dark:text-zinc-500 uppercase font-bold tracking-wider mb-1'>
+                      Latest Log Message
+                    </p>
+                    <div className='bg-zinc-50 dark:bg-zinc-900/50 rounded-xl p-3 border border-zinc-100 dark:border-zinc-800 min-h-[64px] flex items-center mb-4'>
+                      <p className='text-sm text-zinc-650 dark:text-zinc-300 leading-relaxed italic line-clamp-2'>
+                        {latestRun?.current_message ?? 'No worker runs recorded.'}
                       </p>
                     </div>
                   </div>
+
+                  <div className='flex items-center gap-2 pt-2 border-t border-zinc-100 dark:border-zinc-800/50'>
+                    <button
+                      onClick={() => void (workerIsActive ? stopWorker() : startWorker())}
+                      className={cn(
+                        'flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-sm font-semibold text-white shadow-xs cursor-pointer transition-all active:scale-[0.98]',
+                        workerIsActive ?
+                          'bg-gradient-to-tr from-red-650 to-rose-700 hover:from-red-700 hover:to-rose-800'
+                        : 'bg-gradient-to-tr from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800',
+                      )}
+                    >
+                      {workerIsActive ?
+                        <>
+                          <Square className='w-3.5 h-3.5 fill-white' /> Stop Worker
+                        </>
+                      : <>
+                          <Play className='w-3.5 h-3.5 fill-white' /> Start Worker
+                        </>
+                      }
+                    </button>
+                    <button
+                      onClick={loadData}
+                      className='p-2 rounded-xl border border-zinc-200 hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-800 text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 cursor-pointer active:scale-[0.96] transition-all'
+                      title='Refresh data'
+                    >
+                      <RotateCw className='w-4 h-4' />
+                    </button>
+                  </div>
                 </div>
-                <div className='flex justify-end mt-6'>
+
+                {/* Current Search Target Card */}
+                <div className='bg-white dark:bg-[#181C26] border border-zinc-200/60 dark:border-zinc-800/60 rounded-2xl p-6 shadow-xs flex flex-col justify-between'>
+                  <div>
+                    <h2 className='text-lg font-bold text-zinc-900 dark:text-zinc-50 mb-4 flex items-center gap-2'>
+                      <Search className='w-5 h-5 text-emerald-500' />
+                      Search Parameters
+                    </h2>
+                    
+                    <div className='space-y-3'>
+                      <div>
+                        <p className='text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider'>
+                          Target Location
+                        </p>
+                        <h3 className='text-sm font-semibold text-zinc-800 dark:text-zinc-200 mt-0.5 truncate'>
+                          {searchProfile.search_location || 'Not configured'}
+                        </h3>
+                      </div>
+                      <div>
+                        <p className='text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider'>
+                          Keywords
+                        </p>
+                        <div className='flex flex-wrap gap-1 mt-1 max-h-[70px] overflow-y-auto pr-1'>
+                          {searchProfile.search_terms && searchProfile.search_terms.length > 0 ?
+                            searchProfile.search_terms.map((term, i) => (
+                              <span key={i} className='text-[10px] px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400 font-medium border border-emerald-100/50 dark:border-emerald-900/30'>
+                                {term}
+                              </span>
+                            ))
+                          : <span className='text-xs text-zinc-400 italic'>No terms added yet</span>
+                          }
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className='pt-4 border-t border-zinc-100 dark:border-zinc-800/50 text-right'>
+                    <button
+                      onClick={() => setActiveTab('search')}
+                      className='inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer'
+                    >
+                      Configure search <ChevronRight className='w-3 h-3' />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Bot Settings Rules Card */}
+                <div className='bg-white dark:bg-[#181C26] border border-zinc-200/60 dark:border-zinc-800/60 rounded-2xl p-6 shadow-xs flex flex-col justify-between'>
+                  <div>
+                    <h2 className='text-lg font-bold text-zinc-900 dark:text-zinc-50 mb-4 flex items-center gap-2'>
+                      <Settings className='w-5 h-5 text-emerald-500' />
+                      Runtime Rules
+                    </h2>
+                    
+                    <div className='grid grid-cols-2 gap-3'>
+                      <div className='flex flex-col p-2.5 rounded-xl bg-zinc-50/50 dark:bg-zinc-900/30 border border-zinc-100 dark:border-zinc-800/50'>
+                        <span className='text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase'>Safe Mode</span>
+                        <span className={cn('text-xs font-semibold mt-1', runtimeSettings.safe_mode ? 'text-green-600 dark:text-green-400' : 'text-zinc-400')}>
+                          {runtimeSettings.safe_mode ? 'Enabled' : 'Disabled'}
+                        </span>
+                      </div>
+                      <div className='flex flex-col p-2.5 rounded-xl bg-zinc-50/50 dark:bg-zinc-900/30 border border-zinc-100 dark:border-zinc-800/50'>
+                        <span className='text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase'>Stealth Mode</span>
+                        <span className={cn('text-xs font-semibold mt-1', runtimeSettings.stealth_mode ? 'text-green-600 dark:text-green-400' : 'text-zinc-400')}>
+                          {runtimeSettings.stealth_mode ? 'Active' : 'Inactive'}
+                        </span>
+                      </div>
+                      <div className='flex flex-col p-2.5 rounded-xl bg-zinc-50/50 dark:bg-zinc-900/30 border border-zinc-100 dark:border-zinc-800/50'>
+                        <span className='text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase'>Click Interval</span>
+                        <span className='text-xs font-semibold mt-1 text-zinc-650 dark:text-zinc-350'>
+                          ~{runtimeSettings.click_gap} seconds
+                        </span>
+                      </div>
+                      <div className='flex flex-col p-2.5 rounded-xl bg-zinc-50/50 dark:bg-zinc-900/30 border border-zinc-100 dark:border-zinc-800/50'>
+                        <span className='text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase'>Visa Required</span>
+                        <span className='text-xs font-semibold mt-1 text-zinc-650 dark:text-zinc-350'>
+                          {preferences.require_visa || 'No'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className='pt-4 border-t border-zinc-100 dark:border-zinc-800/50 text-right'>
+                    <button
+                      onClick={() => setActiveTab('search')}
+                      className='inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer'
+                    >
+                      Adjust settings <ChevronRight className='w-3 h-3' />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Row 2: Trend & Distribution Charts */}
+              <div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
+                {/* Trend Chart - Span 2 Columns */}
+                <div className='bg-white dark:bg-[#181C26] border border-zinc-200/60 dark:border-zinc-800/60 rounded-2xl p-6 shadow-xs lg:col-span-2 flex flex-col justify-between'>
+                  <div className='flex items-center justify-between mb-2'>
+                    <div>
+                      <h2 className='text-base font-bold text-zinc-900 dark:text-zinc-50'>
+                        Application Activity Trend
+                      </h2>
+                      <p className='text-xs text-zinc-400 dark:text-zinc-500'>
+                        Daily tracking of submitted vs skipped applications
+                      </p>
+                    </div>
+                    {/* Range Selector */}
+                    <div className='flex bg-zinc-100 dark:bg-zinc-900/60 p-0.5 rounded-lg border border-zinc-200/50 dark:border-zinc-800/50'>
+                      <button
+                        onClick={() => setTrendRange(7)}
+                        className={cn(
+                          'px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer',
+                          trendRange === 7 ?
+                            'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-xs'
+                          : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200',
+                        )}
+                      >
+                        7 Days
+                      </button>
+                      <button
+                        onClick={() => setTrendRange(30)}
+                        className={cn(
+                          'px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer',
+                          trendRange === 30 ?
+                            'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-xs'
+                          : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200',
+                        )}
+                      >
+                        30 Days
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className='w-full h-72 mt-4'>
+                    <Chart
+                      type='area'
+                      data={dashboardData.trend}
+                      xKey='date'
+                      yKeys={['Submitted', 'Skipped']}
+                      showLegend
+                      stacked
+                      gradientFill
+                      showDots='visible'
+                      className='h-full'
+                    />
+                  </div>
+                </div>
+
+                {/* Donut Chart - Span 1 Column */}
+                <div className='bg-white dark:bg-[#181C26] border border-zinc-200/60 dark:border-zinc-800/60 rounded-2xl p-6 shadow-xs flex flex-col justify-between'>
+                  <div>
+                    <h2 className='text-base font-bold text-zinc-900 dark:text-zinc-50 mb-1'>
+                      Application Status Breakdown
+                    </h2>
+                    <p className='text-xs text-zinc-400 dark:text-zinc-500 mb-4'>
+                      Proportions of all logged job application states
+                    </p>
+                  </div>
+
+                  <div className='w-full h-64 flex items-center justify-center relative'>
+                    <Chart
+                      type='pie'
+                      data={dashboardData.statusDistribution}
+                      nameKey='name'
+                      valueKey='value'
+                      showLegend
+                      className='h-full'
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Row 3: Insights & Work Style Breakdown */}
+              <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
+                {/* Skip Reasons Card */}
+                <div className='bg-white dark:bg-[#181C26] border border-zinc-200/60 dark:border-zinc-800/60 rounded-2xl p-6 shadow-xs flex flex-col justify-between'>
+                  <div>
+                    <h2 className='text-base font-bold text-zinc-900 dark:text-zinc-50 mb-1'>
+                      Top Skip Reasons (Failures)
+                    </h2>
+                    <p className='text-xs text-zinc-400 dark:text-zinc-500 mb-4'>
+                      Main constraints preventing automatic job application
+                    </p>
+
+                    <div className='space-y-4 mt-2'>
+                      {dashboardData.skipReasons.length > 0 ?
+                        dashboardData.skipReasons.map((item, index) => (
+                          <div key={index} className='space-y-1'>
+                            <div className='flex items-center justify-between text-xs'>
+                              <span className='font-semibold text-zinc-750 dark:text-zinc-300 truncate max-w-[280px]'>
+                                {item.name}
+                              </span>
+                              <span className='text-zinc-500 dark:text-zinc-500 font-mono'>
+                                {item.value} ({item.percentage}%)
+                              </span>
+                            </div>
+                            <div className='w-full bg-zinc-100 dark:bg-zinc-900 h-2 rounded-full overflow-hidden border border-zinc-200/20'>
+                              <div
+                                className='h-full rounded-full bg-gradient-to-r from-amber-400 to-amber-600 dark:from-amber-500 dark:to-amber-700 transition-all duration-1000'
+                                style={{ width: `${item.percentage}%` }}
+                              />
+                            </div>
+                          </div>
+                        ))
+                      : <div className='py-8 text-center text-zinc-500 dark:text-zinc-500 italic text-sm'>
+                          No skipped applications recorded yet.
+                        </div>
+                      }
+                    </div>
+                  </div>
+                </div>
+
+                {/* Job Environment & Company Card */}
+                <div className='bg-white dark:bg-[#181C26] border border-zinc-200/60 dark:border-zinc-800/60 rounded-2xl p-6 shadow-xs flex flex-col justify-between'>
+                  <div>
+                    <h2 className='text-base font-bold text-zinc-900 dark:text-zinc-50 mb-1'>
+                      Work Environment & Companies
+                    </h2>
+                    <p className='text-xs text-zinc-400 dark:text-zinc-500 mb-4'>
+                      Analysis of workplace styles and top applied companies
+                    </p>
+
+                    <div className='grid grid-cols-1 sm:grid-cols-2 gap-6'>
+                      {/* Workplace style details */}
+                      <div className='space-y-3'>
+                        <h4 className='text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider'>
+                          Workplace styles
+                        </h4>
+                        <div className='space-y-2.5'>
+                          {dashboardData.workStyles && dashboardData.workStyles.length > 0 ?
+                            dashboardData.workStyles.map((item, index) => (
+                              <div key={index} className='flex items-center justify-between text-xs p-2 rounded-lg bg-zinc-50/50 dark:bg-zinc-900/25 border border-zinc-100/50 dark:border-zinc-800/50'>
+                                <div className='flex items-center gap-1.5'>
+                                  <span className='w-2.5 h-2.5 rounded-full' style={{ backgroundColor: item.fill }} />
+                                  <span className='font-semibold text-zinc-700 dark:text-zinc-300'>{item.name}</span>
+                                </div>
+                                <span className='font-mono font-bold text-zinc-900 dark:text-zinc-200'>{item.value}</span>
+                              </div>
+                            ))
+                          : <div className='text-zinc-400 italic text-xs'>No work style data</div>
+                          }
+                        </div>
+                      </div>
+
+                      {/* Top Companies list */}
+                      <div className='space-y-3'>
+                        <h4 className='text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider'>
+                          Top applied companies
+                        </h4>
+                        <div className='space-y-2.5'>
+                          {dashboardData.topCompanies && dashboardData.topCompanies.length > 0 ?
+                            dashboardData.topCompanies.map((comp, index) => (
+                              <div key={index} className='flex items-center justify-between text-xs p-2 rounded-lg bg-zinc-50/50 dark:bg-zinc-900/25 border border-zinc-100/50 dark:border-zinc-800/50'>
+                                <span className='font-semibold text-zinc-700 dark:text-zinc-300 truncate max-w-[110px]' title={comp.name}>
+                                  {comp.name}
+                                </span>
+                                <span className='bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold px-1.5 py-0.5 rounded text-[10px]'>
+                                  {comp.applications} apps
+                                </span>
+                              </div>
+                            ))
+                          : <div className='text-zinc-400 italic text-xs py-2'>
+                              No submitted companies yet.
+                            </div>
+                          }
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Row 4: Recent Activity Feed */}
+              <div className='bg-white dark:bg-[#181C26] border border-zinc-200/60 dark:border-zinc-800/60 rounded-2xl p-6 shadow-xs'>
+                <div className='flex items-center justify-between mb-4'>
+                  <div>
+                    <h2 className='text-base font-bold text-zinc-900 dark:text-zinc-50'>
+                      Recent Automation Feed
+                    </h2>
+                    <p className='text-xs text-zinc-400 dark:text-zinc-500'>
+                      The latest application attempts by the automation bot
+                    </p>
+                  </div>
                   <button
-                    className='inline-flex items-center gap-2 rounded-xl border border-zinc-200 hover:bg-zinc-50 text-zinc-900 px-4 py-2 text-sm font-semibold dark:border-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-900 transition-all active:scale-[0.98] cursor-pointer shadow-xs'
-                    onClick={loadData}
+                    onClick={() => setActiveTab('applications')}
+                    className='inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer'
                   >
-                    <RotateCw className='w-4 h-4' />
-                    Refresh
+                    View all history <ChevronRight className='w-3.5 h-3.5' />
                   </button>
+                </div>
+
+                <div className='overflow-x-auto'>
+                  <table className='w-full text-left border-collapse text-sm'>
+                    <thead>
+                      <tr className='border-b border-zinc-100 dark:border-zinc-800 text-[10px] font-bold text-zinc-500 dark:text-zinc-500 uppercase tracking-wider'>
+                        <th className='pb-3 pr-4'>Position</th>
+                        <th className='pb-3 px-4'>Company</th>
+                        <th className='pb-3 px-4'>Workplace Style</th>
+                        <th className='pb-3 px-4'>Status</th>
+                        <th className='pb-3 pl-4 text-right'>Applied Date</th>
+                      </tr>
+                    </thead>
+                    <tbody className='divide-y divide-zinc-100 dark:divide-zinc-800/50'>
+                      {dashboardData.recentActivities && dashboardData.recentActivities.length > 0 ?
+                        dashboardData.recentActivities.map((item) => (
+                          <tr key={item.id} className='text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50/50 dark:hover:bg-zinc-900/10 transition-colors'>
+                            <td className='py-3 pr-4'>
+                              <div className='font-bold text-zinc-900 dark:text-zinc-100 truncate max-w-xs'>
+                                {item.title || 'Untitled Role'}
+                              </div>
+                              <span className='text-[10px] text-zinc-400 font-mono'>
+                                ID: {item.job_id}
+                              </span>
+                            </td>
+                            <td className='py-3 px-4 font-semibold text-zinc-800 dark:text-zinc-200 truncate max-w-[150px]'>
+                              {item.company || 'Unknown'}
+                            </td>
+                            <td className='py-3 px-4 text-xs text-zinc-500 dark:text-zinc-400 capitalize'>
+                              {item.work_style || 'Not Specified'}
+                              {item.work_location && ` (${item.work_location})`}
+                            </td>
+                            <td className='py-3 px-4'>
+                              <span
+                                className={cn(
+                                  'inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider',
+                                  item.status === 'submitted' ?
+                                    'bg-green-500/10 text-green-600 dark:bg-green-900/20 dark:text-green-400'
+                                  : item.status === 'skipped' ?
+                                    'bg-amber-500/10 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400'
+                                  : 'bg-zinc-500/10 text-zinc-600 dark:bg-zinc-850/20 dark:text-zinc-400',
+                                )}
+                              >
+                                {item.status}
+                              </span>
+                              {item.skip_reason && (
+                                <p className='text-[9px] text-zinc-400 dark:text-zinc-500 italic max-w-[150px] truncate' title={item.skip_reason}>
+                                  {item.skip_reason}
+                                </p>
+                              )}
+                            </td>
+                            <td className='py-3 pl-4 text-right text-xs text-zinc-450 dark:text-zinc-500 whitespace-nowrap'>
+                              {formatDate(item.date_applied)}
+                            </td>
+                          </tr>
+                        ))
+                      : <tr>
+                          <td colSpan={5} className='py-8 text-center text-zinc-500 dark:text-zinc-500 italic'>
+                            No application activities recorded yet.
+                          </td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </div>

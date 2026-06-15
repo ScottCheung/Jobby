@@ -1,3 +1,5 @@
+/** @format */
+
 import {
   Area,
   CartesianGrid,
@@ -23,7 +25,7 @@ interface AreaChartProps {
   showValues?: boolean; // 是否显示值
   showGrid?: boolean; // 是否显示网格线
   gridType?: 'horizontal' | 'vertical' | 'both'; // 网格线类型
-  interpolationType?: RechartsAreaProps['type'];
+  interpolationType?: any;
   showLegend?: boolean;
   stacked?: boolean;
   stackOffset?: 'expand' | 'none' | 'silhouette' | 'wiggle';
@@ -104,15 +106,13 @@ const AreaChart = ({
   ValueProps,
 }: AreaChartProps) => {
   const seriesKeys =
-    yKeys && yKeys.length > 0
-      ? yKeys
-      : yKey
-      ? [yKey]
-      : data && data.length > 0
-      ? Object.keys(data[0] || {}).filter(
-          (k) => k !== xKey && typeof data[0][k] === 'number',
-        )
-      : [];
+    yKeys && yKeys.length > 0 ? yKeys
+    : yKey ? [yKey]
+    : data && data.length > 0 ?
+      Object.keys(data[0] || {}).filter(
+        (k) => k !== xKey && typeof data[0][k] === 'number',
+      )
+    : [];
 
   if (seriesKeys.length === 0) {
     return (
@@ -128,9 +128,8 @@ const AreaChart = ({
 
   const renderAreas = () => {
     return seriesKeys.map((key, index) => {
-      const seriesColor = hasMultipleSeries
-        ? COLORS[index % COLORS.length]
-        : color;
+      const seriesColor =
+        hasMultipleSeries ? COLORS[index % COLORS.length] : color;
       const fillId = gradientFill ? `gradient-${key}` : undefined;
 
       let resolvedShowDots: boolean | object = false;
@@ -166,10 +165,7 @@ const AreaChart = ({
   };
 
   return (
-    <ResponsiveContainer
-      width='100%'
-      height='100%'
-    >
+    <ResponsiveContainer width='100%' height='100%'>
       <RechartsAreaChart
         data={data}
         stackOffset={
@@ -179,9 +175,8 @@ const AreaChart = ({
         {gradientFill && seriesKeys.length > 0 && (
           <defs>
             {seriesKeys.map((key, index) => {
-              const seriesColor = hasMultipleSeries
-                ? COLORS[index % COLORS.length]
-                : color;
+              const seriesColor =
+                hasMultipleSeries ? COLORS[index % COLORS.length] : color;
               return (
                 <linearGradient
                   key={`gradient-def-${key}`}
@@ -191,11 +186,7 @@ const AreaChart = ({
                   x2='0'
                   y2='1'
                 >
-                  <stop
-                    offset='5%'
-                    stopColor={seriesColor}
-                    stopOpacity={0.8}
-                  />
+                  <stop offset='5%' stopColor={seriesColor} stopOpacity={0.8} />
                   <stop
                     offset='95%'
                     stopColor={seriesColor}
@@ -220,7 +211,7 @@ const AreaChart = ({
             className='text-xs text-muted-foreground'
             tickLine={false}
             axisLine={false}
-            tick={{ fill: 'var(--muted-foreground)' }}
+            tick={{ fill: 'var(--color-ink-secondary)' }}
           />
         )}
         {showYAxis && (
@@ -228,16 +219,22 @@ const AreaChart = ({
             className='text-xs text-muted-foreground'
             tickLine={false}
             axisLine={false}
-            tick={{ fill: 'var(--muted-foreground)' }}
+            tick={{ fill: 'var(--color-ink-secondary)' }}
             domain={
-              (currentStackOffset as AreaChartProps['stackOffset']) === 'expand'
-                ? [0, 1]
-                : undefined
+              (
+                (currentStackOffset as AreaChartProps['stackOffset']) ===
+                'expand'
+              ) ?
+                [0, 1]
+              : undefined
             }
             tickFormatter={
-              (currentStackOffset as AreaChartProps['stackOffset']) === 'expand'
-                ? (value) => `${value * 100}%`
-                : undefined
+              (
+                (currentStackOffset as AreaChartProps['stackOffset']) ===
+                'expand'
+              ) ?
+                (value) => `${value * 100}%`
+              : undefined
             }
           />
         )}

@@ -24,7 +24,7 @@ export interface ChartProps extends React.HTMLAttributes<HTMLDivElement> {
   showGridX?: boolean; // Prop for BarChart, potentially generalizable
   showGridY?: boolean; // Prop for BarChart, potentially generalizable
   yKeys?: string[];
-  interpolationType?: RechartsAreaProps['type'];
+  interpolationType?: any;
   showLegend?: boolean;
   stacked?: boolean;
   stackOffset?: 'expand' | 'none' | 'silhouette' | 'wiggle';

@@ -42,10 +42,10 @@ const sizeStyles = {
 const variantStyles = {
   text: 'rounded',
   circular: 'rounded-full',
-  rectangular: 'rounded-none',
+  rectangular: 'rounded-card',
   chart: 'rounded-lg',
   image: '',
-  card: 'rounded-lg',
+  card: 'rounded-card',
   list: 'rounded-lg',
   article: 'rounded-lg',
 };
@@ -56,8 +56,8 @@ export const Skeleton: React.FC<SkeletonProps> = ({
   isLoaded = false,
   fadeDuration = 0.2,
   speed = 1,
-  startColor = 'from-gray-200',
-  endColor = 'to-gray-300',
+  startColor = 'from-gray-700',
+  endColor = 'to-gray-800',
   className,
   children,
   animationActive = true,

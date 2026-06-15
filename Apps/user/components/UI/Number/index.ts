@@ -4,12 +4,18 @@ export { SimpleAnimatedNumber } from './components/SimpleAnimatedNumber';
 
 // Type exports
 export type {
+  AnimatedNumberProps,
   AnimationType,
   NumberFormat,
   NumberType,
-} from './Number';
+} from './types';
 
 // Utility exports
+export { getVariants } from './util/getAnimationVariants';
 export { formatNumber } from './util/formatNumber';
 export { parseFormattedNumber } from './util/parseFormattedNumber';
-export { getVariants } from './util/getAnimationVariants';
+export {
+  formatNumberValue,
+  formatShort,
+  formatToSignificantDigits,
+} from './utils/numberFormatters';

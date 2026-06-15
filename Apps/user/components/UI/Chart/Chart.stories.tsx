@@ -1,6 +1,7 @@
+// @ts-nocheck
 import type { Meta, StoryObj } from '@storybook/react';
-import { Chart, ChartProps } from '@/stories/Components/Chart/Chart';
-import { EUI } from '@/stories/decorators/EUI';
+import { Chart, ChartProps } from './Chart';
+
 
 const meta: Meta<typeof Chart> = {
   title: 'Chart',
@@ -8,7 +9,7 @@ const meta: Meta<typeof Chart> = {
   parameters: {
     layout: 'centered',
   },
-  decorators: [EUI],
+
   tags: ['autodocs'],
   argTypes: {
     type: {

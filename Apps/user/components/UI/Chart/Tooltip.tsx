@@ -1,3 +1,5 @@
+/** @format */
+
 import React from 'react';
 import { motion as m } from 'framer-motion';
 import { Number } from '../Number/Number';
@@ -38,13 +40,13 @@ export const ChartTooltip: React.FC<ChartTooltipProps> = ({
     const displayLabel = label != null ? String(label) : null; // Use the Recharts label as the title
 
     return (
-      <m.div className='rounded-lg border bg-white/90 transition-all duration-300 backdrop-blur-sm card-md text-sm shadow-lg'>
+      <m.div className='rounded-lg  bg-background transition-all duration-300 backdrop-blur-sm  text-sm shadow-lg  p-3'>
         {displayLabel && (
-          <div className='mb-2 font-medium text-foreground '>
+          <div className='mb-2 font-medium text-ink-secondary'>
             {displayLabel}
           </div>
         )}
-        <div className='space-y-1.5 '>
+        <div className='space-y-1.5'>
           {payload.map((item, index) => {
             // Ensure item.value is not undefined before processing
             if (item.value === undefined || item.value === null) return null;
@@ -67,10 +69,7 @@ export const ChartTooltip: React.FC<ChartTooltipProps> = ({
             }
 
             return (
-              <div
-                key={index}
-                className='flex items-center gap-2'
-              >
+              <div key={index} className='flex items-center gap-2'>
                 <span
                   className='size-sm shrink-0 rounded-[3px]'
                   style={{ backgroundColor: itemColor }}
@@ -78,7 +77,7 @@ export const ChartTooltip: React.FC<ChartTooltipProps> = ({
                 <div className='flex flex-1 items-center justify-between w-full'>
                   {/* Conditionally render the item name (label) */}
                   {itemName && itemName.trim() !== '' && (
-                    <span className='text-gray-500 text-xs mr-3'>
+                    <span className='text-ink-secondary text-xs mr-3'>
                       {itemName}
                     </span>
                   )}
@@ -88,8 +87,9 @@ export const ChartTooltip: React.FC<ChartTooltipProps> = ({
                       value={item.value}
                       duration={0.2}
                       {...ValueProps}
-                      className={`font-medium text-xs  ${!itemName || itemName.trim() === '' ? 'ml-auto' : ''
-                        }`}
+                      className={`font-medium text-xs text-ink-secondary ${
+                        !itemName || itemName.trim() === '' ? 'ml-auto' : ''
+                      }`}
                     />
                   </div>
                 </div>

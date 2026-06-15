@@ -404,7 +404,7 @@ export const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
                         )}
                     >
                         <div className="p-2 sm:p-4">
-                            <div className="flex flex-wrap gap-4 sm:gap-8 items-start justify-center relative">
+                            <div className="flex flex-col sm:flex-row gap-4 sm:gap-8 items-start justify-center relative">
 
                                 {/* Prev Button Absolute Left */}
                                 <div className="absolute left-0 top-1 flex items-center gap-1 z-10">

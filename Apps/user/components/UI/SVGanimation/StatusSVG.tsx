@@ -25,7 +25,7 @@ const svgPaths = {
     <motion.circle
       key='circle'
       fill='none'
-      strokeWidth='4'
+      strokeWidth='12'
       cx='50'
       cy='50'
       r='46'
@@ -37,7 +37,7 @@ const svgPaths = {
     <motion.polyline
       key='tick'
       fill='none'
-      strokeWidth='4'
+      strokeWidth='12'
       points='25,55 45,75 75,35'
       strokeLinecap='round'
       strokeLinejoin='round'
@@ -49,7 +49,7 @@ const svgPaths = {
     <motion.circle
       key='circle'
       fill='none'
-      strokeWidth='4'
+      strokeWidth='12'
       cx='50'
       cy='50'
       r='46'
@@ -64,7 +64,7 @@ const svgPaths = {
       y1='35'
       x2='65'
       y2='65'
-      strokeWidth='4'
+      strokeWidth='12'
       strokeLinecap='round'
       custom={1}
       variants={iconVariants}
@@ -75,7 +75,7 @@ const svgPaths = {
       y1='35'
       x2='35'
       y2='65'
-      strokeWidth='4'
+      strokeWidth='12'
       strokeLinecap='round'
       custom={1}
       variants={iconVariants}
@@ -85,7 +85,7 @@ const svgPaths = {
     <motion.path
       key='triangle'
       d='M50 10 L90 80 L10 80 Z'
-      strokeWidth='4'
+      strokeWidth='12'
       strokeLinejoin='round'
       strokeLinecap='round'
       fill='none'
@@ -98,7 +98,7 @@ const svgPaths = {
       y1='40'
       x2='50'
       y2='60'
-      strokeWidth='4'
+      strokeWidth='12'
       strokeLinecap='round'
       custom={1}
       variants={iconVariants}
@@ -117,7 +117,7 @@ const svgPaths = {
     <motion.circle
       key='circle'
       fill='none'
-      strokeWidth='4'
+      strokeWidth='12'
       cx='50'
       cy='50'
       r='46'
@@ -132,9 +132,9 @@ const svgPaths = {
       y1='45'
       x2='50'
       y2='70'
-      strokeWidth='4'
+      strokeWidth='12'
       strokeLinecap='round'
-      custom={2}
+      custom={1}
       variants={iconVariants}
     />,
     <motion.circle
@@ -157,7 +157,7 @@ const AnimatedIcon: React.FC<AnimatedIconProps> = ({
   return (
     <motion.svg
       xmlns='http://www.w3.org/2000/svg'
-      viewBox='-5 -5 110 110'
+      viewBox='0 0 100 100'
       className={className}
       initial='hidden'
       animate='visible'
@@ -239,12 +239,12 @@ export const SVGAnimation: React.FC<SVGAnimationProps> = ({
       <AnimatedIcon
         icon={icon}
         color={color}
-        className='w-24 h-24'
+        className='w-48 h-48'
       />
 
       {withMessage && (
         <motion.h2
-          className='font-semibold mt-6 text-2xl text-ink-primary'
+          className='font-semibold mt-6 text-2xl text-gray-800 dark:text-white'
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 1 }}

@@ -1,5 +1,6 @@
 /** @format */
 
+// import { ViewportAnimation } from '@/stories/Animation/ViewportAnimation';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import React from 'react';
@@ -92,121 +93,121 @@ export const CircularProgress = React.memo<CircularProgressProps>(
         )}
         {...props}
       >
-
-        <svg
-          className='transform -rotate-90'
-          width={radius * 2}
-          height={radius * 2}
-          viewBox={`0 0 ${radius * 2} ${radius * 2}`}
-        >
-          <defs>
-            {variant === 'gradient' && (
-              <>
-                <linearGradient
-                  id='gradient-primary'
-                  x1='0%'
-                  y1='0%'
-                  x2='100%'
-                  y2='0%'
-                >
-                  <stop offset='0%' className='stop-color-primary-400' />
-                  <stop offset='100%' className='stop-color-primary-600' />
-                </linearGradient>
-                <linearGradient
-                  id='gradient-success'
-                  x1='0%'
-                  y1='0%'
-                  x2='100%'
-                  y2='0%'
-                >
-                  <stop offset='0%' className='stop-color-success-400' />
-                  <stop offset='100%' className='stop-color-success-600' />
-                </linearGradient>
-                <linearGradient
-                  id='gradient-warning'
-                  x1='0%'
-                  y1='0%'
-                  x2='100%'
-                  y2='0%'
-                >
-                  <stop offset='0%' className='stop-color-warning-400' />
-                  <stop offset='100%' className='stop-color-warning-600' />
-                </linearGradient>
-                <linearGradient
-                  id='gradient-danger'
-                  x1='0%'
-                  y1='0%'
-                  x2='100%'
-                  y2='0%'
-                >
-                  <stop offset='0%' className='stop-color-danger-400' />
-                  <stop offset='100%' className='stop-color-danger-600' />
-                </linearGradient>
-                <linearGradient
-                  id='gradient-info'
-                  x1='0%'
-                  y1='0%'
-                  x2='100%'
-                  y2='0%'
-                >
-                  <stop offset='0%' className='stop-color-blue-400' />
-                  <stop offset='100%' className='stop-color-blue-600' />
-                </linearGradient>
-              </>
-            )}
-          </defs>
-          <circle
-            className={cn('stroke-gray-200')}
-            strokeWidth={thickness}
-            fill='none'
-            r={radius - thickness / 2}
-            cx={radius}
-            cy={radius}
-          />
-          <motion.circle
-            className={cn(
-              variant === 'solid'
-                ? colorStyles[color]
-                : gradientStyles[color],
-            )}
-            initial={{ strokeDashoffset: circumference }}
-            whileInView={{
-              strokeDashoffset: isIndeterminate ? 0 : strokeDashoffset,
-              rotate: isIndeterminate ? 360 : 0,
-            }}
-            viewport={{
-              margin: '25% 0px -25% 0px',
-              once: true,
-              amount: 0.25,
-            }}
-            transition={{
-              duration: isIndeterminate ? 1 : duration,
-              ease: [0.22, 1, 0.36, 1],
-              repeat: isIndeterminate ? Infinity : 0,
-            }}
-            strokeWidth={thickness}
-            strokeDasharray={circumference}
-            strokeLinecap='round'
-            fill='none'
-            r={radius - thickness / 2}
-            cx={radius}
-            cy={radius}
-          />
-        </svg>
-        {showValue && (
-          <motion.span
-            className={cn(
-              'absolute text-gray-600 font-medium',
-              textSizes[size],
-            )}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+        <React.Fragment>
+          <svg
+            className='transform -rotate-90'
+            width={radius * 2}
+            height={radius * 2}
+            viewBox={`0 0 ${radius * 2} ${radius * 2}`}
           >
-            {Math.round(percentage)}%
-          </motion.span>
-        )}
-
+            <defs>
+              {variant === 'gradient' && (
+                <>
+                  <linearGradient
+                    id='gradient-primary'
+                    x1='0%'
+                    y1='0%'
+                    x2='100%'
+                    y2='0%'
+                  >
+                    <stop offset='0%' className='stop-color-primary-400' />
+                    <stop offset='100%' className='stop-color-primary-600' />
+                  </linearGradient>
+                  <linearGradient
+                    id='gradient-success'
+                    x1='0%'
+                    y1='0%'
+                    x2='100%'
+                    y2='0%'
+                  >
+                    <stop offset='0%' className='stop-color-success-400' />
+                    <stop offset='100%' className='stop-color-success-600' />
+                  </linearGradient>
+                  <linearGradient
+                    id='gradient-warning'
+                    x1='0%'
+                    y1='0%'
+                    x2='100%'
+                    y2='0%'
+                  >
+                    <stop offset='0%' className='stop-color-warning-400' />
+                    <stop offset='100%' className='stop-color-warning-600' />
+                  </linearGradient>
+                  <linearGradient
+                    id='gradient-danger'
+                    x1='0%'
+                    y1='0%'
+                    x2='100%'
+                    y2='0%'
+                  >
+                    <stop offset='0%' className='stop-color-danger-400' />
+                    <stop offset='100%' className='stop-color-danger-600' />
+                  </linearGradient>
+                  <linearGradient
+                    id='gradient-info'
+                    x1='0%'
+                    y1='0%'
+                    x2='100%'
+                    y2='0%'
+                  >
+                    <stop offset='0%' className='stop-color-blue-400' />
+                    <stop offset='100%' className='stop-color-blue-600' />
+                  </linearGradient>
+                </>
+              )}
+            </defs>
+            <circle
+              className={cn('stroke-gray-200')}
+              strokeWidth={thickness}
+              fill='none'
+              r={radius - thickness / 2}
+              cx={radius}
+              cy={radius}
+            />
+            <motion.circle
+              className={cn(
+                variant === 'solid'
+                  ? colorStyles[color]
+                  : gradientStyles[color],
+              )}
+              initial={{ strokeDashoffset: circumference }}
+              whileInView={{
+                strokeDashoffset: isIndeterminate ? 0 : strokeDashoffset,
+                rotate: isIndeterminate ? 360 : 0,
+              }}
+              viewport={{
+                margin: '25% 0px -25% 0px',
+                once: true,
+                amount: 0.25,
+              }}
+              transition={{
+                duration: isIndeterminate ? 1 : duration,
+                ease: [0.22, 1, 0.36, 1],
+                repeat: isIndeterminate ? Infinity : 0,
+              }}
+              strokeWidth={thickness}
+              strokeDasharray={circumference}
+              strokeLinecap='round'
+              fill='none'
+              r={radius - thickness / 2}
+              cx={radius}
+              cy={radius}
+            />
+          </svg>
+          {showValue && (
+            <motion.span
+              className={cn(
+                'absolute text-gray-600 font-medium',
+                textSizes[size],
+              )}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+            >
+              {Math.round(percentage)}%
+            </motion.span>
+          )}
+        </React.Fragment>
       </div>
     );
   },

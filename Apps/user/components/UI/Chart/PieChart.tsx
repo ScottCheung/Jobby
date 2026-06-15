@@ -1,3 +1,5 @@
+/** @format */
+
 import {
   Cell,
   Pie,
@@ -7,6 +9,7 @@ import {
   Legend,
 } from 'recharts';
 import { ChartTooltip } from './Tooltip';
+import { div } from 'framer-motion/client';
 
 interface PieChartProps {
   data: any[];
@@ -63,10 +66,13 @@ const renderCustomizedLabel = ({
       <text
         x={x}
         y={y}
-        fill='white'
+        fill='var(--color-ink-secondary)'
         textAnchor={x > cx ? 'start' : 'end'}
         dominantBaseline='central'
-        className='text-xs font-medium'
+        className='text-xs font-bold'
+        stroke='var(--color-panel)'
+        strokeWidth='4'
+        paintOrder='stroke'
       >
         {`${(percent * 100).toFixed(0)}%`}
       </text>
@@ -103,10 +109,7 @@ const PieChart = ({
   }
 
   return (
-    <ResponsiveContainer
-      width='100%'
-      height='100%'
-    >
+    <ResponsiveContainer width='100%' height='100%'>
       <RechartsPieChart>
         <Pie
           data={data}

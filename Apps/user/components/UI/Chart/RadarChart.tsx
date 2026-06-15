@@ -1,3 +1,5 @@
+/** @format */
+
 import {
   PolarAngleAxis,
   PolarGrid,
@@ -64,13 +66,12 @@ const RadarChart = ({
 }: RadarChartProps) => {
   const seriesKeys =
     yKeys ||
-    (yKey
-      ? [yKey]
-      : data && data.length > 0
-      ? Object.keys(data[0] || {}).filter(
-          (k) => k !== xKey && typeof data[0][k] === 'number',
-        )
-      : []);
+    (yKey ? [yKey]
+    : data && data.length > 0 ?
+      Object.keys(data[0] || {}).filter(
+        (k) => k !== xKey && typeof data[0][k] === 'number',
+      )
+    : []);
 
   if (!data || data.length === 0 || !xKey || seriesKeys.length === 0) {
     return (
@@ -84,9 +85,9 @@ const RadarChart = ({
     return seriesKeys.map((key, index) => {
       // Use the passed 'color' prop for single series, COLORS palette for multiple
       const seriesColor =
-        seriesKeys.length === 1 && !yKeys
-          ? color
-          : COLORS[index % COLORS.length];
+        seriesKeys.length === 1 && !yKeys ?
+          color
+        : COLORS[index % COLORS.length];
 
       let dotConfig: RechartsRadarProps['dot'] = false;
       if (showDots === true) {
@@ -121,21 +122,13 @@ const RadarChart = ({
   };
 
   return (
-    <ResponsiveContainer
-      width='100%'
-      height='100%'
-    >
-      <RechartsRadarChart
-        cx='50%'
-        cy='50%'
-        outerRadius='80%'
-        data={data}
-      >
+    <ResponsiveContainer width='100%' height='100%'>
+      <RechartsRadarChart cx='50%' cy='50%' outerRadius='80%' data={data}>
         {showGrid && (
           <PolarGrid
             gridType={gridType}
             strokeDasharray='3 3'
-            stroke='var(--muted-foreground)'
+            stroke='var(--color-ink-secondary)'
             strokeOpacity={0.3}
           />
         )}
@@ -143,15 +136,15 @@ const RadarChart = ({
           <>
             <PolarAngleAxis
               dataKey={xKey}
-              tick={{ fill: 'var(--muted-foreground)', fontSize: 12 }}
-              stroke='var(--muted-foreground)'
+              tick={{ fill: 'var(--color-ink-secondary)', fontSize: 12 }}
+              stroke='var(--color-ink-secondary)'
               strokeOpacity={0.3}
             />
             <PolarRadiusAxis
-              tick={{ fill: 'var(--muted-foreground)', fontSize: 10 }}
+              tick={{ fill: 'var(--color-ink-secondary)', fontSize: 10 }}
               axisLine={false}
               tickCount={5}
-              stroke='var(--muted-foreground)'
+              stroke='var(--color-ink-secondary)'
               strokeOpacity={0.3}
             />
           </>
@@ -169,7 +162,7 @@ const RadarChart = ({
               const originalData = payload[0].payload;
               // 转换 payload 以适应 ChartTooltip 的数据结构
               const transformedPayload = payload.map((entry) => ({
-                name: entry.dataKey, // 使用 dataKey 作为系列名称 (studentA, studentB, etc.)
+                name: entry.dataKey ? String(entry.dataKey) : undefined, // 使用 dataKey 作为系列名称 (studentA, studentB, etc.)
                 value: entry.value as number, // 确保 value 是 number 类型
                 color: entry.color || entry.stroke,
                 payload: entry.payload,
@@ -188,7 +181,7 @@ const RadarChart = ({
             }
             return null;
           }}
-          cursor={{ fill: 'var(--muted-foreground)', fillOpacity: 0.05 }}
+          cursor={{ fill: 'var(--color-ink-secondary)', fillOpacity: 0.05 }}
         />
         {showLegend && <Legend wrapperStyle={{ paddingTop: '20px' }} />}
       </RechartsRadarChart>

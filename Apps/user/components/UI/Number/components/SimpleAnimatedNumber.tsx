@@ -1,10 +1,10 @@
 import { motion } from 'framer-motion';
 import React, { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
-import { formatNumberValue } from '../utils/numberFormatters';
+// import { AnimatedNumberProps } from '../types';
 
-interface AnimatedNumberProps {
-  value: number;
+export interface AnimatedNumberProps {
+  value: number | string;
   useShortFormat?: boolean;
   maxSignificantDigits?: number;
   size?: 'sm' | 'md' | 'lg' | 'xl';
@@ -14,6 +14,7 @@ interface AnimatedNumberProps {
   className?: string;
   style?: React.CSSProperties;
 }
+import { formatNumberValue } from '../utils/numberFormatters';
 
 /**
  * Simple animated number component that displays a number with animation
@@ -51,7 +52,8 @@ export const SimpleAnimatedNumber: React.FC<AnimatedNumberProps> = ({
   useEffect(() => {
     // Format number based on configuration
     // useShortFormat and maxSignificantDigits are mutually exclusive
-    const formatted = formatNumberValue(value, useShortFormat, maxSignificantDigits);
+    const numValue = typeof value === 'number' ? value : parseFloat(String(value));
+    const formatted = formatNumberValue(numValue, useShortFormat, maxSignificantDigits);
     setDisplayValue(formatted);
   }, [value, useShortFormat, maxSignificantDigits]);
 

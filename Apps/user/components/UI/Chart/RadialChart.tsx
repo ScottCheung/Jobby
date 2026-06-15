@@ -24,7 +24,7 @@ interface RadialChartProps {
   showLegend?: boolean;
   customTooltip?: React.ReactElement | ((props: any) => React.ReactElement);
   // More props can be added for customization, e.g., startAngle, endAngle, innerRadius, outerRadius
-  height?: number | `${number}%`; // Allow custom height
+  height?: string | number; // Allow custom height
   startAngle?: number; // Added startAngle
   endAngle?: number; // Added endAngle
   innerRadius?: string | number; // Added innerRadius
@@ -98,7 +98,7 @@ export const RadialChart: React.FC<RadialChartProps> = ({
   return (
     <ResponsiveContainer
       width='100%'
-      height={height}
+      height={height as any}
     >
       <RechartsRadialBarChart
         cx='50%'
@@ -121,13 +121,13 @@ export const RadialChart: React.FC<RadialChartProps> = ({
             position: 'insideStart',
             fill: '#fff',
             fontSize: '9px',
-            formatter: (value: any) => typeof value === 'number' ? value.toLocaleString() : String(value),
+            formatter: (value: any) => value.toLocaleString(),
           }}
           background={{ fill: '#f0f0f0' }}
           dataKey={valueKey as string}
           angleAxisId={0}
           cornerRadius={barSize / 2}
-          onMouseEnter={(itemData) => setActiveName(itemData[nameKey!])}
+          onMouseEnter={(itemData) => setActiveName((itemData as any)[nameKey!])}
           onMouseLeave={() => setActiveName(null)}
           isAnimationActive={true} // Keep animation for initial draw
           animationEasing='ease-in-out' // Smoother animation
@@ -140,6 +140,13 @@ export const RadialChart: React.FC<RadialChartProps> = ({
             verticalAlign='middle'
             align='right'
             wrapperStyle={{ fontSize: '12px' }}
+            // @ts-expect-error Recharts Legend payload type mismatch
+            payload={processedData.map((item) => ({
+              value: item[nameKey!],
+              type: 'circle',
+              id: item[nameKey!],
+              color: item.originalFill,
+            }))}
           />
         )}
         <Tooltip

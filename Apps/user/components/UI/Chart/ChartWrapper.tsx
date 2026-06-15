@@ -25,7 +25,7 @@ const ChartWrapper = ({
   return (
     <div
       ref={ref}
-      className={cn('w-[400px] h-[300px]', className)}
+      className={cn('w-full', className)}
       {...props}
     >
       {title && (
@@ -50,7 +50,7 @@ const ChartWrapper = ({
           </m.div>
         )}
         {!isInView && (
-          <m.div className='flex animate-pulse h-[300px] w-full items-center justify-center bg-gray-200 rounded-xl'></m.div>
+          <m.div className='flex animate-pulse h-full w-full items-center justify-center bg-gray-200 rounded-xl'></m.div>
         )}
       </div>
     </div>
