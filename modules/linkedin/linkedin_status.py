@@ -8,7 +8,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
 
-WIDGET_VERSION = "2026-06-15-inline-status-v5"
+WIDGET_VERSION = "2026-06-15-inline-status-v10"
 __all__ = [
     "WIDGET_VERSION",
     "bind_context",
@@ -99,6 +99,17 @@ def sync_status_widget(driver=None) -> None:
             "window.linkedinBotStatusInitialized = true; window.linkedinBotStatusVersion = arguments[0];\n" + js_code,
             WIDGET_VERSION,
         )
+        try:
+            has_style = driver.execute_script(
+                "return !!document.getElementById('linkedin-bot-status-style');"
+            )
+            has_root = driver.execute_script(
+                "return !!document.getElementById('linkedin-bot-status-root');"
+            )
+            if not has_style or not has_root:
+                print(f"LinkedIn status widget injected incompletely. style={has_style}, root={has_root}")
+        except Exception:
+            pass
         _last_widget_sync = now
     except Exception:
         pass

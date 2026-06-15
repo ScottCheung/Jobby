@@ -96,7 +96,7 @@ def show_final_summary(total_runs: int, easy_applied_count: int, external_jobs_c
     if time_saved > 0:
         time_saved += 60
         time_saved_msg = f"In this run, you saved approx {round(time_saved/60)} mins ({time_saved} secs), please consider supporting the project."
-    msg = f"{quotes}\n\n\n{time_saved_msg}\nYou can also get your quote and name shown here, or prioritize your bug reports by supporting the project at:\n\nhttps://github.com/sponsors/GodsScion\n\n\nSummary:\n{summary}\n\n\nBest regards,\nScott Cheung\nhttps://www.linkedin.com/in/saivigneshgolla/\n\nTop Sponsors:\n{sponsors}"
+    msg = f"{quotes}\n\n\n{time_saved_msg}\nYou can also get your quote and name shown here, or prioritize your bug reports by supporting the project at:\n\nhttps://github.com/sponsors/GodsScion\n\n\nSummary:\n{summary}\n\n\nBest regards,\nScott Cheung\nhttps://www.linkedin.com/in/scottcheung1110/\n\nTop Sponsors:\n{sponsors}"
     pyautogui.alert(msg, "Exiting..")
     _log(msg, "Closing the browser...")
     if tabs_count >= 10:

@@ -46,10 +46,10 @@ def get_default_temp_profile() -> str:
     # Thanks to https://github.com/vinodbavage31 for suggestion!
     home = pathlib.Path.home()
     if sys.platform.startswith('win'):
-        return "--user-data-dir=C:\\temp\\auto-job-apply-profile"
+        return "C:\\temp\\auto-job-apply-profile"
     elif sys.platform.startswith('linux'):
         return str(home / ".auto-job-apply-profile")
-    return str(home / "Library" / "Application Support" / "Google" / "Chrome" / "auto-job-apply-profile")
+    return str(home / ".auto-job-apply-profile")
 
 
 def find_default_profile_directory() -> str | None:
@@ -75,11 +75,10 @@ def find_default_profile_directory() -> str | None:
             str(home / ".config" / "google-chrome"),
             str(home / ".var" / "app" / "com.google.Chrome" / "data" / ".config" / "google-chrome"),
         ]
-    # MacOS ## For some reason, opening with profile in MacOS is not creating a session for undetected-chromedriver!
-    # elif sys.platform == 'darwin':
-    #     paths = [
-    #         str(home / "Library" / "Application Support" / "Google" / "Chrome")
-    #     ]
+    elif sys.platform == 'darwin':
+        paths = [
+            str(home / ".auto-job-apply-profile")
+        ]
     else:
         return None
 

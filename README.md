@@ -205,7 +205,7 @@ def alert_box(title: str, message: str) -> None:
   '''
   from pyautogui import alert
 
-##> ------ Scott Cheung : saivigneshgolla@outlook.com - Bug fix ------
+##> ------ Scott Cheung : xianzhe.site@gmail.com - Bug fix ------
   return alert(message, title)
 ##<
 ```
@@ -313,7 +313,7 @@ Please consider the following:
 
 ## ⚖️ License
 
-Copyright (C) 2024 Scott Cheung <saivigneshgolla@outlook.com>
+Copyright (C) 2024 Scott Cheung <xianzhe.site@gmail.com>
 
 This program is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 
@@ -331,10 +331,8 @@ See [AGPLv3 LICENSE](LICENSE) for more info.
 
 ## 🐧 Socials
 
-- **LinkedIn** : https://www.linkedin.com/in/saivigneshgolla/
-- **Email** : saivigneshgolla@outlook.com
-- **X/Twitter**: https://x.com/saivigneshgolla
-- **Discord** : godsscion
+- **LinkedIn** : https://www.linkedin.com/in/scottcheung1110/
+- **Email** : xianzhe.site@gmail.com
 
 ## 🙌 Community Support and Discussions
 

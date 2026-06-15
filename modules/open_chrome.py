@@ -3,6 +3,7 @@ import re
 import ssl
 import sys
 import subprocess
+import pathlib
 import certifi
 
 def _configure_ssl_certificates() -> None:
@@ -135,6 +136,30 @@ def _prepare_undetected_cache() -> None:
         shutil.rmtree(UC_CACHE_DIR, ignore_errors=True)
 
 
+def _is_dedicated_bot_profile(profile_dir: str | None) -> bool:
+    if not profile_dir:
+        return False
+    return pathlib.Path(profile_dir).name == "auto-job-apply-profile"
+
+
+def _cleanup_profile_locks(profile_dir: str | None) -> None:
+    if not _is_dedicated_bot_profile(profile_dir):
+        return
+    lock_names = [
+        "SingletonCookie",
+        "SingletonLock",
+        "SingletonSocket",
+        "RunningChromeVersion",
+    ]
+    for lock_name in lock_names:
+        lock_path = os.path.join(profile_dir, lock_name)
+        try:
+            if os.path.lexists(lock_path):
+                os.unlink(lock_path)
+        except Exception as error:
+            print_lg(f"Failed to remove stale Chrome profile lock {lock_path}", error)
+
+
 def _build_chrome_options(use_uc: bool):
     if use_uc:
         import undetected_chromedriver as uc
@@ -149,6 +174,9 @@ def _build_chrome_options(use_uc: bool):
         options.add_argument("--headless=new")
     if disable_extensions:
         options.add_argument("--disable-extensions")
+    options.add_argument("--no-first-run")
+    options.add_argument("--no-default-browser-check")
+    options.add_argument("--disable-features=DialMediaRouteProvider,OptimizationGuideModelDownloading,SidePanelPinning")
     if os.environ.get("DOCKER"):
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
@@ -200,14 +228,18 @@ def createChromeSession(isRetry: bool = False):
     options = _build_chrome_options(use_uc)
 
     print_lg("IF YOU HAVE MORE THAN 10 TABS OPENED, PLEASE CLOSE OR BOOKMARK THEM! Or it's highly likely that application will just open browser and not do anything!")
-    profile_dir = find_default_profile_directory()
-    if isRetry:
-        print_lg("Will login with a guest profile, browsing history will not be saved in the browser!")
-    elif profile_dir and not safe_mode:
+    profile_dir = None
+    if not safe_mode:
+        profile_dir = find_default_profile_directory()
+    if profile_dir:
+        print_lg(f"Using existing dedicated bot profile for LinkedIn session: {profile_dir}")
+        _cleanup_profile_locks(profile_dir)
         options.add_argument(f"--user-data-dir={profile_dir}")
     else:
-        print_lg("Logging in with a guest profile, Web history will not be saved!")
-        options.add_argument(f"--user-data-dir={get_default_temp_profile()}")
+        profile_dir = get_default_temp_profile()
+        print_lg(f"Using persistent dedicated bot profile: {profile_dir}")
+        _cleanup_profile_locks(profile_dir)
+        options.add_argument(f"--user-data-dir={profile_dir}")
 
     try:
         driver = _create_driver(options, use_uc)
@@ -215,12 +247,15 @@ def createChromeSession(isRetry: bool = False):
         if use_uc and _should_fallback_to_selenium(error):
             print_lg("Undetected Chrome startup failed. Falling back to standard Selenium mode...")
             options = _build_chrome_options(False)
-            if isRetry:
-                print_lg("Will login with a guest profile, browsing history will not be saved in the browser!")
-            elif profile_dir and not safe_mode:
+            if profile_dir and not safe_mode:
+                print_lg(f"Using existing dedicated bot profile for LinkedIn session: {profile_dir}")
+                _cleanup_profile_locks(profile_dir)
                 options.add_argument(f"--user-data-dir={profile_dir}")
             else:
-                options.add_argument(f"--user-data-dir={get_default_temp_profile()}")
+                profile_dir = get_default_temp_profile()
+                print_lg(f"Using persistent dedicated bot profile: {profile_dir}")
+                _cleanup_profile_locks(profile_dir)
+                options.add_argument(f"--user-data-dir={profile_dir}")
             driver = _create_driver(options, False)
         else:
             raise
@@ -258,8 +293,8 @@ def _format_chrome_startup_error(error: Exception) -> str:
     return (
         "Failed to start Chrome. Update Google Chrome and retry.\n\n"
         "If issue persists, try safe_mode = True in config/settings.py\n\n"
-        "GitHub: https://github.com/GodsScion/Auto_job_applier_linkedIn\n"
-        "Discord: https://discord.gg/fFp7uUzWCY"
+        "Linkedin: https://www.linkedin.com/in/scottcheung1110/\n"
+        "Email: scott5443003@gmail.com"
     )
 
 
@@ -271,7 +306,7 @@ def initialize_chrome_session():
     try:
         options, driver, actions, wait = createChromeSession()
     except SessionNotCreatedException as e:
-        critical_error_log("Failed to create Chrome Session, retrying with guest profile", e)
+        critical_error_log("Failed to create Chrome Session, retrying with the same persistent profile", e)
         options, driver, actions, wait = createChromeSession(True)
     except Exception as e:
         msg = _format_chrome_startup_error(e)
