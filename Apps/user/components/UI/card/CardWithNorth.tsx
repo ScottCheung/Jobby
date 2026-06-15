@@ -62,8 +62,10 @@ const CardWithNorth: React.FC<CardWithNorthProps> = ({
       {/* Content Section */}
       <div
         className={cn(
-          `bg-panel group-hover:bg-panel/50  p-card   h-full   overflow-visible ${contentClassName}`,
-          title ? 'rounded-b-4xl rounded-tr-4xl !pt-6 !pl-6' : 'rounded-card',
+          `bg-panel group-hover:bg-panel/50  p-card    h-full   overflow-visible ${contentClassName}`,
+          title ?
+            'rounded-b-4xl rounded-tr-4xl !pt-6 !pb-0 !pl-6'
+          : 'rounded-card',
         )}
       >
         {children}

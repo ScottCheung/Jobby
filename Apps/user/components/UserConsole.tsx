@@ -283,36 +283,36 @@ export function UserConsole() {
         label: 'Applications',
         value: applications.length,
         icon: Briefcase,
-        iconColor: 'text-blue-500 dark:text-blue-400',
+        iconColor: 'text-blue-500/50 hover:text-white dark:text-blue-400',
         textColor: 'text-blue-600 dark:text-blue-400',
-        bgColor: 'bg-blue-500/10 dark:bg-blue-500/20',
+        bgColor: 'bg-blue-500/5 dark:bg-blue-500/20',
         borderColor: 'border-blue-500/20',
       },
       {
         label: 'Submitted',
         value: submitted,
         icon: CheckCircle2,
-        iconColor: 'text-emerald-500 dark:text-emerald-400',
+        iconColor: 'text-emerald-500/50 dark:text-emerald-400',
         textColor: 'text-emerald-600 dark:text-emerald-400',
-        bgColor: 'bg-emerald-500/10 dark:bg-emerald-500/20',
+        bgColor: 'bg-emerald-500/5 dark:bg-emerald-500/20',
         borderColor: 'border-emerald-500/20',
       },
       {
         label: 'Interviewing',
         value: interviewing,
         icon: MessageSquareCode,
-        iconColor: 'text-purple-500 dark:text-purple-400',
+        iconColor: 'text-purple-500/50 dark:text-purple-400',
         textColor: 'text-purple-600 dark:text-purple-400',
-        bgColor: 'bg-purple-500/10 dark:bg-purple-500/20',
+        bgColor: 'bg-purple-500/5 dark:bg-purple-500/20',
         borderColor: 'border-purple-500/20',
       },
       {
         label: 'Skipped',
         value: skipped,
         icon: XCircle,
-        iconColor: 'text-rose-500 dark:text-rose-400',
+        iconColor: 'text-rose-500/50 dark:text-rose-400',
         textColor: 'text-rose-600 dark:text-rose-400',
-        bgColor: 'bg-rose-500/10 dark:bg-rose-500/20',
+        bgColor: 'bg-rose-500/5 dark:bg-rose-500/20',
         borderColor: 'border-rose-500/20',
       },
     ];
@@ -855,15 +855,15 @@ export function UserConsole() {
               const Icon = item.icon;
               return (
                 <CardWithNorth key={item.label} title={item.label}>
-                  <div className='flex flex-tua items-start caozao justify-between  relative pt-2'>
+                  <div className='flex items-start  justify-between  relative '>
                     <div
                       className={cn(
-                        'absolute -top-18 -right-2 z-50 p-6 rounded-full backdrop-blur-sm',
+                        'absolute -top-18 -right-2 z-50 p-6 rounded-full backdrop-blur-[3px]',
                         item.bgColor,
                         item.borderColor,
                       )}
                     >
-                      <Icon className={cn('w-16 h-16', item.iconColor)} />
+                      <Icon className={cn('w-12 h-12', item.iconColor)} />
                     </div>
                     <H1
                       className={cn(
@@ -1152,10 +1152,10 @@ export function UserConsole() {
                                 className={cn(
                                   'inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider',
                                   item.status === 'submitted' ?
-                                    'bg-green-500/10 text-green-600 dark:bg-green-900/20 dark:text-green-400'
+                                    'bg-green-500/5 text-green-600 dark:bg-green-900/20 dark:text-green-400'
                                   : item.status === 'skipped' ?
-                                    'bg-amber-500/10 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400'
-                                  : 'bg-zinc-500/10 text-zinc-600 dark:bg-zinc-850/20 dark:text-zinc-400',
+                                    'bg-amber-500/5 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400'
+                                  : 'bg-zinc-500/5 text-zinc-600 dark:bg-zinc-850/20 dark:text-zinc-400',
                                 )}
                               >
                                 {item.status}
@@ -1556,10 +1556,10 @@ export function UserConsole() {
                                 className={cn(
                                   'inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider',
                                   item.status === 'submitted' ?
-                                    'bg-green-500/10 text-green-600 dark:bg-green-900/20 dark:text-green-400'
+                                    'bg-green-500/5 text-green-600 dark:bg-green-900/20 dark:text-green-400'
                                   : item.status === 'skipped' ?
-                                    'bg-amber-500/10 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400'
-                                  : 'bg-zinc-500/10 text-zinc-600 dark:bg-zinc-800/20 dark:text-zinc-400',
+                                    'bg-amber-500/5 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400'
+                                  : 'bg-zinc-500/5 text-zinc-600 dark:bg-zinc-800/20 dark:text-zinc-400',
                                 )}
                               >
                                 {item.status}
