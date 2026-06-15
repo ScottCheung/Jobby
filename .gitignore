@@ -1,16 +1,47 @@
-__pycache__
-.vscode
-.idea
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
 
-all excels
-all resumes
-logs
-data
+# IDEs
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
 
-old
+# Project-specific ignored folders
+all excels/
+all resumes/
+logs/
+data/
+old/
+.venv/
+env/
+venv/
+ENV/
 
+# Secrets & Configs
 secrets.py
 config/personals.py
-.venv
 apikeys.py
-/modules/dashboard/node_modules
+.env
+.env.local
+.env.*.local
+
+# Node / Frontend build files
+node_modules/
+dist/
+build/
+.eslintcache
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db

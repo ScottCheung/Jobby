@@ -3,7 +3,6 @@
 # Imports
 import os
 import csv
-import re
 import time
 import pyautogui
 
@@ -18,7 +17,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support.select import Select
 from selenium.webdriver.remote.webelement import WebElement
-from selenium.common.exceptions import NoSuchElementException, ElementClickInterceptedException, NoSuchWindowException, ElementNotInteractableException, WebDriverException
+from selenium.common.exceptions import NoSuchElementException, ElementClickInterceptedException, NoSuchWindowException, WebDriverException
 
 from config.personals import *
 from config.questions import *
@@ -28,254 +27,17 @@ from config.settings import *
 
 from modules.open_chrome import *
 from modules.helpers import *
+import modules.linkedin.linkedin_status as linkedin_status
+from modules.linkedin.linkedin_status import *
+import modules.linkedin.linkedin_filters as linkedin_filters
+import modules.linkedin.linkedin_job_details as linkedin_job_details
+import modules.linkedin.linkedin_apply as linkedin_apply
+import modules.linkedin.linkedin_jobs as linkedin_jobs
+import modules.linkedin.linkedin_flow as linkedin_flow
 original_buffer = buffer
 _print_lg = print_lg
-STATUS_WIDGET_VERSION = "2026-06-15-inline-status-v3"
-_last_status_sync = 0.0
-_last_status_message = None
-_last_widget_sync = 0.0
-_bot_pause_announced = False
-
-def _clean_status_text(message) -> str | None:
-    text = str(message or "").strip()
-    if not text:
-        return None
-    text = re.sub(r"^\[Status\]\s*", "", text).strip()
-    text = re.sub(r"\s+", " ", text)
-    if not text or set(text) <= {"_", "-", "#", "@", ">"}:
-        return None
-    if len(text) > 220:
-        text = text[:217].rstrip() + "..."
-    return text
-
-def sync_status_widget(driver) -> None:
-    # Inject the lightweight LinkedIn status widget only on LinkedIn pages.
-    global _last_widget_sync
-    try:
-        if "linkedin.com" not in driver.current_url:
-            return
-    except Exception:
-        return
-
-    now = time.time()
-    if now - _last_widget_sync < 0.75:
-        return
-
-    try:
-        is_init = driver.execute_script(
-            "return window.linkedinBotStatusInitialized === true && window.linkedinBotStatusVersion === arguments[0];",
-            STATUS_WIDGET_VERSION
-        )
-    except Exception:
-        is_init = False
-
-    if is_init:
-        _last_widget_sync = now
-        return
-
-    js_file = os.path.join("modules", "javascript", "status_injector.js")
-    if not os.path.exists(js_file):
-        return
-
-    with open(js_file, "r", encoding="utf-8") as f:
-        js_code = f.read()
-
-    try:
-        driver.execute_script(
-            "window.linkedinBotStatusInitialized = true; window.linkedinBotStatusVersion = arguments[0];\n" + js_code,
-            STATUS_WIDGET_VERSION
-        )
-        _last_widget_sync = now
-    except Exception as e:
-        _print_lg(f"[Status] Error injecting LinkedIn status widget: {e}")
-
-def update_linkedin_status(message, force: bool = False) -> None:
-    global _last_status_sync, _last_status_message
-    status_text = _clean_status_text(message)
-    if not status_text:
-        return
-    now = time.time()
-    if not force and now - _last_status_sync < 0.35:
-        return
-    if status_text == _last_status_message and now - _last_status_sync < 0.5:
-        return
-    try:
-        if 'driver' not in globals() or driver is None:
-            return
-        if "linkedin.com" not in driver.current_url:
-            return
-        sync_status_widget(driver)
-        driver.execute_script(
-            "if (window.updateLinkedInBotStatus) window.updateLinkedInBotStatus(arguments[0]);",
-            status_text,
-        )
-        _last_status_sync = now
-        _last_status_message = status_text
-    except Exception:
-        pass
-
-def bot_status(message: str) -> None:
-    update_linkedin_status(f"[Status] {message}", force=True)
-
-def is_linkedin_bot_paused() -> bool:
-    try:
-        if 'driver' not in globals() or driver is None:
-            return False
-        if "linkedin.com" not in driver.current_url:
-            return False
-        sync_status_widget(driver)
-        return bool(driver.execute_script("return !!window.linkedinBotPaused;"))
-    except Exception:
-        return False
-
-def wait_if_bot_paused() -> None:
-    global _bot_pause_announced
-    while is_linkedin_bot_paused():
-        if not _bot_pause_announced:
-            bot_status("Paused. Click resume when you are ready.")
-            _bot_pause_announced = True
-        time.sleep(0.5)
-    if _bot_pause_announced:
-        _bot_pause_announced = False
-        bot_status("Resumed. Continuing automation.")
-
-def wait_for_filter_action(message: str) -> str:
-    try:
-        sync_status_widget(driver)
-        driver.execute_script(
-            "if (window.showLinkedInBotFilterRecovery) window.showLinkedInBotFilterRecovery(arguments[0]);",
-            message,
-        )
-        while True:
-            action = driver.execute_script("return window.linkedinBotFilterAction || null;")
-            if action in ("retry", "skip"):
-                driver.execute_script("window.linkedinBotFilterAction = null;")
-                return action
-            wait_if_bot_paused()
-            time.sleep(0.5)
-    except Exception:
-        return "skip"
-
-def set_status_widget_compact(compact: bool) -> None:
-    try:
-        if 'driver' not in globals() or driver is None:
-            return
-        if "linkedin.com" not in driver.current_url:
-            return
-        sync_status_widget(driver)
-        driver.execute_script(
-            "if (window.setLinkedInBotStatusCompact) window.setLinkedInBotStatusCompact(arguments[0]);",
-            compact,
-        )
-    except Exception:
-        pass
-
-def set_status_widget_hidden(hidden: bool) -> None:
-    try:
-        if 'driver' not in globals() or driver is None:
-            return
-        if "linkedin.com" not in driver.current_url:
-            return
-        sync_status_widget(driver)
-        driver.execute_script(
-            """
-            const root = document.getElementById('linkedin-bot-status-root');
-            if (root) root.style.display = arguments[0] ? 'none' : '';
-            """,
-            hidden,
-        )
-    except Exception:
-        pass
-
-def filters_modal_open() -> bool:
-    try:
-        return bool(driver.execute_script(
-            """
-            const showButton = document.querySelector('button[data-test-reusables-filters-modal-show-results-button="true"]');
-            const visibleShowButton = !!(showButton && showButton.offsetParent !== null);
-            const dialog = document.querySelector('[role="dialog"]');
-            const visibleDialog = !!(dialog && dialog.offsetParent !== null && /filter/i.test(dialog.innerText || ''));
-            return visibleShowButton || visibleDialog;
-            """
-        ))
-    except Exception:
-        return False
-
-def search_results_visible() -> bool:
-    try:
-        return bool(driver.execute_script(
-            """
-            return !!document.querySelector(
-              '.jobs-search-results-list, .jobs-search-results, .scaffold-layout__list, .jobs-search-two-pane__wrapper'
-            );
-            """
-        ))
-    except Exception:
-        return False
-
-def show_results_submission_finished() -> bool:
-    for _ in range(6):
-        wait_if_bot_paused()
-        if not filters_modal_open():
-            return True
-        time.sleep(0.35)
-    return False
-
-def short_filter_error(error: Exception) -> str:
-    message = str(error or "").strip()
-    if not message or message.lower().startswith("stacktrace"):
-        return "LinkedIn did not confirm the filter click. This is often a temporary page animation or ChromeDriver timing issue."
-    first_line = message.splitlines()[0].strip()
-    return first_line[:220]
-
-def click_show_results_button() -> None:
-    wait_if_bot_paused()
-    set_status_widget_compact(True)
-    if not filters_modal_open() and search_results_visible():
-        bot_status("Search filters already appear applied. Continuing.")
-        return
-    locators = [
-        (By.CSS_SELECTOR, 'button[data-test-reusables-filters-modal-show-results-button="true"]'),
-        (By.XPATH, '//button[contains(translate(@aria-label, "ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz"), "apply current filters to show")]'),
-        (By.XPATH, '//button[contains(translate(normalize-space(.), "ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz"), "show results")]'),
-    ]
-    last_error = None
-    try:
-        for attempt in range(3):
-            for by, selector in locators:
-                try:
-                    button = WebDriverWait(driver, 4).until(EC.presence_of_element_located((by, selector)))
-                    driver.execute_script("arguments[0].scrollIntoView({block: 'center', inline: 'center'});", button)
-                    time.sleep(0.25)
-                    wait_if_bot_paused()
-                    set_status_widget_hidden(True)
-                    try:
-                        if attempt == 0:
-                            WebDriverWait(driver, 4).until(EC.element_to_be_clickable((by, selector))).click()
-                        elif attempt == 1:
-                            actions.move_to_element(button).pause(0.1).click().perform()
-                        else:
-                            driver.execute_script("arguments[0].click();", button)
-                    finally:
-                        set_status_widget_hidden(False)
-                    if show_results_submission_finished():
-                        bot_status("Search filters submitted.")
-                        return
-                except Exception as e:
-                    set_status_widget_hidden(False)
-                    last_error = e
-            if show_results_submission_finished():
-                bot_status("Search filters submitted.")
-                return
-            time.sleep(0.6)
-    finally:
-        set_status_widget_hidden(False)
-    if last_error:
-        raise last_error
-    if search_results_visible():
-        bot_status("Could not confirm the filter button click, but results are visible. Continuing.")
-        return
-    raise NoSuchElementException("Show results button was not found.")
+STATUS_WIDGET_VERSION = linkedin_status.WIDGET_VERSION
+linkedin_status.bind_context(driver, actions)
 
 def print_lg(*msgs: str | dict, end: str = "\n", pretty: bool = False, flush: bool = False, from_critical: bool = False) -> None:
     _print_lg(*msgs, end=end, pretty=pretty, flush=flush, from_critical=from_critical)
@@ -290,9 +52,7 @@ def buffer(speed: int=0) -> None:
     wait_if_bot_paused()
     try:
         if 'driver' in globals() and driver is not None:
-            now = time.time()
-            if now - _last_widget_sync > 2.0:
-                sync_status_widget(driver)
+            sync_status_widget(driver)
     except Exception:
         pass
 
@@ -301,6 +61,13 @@ from modules.validator import validate_config
 from modules.persistence import QuestionCache, ApplicationLogger, resolve_answer, match_option_in_list
 from modules.persistence import answer_resolver as answer_resolver_module
 from config.custom_questions import custom_questions
+
+linkedin_filters.bind_context(driver, actions, wait, buffer, print_lg)
+linkedin_job_details.bind_context(driver, print_lg)
+linkedin_apply.bind_context(driver, actions, question_cache, print_lg, unanswered_questions)
+linkedin_jobs.bind_context(driver, actions, buffer, print_lg, None)
+linkedin_flow.bind_context(driver, actions, wait, print_lg, application_logger)
+linkedin_jobs.bind_context(discard_job_func=linkedin_flow.discard_job)
 
 if use_AI:
     from modules.ai.openaiConnections import ai_create_openai_client, ai_extract_skills, ai_answer_question, ai_close_openai_client
@@ -338,8 +105,6 @@ external_jobs_count = 0
 failed_count = 0
 skip_count = 0
 dailyEasyApplyLimitReached = False
-
-re_experience = re.compile(r'[(]?\s*(\d+)\s*[)]?\s*[-to]*\s*\d*[+]*\s*year[s]?', re.IGNORECASE)
 
 desired_salary_lakhs = str(round(desired_salary / 100000, 2))
 desired_salary_monthly = str(round(desired_salary/12, 2))
@@ -450,957 +215,6 @@ def get_applied_job_ids() -> set[str]:
 
 
 
-def set_search_location() -> None:
-    '''
-    Function to set search location
-    '''
-    if search_location.strip():
-        try:
-            wait_if_bot_paused()
-            bot_status(f'Setting search location: "{search_location.strip()}"')
-            print_lg(f'Setting search location as: "{search_location.strip()}"')
-            search_location_ele = try_xp(driver, ".//input[@aria-label='City, state, or zip code'and not(@disabled)]", False) #  and not(@aria-hidden='true')]")
-            text_input(actions, search_location_ele, search_location, "Search Location")
-        except ElementNotInteractableException:
-            try_xp(driver, ".//label[@class='jobs-search-box__input-icon jobs-search-box__keywords-label']")
-            actions.send_keys(Keys.TAB, Keys.TAB).perform()
-            actions.key_down(Keys.CONTROL).send_keys("a").key_up(Keys.CONTROL).perform()
-            actions.send_keys(search_location.strip()).perform()
-            sleep(2)
-            actions.send_keys(Keys.ENTER).perform()
-            try_xp(driver, ".//button[@aria-label='Cancel']")
-        except Exception as e:
-            try_xp(driver, ".//button[@aria-label='Cancel']")
-            bot_status("Failed to update search location. Continuing with current location.")
-            print_lg("Failed to update search location, continuing with default location!", e)
-
-
-def apply_filters(retry_count: int = 0) -> None:
-    '''
-    Function to apply job search filters
-    '''
-    wait_if_bot_paused()
-    bot_status("Applying LinkedIn search filters...")
-    set_search_location()
-
-    try:
-        recommended_wait = 1 if click_gap < 1 else 0
-
-        wait_if_bot_paused()
-        bot_status("Opening LinkedIn filter panel...")
-        wait.until(EC.presence_of_element_located((By.XPATH, '//button[normalize-space()="All filters"]'))).click()
-        buffer(recommended_wait)
-
-        bot_status(f'Applying sort "{sort_by}" and date "{date_posted}"...')
-        wait_span_click(driver, sort_by)
-        wait_span_click(driver, date_posted)
-        buffer(recommended_wait)
-
-        bot_status("Applying experience and company filters...")
-        multi_sel_noWait(driver, experience_level) 
-        multi_sel_noWait(driver, companies, actions)
-        if experience_level or companies: buffer(recommended_wait)
-
-        bot_status("Applying job type and workplace filters...")
-        multi_sel_noWait(driver, job_type)
-        multi_sel_noWait(driver, on_site)
-        if job_type or on_site: buffer(recommended_wait)
-
-        if easy_apply_only:
-            bot_status("Enabling Easy Apply filter...")
-            boolean_button_click(driver, actions, "Easy Apply")
-        
-        bot_status("Applying location and industry filters...")
-        multi_sel_noWait(driver, location)
-        multi_sel_noWait(driver, industry)
-        if location or industry: buffer(recommended_wait)
-
-        bot_status("Applying function and title filters...")
-        multi_sel_noWait(driver, job_function)
-        multi_sel_noWait(driver, job_titles)
-        if job_function or job_titles: buffer(recommended_wait)
-
-        bot_status("Applying additional filters...")
-        if under_10_applicants: boolean_button_click(driver, actions, "Under 10 applicants")
-        if in_your_network: boolean_button_click(driver, actions, "In your network")
-        if fair_chance_employer: boolean_button_click(driver, actions, "Fair Chance Employer")
-
-        wait_span_click(driver, salary)
-        buffer(recommended_wait)
-        
-        multi_sel_noWait(driver, benefits)
-        multi_sel_noWait(driver, commitments)
-        if benefits or commitments: buffer(recommended_wait)
-
-        wait_if_bot_paused()
-        bot_status("Submitting search filters and waiting for results...")
-        click_show_results_button()
-
-        global pause_after_filters
-        if pause_after_filters and "Turn off Pause after search" == show_inpage_overlay("Please check your results", "These are your configured search results and filter. It is safe to change them while this dialog is open, any changes later could result in errors and skipping this search run.", ["Turn off Pause after search", "Look's good, Continue"]):
-            pause_after_filters = False
-
-    except Exception as e:
-        bot_status(f"Filter setup failed: {short_filter_error(e)}")
-        print_lg("Setting the preferences failed!")
-        if retry_count < 2:
-            action = wait_for_filter_action(short_filter_error(e))
-            if action == "retry":
-                bot_status("Retrying LinkedIn filters...")
-                print_lg("Retrying search filters...")
-                apply_filters(retry_count + 1)
-                return
-            bot_status("Skipping filter retry. Continuing with current results.")
-            print_lg("Skipping filter retry and continuing with current results.")
-            return
-        show_inpage_overlay("Error applying filters", f"Faced error while applying filters. Please make sure correct filters are selected, click on show results and click on any button of this dialog. Can't turn off Pause after search when error occurs! ERROR: {short_filter_error(e)}", ["Continue anyway", "Looks good, Continue"])
-        # print_lg(e)
-
-
-
-def get_page_info() -> tuple[WebElement | None, int | None]:
-    '''
-    Function to get pagination element and current page number
-    '''
-    try:
-        pagination_element = try_find_by_classes(driver, ["jobs-search-pagination__pages", "artdeco-pagination", "artdeco-pagination__pages"])
-        scroll_to_view(driver, pagination_element)
-        current_page = int(pagination_element.find_element(By.XPATH, "//button[contains(@class, 'active')]").text)
-    except Exception as e:
-        print_lg("Failed to find Pagination element, hence couldn't scroll till end!")
-        pagination_element = None
-        current_page = None
-        print_lg(e)
-    return pagination_element, current_page
-
-
-
-def get_job_main_details(job: WebElement, blacklisted_companies: set, rejected_jobs: set) -> tuple[str, str, str, str, str, bool]:
-    '''
-    # Function to get job main details.
-    Returns a tuple of (job_id, title, company, work_location, work_style, skip)
-    * job_id: Job ID
-    * title: Job title
-    * company: Company name
-    * work_location: Work location of this job
-    * work_style: Work style of this job (Remote, On-site, Hybrid)
-    * skip: A boolean flag to skip this job
-    '''
-    skip = False
-    job_details_button = job.find_element(By.TAG_NAME, 'a')  # job.find_element(By.CLASS_NAME, "job-card-list__title")  # Problem in India
-    scroll_to_view(driver, job_details_button, True)
-    job_id = job.get_dom_attribute('data-occludable-job-id')
-    title = job_details_button.text
-    title = title[:title.find("\n")]
-    # company = job.find_element(By.CLASS_NAME, "job-card-container__primary-description").text
-    # work_location = job.find_element(By.CLASS_NAME, "job-card-container__metadata-item").text
-    other_details = job.find_element(By.CLASS_NAME, 'artdeco-entity-lockup__subtitle').text
-    index = other_details.find(' · ')
-    company = other_details[:index]
-    work_location = other_details[index+3:]
-    work_style = work_location[work_location.rfind('(')+1:work_location.rfind(')')]
-    work_location = work_location[:work_location.rfind('(')].strip()
-    
-    # Skip if previously rejected due to blacklist or already applied
-    if company in blacklisted_companies:
-        print_lg(f'Skipping "{title} | {company}" job (Blacklisted Company). Job ID: {job_id}!')
-        skip = True
-    elif job_id in rejected_jobs: 
-        print_lg(f'Skipping previously rejected "{title} | {company}" job. Job ID: {job_id}!')
-        skip = True
-    try:
-        if job.find_element(By.CLASS_NAME, "job-card-container__footer-job-state").text == "Applied":
-            skip = True
-            print_lg(f'Already applied to "{title} | {company}" job. Job ID: {job_id}!')
-    except: pass
-    try: 
-        if not skip: job_details_button.click()
-    except Exception as e:
-        print_lg(f'Failed to click "{title} | {company}" job on details button. Job ID: {job_id}!') 
-        # print_lg(e)
-        discard_job()
-        job_details_button.click() # To pass the error outside
-    buffer(click_gap)
-    return (job_id,title,company,work_location,work_style,skip)
-
-
-# Function to check for Blacklisted words in About Company
-def check_blacklist(rejected_jobs: set, job_id: str, company: str, blacklisted_companies: set) -> tuple[set, set, WebElement] | ValueError:
-    jobs_top_card = try_find_by_classes(driver, ["job-details-jobs-unified-top-card__primary-description-container","job-details-jobs-unified-top-card__primary-description","jobs-unified-top-card__primary-description","jobs-details__main-content"])
-    about_company_org = find_by_class(driver, "jobs-company__box")
-    scroll_to_view(driver, about_company_org)
-    about_company_org = about_company_org.text
-    about_company = about_company_org.lower()
-    skip_checking = False
-    for word in about_company_good_words:
-        if word.lower() in about_company:
-            print_lg(f'Found the word "{word}". So, skipped checking for blacklist words.')
-            skip_checking = True
-            break
-    if not skip_checking:
-        for word in about_company_bad_words: 
-            if word.lower() in about_company: 
-                rejected_jobs.add(job_id)
-                blacklisted_companies.add(company)
-                raise ValueError(f'\n"{about_company_org}"\n\nContains "{word}".')
-    buffer(click_gap)
-    scroll_to_view(driver, jobs_top_card)
-    return rejected_jobs, blacklisted_companies, jobs_top_card
-
-
-
-# Function to extract years of experience required from About Job
-def extract_years_of_experience(text: str) -> int:
-    # Extract all patterns like '10+ years', '5 years', '3-5 years', etc.
-    matches = re.findall(re_experience, text)
-    if len(matches) == 0: 
-        print_lg(f'\n{text}\n\nCouldn\'t find experience requirement in About the Job!')
-        return 0
-    return max([int(match) for match in matches if int(match) <= 12])
-
-
-
-def get_job_description(
-) -> tuple[
-    str | Literal['Unknown'],
-    int | Literal['Unknown'],
-    bool,
-    str | None,
-    str | None
-    ]:
-    '''
-    # Job Description
-    Function to extract job description from About the Job.
-    ### Returns:
-    - `jobDescription: str | 'Unknown'`
-    - `experience_required: int | 'Unknown'`
-    - `skip: bool`
-    - `skipReason: str | None`
-    - `skipMessage: str | None`
-    '''
-    try:
-        ##> ------ Dheeraj Deshwal : dheeraj9811 Email:dheeraj20194@iiitd.ac.in/dheerajdeshwal9811@gmail.com - Feature ------
-        jobDescription = "Unknown"
-        ##<
-        experience_required = "Unknown"
-        found_masters = 0
-        jobDescription = find_by_class(driver, "jobs-box__html-content").text
-        jobDescriptionLow = jobDescription.lower()
-        skip = False
-        skipReason = None
-        skipMessage = None
-        for word in bad_words:
-            if word.lower() in jobDescriptionLow:
-                skipMessage = f'\n{jobDescription}\n\nContains bad word "{word}". Skipping this job!\n'
-                skipReason = "Found a Bad Word in About Job"
-                skip = True
-                break
-        if not skip and security_clearance == False and ('polygraph' in jobDescriptionLow or 'clearance' in jobDescriptionLow or 'secret' in jobDescriptionLow):
-            skipMessage = f'\n{jobDescription}\n\nFound "Clearance" or "Polygraph". Skipping this job!\n'
-            skipReason = "Asking for Security clearance"
-            skip = True
-        if not skip:
-            if did_masters and 'master' in jobDescriptionLow:
-                print_lg(f'Found the word "master" in \n{jobDescription}')
-                found_masters = 2
-            experience_required = extract_years_of_experience(jobDescription)
-            if current_experience > -1 and experience_required > current_experience + found_masters:
-                skipMessage = f'\n{jobDescription}\n\nExperience required {experience_required} > Current Experience {current_experience + found_masters}. Skipping this job!\n'
-                skipReason = "Required experience is high"
-                skip = True
-    except Exception as e:
-        if jobDescription == "Unknown":    print_lg("Unable to extract job description!")
-        else:
-            experience_required = "Error in extraction"
-            print_lg("Unable to extract years of experience required!")
-            # print_lg(e)
-    finally:
-        return jobDescription, experience_required, skip, skipReason, skipMessage
-        
-
-
-# Function to upload resume
-def upload_resume(modal: WebElement, resume: str) -> tuple[bool, str]:
-    try:
-        modal.find_element(By.NAME, "file").send_keys(os.path.abspath(resume))
-        return True, os.path.basename(default_resume_path)
-    except: return False, "Previous resume"
-
-# Function to answer common questions for Easy Apply (legacy import path; logic lives in answer_resolver)
-def answer_common_questions(label: str, answer: str) -> str:
-    if 'sponsorship' in label or 'visa' in label: answer = require_visa
-    return answer
-
-
-def _extract_select_options(select_el) -> list[str]:
-    select = Select(select_el)
-    return [option.text for option in select.options]
-
-
-def capture_manual_answers(modal: WebElement, company: str) -> None:
-    if not learn_from_manual_answers:
-        return
-    all_questions = modal.find_elements(By.XPATH, ".//div[@data-test-form-element]")
-    for Question in all_questions:
-        select = try_xp(Question, ".//select", False)
-        if select:
-            label_org = "Unknown"
-            try:
-                label = Question.find_element(By.TAG_NAME, "label")
-                label_org = label.find_element(By.TAG_NAME, "span").text
-            except Exception:
-                pass
-            if label_org.lower() == "phone country code":
-                continue
-            options = _extract_select_options(select)
-            answer = Select(select).first_selected_option.text
-            if answer and answer != "Select an option":
-                question_cache.save_answer(label_org, "select", answer, "manual", options=options, company=company)
-                print_lg(f'[manual] saved select "{label_org}" -> "{answer}"')
-            continue
-
-        radio = try_xp(Question, './/fieldset[@data-test-form-builder-radio-button-form-component="true"]', False)
-        if radio:
-            label = try_xp(radio, './/span[@data-test-form-builder-radio-button-form-component__title]', False)
-            try:
-                label = find_by_class(label, "visually-hidden", 2.0)
-            except Exception:
-                pass
-            label_org = label.text if label else "Unknown"
-            options = radio.find_elements(By.TAG_NAME, 'input')
-            options_labels = []
-            selected = None
-            for option in options:
-                option_id = option.get_attribute("id")
-                option_label = try_xp(radio, f'.//label[@for="{option_id}"]', False)
-                text = option_label.text if option_label else "Unknown"
-                options_labels.append(text)
-                if option.is_selected():
-                    selected = text
-            if selected:
-                question_cache.save_answer(label_org, "radio", selected, "manual", options=options_labels, company=company)
-                print_lg(f'[manual] saved radio "{label_org}" -> "{selected}"')
-            continue
-
-        text = try_xp(Question, ".//input[@type='text']", False)
-        if text:
-            label = try_xp(Question, ".//label[@for]", False)
-            try:
-                label = label.find_element(By.CLASS_NAME, 'visually-hidden')
-            except Exception:
-                pass
-            label_org = label.text if label else "Unknown"
-            answer = text.get_attribute("value")
-            if answer:
-                question_cache.save_answer(label_org, "text", answer, "manual", company=company)
-                print_lg(f'[manual] saved text "{label_org}" -> "{answer}"')
-            continue
-
-        text_area = try_xp(Question, ".//textarea", False)
-        if text_area:
-            label = try_xp(Question, ".//label[@for]", False)
-            label_org = label.text if label else "Unknown"
-            answer = text_area.get_attribute("value")
-            if answer:
-                question_cache.save_answer(label_org, "textarea", answer, "manual", company=company)
-                print_lg(f'[manual] saved textarea "{label_org}" -> "{answer}"')
-            continue
-
-
-def show_inpage_overlay(title: str, message: str, buttons: list[str]) -> str:
-    import json
-    escaped_title = json.dumps(title)
-    escaped_message = json.dumps(message)
-    buttons_json = json.dumps(buttons)
-    
-    js_script = f"""
-    (function() {{
-        const existing = document.getElementById('bot-inpage-sidebar');
-        if (existing) {{ existing.remove(); }}
-
-        const sidebar = document.createElement('div');
-        sidebar.id = 'bot-inpage-sidebar';
-        sidebar.style.cssText = `
-            position: fixed;
-            top: 40px;
-            right: 40px;
-            width: 340px;
-            background-color: #ffffff;
-            border: 1px solid #e0e0e0;
-            border-radius: 28px;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
-            z-index: 10000000;
-            font-family: 'Google Sans', Roboto, Arial, sans-serif;
-            padding: 20px;
-            color: #202124;
-            box-sizing: border-box;
-            display: flex;
-            flex-direction: column;
-            user-select: none;
-        `;
-
-        const header = document.createElement('div');
-        header.id = 'bot-sidebar-header';
-        header.style.cssText = `
-            font-size: 16px;
-            font-weight: 500;
-            color: #1a73e8;
-            cursor: move;
-            margin-bottom: 12px;
-            padding-bottom: 8px;
-            border-bottom: 1px solid #f1f3f4;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        `;
-        
-        const titleSpan = document.createElement('span');
-        titleSpan.textContent = {escaped_title};
-        header.appendChild(titleSpan);
-        
-        const dragIndicator = document.createElement('span');
-        dragIndicator.innerHTML = '&#9776;';
-        dragIndicator.style.cssText = `
-            font-size: 24px;
-            color: #bdc1c6;
-            cursor: move;
-        `;
-        header.appendChild(dragIndicator);
-        
-        sidebar.appendChild(header);
-
-        const msg = document.createElement('div');
-        msg.style.cssText = `
-            font-size: 13px;
-            line-height: 1.5;
-            color: #5f6368;
-            margin-top: 0;
-            margin-bottom: 20px;
-            white-space: pre-wrap;
-            user-select: text;
-        `;
-        msg.textContent = {escaped_message};
-        sidebar.appendChild(msg);
-
-        const btnContainer = document.createElement('div');
-        btnContainer.className = 'bot-btn-container';
-        btnContainer.style.cssText = `
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        `;
-
-        window.botSelectedOption = null;
-
-        const btnTexts = {buttons_json};
-        btnTexts.forEach((text, index) => {{
-            const btn = document.createElement('button');
-            btn.textContent = text;
-            btn.style.cssText = `
-                background-color: #dadce0;
-                color: #1a73e8;
-                border: 1px solid #dadce0;
-                padding: 10px 16px;
-                font-size: 13px;
-                font-weight: 500;
-                border-radius: 999px;
-                cursor: pointer;
-                transition: background-color 0.2s, border-color 0.2s, box-shadow 0.2s;
-                outline: none;
-                text-align: center;
-                box-shadow: none;
-            `;
-            if (index === btnTexts.length - 1) {{
-                btn.style.backgroundColor = '#1a73e8';
-                btn.style.color = '#ffffff';
-                btn.style.border = '1px solid transparent';
-                
-                btn.onmouseover = () => {{ 
-                    btn.style.backgroundColor = '#1557b0'; 
-                    btn.style.boxShadow = '0 1px 2px 0 rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15)';
-                }};
-                btn.onmouseout = () => {{ 
-                    btn.style.backgroundColor = '#1a73e8'; 
-                    btn.style.boxShadow = 'none';
-                }};
-            }} else {{
-                btn.onmouseover = () => {{ 
-                    btn.style.backgroundColor = '#f8f9fa'; 
-                    btn.style.borderColor = '#1a73e8'; 
-                }};
-                btn.onmouseout = () => {{ 
-                    btn.style.backgroundColor = '#ffffff'; 
-                    btn.style.borderColor = '#dadce0'; 
-                }};
-            }}
-
-            btn.addEventListener('click', () => {{
-                window.botSelectedOption = text;
-                sidebar.remove();
-            }});
-            btnContainer.appendChild(btn);
-        }});
-        sidebar.appendChild(btnContainer);
-        document.body.appendChild(sidebar);
-
-        let isDragging = false;
-        let startX, startY, initialX, initialY;
-        header.addEventListener('mousedown', (e) => {{
-            if (e.target.tagName.toLowerCase() === 'button') return;
-            isDragging = true;
-            startX = e.clientX;
-            startY = e.clientY;
-            const rect = sidebar.getBoundingClientRect();
-            initialX = rect.left;
-            initialY = rect.top;
-            document.addEventListener('mousemove', drag);
-            document.addEventListener('mouseup', stopDrag);
-        }});
-        function drag(e) {{
-            if (!isDragging) return;
-            const dx = e.clientX - startX;
-            const dy = e.clientY - startY;
-            sidebar.style.left = (initialX + dx) + 'px';
-            sidebar.style.top = (initialY + dy) + 'px';
-            sidebar.style.right = 'auto';
-            sidebar.style.bottom = 'auto';
-        }}
-        function stopDrag() {{
-            isDragging = false;
-            document.removeEventListener('mousemove', drag);
-            document.removeEventListener('mouseup', stopDrag);
-        }}
-    }})();
-    """
-    
-    try:
-        driver.execute_script(js_script)
-    except Exception as e:
-        print_lg(f"Error injecting JS sidebar: {e}")
-        import pyautogui
-        if len(buttons) == 1:
-            pyautogui.alert(message, title, button=buttons[0])
-            return buttons[0]
-        else:
-            return pyautogui.confirm(message, title, buttons)
-            
-    while True:
-        try:
-            sync_status_widget(driver)
-            selected = driver.execute_script("return window.botSelectedOption;")
-            if selected is not None:
-                driver.execute_script("window.botSelectedOption = null;")
-                return selected
-        except Exception:
-            return None
-        time.sleep(0.5)
-
-
-# Function to answer the questions for Easy Apply
-def answer_questions(modal: WebElement, questions_list: set, work_location: str, job_description: str | None = None, company: str = "Unknown") -> tuple[set, bool]:
-    global unanswered_questions
-    has_unanswered = False
-
-    wait_if_bot_paused()
-    bot_status("Reading Easy Apply questions...")
-    all_questions = modal.find_elements(By.XPATH, ".//div[@data-test-form-element]")
-
-    for Question in all_questions:
-        wait_if_bot_paused()
-        select = try_xp(Question, ".//select", False)
-        if select:
-            label_org = "Unknown"
-            try:
-                label = Question.find_element(By.TAG_NAME, "label")
-                label_org = label.find_element(By.TAG_NAME, "span").text
-            except Exception:
-                pass
-            label_lower = label_org.lower()
-            select_el = Select(select)
-            selected_option = select_el.first_selected_option.text
-            options_text = []
-            options_display = '"List of phone country codes"'
-            if label_lower != "phone country code":
-                options_text = _extract_select_options(select)
-                options_display = "".join([f' "{option}",' for option in options_text])
-            prev_answer = selected_option
-            source = "existing"
-            answer = prev_answer
-
-            if overwrite_previous_answers or selected_option == "Select an option":
-                if 'email' in label_lower or 'phone' in label_lower:
-                    answer = prev_answer
-                    source = "existing"
-                else:
-                    resolved, source = resolve_answer(
-                        label_org, "select", options_text, work_location,
-                        question_cache, job_description=job_description, prev_answer=prev_answer,
-                    )
-                    answer = resolved
-                    if answer is None:
-                        if source == "existing" and prev_answer and prev_answer != "Select an option":
-                            answer = prev_answer
-                        else:
-                            has_unanswered = True
-                            unanswered_questions.add((label_org, "select"))
-                            answer = prev_answer if prev_answer != "Select an option" else ""
-                    else:
-                        try:
-                            select_el.select_by_visible_text(answer)
-                        except NoSuchElementException:
-                            matched = match_option_in_list(answer, options_text)
-                            if matched:
-                                select_el.select_by_visible_text(matched)
-                                answer = matched
-                            else:
-                                has_unanswered = True
-                                unanswered_questions.add((label_org, "select"))
-                                answer = prev_answer
-                        if answer and source not in ("existing", "skipped", "unanswered"):
-                            question_cache.save_answer(label_org, "select", answer, source, options=options_text, company=company)
-
-            questions_list.add((f'{label_org} [ {options_display} ]', answer, "select", prev_answer, source))
-            continue
-
-        radio = try_xp(Question, './/fieldset[@data-test-form-builder-radio-button-form-component="true"]', False)
-        if radio:
-            prev_answer = None
-            label = try_xp(radio, './/span[@data-test-form-builder-radio-button-form-component__title]', False)
-            try:
-                label = find_by_class(label, "visually-hidden", 2.0)
-            except Exception:
-                pass
-            label_base = label.text if label else "Unknown"
-            label_org = label_base + ' [ '
-            options = radio.find_elements(By.TAG_NAME, 'input')
-            options_labels = []
-            options_plain = []
-
-            for option in options:
-                option_id = option.get_attribute("id")
-                option_label = try_xp(radio, f'.//label[@for="{option_id}"]', False)
-                plain = option_label.text if option_label else "Unknown"
-                options_plain.append(plain)
-                options_labels.append(f'"{plain}"<{option.get_attribute("value")}>')
-                if option.is_selected():
-                    prev_answer = options_labels[-1]
-                label_org += f' {options_labels[-1]},'
-            label_org += ' ]'
-            source = "existing"
-            answer = prev_answer
-
-            if overwrite_previous_answers or prev_answer is None:
-                resolved, source = resolve_answer(
-                    label_base, "radio", options_plain, work_location,
-                    question_cache, job_description=job_description, prev_answer=prev_answer,
-                )
-                if resolved is None:
-                    if source == "existing" and prev_answer:
-                        answer = prev_answer
-                    else:
-                        has_unanswered = True
-                        unanswered_questions.add((label_base, "radio"))
-                else:
-                    found_option = try_xp(radio, f".//label[normalize-space()='{resolved}']", False)
-                    if found_option:
-                        actions.move_to_element(found_option).click().perform()
-                        answer = resolved
-                    else:
-                        matched_label = match_option_in_list(resolved, options_plain)
-                        found_option = None
-                        if matched_label:
-                            found_option = try_xp(radio, f".//label[normalize-space()='{matched_label}']", False)
-                        if found_option:
-                            actions.move_to_element(found_option).click().perform()
-                            answer = matched_label
-                        else:
-                            has_unanswered = True
-                            unanswered_questions.add((label_base, "radio"))
-                            answer = prev_answer
-                    if answer and source not in ("existing", "skipped", "unanswered"):
-                        question_cache.save_answer(label_base, "radio", answer if isinstance(answer, str) and not answer.startswith('"') else resolved, source, options=options_plain, company=company)
-
-            questions_list.add((label_org, answer, "radio", prev_answer, source))
-            continue
-
-        text = try_xp(Question, ".//input[@type='text']", False)
-        if text:
-            wait_if_bot_paused()
-            do_actions = False
-            label = try_xp(Question, ".//label[@for]", False)
-            try:
-                label = label.find_element(By.CLASS_NAME, 'visually-hidden')
-            except Exception:
-                pass
-            label_org = label.text if label else "Unknown"
-            prev_answer = text.get_attribute("value")
-            source = "existing"
-            answer = prev_answer
-
-            if not prev_answer or overwrite_previous_answers:
-                resolved, source = resolve_answer(
-                    label_org, "text", None, work_location,
-                    question_cache, job_description=job_description, prev_answer=prev_answer,
-                )
-                if resolved is None:
-                    if source == "existing" and prev_answer:
-                        answer = prev_answer
-                    else:
-                        has_unanswered = True
-                        unanswered_questions.add((label_org, "text"))
-                        answer = prev_answer or ""
-                else:
-                    answer = resolved
-                    if 'city' in label_org.lower() or 'location' in label_org.lower() or 'address' in label_org.lower():
-                        do_actions = True
-                    text.clear()
-                    text.send_keys(answer)
-                    if do_actions:
-                        sleep(2)
-                        actions.send_keys(Keys.ARROW_DOWN)
-                        actions.send_keys(Keys.ENTER).perform()
-                    if source not in ("existing", "skipped", "unanswered"):
-                        question_cache.save_answer(label_org, "text", answer, source, company=company)
-
-            questions_list.add((label_org, text.get_attribute("value"), "text", prev_answer, source))
-            continue
-
-        text_area = try_xp(Question, ".//textarea", False)
-        if text_area:
-            wait_if_bot_paused()
-            label = try_xp(Question, ".//label[@for]", False)
-            label_org = label.text if label else "Unknown"
-            prev_answer = text_area.get_attribute("value")
-            source = "existing"
-            answer = prev_answer
-
-            if not prev_answer or overwrite_previous_answers:
-                resolved, source = resolve_answer(
-                    label_org, "textarea", None, work_location,
-                    question_cache, job_description=job_description, prev_answer=prev_answer,
-                )
-                if resolved is None:
-                    if source == "existing" and prev_answer:
-                        answer = prev_answer
-                    else:
-                        has_unanswered = True
-                        unanswered_questions.add((label_org, "textarea"))
-                        answer = prev_answer or ""
-                else:
-                    answer = resolved
-                    text_area.clear()
-                    text_area.send_keys(answer)
-                    if source not in ("existing", "skipped", "unanswered"):
-                        question_cache.save_answer(label_org, "textarea", answer, source, company=company)
-
-            questions_list.add((label_org, text_area.get_attribute("value"), "textarea", prev_answer, source))
-            continue
-
-        checkbox = try_xp(Question, ".//input[@type='checkbox']", False)
-        if checkbox:
-            wait_if_bot_paused()
-            label = try_xp(Question, ".//span[@class='visually-hidden']", False)
-            label_org = label.text if label else "Unknown"
-            option_label = try_xp(Question, ".//label[@for]", False)
-            option_text = option_label.text if option_label else "Unknown"
-            prev_answer = checkbox.is_selected()
-            checked = prev_answer
-            source = "existing"
-
-            if not prev_answer or overwrite_previous_answers:
-                resolved, source = resolve_answer(
-                    label_org, "checkbox", None, work_location,
-                    question_cache, job_description=job_description, prev_answer=str(prev_answer),
-                )
-                should_check = resolved is None or str(resolved).lower() in ("yes", "true", "1", "check", "checked")
-                if resolved is not None and str(resolved).lower() in ("no", "false", "0", "uncheck"):
-                    should_check = False
-                if should_check and not prev_answer:
-                    try:
-                        actions.move_to_element(checkbox).click().perform()
-                        checked = True
-                        question_cache.save_answer(label_org, "checkbox", str(checked), source if resolved else "keyword", company=company)
-                    except Exception as e:
-                        print_lg("Checkbox click failed!", e)
-
-            questions_list.add((f'{label_org} ([X] {option_text})', checked, "checkbox", prev_answer, source))
-            continue
-
-    try_xp(driver, "//button[contains(@aria-label, 'This is today')]")
-    return questions_list, has_unanswered
-
-
-
-
-def external_apply(pagination_element: WebElement, job_id: str, job_link: str, resume: str, date_listed, application_link: str, screenshot_name: str) -> tuple[bool, str, int]:
-    '''
-    Function to open new tab and save external job application links
-    '''
-    global tabs_count, dailyEasyApplyLimitReached
-    wait_if_bot_paused()
-    bot_status(f"Checking external application link for job {job_id}...")
-    if easy_apply_only:
-        try:
-            if "exceeded the daily application limit" in driver.find_element(By.CLASS_NAME, "artdeco-inline-feedback__message").text: dailyEasyApplyLimitReached = True
-        except: pass
-        bot_status(f"Skipping job {job_id}: Easy Apply did not start.")
-        print_lg("Easy apply failed I guess!")
-        if pagination_element != None: return True, application_link, tabs_count
-    try:
-        wait_if_bot_paused()
-        bot_status(f"Opening external application for job {job_id}...")
-        wait.until(EC.element_to_be_clickable((By.XPATH, ".//button[contains(@class,'jobs-apply-button') and contains(@class, 'artdeco-button--3')]"))).click() # './/button[contains(span, "Apply") and not(span[contains(@class, "disabled")])]'
-        wait_span_click(driver, "Continue", 1, True, False)
-        windows = driver.window_handles
-        tabs_count = len(windows)
-        driver.switch_to.window(windows[-1])
-        application_link = driver.current_url
-        bot_status(f"Captured external application link for job {job_id}.")
-        print_lg('Got the external application link "{}"'.format(application_link))
-        if close_tabs and driver.current_window_handle != linkedIn_tab: driver.close()
-        driver.switch_to.window(linkedIn_tab)
-        return False, application_link, tabs_count
-    except Exception as e:
-        # print_lg(e)
-        bot_status(f"Failed to open external application for job {job_id}.")
-        print_lg("Failed to apply!")
-        failed_job(job_id, job_link, resume, date_listed, "Probably didn't find Apply button or unable to switch tabs.", e, application_link, screenshot_name)
-        global failed_count
-        failed_count += 1
-        return True, application_link, tabs_count
-
-
-
-def follow_company(modal: WebDriver = driver) -> None:
-    '''
-    Function to follow or un-follow easy applied companies based om `follow_companies`
-    '''
-    try:
-        follow_checkbox_input = try_xp(modal, ".//input[@id='follow-company-checkbox' and @type='checkbox']", False)
-        if follow_checkbox_input and follow_checkbox_input.is_selected() != follow_companies:
-            try_xp(modal, ".//label[@for='follow-company-checkbox']")
-    except Exception as e:
-        print_lg("Failed to update follow companies checkbox!", e)
-    
-
-
-#< Failed attempts logging
-def failed_job(job_id: str, job_link: str, resume: str, date_listed, error: str, exception: Exception, application_link: str, screenshot_name: str,
-               title: str = "Unknown", company: str = "Unknown", search_term: str = "Unknown", work_location: str = "Unknown",
-               questions_list: set | None = None, work_style: str = "Unknown") -> None:
-    '''
-    Function to update failed jobs list in excel
-    '''
-    try:
-        with open(failed_file_name, 'a', newline='', encoding='utf-8') as file:
-            fieldnames = ['Job ID', 'Job Link', 'Resume Tried', 'Date listed', 'Date Tried', 'Assumed Reason', 'Stack Trace', 'External Job link', 'Screenshot Name']
-            writer = csv.DictWriter(file, fieldnames=fieldnames)
-            if file.tell() == 0: writer.writeheader()
-            writer.writerow({'Job ID':truncate_for_csv(job_id), 'Job Link':truncate_for_csv(job_link), 'Resume Tried':truncate_for_csv(resume), 'Date listed':truncate_for_csv(date_listed), 'Date Tried':datetime.now(), 'Assumed Reason':truncate_for_csv(error), 'Stack Trace':truncate_for_csv(exception), 'External Job link':truncate_for_csv(application_link), 'Screenshot Name':truncate_for_csv(screenshot_name)})
-            file.close()
-    except Exception as e:
-        print_lg("Failed to update failed jobs list!", e)
-        pyautogui.alert("Failed to update the excel of failed jobs!\nProbably because of 1 of the following reasons:\n1. The file is currently open or in use by another program\n2. Permission denied to write to the file\n3. Failed to find the file", "Failed Logging")
-
-    try:
-        application_logger.log_application({
-            "job_id": job_id,
-            "title": title,
-            "company": company,
-            "job_link": job_link,
-            "external_application_link": application_link,
-            "application_type": "easy_apply" if application_link == "Easy Applied" else "external",
-            "status": "failed",
-            "search_term": search_term,
-            "work_location": work_location,
-            "work_style": work_style,
-            "resume": resume,
-            "date_posted": str(date_listed),
-            "date_applied": None,
-            "questions": ApplicationLogger.format_questions(questions_list),
-            "screenshot": screenshot_name,
-            "error": str(error),
-            "stack_trace": str(exception),
-        })
-    except Exception as e:
-        print_lg("Failed to update JSON application log for failed job!", e)
-
-
-def screenshot(driver: WebDriver, job_id: str, failedAt: str) -> str:
-    '''
-    Function to to take screenshot for debugging
-    - Returns screenshot name as String
-    '''
-    screenshot_name = "{} - {} - {}.png".format( job_id, failedAt, str(datetime.now()) )
-    path = logs_folder_path+"/screenshots/"+screenshot_name.replace(":",".")
-    # special_chars = {'*', '"', '\\', '<', '>', ':', '|', '?'}
-    # for char in special_chars:  path = path.replace(char, '-')
-    driver.save_screenshot(path.replace("//","/"))
-    return screenshot_name
-#>
-
-
-
-def submitted_jobs(job_id: str, title: str, company: str, work_location: str, work_style: str, description: str, experience_required: int | Literal['Unknown', 'Error in extraction'], 
-                   skills: list[str] | Literal['In Development'], hr_name: str | Literal['Unknown'], hr_link: str | Literal['Unknown'], resume: str, 
-                   reposted: bool, date_listed: datetime | Literal['Unknown'], date_applied:  datetime | Literal['Pending'], job_link: str, application_link: str, 
-                   questions_list: set | None, connect_request: Literal['In Development'], search_term: str = "Unknown") -> None:
-    '''
-    Function to create or update the Applied jobs CSV file, once the application is submitted successfully
-    '''
-    try:
-        with open(file_name, mode='a', newline='', encoding='utf-8') as csv_file:
-            fieldnames = ['Job ID', 'Title', 'Company', 'Work Location', 'Work Style', 'About Job', 'Experience required', 'Skills required', 'HR Name', 'HR Link', 'Resume', 'Re-posted', 'Date Posted', 'Date Applied', 'Job Link', 'External Job link', 'Questions Found', 'Connect Request']
-            writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
-            if csv_file.tell() == 0: writer.writeheader()
-            writer.writerow({'Job ID':truncate_for_csv(job_id), 'Title':truncate_for_csv(title), 'Company':truncate_for_csv(company), 'Work Location':truncate_for_csv(work_location), 'Work Style':truncate_for_csv(work_style), 
-                            'About Job':truncate_for_csv(description), 'Experience required': truncate_for_csv(experience_required), 'Skills required':truncate_for_csv(skills), 
-                                'HR Name':truncate_for_csv(hr_name), 'HR Link':truncate_for_csv(hr_link), 'Resume':truncate_for_csv(resume), 'Re-posted':truncate_for_csv(reposted), 
-                                'Date Posted':truncate_for_csv(date_listed), 'Date Applied':truncate_for_csv(date_applied), 'Job Link':truncate_for_csv(job_link), 
-                                'External Job link':truncate_for_csv(application_link), 'Questions Found':truncate_for_csv(questions_list), 'Connect Request':truncate_for_csv(connect_request)})
-        csv_file.close()
-    except Exception as e:
-        print_lg("Failed to update submitted jobs list!", e)
-        pyautogui.alert("Failed to update the excel of applied jobs!\nProbably because of 1 of the following reasons:\n1. The file is currently open or in use by another program\n2. Permission denied to write to the file\n3. Failed to find the file", "Failed Logging")
-
-    try:
-        application_logger.log_application({
-            "job_id": job_id,
-            "title": title,
-            "company": company,
-            "job_link": job_link,
-            "external_application_link": application_link,
-            "application_type": "easy_apply" if application_link == "Easy Applied" else "external",
-            "status": "submitted",
-            "search_term": search_term,
-            "work_location": work_location,
-            "work_style": work_style,
-            "experience_required": experience_required,
-            "skills": skills,
-            "description": description,
-            "hr_name": hr_name,
-            "hr_link": hr_link,
-            "resume": resume,
-            "reposted": reposted,
-            "date_posted": str(date_listed),
-            "date_applied": str(date_applied),
-            "questions": ApplicationLogger.format_questions(questions_list),
-            "connect_request": connect_request,
-            "screenshot": None,
-            "error": None,
-        })
-    except Exception as e:
-        print_lg("Failed to update JSON application log!", e)
-
-
-
-# Function to discard the job application
-def discard_job() -> None:
-    actions.send_keys(Keys.ESCAPE).perform()
-    wait_span_click(driver, 'Discard', 2)
-
-
-
 
 
 
@@ -1410,6 +224,8 @@ def apply_to_jobs(search_terms: list[str]) -> None:
     rejected_jobs = set()
     blacklisted_companies = set()
     global current_city, failed_count, skip_count, easy_applied_count, external_jobs_count, tabs_count, pause_before_submit, pause_at_failed_question, useNewResume
+    linkedin_apply.bind_context(driver, actions, question_cache, print_lg, unanswered_questions)
+    linkedin_flow.set_runtime_state(linkedin_tab=linkedIn_tab, tabs_count=tabs_count, daily_easy_apply_limit_reached=dailyEasyApplyLimitReached)
     current_city = current_city.strip()
 
     if randomize_search_order:  shuffle(search_terms)
@@ -1420,7 +236,8 @@ def apply_to_jobs(search_terms: list[str]) -> None:
         print_lg("\n________________________________________________________________________________________________________________________\n")
         print_lg(f'\n>>>> Now searching for "{searchTerm}" <<<<\n\n')
 
-        apply_filters()
+        linkedin_filters.set_runtime_filter_values(sort_by, date_posted)
+        linkedin_filters.apply_filters(linkedin_apply.show_inpage_overlay)
 
         current_count = 0
         try:
@@ -1431,7 +248,7 @@ def apply_to_jobs(search_terms: list[str]) -> None:
                 wait.until(EC.presence_of_all_elements_located((By.XPATH, "//li[@data-occludable-job-id]")))
 
                 bot_status("Reading current results page...")
-                pagination_element, current_page = get_page_info()
+                pagination_element, current_page = linkedin_filters.get_page_info()
 
                 # Find all job listings in current page
                 buffer(3)
@@ -1446,7 +263,7 @@ def apply_to_jobs(search_terms: list[str]) -> None:
                     print_lg("\n-@-\n")
 
                     bot_status("Opening the next job card...")
-                    job_id,title,company,work_location,work_style,skip = get_job_main_details(job, blacklisted_companies, rejected_jobs)
+                    job_id,title,company,work_location,work_style,skip = linkedin_jobs.get_job_main_details(job, blacklisted_companies, rejected_jobs)
                     
                     if skip:
                         bot_status(f'Skipping "{title}" at {company}: blacklisted or previously rejected.')
@@ -1477,12 +294,12 @@ def apply_to_jobs(search_terms: list[str]) -> None:
                     try:
                         wait_if_bot_paused()
                         bot_status(f'Checking blacklist rules for "{title}" at {company}...')
-                        rejected_jobs, blacklisted_companies, jobs_top_card = check_blacklist(rejected_jobs,job_id,company,blacklisted_companies)
+                        rejected_jobs, blacklisted_companies, jobs_top_card = linkedin_jobs.check_blacklist(rejected_jobs,job_id,company,blacklisted_companies)
                     except ValueError as e:
                         bot_status(f'Skipping "{title}" at {company}: blacklist match.')
                         print_lg(e, 'Skipping this job!\n')
-                        failed_job(job_id, job_link, resume, date_listed, "Found Blacklisted words in About Company", e, "Skipped", screenshot_name,
-                                   title=title, company=company, search_term=searchTerm, work_location=work_location, work_style=work_style)
+                        linkedin_flow.failed_job(job_id, job_link, resume, date_listed, "Found Blacklisted words in About Company", e, "Skipped", screenshot_name,
+                                                 title=title, company=company, search_term=searchTerm, work_location=work_location, work_style=work_style)
                         skip_count += 1
                         continue
                     except Exception as e:
@@ -1539,12 +356,12 @@ def apply_to_jobs(search_terms: list[str]) -> None:
 
                     wait_if_bot_paused()
                     bot_status(f'Reading description for "{title}" and checking skip rules...')
-                    description, experience_required, skip, reason, message = get_job_description()
+                    description, experience_required, skip, reason, message = linkedin_job_details.get_job_description()
                     if skip:
                         bot_status(f'Skipping "{title}" at {company}: {reason}.')
                         print_lg(message)
-                        failed_job(job_id, job_link, resume, date_listed, reason, message, "Skipped", screenshot_name,
-                                   title=title, company=company, search_term=searchTerm, work_location=work_location, work_style=work_style)
+                        linkedin_flow.failed_job(job_id, job_link, resume, date_listed, reason, message, "Skipped", screenshot_name,
+                                                 title=title, company=company, search_term=searchTerm, work_location=work_location, work_style=work_style)
                         rejected_jobs.add(job_id)
                         skip_count += 1
                         continue
@@ -1638,31 +455,31 @@ def apply_to_jobs(search_terms: list[str]) -> None:
                                     if next_counter >= 15: 
                                         if pause_at_failed_question:
                                             bot_status(f'Manual help needed for "{title}": repeated unanswered questions.')
-                                            screenshot(driver, job_id, "Needed manual intervention for failed question")
-                                            show_inpage_overlay("Help Needed", "Couldn't answer one or more questions.\nPlease click \"Continue\" once done.\nDO NOT CLICK Back, Next or Review button in LinkedIn.\n\n\n\n\nYou can turn off \"Pause at failed question\" setting in config.py", ["Continue"])
-                                            capture_manual_answers(modal, company)
+                                            linkedin_flow.screenshot(job_id, "Needed manual intervention for failed question")
+                                            linkedin_apply.show_inpage_overlay("Help Needed", "Couldn't answer one or more questions.\nPlease click \"Continue\" once done.\nDO NOT CLICK Back, Next or Review button in LinkedIn.\n\n\n\n\nYou can turn off \"Pause at failed question\" setting in config.py", ["Continue"])
+                                            linkedin_apply.capture_manual_answers(modal, company)
                                             next_counter = 1
                                             continue
                                         if questions_list: print_lg("Stuck for one or some of the following questions...", questions_list)
                                         bot_status(f'Skipping "{title}": stuck on application questions.')
-                                        screenshot_name = screenshot(driver, job_id, "Failed at questions")
+                                        screenshot_name = linkedin_flow.screenshot(job_id, "Failed at questions")
                                         errored = "stuck"
                                         raise Exception("Seems like stuck in a continuous loop of next, probably because of new questions.")
                                     bot_status(f'Answering application questions for "{title}"...')
-                                    questions_list, has_unanswered = answer_questions(modal, questions_list, work_location, job_description=description, company=company)
+                                    questions_list, has_unanswered = linkedin_apply.answer_questions(modal, questions_list, work_location, job_description=description, company=company)
                                     if has_unanswered:
                                         if pause_at_failed_question:
                                             bot_status(f'Manual help needed for "{title}": unanswered question remains.')
-                                            screenshot(driver, job_id, "Needed manual intervention for unanswered question")
-                                            show_inpage_overlay("Help Needed", "Couldn't answer one or more questions.\nPlease fill them in, then click \"Continue\".\nDO NOT CLICK Back, Next or Review button in LinkedIn.\n\n\n\n\nYou can turn off \"Pause at failed question\" setting in config.py", ["Continue"])
-                                            capture_manual_answers(modal, company)
+                                            linkedin_flow.screenshot(job_id, "Needed manual intervention for unanswered question")
+                                            linkedin_apply.show_inpage_overlay("Help Needed", "Couldn't answer one or more questions.\nPlease fill them in, then click \"Continue\".\nDO NOT CLICK Back, Next or Review button in LinkedIn.\n\n\n\n\nYou can turn off \"Pause at failed question\" setting in config.py", ["Continue"])
+                                            linkedin_apply.capture_manual_answers(modal, company)
                                             next_counter = 1
                                             continue
                                         bot_status(f'Unanswered questions remain for "{title}".')
                                         print_lg(f"Unanswered questions remain: {unanswered_questions}")
                                     if useNewResume and not uploaded:
                                         bot_status(f'Uploading resume for "{title}"...')
-                                        uploaded, resume = upload_resume(modal, default_resume_path)
+                                        uploaded, resume = linkedin_job_details.upload_resume(modal, default_resume_path)
                                     try: next_button = modal.find_element(By.XPATH, './/span[normalize-space(.)="Review"]') 
                                     except NoSuchElementException:  next_button = modal.find_element(By.XPATH, './/button[contains(span, "Next")]')
                                     wait_if_bot_paused()
@@ -1680,20 +497,20 @@ def apply_to_jobs(search_terms: list[str]) -> None:
                                 cur_pause_before_submit = pause_before_submit
                                 if errored != "stuck" and cur_pause_before_submit:
                                     bot_status(f'Waiting for your confirmation before submitting "{title}".')
-                                    decision = show_inpage_overlay("Confirm your information", '1. Please verify your information.\n2. If you edited something, please return to this final screen.\n3. DO NOT CLICK "Submit Application" in LinkedIn.\n\n\n\n\nYou can turn off "Pause before submit" setting in config.py\nTo TEMPORARILY disable pausing, click "Disable Pause"', ["Disable Pause", "Discard Application", "Submit Application"])
+                                    decision = linkedin_apply.show_inpage_overlay("Confirm your information", '1. Please verify your information.\n2. If you edited something, please return to this final screen.\n3. DO NOT CLICK "Submit Application" in LinkedIn.\n\n\n\n\nYou can turn off "Pause before submit" setting in config.py\nTo TEMPORARILY disable pausing, click "Disable Pause"', ["Disable Pause", "Discard Application", "Submit Application"])
                                     if decision == "Discard Application": raise Exception("Job application discarded by user!")
                                     pause_before_submit = False if "Disable Pause" == decision else True
                                     # try_xp(modal, ".//span[normalize-space(.)='Review']")
                                 wait_if_bot_paused()
                                 bot_status(f'Checking follow-company option for "{title}"...')
-                                follow_company(modal)
+                                linkedin_jobs.follow_company(modal)
                                 wait_if_bot_paused()
                                 bot_status(f'Submitting application for "{title}" at {company}...')
                                 if wait_span_click(driver, "Submit application", 2, scrollTop=True): 
                                     date_applied = datetime.now()
                                     bot_status(f'Application submitted for "{title}". Closing confirmation dialog...')
                                     if not wait_span_click(driver, "Done", 2): actions.send_keys(Keys.ESCAPE).perform()
-                                elif errored != "stuck" and cur_pause_before_submit and "Yes" in show_inpage_overlay("Failed to find Submit Application!", "You submitted the application manually, didn't you?", ["No", "Yes"]):
+                                elif errored != "stuck" and cur_pause_before_submit and "Yes" in linkedin_apply.show_inpage_overlay("Failed to find Submit Application!", "You submitted the application manually, didn't you?", ["No", "Yes"]):
                                     date_applied = datetime.now()
                                     bot_status(f'Manual submission confirmed for "{title}".')
                                     wait_span_click(driver, "Done", 2)
@@ -1710,16 +527,16 @@ def apply_to_jobs(search_terms: list[str]) -> None:
                             print_lg("Failed to Easy apply!")
                             # print_lg(e)
                             critical_error_log("Somewhere in Easy Apply process",e)
-                            failed_job(job_id, job_link, resume, date_listed, "Problem in Easy Applying", e, application_link, screenshot_name,
-                                       title=title, company=company, search_term=searchTerm, work_location=work_location, work_style=work_style, questions_list=questions_list)
+                            linkedin_flow.failed_job(job_id, job_link, resume, date_listed, "Problem in Easy Applying", e, application_link, screenshot_name,
+                                                     title=title, company=company, search_term=searchTerm, work_location=work_location, work_style=work_style, questions_list=questions_list)
                             failed_count += 1
-                            discard_job()
+                            linkedin_flow.discard_job()
                             continue
                     else:
                         # Case 2: Apply externally
                         wait_if_bot_paused()
                         bot_status(f'No Easy Apply for "{title}". Checking external apply path...')
-                        skip, application_link, tabs_count = external_apply(pagination_element, job_id, job_link, resume, date_listed, application_link, screenshot_name)
+                        skip, application_link, tabs_count, dailyEasyApplyLimitReached = linkedin_flow.external_apply(pagination_element, job_id, job_link, resume, date_listed, application_link, screenshot_name)
                         if dailyEasyApplyLimitReached:
                             bot_status("Daily Easy Apply limit reached. Stopping this run.")
                             print_lg("\n###############  Daily application limit for Easy Apply is reached!  ###############\n")
@@ -1730,7 +547,7 @@ def apply_to_jobs(search_terms: list[str]) -> None:
 
                     wait_if_bot_paused()
                     bot_status(f'Saving application result for "{title}" at {company}...')
-                    submitted_jobs(job_id, title, company, work_location, work_style, description, experience_required, skills, hr_name, hr_link, resume, reposted, date_listed, date_applied, job_link, application_link, questions_list, connect_request, search_term=searchTerm)
+                    linkedin_flow.submitted_jobs(job_id, title, company, work_location, work_style, description, experience_required, skills, hr_name, hr_link, resume, reposted, date_listed, date_applied, job_link, application_link, questions_list, connect_request, search_term=searchTerm)
                     if uploaded:   useNewResume = False
 
                     bot_status(f'Finished "{title}" at {company}. Moving to the next job.')
