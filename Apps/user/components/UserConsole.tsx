@@ -850,16 +850,21 @@ export function UserConsole() {
           </header>
 
           {/* Stats Bar */}
-          <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 pb-8'>
+          <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 pb-8 pt-4'>
             {stats.map((item) => {
               const Icon = item.icon;
               return (
-                <CardWithNorth
-                  key={item.label}
-                  title={item.label}
-                  className='transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md'
-                >
-                  <div className='flex items-end justify-between h-full min-h-[80px] pt-2'>
+                <CardWithNorth key={item.label} title={item.label}>
+                  <div className='flex flex-tua items-start caozao justify-between  relative pt-2'>
+                    <div
+                      className={cn(
+                        'absolute -top-18 -right-2 z-50 p-6 rounded-full backdrop-blur-sm',
+                        item.bgColor,
+                        item.borderColor,
+                      )}
+                    >
+                      <Icon className={cn('w-16 h-16', item.iconColor)} />
+                    </div>
                     <H1
                       className={cn(
                         'text-5xl font-extrabold tracking-tight leading-none',
@@ -868,15 +873,6 @@ export function UserConsole() {
                     >
                       {item.value}
                     </H1>
-                    <div
-                      className={cn(
-                        'absolute rounded-xl border',
-                        item.bgColor,
-                        item.borderColor,
-                      )}
-                    >
-                      <Icon className={cn('w-6 h-6', item.iconColor)} />
-                    </div>
                   </div>
                 </CardWithNorth>
               );
