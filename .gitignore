@@ -1,0 +1,16 @@
+__pycache__
+.vscode
+.idea
+
+all excels
+all resumes
+logs
+data
+
+old
+
+secrets.py
+config/personals.py
+.venv
+apikeys.py
+/modules/dashboard/node_modules

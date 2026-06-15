@@ -1,0 +1,12 @@
+.git
+.github
+.vscode
+.idea
+.venv
+__pycache__
+*.pyc
+logs/*
+all excels/*
+all resumes/*
+old
+modules/__deprecated__
