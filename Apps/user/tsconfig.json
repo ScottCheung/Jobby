@@ -30,6 +30,7 @@
     "components/UserConsole.tsx",
     "components/ApplicationDetails.tsx",
     "components/forms.tsx",
+    "lib/runtime.ts",
     ".next/types/**/*.ts"
   ],
   "exclude": ["node_modules"]

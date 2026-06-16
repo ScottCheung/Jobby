@@ -9,11 +9,11 @@ import type {
   UserProfile,
   WorkerConfig,
 } from "./types";
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000";
+import { resolveApiBaseUrl } from "./runtime";
 
 async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const apiBaseUrl = await resolveApiBaseUrl();
+  const response = await fetch(`${apiBaseUrl}${path}`, {
     ...init,
     headers: {
       Accept: "application/json",

@@ -29,6 +29,7 @@ interface RadarChartProps {
   showDots?: boolean | RechartsRadarProps<any, any>['dot'];
   activeDot?: RechartsRadarProps<any, any>['activeDot'];
   ValueProps?: any;
+  margin?: { top?: number; right?: number; bottom?: number; left?: number };
 }
 
 // Modern color palette with bright, accessible colors
@@ -63,6 +64,7 @@ const RadarChart = ({
   showDots = true,
   activeDot = { r: 6 },
   ValueProps,
+  margin = { top: 0, right: 0, bottom: 0, left: 0 },
 }: RadarChartProps) => {
   const seriesKeys =
     yKeys ||
@@ -74,11 +76,7 @@ const RadarChart = ({
     : []);
 
   if (!data || data.length === 0 || !xKey || seriesKeys.length === 0) {
-    return (
-      <div className='flex h-full w-full items-center justify-center text-muted-foreground'>
-        No data available or missing key properties (xKey or yKey/yKeys).
-      </div>
-    );
+    return null;
   }
 
   const renderRadars = () => {
@@ -123,7 +121,7 @@ const RadarChart = ({
 
   return (
     <ResponsiveContainer width='100%' height='100%'>
-      <RechartsRadarChart cx='50%' cy='50%' outerRadius='80%' data={data}>
+      <RechartsRadarChart cx='50%' cy='50%' outerRadius='80%' data={data} margin={margin}>
         {showGrid && (
           <PolarGrid
             gridType={gridType}

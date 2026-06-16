@@ -1,0 +1,49 @@
+{
+  "name": "auto-job-desktop",
+  "private": true,
+  "version": "0.1.0",
+  "main": "main.js",
+  "description": "Electron launcher for the Auto Job Apply desktop app",
+  "scripts": {
+    "start": "electron .",
+    "start:containers": "electron .",
+    "start:cloud": "electron .",
+    "start:dev": "AUTO_JOB_DASHBOARD_MODE=local-next-dev electron .",
+    "start:full-dev": "AUTO_JOB_API_MODE=local-python AUTO_JOB_DASHBOARD_MODE=local-next-dev electron .",
+    "start:desktop-stack": "AUTO_JOB_API_MODE=local-python AUTO_JOB_WORKER_MODE=local-python AUTO_JOB_DASHBOARD_MODE=local-next-dev electron .",
+    "pack:dir": "electron-builder --dir",
+    "pack:mac": "electron-builder --mac",
+    "pack:win": "electron-builder --win",
+    "pack:linux": "electron-builder --linux"
+  },
+  "devDependencies": {
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.autojobapply.desktop",
+    "productName": "Auto Job Apply",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "config.js",
+      "config-store.js",
+      "service-manager.js",
+      "fallback.html",
+      "package.json"
+    ],
+    "mac": {
+      "target": "dmg",
+      "category": "public.app-category.business"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "linux": {
+      "target": "AppImage"
+    }
+  }
+}

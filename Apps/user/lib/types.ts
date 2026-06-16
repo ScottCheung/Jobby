@@ -146,3 +146,55 @@ export type AutomationRun = {
   created_at: string;
   updated_at: string;
 };
+
+export type DesktopRuntimeInfo = {
+  environmentName?: string;
+  deploymentTarget?: string;
+  api?: {
+    url?: string;
+    mode?: string;
+  };
+  dashboard?: {
+    url?: string;
+    mode?: string;
+  };
+  worker?: {
+    mode?: string;
+  };
+};
+
+export type DesktopServiceStatusEntry = {
+  mode: string;
+  url?: string | null;
+  running: boolean;
+  startedAt?: string | null;
+  healthy?: boolean | null;
+  checkedAt?: string | null;
+  detail?: string | null;
+  recentLogs: Array<{
+    at: string;
+    line: string;
+  }>;
+};
+
+export type DesktopServiceStatus = {
+  api: DesktopServiceStatusEntry;
+  dashboard: DesktopServiceStatusEntry;
+  worker: DesktopServiceStatusEntry;
+};
+
+export type DesktopConnectionConfig = {
+  environmentName: string;
+  deploymentTarget: string;
+  apiUrl: string;
+  dashboardUrl: string;
+  apiMode: string;
+  dashboardMode: string;
+  workerMode: string;
+};
+
+export type DesktopConnectionConfigResult = {
+  ok: boolean;
+  config: DesktopConnectionConfig;
+  error?: string;
+};

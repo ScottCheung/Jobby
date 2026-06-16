@@ -29,6 +29,7 @@ interface BarChartProps {
   ValueProps?: any;
   layout?: 'horizontal' | 'vertical';
   yAxisWidth?: number;
+  margin?: { top?: number; right?: number; bottom?: number; left?: number };
 }
 
 // Modern color palette with bright, accessible colors
@@ -85,6 +86,7 @@ const BarChart = ({
   ValueProps,
   layout = 'horizontal',
   yAxisWidth,
+  margin = { top: 10, right: 10, bottom: 5, left: 5 },
 }: BarChartProps) => {
   const firstItem = data && data.length > 0 ? data[0] : {};
   const hasMultipleSeries =
@@ -93,17 +95,12 @@ const BarChart = ({
     ).length > 1;
 
   if (!data || data.length === 0 || !xKey || (!hasMultipleSeries && !yKey)) {
-    return (
-      <div className='flex h-full w-full items-center justify-center text-ink-secondary'>
-        BarChart: No data or missing key properties (xKey, and yKey if not
-        multi-series).
-      </div>
-    );
+    return null;
   }
 
   return (
     <ResponsiveContainer width='100%' height='100%'>
-      <RechartsBarChart data={data} layout={layout}>
+      <RechartsBarChart data={data} layout={layout} margin={margin}>
         {showGridX && (
           <CartesianGrid
             strokeDasharray='3 3'
@@ -122,46 +119,43 @@ const BarChart = ({
         )}
         {layout === 'vertical' ? (
           <>
-            {showXAxis && (
-              <XAxis
-                type='number'
-                className='text-xs text-ink-secondary'
-                tickLine={false}
-                axisLine={false}
-              />
-            )}
-            {showYAxis && (
-              <YAxis
-                type='category'
-                dataKey={xKey}
-                className='text-xs text-ink-secondary'
-                tickLine={false}
-                axisLine={false}
-                width={yAxisWidth || 100}
-              />
-            )}
+            <XAxis
+              hide={!showXAxis}
+              type='number'
+              className='text-xs text-ink-secondary'
+              tickLine={false}
+              axisLine={false}
+            />
+            <YAxis
+              hide={!showYAxis}
+              type='category'
+              dataKey={xKey}
+              className='text-xs text-ink-secondary'
+              tickLine={false}
+              axisLine={false}
+              width={yAxisWidth || 100}
+            />
           </>
         ) : (
           <>
-            {showXAxis && (
-              <XAxis
-                dataKey={xKey}
-                className='text-xs text-ink-secondary'
-                tickLine={false}
-                axisLine={false}
-              />
-            )}
-            {showYAxis && (
-              <YAxis
-                className='text-xs text-ink-secondary'
-                tickLine={false}
-                axisLine={false}
-                domain={[
-                  (dataMin: number) => Math.floor(dataMin * 0.7),
-                  (dataMax: number) => Math.ceil(dataMax * 1.1),
-                ]}
-              />
-            )}
+            <XAxis
+              hide={!showXAxis}
+              dataKey={xKey}
+              className='text-xs text-ink-secondary'
+              tickLine={false}
+              axisLine={false}
+            />
+            <YAxis
+              hide={!showYAxis}
+              className='text-xs text-ink-secondary'
+              tickLine={false}
+              axisLine={false}
+              width={yAxisWidth !== undefined ? yAxisWidth : 30}
+              domain={[
+                (dataMin: number) => Math.floor(dataMin * 0.7),
+                (dataMax: number) => Math.ceil(dataMax * 1.1),
+              ]}
+            />
           </>
         )}
         <Tooltip

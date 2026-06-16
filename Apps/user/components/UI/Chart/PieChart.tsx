@@ -1,5 +1,6 @@
 /** @format */
 
+import { useState } from 'react';
 import {
   Cell,
   Pie,
@@ -9,7 +10,6 @@ import {
   Legend,
 } from 'recharts';
 import { ChartTooltip } from './Tooltip';
-import { div } from 'framer-motion/client';
 
 interface PieChartProps {
   data: any[];
@@ -28,6 +28,11 @@ interface PieChartProps {
   outerRadius?: string | number;
   showLabels?: boolean;
   ValueProps?: any;
+  margin?: { top?: number; right?: number; bottom?: number; left?: number };
+  cornerRadius?: number;
+  paddingAngle?: number;
+  gradientFill?: boolean;
+  pieGradients?: Record<string, { start: string; end: string }>;
 }
 
 // Modern color palette with bright, accessible colors
@@ -45,6 +50,16 @@ const COLORS = [
   '#a78bfa', // Light Purple
   '#34d399', // Light Green
 ];
+
+export const DEFAULT_STATUS_GRADIENTS: Record<
+  string,
+  { start: string; end: string }
+> = {
+  Submitted: { start: '#10b981', end: '#9ac4d8' },
+  Skipped: { start: '#f59e0b', end: '#f7d455' },
+  Pending: { start: '#3b82f6', end: '#8b5cf6' },
+  Cancelled: { start: '#ef4444', end: '#fb7185' },
+};
 
 const renderCustomizedLabel = ({
   cx,
@@ -98,19 +113,89 @@ const PieChart = ({
   outerRadius = '80%',
   showLabels = true,
   ValueProps,
+  margin = { top: 0, right: 0, bottom: 0, left: 0 },
+  cornerRadius = 0,
+  paddingAngle = 2,
+  gradientFill = false,
+  pieGradients,
 }: PieChartProps) => {
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
+
   // Safety check
   if (!data || data.length === 0) {
-    return (
-      <div className='flex h-full w-full items-center justify-center text-muted-foreground'>
-        No data available
-      </div>
-    );
+    return null;
   }
 
   return (
     <ResponsiveContainer width='100%' height='100%'>
-      <RechartsPieChart>
+      <RechartsPieChart margin={margin}>
+        {gradientFill && (
+          <defs>
+            {data.map((entry, index) => {
+              const baseColor =
+                entry.fill ||
+                (multiColor ?
+                  COLORS[index % COLORS.length]
+                : color || '#3b82f6');
+
+              const activeGradients = {
+                ...DEFAULT_STATUS_GRADIENTS,
+                ...pieGradients,
+              };
+              const name = String(entry[xKey] || entry.name || '');
+              const customGrad = activeGradients[name];
+
+              let startColor =
+                entry.colorStart || (customGrad ? customGrad.start : baseColor);
+              let endColor =
+                entry.colorEnd ||
+                (customGrad ?
+                  customGrad.end
+                : `color-mix(in srgb, ${baseColor} 75%, black 25%)`);
+
+              return (
+                <linearGradient
+                  id={`pie-grad-${index}`}
+                  key={index}
+                  x1='0'
+                  y1='0'
+                  x2='1'
+                  y2='1'
+                >
+                  <stop offset='0%' stopColor={startColor} />
+                  <stop offset='100%' stopColor={endColor} />
+                </linearGradient>
+              );
+            })}
+          </defs>
+        )}
+        {/* Invisible full Pie underneath to capture hover events in the center of the ring */}
+        <Pie
+          data={data}
+          cx={cx}
+          cy={cy}
+          nameKey={xKey}
+          dataKey={yKey as string}
+          outerRadius={outerRadius}
+          innerRadius={0}
+          stroke='none'
+          style={{ pointerEvents: 'all' }}
+          legendType='none'
+          label={false}
+          isAnimationActive={false}
+          activeShape={false}
+          onMouseEnter={(data, index) => setActiveIndex(index)}
+          onMouseLeave={() => setActiveIndex(null)}
+        >
+          {data.map((entry, index) => (
+            <Cell
+              key={`invisible-cell-${index}`}
+              fill='none'
+              stroke='none'
+              style={{ pointerEvents: 'all' }}
+            />
+          ))}
+        </Pie>
         <Pie
           data={data}
           cx={cx}
@@ -121,21 +206,30 @@ const PieChart = ({
           outerRadius={outerRadius}
           innerRadius={innerRadius}
           label={showLabels ? renderCustomizedLabel : undefined}
-          paddingAngle={2}
+          paddingAngle={paddingAngle}
+          cornerRadius={cornerRadius}
           animationDuration={1000}
           animationBegin={0}
           isAnimationActive={true}
           fill={multiColor ? undefined : color}
+          onMouseEnter={(data, index) => setActiveIndex(index)}
+          onMouseLeave={() => setActiveIndex(null)}
         >
           {data.map((entry, index) => (
             <Cell
               key={`cell-${index}`}
               fill={
-                entry.fill ||
-                (multiColor ? COLORS[index % COLORS.length] : color)
+                gradientFill ?
+                  `url(#pie-grad-${index})`
+                : entry.fill ||
+                  (multiColor ? COLORS[index % COLORS.length] : color)
               }
               stroke='var(--background)'
               strokeWidth={1}
+              style={{
+                transition: 'opacity 1000ms cubic-bezier(0.2, 0.8, 0.2, 1)',
+              }}
+              opacity={activeIndex === null || activeIndex === index ? 1 : 0.4}
             />
           ))}
         </Pie>

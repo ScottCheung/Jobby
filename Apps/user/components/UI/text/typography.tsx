@@ -12,7 +12,7 @@ export function H1({ className, ...props }: TypographyProps) {
   return (
     <h1
       className={cn(
-        'text-2xl font-bold tracking-tight text-ink-primary md:text-3xl',
+        'text-2xl font-bold tracking-tight text-ink-primary md:text-4xl',
         className,
       )}
       {...props}

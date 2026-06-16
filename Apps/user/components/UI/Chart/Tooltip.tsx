@@ -39,6 +39,11 @@ export const ChartTooltip: React.FC<ChartTooltipProps> = ({
   if (active && payload && payload.length) {
     const displayLabel = label != null ? String(label) : null; // Use the Recharts label as the title
 
+    // Filter duplicate items in payload (e.g. from layered background charts)
+    const uniquePayload = payload.filter(
+      (item, index, self) => self.findIndex((t) => t.name === item.name) === index
+    );
+
     return (
       <m.div className='rounded-lg  bg-background transition-all duration-300 backdrop-blur-sm  text-sm shadow-lg  p-3'>
         {displayLabel && (
@@ -47,7 +52,7 @@ export const ChartTooltip: React.FC<ChartTooltipProps> = ({
           </div>
         )}
         <div className='space-y-1.5'>
-          {payload.map((item, index) => {
+          {uniquePayload.map((item, index) => {
             // Ensure item.value is not undefined before processing
             if (item.value === undefined || item.value === null) return null;
 

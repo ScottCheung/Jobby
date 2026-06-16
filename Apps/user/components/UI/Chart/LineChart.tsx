@@ -24,6 +24,8 @@ interface LineChartProps {
   showGrid?: boolean; // 是否显示网格线
   gridType?: 'horizontal' | 'vertical' | 'both'; // 网格线类型
   ValueProps?: any;
+  margin?: { top?: number; right?: number; bottom?: number; left?: number };
+  yAxisWidth?: number;
 }
 
 // Modern color palette
@@ -78,6 +80,8 @@ const LineChart = ({
   showGrid = true,
   gridType = 'both',
   ValueProps,
+  margin = { top: 10, right: 10, bottom: 5, left: 5 },
+  yAxisWidth,
 }: LineChartProps) => {
   // Check if data has multiple series
   const hasMultipleSeries =
@@ -89,7 +93,7 @@ const LineChart = ({
 
   return (
     <ResponsiveContainer width='100%' height='100%'>
-      <RechartsLineChart data={data}>
+      <RechartsLineChart data={data} margin={margin}>
         {showGrid && (
           <CartesianGrid
             strokeDasharray='3 3'
@@ -98,15 +102,15 @@ const LineChart = ({
             horizontal={gridType === 'both' || gridType === 'horizontal'}
           />
         )}
-        {showXAxis && (
-          <XAxis
-            dataKey={xKey}
-            className='text-xs text-ink-secondary'
-            tickLine={false}
-            axisLine={false}
-            tick={{ fill: 'var(--color-ink-secondary)' }}
-          />
-        )}
+        <XAxis
+          hide={!showXAxis}
+          dataKey={xKey}
+          className='text-xs text-ink-secondary'
+          tickLine={false}
+          axisLine={false}
+          tick={{ fill: 'var(--color-ink-secondary)' }}
+          padding={{ left: 0, right: 0 }}
+        />
         {showYAxis && (
           <YAxis
             className='text-xs text-ink-secondary'
@@ -114,6 +118,7 @@ const LineChart = ({
             axisLine={false}
             tick={{ fill: 'var(--color-ink-secondary)' }}
             domain={['dataMin', 'dataMax + 10']}
+            width={yAxisWidth !== undefined ? yAxisWidth : 30}
           />
         )}
         <Tooltip

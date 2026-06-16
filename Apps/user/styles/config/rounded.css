@@ -1,20 +1,20 @@
 @layer base {
     :root {
-        --color-border: #e2e8f061;
-        --color-input: #e2e8f000;
-        --color-ring: #0f4c81;
+        --border-raw: #e2e8f061;
+        --input-raw: #e2e8f000;
+        --ring-raw: #0f4c81;
 
-        --radius-sm: 0.125rem;
-        --radius-md: 0.375rem;
-        --radius-lg: 0.5rem;
-        --radius-xl: 1rem;
-        --radius-2xl: 1.5rem;
-        --radius-3xl: 2.5rem;
+        --radius-sm-raw: 0.125rem;
+        --radius-md-raw: 0.375rem;
+        --radius-lg-raw: 0.5rem;
+        --radius-xl-raw: 1rem;
+        --radius-2xl-raw: 1.5rem;
+        --radius-3xl-raw: 2.5rem;
     }
 
     .dark {
-        --color-border: #2e2e2e;
-        --color-input: #2e2e2e;
-        --color-ring: #3a7bd5;
+        --border-raw: #2e2e2e;
+        --input-raw: #2e2e2e;
+        --ring-raw: #3a7bd5;
     }
 }

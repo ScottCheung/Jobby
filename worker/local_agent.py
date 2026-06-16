@@ -11,8 +11,9 @@ from urllib.request import Request, urlopen
 
 
 ROOT = Path(__file__).resolve().parents[1]
+WORKER_ROOT = ROOT / "worker"
 API_BASE_URL = os.getenv("AUTO_JOB_API_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
-POLL_SECONDS = float(os.getenv("AUTO_JOB_AGENT_POLL_SECONDS", "2"))
+POLL_SECONDS = float(os.getenv("AUTO_JOB_AGENT_POLL_SECONDS", "1"))
 LOG_DIR = ROOT / "storage" / "logs"
 
 
@@ -46,8 +47,8 @@ def run_bot(run: dict) -> None:
 
     with log_path.open("a", encoding="utf-8") as log_file:
         process = subprocess.Popen(
-            [sys.executable, str(ROOT / "runAiBot.py")],
-            cwd=ROOT,
+            [sys.executable, str(WORKER_ROOT / "runAiBot.py")],
+            cwd=WORKER_ROOT,
             stdout=log_file,
             stderr=subprocess.STDOUT,
             text=True,
@@ -56,7 +57,7 @@ def run_bot(run: dict) -> None:
             run_id,
             status="running",
             started_at=datetime.now().isoformat(),
-            current_message="Host worker agent started python3 runAiBot.py",
+            current_message="Host worker agent started worker/runAiBot.py",
             summary={**(run.get("summary") or {}), "pid": process.pid, "log_path": str(log_path)},
         )
         print(f"Started run {run_id} with pid {process.pid}. Log: {log_path}")
@@ -69,6 +70,26 @@ def run_bot(run: dict) -> None:
             except Exception as error:
                 print(f"Could not refresh run {run_id}: {error}")
                 continue
+
+            try:
+                current_status = current.get("status") or "running"
+                update_run(
+                    run_id,
+                    status=current_status,
+                    current_message=
+                        current.get("current_message")
+                        if current_status == "cancel_requested"
+                        else "Host worker agent is running Python worker/runAiBot.py",
+                    summary={
+                        **(current.get("summary") or {}),
+                        "pid": process.pid,
+                        "log_path": str(log_path),
+                        "runner": "host_worker_agent",
+                        "heartbeat_at": datetime.now().isoformat(),
+                    },
+                )
+            except Exception as error:
+                print(f"Could not heartbeat run {run_id}: {error}")
 
             if current.get("status") in {"cancel_requested", "cancelled"}:
                 cancelled = True

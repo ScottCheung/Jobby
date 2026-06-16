@@ -30,7 +30,7 @@ const CardWithNorth: React.FC<CardWithNorthProps> = ({
   const titleRef = useRef<HTMLHeadingElement>(null);
 
   return (
-    <div className={cn(className, 'group')}>
+    <div className={cn(className, 'group flex flex-col h-full')}>
       {/* Tab Section */}
       {title && (
         <div className='relative flex items-start '>
@@ -63,9 +63,7 @@ const CardWithNorth: React.FC<CardWithNorthProps> = ({
       <div
         className={cn(
           `bg-panel group-hover:bg-panel/50  p-card    h-full   overflow-visible ${contentClassName}`,
-          title ?
-            'rounded-b-4xl rounded-tr-4xl !pt-6 !pb-0 !pl-6'
-          : 'rounded-card',
+          title ? 'rounded-b-4xl rounded-tr-4xl ' : 'rounded-card',
         )}
       >
         {children}

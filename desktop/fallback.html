@@ -1,0 +1,421 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Auto Job Apply Connection</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0d1117;
+        --panel: rgba(19, 25, 34, 0.92);
+        --panel-border: rgba(143, 155, 179, 0.18);
+        --text: #eff4fb;
+        --muted: #97a5ba;
+        --accent: #1bb36b;
+        --accent-2: #86e0b2;
+        --warn: #f3b35a;
+        --danger: #f37777;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family:
+          ui-sans-serif,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+        background:
+          radial-gradient(circle at top left, rgba(27, 179, 107, 0.16), transparent 32%),
+          radial-gradient(circle at bottom right, rgba(90, 133, 243, 0.14), transparent 28%),
+          var(--bg);
+        color: var(--text);
+        display: grid;
+        place-items: center;
+        padding: 24px;
+      }
+
+      .shell {
+        width: min(920px, 100%);
+        background: var(--panel);
+        border: 1px solid var(--panel-border);
+        border-radius: 28px;
+        padding: 28px;
+        box-shadow: 0 24px 90px rgba(0, 0, 0, 0.32);
+        backdrop-filter: blur(18px);
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border-radius: 999px;
+        background: rgba(27, 179, 107, 0.12);
+        color: var(--accent-2);
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        margin: 18px 0 10px;
+        font-size: clamp(32px, 5vw, 54px);
+        line-height: 0.96;
+        letter-spacing: -0.04em;
+      }
+
+      p {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.6;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: 1.2fr 0.8fr;
+        gap: 18px;
+        margin-top: 26px;
+      }
+
+      .card {
+        border: 1px solid rgba(143, 155, 179, 0.14);
+        border-radius: 22px;
+        padding: 20px;
+        background: rgba(255, 255, 255, 0.02);
+      }
+
+      .card h2 {
+        margin: 0 0 14px;
+        font-size: 14px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      .field {
+        display: grid;
+        gap: 8px;
+        margin-bottom: 14px;
+      }
+
+      .field label {
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .field input {
+        width: 100%;
+        border: 1px solid rgba(143, 155, 179, 0.18);
+        border-radius: 16px;
+        background: rgba(11, 15, 22, 0.9);
+        color: var(--text);
+        padding: 14px 16px;
+        font-size: 14px;
+        outline: none;
+      }
+
+      .field input:focus {
+        border-color: rgba(27, 179, 107, 0.6);
+        box-shadow: 0 0 0 3px rgba(27, 179, 107, 0.16);
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 18px;
+      }
+
+      button {
+        border: 0;
+        border-radius: 999px;
+        padding: 12px 18px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 700;
+      }
+
+      .primary {
+        background: linear-gradient(135deg, var(--accent), #14945a);
+        color: white;
+      }
+
+      .secondary {
+        background: rgba(255, 255, 255, 0.06);
+        color: var(--text);
+      }
+
+      .ghost {
+        background: transparent;
+        color: var(--muted);
+        border: 1px solid rgba(143, 155, 179, 0.18);
+      }
+
+      .status-list {
+        display: grid;
+        gap: 12px;
+      }
+
+      .status-item {
+        padding: 14px;
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.025);
+        border: 1px solid rgba(143, 155, 179, 0.1);
+      }
+
+      .status-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 8px;
+      }
+
+      .status-name {
+        font-weight: 700;
+      }
+
+      .pill {
+        padding: 6px 10px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .healthy {
+        background: rgba(27, 179, 107, 0.12);
+        color: var(--accent-2);
+      }
+
+      .warning {
+        background: rgba(243, 179, 90, 0.12);
+        color: var(--warn);
+      }
+
+      .idle {
+        background: rgba(151, 165, 186, 0.12);
+        color: var(--muted);
+      }
+
+      .meta {
+        font-size: 12px;
+        color: var(--muted);
+        line-height: 1.55;
+      }
+
+      .banner {
+        margin-top: 18px;
+        padding: 14px 16px;
+        border-radius: 16px;
+        font-size: 13px;
+        line-height: 1.5;
+        background: rgba(243, 179, 90, 0.1);
+        color: #ffd49a;
+        border: 1px solid rgba(243, 179, 90, 0.22);
+      }
+
+      .success {
+        background: rgba(27, 179, 107, 0.12);
+        color: var(--accent-2);
+        border-color: rgba(27, 179, 107, 0.28);
+      }
+
+      .error {
+        background: rgba(243, 119, 119, 0.12);
+        color: #ffb0b0;
+        border-color: rgba(243, 119, 119, 0.28);
+      }
+
+      @media (max-width: 840px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <div class="eyebrow">Desktop Recovery</div>
+      <h1>Reconnect the cloud workspace.</h1>
+      <p>
+        The desktop app could not load the remote dashboard. You can update the
+        connection settings here and reconnect without leaving the app.
+      </p>
+
+      <div id="message" class="banner" hidden></div>
+
+      <section class="grid">
+        <div class="card">
+          <h2>Connection Settings</h2>
+          <div class="field">
+            <label for="environmentName">Environment Name</label>
+            <input id="environmentName" placeholder="Production" />
+          </div>
+          <div class="field">
+            <label for="apiUrl">API URL</label>
+            <input id="apiUrl" placeholder="https://api.example.com" />
+          </div>
+          <div class="field">
+            <label for="dashboardUrl">Dashboard URL</label>
+            <input id="dashboardUrl" placeholder="https://app.example.com" />
+          </div>
+          <div class="actions">
+            <button class="primary" id="saveButton">Save And Reconnect</button>
+            <button class="secondary" id="retryButton">Retry Current URLs</button>
+            <button class="ghost" id="resetButton">Reset Defaults</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Service Health</h2>
+          <div id="statusList" class="status-list"></div>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const messageNode = document.getElementById("message");
+      const environmentInput = document.getElementById("environmentName");
+      const apiInput = document.getElementById("apiUrl");
+      const dashboardInput = document.getElementById("dashboardUrl");
+      const saveButton = document.getElementById("saveButton");
+      const retryButton = document.getElementById("retryButton");
+      const resetButton = document.getElementById("resetButton");
+      const statusList = document.getElementById("statusList");
+
+      function showMessage(text, tone) {
+        if (!text) {
+          messageNode.hidden = true;
+          messageNode.textContent = "";
+          messageNode.className = "banner";
+          return;
+        }
+        messageNode.hidden = false;
+        messageNode.textContent = text;
+        messageNode.className = `banner ${tone || ""}`.trim();
+      }
+
+      function getTone(status) {
+        if (status?.healthy === true) return "healthy";
+        if (status?.healthy === false) return "warning";
+        return "idle";
+      }
+
+      function getLabel(status) {
+        if (status?.healthy === true) return "Healthy";
+        if (status?.healthy === false) return "Needs Attention";
+        if (status?.running) return "Running";
+        return "Idle";
+      }
+
+      function renderStatuses(serviceStatus) {
+        const services = [
+          ["API Service", serviceStatus?.api],
+          ["Dashboard", serviceStatus?.dashboard],
+          ["Worker Agent", serviceStatus?.worker],
+        ];
+
+        statusList.innerHTML = services
+          .map(([name, status]) => {
+            const tone = getTone(status);
+            const label = getLabel(status);
+            return `
+              <div class="status-item">
+                <div class="status-head">
+                  <div class="status-name">${name}</div>
+                  <div class="pill ${tone}">${label}</div>
+                </div>
+                <div class="meta">Endpoint: ${status?.url || "not configured"}</div>
+                <div class="meta">Health: ${status?.detail || "No health detail yet"}</div>
+              </div>
+            `;
+          })
+          .join("");
+      }
+
+      async function syncFromDesktop() {
+        const [connectionConfig, serviceStatus] = await Promise.all([
+          window.autoJobDesktop.getConnectionConfig(),
+          window.autoJobDesktop.getServiceStatus(),
+        ]);
+
+        environmentInput.value = connectionConfig?.environmentName || "";
+        apiInput.value = connectionConfig?.apiUrl || "";
+        dashboardInput.value = connectionConfig?.dashboardUrl || "";
+        renderStatuses(serviceStatus);
+      }
+
+      saveButton.addEventListener("click", async () => {
+        showMessage("Reconnecting to the updated cloud endpoints...", "warning");
+        const result = await window.autoJobDesktop.saveConnectionConfig({
+          environmentName: environmentInput.value,
+          deploymentTarget: "cloud",
+          apiUrl: apiInput.value,
+          dashboardUrl: dashboardInput.value,
+          apiMode: "external",
+          dashboardMode: "external",
+          workerMode: "local-python",
+        });
+
+        if (result.ok) {
+          showMessage("Connection updated. Retrying dashboard now.", "success");
+        } else {
+          showMessage(result.error || "Could not update the connection.", "error");
+        }
+      });
+
+      retryButton.addEventListener("click", async () => {
+        showMessage("Retrying the current cloud endpoints...", "warning");
+        const config = await window.autoJobDesktop.getConnectionConfig();
+        const result = await window.autoJobDesktop.saveConnectionConfig(config);
+        if (result.ok) {
+          showMessage("Retry sent. Waiting for the dashboard to reconnect.", "success");
+        } else {
+          showMessage(result.error || "Retry failed.", "error");
+        }
+      });
+
+      resetButton.addEventListener("click", async () => {
+        const result = await window.autoJobDesktop.resetConnectionConfig();
+        if (result.ok) {
+          await syncFromDesktop();
+          showMessage("Connection settings reset to defaults.", "success");
+        } else {
+          showMessage(result.error || "Reset failed.", "error");
+        }
+      });
+
+      window.autoJobDesktop.onServiceStatus((payload) => {
+        renderStatuses(payload);
+      });
+
+      window.autoJobDesktop.onFallbackReason((payload) => {
+        if (!payload) {
+          return;
+        }
+        showMessage(payload.reason || "The dashboard could not be loaded.", "error");
+        if (payload.dashboardUrl && !dashboardInput.value) {
+          dashboardInput.value = payload.dashboardUrl;
+        }
+        if (payload.apiUrl && !apiInput.value) {
+          apiInput.value = payload.apiUrl;
+        }
+      });
+
+      syncFromDesktop().catch(() => {
+        showMessage("Desktop connection details are not available yet.", "error");
+      });
+    </script>
+  </body>
+</html>

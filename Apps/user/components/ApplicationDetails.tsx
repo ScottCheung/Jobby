@@ -51,7 +51,6 @@ export function ApplicationDetails({
         title: draft.title,
         company: draft.company,
         work_location: draft.work_location,
-        work_style: draft.work_style,
         job_description: draft.job_description,
         status: draft.status,
         pipeline_stage: draft.pipeline_stage,
@@ -86,7 +85,6 @@ export function ApplicationDetails({
         <Field label="Title" value={draft.title} onChange={(value) => set("title", value)} />
         <Field label="Company" value={draft.company} onChange={(value) => set("company", value)} />
         <Field label="Work location" value={draft.work_location} onChange={(value) => set("work_location", value)} />
-        <Field label="Work style" value={draft.work_style} onChange={(value) => set("work_style", value)} />
         <div className="field">
           <label>Pipeline stage</label>
           <select value={draft.pipeline_stage || "applied"} onChange={(event) => set("pipeline_stage", event.target.value)}>

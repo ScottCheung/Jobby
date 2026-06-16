@@ -1,7 +1,10 @@
+import re
+
 import config.search as search_config
 from config.settings import click_gap, follow_companies
 from modules.clickers_and_finders import find_by_class, scroll_to_view, try_find_by_classes, try_xp
 from modules.linkedin.job_text_parser import first_non_empty_line, parse_company_location
+from selenium.webdriver.common.by import By
 
 
 _driver = None
@@ -65,7 +68,75 @@ def get_job_main_details(job, blacklisted_companies: set, rejected_jobs: set) ->
             _discard_job()
         job_details_button.click()
     _wait_between(click_gap)
+    work_location = refine_work_location(company, work_location)
     return (job_id, title, company, work_location, work_style, skip)
+
+
+def refine_work_location(company: str, fallback_location: str) -> str:
+    candidates: list[str] = []
+
+    try:
+        top_card = try_find_by_classes(
+            _driver,
+            [
+                "job-details-jobs-unified-top-card__primary-description-container",
+                "job-details-jobs-unified-top-card__primary-description",
+                "jobs-unified-top-card__primary-description",
+                "jobs-details__main-content",
+            ],
+        )
+        if top_card and getattr(top_card, "text", None):
+            candidates.extend(
+                line.strip()
+                for line in top_card.text.splitlines()
+                if line and line.strip()
+            )
+    except Exception:
+        pass
+
+    try:
+        bullet_nodes = _driver.find_elements(
+            By.XPATH,
+            "//*[contains(@class,'jobs-unified-top-card__bullet') or contains(@class,'tvm__text--low-emphasis')]",
+        )
+        candidates.extend(
+            text.strip()
+            for text in (node.text for node in bullet_nodes)
+            if text and text.strip()
+        )
+    except Exception:
+        pass
+
+    normalized_company = (company or "").strip().lower()
+    normalized_fallback = (fallback_location or "").strip().lower()
+
+    for candidate in candidates:
+        text = " ".join(candidate.split())
+        if not text:
+            continue
+
+        lowered = text.lower()
+        if lowered in {"unknown", normalized_company, normalized_fallback}:
+            continue
+        if any(
+            token in lowered
+            for token in (" ago", "applicant", "reposted", "promoted", "match", "alumni")
+        ):
+            continue
+
+        parsed_company, parsed_location, _parsed_style = parse_company_location(text)
+        if (
+            parsed_location != "Unknown"
+            and parsed_location.lower() != normalized_company
+            and parsed_location.lower() != normalized_fallback
+        ):
+            return parsed_location
+
+        # Fallback: keep a clean location-like line even if LinkedIn omitted the company separator.
+        if re.search(r"[A-Za-z]", text) and "," in text and normalized_company not in lowered:
+            return text
+
+    return fallback_location
 
 
 def check_blacklist(rejected_jobs: set, job_id: str, company: str, blacklisted_companies: set):

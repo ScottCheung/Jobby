@@ -11,12 +11,14 @@ from sqlalchemy.orm import Session
 from services.shared.models import AutomationRun, User
 
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[3]
+WORKER_ROOT = ROOT / "worker"
 LOG_DIR = ROOT / "storage" / "logs"
 
 _current_process: subprocess.Popen | None = None
 _current_run_id: UUID | None = None
 _lock = threading.Lock()
+HEARTBEAT_SECONDS = 1.0
 
 
 def is_worker_running() -> bool:
@@ -69,8 +71,8 @@ def start_local_worker(db: Session, user: User) -> AutomationRun:
         log_path = LOG_DIR / f"local_worker_{run.id}.log"
         log_file = log_path.open("a", encoding="utf-8")
         process = subprocess.Popen(
-            [sys.executable, "runAiBot.py"],
-            cwd=ROOT,
+            [sys.executable, str(WORKER_ROOT / "runAiBot.py")],
+            cwd=WORKER_ROOT,
             stdout=log_file,
             stderr=subprocess.STDOUT,
             text=True,
@@ -79,6 +81,12 @@ def start_local_worker(db: Session, user: User) -> AutomationRun:
         _current_process = process
         _current_run_id = run.id
 
+        heartbeat = threading.Thread(
+            target=_heartbeat_worker,
+            args=(process, run.id, process.pid, str(log_path)),
+            daemon=True,
+        )
+        heartbeat.start()
         watcher = threading.Thread(target=_watch_worker, args=(process, run.id, log_file), daemon=True)
         watcher.start()
 
@@ -139,6 +147,31 @@ def _watch_worker(process: subprocess.Popen, run_id: UUID, log_file) -> None:
     with _lock:
         if _current_process is process:
             _clear_current_worker()
+
+
+def _heartbeat_worker(
+    process: subprocess.Popen,
+    run_id: UUID,
+    pid: int,
+    log_path: str,
+) -> None:
+    from services.shared.database import SessionLocal
+
+    while process.poll() is None:
+        with SessionLocal() as db:
+            run = db.get(AutomationRun, run_id)
+            if run and run.status not in {"success", "failed", "cancelled"}:
+                if run.status != "cancel_requested":
+                    run.current_message = "Local worker process is running"
+                run.summary = {
+                    **(run.summary or {}),
+                    "pid": pid,
+                    "log_path": log_path,
+                    "runner": "api_local_worker",
+                    "heartbeat_at": datetime.now().isoformat(),
+                }
+                db.commit()
+        time.sleep(HEARTBEAT_SECONDS)
 
 
 def _finalize_run(db: Session, run_id: UUID, return_code: int, forced_status: str | None = None) -> None:

@@ -34,6 +34,7 @@ interface RadialChartProps {
   isShortFormat?: boolean;
   hoverAnimationDuration?: number; // New prop for controlling hover animation speed
   ValueProps?: any;
+  margin?: { top?: number; right?: number; bottom?: number; left?: number };
 }
 
 // Default color palette if not provided in data items
@@ -65,15 +66,12 @@ export const RadialChart: React.FC<RadialChartProps> = ({
   isShortFormat = false,
   ValueProps,
   hoverAnimationDuration = DEFAULT_HOVER_ANIMATION_DURATION,
+  margin = { top: 0, right: 0, bottom: 0, left: 0 },
 }) => {
   const [activeName, setActiveName] = useState<string | null>(null);
 
   if (!data || data.length === 0 || !valueKey) {
-    return (
-      <div className='flex h-full w-full items-center justify-center text-muted-foreground'>
-        RadialChart: No data or missing valueKey.
-      </div>
-    );
+    return null;
   }
 
   const processedData = data.map((item, index) => {
@@ -109,6 +107,7 @@ export const RadialChart: React.FC<RadialChartProps> = ({
         data={processedData}
         startAngle={startAngle} // Applied startAngle to the chart
         endAngle={endAngle} // Applied endAngle to the chart
+        margin={margin}
       >
         <PolarAngleAxis
           type='number'

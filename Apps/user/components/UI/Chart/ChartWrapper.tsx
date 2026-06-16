@@ -1,58 +1,54 @@
 /** @format */
 
 import { cn } from '@/lib/utils';
-import { motion as m, useInView } from 'framer-motion';
-import React, { useRef } from 'react';
+import React from 'react';
+import { InView } from '@/components/animation';
+import { BarChart3 } from 'lucide-react';
 
 interface ChartWrapperProps extends React.HTMLAttributes<HTMLDivElement> {
   title?: string;
   size?: 'sm' | 'md' | 'lg';
+  isEmpty?: boolean;
+  emptyMessage?: string;
 }
-
-const sizeStyles = {
-  sm: 'h-full',
-  md: 'h-full',
-  lg: 'h-full',
-};
 
 const ChartWrapper = ({
   title,
   size = 'md',
   className,
+  isEmpty = false,
+  emptyMessage = 'No data available',
   children,
   ...props
 }: ChartWrapperProps) => {
-  const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: '-30% 0px -30% 0px' });
   return (
-    <div ref={ref} className={cn('w-full', className)} {...props}>
+    <div className={cn('w-full flex flex-col', className)} {...props}>
       {title && (
-        <h4 className='font-medium text-gray-900 mb-8 text-center text-nowrap'>
+        <h4 className='font-medium text-gray-900 mb-8 text-center text-nowrap shrink-0'>
           {title}
         </h4>
       )}
 
       <div
-        className={cn('w-full h-full', sizeStyles[size], 'overflow-hidden')}
+        className={cn('w-full flex-1 min-h-0 overflow-hidden')}
         style={{ position: 'relative' }}
       >
-        {isInView && (
-          <m.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.5 }}
-            className='w-full h-full'
-          >
-            {children}
-          </m.div>
-        )}
-        {!isInView && (
-          <m.div className='flex animate-pulse h-full w-full items-center justify-center bg-ink-secondary rounded-xl'></m.div>
-        )}
+        <InView>
+          {isEmpty ? (
+            <div className='flex h-full min-h-[150px] w-full flex-col items-center justify-center text-center p-6 bg-zinc-50/50 dark:bg-zinc-900/10 rounded-xl border border-dashed border-zinc-200 dark:border-zinc-800/80'>
+              <BarChart3 className='w-8 h-8 text-zinc-300 dark:text-zinc-700 mb-3 animate-pulse' />
+              <p className='text-sm font-medium text-zinc-400 dark:text-zinc-500'>
+                {emptyMessage}
+              </p>
+            </div>
+          ) : (
+            children
+          )}
+        </InView>
       </div>
     </div>
   );
 };
 
 export default ChartWrapper;
+

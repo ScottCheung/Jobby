@@ -23,6 +23,7 @@ import type {
   SearchProfile,
   UserProfile,
 } from '@/lib/types';
+import CardWithNorth from '@/components/UI/card/CardWithNorth';
 
 type FieldProps = {
   label: string;
@@ -492,124 +493,127 @@ export function ProfileForm({
     onChange({ ...value, [key]: nextValue });
 
   return (
-    <section className='panel'>
-      <SectionHeader
-        icon={<UserRound size={18} />}
-        title='Personal Information'
-        description='These values power most Easy Apply questions and identity checks.'
-      />
-      <div className='form-grid'>
-        <Field
-          label='First name'
-          value={value.first_name}
-          onChange={(next) => set('first_name', next)}
-        />
-        <Field
-          label='Last name'
-          value={value.last_name}
-          onChange={(next) => set('last_name', next)}
-        />
-        <Field
-          label='Middle name'
-          value={value.middle_name}
-          onChange={(next) => set('middle_name', next)}
-        />
-        <Field
-          label='Phone number'
-          value={value.phone_number}
-          onChange={(next) => set('phone_number', next)}
-        />
-        <Field
-          label='Current city'
-          value={value.current_city}
-          onChange={(next) => set('current_city', next)}
-        />
-        <Field
-          label='Country'
-          value={value.country}
-          onChange={(next) => set('country', next)}
-        />
-        <Field
-          label='Street'
-          value={value.street}
-          onChange={(next) => set('street', next)}
-          full
-        />
-        <Field
-          label='State'
-          value={value.state}
-          onChange={(next) => set('state', next)}
-        />
-        <Field
-          label='Zipcode'
-          value={value.zipcode}
-          onChange={(next) => set('zipcode', next)}
-        />
+    <CardWithNorth title='Personal Information'>
+      <div className='pb-6 pr-6 flex flex-col gap-6'>
+        <div className='flex items-center gap-2 text-zinc-400 dark:text-zinc-500 -mt-2'>
+          <UserRound className='w-4 h-4 text-emerald-500 shrink-0' />
+          <p className='text-xs'>
+            These values power most Easy Apply questions and identity checks.
+          </p>
+        </div>
+        <div className='form-grid'>
+          <Field
+            label='First name'
+            value={value.first_name}
+            onChange={(next) => set('first_name', next)}
+          />
+          <Field
+            label='Last name'
+            value={value.last_name}
+            onChange={(next) => set('last_name', next)}
+          />
+          <Field
+            label='Middle name'
+            value={value.middle_name}
+            onChange={(next) => set('middle_name', next)}
+          />
+          <Field
+            label='Phone number'
+            value={value.phone_number}
+            onChange={(next) => set('phone_number', next)}
+          />
+          <Field
+            label='Current city'
+            value={value.current_city}
+            onChange={(next) => set('current_city', next)}
+          />
+          <Field
+            label='Country'
+            value={value.country}
+            onChange={(next) => set('country', next)}
+          />
+          <Field
+            label='Street'
+            value={value.street}
+            onChange={(next) => set('street', next)}
+            full
+          />
+          <Field
+            label='State'
+            value={value.state}
+            onChange={(next) => set('state', next)}
+          />
+          <Field
+            label='Zipcode'
+            value={value.zipcode}
+            onChange={(next) => set('zipcode', next)}
+          />
 
-        <ChoiceCardGroup
-          label='Ethnicity'
-          value={value.ethnicity}
-          onChange={(next) => set('ethnicity', next)}
-          options={statusOptions.ethnicity.map((item) => ({
-            value: item,
-            title: item,
-            icon: '◌',
-          }))}
-          full
-        />
-        <ChoiceCardGroup
-          label='Gender'
-          value={value.gender}
-          onChange={(next) => set('gender', next)}
-          options={statusOptions.gender.map((item) => ({
-            value: item,
-            title: item,
-            icon: '◌',
-          }))}
-        />
-        <ChoiceCardGroup
-          label='Gender identity'
-          value={value.gender_identity}
-          onChange={(next) => set('gender_identity', next)}
-          options={statusOptions.gender.map((item) => ({
-            value: item,
-            title: item,
-            icon: '◌',
-          }))}
-        />
-        <ChoiceCardGroup
-          label='Disability status'
-          value={value.disability_status}
-          onChange={(next) => set('disability_status', next)}
-          options={statusOptions.yesNoDecline.map((item) => ({
-            value: item,
-            title: item,
-            icon:
-              item === 'Yes' ? '♿'
-              : item === 'No' ? '○'
-              : '—',
-          }))}
-        />
-        <ChoiceCardGroup
-          label='Veteran status'
-          value={value.veteran_status}
-          onChange={(next) => set('veteran_status', next)}
-          options={statusOptions.yesNoDecline.map((item) => ({
-            value: item,
-            title: item,
-            icon:
-              item === 'Yes' ? '★'
-              : item === 'No' ? '○'
-              : '—',
-          }))}
-        />
+          <ChoiceCardGroup
+            label='Ethnicity'
+            value={value.ethnicity}
+            onChange={(next) => set('ethnicity', next)}
+            options={statusOptions.ethnicity.map((item) => ({
+              value: item,
+              title: item,
+              icon: '◌',
+            }))}
+            full
+          />
+          <ChoiceCardGroup
+            label='Gender'
+            value={value.gender}
+            onChange={(next) => set('gender', next)}
+            options={statusOptions.gender.map((item) => ({
+              value: item,
+              title: item,
+              icon: '◌',
+            }))}
+          />
+          <ChoiceCardGroup
+            label='Gender identity'
+            value={value.gender_identity}
+            onChange={(next) => set('gender_identity', next)}
+            options={statusOptions.gender.map((item) => ({
+              value: item,
+              title: item,
+              icon: '◌',
+            }))}
+          />
+          <ChoiceCardGroup
+            label='Disability status'
+            value={value.disability_status}
+            onChange={(next) => set('disability_status', next)}
+            options={statusOptions.yesNoDecline.map((item) => ({
+              value: item,
+              title: item,
+              icon:
+                item === 'Yes' ? '♿'
+                : item === 'No' ? '○'
+                : '—',
+            }))}
+          />
+          <ChoiceCardGroup
+            label='Veteran status'
+            value={value.veteran_status}
+            onChange={(next) => set('veteran_status', next)}
+            options={statusOptions.yesNoDecline.map((item) => ({
+              value: item,
+              title: item,
+              icon:
+                item === 'Yes' ? '★'
+                : item === 'No' ? '○'
+                : '—',
+            }))}
+          />
+        </div>
+        <div className='actions'>
+          <button className='primary hover:opacity-90 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 cursor-pointer shadow-sm' onClick={onSave}>
+            Save profile
+          </button>
+        </div>
       </div>
-      <div className='actions'>
-        <button className='primary' onClick={onSave}>
-          Save profile
-        </button>
-      </div>
-    </section>
+    </CardWithNorth>
   );
 }
 
@@ -626,141 +630,144 @@ export function PreferencesForm({
     onChange({ ...value, [key]: nextValue });
 
   return (
-    <section className='panel'>
-      <SectionHeader
-        icon={<Briefcase size={18} />}
-        title='Application Inputs'
-        description='These answers feed resume uploads, salary questions, work authorization, and cover letters.'
-      />
-      <div className='form-grid'>
-        <Field
-          label='Default resume path'
-          value={value.resume_path}
-          onChange={(next) => onChange({ ...value, resume_path: next })}
-          full
-          hint='Maps to default_resume_path in the worker config.'
-        />
-        <Field
-          label='Years of experience'
-          value={value.years_of_experience}
-          onChange={(next) => set('years_of_experience', next)}
-        />
-        <ChoiceCardGroup
-          label='Visa sponsorship required'
-          value={value.require_visa}
-          onChange={(next) => set('require_visa', next)}
-          options={[
-            {
-              value: 'Yes',
-              title: 'Yes',
-              description: 'Need sponsorship now or later.',
-              icon: '✦',
-            },
-            {
-              value: 'No',
-              title: 'No',
-              description: 'Can work without sponsorship.',
-              icon: '✓',
-            },
-          ]}
-        />
-        <Field
-          label='Website / portfolio'
-          value={value.website}
-          onChange={(next) => set('website', next)}
-          full
-        />
-        <Field
-          label='LinkedIn URL'
-          value={value.linkedin_url}
-          onChange={(next) => set('linkedin_url', next)}
-          full
-        />
-        <ChoiceCardGroup
-          label='Citizenship / work authorization'
-          value={value.us_citizenship}
-          onChange={(next) => set('us_citizenship', next)}
-          options={statusOptions.citizenship.map((item) => ({
-            value: item,
-            title: item,
-            icon: '◌',
-          }))}
-          full
-        />
-        <Field
-          label='Desired salary'
-          value={value.desired_salary}
-          onChange={(next) => set('desired_salary', next)}
-          type='number'
-        />
-        <Field
-          label='Current CTC'
-          value={value.current_ctc}
-          onChange={(next) => set('current_ctc', next)}
-          type='number'
-        />
-        <Field
-          label='Notice period (days)'
-          value={value.notice_period}
-          onChange={(next) => set('notice_period', next)}
-          type='number'
-        />
-        <Field
-          label='Recent employer'
-          value={value.recent_employer}
-          onChange={(next) => set('recent_employer', next)}
-        />
-        <Field
-          label='Confidence level'
-          value={value.confidence_level}
-          onChange={(next) => set('confidence_level', next)}
-        />
-        <Field
-          label='LinkedIn headline'
-          value={value.linkedin_headline}
-          onChange={(next) => set('linkedin_headline', next)}
-          full
-        />
-        <Field
-          label='LinkedIn summary'
-          value={value.linkedin_summary}
-          onChange={(next) => set('linkedin_summary', next)}
-          multiline
-          full
-        />
-        <Field
-          label='Cover letter'
-          value={value.cover_letter}
-          onChange={(next) => set('cover_letter', next)}
-          multiline
-          full
-        />
-        <Field
-          label='User information for AI'
-          value={
-            value.user_information_all ??
-            String(value.extra_data?.user_information_all ?? '')
-          }
-          onChange={(next) =>
-            onChange(
-              updateExtra(
-                { ...value, user_information_all: next },
-                'user_information_all',
-                next,
-              ),
-            )
-          }
-          multiline
-          full
-          hint='Optional long-form context passed to AI for answering application questions.'
-        />
+    <CardWithNorth title='Application Inputs'>
+      <div className='pb-6 pr-6 flex flex-col gap-6'>
+        <div className='flex items-center gap-2 text-zinc-400 dark:text-zinc-500 -mt-2'>
+          <Briefcase className='w-4 h-4 text-emerald-500 shrink-0' />
+          <p className='text-xs'>
+            These answers feed resume uploads, salary questions, work authorization, and cover letters.
+          </p>
+        </div>
+        <div className='form-grid'>
+          <Field
+            label='Default resume path'
+            value={value.resume_path}
+            onChange={(next) => onChange({ ...value, resume_path: next })}
+            full
+            hint='Maps to default_resume_path in the worker config.'
+          />
+          <Field
+            label='Years of experience'
+            value={value.years_of_experience}
+            onChange={(next) => set('years_of_experience', next)}
+          />
+          <ChoiceCardGroup
+            label='Visa sponsorship required'
+            value={value.require_visa}
+            onChange={(next) => set('require_visa', next)}
+            options={[
+              {
+                value: 'Yes',
+                title: 'Yes',
+                description: 'Need sponsorship now or later.',
+                icon: '✦',
+              },
+              {
+                value: 'No',
+                title: 'No',
+                description: 'Can work without sponsorship.',
+                icon: '✓',
+              },
+            ]}
+          />
+          <Field
+            label='Website / portfolio'
+            value={value.website}
+            onChange={(next) => set('website', next)}
+            full
+          />
+          <Field
+            label='LinkedIn URL'
+            value={value.linkedin_url}
+            onChange={(next) => set('linkedin_url', next)}
+            full
+          />
+          <ChoiceCardGroup
+            label='Citizenship / work authorization'
+            value={value.us_citizenship}
+            onChange={(next) => set('us_citizenship', next)}
+            options={statusOptions.citizenship.map((item) => ({
+              value: item,
+              title: item,
+              icon: '◌',
+            }))}
+            full
+          />
+          <Field
+            label='Desired salary'
+            value={value.desired_salary}
+            onChange={(next) => set('desired_salary', next)}
+            type='number'
+          />
+          <Field
+            label='Current CTC'
+            value={value.current_ctc}
+            onChange={(next) => set('current_ctc', next)}
+            type='number'
+          />
+          <Field
+            label='Notice period (days)'
+            value={value.notice_period}
+            onChange={(next) => set('notice_period', next)}
+            type='number'
+          />
+          <Field
+            label='Recent employer'
+            value={value.recent_employer}
+            onChange={(next) => set('recent_employer', next)}
+          />
+          <Field
+            label='Confidence level'
+            value={value.confidence_level}
+            onChange={(next) => set('confidence_level', next)}
+          />
+          <Field
+            label='LinkedIn headline'
+            value={value.linkedin_headline}
+            onChange={(next) => set('linkedin_headline', next)}
+            full
+          />
+          <Field
+            label='LinkedIn summary'
+            value={value.linkedin_summary}
+            onChange={(next) => set('linkedin_summary', next)}
+            multiline
+            full
+          />
+          <Field
+            label='Cover letter'
+            value={value.cover_letter}
+            onChange={(next) => set('cover_letter', next)}
+            multiline
+            full
+          />
+          <Field
+            label='User information for AI'
+            value={
+              value.user_information_all ??
+              String(value.extra_data?.user_information_all ?? '')
+            }
+            onChange={(next) =>
+              onChange(
+                updateExtra(
+                  { ...value, user_information_all: next },
+                  'user_information_all',
+                  next,
+                ),
+              )
+            }
+            multiline
+            full
+            hint='Optional long-form context passed to AI for answering application questions.'
+          />
+        </div>
+        <div className='actions'>
+          <button className='primary hover:opacity-90 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 cursor-pointer shadow-sm' onClick={onSave}>
+            Save preferences
+          </button>
+        </div>
       </div>
-      <div className='actions'>
-        <button className='primary' onClick={onSave}>
-          Save preferences
-        </button>
-      </div>
-    </section>
+    </CardWithNorth>
   );
 }
 

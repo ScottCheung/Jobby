@@ -51,7 +51,7 @@ class ApplicationLogger:
             "title": record.get("title"),
             "company": record.get("company"),
             "work_location": record.get("work_location"),
-            "work_style": record.get("work_style"),
+            "work_style": None,
             "job_description": description,
             "job_link": record.get("job_link"),
             "external_job_link": record.get("external_application_link"),

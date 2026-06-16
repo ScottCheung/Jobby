@@ -3,7 +3,7 @@ from uuid import UUID
 
 from fastapi import Depends, FastAPI, HTTPException, Query, status
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from services.api.dependencies import get_or_create_current_user
@@ -70,12 +70,20 @@ def normalize_application_status(value: str | None) -> str:
 
 def async_application_from_link_record(application: JobApplication) -> tuple[dict, str | None]:
     link = application.job_link or application.external_job_link
+    original_location = application.work_location
     if not link:
         warning = "This application does not have a job link to async from"
         application.raw_data = {
             **(application.raw_data or {}),
             "link_async_warning": warning,
             "link_async_attempted_at": datetime.now().isoformat(),
+            "link_async_trace": {
+                "source_link": None,
+                "original_location": original_location,
+                "repaired_location": None,
+                "selected_location": original_location,
+                "fields": [],
+            },
         }
         return {}, warning
 
@@ -87,10 +95,17 @@ def async_application_from_link_record(application: JobApplication) -> tuple[dic
             **(application.raw_data or {}),
             "link_async_warning": warning,
             "link_async_attempted_at": datetime.now().isoformat(),
+            "link_async_trace": {
+                "source_link": link,
+                "original_location": original_location,
+                "repaired_location": None,
+                "selected_location": original_location,
+                "fields": [],
+            },
         }
         return {}, warning
 
-    updatable_fields = ("job_id", "title", "company", "work_location", "work_style", "job_description")
+    updatable_fields = ("job_id", "title", "company", "work_location", "job_description")
     updates = {field: repaired.get(field) for field in updatable_fields if repaired.get(field)}
     if application.job_description and is_linkedin_public_summary(application.job_description) and not updates.get("job_description"):
         updates["job_description"] = None
@@ -100,6 +115,13 @@ def async_application_from_link_record(application: JobApplication) -> tuple[dic
             **(application.raw_data or {}),
             "link_async_warning": warning,
             "link_async_attempted_at": datetime.now().isoformat(),
+            "link_async_trace": {
+                "source_link": link,
+                "original_location": original_location,
+                "repaired_location": repaired.get("work_location"),
+                "selected_location": original_location,
+                "fields": [],
+            },
         }
         return {}, warning
 
@@ -112,6 +134,13 @@ def async_application_from_link_record(application: JobApplication) -> tuple[dic
             "source_link": link,
             "fields": sorted(updates.keys()),
         },
+        "link_async_trace": {
+            "source_link": link,
+            "original_location": original_location,
+            "repaired_location": repaired.get("work_location"),
+            "selected_location": application.work_location,
+            "fields": sorted(updates.keys()),
+        },
     }
     return updates, None
 
@@ -119,6 +148,21 @@ def async_application_from_link_record(application: JobApplication) -> tuple[dic
 @app.get("/health")
 def health() -> dict:
     return {"status": "ok"}
+
+
+@app.get("/ready")
+def readiness(db: Session = Depends(get_db)) -> dict:
+    db.execute(text("SELECT 1"))
+    return {
+        "status": "ready",
+        "database": "connected",
+        "worker_mode": "in_process" if settings.enable_api_local_worker else "desktop_agent",
+        "capabilities": {
+            "tenancy_mode": "single_user",
+            "supported_platforms": ["linkedin"],
+            "future_platforms": ["seek"],
+        },
+    }
 
 
 @app.get("/api/me", response_model=UserRead)
@@ -406,7 +450,10 @@ def create_application(
 ) -> JobApplication:
     values = payload.model_dump()
     values["status"] = normalize_application_status(values.get("status"))
+    values["work_style"] = None
     application = JobApplication(user_id=current_user.id, **values)
+    if application.job_link or application.external_job_link:
+        async_application_from_link_record(application)
     db.add(application)
     db.commit()
     db.refresh(application)
@@ -594,7 +641,7 @@ def start_local_worker_run(
     run = AutomationRun(
         user_id=current_user.id,
         status="pending",
-        current_message="Waiting for the host worker agent to start python3 runAiBot.py",
+        current_message="Waiting for the host worker agent to start worker/runAiBot.py",
         summary={"requested_by": "user_console", "runner": "host_worker_agent"},
     )
     db.add(run)
@@ -615,7 +662,18 @@ def stop_local_worker_run(
         .limit(1)
     )
     if not run:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No running automation run found")
+        latest_run = db.scalar(
+            select(AutomationRun)
+            .where(AutomationRun.user_id == current_user.id)
+            .order_by(AutomationRun.created_at.desc())
+            .limit(1)
+        )
+        if latest_run:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Latest automation run is already {latest_run.status}",
+            )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No automation run has been started yet")
 
     try:
         return stop_local_worker(db)

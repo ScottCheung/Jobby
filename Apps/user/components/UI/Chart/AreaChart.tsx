@@ -33,11 +33,14 @@ interface AreaChartProps {
   gradientFill?: boolean;
   yKeys?: string[];
   ValueProps?: any;
+  margin?: { top?: number; right?: number; bottom?: number; left?: number };
+  yAxisWidth?: number;
+  yDomain?: [any, any];
 }
 
 // Modern color palette
 const COLORS = [
-  '#3b82f6', // Blue
+  '#eaab40', // Blue
   '#10b981', // Green
   '#f59e0b', // Amber
   '#ec4899', // Pink
@@ -62,7 +65,7 @@ const generateMultiAreas = (data: any[], xKey: string) => {
     return (
       <Area
         key={key}
-        type='monotone'
+        type='monotoneX'
         dataKey={key}
         name={key}
         stroke={color}
@@ -95,15 +98,18 @@ const AreaChart = ({
   showXAxis = true,
   showYAxis = true,
   showValues = true,
-  showGrid = true,
+  showGrid = false,
   gridType = 'both',
-  interpolationType = 'monotone',
+  interpolationType = 'basis',
   showLegend = false,
   stacked = false,
   stackOffset = 'none',
   showDots = 'hidden',
   gradientFill = false,
   ValueProps,
+  margin = { top: 10, right: 10, bottom: 5, left: 5 },
+  yAxisWidth,
+  yDomain,
 }: AreaChartProps) => {
   const seriesKeys =
     yKeys && yKeys.length > 0 ? yKeys
@@ -115,16 +121,14 @@ const AreaChart = ({
     : [];
 
   if (seriesKeys.length === 0) {
-    return (
-      <div className='flex h-full w-full items-center justify-center text-muted-foreground'>
-        AreaChart: No yKey/yKeys provided or auto-detection failed.
-      </div>
-    );
+    return null;
   }
 
   const currentStackOffset: AreaChartProps['stackOffset'] | 'none' =
     stackOffset || 'none';
   const hasMultipleSeries = seriesKeys.length > 1;
+  const effectiveShowXAxis = interpolationType === 'basis' ? false : showXAxis;
+  const effectiveShowYAxis = interpolationType === 'basis' ? false : showYAxis;
 
   const renderAreas = () => {
     return seriesKeys.map((key, index) => {
@@ -154,8 +158,12 @@ const AreaChart = ({
           fill={gradientFill ? `url(#${fillId})` : seriesColor}
           fillOpacity={gradientFill ? 1 : 0.3}
           stackId={stacked || currentStackOffset !== 'none' ? '1' : undefined}
-          dot={resolvedShowDots}
-          activeDot={{ r: 6, stroke: seriesColor, fill: seriesColor }}
+          dot={interpolationType === 'basis' ? false : resolvedShowDots}
+          activeDot={
+            interpolationType === 'basis' ? false : (
+              { r: 6, stroke: seriesColor, fill: seriesColor }
+            )
+          }
           animationDuration={1000}
           animationBegin={index * 100}
           isAnimationActive={true}
@@ -168,6 +176,7 @@ const AreaChart = ({
     <ResponsiveContainer width='100%' height='100%'>
       <RechartsAreaChart
         data={data}
+        margin={margin}
         stackOffset={
           currentStackOffset !== 'none' ? currentStackOffset : undefined
         }
@@ -186,12 +195,8 @@ const AreaChart = ({
                   x2='0'
                   y2='1'
                 >
-                  <stop offset='5%' stopColor={seriesColor} stopOpacity={0.8} />
-                  <stop
-                    offset='95%'
-                    stopColor={seriesColor}
-                    stopOpacity={0.1}
-                  />
+                  <stop offset='0%' stopColor={seriesColor} stopOpacity={0.5} />
+                  <stop offset='95%' stopColor={seriesColor} stopOpacity={0} />
                 </linearGradient>
               );
             })}
@@ -205,23 +210,25 @@ const AreaChart = ({
             horizontal={gridType === 'both' || gridType === 'horizontal'}
           />
         )}
-        {showXAxis && (
-          <XAxis
-            dataKey={xKey}
-            className='text-xs text-muted-foreground'
-            tickLine={false}
-            axisLine={false}
-            tick={{ fill: 'var(--color-ink-secondary)' }}
-          />
-        )}
-        {showYAxis && (
+        <XAxis
+          hide={!effectiveShowXAxis}
+          dataKey={xKey}
+          className='text-xs text-muted-foreground'
+          tickLine={false}
+          axisLine={false}
+          tick={{ fill: 'var(--color-ink-secondary)' }}
+          padding={{ left: 0, right: 0 }}
+        />
+        {effectiveShowYAxis && (
           <YAxis
             className='text-xs text-muted-foreground'
             tickLine={false}
             axisLine={false}
             tick={{ fill: 'var(--color-ink-secondary)' }}
+            width={yAxisWidth !== undefined ? yAxisWidth : 30}
             domain={
-              (
+              yDomain !== undefined ? yDomain
+              : (
                 (currentStackOffset as AreaChartProps['stackOffset']) ===
                 'expand'
               ) ?
@@ -240,7 +247,11 @@ const AreaChart = ({
         )}
         <Tooltip
           content={<ChartTooltip ValueProps={ValueProps} />}
-          cursor={false}
+          cursor={{
+            stroke: 'var(--color-border)',
+            strokeWidth: 1,
+            strokeDasharray: '4 4',
+          }}
         />
         {showLegend && <Legend wrapperStyle={{ paddingTop: '20px' }} />}
 

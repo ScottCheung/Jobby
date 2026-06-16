@@ -1,3 +1,5 @@
+/** @format */
+
 import React from 'react';
 import AreaChart from './AreaChart';
 import BarChart from './BarChart';
@@ -6,13 +8,14 @@ import LineChart from './LineChart';
 import PieChart from './PieChart';
 import RadarChart from './RadarChart';
 import RadialChart from './RadialChart';
+import { ProgressBarList } from '../Progress/ProgressBarList';
 import {
   type AreaProps as RechartsAreaProps,
   type RadarProps as RechartsRadarProps, // Added for RadarChart dot/activeDot props
 } from 'recharts'; // Import for interpolationType
 
 export interface ChartProps extends React.HTMLAttributes<HTMLDivElement> {
-  type: 'bar' | 'line' | 'area' | 'pie' | 'radar' | 'radial';
+  type: 'bar' | 'line' | 'area' | 'pie' | 'radar' | 'radial' | 'bar-list';
   data: any[];
   xKey?: string; // Optional at this level, logic below will check effective xKey
   yKey?: string; // Optional at this level, logic below will check effective yKey/yKeys
@@ -46,6 +49,17 @@ export interface ChartProps extends React.HTMLAttributes<HTMLDivElement> {
   showXAxis?: boolean;
   showYAxis?: boolean;
   yAxisWidth?: number;
+  margin?: { top?: number; right?: number; bottom?: number; left?: number };
+  yDomain?: [any, any];
+  pieCornerRadius?: number;
+  piePaddingAngle?: number;
+  pieInnerRadius?: string | number;
+  pieOuterRadius?: string | number;
+  pieGradients?: Record<string, { start: string; end: string }>;
+  barColorClassName?: string;
+  maxEquivalent?: boolean;
+  emptyMessage?: string;
+  valueFormatter?: (value: number, item: any) => React.ReactNode;
 }
 
 export const Chart = React.forwardRef<HTMLDivElement, ChartProps>(
@@ -85,26 +99,35 @@ export const Chart = React.forwardRef<HTMLDivElement, ChartProps>(
       showXAxis,
       showYAxis,
       yAxisWidth,
+      margin,
+      yDomain,
+      pieCornerRadius,
+      piePaddingAngle,
+      pieInnerRadius,
+      pieOuterRadius,
+      pieGradients,
+      barColorClassName,
+      maxEquivalent,
+      emptyMessage,
+      valueFormatter,
       ...props
     },
     ref,
   ) => {
     const effectiveXKey =
-      (type === 'pie' || type === 'radial' || type === 'radar') && nameKey
-        ? nameKey
-        : xKey;
+      (type === 'pie' || type === 'radial' || type === 'radar' || type === 'bar-list') && nameKey ?
+        nameKey
+      : xKey;
     const effectiveYKeyBase =
-      (type === 'pie' || type === 'radial' || type === 'radar') && valueKey
-        ? valueKey
-        : yKey;
+      (type === 'pie' || type === 'radial' || type === 'radar' || type === 'bar-list') && valueKey ?
+        valueKey
+      : yKey;
 
     let yRequirementMet = false;
-    let yKeyMessagePart = 'yKey/valueKey';
 
     if (type === 'area' || type === 'radar') {
       if (yKeys && yKeys.length > 0) {
         yRequirementMet = true;
-        yKeyMessagePart = 'yKeys (覆盖 yKey/valueKey)';
       } else {
         yRequirementMet = !!effectiveYKeyBase;
       }
@@ -112,32 +135,7 @@ export const Chart = React.forwardRef<HTMLDivElement, ChartProps>(
       yRequirementMet = !!effectiveYKeyBase;
     }
 
-    if (!data || data.length === 0 || !effectiveXKey || !yRequirementMet) {
-      return (
-        <ChartWrapper
-          title={title || '数据错误'}
-          size={size}
-          className={className}
-        >
-          <div className='flex h-full w-full flex-col items-center justify-center text-center text-muted-foreground'>
-            <p>图表数据或配置不完整。</p>
-            <p className='text-xs mt-1'>
-              (请提供: data,{' '}
-              {effectiveXKey
-                ? `xKey/nameKey (当前有效: ${effectiveXKey})`
-                : 'xKey/nameKey'}
-              , 以及{' '}
-              {yRequirementMet
-                ? `y轴数据键 (已满足来自: ${yKeyMessagePart})`
-                : yKeyMessagePart}
-              )
-            </p>
-          </div>
-        </ChartWrapper>
-      );
-    }
-    // At this point, effectiveXKey is guaranteed to be a string.
-    // effectiveYKeyBase might be undefined if yKeys is used for Area/Radar.
+    const isDataValid = !!(data && data.length > 0 && effectiveXKey && yRequirementMet);
 
     const getChartComponent = (chartType: ChartProps['type']) => {
       const commonChartProps = {
@@ -146,6 +144,7 @@ export const Chart = React.forwardRef<HTMLDivElement, ChartProps>(
         showLegend,
         title,
         ValueProps,
+        margin,
       };
 
       switch (chartType) {
@@ -153,7 +152,7 @@ export const Chart = React.forwardRef<HTMLDivElement, ChartProps>(
           return (
             <BarChart
               {...commonChartProps}
-              xKey={effectiveXKey}
+              xKey={effectiveXKey as string}
               yKey={effectiveYKeyBase}
               multiColor={multiColor}
               showGridX={showGridX}
@@ -169,16 +168,19 @@ export const Chart = React.forwardRef<HTMLDivElement, ChartProps>(
           return (
             <LineChart
               {...commonChartProps}
-              xKey={effectiveXKey}
+              xKey={effectiveXKey as string}
               yKey={effectiveYKeyBase as string}
               ValueProps={ValueProps}
+              showXAxis={showXAxis}
+              showYAxis={showYAxis}
+              yAxisWidth={yAxisWidth}
             />
           );
         case 'area':
           return (
             <AreaChart
               {...commonChartProps}
-              xKey={effectiveXKey}
+              xKey={effectiveXKey as string}
               yKey={effectiveYKeyBase}
               yKeys={yKeys}
               interpolationType={interpolationType}
@@ -187,22 +189,31 @@ export const Chart = React.forwardRef<HTMLDivElement, ChartProps>(
               showDots={showDots}
               gradientFill={gradientFill}
               ValueProps={ValueProps}
+              showXAxis={showXAxis}
+              showYAxis={showYAxis}
+              yAxisWidth={yAxisWidth}
             />
           );
         case 'pie':
           return (
             <PieChart
               {...commonChartProps}
-              xKey={effectiveXKey}
+              xKey={effectiveXKey as string}
               yKey={effectiveYKeyBase}
               ValueProps={ValueProps}
+              cornerRadius={pieCornerRadius}
+              paddingAngle={piePaddingAngle}
+              innerRadius={pieInnerRadius}
+              outerRadius={pieOuterRadius}
+              gradientFill={gradientFill}
+              pieGradients={pieGradients}
             />
           );
         case 'radar':
           return (
             <RadarChart
               {...commonChartProps}
-              xKey={effectiveXKey}
+              xKey={effectiveXKey as string}
               yKey={effectiveYKeyBase}
               yKeys={yKeys}
               gridType={radarGridType}
@@ -215,7 +226,7 @@ export const Chart = React.forwardRef<HTMLDivElement, ChartProps>(
           return (
             <RadialChart
               {...commonChartProps}
-              nameKey={effectiveXKey}
+              nameKey={effectiveXKey as string}
               valueKey={effectiveYKeyBase}
               startAngle={radialStartAngle}
               endAngle={radialEndAngle}
@@ -224,6 +235,18 @@ export const Chart = React.forwardRef<HTMLDivElement, ChartProps>(
               barSize={radialBarSize}
               hoverAnimationDuration={radialHoverAnimationDuration}
               ValueProps={ValueProps}
+            />
+          );
+        case 'bar-list':
+          return (
+            <ProgressBarList
+              data={data}
+              nameKey={effectiveXKey as any}
+              valueKey={effectiveYKeyBase as any}
+              barColorClassName={barColorClassName}
+              maxEquivalent={maxEquivalent}
+              emptyMessage={emptyMessage}
+              valueFormatter={valueFormatter}
             />
           );
         default:
@@ -236,13 +259,11 @@ export const Chart = React.forwardRef<HTMLDivElement, ChartProps>(
         title={title}
         size={size}
         className={className}
+        isEmpty={!isDataValid}
+        emptyMessage={emptyMessage}
       >
-        <div
-          ref={ref}
-          style={{ width: '100%', height: '100%' }}
-          {...props}
-        >
-          {getChartComponent(type)}
+        <div ref={ref} style={{ width: '100%', height: '100%' }} {...props}>
+          {isDataValid && getChartComponent(type)}
         </div>
       </ChartWrapper>
     );

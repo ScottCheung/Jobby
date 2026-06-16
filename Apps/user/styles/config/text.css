@@ -1,8 +1,9 @@
 @layer base {
     :root {
-        --color-ink-primary: #1f2937;
-        --color-ink-secondary: #0000008a;
-        --color-ink-muted: #94a3b8;
+        --ink-primary-raw: #1f2937;
+        --ink-secondary-raw: #0000008a;
+        --ink-muted-raw: #94a3b8;
+        --ink-destructive-raw: var(--error);
 
         /* Responsive Font Sizes */
         /* Fluid typography: min @ 375px -> max @ 1440px */
@@ -18,9 +19,9 @@
     }
 
     .dark {
-        --color-ink-primary: #ffffff;
-        --color-ink-secondary: #fcfcfc90;
-        --color-ink-muted: #e2e8f0;
+        --ink-primary-raw: #ffffff;
+        --ink-secondary-raw: #fcfcfc90;
+        --ink-muted-raw: #e2e8f0;
+        --ink-destructive-raw: var(--error);
     }
-
 }

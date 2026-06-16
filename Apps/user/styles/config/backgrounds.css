@@ -1,21 +1,29 @@
 @layer base {
     :root {
-        --color-background: #f3f4f6;
-        --color-background-secondary: #dbdbdb;
-        --color-panel: #ffffff;
-        --color-popover: #ffffff;
-        --color-muted: #f1f5f9;
+        --background-raw: #f3f4f6;
+        --background-secondary-raw: #dbdbdb;
+        --panel-raw: #ffffff;
+        --panel-secondary-raw: #f9fafb;
+        --panel-foreground-raw: #111827;
+        --popover-raw: #ffffff;
+        --popover-foreground-raw: #111827;
+        --muted-raw: #f1f5f9;
+        --muted-foreground-raw: #64748b;
+        --foreground-raw: #111827;
     }
 
     .dark {
-        --color-background: #000000;
-        --color-background-secondary: #1d1d1d;
-        --color-panel: #1f1f1f;
-        --color-popover: #1e1e1e;
-        --color-muted: #1e293b;
+        --background-raw: #000000;
+        --background-secondary-raw: #1d1d1d;
+        --panel-raw: #1f1f1f;
+        --panel-secondary-raw: #27272a;
+        --panel-foreground-raw: #f9fafb;
+        --popover-raw: #1e1e1e;
+        --popover-foreground-raw: #f9fafb;
+        --muted-raw: #1e293b;
+        --muted-foreground-raw: #94a3b8;
+        --foreground-raw: #f9fafb;
     }
-
-
 }
 
 @layer utilities {
@@ -26,5 +34,4 @@
     .bg-glass-secondary {
         @apply bg-background-secondary/80 backdrop-blur-[12px] dark:bg-background-secondary/60;
     }
-
 }
