@@ -1,4 +1,6 @@
 import type {
+  DesktopBotPlatform,
+  DesktopBotState,
   DesktopConnectionConfig,
   DesktopConnectionConfigResult,
   DesktopRuntimeInfo,
@@ -17,6 +19,19 @@ declare global {
       ) => Promise<DesktopConnectionConfigResult>;
       resetConnectionConfig?: () => Promise<DesktopConnectionConfigResult>;
       onServiceStatus?: (callback: (payload: DesktopServiceStatus) => void) => () => void;
+      startBot?: (
+        platform: DesktopBotPlatform,
+      ) => Promise<{ ok: boolean; error?: string; state?: DesktopBotState }>;
+      stopBot?: (
+        platform: DesktopBotPlatform,
+      ) => Promise<{ ok: boolean; error?: string }>;
+      getBotState?: (platform: DesktopBotPlatform) => Promise<DesktopBotState>;
+      onBotStatus?: (
+        callback: (payload: {
+          platform: DesktopBotPlatform;
+          state: DesktopBotState;
+        }) => void,
+      ) => () => void;
     };
   }
 }

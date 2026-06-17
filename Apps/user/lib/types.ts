@@ -198,3 +198,19 @@ export type DesktopConnectionConfigResult = {
   config: DesktopConnectionConfig;
   error?: string;
 };
+
+export type DesktopBotPlatform = 'linkedin' | 'seek' | 'third_party';
+
+export type DesktopBotState = {
+  status: string;
+  message: string;
+  stats: {
+    submitted: number;
+    skipped: number;
+    failed: number;
+  };
+  logs: Array<{
+    at: string;
+    line: string;
+  }>;
+};

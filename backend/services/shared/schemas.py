@@ -51,6 +51,7 @@ class JobPreferenceBase(BaseModel):
     require_visa: str | None = None
     website: str | None = None
     linkedin_url: str | None = None
+    resume_path: str | None = None
     us_citizenship: str | None = None
     desired_salary: Decimal | None = None
     current_ctc: Decimal | None = None
@@ -58,6 +59,7 @@ class JobPreferenceBase(BaseModel):
     linkedin_headline: str | None = None
     linkedin_summary: str | None = None
     cover_letter: str | None = None
+    user_information_all: str | None = None
     recent_employer: str | None = None
     confidence_level: str | None = None
     extra_data: dict = Field(default_factory=dict)

@@ -1,3 +1,5 @@
+import os
+
 from config.custom_questions import custom_questions
 from config.personals import (
     country,
@@ -16,6 +18,7 @@ from config.personals import (
 from config.questions import (
     confidence_level,
     cover_letter,
+    default_resume_path,
     linkedIn,
     linkedin_headline,
     linkedin_summary,
@@ -70,7 +73,19 @@ def resolve_custom_answer(label_org: str, field_type: str) -> str | None:
 def resolve_keyword_answer(label_org: str, field_type: str, work_location: str) -> str | None:
     label = label_org.lower()
 
+    if field_type == "file":
+        if any(word in label for word in ["resume", "cv", "cover letter", "attachment", "upload"]):
+            if "cover" in label:
+                return ""
+            return default_resume_path
+        return None
+
     if field_type == "select":
+        if any(word in label for word in ["resume", "resumé", "cv"]):
+            filename = os.path.basename(default_resume_path or "").strip()
+            if filename:
+                return filename
+            return default_resume_path
         if "email" in label or "phone" in label:
             return None
         if "gender" in label or "sex" in label:

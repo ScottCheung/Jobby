@@ -227,7 +227,6 @@ def createChromeSession(isRetry: bool = False):
 
     options = _build_chrome_options(use_uc)
 
-    print_lg("IF YOU HAVE MORE THAN 10 TABS OPENED, PLEASE CLOSE OR BOOKMARK THEM! Or it's highly likely that application will just open browser and not do anything!")
     profile_dir = None
     if not safe_mode:
         profile_dir = find_default_profile_directory()

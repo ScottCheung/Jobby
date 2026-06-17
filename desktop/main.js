@@ -1,10 +1,12 @@
-const { app, BrowserWindow, dialog, ipcMain } = require("electron");
-const path = require("path");
-const { getDesktopConfig } = require("./config");
-const { DesktopConfigStore } = require("./config-store");
-const { ServiceManager } = require("./service-manager");
+/** @format */
 
-const APP_NAME = "Auto Job Apply";
+const { app, BrowserWindow, dialog, ipcMain } = require('electron');
+const path = require('path');
+const { getDesktopConfig } = require('./config');
+const { DesktopConfigStore } = require('./config-store');
+const { ServiceManager } = require('./service-manager');
+
+const APP_NAME = 'Auto Job Apply';
 app.setName(APP_NAME);
 
 let mainWindow = null;
@@ -16,41 +18,48 @@ let loadingFallback = false;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 1440,
-    height: 960,
-    minWidth: 1200,
-    minHeight: 800,
+    width: 2880,
+    height: 1800,
+    minWidth: (2880 * 1) / 3,
+    minHeight: (1800 * 1) / 3,
     title: APP_NAME,
-    backgroundColor: "#0e1116",
+    backgroundColor: '#0e1116',
     webPreferences: {
-      preload: path.join(__dirname, "preload.js"),
+      preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
     },
   });
 
-  mainWindow.webContents.on("did-fail-load", (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
-    if (!isMainFrame || loadingFallback) {
-      return;
-    }
-    loadFallbackPage(
-      `Could not load ${validatedURL || desktopConfig.dashboard.url}. ${errorDescription} (${errorCode}).`,
-    );
-  });
+  mainWindow.webContents.on(
+    'did-fail-load',
+    (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
+      if (!isMainFrame || loadingFallback) {
+        return;
+      }
+      loadFallbackPage(
+        `Could not load ${validatedURL || desktopConfig.dashboard.url}. ${errorDescription} (${errorCode}).`,
+      );
+    },
+  );
 
   loadDashboardPage();
 
-  mainWindow.on("closed", () => {
+  mainWindow.on('closed', () => {
     mainWindow = null;
   });
 }
 
 function registerIpc() {
-  ipcMain.handle("desktop:get-runtime-info", () => serviceManager.getRuntimeInfo());
-  ipcMain.handle("desktop:get-service-status", () => serviceManager.getServiceStatus());
-  ipcMain.handle("desktop:get-connection-config", () => connectionConfig);
-  ipcMain.handle("desktop:save-connection-config", async (_event, payload) => {
+  ipcMain.handle('desktop:get-runtime-info', () =>
+    serviceManager.getRuntimeInfo(),
+  );
+  ipcMain.handle('desktop:get-service-status', () =>
+    serviceManager.getServiceStatus(),
+  );
+  ipcMain.handle('desktop:get-connection-config', () => connectionConfig);
+  ipcMain.handle('desktop:save-connection-config', async (_event, payload) => {
     const previousConfig = connectionConfig;
     const nextConnectionConfig = configStore.save(payload);
 
@@ -66,11 +75,14 @@ function registerIpc() {
       return {
         ok: false,
         config: connectionConfig,
-        error: error instanceof Error ? error.message : "Failed to save desktop connection config",
+        error:
+          error instanceof Error ?
+            error.message
+          : 'Failed to save desktop connection config',
       };
     }
   });
-  ipcMain.handle("desktop:reset-connection-config", async () => {
+  ipcMain.handle('desktop:reset-connection-config', async () => {
     const resetConfig = configStore.reset();
     await applyConnectionConfig(resetConfig);
     return {
@@ -79,9 +91,35 @@ function registerIpc() {
     };
   });
 
-  serviceManager.on("status", (status) => {
+  serviceManager.on('status', (status) => {
     if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send("desktop:service-status", status);
+      mainWindow.webContents.send('desktop:service-status', status);
+    }
+  });
+
+  ipcMain.handle('desktop:start-bot', async (_event, platform) => {
+    try {
+      return await serviceManager.startBot(platform);
+    } catch (err) {
+      return { ok: false, error: err.message };
+    }
+  });
+
+  ipcMain.handle('desktop:stop-bot', async (_event, platform) => {
+    try {
+      return await serviceManager.stopBot(platform);
+    } catch (err) {
+      return { ok: false, error: err.message };
+    }
+  });
+
+  ipcMain.handle('desktop:get-bot-state', (_event, platform) => {
+    return serviceManager.getBotState(platform);
+  });
+
+  serviceManager.on('bot-status', ({ platform, state }) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('desktop:bot-status', { platform, state });
     }
   });
 }
@@ -107,7 +145,7 @@ async function loadDashboardPage() {
 
   loadingFallback = false;
   if (!desktopConfig.dashboard.url) {
-    await loadFallbackPage("Dashboard URL is not configured yet.");
+    await loadFallbackPage('Dashboard URL is not configured yet.');
     return;
   }
 
@@ -115,7 +153,9 @@ async function loadDashboardPage() {
     await mainWindow.loadURL(desktopConfig.dashboard.url);
   } catch (error) {
     await loadFallbackPage(
-      error instanceof Error ? error.message : "Could not load the configured dashboard",
+      error instanceof Error ?
+        error.message
+      : 'Could not load the configured dashboard',
     );
   }
 }
@@ -126,9 +166,9 @@ async function loadFallbackPage(reason) {
   }
 
   loadingFallback = true;
-  await mainWindow.loadFile(path.join(__dirname, "fallback.html"));
-  mainWindow.webContents.once("did-finish-load", () => {
-    mainWindow.webContents.send("desktop:fallback-reason", {
+  await mainWindow.loadFile(path.join(__dirname, 'fallback.html'));
+  mainWindow.webContents.once('did-finish-load', () => {
+    mainWindow.webContents.send('desktop:fallback-reason', {
       reason,
       dashboardUrl: desktopConfig.dashboard.url,
       apiUrl: desktopConfig.api.url,
@@ -136,9 +176,10 @@ async function loadFallbackPage(reason) {
   });
 }
 
-app.whenReady()
+app
+  .whenReady()
   .then(async () => {
-    configStore = new DesktopConfigStore(app.getPath("userData"));
+    configStore = new DesktopConfigStore(app.getPath('userData'));
     connectionConfig = configStore.load();
     desktopConfig = getDesktopConfig({ connectionConfig });
     serviceManager = new ServiceManager(desktopConfig);
@@ -146,24 +187,24 @@ app.whenReady()
     await serviceManager.startManagedServices();
     createWindow();
 
-    app.on("activate", () => {
+    app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) {
         createWindow();
       }
     });
   })
   .catch((error) => {
-    dialog.showErrorBox("Desktop startup failed", error.message);
+    dialog.showErrorBox('Desktop startup failed', error.message);
     app.quit();
   });
 
-app.on("window-all-closed", () => {
+app.on('window-all-closed', () => {
   serviceManager.stopManagedServices();
-  if (process.platform !== "darwin") {
+  if (process.platform !== 'darwin') {
     app.quit();
   }
 });
 
-app.on("before-quit", () => {
+app.on('before-quit', () => {
   serviceManager.stopManagedServices();
 });

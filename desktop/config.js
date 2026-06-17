@@ -67,10 +67,10 @@ function getDesktopConfig(options = {}) {
       mode:
         connectionConfig.workerMode ||
         process.env.AUTO_JOB_WORKER_MODE ||
-        'local-python',
+        'external',
       pythonPath: process.env.AUTO_JOB_PYTHON_PATH || 'python3',
       cwd: rootDir,
-      command: ['-m', 'worker.local_agent'],
+      command: [],
       apiBaseUrl: apiUrl,
     },
   };

@@ -46,7 +46,7 @@ class ApplicationLogger:
             f"job_description_length={len(description) if isinstance(description, str) else 0}",
         )
         return {
-            "platform": "linkedin",
+            "platform": record.get("platform") or "linkedin",
             "job_id": record.get("job_id"),
             "title": record.get("title"),
             "company": record.get("company"),

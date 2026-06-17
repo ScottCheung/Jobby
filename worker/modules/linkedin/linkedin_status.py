@@ -17,6 +17,7 @@ __all__ = [
     "sync_status_widget",
     "update_linkedin_status",
     "bot_status",
+    "update_bot_stats",
     "is_linkedin_bot_paused",
     "wait_if_bot_paused",
     "wait_for_filter_action",
@@ -82,7 +83,7 @@ def sync_status_widget(driver=None) -> None:
     if driver is None:
         return
     try:
-        if "linkedin.com" not in driver.current_url:
+        if not str(driver.current_url or "").startswith(("http://", "https://")):
             return
     except Exception:
         return
@@ -143,7 +144,7 @@ def update_linkedin_status(message, force: bool = False) -> None:
         driver = _current_driver()
         if driver is None:
             return
-        if "linkedin.com" not in driver.current_url:
+        if not str(driver.current_url or "").startswith(("http://", "https://")):
             return
         sync_status_widget(driver)
         driver.execute_script(
@@ -156,8 +157,30 @@ def update_linkedin_status(message, force: bool = False) -> None:
         pass
 
 
-def bot_status(message: str) -> None:
+_bot_stats = {"submitted": 0, "skipped": 0, "failed": 0}
+
+def update_bot_stats(submitted=None, skipped=None, failed=None) -> None:
+    global _bot_stats
+    if submitted is not None:
+        _bot_stats["submitted"] = submitted
+    if skipped is not None:
+        _bot_stats["skipped"] = skipped
+    if failed is not None:
+        _bot_stats["failed"] = failed
+
+
+def bot_status(message: str, status: str = "running") -> None:
     update_linkedin_status(f"[Status] {message}", force=True)
+    import json
+    from datetime import datetime
+    payload = {
+        "type": "status",
+        "status": status,
+        "message": message,
+        "timestamp": datetime.now().isoformat(),
+        "stats": _bot_stats
+    }
+    print(f"__BOT_STATUS__:{json.dumps(payload)}", flush=True)
 
 
 def is_linkedin_bot_paused() -> bool:
@@ -165,7 +188,7 @@ def is_linkedin_bot_paused() -> bool:
         driver = _current_driver()
         if driver is None:
             return False
-        if "linkedin.com" not in driver.current_url:
+        if not str(driver.current_url or "").startswith(("http://", "https://")):
             return False
         sync_status_widget(driver)
         return bool(driver.execute_script("return !!window.linkedinBotPaused;"))
@@ -211,7 +234,7 @@ def set_status_widget_compact(compact: bool) -> None:
         driver = _current_driver()
         if driver is None:
             return
-        if "linkedin.com" not in driver.current_url:
+        if not str(driver.current_url or "").startswith(("http://", "https://")):
             return
         sync_status_widget(driver)
         driver.execute_script(
@@ -227,7 +250,7 @@ def set_status_widget_hidden(hidden: bool) -> None:
         driver = _current_driver()
         if driver is None:
             return
-        if "linkedin.com" not in driver.current_url:
+        if not str(driver.current_url or "").startswith(("http://", "https://")):
             return
         sync_status_widget(driver)
         driver.execute_script(

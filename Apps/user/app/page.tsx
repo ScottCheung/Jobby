@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { useConsole } from '@/components/ConsoleContext';
 import { H2 } from '@/components/UI/text/typography';
 import { Chart, ChartWrapper } from '@/components/UI/Chart';
+import type { DesktopBotPlatform } from '@/lib/types';
 import {
   ChartNoAxesGantt,
   CalendarSearch,
@@ -20,6 +21,32 @@ import { ChevronRight } from 'lucide-react';
 import { formatDate } from '@/components/ConsoleUtils';
 import { CityVectorMap } from '@/components/UI/Map/CityVectorMap';
 
+const PLATFORM_CARDS: Array<{
+  key: DesktopBotPlatform;
+  label: string;
+  subtitle: string;
+  actionLabel: string;
+}> = [
+  {
+    key: 'linkedin',
+    label: 'LinkedIn Automation',
+    subtitle: 'Easy Apply Bot',
+    actionLabel: 'Start LinkedIn',
+  },
+  {
+    key: 'seek',
+    label: 'Seek Automation',
+    subtitle: 'Quick Apply Bot',
+    actionLabel: 'Start Seek',
+  },
+  {
+    key: 'third_party',
+    label: 'Third-Party Assist',
+    subtitle: 'Guided Form Fill',
+    actionLabel: 'Assist Current Page',
+  },
+];
+
 export default function OverviewPage() {
   const {
     dashboardData,
@@ -31,6 +58,9 @@ export default function OverviewPage() {
     desktopConnectionConfig,
     saveDesktopConnectionConfig,
     resetDesktopConnectionConfig,
+    botStates,
+    startBot,
+    stopBot,
   } = useConsole();
   const [connectionForm, setConnectionForm] = useState({
     environmentName: '',
@@ -50,7 +80,8 @@ export default function OverviewPage() {
     });
   }, [desktopConnectionConfig]);
 
-  const desktopServices = desktopServiceStatus ?
+  const desktopServices =
+    desktopServiceStatus ?
       [
         {
           key: 'api',
@@ -102,97 +133,142 @@ export default function OverviewPage() {
 
   return (
     <div className='grid grid-cols-12 gap-6'>
-      {isDesktopApp && desktopServiceStatus && (
-        <div className='col-span-12 bg-panel rounded-card p-card'>
-          <div className='flex items-start justify-between gap-4 mb-4'>
+      {isDesktopApp && (
+        <div className='col-span-12 bg-panel rounded-card p-card border border-zinc-200/50 dark:border-zinc-800/50'>
+          <div className='flex items-start justify-between gap-4 mb-6'>
             <div>
-              <H2>Desktop Runtime</H2>
+              <H2>Platform Automation Console</H2>
               <p className='text-xs text-zinc-400 dark:text-zinc-500'>
-                Live status for the services powering the desktop app
+                Launch and monitor automated job applications across active
+                platforms in real time
               </p>
             </div>
             <span className='inline-flex items-center gap-2 rounded-full bg-emerald-500/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-600 dark:text-emerald-400'>
-              Integrated Desktop Mode
+              Direct Process Control
             </span>
           </div>
 
-          <div className='grid gap-4 md:grid-cols-3'>
-            {desktopServices.map((service) => {
-              const Icon = service.icon;
-              const isRunning = service.status.running;
-              const isHealthy = service.status.healthy;
-              const latestLog = service.status.recentLogs.at(-1)?.line;
+          <div className='grid gap-6 md:grid-cols-2'>
+            {PLATFORM_CARDS.map((platformCard) => {
+              const platform = platformCard.key;
+              const state = botStates[platform] || {
+                status: 'idle',
+                message: 'Idle',
+                stats: { submitted: 0, skipped: 0, failed: 0 },
+                logs: [],
+              };
+              const isRunning = ['starting', 'running', 'stopping'].includes(
+                state.status,
+              );
+              const label =
+                platformCard.label;
+              const statusColor =
+                state.status === 'success' ?
+                  'text-emerald-500 bg-emerald-500/10'
+                : state.status === 'failed' ? 'text-red-500 bg-red-500/10'
+                : state.status === 'cancelled' ? 'text-zinc-500 bg-zinc-500/10'
+                : isRunning ? 'text-blue-500 bg-blue-500/10 animate-pulse'
+                : 'text-zinc-400 bg-zinc-500/5';
 
               return (
                 <div
-                  key={service.key}
-                  className={cn(
-                    'rounded-3xl border p-4 transition-colors',
-                    isRunning && isHealthy !== false ?
-                      'border-emerald-500/20 bg-emerald-500/5'
-                    : 'border-zinc-200/70 bg-zinc-50/70 dark:border-zinc-800/80 dark:bg-zinc-900/30',
-                  )}
+                  key={platform}
+                  className='rounded-3xl border border-zinc-200/50 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-900/20 p-5 flex flex-col justify-between transition-colors'
                 >
-                  <div className='flex items-center justify-between gap-3 mb-3'>
-                    <div className='flex items-center gap-3'>
-                      <div
-                        className={cn(
-                          'flex h-10 w-10 items-center justify-center rounded-2xl',
-                          isRunning && isHealthy !== false ?
-                            'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
-                          : 'bg-zinc-200/70 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400',
-                        )}
+                  <div>
+                    {/* Header */}
+                    <div className='flex items-center justify-between gap-3 mb-4'>
+                      <div className='flex items-center gap-3'>
+                        <div className='flex h-10 w-10 items-center justify-center rounded-2xl bg-zinc-200/50 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300'>
+                          <Globe className='h-5 w-5' />
+                        </div>
+                        <div>
+                          <div className='font-semibold text-zinc-900 dark:text-zinc-100'>
+                            {label}
+                          </div>
+                          <div className='text-[10px] uppercase tracking-wider text-zinc-400 dark:text-zinc-500'>
+                            {platformCard.subtitle}
+                          </div>
+                        </div>
+                      </div>
+                      <span
+                        className={`inline-flex rounded-full px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider ${statusColor}`}
                       >
-                        <Icon className='h-5 w-5' />
+                        {state.status}
+                      </span>
+                    </div>
+
+                    {/* Stats */}
+                    <div className='grid grid-cols-3 gap-2 py-3 px-4 mb-4 rounded-2xl bg-zinc-100/60 dark:bg-zinc-900/40 text-center'>
+                      <div>
+                        <div className='text-xs text-zinc-400 dark:text-zinc-500'>
+                          Submitted
+                        </div>
+                        <div className='text-lg font-bold text-emerald-600 dark:text-emerald-400'>
+                          {state.stats.submitted}
+                        </div>
                       </div>
                       <div>
-                        <div className='font-semibold text-zinc-900 dark:text-zinc-100'>
-                          {service.label}
+                        <div className='text-xs text-zinc-400 dark:text-zinc-500'>
+                          Skipped
                         </div>
-                        <div className='text-[11px] uppercase tracking-[0.18em] text-zinc-400 dark:text-zinc-500'>
-                          {service.mode || service.status.mode}
+                        <div className='text-lg font-bold text-amber-500'>
+                          {state.stats.skipped}
+                        </div>
+                      </div>
+                      <div>
+                        <div className='text-xs text-zinc-400 dark:text-zinc-500'>
+                          Failed
+                        </div>
+                        <div className='text-lg font-bold text-red-500'>
+                          {state.stats.failed}
                         </div>
                       </div>
                     </div>
 
-                    <span
-                      className={cn(
-                        'inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em]',
-                        isHealthy === true ?
-                          'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-                        : isHealthy === false ?
-                          'bg-amber-500/10 text-amber-600 dark:text-amber-400'
-                        : 'bg-zinc-500/10 text-zinc-500 dark:text-zinc-400',
-                      )}
-                    >
-                      {isHealthy === true ? 'Healthy' : isHealthy === false ? 'Needs Attention' : isRunning ? 'Running' : 'Idle'}
-                    </span>
+                    {/* Current Log / Message */}
+                    <div className='text-xs mb-3 text-zinc-600 dark:text-zinc-300 flex items-center gap-1.5'>
+                      <Activity className='h-3.5 w-3.5 text-zinc-400 animate-pulse' />
+                      <span className='font-medium truncate'>
+                        {state.message}
+                      </span>
+                    </div>
+
+                    {/* Real-time terminal log stream */}
+                    <div className='mb-5 h-70 rounded-xl bg-zinc-950 p-3 font-mono text-[10px] text-zinc-400 overflow-y-auto border border-zinc-800/80 scrollbar-none'>
+                      {state.logs.length === 0 ?
+                        <div className='text-zinc-600 italic'>
+                          Waiting for logs...
+                        </div>
+                      : state.logs.map((log, i) => (
+                          <div key={i} className='truncate leading-relaxed'>
+                            <span className='text-zinc-600 mr-1.5'>
+                              [{log.at.split('T')[1].split('.')[0]}]
+                            </span>
+                            {log.line}
+                          </div>
+                        ))
+                      }
+                    </div>
                   </div>
 
-                  <div className='space-y-2 text-xs text-zinc-500 dark:text-zinc-400'>
-                    <p>
-                      Endpoint:{' '}
-                      <span className='font-mono text-zinc-700 dark:text-zinc-300'>
-                        {service.status.url || 'local-only'}
-                      </span>
-                    </p>
-                    <p>
-                      Health:{' '}
-                      <span className='text-zinc-700 dark:text-zinc-300'>
-                        {service.status.detail || 'No health detail yet'}
-                      </span>
-                    </p>
-                    <p>
-                      Started:{' '}
-                      <span className='text-zinc-700 dark:text-zinc-300'>
-                        {service.status.startedAt ?
-                          formatDate(service.status.startedAt)
-                        : 'Not started in this session'}
-                      </span>
-                    </p>
-                    <p className='line-clamp-2 min-h-9'>
-                      {latestLog || 'No desktop-side logs captured yet.'}
-                    </p>
+                  {/* Actions */}
+                  <div className='flex items-center gap-3'>
+                    {isRunning ?
+                      <button
+                        onClick={() => stopBot(platform)}
+                        className='flex-1 py-2 rounded-full bg-red-600 hover:bg-red-500 text-white text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer flex items-center justify-center gap-1.5'
+                      >
+                        <Activity className='h-3.5 w-3.5 animate-spin' /> Stop
+                        {platform === 'third_party' ? ' Assist' : ' Bot'}
+                      </button>
+                    : <button
+                        onClick={() => startBot(platform)}
+                        className='flex-1 py-2 rounded-full bg-emerald-600 hover:bg-emerald-505 text-white text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer flex items-center justify-center gap-1.5'
+                      >
+                        {platformCard.actionLabel}
+                      </button>
+                    }
                   </div>
                 </div>
               );
@@ -201,7 +277,7 @@ export default function OverviewPage() {
         </div>
       )}
 
-      {isDesktopApp && desktopConnectionConfig && (
+      {/* {isDesktopApp && desktopConnectionConfig && (
         <div className='col-span-12 bg-panel rounded-card p-card'>
           <div className='flex items-start justify-between gap-4 mb-5'>
             <div>
@@ -282,7 +358,7 @@ export default function OverviewPage() {
             </p>
           </div>
         </div>
-      )}
+      )} */}
 
       {/* Row 1: Trend & Distribution Charts */}
       {/* Trend Chart - Span 2 Columns */}

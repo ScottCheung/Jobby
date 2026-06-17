@@ -17,4 +17,12 @@ contextBridge.exposeInMainWorld("autoJobDesktop", {
     ipcRenderer.on("desktop:fallback-reason", listener);
     return () => ipcRenderer.removeListener("desktop:fallback-reason", listener);
   },
+  startBot: (platform) => ipcRenderer.invoke("desktop:start-bot", platform),
+  stopBot: (platform) => ipcRenderer.invoke("desktop:stop-bot", platform),
+  getBotState: (platform) => ipcRenderer.invoke("desktop:get-bot-state", platform),
+  onBotStatus: (callback) => {
+    const listener = (_event, payload) => callback(payload);
+    ipcRenderer.on("desktop:bot-status", listener);
+    return () => ipcRenderer.removeListener("desktop:bot-status", listener);
+  },
 });

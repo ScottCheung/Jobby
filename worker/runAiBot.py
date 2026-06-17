@@ -30,7 +30,7 @@ def _install_headless_dialog_shims() -> None:
 
 _install_headless_dialog_shims()
 
-from modules.run_ai_bot import main
+from runLinkedinBot import main
 
 
 if __name__ == "__main__":

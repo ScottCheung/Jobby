@@ -119,6 +119,13 @@ failed_count = 0
 skip_count = 0
 dailyEasyApplyLimitReached = False
 
+def sync_stats_to_status() -> None:
+    update_bot_stats(
+        submitted=easy_applied_count + external_jobs_count,
+        skipped=skip_count,
+        failed=failed_count
+    )
+
 def _as_float(value, default: float = 0.0) -> float:
     if value in ("", None):
         return default
@@ -266,6 +273,7 @@ def apply_to_jobs(search_terms: list[str]) -> None:
                         linkedin_flow.failed_job(job_id, job_link, resume, date_listed, "Found Blacklisted words in About Company", e, "Skipped", screenshot_name,
                                                  title=title, company=company, search_term=searchTerm, work_location=work_location, work_style=work_style)
                         skip_count += 1
+                        sync_stats_to_status()
                         continue
                     except Exception as e:
                         bot_status(f'Could not inspect company details for "{title}". Continuing.')
@@ -330,6 +338,7 @@ def apply_to_jobs(search_terms: list[str]) -> None:
                                                  description=description)
                         rejected_jobs.add(job_id)
                         skip_count += 1
+                        sync_stats_to_status()
                         continue
 
                     
@@ -497,6 +506,7 @@ def apply_to_jobs(search_terms: list[str]) -> None:
                                                      title=title, company=company, search_term=searchTerm, work_location=work_location, work_style=work_style,
                                                      questions_list=questions_list, description=description)
                             failed_count += 1
+                            sync_stats_to_status()
                             linkedin_flow.discard_job()
                             continue
                     else:
@@ -522,6 +532,7 @@ def apply_to_jobs(search_terms: list[str]) -> None:
                     current_count += 1
                     if application_link == "Easy Applied": easy_applied_count += 1
                     else:   external_jobs_count += 1
+                    sync_stats_to_status()
                     applied_jobs.add(job_id)
 
 
@@ -586,6 +597,7 @@ for _sig in (signal.SIGINT, signal.SIGTERM):
 def main() -> None:
     total_runs = 99
     interrupted = False
+    bot_status("Starting LinkedIn automation...", status="starting")
     try:
         global linkedIn_tab, tabs_count, useNewResume, aiClient, driver, actions, wait, options
         alert_title = "Error Occurred. Closing Browser!"
@@ -670,15 +682,19 @@ def main() -> None:
     except KeyboardInterrupt:
         interrupted = True
         print_lg("Interrupted by user. Closing browser...")
+        bot_status("Interrupted by user.", status="cancelled")
     except (NoSuchWindowException, WebDriverException) as e:
         print_lg("Browser window closed or session is invalid. Exiting.", e)
+        bot_status("Browser closed or invalid session.", status="failed")
     except Exception as e:
         critical_error_log("In Applier Main", e)
+        bot_status(f"Fatal error: {str(e)}", status="failed")
         pyautogui.alert(e,alert_title)
     finally:
         if not interrupted:
             manual_learned = question_cache.get_session_manual_learned()
             linkedin_runtime.show_final_summary(total_runs, easy_applied_count, external_jobs_count, failed_count, skip_count, unanswered_questions, manual_learned, tabs_count)
+            bot_status("LinkedIn automation completed.", status="success")
         ##> ------ Yang Li : MARKYangL - Feature ------
         if use_AI and aiClient:
             try:

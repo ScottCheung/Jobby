@@ -12,7 +12,8 @@ import React, {
 } from 'react';
 import { api } from '@/lib/api';
 import type {
-  AutomationRun,
+  DesktopBotPlatform,
+  DesktopBotState,
   DesktopConnectionConfig,
   DesktopConnectionConfigResult,
   DesktopRuntimeInfo,
@@ -100,22 +101,18 @@ function getLinkAsyncWarning(application: JobApplication) {
   return '';
 }
 
-function isAutomationRunActive(status: string | null | undefined) {
-  return ['pending', 'running', 'cancel_requested'].includes(
-    String(status || '').toLowerCase(),
-  );
-}
+const DESKTOP_PLATFORMS: DesktopBotPlatform[] = [
+  'linkedin',
+  'seek',
+  'third_party',
+];
 
-function isAutomationRunTerminal(status: string | null | undefined) {
-  return ['success', 'failed', 'cancelled'].includes(
-    String(status || '').toLowerCase(),
-  );
-}
-
-function readHeartbeatAt(run: AutomationRun | null) {
-  const heartbeatAt = run?.summary?.heartbeat_at;
-  return typeof heartbeatAt === 'string' ? heartbeatAt : null;
-}
+const createIdleBotState = (): DesktopBotState => ({
+  status: 'idle',
+  message: 'Idle',
+  stats: { submitted: 0, skipped: 0, failed: 0 },
+  logs: [],
+});
 
 async function sleep(ms: number) {
   await new Promise((resolve) => window.setTimeout(resolve, ms));
@@ -135,8 +132,13 @@ interface ConsoleContextType {
   setQuestions: React.Dispatch<React.SetStateAction<QuestionCacheEntry[]>>;
   applications: JobApplication[];
   setApplications: React.Dispatch<React.SetStateAction<JobApplication[]>>;
-  latestRun: AutomationRun | null;
-  latestStatusUpdatedAt: string | null;
+  mainBotState: {
+    status: string;
+    message: string;
+    stats: { submitted: number; skipped: number; failed: number };
+    logs: Array<{ at: string; line: string }>;
+  } | null;
+  mainBotName: DesktopBotPlatform;
   statusFilter: string;
   setStatusFilter: (s: string) => void;
   searchText: string;
@@ -150,9 +152,6 @@ interface ConsoleContextType {
   error: string;
   setError: (err: string) => void;
   isPending: boolean;
-  workerIsStarting: boolean;
-  workerIsActive: boolean;
-  workerIsStopping: boolean;
   loadData: () => void;
   saveProfile: () => Promise<void>;
   savePreferences: () => Promise<void>;
@@ -196,6 +195,9 @@ interface ConsoleContextType {
     payload: DesktopConnectionConfig,
   ) => Promise<DesktopConnectionConfigResult>;
   resetDesktopConnectionConfig: () => Promise<DesktopConnectionConfigResult>;
+  botStates: Record<DesktopBotPlatform, DesktopBotState>;
+  startBot: (platform: DesktopBotPlatform) => Promise<void>;
+  stopBot: (platform: DesktopBotPlatform) => Promise<void>;
 }
 
 const ConsoleContext = createContext<ConsoleContextType | null>(null);
@@ -211,7 +213,6 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
     useState<RuntimeSettings>(emptyRuntime);
   const [questions, setQuestions] = useState<QuestionCacheEntry[]>([]);
   const [applications, setApplications] = useState<JobApplication[]>([]);
-  const [latestRun, setLatestRun] = useState<AutomationRun | null>(null);
   const [statusFilter, setStatusFilter] = useState('');
   const [searchText, setSearchText] = useState('');
   const [syncingApplicationId, setSyncingApplicationId] = useState('');
@@ -226,9 +227,47 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
     useState<DesktopServiceStatus | null>(null);
   const [desktopConnectionConfig, setDesktopConnectionConfig] =
     useState<DesktopConnectionConfig | null>(null);
-  const [workerActionState, setWorkerActionState] = useState<
-    'idle' | 'starting' | 'stopping'
-  >('idle');
+  const [botStates, setBotStates] = useState<
+    Record<DesktopBotPlatform, DesktopBotState>
+  >({
+    linkedin: createIdleBotState(),
+    seek: createIdleBotState(),
+    third_party: createIdleBotState(),
+  });
+
+  const startBot = async (platform: DesktopBotPlatform) => {
+    if (isDesktopRuntime() && window.autoJobDesktop?.startBot) {
+      setError('');
+      notify(
+        platform === 'third_party' ?
+          'Opening assisted apply mode...'
+        : `Starting ${platform.replace('_', ' ')}...`,
+      );
+      const res = await window.autoJobDesktop.startBot(platform);
+      if (!res.ok) {
+        setError(res.error || `Failed to start ${platform} bot`);
+      }
+    } else {
+      setError('Direct bot controls are only supported in the desktop app.');
+    }
+  };
+
+  const stopBot = async (platform: DesktopBotPlatform) => {
+    if (isDesktopRuntime() && window.autoJobDesktop?.stopBot) {
+      setError('');
+      notify(
+        platform === 'third_party' ?
+          'Closing assisted apply mode...'
+        : `Stopping ${platform.replace('_', ' ')}...`,
+      );
+      const res = await window.autoJobDesktop.stopBot(platform);
+      if (!res.ok) {
+        setError(res.error || `Failed to stop ${platform} bot`);
+      }
+    } else {
+      setError('Direct bot controls are only supported in the desktop app.');
+    }
+  };
 
   const notify = (message: string) => {
     setToast(message);
@@ -246,7 +285,6 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
           defaultSearch,
           questionRows,
           applicationRows,
-          currentRun,
           runtimeConfig,
         ] = await Promise.all([
           api.me(),
@@ -255,7 +293,6 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
           api.searchProfile(),
           api.questionCache(),
           api.applications(),
-          api.latestAutomationRun(),
           api.runtimeSettings(),
         ]);
         setUser(me);
@@ -265,7 +302,6 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
         setRuntimeSettings(runtimeConfig ?? emptyRuntime);
         setQuestions(questionRows);
         setApplications(applicationRows);
-        setLatestRun(currentRun);
       } catch (loadError) {
         setError(
           loadError instanceof Error ?
@@ -278,30 +314,6 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     loadData();
-  }, []);
-
-  useEffect(() => {
-    const interval = window.setInterval(async () => {
-      try {
-        const currentRun = await api.latestAutomationRun();
-        setLatestRun(currentRun);
-      } catch {
-        // Keep polling lightweight; the existing page-level error banner is enough.
-      }
-
-      if (isDesktopRuntime() && window.autoJobDesktop?.getServiceStatus) {
-        try {
-          const serviceStatus = await window.autoJobDesktop.getServiceStatus();
-          setDesktopServiceStatus(serviceStatus ?? null);
-        } catch {
-          // Ignore background desktop status polling failures.
-        }
-      }
-    }, 1000);
-
-    return () => {
-      window.clearInterval(interval);
-    };
   }, []);
 
   useEffect(() => {
@@ -343,43 +355,6 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
       unsubscribe?.();
     };
   }, [setError]);
-
-  useEffect(() => {
-    const latestStatus = String(latestRun?.status || '').toLowerCase();
-
-    if (
-      workerActionState === 'starting' &&
-      isAutomationRunActive(latestStatus)
-    ) {
-      setWorkerActionState('idle');
-    }
-
-    if (
-      workerActionState === 'stopping' &&
-      isAutomationRunTerminal(latestStatus)
-    ) {
-      setWorkerActionState('idle');
-    }
-  }, [latestRun, workerActionState]);
-
-  const waitForLatestRunStatus = async (
-    predicate: (run: AutomationRun | null) => boolean,
-    timeoutMs = 15000,
-  ) => {
-    const deadline = Date.now() + timeoutMs;
-    let currentRun: AutomationRun | null = null;
-
-    while (Date.now() < deadline) {
-      currentRun = await api.latestAutomationRun();
-      setLatestRun(currentRun);
-      if (predicate(currentRun)) {
-        return currentRun;
-      }
-      await sleep(300);
-    }
-
-    return currentRun;
-  };
 
   const saveDesktopConnectionConfig = async (
     payload: DesktopConnectionConfig,
@@ -521,68 +496,58 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
   };
 
   const startWorker = async () => {
-    try {
-      setError('');
-      setWorkerActionState('starting');
-      notify('Starting Auto Apply...');
-      const run = await api.startLocalWorker();
-      setLatestRun(run);
-      await waitForLatestRunStatus(
-        (currentRun) => isAutomationRunActive(currentRun?.status),
-        10000,
-      );
-      notify(
-        run.status === 'pending' ?
-          'Start request queued for host worker'
-        : 'Local worker started',
-      );
-      loadData();
-    } catch (startError) {
-      setWorkerActionState('idle');
-      setError(
-        startError instanceof Error ?
-          startError.message
-        : 'Failed to start local worker',
-      );
-    }
+    setError('Legacy worker controls have been removed.');
   };
 
   const stopWorker = async () => {
-    try {
-      setError('');
-      setWorkerActionState('stopping');
-      notify('Stopping Auto Apply...');
-      const run = await api.stopLocalWorker();
-      setLatestRun(run);
-      const settledRun = await waitForLatestRunStatus(
-        (currentRun) => isAutomationRunTerminal(currentRun?.status),
-        15000,
-      );
-      if (settledRun && !isAutomationRunTerminal(settledRun.status)) {
-        setWorkerActionState('idle');
-      }
-      notify('Local worker stopped');
-      loadData();
-    } catch (stopError) {
-      setWorkerActionState('idle');
-      setError(
-        stopError instanceof Error ?
-          stopError.message
-        : 'Failed to stop local worker',
-      );
-    }
+    setError('Legacy worker controls have been removed.');
   };
 
-  const latestStatus = String(latestRun?.status || '').toLowerCase();
-  const latestHeartbeatAt = readHeartbeatAt(latestRun);
-  const latestStatusUpdatedAt = latestHeartbeatAt ?? latestRun?.updated_at ?? null;
-  const workerIsStarting = workerActionState === 'starting';
-  const workerIsStopping =
-    workerActionState === 'stopping' || latestStatus === 'cancel_requested';
-  const workerIsActive =
-    !workerIsStarting &&
-    !workerIsStopping &&
-    isAutomationRunActive(latestStatus);
+  const mainBotState = botStates.linkedin ?? null;
+  const mainBotName = 'linkedin';
+
+  useEffect(() => {
+    if (!isDesktopRuntime() || !window.autoJobDesktop) {
+      return;
+    }
+
+    const loadInitialBotStates = async () => {
+      if (window.autoJobDesktop?.getBotState) {
+        try {
+          const states = await Promise.all(
+            DESKTOP_PLATFORMS.map(async (platform) => [
+              platform,
+              (await window.autoJobDesktop?.getBotState?.(platform)) ||
+                createIdleBotState(),
+            ]),
+          );
+          setBotStates(
+            Object.fromEntries(states) as Record<
+              DesktopBotPlatform,
+              DesktopBotState
+            >,
+          );
+        } catch (err) {
+          // Ignore initial sync errors
+        }
+      }
+    };
+    loadInitialBotStates();
+
+    let unsubscribe: (() => void) | undefined;
+    if (window.autoJobDesktop.onBotStatus) {
+      unsubscribe = window.autoJobDesktop.onBotStatus(({ platform, state }) => {
+        setBotStates((prev) => ({
+          ...prev,
+          [platform]: state,
+        }));
+      });
+    }
+
+    return () => {
+      unsubscribe?.();
+    };
+  }, []);
 
   const [trendRange, setTrendRange] = useState<7 | 30>(7);
 
@@ -832,8 +797,8 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
         setQuestions,
         applications,
         setApplications,
-        latestRun,
-        latestStatusUpdatedAt,
+        mainBotState,
+        mainBotName,
         statusFilter,
         setStatusFilter,
         searchText,
@@ -847,9 +812,6 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
         error,
         setError,
         isPending,
-        workerIsStarting,
-        workerIsActive,
-        workerIsStopping,
         loadData,
         saveProfile,
         savePreferences,
@@ -873,6 +835,9 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
         desktopConnectionConfig,
         saveDesktopConnectionConfig,
         resetDesktopConnectionConfig,
+        botStates,
+        startBot,
+        stopBot,
       }}
     >
       {children}

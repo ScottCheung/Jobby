@@ -1,7 +1,6 @@
 import type {
   JobApplication,
   JobPreferences,
-  AutomationRun,
   QuestionCacheEntry,
   RuntimeSettings,
   SearchProfile,
@@ -91,14 +90,5 @@ export const api = {
   deleteApplication: (applicationId: string) =>
     apiRequest<void>(`/api/applications/${applicationId}`, {
       method: "DELETE",
-    }),
-  latestAutomationRun: () => apiRequest<AutomationRun | null>("/api/automation-runs/latest"),
-  startLocalWorker: () =>
-    apiRequest<AutomationRun>("/api/automation-runs/start-local-worker", {
-      method: "POST",
-    }),
-  stopLocalWorker: () =>
-    apiRequest<AutomationRun>("/api/automation-runs/stop-local-worker", {
-      method: "POST",
     }),
 };

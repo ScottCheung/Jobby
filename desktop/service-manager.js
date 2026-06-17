@@ -2,6 +2,7 @@ const { spawn } = require("child_process");
 const EventEmitter = require("events");
 const http = require("http");
 const https = require("https");
+const path = require("path");
 
 class ServiceManager extends EventEmitter {
   constructor(config) {
@@ -14,6 +15,8 @@ class ServiceManager extends EventEmitter {
       dashboard: { healthy: null, checkedAt: null, detail: "Waiting for first check" },
       worker: { healthy: null, checkedAt: null, detail: "Waiting for first check" },
     };
+    this.botStates = new Map();
+    this.botProcesses = new Map();
   }
 
   getRuntimeInfo() {
@@ -60,6 +63,16 @@ class ServiceManager extends EventEmitter {
       this.#stopProcess(serviceName, entry);
     }
     this.processes.clear();
+
+    for (const [platform, child] of this.botProcesses.entries()) {
+      try {
+        child.kill("SIGKILL");
+      } catch (err) {
+        // Ignore termination errors on shutdown
+      }
+    }
+    this.botProcesses.clear();
+
     this.emit("status", this.getServiceStatus());
   }
 
@@ -367,6 +380,161 @@ class ServiceManager extends EventEmitter {
         request.destroy(new Error(`Request timeout for ${url}`));
       });
     });
+  }
+
+  getBotState(platform) {
+    if (!this.botStates.has(platform)) {
+      this.botStates.set(platform, {
+        status: "idle",
+        message: "Idle",
+        stats: { submitted: 0, skipped: 0, failed: 0 },
+        logs: []
+      });
+    }
+    return this.botStates.get(platform);
+  }
+
+  #resolveBotRuntime(platform) {
+    const scriptMap = {
+      linkedin: path.join(this.config.rootDir, "worker", "runAiBot.py"),
+      seek: path.join(this.config.rootDir, "worker", "runSeekBot.py"),
+      third_party: path.join(this.config.rootDir, "worker", "runGenericAssistBot.py"),
+    };
+
+    const scriptPath = scriptMap[platform];
+    if (!scriptPath) {
+      return null;
+    }
+
+    return {
+      scriptPath,
+      env: {
+        ...process.env,
+        AUTO_JOB_API_BASE_URL: this.config.api.url,
+        AUTO_JOB_PLATFORM: platform,
+        AUTO_JOB_ASSIST_MODE: platform === "third_party" ? "guided" : "full",
+        AUTO_JOB_DISABLE_PYAUTOGUI_DIALOGS: "1"
+      },
+    };
+  }
+
+  async startBot(platform) {
+    if (this.botProcesses.has(platform)) {
+      return { ok: false, error: `${platform} bot is already running` };
+    }
+
+    const state = {
+      status: "starting",
+      message: "Starting bot process...",
+      stats: { submitted: 0, skipped: 0, failed: 0 },
+      logs: []
+    };
+    this.botStates.set(platform, state);
+    this.emit("bot-status", { platform, state });
+
+    const pythonPath = this.config.worker.pythonPath || "python3";
+    const botRuntime = this.#resolveBotRuntime(platform);
+    if (!botRuntime) {
+      return { ok: false, error: `Unknown platform: ${platform}` };
+    }
+
+    const child = spawn(pythonPath, [botRuntime.scriptPath], {
+      cwd: path.join(this.config.rootDir, "worker"),
+      env: botRuntime.env,
+      stdio: "pipe",
+      windowsHide: true,
+    });
+
+    this.botProcesses.set(platform, child);
+
+    child.stdout.on("data", (chunk) => {
+      const text = chunk.toString();
+      const lines = text.split("\n");
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+
+        if (trimmed.startsWith("__BOT_STATUS__:")) {
+          try {
+            const jsonStr = trimmed.slice("__BOT_STATUS__:".length);
+            const payload = JSON.parse(jsonStr);
+            if (payload.type === "status") {
+              state.status = payload.status || state.status;
+              state.message = payload.message || state.message;
+              if (payload.stats) {
+                state.stats = { ...state.stats, ...payload.stats };
+              }
+              this.emit("bot-status", { platform, state });
+            }
+          } catch (e) {
+            console.error("Failed to parse bot JSON status:", e, trimmed);
+          }
+        } else {
+          state.logs.push({
+            at: new Date().toISOString(),
+            line: trimmed
+          });
+          state.logs = state.logs.slice(-200);
+          this.emit("bot-status", { platform, state });
+        }
+      }
+    });
+
+    child.stderr.on("data", (chunk) => {
+      const text = chunk.toString().trim();
+      if (text) {
+        state.logs.push({
+          at: new Date().toISOString(),
+          line: `[stderr] ${text}`
+        });
+        state.logs = state.logs.slice(-200);
+        this.emit("bot-status", { platform, state });
+      }
+    });
+
+    child.on("exit", (code, signal) => {
+      this.botProcesses.delete(platform);
+      if (state.status === "stopping" || state.status === "cancelled") {
+        state.status = "cancelled";
+        state.message = "Process stopped by user";
+      } else {
+        state.status = code === 0 ? "success" : "failed";
+        state.message = code === 0 ? "Bot finished successfully" : `Bot exited with code ${code}`;
+      }
+      this.emit("bot-status", { platform, state });
+    });
+
+    child.on("error", (err) => {
+      this.botProcesses.delete(platform);
+      state.status = "failed";
+      state.message = `Process error: ${err.message}`;
+      this.emit("bot-status", { platform, state });
+    });
+
+    return { ok: true, state };
+  }
+
+  async stopBot(platform) {
+    const child = this.botProcesses.get(platform);
+    if (!child) {
+      return { ok: false, error: `${platform} bot is not running` };
+    }
+
+    const state = this.botStates.get(platform);
+    if (state) {
+      state.status = "stopping";
+      state.message = "Stopping bot...";
+      this.emit("bot-status", { platform, state });
+    }
+
+    child.kill("SIGTERM");
+    setTimeout(() => {
+      if (this.botProcesses.has(platform)) {
+        child.kill("SIGKILL");
+      }
+    }, 2000);
+
+    return { ok: true };
   }
 }
 

@@ -22,6 +22,7 @@ class UserStatus(StrEnum):
 
 class Platform(StrEnum):
     linkedin = "linkedin"
+    seek = "seek"
 
 
 class AutomationRunStatus(StrEnum):
@@ -106,6 +107,7 @@ class JobPreference(Base, TimestampMixin):
     require_visa: Mapped[str | None] = mapped_column(String(50))
     website: Mapped[str | None] = mapped_column(String(500))
     linkedin_url: Mapped[str | None] = mapped_column(String(500))
+    resume_path: Mapped[str | None] = mapped_column(Text)
     us_citizenship: Mapped[str | None] = mapped_column(String(255))
     desired_salary: Mapped[float | None] = mapped_column(Numeric(12, 2))
     current_ctc: Mapped[float | None] = mapped_column(Numeric(12, 2))
@@ -113,6 +115,7 @@ class JobPreference(Base, TimestampMixin):
     linkedin_headline: Mapped[str | None] = mapped_column(String(500))
     linkedin_summary: Mapped[str | None] = mapped_column(Text)
     cover_letter: Mapped[str | None] = mapped_column(Text)
+    user_information_all: Mapped[str | None] = mapped_column(Text)
     recent_employer: Mapped[str | None] = mapped_column(String(255))
     confidence_level: Mapped[str | None] = mapped_column(String(50))
     extra_data: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)

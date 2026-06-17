@@ -7,7 +7,7 @@ from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from services.api.dependencies import get_or_create_current_user
-from services.api.local_worker import get_current_run_id, is_worker_running, start_local_worker, stop_local_worker, sync_current_worker_state
+from services.api.local_worker import get_current_run_id, is_worker_running, start_local_worker, stop_local_worker
 from services.shared.database import get_db
 from services.shared.job_link_repair import JobLinkRepairError, is_linkedin_public_summary, repair_from_link
 from services.shared.models import (
@@ -55,6 +55,52 @@ app.add_middleware(
 def apply_updates(model: object, values: dict) -> None:
     for key, value in values.items():
         setattr(model, key, value)
+
+
+def _run_last_updated_at(run: AutomationRun) -> datetime | None:
+    heartbeat_at = (run.summary or {}).get("heartbeat_at")
+    if isinstance(heartbeat_at, str):
+        try:
+            return datetime.fromisoformat(heartbeat_at)
+        except ValueError:
+            pass
+    return run.updated_at
+
+
+def _run_finished_at_now(reference: datetime | None = None) -> datetime:
+    if reference and reference.tzinfo is not None:
+        return datetime.now(reference.tzinfo)
+    return datetime.now()
+
+
+def _is_run_stale(run: AutomationRun, timeout_seconds: int = 15) -> bool:
+    last_updated = _run_last_updated_at(run)
+    if not last_updated:
+        return False
+
+    now = _run_finished_at_now(last_updated)
+    return (now - last_updated).total_seconds() > timeout_seconds
+
+
+def _reconcile_stale_active_run(db: Session, run: AutomationRun | None) -> AutomationRun | None:
+    if not run or run.status not in {"pending", "running", "cancel_requested"}:
+        return run
+    if not _is_run_stale(run):
+        return run
+
+    recovered_at = _run_finished_at_now(run.updated_at)
+    run.status = "cancelled"
+    run.finished_at = run.finished_at or recovered_at
+    run.current_message = "Recovered stale automation run after the worker stopped reporting"
+    run.error_message = "Stale run recovered automatically"
+    run.summary = {
+        **(run.summary or {}),
+        "recovered_stale_run": True,
+        "recovered_at": recovered_at.isoformat(),
+    }
+    db.commit()
+    db.refresh(run)
+    return run
 
 
 def normalize_application_status(value: str | None) -> str:
@@ -579,20 +625,6 @@ def read_application(
     return application
 
 
-@app.get("/api/automation-runs/latest", response_model=AutomationRunRead | None)
-def read_latest_automation_run(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_or_create_current_user),
-) -> AutomationRun | None:
-    sync_current_worker_state(db)
-    return db.scalar(
-        select(AutomationRun)
-        .where(AutomationRun.user_id == current_user.id)
-        .order_by(AutomationRun.created_at.desc())
-        .limit(1)
-    )
-
-
 @app.post("/api/automation-runs", response_model=AutomationRunRead, status_code=status.HTTP_201_CREATED)
 def create_automation_run(
     payload: AutomationRunBase,
@@ -622,7 +654,8 @@ def start_local_worker_run(
         .order_by(AutomationRun.created_at.desc())
         .limit(1)
     )
-    if pending_or_running:
+    pending_or_running = _reconcile_stale_active_run(db, pending_or_running)
+    if pending_or_running and pending_or_running.status in {"pending", "running", "cancel_requested"}:
         return pending_or_running
     if is_worker_running():
         current_run_id = get_current_run_id()
@@ -661,7 +694,10 @@ def stop_local_worker_run(
         .order_by(AutomationRun.created_at.desc())
         .limit(1)
     )
-    if not run:
+    run = _reconcile_stale_active_run(db, run)
+    if not run or run.status not in {"pending", "running", "cancel_requested"}:
+        if run:
+            return run
         latest_run = db.scalar(
             select(AutomationRun)
             .where(AutomationRun.user_id == current_user.id)
