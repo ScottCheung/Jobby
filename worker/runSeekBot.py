@@ -43,6 +43,7 @@ from modules.linkedin.linkedin_status import (  # noqa: E402
 )
 from modules.persistence import QuestionCache  # noqa: E402
 from modules.persistence.worker_config import apply_api_worker_config  # noqa: E402
+from modules.seek_job_extractor import extract_seek_job_details  # noqa: E402
 
 
 driver = None
@@ -118,7 +119,7 @@ def _load_seek_apply_module():
     if seek_apply_module is not None:
         return seek_apply_module
 
-    module_path = ROOT / "worker" / "testSeek" / "seek_bot_profile" / "11.py"
+    module_path = ROOT / "worker" / "testSeek" / "seek_bot_profile" / "seek_apply_profile.py"
     spec = importlib.util.spec_from_file_location("seek_playwright_apply", module_path)
     if spec is None or spec.loader is None:
         raise RuntimeError(f"Could not load SEEK apply module from {module_path}")
@@ -259,6 +260,10 @@ def _capture_job_description() -> str | None:
         except Exception:
             continue
     return None
+
+
+def extract_seek_job_details_from_page(job_url: str) -> dict:
+    return extract_seek_job_details(driver, job_url, settle_seconds=0.0)
 
 
 def _refine_details_from_page(details: dict) -> dict:

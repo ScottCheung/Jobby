@@ -1,6 +1,0 @@
-2026/06/18-07:06:24.980 1d7be8 Reusing MANIFEST /Users/xianzhezhang/Projects/Auto Job Apply/Auto_job_applier_linkedIn/worker/testSeek/seek_bot_profile/bot_profile_dir/Default/Local Storage/leveldb/MANIFEST-000001
-2026/06/18-07:06:24.982 1d7be8 Recovering log #7
-2026/06/18-07:06:24.983 1d7be8 Reusing old log /Users/xianzhezhang/Projects/Auto Job Apply/Auto_job_applier_linkedIn/worker/testSeek/seek_bot_profile/bot_profile_dir/Default/Local Storage/leveldb/000007.log 
-2026/06/18-07:06:38.382 1d7bec Level-0 table #11: started
-2026/06/18-07:06:38.385 1d7bec Level-0 table #11: 20260 bytes OK
-2026/06/18-07:06:38.386 1d7bec Delete type=0 #7

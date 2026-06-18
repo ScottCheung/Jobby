@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """
-SEEK Auto-Apply Bot
-Usage: python3 worker/debug_seek_job.py --url "https://au.seek.com/job/92765205"
+Legacy SEEK Auto-Apply Bot implementation.
+
+Canonical loader target:
+  worker/testSeek/seek_bot_profile/seek_apply_profile.py
 
 Behaviour:
   - Opens the job page and clicks "Apply" / "Quick apply"
@@ -55,11 +57,10 @@ CONFIG = {
     # ── Cover letter ───────────────────────────
     "cover_letter": (
         "Dear Hiring Manager,\n\n"
-        "I am excited to apply for this position. My background and skills "
-        "align closely with what you are looking for, and I am confident I "
-        "would be a strong contributor to your team.\n\n"
-        "Please find my resume attached. I look forward to the opportunity "
-        "to discuss how I can add value to your organisation.\n\n"
+        "I am writing to express my keen interest in the [Job Title] position at [Company Name], as advertised on Seek. Having followed [Company Name]'s work in [Industry/Field] for some time, I was excited to see this opportunity to contribute my skills and experience to your team.\n\n"
+        "In my previous role at [Previous Company], I was responsible for [Key Responsibility 1], [Key Responsibility 2], and [Key Responsibility 3]. I successfully [Specific Achievement with Metric, e.g., increased efficiency by 15%, managed a team of 5, delivered a key project]. These experiences have equipped me with a strong foundation in [Relevant Skill 1], [Relevant Skill 2], and [Relevant Skill 3], which I believe align well with the requirements of this position.\n\n"
+        "I am particularly drawn to this opportunity because [Specific Reason - what excites you about this role or company]. I am confident that my [Specific Skill/Trait] and [Another Specific Skill/Trait] would allow me to quickly become a valuable asset to your team and contribute to [Company Goal or Project].\n\n"
+        "I am eager to learn more about this position and discuss how my background can support [Company Name]'s goals. Thank you for your time and consideration. I have attached my resume for your review and look forward to hearing from you soon.\n\n"
         "Kind regards,\nScott"
     ),
 
@@ -81,6 +82,10 @@ REVIEW_KEYWORDS = [
     "review your application", "submit your application",
     "check your details", "confirm your details",
     "/apply/review", "/application/review",
+]
+
+FINAL_SUBMIT_SELECTORS = [
+    "[data-testid='review-submit-application']",
 ]
 
 # ──────────────────────────────────────────────
@@ -244,6 +249,13 @@ def page_text_contains(page, phrases) -> bool:
  
 def is_review_page(page) -> bool:
     """Return True if the current page looks like the final review step."""
+    for selector in FINAL_SUBMIT_SELECTORS:
+        try:
+            if page.locator(selector).count() > 0 and page.locator(selector).first.is_visible():
+                return True
+        except Exception:
+            continue
+
     url_lower = page.url.lower()
     title = ""
     try:
@@ -256,6 +268,33 @@ def is_review_page(page) -> bool:
     if page_text_contains(page, REVIEW_KEYWORDS):
         return True
     return False
+
+
+def is_final_submit_control(element) -> bool:
+    try:
+        testid = normalize(element.get_attribute("data-testid") or "")
+    except Exception:
+        testid = ""
+    if testid == "review-submit-application":
+        return True
+
+    try:
+        text = normalize(element.inner_text() or "")
+    except Exception:
+        text = ""
+
+    try:
+        aria = normalize(element.get_attribute("aria-label") or "")
+    except Exception:
+        aria = ""
+
+    combined = " ".join(part for part in [text, aria, testid] if part)
+    blocked_markers = [
+        "submit application",
+        "submit your application",
+        "review-submit-application",
+    ]
+    return any(marker in combined for marker in blocked_markers)
 
 
 def is_login_page(page) -> bool:
@@ -273,6 +312,14 @@ def find_continue_button(page):
     Return the most-likely 'Continue / Next' button, or None.
     Priority: exact label match > partial match > aria-label match.
     """
+    for selector in FINAL_SUBMIT_SELECTORS:
+        try:
+            submit_btn = page.locator(selector).first
+            if submit_btn.count() and submit_btn.is_visible():
+                return None
+        except Exception:
+            continue
+
     # 1. All clickable elements with text
     for selector in [
         "button:visible",
@@ -286,8 +333,14 @@ def find_continue_button(page):
         for el in elems:
             try:
                 txt = normalize(el.inner_text())
+                testid = normalize(el.get_attribute("data-testid") or "")
+                aria = normalize(el.get_attribute("aria-label") or "")
             except Exception:
                 txt = ""
+                testid = ""
+                aria = ""
+            if is_final_submit_control(el):
+                continue
             for pat in CONTINUE_PATTERNS:
                 if pat == txt or pat in txt:
                     return el
@@ -295,8 +348,14 @@ def find_continue_button(page):
         for el in elems:
             try:
                 txt = normalize(el.inner_text())
+                testid = normalize(el.get_attribute("data-testid") or "")
+                aria = normalize(el.get_attribute("aria-label") or "")
             except Exception:
                 txt = ""
+                testid = ""
+                aria = ""
+            if is_final_submit_control(el):
+                continue
             for pat in CONTINUE_PATTERNS:
                 if pat in txt:
                     return el
@@ -986,6 +1045,15 @@ def run(
 
                 process_step(page, step_num, resume_path, config)
 
+                if is_review_page(page):
+                    result["status"] = "review"
+                    result["reached_review"] = True
+                    result["message"] = "Review page reached after filling the current step. Stopped before submission."
+                    result["final_url"] = page.url
+                    result["job"] = capture_job_snapshot(page, job_url, result.get("job"))
+                    emit_status("\n✅ Review page reached after filling the current step. Stopping before submission.")
+                    break
+
                 next_btn = find_continue_button(page)
                 if not next_btn:
                     result["status"] = "stopped"
@@ -996,6 +1064,14 @@ def run(
                     break
 
                 try:
+                    if is_final_submit_control(next_btn):
+                        result["status"] = "review"
+                        result["reached_review"] = True
+                        result["message"] = "Detected the final submit control. Stopped before submission."
+                        result["final_url"] = page.url
+                        result["job"] = capture_job_snapshot(page, job_url, result.get("job"))
+                        emit_status("\n✅ Final submit control detected. Stopping before submission.")
+                        break
                     emit_status("▶ Clicking Continue / Next")
                     next_btn.click()
                     try:
