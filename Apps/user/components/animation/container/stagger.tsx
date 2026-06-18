@@ -53,7 +53,12 @@ export interface StaggerItemProps extends HTMLMotionProps<'div'> {
 }
 
 const itemVariants = (y: number, x: number): Variants => ({
-  hidden: { opacity: 0, y, x, filter: 'blur(4px)' },
+  hidden: {
+    opacity: 0,
+    y,
+    x,
+    filter: 'blur(4px)',
+  },
   visible: {
     opacity: 1,
     y: 0,

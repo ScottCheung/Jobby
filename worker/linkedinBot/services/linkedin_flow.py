@@ -110,6 +110,14 @@ failed_count = 0
 skip_count = 0
 dailyEasyApplyLimitReached = False
 
+
+def sync_stats_to_status() -> None:
+    update_bot_stats(
+        submitted=easy_applied_count + external_jobs_count,
+        skipped=skip_count,
+        failed=failed_count,
+    )
+
 def _as_float(value, default: float = 0.0) -> float:
     if value in ("", None):
         return default
@@ -322,7 +330,11 @@ def apply_to_jobs(search_terms: list[str]) -> None:
         print_lg(f'\n>>>> Now searching for "{searchTerm}" <<<<\n\n')
 
         linkedin_filters.set_runtime_filter_values(sort_by, date_posted)
-        linkedin_filters.apply_filters(linkedin_apply.show_inpage_overlay)
+        filters_applied = linkedin_filters.apply_filters(linkedin_apply.show_inpage_overlay)
+        if filters_applied is False:
+            bot_status(f'Stopping "{searchTerm}" because LinkedIn filters were not applied cleanly.')
+            print_lg("Stopping this search term because filter setup failed or could not be trusted.")
+            continue
 
         current_count = 0
         try:
@@ -345,7 +357,7 @@ def apply_to_jobs(search_terms: list[str]) -> None:
                     wait_if_bot_paused()
                     if keep_screen_awake: pyautogui.press('shiftright')
                     if current_count >= switch_number: break
-                    print_lg("\n-@-\n")
+                    print_lg("\n---:)---:)---\n")
 
                     bot_status("Opening the next job card...")
                     job_id,title,company,work_location,work_style,skip = linkedin_jobs.get_job_main_details(job, blacklisted_companies, rejected_jobs)
@@ -386,6 +398,7 @@ def apply_to_jobs(search_terms: list[str]) -> None:
                         failed_job(job_id, job_link, resume, date_listed, "Found Blacklisted words in About Company", e, "Skipped", screenshot_name,
                                                  title=title, company=company, search_term=searchTerm, work_location=work_location, work_style=work_style)
                         skip_count += 1
+                        sync_stats_to_status()
                         continue
                     except Exception as e:
                         bot_status(f'Could not inspect company details for "{title}". Continuing.')
@@ -450,10 +463,11 @@ def apply_to_jobs(search_terms: list[str]) -> None:
                                                  description=description)
                         rejected_jobs.add(job_id)
                         skip_count += 1
+                        sync_stats_to_status()
                         continue
 
                     
-                    if use_AI and description != "Unknown":
+                    if bool(get_runtime_value("use_AI", False)) and description != "Unknown":
                         ##> ------ Yang Li : MARKYangL - Feature ------
                         try:
                             wait_if_bot_paused()
@@ -491,26 +505,33 @@ def apply_to_jobs(search_terms: list[str]) -> None:
                                 print_lg("Detected Easy Apply via URL pattern (openSDUIApplyFlow)")
                         except:
                             pass
-                    # Fallback 2: click the Apply button and only keep it if LinkedIn opens the Easy Apply modal.
+                    # Fallback 2: click any Apply button and check if Easy Apply modal appears.
                     if not is_easy_apply:
                         try:
                             apply_btn = driver.find_element(By.XPATH, ".//button[contains(@class,'jobs-apply-button')]")
                             if apply_btn:
                                 wait_if_bot_paused()
                                 bot_status(f'Clicking apply button for "{title}"...')
+                                tabs_before = len(driver.window_handles)
                                 apply_btn.click()
                                 buffer(click_gap)
-                                try:
-                                    find_by_class(driver, "jobs-easy-apply-modal")
-                                    is_easy_apply = True
-                                    bot_status(f'Easy Apply modal detected for "{title}".')
-                                    print_lg("Detected Easy Apply via modal appearance after click")
-                                except:
-                                    # Modal didn't appear. Leave the page in place and skip the job.
-                                    try: actions.send_keys(Keys.ESCAPE).perform()
-                                    except: pass
-                                    bot_status(f'Skipping "{title}": no Easy Apply modal appeared.')
-                                    print_lg("No Easy Apply modal appeared after clicking Apply, skipping")
+                                tabs_after = len(driver.window_handles)
+                                if tabs_after > tabs_before:
+                                    driver.switch_to.window(driver.window_handles[-1])
+                                    if close_tabs and driver.current_window_handle != linkedIn_tab:
+                                        driver.close()
+                                    driver.switch_to.window(linkedIn_tab)
+                                    bot_status(f'Skipping "{title}": external application opened in a new tab.')
+                                    print_lg("External apply detected via new tab, skipping")
+                                else:
+                                    try:
+                                        find_by_class(driver, "jobs-easy-apply-modal")
+                                        is_easy_apply = True
+                                        bot_status(f'Easy Apply modal detected for "{title}".')
+                                        print_lg("Detected Easy Apply via modal appearance after click")
+                                    except:
+                                        try: actions.send_keys(Keys.ESCAPE).perform()
+                                        except: pass
                         except:
                             pass
                     if is_easy_apply:
@@ -558,8 +579,23 @@ def apply_to_jobs(search_terms: list[str]) -> None:
                                     if useNewResume and not uploaded:
                                         bot_status(f'Uploading resume for "{title}"...')
                                         uploaded, resume = linkedin_job_details.upload_resume(modal, default_resume_path)
-                                    try: next_button = modal.find_element(By.XPATH, './/span[normalize-space(.)="Review"]') 
-                                    except NoSuchElementException:  next_button = modal.find_element(By.XPATH, './/button[contains(span, "Next")]')
+                                    # Find Review span (last step) or Next button (more steps remain).
+                                    # If Review span found → it's the final step, click to enter Review page, exit loop.
+                                    # If neither found → NoSuchElementException propagates to outer except (errored="nose"),
+                                    # which is correct: the modal has no more steps and finally handles submit.
+                                    try:
+                                        next_button = modal.find_element(By.XPATH, './/span[normalize-space(.)="Review"]')
+                                    except NoSuchElementException:
+                                        # Try Next button with multiple XPaths in priority order.
+                                        # The last fallback raises NoSuchElementException naturally if nothing found,
+                                        # which propagates to the outer except — this is intentional (mirrors old code).
+                                        try:
+                                            next_button = modal.find_element(By.XPATH, './/button[.//span[normalize-space(.)="Next"]]')
+                                        except NoSuchElementException:
+                                            try:
+                                                next_button = modal.find_element(By.XPATH, './/button[@data-easy-apply-next-button]')
+                                            except NoSuchElementException:
+                                                next_button = modal.find_element(By.XPATH, './/button[contains(span, "Next")]')
                                     wait_if_bot_paused()
                                     bot_status(f'Moving to the next Easy Apply step for "{title}"...')
                                     try: next_button.click()
@@ -609,13 +645,21 @@ def apply_to_jobs(search_terms: list[str]) -> None:
                                                      title=title, company=company, search_term=searchTerm, work_location=work_location, work_style=work_style,
                                                      questions_list=questions_list, description=description)
                             failed_count += 1
+                            sync_stats_to_status()
                             discard_job()
                             continue
                     else:
+                        # Case 2: Apply externally
                         wait_if_bot_paused()
-                        bot_status(f'Skipping "{title}": no Easy Apply path found.')
-                        print_lg("No Easy Apply path found, skipping external application path by design.")
-                        continue
+                        bot_status(f'No Easy Apply for "{title}". Checking external apply path...')
+                        skip, application_link, tabs_count, dailyEasyApplyLimitReached = external_apply(pagination_element, job_id, job_link, resume, date_listed, application_link, screenshot_name)
+                        if dailyEasyApplyLimitReached:
+                            bot_status("Daily Easy Apply limit reached. Stopping this run.")
+                            print_lg("\n###############  Daily application limit for Easy Apply is reached!  ###############\n")
+                            return
+                        if skip:
+                            bot_status(f'Skipping "{title}": no usable application path found.')
+                            continue
 
                     wait_if_bot_paused()
                     bot_status(f'Saving application result for "{title}" at {company}...')
@@ -627,6 +671,7 @@ def apply_to_jobs(search_terms: list[str]) -> None:
                     current_count += 1
                     if application_link == "Easy Applied": easy_applied_count += 1
                     else:   external_jobs_count += 1
+                    sync_stats_to_status()
                     applied_jobs.add(job_id)
 
 
@@ -656,7 +701,7 @@ def apply_to_jobs(search_terms: list[str]) -> None:
                 print_lg(driver.page_source, pretty=True)
             except Exception as page_source_error:
                 print_lg(f"Failed to get page source, browser might have crashed. {page_source_error}")
-            # print_lg(e)
+            raise
 
         
 def run(total_runs: int) -> int:
@@ -691,6 +736,7 @@ for _sig in (signal.SIGINT, signal.SIGTERM):
 def run_linkedin_flow() -> None:
     total_runs = 99
     interrupted = False
+    bot_status("Starting LinkedIn automation...", status="starting")
     try:
         global linkedIn_tab, tabs_count, useNewResume, aiClient, driver, actions, wait, options
         alert_title = "Error Occurred. Closing Browser!"
@@ -778,14 +824,19 @@ def run_linkedin_flow() -> None:
     except KeyboardInterrupt:
         interrupted = True
         print_lg("Interrupted by user. Closing browser...")
+        bot_status("Interrupted by user.", status="cancelled")
     except (NoSuchWindowException, WebDriverException) as e:
         print_lg("Browser window closed or session is invalid. Exiting.", e)
+        bot_status("Browser closed or invalid session.", status="failed")
     except Exception as e:
         critical_error_log("In Applier Main", e)
+        bot_status(f"Fatal error: {str(e)}", status="failed")
         pyautogui.alert(e,alert_title)
     finally:
         if not interrupted:
             manual_learned = question_cache.get_session_manual_learned()
+            linkedin_runtime.show_final_summary(total_runs, easy_applied_count, external_jobs_count, failed_count, skip_count, unanswered_questions, manual_learned, tabs_count)
+            bot_status("LinkedIn automation completed.", status="success")
         ##> ------ Yang Li : MARKYangL - Feature ------
         if bool(get_runtime_value("use_AI", False)) and aiClient:
             try:

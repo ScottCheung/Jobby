@@ -85,7 +85,7 @@ def set_search_location() -> None:
             _log("Failed to update search location, continuing with default location!", e)
 
 
-def apply_filters(show_inpage_overlay, retry_count: int = 0) -> None:
+def apply_filters(show_inpage_overlay, retry_count: int = 0) -> bool:
     '''
     Function to apply job search filters
     '''
@@ -158,6 +158,7 @@ def apply_filters(show_inpage_overlay, retry_count: int = 0) -> None:
 
         if bool(runtime.get("pause_after_filters", False)) and "Turn off Pause after search" == show_inpage_overlay("Please check your results", "These are your configured search results and filter. It is safe to change them while this dialog is open, any changes later could result in errors and skipping this search run.", ["Turn off Pause after search", "Look's good, Continue"]):
             set_runtime_state({"pause_after_filters": False})
+        return True
 
     except Exception as e:
         bot_status(f"Filter setup failed: {short_filter_error(e)}")
@@ -167,12 +168,12 @@ def apply_filters(show_inpage_overlay, retry_count: int = 0) -> None:
             if action == "retry":
                 bot_status("Retrying LinkedIn filters...")
                 _log("Retrying search filters...")
-                apply_filters(show_inpage_overlay, retry_count + 1)
-                return
-            bot_status("Skipping filter retry. Continuing with current results.")
-            _log("Skipping filter retry and continuing with current results.")
-            return
+                return apply_filters(show_inpage_overlay, retry_count + 1)
+            bot_status("Skipping filter retry. Stopping this search run.")
+            _log("Skipping filter retry and stopping because filter results are not trustworthy.")
+            return False
         show_inpage_overlay("Error applying filters", f"Faced error while applying filters. Please make sure correct filters are selected, click on show results and click on any button of this dialog. Can't turn off Pause after search when error occurs! ERROR: {short_filter_error(e)}", ["Continue anyway", "Looks good, Continue"])
+        return False
 
 
 def get_page_info() -> tuple[WebElement | None, int | None]:

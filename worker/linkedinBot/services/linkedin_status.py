@@ -9,7 +9,10 @@ from selenium.webdriver.support.ui import WebDriverWait
 
 
 WIDGET_VERSION = "2026-06-15-inline-status-v10"
-STATUS_WIDGET_FILE = os.path.join("modules", "javascript", "status_injector.js")
+STATUS_WIDGET_FILE = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+    "shared_services", "assets", "javascript", "status_injector.js",
+)
 STATUS_WIDGET_VERSION_PLACEHOLDER = "__LINKEDIN_STATUS_WIDGET_VERSION__"
 __all__ = [
     "WIDGET_VERSION",
