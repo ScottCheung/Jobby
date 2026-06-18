@@ -1,0 +1,17 @@
+certifi>=2024.0.0
+undetected-chromedriver>=3.5.5
+selenium>=4.15.0
+pyautogui>=0.9.54
+setuptools>=69.0.0
+openai>=1.0.0
+flask>=3.0.0
+flask-cors>=4.0.0
+google-generativeai>=0.8.0
+python-docx>=1.1.0
+fpdf2>=2.7.0
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+sqlalchemy>=2.0.0
+alembic>=1.13.0
+psycopg[binary]>=3.2.0
+pydantic-settings>=2.4.0

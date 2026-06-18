@@ -7,11 +7,12 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.select import Select
 
-from shared_services.forms.clickers_and_finders import find_by_class, try_xp
-from shared_services.runtime import get_runtime_value
-from shared_services.utils.helpers import sleep
-from linkedinBot.services.linkedin_status import bot_status, sync_status_widget, wait_if_bot_paused
-from shared_services.persistence import match_option_in_list, resolve_answer
+from config.questions import overwrite_previous_answers, pause_at_failed_question, pause_before_submit, require_visa
+from config.settings import learn_from_manual_answers
+from modules.clickers_and_finders import find_by_class, try_xp
+from modules.helpers import sleep
+from modules.linkedin.linkedin_status import bot_status, sync_status_widget, wait_if_bot_paused
+from modules.persistence import match_option_in_list, resolve_answer
 
 
 _driver = None
@@ -42,7 +43,7 @@ def _log(*messages) -> None:
 
 def answer_common_questions(label: str, answer: str) -> str:
     if 'sponsorship' in label or 'visa' in label:
-        answer = str(get_runtime_value("require_visa", "No"))
+        answer = require_visa
     return answer
 
 
@@ -52,7 +53,7 @@ def _extract_select_options(select_el) -> list[str]:
 
 
 def capture_manual_answers(modal, company: str) -> None:
-    if not bool(get_runtime_value("learn_from_manual_answers", True)):
+    if not learn_from_manual_answers:
         return
     all_questions = modal.find_elements(By.XPATH, ".//div[@data-test-form-element]")
     for Question in all_questions:
@@ -304,7 +305,6 @@ def show_inpage_overlay(title: str, message: str, buttons: list[str]) -> str:
 
 
 def answer_questions(modal, questions_list: set, work_location: str, job_description: str | None = None, company: str = "Unknown") -> tuple[set, bool]:
-    overwrite_previous_answers = bool(get_runtime_value("overwrite_previous_answers", False))
     has_unanswered = False
 
     wait_if_bot_paused()
