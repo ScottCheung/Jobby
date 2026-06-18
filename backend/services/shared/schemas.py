@@ -206,3 +206,17 @@ class AutomationRunRead(AutomationRunBase, OrmModel):
     user_id: UUID
     created_at: datetime
     updated_at: datetime
+
+
+class SkillBase(BaseModel):
+    name: str
+    canonical_name: str
+    is_alias: bool = False
+
+
+class SkillRead(SkillBase, OrmModel):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+

@@ -395,19 +395,18 @@ class ServiceManager extends EventEmitter {
   }
 
   #resolveBotRuntime(platform) {
-    const scriptMap = {
-      linkedin: path.join(this.config.rootDir, "worker", "runAiBot.py"),
-      seek: path.join(this.config.rootDir, "worker", "runSeekBot.py"),
-      third_party: path.join(this.config.rootDir, "worker", "runGenericAssistBot.py"),
+    const platformMap = {
+      linkedin: "linkedin",
+      seek: "seek",
     };
-
-    const scriptPath = scriptMap[platform];
-    if (!scriptPath) {
+    const selectedBot = platformMap[platform];
+    if (!selectedBot) {
       return null;
     }
 
     return {
-      scriptPath,
+      scriptPath: path.join(this.config.rootDir, "worker", "main.py"),
+      scriptArgs: ["--bot", selectedBot],
       env: {
         ...process.env,
         AUTO_JOB_API_BASE_URL: this.config.api.url,
@@ -438,7 +437,7 @@ class ServiceManager extends EventEmitter {
       return { ok: false, error: `Unknown platform: ${platform}` };
     }
 
-    const child = spawn(pythonPath, [botRuntime.scriptPath], {
+    const child = spawn(pythonPath, [botRuntime.scriptPath, ...(botRuntime.scriptArgs || [])], {
       cwd: path.join(this.config.rootDir, "worker"),
       env: botRuntime.env,
       stdio: "pipe",

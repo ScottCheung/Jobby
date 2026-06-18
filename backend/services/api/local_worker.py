@@ -71,7 +71,7 @@ def start_local_worker(db: Session, user: User) -> AutomationRun:
         log_path = LOG_DIR / f"local_worker_{run.id}.log"
         log_file = log_path.open("a", encoding="utf-8")
         process = subprocess.Popen(
-            [sys.executable, str(WORKER_ROOT / "runAiBot.py")],
+            [sys.executable, str(WORKER_ROOT / "main.py"), "--bot", "linkedin"],
             cwd=WORKER_ROOT,
             stdout=log_file,
             stderr=subprocess.STDOUT,

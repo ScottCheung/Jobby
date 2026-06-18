@@ -12,9 +12,8 @@ COPY backend/alembic.ini /app/alembic.ini
 COPY backend/migrations /app/migrations
 COPY backend/services /app/services
 COPY backend/scripts /app/scripts
-COPY worker/config /app/config
-COPY worker/modules/persistence /app/modules/persistence
-COPY worker/modules/linkedin/job_text_parser.py /app/modules/linkedin/
+
+COPY worker/linkedinBot/services/job_text_parser.py /app/linkedinBot/services/job_text_parser.py
 
 EXPOSE 8000
 

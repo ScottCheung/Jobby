@@ -17,6 +17,7 @@ from services.shared.models import (
     QuestionCacheEntry,
     RuntimeSettings,
     SearchProfile,
+    Skill,
     User,
     UserProfile,
 )
@@ -34,6 +35,7 @@ from services.shared.schemas import (
     RuntimeSettingsRead,
     SearchProfileBase,
     SearchProfileRead,
+    SkillRead,
     UserProfileBase,
     UserProfileRead,
     UserRead,
@@ -754,3 +756,24 @@ def update_automation_run(
     db.commit()
     db.refresh(run)
     return run
+
+
+@app.get("/api/skills/version")
+def get_skills_version(db: Session = Depends(get_db)) -> dict:
+    latest = db.scalar(select(Skill.updated_at).order_by(Skill.updated_at.desc()).limit(1))
+    return {"version": latest.isoformat() if latest else None}
+
+
+@app.get("/api/skills")
+def get_skills(db: Session = Depends(get_db)) -> dict:
+    latest = db.scalar(select(Skill.updated_at).order_by(Skill.updated_at.desc()).limit(1))
+    version_str = latest.isoformat() if latest else None
+
+    skills = db.scalars(select(Skill)).all()
+    index_map = {s.name: s.canonical_name for s in skills}
+
+    return {
+        "version": version_str,
+        "index": index_map
+    }
+

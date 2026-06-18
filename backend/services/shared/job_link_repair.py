@@ -1,11 +1,18 @@
 import html
 import json
 import re
+import sys
+from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
-from modules.linkedin.job_text_parser import normalize_work_style, parse_public_title
+WORKSPACE_ROOT = Path(__file__).resolve().parents[3]
+WORKER_ROOT = WORKSPACE_ROOT / "worker"
+if str(WORKER_ROOT) not in sys.path:
+    sys.path.insert(0, str(WORKER_ROOT))
+
+from linkedinBot.services.job_text_parser import normalize_work_style, parse_public_title
 
 
 class JobLinkRepairError(RuntimeError):
