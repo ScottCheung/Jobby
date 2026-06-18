@@ -4,6 +4,7 @@ import ssl
 import sys
 import subprocess
 import pathlib
+import tempfile
 import certifi
 
 def _configure_ssl_certificates() -> None:
@@ -159,6 +160,12 @@ def _cleanup_profile_locks(profile_dir: str | None) -> None:
             print_lg(f"Failed to remove stale Chrome profile lock {lock_path}", error)
 
 
+def _create_ephemeral_profile_dir() -> str:
+    profile_dir = tempfile.mkdtemp(prefix="auto-job-apply-profile-")
+    print_lg(f"Falling back to a fresh temporary browser profile: {profile_dir}")
+    return profile_dir
+
+
 def _build_chrome_options(use_uc: bool):
     if use_uc:
         import undetected_chromedriver as uc
@@ -217,7 +224,7 @@ def _should_fallback_to_selenium(error: Exception) -> bool:
     return any(marker in message for marker in fallback_markers)
 
 
-def createChromeSession(isRetry: bool = False):
+def createChromeSession(isRetry: bool = False, force_fresh_profile: bool = False):
     file_name = str(get_runtime_value("file_name", "worker/log/applications.csv"))
     failed_file_name = str(get_runtime_value("failed_file_name", "worker/log/failed.csv"))
     logs_folder_path = str(get_runtime_value("logs_folder_path", "worker/log"))
@@ -235,17 +242,19 @@ def createChromeSession(isRetry: bool = False):
     options = _build_chrome_options(use_uc)
 
     profile_dir = None
-    if not bool(get_runtime_value("safe_mode", True)):
-        profile_dir = find_default_profile_directory()
-    if profile_dir:
-        print_lg(f"Using existing dedicated bot profile for LinkedIn session: {profile_dir}")
-        _cleanup_profile_locks(profile_dir)
-        options.add_argument(f"--user-data-dir={profile_dir}")
+    if force_fresh_profile:
+        profile_dir = _create_ephemeral_profile_dir()
     else:
-        profile_dir = get_default_temp_profile()
-        print_lg(f"Using persistent dedicated bot profile: {profile_dir}")
-        _cleanup_profile_locks(profile_dir)
-        options.add_argument(f"--user-data-dir={profile_dir}")
+        if not bool(get_runtime_value("safe_mode", True)):
+            profile_dir = find_default_profile_directory()
+        if profile_dir:
+            print_lg(f"Using existing dedicated bot profile for LinkedIn session: {profile_dir}")
+            _cleanup_profile_locks(profile_dir)
+        else:
+            profile_dir = get_default_temp_profile()
+            print_lg(f"Using persistent dedicated bot profile: {profile_dir}")
+            _cleanup_profile_locks(profile_dir)
+    options.add_argument(f"--user-data-dir={profile_dir}")
 
     try:
         driver = _create_driver(options, use_uc)
@@ -253,15 +262,16 @@ def createChromeSession(isRetry: bool = False):
         if use_uc and _should_fallback_to_selenium(error):
             print_lg("Undetected Chrome startup failed. Falling back to standard Selenium mode...")
             options = _build_chrome_options(False)
-            if profile_dir and not bool(get_runtime_value("safe_mode", True)):
+            if force_fresh_profile:
+                profile_dir = _create_ephemeral_profile_dir()
+            elif profile_dir and not bool(get_runtime_value("safe_mode", True)):
                 print_lg(f"Using existing dedicated bot profile for LinkedIn session: {profile_dir}")
                 _cleanup_profile_locks(profile_dir)
-                options.add_argument(f"--user-data-dir={profile_dir}")
             else:
                 profile_dir = get_default_temp_profile()
                 print_lg(f"Using persistent dedicated bot profile: {profile_dir}")
                 _cleanup_profile_locks(profile_dir)
-                options.add_argument(f"--user-data-dir={profile_dir}")
+            options.add_argument(f"--user-data-dir={profile_dir}")
             driver = _create_driver(options, False)
         else:
             raise
@@ -312,8 +322,8 @@ def initialize_chrome_session():
     try:
         options, driver, actions, wait = createChromeSession()
     except SessionNotCreatedException as e:
-        critical_error_log("Failed to create Chrome Session, retrying with the same persistent profile", e)
-        options, driver, actions, wait = createChromeSession(True)
+        critical_error_log("Failed to create Chrome Session with persistent profile, retrying with a fresh temporary profile", e)
+        options, driver, actions, wait = createChromeSession(True, force_fresh_profile=True)
     except Exception as e:
         msg = _format_chrome_startup_error(e)
         print_lg(msg)

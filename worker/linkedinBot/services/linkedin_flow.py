@@ -491,34 +491,26 @@ def apply_to_jobs(search_terms: list[str]) -> None:
                                 print_lg("Detected Easy Apply via URL pattern (openSDUIApplyFlow)")
                         except:
                             pass
-                    # Fallback 2: click any Apply button and check if Easy Apply modal appears
+                    # Fallback 2: click the Apply button and only keep it if LinkedIn opens the Easy Apply modal.
                     if not is_easy_apply:
                         try:
                             apply_btn = driver.find_element(By.XPATH, ".//button[contains(@class,'jobs-apply-button')]")
                             if apply_btn:
                                 wait_if_bot_paused()
                                 bot_status(f'Clicking apply button for "{title}"...')
-                                tabs_before = len(driver.window_handles)
                                 apply_btn.click()
                                 buffer(click_gap)
-                                tabs_after = len(driver.window_handles)
-                                if tabs_after > tabs_before:
-                                    # New tab opened — external apply, close it and go back
-                                    driver.switch_to.window(driver.window_handles[-1])
-                                    if close_tabs and driver.current_window_handle != linkedIn_tab: driver.close()
-                                    driver.switch_to.window(linkedIn_tab)
-                                    bot_status(f'Skipping "{title}": external application opened in a new tab.')
-                                    print_lg("External apply detected via new tab, skipping")
-                                else:
-                                    try:
-                                        find_by_class(driver, "jobs-easy-apply-modal")
-                                        is_easy_apply = True
-                                        bot_status(f'Easy Apply modal detected for "{title}".')
-                                        print_lg("Detected Easy Apply via modal appearance after click")
-                                    except:
-                                        # Modal didn't appear — dismiss
-                                        try: actions.send_keys(Keys.ESCAPE).perform()
-                                        except: pass
+                                try:
+                                    find_by_class(driver, "jobs-easy-apply-modal")
+                                    is_easy_apply = True
+                                    bot_status(f'Easy Apply modal detected for "{title}".')
+                                    print_lg("Detected Easy Apply via modal appearance after click")
+                                except:
+                                    # Modal didn't appear. Leave the page in place and skip the job.
+                                    try: actions.send_keys(Keys.ESCAPE).perform()
+                                    except: pass
+                                    bot_status(f'Skipping "{title}": no Easy Apply modal appeared.')
+                                    print_lg("No Easy Apply modal appeared after clicking Apply, skipping")
                         except:
                             pass
                     if is_easy_apply:
@@ -620,17 +612,10 @@ def apply_to_jobs(search_terms: list[str]) -> None:
                             discard_job()
                             continue
                     else:
-                        # Case 2: Apply externally
                         wait_if_bot_paused()
-                        bot_status(f'No Easy Apply for "{title}". Checking external apply path...')
-                        skip, application_link, tabs_count, dailyEasyApplyLimitReached = external_apply(pagination_element, job_id, job_link, resume, date_listed, application_link, screenshot_name)
-                        if dailyEasyApplyLimitReached:
-                            bot_status("Daily Easy Apply limit reached. Stopping this run.")
-                            print_lg("\n###############  Daily application limit for Easy Apply is reached!  ###############\n")
-                            return
-                        if skip:
-                            bot_status(f'Skipping "{title}": no usable application path found.')
-                            continue
+                        bot_status(f'Skipping "{title}": no Easy Apply path found.')
+                        print_lg("No Easy Apply path found, skipping external application path by design.")
+                        continue
 
                     wait_if_bot_paused()
                     bot_status(f'Saving application result for "{title}" at {company}...')
@@ -736,6 +721,8 @@ def run_linkedin_flow() -> None:
         if not linkedin_auth.is_logged_in():
             print_lg("LinkedIn session not detected. Starting login flow...")
             linkedin_auth.login()
+            if not linkedin_auth.is_logged_in():
+                raise RuntimeError("LinkedIn login was not completed. Stopping before job search starts.")
         else:
             print_lg("LinkedIn session already available.")
 
