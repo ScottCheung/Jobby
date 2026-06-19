@@ -1,0 +1,139 @@
+@baseUrl = http://127.0.0.1:8000
+
+### 1. Health Check
+GET {{baseUrl}}/health
+Accept: application/json
+
+### 2. Readiness Check
+GET {{baseUrl}}/ready
+Accept: application/json
+
+### 3. Get Current User Info
+GET {{baseUrl}}/api/me
+Accept: application/json
+
+### 4. Get User Profile
+GET {{baseUrl}}/api/profile
+Accept: application/json
+
+### 5. Update User Profile
+PUT {{baseUrl}}/api/profile
+Content-Type: application/json
+Accept: application/json
+
+{
+  "extra_data": {
+    "theme": "dark",
+    "notifications_enabled": true
+  }
+}
+
+### 6. Get Job Preferences
+GET {{baseUrl}}/api/job-preferences
+Accept: application/json
+
+### 7. Update Job Preferences
+PUT {{baseUrl}}/api/job-preferences
+Content-Type: application/json
+Accept: application/json
+
+{
+  "extra_data": {
+    "preferred_roles": ["Frontend Engineer", "Fullstack Developer"],
+    "minimum_salary": 100000
+  }
+}
+
+### 8. Get Default Search Profile
+GET {{baseUrl}}/api/search-profile
+Accept: application/json
+
+### 9. Update Default Search Profile
+PUT {{baseUrl}}/api/search-profile
+Content-Type: application/json
+Accept: application/json
+
+{
+  "name": "Default LinkedIn Search",
+  "platform": "linkedin",
+  "search_terms": ["React", "TypeScript", "Node.js"],
+  "filters": {
+    "geoId": "103644278",
+    "f_TPR": "r86400"
+  },
+  "blacklist_rules": {
+    "companies": ["Staffing Agencies"]
+  },
+  "whitelist_rules": {},
+  "is_default": true
+}
+
+### 10. Get Runtime Settings
+GET {{baseUrl}}/api/runtime-settings
+Accept: application/json
+
+### 11. Update Runtime Settings
+PUT {{baseUrl}}/api/runtime-settings
+Content-Type: application/json
+Accept: application/json
+
+{
+  "settings": {
+    "use_AI": true,
+    "max_applications_per_run": 10
+  }
+}
+
+### 12. Get Worker Config
+GET {{baseUrl}}/api/worker/config
+Accept: application/json
+
+### 13. Get Question Cache List
+GET {{baseUrl}}/api/question-cache?limit=10&offset=0
+Accept: application/json
+
+### 14. Create Question Cache Entry
+# @name createQuestionCache
+POST {{baseUrl}}/api/question-cache
+Content-Type: application/json
+Accept: application/json
+
+{
+  "platform": "linkedin",
+  "normalized_label": "years_of_experience",
+  "original_label": "How many years of experience do you have with React?",
+  "field_type": "numeric",
+  "answer": "5"
+}
+
+### 15. Update Question Cache Entry (Replace the ID below with one from your DB)
+PUT {{baseUrl}}/api/question-cache/f7377511-a83d-4c3e-8fbf-33d3b7692138
+Content-Type: application/json
+Accept: application/json
+
+{
+  "platform": "linkedin",
+  "normalized_label": "years_of_experience",
+  "original_label": "How many years of experience do you have with React?",
+  "field_type": "numeric",
+  "answer": "6"
+}
+
+### 16. Get Job Applications List
+GET {{baseUrl}}/api/applications?limit=20
+Accept: application/json
+---
+
+### 17. Create a Job Application
+POST {{baseUrl}}/api/applications
+Content-Type: application/json
+Accept: application/json
+
+{
+  "job_id": "linkedin_98765sd4321",
+  "title": "Fullstack Software Engineer",
+  "company": "Awesome Tech Corp",
+  "job_link": "https://www.linkedin.com/jobs/view/987654321/",
+  "status": "applied",
+  "date_applied": "2026-06-19T20:00:00"
+}

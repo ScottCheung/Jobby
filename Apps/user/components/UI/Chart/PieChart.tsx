@@ -1,6 +1,6 @@
 /** @format */
 
-import { useState } from 'react';
+import { useState, useId } from 'react';
 import {
   Cell,
   Pie,
@@ -51,6 +51,30 @@ const COLORS = [
   '#34d399', // Light Green
 ];
 
+// Helper to shift color brightness for dynamic gradients
+const adjustColorBrightness = (hex: string, percent: number): string => {
+  if (!hex || typeof hex !== 'string' || !hex.startsWith('#')) {
+    return hex;
+  }
+  let color = hex.substring(1);
+  if (color.length === 3) {
+    color = color
+      .split('')
+      .map((char) => char + char)
+      .join('');
+  }
+  const num = parseInt(color, 16);
+  if (isNaN(num)) return hex;
+  const amt = Math.round(2.55 * percent);
+  let r = (num >> 16) + amt;
+  let g = ((num >> 8) & 0x00ff) + amt;
+  let b = (num & 0x0000ff) + amt;
+  r = Math.min(255, Math.max(0, r));
+  g = Math.min(255, Math.max(0, g));
+  b = Math.min(255, Math.max(0, b));
+  return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
+};
+
 export const DEFAULT_STATUS_GRADIENTS: Record<
   string,
   { start: string; end: string }
@@ -58,7 +82,59 @@ export const DEFAULT_STATUS_GRADIENTS: Record<
   Submitted: { start: '#10b981', end: '#9ac4d8' },
   Skipped: { start: '#f59e0b', end: '#f7d455' },
   Pending: { start: '#3b82f6', end: '#8b5cf6' },
-  Cancelled: { start: '#ef4444', end: '#fb7185' },
+  'Processing...': { start: '#ef4444', end: '#fb7185' },
+  Other: { start: '#71717a', end: '#9ca3af' },
+  _: { start: '#71717a', end: '#9ca3af' },
+};
+
+// Generic gradient resolver based on color or name
+const getGradientColors = (
+  baseColor: string,
+  name: string,
+  pieGradients?: Record<string, { start: string; end: string }>,
+): { start: string; end: string } => {
+  // 1. Check if there is a custom gradient by status name
+  if (pieGradients && pieGradients[name]) {
+    return pieGradients[name];
+  }
+
+  // 2. Standard status gradients by status name (case-insensitive & partial match)
+  const nameKey = name.toLowerCase();
+  const statusGradients: Record<string, { start: string; end: string }> = {
+    submitted: { start: '#10b981', end: '#9ac4d8' },
+    skipped: { start: '#f59e0b', end: '#f7d455' },
+    pending: { start: '#3b82f6', end: '#8b5cf6' },
+    cancelled: { start: '#ef4444', end: '#fb7185' },
+    processing: { start: '#3b82f6', end: '#8b5cf6' },
+    other: { start: '#71717a', end: '#9ca3af' },
+  };
+
+  for (const key of Object.keys(statusGradients)) {
+    if (nameKey.includes(key)) {
+      return statusGradients[key];
+    }
+  }
+
+  // 3. Match by baseColor hex (case-insensitive)
+  const colorKey = baseColor.toLowerCase();
+  const colorGradients: Record<string, { start: string; end: string }> = {
+    '#10b981': { start: '#10b981', end: '#9ac4d8' }, // Green
+    '#f59e0b': { start: '#f59e0b', end: '#f7d455' }, // Amber
+    '#3b82f6': { start: '#3b82f6', end: '#8b5cf6' }, // Blue
+    '#ef4444': { start: '#ef4444', end: '#fb7185' }, // Red
+    '#71717a': { start: '#71717a', end: '#9ca3af' }, // Gray
+  };
+
+  if (colorGradients[colorKey]) {
+    return colorGradients[colorKey];
+  }
+
+  // 4. General fallback: dynamically generate a beautiful gradient
+  // Shift brightness positive for lighter, softer gradient end-color
+  return {
+    start: baseColor,
+    end: adjustColorBrightness(baseColor, 20),
+  };
 };
 
 const renderCustomizedLabel = ({
@@ -81,12 +157,12 @@ const renderCustomizedLabel = ({
       <text
         x={x}
         y={y}
-        fill='var(--color-ink-secondary)'
+        fill='var(--color-ink-primary)'
         textAnchor={x > cx ? 'start' : 'end'}
         dominantBaseline='central'
         className='text-xs font-bold'
-        stroke='var(--color-panel)'
-        strokeWidth='4'
+        stroke='var(--color-background)'
+        strokeWidth='3'
         paintOrder='stroke'
       >
         {`${(percent * 100).toFixed(0)}%`}
@@ -114,12 +190,13 @@ const PieChart = ({
   showLabels = true,
   ValueProps,
   margin = { top: 0, right: 0, bottom: 0, left: 0 },
-  cornerRadius = 0,
+  cornerRadius = 999,
   paddingAngle = 2,
   gradientFill = false,
   pieGradients,
 }: PieChartProps) => {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
+  const uniqueId = useId().replace(/:/g, ''); // Unique ID for SVG definitions to avoid collisions
 
   // Safety check
   if (!data || data.length === 0) {
@@ -138,32 +215,32 @@ const PieChart = ({
                   COLORS[index % COLORS.length]
                 : color || '#3b82f6');
 
-              const activeGradients = {
-                ...DEFAULT_STATUS_GRADIENTS,
-                ...pieGradients,
-              };
               const name = String(entry[xKey] || entry.name || '');
-              const customGrad = activeGradients[name];
-
-              let startColor =
-                entry.colorStart || (customGrad ? customGrad.start : baseColor);
-              let endColor =
-                entry.colorEnd ||
-                (customGrad ?
-                  customGrad.end
-                : `color-mix(in srgb, ${baseColor} 75%, black 25%)`);
+              const { start: startColor, end: endColor } = getGradientColors(
+                baseColor,
+                name,
+                pieGradients,
+              );
 
               return (
                 <linearGradient
-                  id={`pie-grad-${index}`}
+                  id={`pie-grad-${uniqueId}-${index}`}
                   key={index}
                   x1='0'
                   y1='0'
                   x2='1'
                   y2='1'
                 >
-                  <stop offset='0%' stopColor={startColor} />
-                  <stop offset='100%' stopColor={endColor} />
+                  <stop
+                    offset='0%'
+                    stopColor={startColor}
+                    style={{ stopColor: startColor }}
+                  />
+                  <stop
+                    offset='100%'
+                    stopColor={endColor}
+                    style={{ stopColor: endColor }}
+                  />
                 </linearGradient>
               );
             })}
@@ -220,7 +297,7 @@ const PieChart = ({
               key={`cell-${index}`}
               fill={
                 gradientFill ?
-                  `url(#pie-grad-${index})`
+                  `url(#pie-grad-${uniqueId}-${index})`
                 : entry.fill ||
                   (multiColor ? COLORS[index % COLORS.length] : color)
               }
@@ -240,13 +317,36 @@ const PieChart = ({
         {showLegend && (
           <Legend
             verticalAlign='bottom'
-            height={36}
-            iconSize={10}
-            wrapperStyle={{ fontSize: '12px' }}
+            height={44}
+            content={<CustomLegend />}
           />
         )}
       </RechartsPieChart>
     </ResponsiveContainer>
+  );
+};
+
+const CustomLegend = (props: any) => {
+  const { payload } = props;
+  if (!payload) return null;
+
+  return (
+    <div className='flex flex-wrap items-center gap-3 justify-center mt-5 text-xs font-semibold'>
+      {payload.map((entry: any, index: number) => {
+        const { value, color } = entry;
+        return (
+          <div
+            key={`legend-item-${index}`}
+            className='flex items-center gap-2 px-2 py-1 rounded-full transition-all cursor-default bg-linear-to-r from-background to-transparent'
+          >
+            <svg className='w-3 h-3' viewBox='0 0 12 12'>
+              <circle cx='6' cy='6' r='6' fill={color} />
+            </svg>
+            <span className='capitalize tracking-wide'>{value}</span>
+          </div>
+        );
+      })}
+    </div>
   );
 };
 

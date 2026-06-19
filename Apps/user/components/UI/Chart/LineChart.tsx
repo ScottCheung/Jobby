@@ -8,6 +8,7 @@ import {
   Tooltip,
   XAxis,
   YAxis,
+  Legend,
 } from 'recharts';
 import { ChartTooltip, type ChartTooltipPropsItem } from './Tooltip';
 
@@ -23,6 +24,7 @@ interface LineChartProps {
   showValues?: boolean; // 是否显示值
   showGrid?: boolean; // 是否显示网格线
   gridType?: 'horizontal' | 'vertical' | 'both'; // 网格线类型
+  showLegend?: boolean;
   ValueProps?: any;
   margin?: { top?: number; right?: number; bottom?: number; left?: number };
   yAxisWidth?: number;
@@ -79,6 +81,7 @@ const LineChart = ({
   showValues = true,
   showGrid = true,
   gridType = 'both',
+  showLegend = false,
   ValueProps,
   margin = { top: 10, right: 10, bottom: 5, left: 5 },
   yAxisWidth,
@@ -126,6 +129,9 @@ const LineChart = ({
           cursor={false}
         />
 
+        {showLegend && (
+          <Legend verticalAlign='top' height={44} content={<CustomLegend />} />
+        )}
         {hasMultipleSeries && multiColor ?
           generateMultiLines(data, xKey)
         : <Line
@@ -142,6 +148,31 @@ const LineChart = ({
         }
       </RechartsLineChart>
     </ResponsiveContainer>
+  );
+};
+
+const CustomLegend = (props: any) => {
+  const { payload } = props;
+  if (!payload) return null;
+
+  return (
+    <div className='flex flex-wrap items-center gap-3 justify-start mb-5 text-xs font-semibold'>
+      {payload.map((entry: any, index: number) => {
+        const { value, color } = entry;
+        return (
+          <div
+            key={`legend-item-${index}`}
+            className='flex items-center gap-2 px-2 py-1 rounded-full transition-all cursor-default bg-linear-to-r from-background to-transparent'
+          >
+            <span
+              className='w-3 h-3 rounded-full '
+              style={{ backgroundColor: color }}
+            />
+            <span className='capitalize tracking-wide'>{value}</span>
+          </div>
+        );
+      })}
+    </div>
   );
 };
 

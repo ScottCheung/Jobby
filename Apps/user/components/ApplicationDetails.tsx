@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { JobApplication } from "@/lib/types";
+import { Accordion } from "@/components/UI/Accordion/Accordion";
 import { Field } from "./forms";
 
 const pipelineStages = [
@@ -69,17 +70,19 @@ export function ApplicationDetails({
 
   return (
     <div className="application-details">
-      <div className="progress-card">
-        <div className="progress-track">
-          {pipelineStages.map((stage, index) => (
-            <div className={`progress-step ${index <= activeStageIndex ? "active" : ""}`} key={stage.id}>
-              <span>{index + 1}</span>
-              <strong>{stage.label}</strong>
-            </div>
-          ))}
+      <Accordion title="Status Timeline" defaultOpen contentClassName="px-0 pb-0">
+        <div className="progress-card">
+          <div className="progress-track">
+            {pipelineStages.map((stage, index) => (
+              <div className={`progress-step ${index <= activeStageIndex ? "active" : ""}`} key={stage.id}>
+                <span>{index + 1}</span>
+                <strong>{stage.label}</strong>
+              </div>
+            ))}
+          </div>
+          {draft.notes ? <p className="progress-note">{draft.notes}</p> : null}
         </div>
-        {draft.notes ? <p className="progress-note">{draft.notes}</p> : null}
-      </div>
+      </Accordion>
 
       <div className="form-grid compact">
         <Field label="Title" value={draft.title} onChange={(value) => set("title", value)} />

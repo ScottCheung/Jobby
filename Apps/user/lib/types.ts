@@ -122,6 +122,8 @@ export type JobApplication = {
   skip_reason?: string | null;
   screenshot_path?: string | null;
   raw_data?: Record<string, unknown>;
+  created_at?: string;
+  updated_at?: string;
 };
 
 export type WorkerConfig = {
@@ -214,3 +216,39 @@ export type DesktopBotState = {
     line: string;
   }>;
 };
+
+export const PROCESSING_TIMEOUT_MS = 2 * 60 * 1000;
+
+export function isProcessingApplication(application: JobApplication): boolean {
+  return application.status === 'processing';
+}
+
+export function isStaleProcessingApplication(application: JobApplication): boolean {
+  if (!isProcessingApplication(application)) return false;
+
+  const updatedAt = application.updated_at ?? application.created_at;
+  if (!updatedAt) return false;
+
+  const updatedAtMs = new Date(updatedAt).getTime();
+  if (Number.isNaN(updatedAtMs)) return false;
+
+  return Date.now() - updatedAtMs > PROCESSING_TIMEOUT_MS;
+}
+
+export function getDisplayApplicationStatus(application: JobApplication): string {
+  if (isStaleProcessingApplication(application)) {
+    return 'cancelled';
+  }
+
+  return application.status;
+}
+
+export function getApplicationDisplayDate(
+  application: JobApplication,
+): string | null {
+  if (application.date_applied) {
+    return application.date_applied;
+  }
+
+  return application.updated_at ?? application.created_at ?? null;
+}

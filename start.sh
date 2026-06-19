@@ -9,6 +9,17 @@ cd "$SCRIPT_DIR"
 
 echo "=== Starting Auto Job Apply Application ==="
 
+HOST_API_PID="$(lsof -tiTCP:8000 -sTCP:LISTEN 2>/dev/null | head -n 1 || true)"
+if [ -n "$HOST_API_PID" ]; then
+    HOST_API_COMMAND="$(ps -p "$HOST_API_PID" -o command= 2>/dev/null || true)"
+    if [[ "$HOST_API_COMMAND" != *"com.docke"* ]] && [[ "$HOST_API_COMMAND" != *"docker-proxy"* ]]; then
+        echo "Error: Port 8000 is already occupied by a non-Docker process:"
+        echo "  PID $HOST_API_PID - $HOST_API_COMMAND"
+        echo "Please stop that process before starting the app, otherwise the dashboard may talk to the wrong API instance."
+        exit 1
+    fi
+fi
+
 # Check if Docker is running
 if ! docker info >/dev/null 2>&1; then
     echo "Error: Docker daemon is not running."

@@ -1,3 +1,5 @@
+/** @format */
+
 import { cn } from '@/lib/utils';
 import React, { useEffect, useRef, useState } from 'react';
 import { Digit } from './components/Digit';
@@ -12,7 +14,6 @@ import {
 } from './types';
 
 export * from './types';
-
 
 export const Number: React.FC<AnimatedNumberProps> = ({
   value,
@@ -34,6 +35,8 @@ export const Number: React.FC<AnimatedNumberProps> = ({
   decimalPartSize,
   suffixSize,
   commaWidth = '0.4em',
+  digitWidth,
+  digitGap,
   className,
   ...props
 }) => {
@@ -117,9 +120,8 @@ export const Number: React.FC<AnimatedNumberProps> = ({
     partFontSize?: string,
   ) => {
     const chars = text.split('');
-    const prevChars = prevText
-      ? prevText.split('')
-      : Array(chars.length).fill(' ');
+    const prevChars =
+      prevText ? prevText.split('') : Array(chars.length).fill(' ');
 
     return chars.map((char, index) => {
       const prevChar = prevChars[index] || ' ';
@@ -136,28 +138,26 @@ export const Number: React.FC<AnimatedNumberProps> = ({
           delay={delay}
           fontSize={partFontSize}
           commaWidth={commaWidth}
+          digitWidth={digitWidth}
         />
       );
     });
   };
 
   return (
-    <div
-      className={cn('inline-flex items-end', className)}
-      {...props}
-    >
+    <div className={cn('inline-flex items-end font-medium', className)} {...props}>
       {prefix && (
-        <span
-          className='mr-1'
-          dangerouslySetInnerHTML={{ __html: prefix }}
-        />
+        <span className='mr-1' dangerouslySetInnerHTML={{ __html: prefix }} />
       )}
 
       <div className='flex overflow-hidden items-baseline'>
         {formattedParts.currencySymbol && (
           <div
             className='flex'
-            style={currencySymbolSize ? { fontSize: currencySymbolSize } : {}}
+            style={{
+              ...(currencySymbolSize ? { fontSize: currencySymbolSize } : {}),
+              ...(digitGap ? { gap: digitGap } : {}),
+            }}
           >
             {renderPart(
               formattedParts.currencySymbol,
@@ -169,7 +169,10 @@ export const Number: React.FC<AnimatedNumberProps> = ({
 
         <div
           className='flex'
-          style={integerPartSize ? { fontSize: integerPartSize } : {}}
+          style={{
+            ...(integerPartSize ? { fontSize: integerPartSize } : {}),
+            ...(digitGap ? { gap: digitGap } : {}),
+          }}
         >
           {renderPart(
             formattedParts.integerPart,
@@ -181,7 +184,10 @@ export const Number: React.FC<AnimatedNumberProps> = ({
         {formattedParts.decimalPart && (
           <div
             className='flex'
-            style={decimalPartSize ? { fontSize: decimalPartSize } : {}}
+            style={{
+              ...(decimalPartSize ? { fontSize: decimalPartSize } : {}),
+              ...(digitGap ? { gap: digitGap } : {}),
+            }}
           >
             {renderPart(
               formattedParts.decimalPart,

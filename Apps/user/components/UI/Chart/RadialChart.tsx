@@ -134,11 +134,9 @@ export const RadialChart: React.FC<RadialChartProps> = ({
         />
         {showLegend && (
           <Legend
-            iconSize={10}
-            layout='vertical'
-            verticalAlign='middle'
-            align='right'
-            wrapperStyle={{ fontSize: '12px' }}
+            verticalAlign='top'
+            height={44}
+            content={<CustomLegend />}
             // @ts-expect-error Recharts Legend payload type mismatch
             payload={processedData.map((item) => ({
               value: item[nameKey!],
@@ -186,6 +184,31 @@ export const RadialChart: React.FC<RadialChartProps> = ({
         />
       </RechartsRadialBarChart>
     </ResponsiveContainer>
+  );
+};
+
+const CustomLegend = (props: any) => {
+  const { payload } = props;
+  if (!payload) return null;
+
+  return (
+    <div className='flex flex-wrap items-center gap-3 justify-start mb-5 text-xs font-semibold'>
+      {payload.map((entry: any, index: number) => {
+        const { value, color } = entry;
+        return (
+          <div
+            key={`legend-item-${index}`}
+            className='flex items-center gap-2 px-2 py-1 rounded-full transition-all cursor-default bg-linear-to-r from-background to-transparent'
+          >
+            <span
+              className='w-3 h-3 rounded-full '
+              style={{ backgroundColor: color }}
+            />
+            <span className='capitalize tracking-wide'>{value}</span>
+          </div>
+        );
+      })}
+    </div>
   );
 };
 

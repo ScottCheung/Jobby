@@ -28,5 +28,7 @@ export interface AnimatedNumberProps {
     decimalPartSize?: string;
     suffixSize?: string;
     commaWidth?: string;
+    digitWidth?: string;
+    digitGap?: string;
     className?: string;
 }

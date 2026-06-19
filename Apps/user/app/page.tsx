@@ -160,8 +160,7 @@ export default function OverviewPage() {
               const isRunning = ['starting', 'running', 'stopping'].includes(
                 state.status,
               );
-              const label =
-                platformCard.label;
+              const label = platformCard.label;
               const statusColor =
                 state.status === 'success' ?
                   'text-emerald-500 bg-emerald-500/10'
@@ -402,8 +401,8 @@ export default function OverviewPage() {
             showXAxis={false}
             showYAxis={false}
             xKey='date'
-            yKeys={['Submitted', 'Skipped']}
-            // showLegend
+            yKeys={['Skipped', 'Submitted']}
+            showLegend
             yDomain={[0, 'dataMax']}
             // stacked
             gradientFill
@@ -427,7 +426,7 @@ export default function OverviewPage() {
             data={dashboardData.statusDistribution}
             nameKey='name'
             valueKey='value'
-            // showLegend
+            showLegend={false}
             className='h-full flex'
             pieCornerRadius={999}
             piePaddingAngle={5}
@@ -483,7 +482,7 @@ export default function OverviewPage() {
       {/* Top Cities Card */}
       <div className='col-span-12 md:col-span-4 bg-panel rounded-card p-card'>
         <div>
-          <H2>Top Cities Map</H2>
+          <H2>Cities</H2>
           <p className='text-xs text-zinc-400 dark:text-zinc-500 mb-4'>
             Geographical distribution of job automation activity
           </p>
@@ -504,7 +503,7 @@ export default function OverviewPage() {
           </div>
           <Link
             href='/applications'
-            className='inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer'
+            className='inline-flex items-center gap-1 text-xs font-semibold text-primary/50 hover:text-primary  cursor-pointer'
           >
             View all history <ChevronRight className='w-3.5 h-3.5' />
           </Link>
@@ -568,7 +567,9 @@ export default function OverviewPage() {
                       )}
                     </td>
                     <td className='py-3 pl-4 text-right text-xs text-zinc-500 dark:text-zinc-500 whitespace-nowrap'>
-                      {formatDate(item.date_applied)}
+                      {formatDate(
+                        item.date_applied ?? item.updated_at ?? item.created_at,
+                      )}
                     </td>
                   </tr>
                 ))

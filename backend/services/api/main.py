@@ -1,10 +1,45 @@
 from datetime import datetime
 from uuid import UUID
+import asyncio
+import json
 
 from fastapi import Depends, FastAPI, HTTPException, Query, status
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import select, text
+from fastapi.responses import StreamingResponse
+from sqlalchemy import or_, select, text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+
+class SSEBroadcaster:
+    def __init__(self):
+        self.listeners: set[asyncio.Queue] = set()
+        self.loop: asyncio.AbstractEventLoop | None = None
+
+    def subscribe(self) -> asyncio.Queue:
+        q = asyncio.Queue()
+        self.listeners.add(q)
+        return q
+
+    def unsubscribe(self, q: asyncio.Queue):
+        self.listeners.discard(q)
+
+    async def broadcast(self, event_type: str, data: dict):
+        message = f"event: {event_type}\ndata: {json.dumps(data, default=str)}\n\n"
+        for q in list(self.listeners):
+            await q.put(message)
+
+broadcaster = SSEBroadcaster()
+
+def broadcast_sync(event_type: str, data: dict):
+    loop = broadcaster.loop
+    if loop is None or loop.is_closed():
+        return
+
+    asyncio.run_coroutine_threadsafe(
+        broadcaster.broadcast(event_type, data),
+        loop,
+    )
+
 
 from services.api.dependencies import get_or_create_current_user
 from services.api.local_worker import get_current_run_id, is_worker_running, start_local_worker, stop_local_worker
@@ -54,9 +89,19 @@ app.add_middleware(
 )
 
 
+@app.on_event("startup")
+async def store_sse_loop() -> None:
+    broadcaster.loop = asyncio.get_running_loop()
+
+
 def apply_updates(model: object, values: dict) -> None:
     for key, value in values.items():
         setattr(model, key, value)
+
+
+def normalize_job_id(value: str | None) -> str | None:
+    normalized = str(value or "").strip()
+    return normalized or None
 
 
 def _run_last_updated_at(run: AutomationRun) -> datetime | None:
@@ -109,11 +154,144 @@ def normalize_application_status(value: str | None) -> str:
     status_value = str(value or "").strip().lower()
     if status_value in {"applied", "apply", "success", "succeeded", "submitted"}:
         return "submitted"
+    if status_value in {"processing", "running", "in_progress", "pending"}:
+        return "processing"
     if status_value in {"cancelled", "canceled", "stopped"}:
         return "cancelled"
     if status_value in {"failed", "fail", "error", "skipped", "skiped", "skip"}:
         return "skipped"
     return status_value or "submitted"
+
+
+def ensure_application_date_applied(values: dict, existing: JobApplication | None = None) -> None:
+    next_status = normalize_application_status(
+        values.get("status") if "status" in values else getattr(existing, "status", None)
+    )
+    if values.get("date_applied") is not None:
+        return
+    if existing and existing.date_applied is not None:
+        return
+    if next_status in {"processing", "submitted", "cancelled"}:
+        values["date_applied"] = datetime.now()
+
+
+def _normalized_text(value: str | None) -> str:
+    return " ".join(str(value or "").strip().lower().split())
+
+
+def find_existing_application(
+    db: Session,
+    current_user: User,
+    values: dict,
+) -> JobApplication | None:
+    job_id = normalize_job_id(values.get("job_id")) or ""
+    job_link = str(values.get("job_link") or "").strip()
+    external_job_link = str(values.get("external_job_link") or "").strip()
+    title = _normalized_text(values.get("title"))
+    company = _normalized_text(values.get("company"))
+
+    query = select(JobApplication).where(
+        JobApplication.user_id == current_user.id,
+        JobApplication.deleted_at.is_(None),
+    )
+
+    link_clauses = []
+    if job_link:
+        link_clauses.extend([
+            JobApplication.job_link == job_link,
+            JobApplication.external_job_link == job_link,
+        ])
+    if external_job_link:
+        link_clauses.extend([
+            JobApplication.external_job_link == external_job_link,
+            JobApplication.job_link == external_job_link,
+        ])
+
+    if job_id:
+        query = query.where(JobApplication.job_id == job_id)
+    elif link_clauses:
+        query = query.where(or_(*link_clauses))
+    elif title and company:
+        query = query.where(
+            JobApplication.title.is_not(None),
+            JobApplication.company.is_not(None),
+        )
+    else:
+        return None
+
+    candidates = list(
+        db.scalars(
+            query.order_by(
+                JobApplication.date_applied.desc().nullslast(),
+                JobApplication.updated_at.desc(),
+                JobApplication.created_at.desc(),
+            )
+        )
+    )
+    if not candidates:
+        return None
+
+    if job_id:
+        return candidates[0]
+
+    for candidate in candidates:
+        if job_link and (candidate.job_link == job_link or candidate.external_job_link == job_link):
+            return candidate
+        if external_job_link and (
+            candidate.external_job_link == external_job_link or candidate.job_link == external_job_link
+        ):
+            return candidate
+
+    for candidate in candidates:
+        if _normalized_text(candidate.title) == title and _normalized_text(candidate.company) == company:
+            return candidate
+
+    return None
+
+
+def reconcile_stale_processing_applications(
+    db: Session,
+    current_user: User,
+    timeout_seconds: int = 120,
+) -> list[JobApplication]:
+    now = datetime.now()
+    rows = list(
+        db.scalars(
+            select(JobApplication).where(
+                JobApplication.user_id == current_user.id,
+                JobApplication.deleted_at.is_(None),
+                JobApplication.status == "processing",
+            )
+        )
+    )
+
+    updated_rows: list[JobApplication] = []
+    for application in rows:
+        last_touched = application.updated_at or application.created_at
+        if not last_touched:
+            continue
+        if (now - last_touched.replace(tzinfo=None) if last_touched.tzinfo else now - last_touched).total_seconds() <= timeout_seconds:
+            continue
+
+        application.status = "cancelled"
+        application.skip_reason = application.skip_reason or "Processing timed out"
+        raw_data = application.raw_data or {}
+        application.raw_data = {
+            **raw_data,
+            "processing_timeout_at": now.isoformat(),
+        }
+        updated_rows.append(application)
+
+    if updated_rows:
+        db.commit()
+        for application in updated_rows:
+            db.refresh(application)
+            broadcast_sync(
+                "application_updated",
+                JobApplicationRead.model_validate(application).model_dump(mode="json"),
+            )
+
+    return updated_rows
 
 
 def async_application_from_link_record(application: JobApplication) -> tuple[dict, str | None]:
@@ -211,6 +389,24 @@ def readiness(db: Session = Depends(get_db)) -> dict:
             "future_platforms": ["seek"],
         },
     }
+
+
+@app.get("/api/sse")
+async def sse_endpoint():
+    q = broadcaster.subscribe()
+    async def event_generator():
+        try:
+            yield "event: ping\ndata: {}\n\n"
+            while True:
+                message = await q.get()
+                yield message
+        except asyncio.CancelledError:
+            pass
+        finally:
+            broadcaster.unsubscribe(q)
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
+
 
 
 @app.get("/api/me", response_model=UserRead)
@@ -395,16 +591,26 @@ def update_runtime_settings(
 
 @app.get("/api/question-cache", response_model=list[QuestionCacheEntryRead])
 def list_question_cache(
+    limit: int | None = Query(default=None),
+    offset: int | None = Query(default=None),
+    search: str | None = Query(default=None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_or_create_current_user),
 ) -> list[QuestionCacheEntry]:
-    return list(
-        db.scalars(
-            select(QuestionCacheEntry)
-            .where(QuestionCacheEntry.user_id == current_user.id)
-            .order_by(QuestionCacheEntry.last_used_at.desc().nullslast(), QuestionCacheEntry.created_at.desc())
+    query = select(QuestionCacheEntry).where(QuestionCacheEntry.user_id == current_user.id)
+    if search:
+        search_query = f"%{search.strip().lower()}%"
+        query = query.where(
+            QuestionCacheEntry.original_label.ilike(search_query) |
+            QuestionCacheEntry.answer.ilike(search_query)
         )
-    )
+    stmt = query.order_by(QuestionCacheEntry.last_used_at.desc().nullslast(), QuestionCacheEntry.created_at.desc())
+    if offset is not None:
+        stmt = stmt.offset(offset)
+    if limit is not None:
+        stmt = stmt.limit(limit)
+    return list(db.scalars(stmt))
+
 
 
 @app.post("/api/question-cache/upsert", response_model=QuestionCacheEntryRead)
@@ -428,6 +634,7 @@ def upsert_question_cache_entry(
     apply_updates(entry, payload.model_dump())
     db.commit()
     db.refresh(entry)
+    broadcast_sync("question_cache_upserted", QuestionCacheEntryRead.model_validate(entry).model_dump(mode="json"))
     return entry
 
 
@@ -441,6 +648,7 @@ def create_question_cache_entry(
     db.add(entry)
     db.commit()
     db.refresh(entry)
+    broadcast_sync("question_cache_created", QuestionCacheEntryRead.model_validate(entry).model_dump(mode="json"))
     return entry
 
 
@@ -458,6 +666,7 @@ def update_question_cache_entry(
     apply_updates(entry, payload.model_dump())
     db.commit()
     db.refresh(entry)
+    broadcast_sync("question_cache_updated", QuestionCacheEntryRead.model_validate(entry).model_dump(mode="json"))
     return entry
 
 
@@ -473,21 +682,39 @@ def delete_question_cache_entry(
 
     db.delete(entry)
     db.commit()
+    broadcast_sync("question_cache_deleted", {"id": str(entry_id)})
 
 
 @app.get("/api/applications", response_model=list[JobApplicationRead])
 def list_applications(
     status_filter: str | None = Query(default=None, alias="status"),
     include_deleted: bool = Query(default=False),
+    limit: int | None = Query(default=None),
+    offset: int | None = Query(default=None),
+    search: str | None = Query(default=None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_or_create_current_user),
 ) -> list[JobApplication]:
+    reconcile_stale_processing_applications(db, current_user)
     query = select(JobApplication).where(JobApplication.user_id == current_user.id)
     if not include_deleted:
         query = query.where(JobApplication.deleted_at.is_(None))
     if status_filter:
         query = query.where(JobApplication.status == normalize_application_status(status_filter))
-    return list(db.scalars(query.order_by(JobApplication.date_applied.desc().nullslast(), JobApplication.created_at.desc())))
+    if search:
+        search_query = f"%{search.strip().lower()}%"
+        query = query.where(
+            JobApplication.title.ilike(search_query) |
+            JobApplication.company.ilike(search_query) |
+            JobApplication.job_id.ilike(search_query)
+        )
+    stmt = query.order_by(JobApplication.date_applied.desc().nullslast(), JobApplication.created_at.desc())
+    if offset is not None:
+        stmt = stmt.offset(offset)
+    if limit is not None:
+        stmt = stmt.limit(limit)
+    return list(db.scalars(stmt))
+
 
 
 @app.post("/api/applications", response_model=JobApplicationRead, status_code=status.HTTP_201_CREATED)
@@ -497,14 +724,36 @@ def create_application(
     current_user: User = Depends(get_or_create_current_user),
 ) -> JobApplication:
     values = payload.model_dump()
+    values["job_id"] = normalize_job_id(values.get("job_id"))
     values["status"] = normalize_application_status(values.get("status"))
     values["work_style"] = None
+    ensure_application_date_applied(values)
+    existing_application = find_existing_application(db, current_user, values)
+    if existing_application:
+        apply_updates(existing_application, values)
+        db.commit()
+        db.refresh(existing_application)
+        broadcast_sync("application_updated", JobApplicationRead.model_validate(existing_application).model_dump(mode="json"))
+        return existing_application
+
     application = JobApplication(user_id=current_user.id, **values)
     if application.job_link or application.external_job_link:
         async_application_from_link_record(application)
     db.add(application)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        existing_application = find_existing_application(db, current_user, values)
+        if not existing_application:
+            raise
+        apply_updates(existing_application, values)
+        db.commit()
+        db.refresh(existing_application)
+        broadcast_sync("application_updated", JobApplicationRead.model_validate(existing_application).model_dump(mode="json"))
+        return existing_application
     db.refresh(application)
+    broadcast_sync("application_created", JobApplicationRead.model_validate(application).model_dump(mode="json"))
     return application
 
 
@@ -520,11 +769,15 @@ def update_application(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application not found")
 
     values = payload.model_dump(exclude_unset=True)
+    if "job_id" in values:
+        values["job_id"] = normalize_job_id(values.get("job_id"))
     if "status" in values:
         values["status"] = normalize_application_status(values.get("status"))
+    ensure_application_date_applied(values, application)
     apply_updates(application, values)
     db.commit()
     db.refresh(application)
+    broadcast_sync("application_updated", JobApplicationRead.model_validate(application).model_dump(mode="json"))
     return application
 
 
@@ -552,6 +805,7 @@ def async_application_from_link(
     _, error = async_application_from_link_record(application)
     db.commit()
     db.refresh(application)
+    broadcast_sync("application_updated", JobApplicationRead.model_validate(application).model_dump(mode="json"))
     return application
 
 
@@ -583,6 +837,7 @@ def async_applications_from_link_batch(
     results = []
     repaired_count = 0
     failed_count = 0
+    repaired_rows = []
     for application in rows:
         updates, error = async_application_from_link_record(application)
         if error:
@@ -591,8 +846,13 @@ def async_applications_from_link_batch(
         else:
             repaired_count += 1
             results.append({"id": str(application.id), "status": "synced", "fields": sorted(updates.keys())})
+            repaired_rows.append(application)
 
     db.commit()
+    for application in repaired_rows:
+        db.refresh(application)
+        broadcast_sync("application_updated", JobApplicationRead.model_validate(application).model_dump(mode="json"))
+
     return {
         "processed": len(rows),
         "synced": repaired_count,
@@ -613,6 +873,7 @@ def delete_application(
 
     application.deleted_at = datetime.now()
     db.commit()
+    broadcast_sync("application_deleted", {"id": str(application_id)})
 
 
 @app.get("/api/applications/{application_id}", response_model=JobApplicationRead)
@@ -776,4 +1037,3 @@ def get_skills(db: Session = Depends(get_db)) -> dict:
         "version": version_str,
         "index": index_map
     }
-

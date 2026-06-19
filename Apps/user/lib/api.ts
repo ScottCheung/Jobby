@@ -62,7 +62,14 @@ export const api = {
       method: "PUT",
       body: JSON.stringify(payload),
     }),
-  questionCache: () => apiRequest<QuestionCacheEntry[]>("/api/question-cache"),
+  questionCache: (limit?: number, offset?: number, search?: string) => {
+    const params = new URLSearchParams();
+    if (limit !== undefined) params.append("limit", String(limit));
+    if (offset !== undefined) params.append("offset", String(offset));
+    if (search) params.append("search", search);
+    const qs = params.toString();
+    return apiRequest<QuestionCacheEntry[]>(qs ? `/api/question-cache?${qs}` : "/api/question-cache");
+  },
   updateQuestionCache: (entry: QuestionCacheEntry) =>
     apiRequest<QuestionCacheEntry>(`/api/question-cache/${entry.id}`, {
       method: "PUT",
@@ -72,8 +79,15 @@ export const api = {
     apiRequest<void>(`/api/question-cache/${entryId}`, {
       method: "DELETE",
     }),
-  applications: (status?: string) =>
-    apiRequest<JobApplication[]>(status ? `/api/applications?status=${encodeURIComponent(status)}` : "/api/applications"),
+  applications: (status?: string, limit?: number, offset?: number, search?: string) => {
+    const params = new URLSearchParams();
+    if (status) params.append("status", status);
+    if (limit !== undefined) params.append("limit", String(limit));
+    if (offset !== undefined) params.append("offset", String(offset));
+    if (search) params.append("search", search);
+    const qs = params.toString();
+    return apiRequest<JobApplication[]>(qs ? `/api/applications?${qs}` : "/api/applications");
+  },
   updateApplication: (applicationId: string, payload: Partial<JobApplication>) =>
     apiRequest<JobApplication>(`/api/applications/${applicationId}`, {
       method: "PUT",

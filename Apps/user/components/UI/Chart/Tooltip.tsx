@@ -41,15 +41,14 @@ export const ChartTooltip: React.FC<ChartTooltipProps> = ({
 
     // Filter duplicate items in payload (e.g. from layered background charts)
     const uniquePayload = payload.filter(
-      (item, index, self) => self.findIndex((t) => t.name === item.name) === index
+      (item, index, self) =>
+        self.findIndex((t) => t.name === item.name) === index,
     );
 
     return (
-      <m.div className='rounded-lg  bg-background transition-all duration-300 backdrop-blur-sm  text-sm shadow-lg  p-3'>
+      <m.div className='rounded-lg  bg-black transition-all duration-300 backdrop-blur-sm  text-sm shadow-lg  p-3'>
         {displayLabel && (
-          <div className='mb-2 font-medium text-ink-secondary'>
-            {displayLabel}
-          </div>
+          <div className='mb-2 font-medium text-white'>{displayLabel}</div>
         )}
         <div className='space-y-1.5'>
           {uniquePayload.map((item, index) => {
@@ -82,9 +81,7 @@ export const ChartTooltip: React.FC<ChartTooltipProps> = ({
                 <div className='flex flex-1 items-center justify-between w-full'>
                   {/* Conditionally render the item name (label) */}
                   {itemName && itemName.trim() !== '' && (
-                    <span className='text-ink-secondary text-xs mr-3'>
-                      {itemName}
-                    </span>
+                    <span className='text-white text-xs mr-3'>{itemName}</span>
                   )}
                   {/* Ensure value is always shown, adjust spacing if name is absent */}
                   <div className='flex flex-col items-center gap-2'>
@@ -92,7 +89,7 @@ export const ChartTooltip: React.FC<ChartTooltipProps> = ({
                       value={item.value}
                       duration={0.2}
                       {...ValueProps}
-                      className={`font-medium text-xs text-ink-secondary ${
+                      className={`font-medium text-xs text-white ${
                         !itemName || itemName.trim() === '' ? 'ml-auto' : ''
                       }`}
                     />

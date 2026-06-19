@@ -236,6 +236,39 @@ def failed_job(
     application_logger.log_application(payload)
 
 
+def skipped_job(
+    job_id,
+    title,
+    company,
+    work_location,
+    work_style,
+    job_link,
+    resume,
+    date_listed,
+    reason,
+    application_link="Skipped",
+    screenshot_name="Not Available",
+    **record,
+) -> None:
+    payload = {
+        "platform": "linkedin",
+        "job_id": job_id,
+        "title": title,
+        "company": company,
+        "work_location": work_location,
+        "work_style": work_style,
+        "job_link": job_link,
+        "resume": resume,
+        "date_posted": date_listed.isoformat() if hasattr(date_listed, "isoformat") else date_listed,
+        "status": "skipped",
+        "application_type": application_link,
+        "skip_reason": reason,
+        "screenshot": screenshot_name,
+        **record,
+    }
+    application_logger.log_application(payload)
+
+
 def submitted_jobs(
     job_id,
     title,
@@ -361,15 +394,49 @@ def apply_to_jobs(search_terms: list[str]) -> None:
 
                     bot_status("Opening the next job card...")
                     job_id,title,company,work_location,work_style,skip = linkedin_jobs.get_job_main_details(job, blacklisted_companies, rejected_jobs)
+                    if not work_location or str(work_location).strip().lower() in ("unknown", "null", "none"):
+                        search_loc = str(get_runtime_value("search_location", "") or "").strip()
+                        if search_loc:
+                            work_location = search_loc
                     
                     if skip:
                         bot_status(f'Skipping "{title}" at {company}: blacklisted or previously rejected.')
+                        skipped_job(
+                            job_id,
+                            title,
+                            company,
+                            work_location,
+                            work_style,
+                            "https://www.linkedin.com/jobs/view/" + job_id,
+                            "Pending",
+                            "Unknown",
+                            "Blacklisted company, rejected job, or already applied",
+                            search_term=searchTerm,
+                        )
+                        skip_count += 1
+                        sync_stats_to_status()
+                        current_processing_record = None
                         continue
                     # Redundant fail safe check for applied jobs!
                     try:
                         if job_id in applied_jobs or find_by_class(driver, "jobs-s-apply__application-link", 2):
                             bot_status(f'Skipping "{title}" at {company}: already applied.')
                             print_lg(f'Already applied to "{title} | {company}" job. Job ID: {job_id}!')
+                            skipped_job(
+                                job_id,
+                                title,
+                                company,
+                                work_location,
+                                work_style,
+                                "https://www.linkedin.com/jobs/view/" + job_id,
+                                "Pending",
+                                "Unknown",
+                                "Already applied",
+                                search_term=searchTerm,
+                            )
+                            skip_count += 1
+                            sync_stats_to_status()
+                            current_processing_record = None
                             continue
                     except Exception as e:
                         bot_status(f'Checking application options for "{title}" at {company}.')
@@ -388,6 +455,20 @@ def apply_to_jobs(search_terms: list[str]) -> None:
                     questions_list = None
                     screenshot_name = "Not Available"
 
+                    current_processing_record = {
+                        "platform": "linkedin",
+                        "job_id": job_id,
+                        "title": title,
+                        "company": company,
+                        "work_location": work_location,
+                        "work_style": work_style,
+                        "job_link": "https://www.linkedin.com/jobs/view/" + job_id,
+                        "application_type": "Easy Applied",
+                        "status": "processing",
+                        "search_term": searchTerm,
+                    }
+                    application_logger.create_processing_application(current_processing_record)
+
                     try:
                         wait_if_bot_paused()
                         bot_status(f'Checking blacklist rules for "{title}" at {company}...')
@@ -399,6 +480,7 @@ def apply_to_jobs(search_terms: list[str]) -> None:
                                                  title=title, company=company, search_term=searchTerm, work_location=work_location, work_style=work_style)
                         skip_count += 1
                         sync_stats_to_status()
+                        current_processing_record = None
                         continue
                     except Exception as e:
                         bot_status(f'Could not inspect company details for "{title}". Continuing.')
@@ -464,6 +546,7 @@ def apply_to_jobs(search_terms: list[str]) -> None:
                         rejected_jobs.add(job_id)
                         skip_count += 1
                         sync_stats_to_status()
+                        current_processing_record = None
                         continue
 
                     
@@ -555,7 +638,7 @@ def apply_to_jobs(search_terms: list[str]) -> None:
                                         if pause_at_failed_question:
                                             bot_status(f'Manual help needed for "{title}": repeated unanswered questions.')
                                             screenshot(job_id, "Needed manual intervention for failed question")
-                                            linkedin_apply.show_inpage_overlay("Help Needed", "Couldn't answer one or more questions.\nPlease click \"Continue\" once done.\nDO NOT CLICK Back, Next or Review button in LinkedIn.\n\n\n\n\nYou can turn off \"Pause at failed question\" in your API runtime settings", ["Continue"])
+                                            linkedin_apply.show_inpage_overlay("Need your help", "Couldn't answer one or more questions in this step.\nPlease click \"Continue\" button in this popup once done.\nDO NOT CLICK Back, Next or Review button in LinkedIn.\n\nYou can turn off \"Pause at failed question\" in your Agent settings", ["Continue"])
                                             linkedin_apply.capture_manual_answers(modal, company)
                                             next_counter = 1
                                             continue
@@ -570,7 +653,7 @@ def apply_to_jobs(search_terms: list[str]) -> None:
                                         if pause_at_failed_question:
                                             bot_status(f'Manual help needed for "{title}": unanswered question remains.')
                                             screenshot(job_id, "Needed manual intervention for unanswered question")
-                                            linkedin_apply.show_inpage_overlay("Help Needed", "Couldn't answer one or more questions.\nPlease fill them in, then click \"Continue\".\nDO NOT CLICK Back, Next or Review button in LinkedIn.\n\n\n\n\nYou can turn off \"Pause at failed question\" in your API runtime settings", ["Continue"])
+                                            linkedin_apply.show_inpage_overlay("Need your help", "Couldn't answer one or more questions in this step.\nPlease fill them in, then click \"Continue\" button in this popup once done.\nDO NOT CLICK Back, Next or Review button in LinkedIn.\n\nYou can turn off \"Pause at failed question\" in your Agent settings", ["Continue"])
                                             linkedin_apply.capture_manual_answers(modal, company)
                                             next_counter = 1
                                             continue
@@ -611,9 +694,9 @@ def apply_to_jobs(search_terms: list[str]) -> None:
                                 cur_pause_before_submit = pause_before_submit
                                 if errored != "stuck" and cur_pause_before_submit:
                                     bot_status(f'Waiting for your confirmation before submitting "{title}".')
-                                    decision = linkedin_apply.show_inpage_overlay("Confirm your information", '1. Please verify your information.\n2. If you edited something, please return to this final screen.\n3. DO NOT CLICK "Submit Application" in LinkedIn.\n\n\n\n\nYou can turn off "Pause before submit" in your API runtime settings\nTo TEMPORARILY disable pausing, click "Disable Pause"', ["Disable Pause", "Discard Application", "Submit Application"])
+                                    decision = linkedin_apply.show_inpage_overlay("Double Check your Application", '1. Please verify your information Before submiting.\n2. If you edited something, please return back.\n3. DO NOT CLICK "Submit Application" Button in LinkedIn,this will fail to record your submission.\n\n\nYou can turn off "Double Check" in your Agent settings.\nTo TEMPORARILY disable pausing, click "Disable Double Check <strong>(High Risk)</strong>", because AI will make mistakes sometime.', ["Disable Double Check", "Discard Application", "Submit Application"])
                                     if decision == "Discard Application": raise Exception("Job application discarded by user!")
-                                    pause_before_submit = False if "Disable Pause" == decision else True
+                                    pause_before_submit = False if "Disable Verify (High Risk)" == decision else True
                                     # try_xp(modal, ".//span[normalize-space(.)='Review']")
                                 wait_if_bot_paused()
                                 bot_status(f'Checking follow-company option for "{title}"...')
@@ -647,6 +730,7 @@ def apply_to_jobs(search_terms: list[str]) -> None:
                             failed_count += 1
                             sync_stats_to_status()
                             discard_job()
+                            current_processing_record = None
                             continue
                     else:
                         # Case 2: Apply externally
@@ -659,6 +743,7 @@ def apply_to_jobs(search_terms: list[str]) -> None:
                             return
                         if skip:
                             bot_status(f'Skipping "{title}": no usable application path found.')
+                            current_processing_record = None
                             continue
 
                     wait_if_bot_paused()
@@ -673,6 +758,7 @@ def apply_to_jobs(search_terms: list[str]) -> None:
                     else:   external_jobs_count += 1
                     sync_stats_to_status()
                     applied_jobs.add(job_id)
+                    current_processing_record = None
 
 
 
@@ -736,6 +822,7 @@ for _sig in (signal.SIGINT, signal.SIGTERM):
 def run_linkedin_flow() -> None:
     total_runs = 99
     interrupted = False
+    current_processing_record = None
     bot_status("Starting LinkedIn automation...", status="starting")
     try:
         global linkedIn_tab, tabs_count, useNewResume, aiClient, driver, actions, wait, options
@@ -823,12 +910,27 @@ def run_linkedin_flow() -> None:
 
     except KeyboardInterrupt:
         interrupted = True
+        if current_processing_record:
+            application_logger.cancel_processing_application(
+                current_processing_record,
+                "Processing cancelled because the worker was interrupted",
+            )
         print_lg("Interrupted by user. Closing browser...")
         bot_status("Interrupted by user.", status="cancelled")
     except (NoSuchWindowException, WebDriverException) as e:
+        if current_processing_record:
+            application_logger.cancel_processing_application(
+                current_processing_record,
+                "Processing cancelled because the browser session ended",
+            )
         print_lg("Browser window closed or session is invalid. Exiting.", e)
         bot_status("Browser closed or invalid session.", status="failed")
     except Exception as e:
+        if current_processing_record:
+            application_logger.cancel_processing_application(
+                current_processing_record,
+                f"Processing cancelled because of a fatal error: {e}",
+            )
         critical_error_log("In Applier Main", e)
         bot_status(f"Fatal error: {str(e)}", status="failed")
         pyautogui.alert(e,alert_title)

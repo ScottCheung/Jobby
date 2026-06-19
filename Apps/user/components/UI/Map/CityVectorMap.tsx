@@ -345,7 +345,7 @@ export function CityVectorMap({
 
   if (loading) {
     return (
-      <div className='flex h-full min-h-[16rem] w-full items-center justify-center text-zinc-500'>
+      <div className='flex h-full min-h-70 w-full items-center justify-center '>
         Loading map outline...
       </div>
     );
@@ -370,7 +370,7 @@ export function CityVectorMap({
                 <path
                   key={path.id}
                   d={path.d}
-                  className='fill-zinc-200/50 dark:fill-zinc-800/40 stroke-zinc-300/30 dark:stroke-zinc-700/20 hover:fill-zinc-200 dark:hover:fill-zinc-800 transition-colors'
+                  className='fill-primary/10  hover:fill-primary/50  transition-colors'
                 >
                   <title>{path.name}</title>
                 </path>
@@ -400,7 +400,7 @@ export function CityVectorMap({
                   {/* Bubble Base */}
                   <circle
                     r={bubbleRadius}
-                    className='fill-primary/10  stroke-white dark:stroke-zinc-900 stroke-1 group-hover:opacity-100 opacity-10  transition-colors'
+                    className='fill-primary/10   stroke-1 group-hover:opacity-100 opacity-10  transition-colors'
                   />
                   {/* Tiny center core dot */}
                   <circle r={1} className='fill-primary' />
@@ -412,11 +412,11 @@ export function CityVectorMap({
 
         {/* Hover City Tooltip */}
         {hoveredCity && (
-          <div className='absolute z-10 bg-zinc-900/90 dark:bg-zinc-950/95 text-white p-2 rounded-lg text-xs shadow-md border border-zinc-700/50 pointer-events-none transition-opacity duration-200 flex flex-col font-sans'>
+          <div className='absolute z-10 top-4 bg-black text-white p-2 rounded-lg text-xs shadow-md border border-zinc-700/50 pointer-events-none transition-opacity duration-200 flex flex-col font-sans'>
             <span className='font-bold truncate'>{hoveredCity.name}</span>
-            <span className='text-emerald-400 mt-0.5'>
+            <span className='bg-primary text-primary-foreground p-3 rounded-sm w-full justify-items-center flex mt-3'>
               {hoveredCity.value}{' '}
-              {hoveredCity.value === 1 ? 'application' : 'applications'}
+              {hoveredCity.value === 1 ? 'application' : 'applications'} sent
             </span>
           </div>
         )}
@@ -427,8 +427,11 @@ export function CityVectorMap({
         <div className=' flex flex-wrap gap-4 items-center text-xs text-zinc-500 dark:text-zinc-400 shrink-0 font-medium'>
           {cities.slice(0, 3).map((city, idx) => (
             <span key={idx} className='flex items-center gap-1'>
-              <span className='w-1.5 h-1.5 rounded-full bg-emerald-500' />
-              {city.name} ({city.value})
+              {city.name.split(',')[0]}{' '}
+              <div className='bg-background  text-primary px-2 py-1 rounded-lg'>
+                {' '}
+                {city.value}
+              </div>
             </span>
           ))}
         </div>

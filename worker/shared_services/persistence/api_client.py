@@ -88,6 +88,17 @@ class BotApiClient:
         )
         return self.request("POST", "/api/applications", payload=payload)
 
+    def update_application(self, application_id: str, payload: dict) -> dict:
+        persistence_log(
+            "Updating application via API:",
+            application_id,
+            payload.get("job_id"),
+            payload.get("title"),
+            payload.get("company"),
+            payload.get("status"),
+        )
+        return self.request("PUT", f"/api/applications/{application_id}", payload=payload)
+
     def get_worker_config(self) -> dict:
         return self.request("GET", "/api/worker/config")
 

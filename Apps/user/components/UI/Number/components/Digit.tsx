@@ -10,6 +10,7 @@ export const Digit: React.FC<{
   delay: number;
   fontSize?: string;
   commaWidth?: string;
+  digitWidth?: string;
 }> = ({
   value,
   prevValue,
@@ -18,6 +19,7 @@ export const Digit: React.FC<{
   delay,
   fontSize,
   commaWidth,
+  digitWidth,
 }) => {
     const variants = getVariants(animation, duration, delay);
     const hasChanged = value !== prevValue;
@@ -40,14 +42,14 @@ export const Digit: React.FC<{
         : isDecimalPoint
           ? '0.4em'
           : isNumber
-            ? '0.7em'
+            ? digitWidth || '0.7em'
             : '1em',
       minWidth: isComma
         ? commaWidth || '0.4em'
         : isDecimalPoint
           ? '0.4em'
           : isNumber
-            ? '0.8em'
+            ? digitWidth || '0.8em'
             : '1em',
       height: '1em',
       margin: isComma || isDecimalPoint ? '0 -0.05em' : '',
@@ -59,7 +61,7 @@ export const Digit: React.FC<{
     if (animation === 'none') {
       return (
         <div
-          className={`relative inline-flex items-center justify-center font-medium ${separatorClass}`}
+          className={`relative inline-flex items-center justify-center ${separatorClass}`}
           style={baseStyle}
           dangerouslySetInnerHTML={{ __html: value }}
         />
@@ -79,7 +81,7 @@ export const Digit: React.FC<{
         stiffness: 300,
         damping: 20,
       },
-      className: `absolute inset-0 flex items-center justify-center font-medium ${separatorClass}`,
+      className: `absolute inset-0 flex items-center justify-center ${separatorClass}`,
       dangerouslySetInnerHTML: { __html: value },
     };
 
@@ -117,7 +119,7 @@ export const Digit: React.FC<{
             </>
           ) : (
             <div
-              className={`absolute inset-0 transition-all flex items-center justify-center font-medium ${separatorClass}`}
+              className={`absolute inset-0 transition-all flex items-center justify-center ${separatorClass}`}
               dangerouslySetInnerHTML={{ __html: value }}
             />
           )}

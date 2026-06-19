@@ -3,7 +3,7 @@ from enum import StrEnum
 from uuid import UUID as PyUUID
 from uuid import uuid4
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, Numeric, String, Text, UniqueConstraint, func, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -180,6 +180,15 @@ class QuestionCacheEntry(Base, TimestampMixin):
 
 class JobApplication(Base, TimestampMixin):
     __tablename__ = "job_applications"
+    __table_args__ = (
+        Index(
+            "uq_job_applications_user_id_job_id_active",
+            "user_id",
+            "job_id",
+            unique=True,
+            postgresql_where=text("deleted_at IS NULL AND job_id IS NOT NULL"),
+        ),
+    )
 
     id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid4)
     user_id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True)
@@ -235,4 +244,3 @@ class Skill(Base, TimestampMixin):
     name: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
     canonical_name: Mapped[str] = mapped_column(String(255), nullable=False)
     is_alias: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-

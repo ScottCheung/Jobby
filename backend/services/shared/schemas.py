@@ -172,12 +172,16 @@ class JobApplicationRead(JobApplicationBase, OrmModel):
 
 
 class JobApplicationUpdate(BaseModel):
+    platform: str | None = None
+    job_id: str | None = None
     status: str | None = None
     title: str | None = None
     company: str | None = None
     work_location: str | None = None
     work_style: str | None = None
     job_description: str | None = None
+    job_link: str | None = None
+    external_job_link: str | None = None
     skip_reason: str | None = None
     pipeline_stage: str | None = None
     interview_stage: str | None = None
@@ -188,6 +192,13 @@ class JobApplicationUpdate(BaseModel):
     contact_email: str | None = None
     last_contacted_at: datetime | None = None
     deleted_at: datetime | None = None
+    application_type: str | None = None
+    resume_path: str | None = None
+    date_posted: str | None = None
+    date_applied: datetime | None = None
+    questions: Any | None = None
+    screenshot_path: str | None = None
+    raw_data: dict | None = None
 
 
 class AutomationRunBase(BaseModel):
@@ -218,5 +229,4 @@ class SkillRead(SkillBase, OrmModel):
     id: int
     created_at: datetime
     updated_at: datetime
-
 

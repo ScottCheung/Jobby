@@ -246,8 +246,8 @@ function TagEditor({
     setDraft('');
   };
 
-  const removeTag = (value: string) => {
-    onChange(values.filter((item) => item !== value));
+  const removeTag = (indexToRemove: number) => {
+    onChange(values.filter((_, index) => index !== indexToRemove));
   };
 
   return (
@@ -258,12 +258,12 @@ function TagEditor({
       : null}
       <div className='tag-editor'>
         <div className='tag-list'>
-          {values.map((value) => (
+          {values.map((value, index) => (
             <button
-              key={value}
+              key={`${value}-${index}`}
               type='button'
               className='tag-chip'
-              onClick={() => removeTag(value)}
+              onClick={() => removeTag(index)}
               title={`Remove ${value}`}
             >
               <span>{value}</span>

@@ -7,38 +7,31 @@ import { usePathname } from 'next/navigation';
 import {
   LayoutGrid,
   LayoutDashboard,
-  Users,
-  Calendar,
-  Settings,
-  Settings2,
-  CircleHelp,
+  User as UserIcon,
+  Search,
+  MessageSquareCode,
+  Briefcase,
   LogOut,
-  Building,
   Sun,
-  Scroll,
-  List,
-  Settings2Icon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { ListGridToggle } from '@/components/list-grid-toggle';
 import { ModeToggle } from '@/components/mode-toggle';
 import { ColorPicker } from '@/components/color-picker';
+import { ThemeToggle } from '@/components/theme-toggle';
+import { ThemeColorToggle } from '@/components/theme-color-toggle';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const navigation = [
-  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Accounts', href: '/accounts', icon: Building },
-  // { name: "Company", href: "/company", icon: Building },
-  // { name: "Employees", href: "/employees", icon: Users },
-  { name: 'Employment Types', href: '/employment-types', icon: Users },
-  { name: 'Leave Types', href: '/leaves', icon: Sun },
-  { name: 'Leave Rules', href: '/leave-rules', icon: Scroll },
-  { name: 'Help & Support', href: '/help-center', icon: CircleHelp },
-  { name: 'UI TEST', href: '/ui', icon: Settings2Icon },
+  { name: 'Overview', href: '/', icon: LayoutDashboard },
+  { name: 'Profile', href: '/profile', icon: UserIcon },
+  { name: 'Search', href: '/search', icon: Search },
+  { name: 'Question Cache', href: '/questions', icon: MessageSquareCode },
+  { name: 'Applications History', href: '/applications', icon: Briefcase },
 ];
 
 import { useAuthStore } from '@/lib/store';
 import { useLayoutStore } from '@/lib/store/layout-store';
+import { useConsole } from '@/components/ConsoleContext';
 import { useEffect } from 'react';
 
 import {
@@ -54,7 +47,8 @@ import { Stagger, StaggerItem } from '../animation';
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { user, fetchMe, logout } = useAuthStore();
+  const { fetchMe, logout } = useAuthStore();
+  const { user } = useConsole();
   const isCollapsed = useLayoutStore((state) => state.isSidebarCollapsed);
   const { toggleSidebar } = useLayoutStore((state) => state.actions);
 
@@ -85,7 +79,7 @@ export function Sidebar() {
   return (
     <motion.aside
       layout
-      initial={{ width: 288 }}
+      initial={{ width: 80 }}
       animate={{ width: isCollapsed ? 80 : 288 }}
       transition={springTransition}
       className={cn(
@@ -122,9 +116,9 @@ export function Sidebar() {
                 exit='exit'
                 className='flex flex-col whitespace-nowrap overflow-hidden'
               >
-                <H4>Admin Portal</H4>
+                <H4>User Console</H4>
                 <p className='mt-1 text-xs font-medium text-ink-secondary'>
-                  Employment Types System
+                  Auto Job Apply
                 </p>
               </motion.div>
             )}
@@ -134,64 +128,60 @@ export function Sidebar() {
         {/* Navigation */}
 
         <nav className='flex flex-col gap-1'>
-          <Stagger
-            className='flex flex-col gap-1'
-
-          > {navigation.map((item) => {
-            const isActive = pathname === item.href;
-            return (
-              <StaggerItem key={item.name}
-                xOffset={20}
-              >
-                <Tooltip
-                  content={isCollapsed ? item.name : null}
-                  side='right'
-
-                >
-                  <Link
-                    href={item.href}
-                    className={cn(
-                      'group flex items-center gap-3 rounded-full transition-all',
-                      isCollapsed ? 'justify-center p-2.5' : 'px-4 py-3.5',
-                      isActive
-                        ? 'text-primary bg-primary/5'
-                        : 'text-ink-secondary hover:bg-background',
-                    )}
+          <Stagger className='flex flex-col gap-1'>
+            {' '}
+            {navigation.map((item) => {
+              const isActive = pathname === item.href;
+              return (
+                <StaggerItem key={item.name} xOffset={5}>
+                  <Tooltip
+                    content={isCollapsed ? item.name : null}
+                    side='right'
                   >
-                    <motion.div layout className='shrink-0'>
-                      <item.icon className='size-5' />
-                    </motion.div>
-                    <AnimatePresence mode='popLayout'>
-                      {!isCollapsed && (
-                        <motion.p
-                          variants={textVariants}
-                          initial='hidden'
-                          animate='visible'
-                          exit='exit'
-                          className={cn(
-                            'text-sm whitespace-nowrap overflow-hidden',
-                            isActive ? 'font-bold' : 'font-medium',
-                          )}
-                        >
-                          {item.name}
-                        </motion.p>
+                    <Link
+                      href={item.href}
+                      className={cn(
+                        'group flex items-center gap-3 rounded-full transition-all',
+                        isCollapsed ? 'justify-center p-2.5' : 'px-4 py-3.5',
+                        isActive ?
+                          'text-primary bg-primary/5'
+                        : 'text-ink-secondary hover:bg-background',
                       )}
-                    </AnimatePresence>
-                  </Link>
-                </Tooltip>
-              </StaggerItem>
-            );
-          })}
+                    >
+                      <motion.div layout className='shrink-0'>
+                        <item.icon className='size-5' />
+                      </motion.div>
+                      <AnimatePresence mode='popLayout'>
+                        {!isCollapsed && (
+                          <motion.p
+                            variants={textVariants}
+                            initial='hidden'
+                            animate='visible'
+                            exit='exit'
+                            className={cn(
+                              'text-sm whitespace-nowrap overflow-hidden',
+                              isActive ? 'font-bold' : 'font-medium',
+                            )}
+                          >
+                            {item.name}
+                          </motion.p>
+                        )}
+                      </AnimatePresence>
+                    </Link>
+                  </Tooltip>
+                </StaggerItem>
+              );
+            })}
           </Stagger>
         </nav>
-
       </div>
 
       {/* Footer Nav */}
       <div>
         <AnimatePresence mode='popLayout'>
-          {!isCollapsed && (
+          {!isCollapsed ?
             <motion.div
+              key='expanded-footer'
               variants={{
                 hidden: {
                   opacity: 0,
@@ -222,12 +212,6 @@ export function Sidebar() {
             >
               <div className='flex items-center justify-between'>
                 <p className='text-xs font-medium text-ink-secondary dark:text-gray-400'>
-                  View
-                </p>
-                <ListGridToggle />
-              </div>
-              <div className='flex items-center justify-between'>
-                <p className='text-xs font-medium text-ink-secondary dark:text-gray-400'>
                   Theme
                 </p>
                 <ModeToggle />
@@ -236,23 +220,67 @@ export function Sidebar() {
                 <p className='text-xs font-medium text-ink-secondary dark:text-gray-400'>
                   Color
                 </p>
-                <ColorPicker />
+                <div className='flex items-center gap-2'>
+                  <ColorPicker />
+                  <ThemeColorToggle />
+                </div>
               </div>
             </motion.div>
-          )}
+          : <motion.div
+              key='collapsed-footer'
+              variants={{
+                hidden: {
+                  opacity: 0,
+                  height: 0,
+                  marginBottom: 0,
+                  paddingTop: 0,
+                  borderTopWidth: 0,
+                },
+                visible: {
+                  opacity: 1,
+                  height: 'auto',
+                  marginBottom: 24,
+                  paddingTop: 24,
+                  borderTopWidth: 1,
+                },
+                exit: {
+                  opacity: 0,
+                  height: 0,
+                  marginBottom: 0,
+                  paddingTop: 0,
+                  borderTopWidth: 0,
+                },
+              }}
+              initial='hidden'
+              animate='visible'
+              exit='exit'
+              className='flex flex-col items-center gap-2 border-primary/10 overflow-hidden'
+            >
+              <ThemeToggle />
+              <ThemeColorToggle />
+            </motion.div>
+          }
         </AnimatePresence>
 
-        <div className={cn('flex gap-3', isCollapsed ? 'justify-center' : '')}>
-          <motion.div
-            layout
-            className='size-12 shrink-0 overflow-hidden rounded-full border-2 border-white transition-transform hover:scale-105 dark:border-zinc-800'
-          >
-            <img
-              src='https://media.licdn.com/dms/image/v2/C4E0BAQG0sUKoTGt7gQ/company-logo_100_100/company-logo_100_100/0/1630605791837?e=1766016000&v=beta&t=7ZQBJ5PvGvzlQbGQEA-LTmVi0OMHRL1gafacOfZa35E'
-              alt='Avatar'
-              className='h-full w-full object-cover'
-            />
-          </motion.div>
+        <div
+          className={cn(
+            'flex items-center gap-3',
+            isCollapsed ? 'justify-center' : 'px-2',
+          )}
+        >
+          <div className='relative shrink-0'>
+            <motion.div
+              layout
+              className='size-10 shrink-0 overflow-hidden rounded-full border border-emerald-500/20 shadow-xs transition-transform hover:scale-105'
+            >
+              <div className='w-full h-full bg-emerald-600/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400 font-bold flex items-center justify-center text-sm'>
+                {user?.display_name ?
+                  user.display_name.slice(0, 2).toUpperCase()
+                : 'LU'}
+              </div>
+            </motion.div>
+            <span className='absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-white dark:border-[#181C26] rounded-full'></span>
+          </div>
           <AnimatePresence mode='popLayout'>
             {!isCollapsed && (
               <motion.div
@@ -262,12 +290,12 @@ export function Sidebar() {
                 exit='exit'
                 className='flex flex-col flex-1 min-w-0 overflow-hidden'
               >
-                <p className='text-sm font-bold text-gradient truncate'>
-                  {user?.username || 'Loading...'}
+                <p className='text-sm font-semibold text-zinc-800 dark:text-zinc-200 truncate leading-tight'>
+                  {user?.display_name ?? 'Local Admin'}
                 </p>
                 <button
                   onClick={logout}
-                  className='flex items-center gap-2 text-xs text-ink-secondary hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 transition-colors whitespace-nowrap'
+                  className='flex items-center gap-1.5 mt-0.5 text-[11px] text-ink-secondary hover:text-red-650 dark:text-gray-400 dark:hover:text-red-400 transition-colors whitespace-nowrap'
                 >
                   <LogOut className='size-3' />
                   Log Out

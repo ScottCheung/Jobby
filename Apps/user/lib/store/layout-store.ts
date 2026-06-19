@@ -1,3 +1,5 @@
+/** @format */
+
 import { create } from 'zustand';
 
 export type NotificationType = 'success' | 'error' | 'info' | 'warning';
@@ -20,10 +22,11 @@ interface LayoutState {
 }
 
 export const useLayoutStore = create<LayoutState>()((set) => ({
-  isSidebarCollapsed: false,
+  isSidebarCollapsed: true,
   notifications: [],
   actions: {
-    toggleSidebar: () => set((state) => ({ isSidebarCollapsed: !state.isSidebarCollapsed })),
+    toggleSidebar: () =>
+      set((state) => ({ isSidebarCollapsed: !state.isSidebarCollapsed })),
     addNotification: (notification) =>
       set((state) => ({
         notifications: [

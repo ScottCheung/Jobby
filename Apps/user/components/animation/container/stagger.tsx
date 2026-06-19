@@ -57,13 +57,13 @@ const itemVariants = (y: number, x: number): Variants => ({
     opacity: 0,
     y,
     x,
-    filter: 'blur(4px)',
+    // filter: 'blur(4px)',
   },
   visible: {
     opacity: 1,
     y: 0,
     x: 0,
-    filter: 'blur(0px)',
+    // filter: 'blur(0px)',
     transition: {
       opacity: { duration: 0.9, ease: 'easeInOut' },
       filter: { duration: 0.7, ease: 'easeInOut' },

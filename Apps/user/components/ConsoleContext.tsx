@@ -11,6 +11,7 @@ import React, {
   useTransition,
 } from 'react';
 import { api } from '@/lib/api';
+import { withMinimumLoadingTime } from '@/lib/loading';
 import type {
   DesktopBotPlatform,
   DesktopBotState,
@@ -26,7 +27,8 @@ import type {
   User,
   UserProfile,
 } from '@/lib/types';
-import { isDesktopRuntime } from '@/lib/runtime';
+import { getApplicationDisplayDate } from '@/lib/types';
+import { isDesktopRuntime, resolveApiBaseUrl } from '@/lib/runtime';
 
 import {
   Briefcase,
@@ -143,6 +145,7 @@ interface ConsoleContextType {
   setStatusFilter: (s: string) => void;
   searchText: string;
   setSearchText: (s: string) => void;
+  processingApplicationsCount: number;
   syncingApplicationId: string;
   batchSyncing: boolean;
   expandedApplicationId: string;
@@ -274,6 +277,11 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
     window.setTimeout(() => setToast(''), 2600);
   };
 
+  const processingApplicationsCount = useMemo(
+    () => applications.filter((item) => item.status === 'processing').length,
+    [applications],
+  );
+
   const loadData = () => {
     startTransition(async () => {
       try {
@@ -286,15 +294,17 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
           questionRows,
           applicationRows,
           runtimeConfig,
-        ] = await Promise.all([
-          api.me(),
-          api.profile(),
-          api.jobPreferences(),
-          api.searchProfile(),
-          api.questionCache(),
-          api.applications(),
-          api.runtimeSettings(),
-        ]);
+        ] = await withMinimumLoadingTime(
+          Promise.all([
+            api.me(),
+            api.profile(),
+            api.jobPreferences(),
+            api.searchProfile(),
+            api.questionCache(),
+            api.applications(),
+            api.runtimeSettings(),
+          ]),
+        );
         setUser(me);
         setProfile(currentProfile ?? emptyProfile);
         setPreferences(jobPrefs ?? emptyPreferences);
@@ -314,6 +324,122 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     loadData();
+  }, []);
+
+  useEffect(() => {
+    let sse: EventSource | null = null;
+    let active = true;
+
+    async function initSSE() {
+      const apiBaseUrl = await resolveApiBaseUrl();
+      if (!active) return;
+
+      const sseUrl = `${apiBaseUrl.replace(/\/$/, '')}/api/sse`;
+      console.log('[SSE] Connecting to', sseUrl);
+      sse = new EventSource(sseUrl);
+
+      sse.addEventListener('application_created', (event) => {
+        try {
+          const newApp = JSON.parse(event.data) as JobApplication;
+          console.log('[SSE] Application created:', newApp);
+          setApplications((current) => {
+            if (current.some((app) => app.id === newApp.id)) return current;
+            return [newApp, ...current];
+          });
+        } catch (e) {
+          console.error('[SSE] Failed to parse application_created data', e);
+        }
+      });
+
+      sse.addEventListener('application_updated', (event) => {
+        try {
+          const updatedApp = JSON.parse(event.data) as JobApplication;
+          console.log('[SSE] Application updated:', updatedApp);
+          setApplications((current) =>
+            current.map((app) => (app.id === updatedApp.id ? updatedApp : app)),
+          );
+        } catch (e) {
+          console.error('[SSE] Failed to parse application_updated data', e);
+        }
+      });
+
+      sse.addEventListener('application_deleted', (event) => {
+        try {
+          const { id } = JSON.parse(event.data) as { id: string };
+          console.log('[SSE] Application deleted:', id);
+          setApplications((current) => current.filter((app) => app.id !== id));
+        } catch (e) {
+          console.error('[SSE] Failed to parse application_deleted data', e);
+        }
+      });
+
+      sse.addEventListener('question_cache_created', (event) => {
+        try {
+          const newEntry = JSON.parse(event.data) as QuestionCacheEntry;
+          setQuestions((current) => {
+            if (current.some((item) => item.id === newEntry.id)) return current;
+            return [newEntry, ...current];
+          });
+        } catch (e) {
+          console.error('[SSE] Failed to parse question_cache_created data', e);
+        }
+      });
+
+      sse.addEventListener('question_cache_upserted', (event) => {
+        try {
+          const updatedEntry = JSON.parse(event.data) as QuestionCacheEntry;
+          setQuestions((current) => {
+            const exists = current.some((item) => item.id === updatedEntry.id);
+            if (!exists) {
+              return [updatedEntry, ...current];
+            }
+            return current.map((item) =>
+              item.id === updatedEntry.id ? updatedEntry : item,
+            );
+          });
+        } catch (e) {
+          console.error(
+            '[SSE] Failed to parse question_cache_upserted data',
+            e,
+          );
+        }
+      });
+
+      sse.addEventListener('question_cache_updated', (event) => {
+        try {
+          const updatedEntry = JSON.parse(event.data) as QuestionCacheEntry;
+          setQuestions((current) =>
+            current.map((item) =>
+              item.id === updatedEntry.id ? updatedEntry : item,
+            ),
+          );
+        } catch (e) {
+          console.error('[SSE] Failed to parse question_cache_updated data', e);
+        }
+      });
+
+      sse.addEventListener('question_cache_deleted', (event) => {
+        try {
+          const { id } = JSON.parse(event.data) as { id: string };
+          setQuestions((current) => current.filter((item) => item.id !== id));
+        } catch (e) {
+          console.error('[SSE] Failed to parse question_cache_deleted data', e);
+        }
+      });
+
+      sse.onerror = (err) => {
+        console.error('[SSE] Connection error or closed, will retry', err);
+      };
+    }
+
+    initSSE();
+
+    return () => {
+      active = false;
+      if (sse) {
+        sse.close();
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -471,11 +597,12 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
     try {
       setError('');
       setBatchSyncing(true);
-      const result = await api.batchAsyncApplicationsFromLink(100);
+      const result = await withMinimumLoadingTime(
+        api.batchAsyncApplicationsFromLink(100),
+      );
       notify(
         `Async finished: ${result.synced} synced, ${result.failed} failed`,
       );
-      loadData();
     } catch (batchError) {
       setError(
         batchError instanceof Error ?
@@ -563,10 +690,10 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
     ).length;
     return [
       {
-        label: 'Applications',
+        label: 'Processing',
         value: applications.length,
         icon: Briefcase,
-        iconColor: 'text-blue-500/50 hover:text-white dark:text-blue-400',
+        iconColor: 'text-blue-500/50 dark:text-blue-400',
         textColor: 'text-blue-600 dark:text-blue-400',
         bgColor: 'bg-blue-500/5 dark:bg-blue-500/20',
         borderColor: 'border-blue-500/20',
@@ -629,8 +756,9 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
     }
 
     applications.forEach((app) => {
-      if (!app.date_applied) return;
-      const appDateStr = app.date_applied.split('T')[0];
+      const applicationDate = getApplicationDisplayDate(app);
+      if (!applicationDate) return;
+      const appDateStr = applicationDate.split('T')[0];
       const match = days.find((day) => day.rawDateStr === appDateStr);
       if (match) {
         const statusLower = app.status.toLowerCase();
@@ -765,8 +893,10 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
 
     const recentActivities = [...applications]
       .sort((a, b) => {
-        const da = a.date_applied ? new Date(a.date_applied).getTime() : 0;
-        const db = b.date_applied ? new Date(b.date_applied).getTime() : 0;
+        const aDisplayDate = getApplicationDisplayDate(a);
+        const bDisplayDate = getApplicationDisplayDate(b);
+        const da = aDisplayDate ? new Date(aDisplayDate).getTime() : 0;
+        const db = bDisplayDate ? new Date(bDisplayDate).getTime() : 0;
         return db - da;
       })
       .slice(0, 5);
@@ -803,6 +933,7 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
         setStatusFilter,
         searchText,
         setSearchText,
+        processingApplicationsCount,
         syncingApplicationId,
         batchSyncing,
         expandedApplicationId,

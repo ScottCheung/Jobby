@@ -9,6 +9,7 @@ import {
   Tooltip,
   XAxis,
   YAxis,
+  Legend,
 } from 'recharts';
 import { ChartTooltip } from './Tooltip';
 
@@ -25,6 +26,7 @@ interface BarChartProps {
   showGridX?: boolean; // 是否显示X轴网格线
   showGridY?: boolean; // 是否显示Y轴网格线
   gridType?: 'horizontal' | 'vertical' | 'both'; // 网格线类型
+  showLegend?: boolean;
   isShortFormat?: boolean;
   ValueProps?: any;
   layout?: 'horizontal' | 'vertical';
@@ -83,6 +85,7 @@ const BarChart = ({
   showGridX = false,
   showGridY = false,
   gridType = 'both',
+  showLegend = false,
   ValueProps,
   layout = 'horizontal',
   yAxisWidth,
@@ -117,7 +120,7 @@ const BarChart = ({
             horizontal={gridType === 'both' || gridType === 'horizontal'}
           />
         )}
-        {layout === 'vertical' ? (
+        {layout === 'vertical' ?
           <>
             <XAxis
               hide={!showXAxis}
@@ -136,8 +139,7 @@ const BarChart = ({
               width={yAxisWidth || 100}
             />
           </>
-        ) : (
-          <>
+        : <>
             <XAxis
               hide={!showXAxis}
               dataKey={xKey}
@@ -157,7 +159,7 @@ const BarChart = ({
               ]}
             />
           </>
-        )}
+        }
         <Tooltip
           content={<ChartTooltip ValueProps={ValueProps} />}
           cursor={{
@@ -165,6 +167,9 @@ const BarChart = ({
             fillOpacity: 0.05,
           }}
         />
+        {showLegend && (
+          <Legend verticalAlign='top' height={44} content={<CustomLegend />} />
+        )}
         {hasMultipleSeries && multiColor ?
           generateMultiBars(data, xKey)
         : <Bar
@@ -188,6 +193,31 @@ const BarChart = ({
         }
       </RechartsBarChart>
     </ResponsiveContainer>
+  );
+};
+
+const CustomLegend = (props: any) => {
+  const { payload } = props;
+  if (!payload) return null;
+
+  return (
+    <div className='flex flex-wrap items-center gap-3 justify-start mb-5 text-xs font-semibold'>
+      {payload.map((entry: any, index: number) => {
+        const { value, color } = entry;
+        return (
+          <div
+            key={`legend-item-${index}`}
+            className='flex items-center gap-2 px-2 py-1 rounded-full transition-all cursor-default bg-linear-to-r from-background to-transparent'
+          >
+            <span
+              className='w-3 h-3 rounded-full '
+              style={{ backgroundColor: color }}
+            />
+            <span className='capitalize tracking-wide'>{value}</span>
+          </div>
+        );
+      })}
+    </div>
   );
 };
 
