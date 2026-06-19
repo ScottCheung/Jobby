@@ -1,7 +1,14 @@
-from datetime import datetime
-
 from shared_services.persistence.api_client import BotApiError, api_client
 from shared_services.persistence.logging import persistence_log
+from shared_services.time_utils import utc_isoformat, utc_now
+
+
+FAILURE_SKIP_REASONS = {
+    "problem in easy applying",
+    "processing cancelled",
+    "processing cancelled because the worker was interrupted",
+    "processing cancelled because the browser session ended",
+}
 
 
 class ApplicationLogger:
@@ -46,6 +53,12 @@ class ApplicationLogger:
         if key:
             self._application_ids_by_job_key[key] = saved_id
 
+    def _get_existing_record(self, application_id: str) -> dict | None:
+        return next(
+            (item for item in self._applications if str(item.get("id")) == application_id),
+            None,
+        )
+
     def create_processing_application(self, record: dict) -> dict:
         processing_payload = self._to_api_payload({
             **record,
@@ -65,6 +78,18 @@ class ApplicationLogger:
         application_id = self._application_ids_by_job_key.get(key or "")
         if not application_id:
             return self.create_processing_application(record)
+
+        existing = self._get_existing_record(application_id)
+        incoming_status = self.normalize_status(record.get("status"))
+        existing_status = self.normalize_status((existing or {}).get("status"))
+        if existing and existing_status == "submitted" and incoming_status != "submitted":
+            annotated = self.annotate_existing_application({
+                **record,
+                "status": incoming_status,
+                "skip_reason": record.get("skip_reason") or f"Ignored {incoming_status} update for already submitted application",
+            })
+            if annotated is not None:
+                return annotated
 
         payload = self._to_api_payload(record)
         try:
@@ -114,12 +139,60 @@ class ApplicationLogger:
     def cancel_processing_application(self, record: dict, reason: str = "Processing cancelled") -> dict:
         return self.update_application({
             **record,
-            "status": "cancelled",
+            "status": "interrupted",
             "skip_reason": reason,
         })
 
+    def annotate_existing_application(self, record: dict) -> dict | None:
+        key = self._job_key(record)
+        application_id = self._application_ids_by_job_key.get(key or "")
+        if not application_id:
+            return None
+
+        existing = next(
+            (item for item in self._applications if str(item.get("id")) == application_id),
+            None,
+        )
+        if not existing:
+            return None
+
+        raw_data = dict(existing.get("raw_data") or {})
+        duplicate_scans = list(raw_data.get("duplicate_scans") or [])
+        duplicate_scans.append({
+            "at": record.get("logged_at"),
+            "reason": record.get("skip_reason") or record.get("error") or "Duplicate scan",
+            "status_seen": record.get("status"),
+            "search_term": record.get("search_term"),
+        })
+
+        payload = {
+            "raw_data": {
+                **raw_data,
+                "duplicate_scans": duplicate_scans,
+                "last_duplicate_scan_at": record.get("logged_at"),
+                "last_duplicate_scan_reason": record.get("skip_reason") or record.get("error"),
+            },
+        }
+        try:
+            saved_record = api_client.update_application(application_id, payload)
+            self._applications = [
+                saved_record if str(item.get("id")) == application_id else item
+                for item in self._applications
+            ]
+            self._remember_saved_record(saved_record)
+            return saved_record
+        except BotApiError as e:
+            api_client.log_unavailable("annotating duplicate application history", e)
+            raise SystemExit("API data layer is required for application history")
+
     def log_application(self, record: dict) -> None:
-        record.setdefault("logged_at", datetime.now().isoformat(timespec="seconds"))
+        record.setdefault("logged_at", utc_isoformat(utc_now()))
+        if (
+            self.normalize_status(record.get("status")) == "skipped"
+            and str(record.get("skip_reason") or "").strip().lower() == "already applied"
+        ):
+            if self.annotate_existing_application(record) is not None:
+                return
         try:
             saved_record = self.update_application(record)
             if not any(str(item.get("id")) == str(saved_record.get("id")) for item in self._applications):
@@ -136,9 +209,16 @@ class ApplicationLogger:
         if isinstance(description, str) and description.strip().lower() == "unknown":
             description = None
         date_applied = api_client.parse_datetime(record.get("date_applied"))
-        if status in {"processing", "submitted", "cancelled"} and date_applied is None:
-            date_applied = datetime.now().isoformat()
+        if status in {"submitted", "cancelled"} and date_applied is None:
+            date_applied = utc_isoformat(utc_now())
         raw_data = dict(record)
+        skip_reason = record.get("skip_reason") or record.get("error")
+        if status == "submitted":
+            normalized_reason = str(skip_reason or "").strip().lower()
+            if normalized_reason in FAILURE_SKIP_REASONS:
+                skip_reason = None
+            raw_data.pop("error", None)
+            raw_data.pop("skip_reason", None)
         if description and not raw_data.get("job_description"):
             raw_data["job_description"] = description
         persistence_log(
@@ -158,13 +238,13 @@ class ApplicationLogger:
             "job_link": record.get("job_link"),
             "external_job_link": record.get("external_application_link"),
             "status": status,
-            "pipeline_stage": "applied" if status == "submitted" else status,
+            "pipeline_stage": record.get("pipeline_stage") or ("applied" if status == "submitted" else status),
             "application_type": record.get("application_type"),
             "resume_path": record.get("resume"),
             "date_posted": record.get("date_posted"),
             "date_applied": date_applied,
             "questions": record.get("questions") or [],
-            "skip_reason": record.get("skip_reason") or record.get("error"),
+            "skip_reason": skip_reason,
             "screenshot_path": record.get("screenshot"),
             "raw_data": raw_data,
         }
@@ -176,6 +256,8 @@ class ApplicationLogger:
             return "submitted"
         if status in {"cancelled", "canceled", "stopped"}:
             return "cancelled"
+        if status in {"interrupted", "needs_review", "timed_out", "timeout"}:
+            return "interrupted"
         if status in {"failed", "fail", "error", "skipped", "skiped", "skip"}:
             return "skipped"
         if status in {"processing", "running", "in_progress", "pending"}:

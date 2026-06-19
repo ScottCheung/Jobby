@@ -4,16 +4,13 @@
 
 import React from 'react';
 import { useConsole } from '@/components/ConsoleContext';
-import { ProfileForm, PreferencesForm } from '@/components/forms';
+import { ProfileForm } from '@/components/forms';
 
 export default function ProfilePage() {
   const {
     profile,
     setProfile,
     saveProfile,
-    preferences,
-    setPreferences,
-    savePreferences,
   } = useConsole();
 
   return (
@@ -22,11 +19,6 @@ export default function ProfilePage() {
         value={profile}
         onChange={setProfile}
         onSave={saveProfile}
-      />
-      <PreferencesForm
-        value={preferences}
-        onChange={setPreferences}
-        onSave={savePreferences}
       />
     </div>
   );

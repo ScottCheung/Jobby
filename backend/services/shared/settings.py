@@ -2,6 +2,7 @@ from functools import lru_cache
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from urllib.parse import urlparse
 
 
 class AppSettings(BaseSettings):
@@ -24,7 +25,25 @@ class AppSettings(BaseSettings):
 
     @property
     def cors_origins(self) -> list[str]:
-        return [origin.strip() for origin in self.api_cors_origins.split(",") if origin.strip()]
+        origins = [origin.strip() for origin in self.api_cors_origins.split(",") if origin.strip()]
+        expanded: list[str] = []
+        seen: set[str] = set()
+
+        for origin in origins:
+            parsed = urlparse(origin)
+            if parsed.scheme in {"http", "https"} and parsed.hostname in {"localhost", "127.0.0.1"}:
+                for port in ("3000", "3001", "3002", "3010"):
+                    candidate = f"{parsed.scheme}://{parsed.hostname}:{port}"
+                    if candidate not in seen:
+                        expanded.append(candidate)
+                        seen.add(candidate)
+                continue
+
+            if origin not in seen:
+                expanded.append(origin)
+                seen.add(origin)
+
+        return expanded
 
 
 @lru_cache

@@ -77,7 +77,7 @@ def resolve_keyword_answer(label_org: str, field_type: str, work_location: str) 
 
     if field_type == "radio":
         if "citizenship" in label or "employment eligibility" in label:
-            return str(get_runtime_value("us_citizenship", ""))
+            return str(get_runtime_value("citizenship", ""))
         if "veteran" in label or "protected" in label:
             return str(get_runtime_value("veteran_status", ""))
         if "disability" in label or "handicapped" in label:

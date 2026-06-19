@@ -6,6 +6,7 @@ import React, { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { useConsole } from '@/components/ConsoleContext';
 import { Sidebar } from '@/components/layout/sidebar';
+import { GlobalDrawer } from '@/components/layout/global-drawer';
 import { cn } from '@/lib/utils';
 import CardWithNorth from '@/components/UI/card/CardWithNorth';
 import { H1 } from '@/components/UI/text/typography';
@@ -17,6 +18,7 @@ import {
   Square,
   X,
   Terminal,
+  Triangle,
   Activity,
 } from 'lucide-react';
 import { Stagger, StaggerItem } from './animation';
@@ -152,12 +154,12 @@ export default function ConsoleLayout({
           )}
 
           {error && (
-            <div className='p-4 text-sm rounded-2xl border border-red-200/60 bg-red-500/5 text-red-600 dark:border-red-900/30 dark:text-red-400 flex items-center justify-center'>
-              {error}
+            <div className='fixed bottom-1/2 flex items-center gap-2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50  text-error bg-red-500/30 backdrop-blur-sm  py-3 px-card rounded-card text-xs font-semibold animate-in fade-in slide-in-from-bottom-2 duration-300'>
+              <div>{error}</div>
             </div>
           )}
           {isPending && (
-            <div className='p-4 text-sm rounded-2xl border border-zinc-200/60 bg-zinc-50 text-zinc-500 dark:border-zinc-800/60 dark:bg-zinc-900/40 dark:text-zinc-400 flex items-center justify-center gap-2'>
+            <div className='fixed bottom-1/2 flex items-center left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50  text-white bg-black/30 backdrop-blur-sm  py-3 pl-3 gap-3 pr-card rounded-card text-xs font-semibold animate-in fade-in slide-in-from-bottom-2 duration-300'>
               <RefreshCw className='w-4 h-4 animate-spin' />
               Refreshing data...
             </div>
@@ -456,10 +458,13 @@ export default function ConsoleLayout({
       )}
 
       {toast && (
-        <div className='fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-zinc-900 text-white dark:bg-panel dark:text-zinc-950 px-4 py-3 rounded-xl shadow-md border border-zinc-800 dark:border-zinc-200 text-xs font-semibold animate-in fade-in slide-in-from-bottom-2 duration-300'>
-          {toast}
+        <div className='fixed bottom-1/2 flex items-center gap-2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50  text-white bg-black/30 backdrop-blur-sm  py-3 px-card rounded-card text-xs font-semibold animate-in fade-in slide-in-from-bottom-2 duration-300'>
+          <div>{toast}</div>
         </div>
       )}
+
+      {/* Global Drawer */}
+      <GlobalDrawer />
     </div>
   );
 }

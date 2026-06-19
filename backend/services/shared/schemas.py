@@ -46,13 +46,21 @@ class UserProfileRead(UserProfileBase, OrmModel):
     updated_at: datetime
 
 
-class JobPreferenceBase(BaseModel):
+class JobHuntingProfileBase(BaseModel):
+    name: str = "Default LinkedIn Search"
+    platform: str = "linkedin"
+    platform_account_id: UUID | None = None
+    search_terms: list = Field(default_factory=list)
+    search_location: str | None = None
+    filters: dict = Field(default_factory=dict)
+    blacklist_rules: dict = Field(default_factory=dict)
+    whitelist_rules: dict = Field(default_factory=dict)
     years_of_experience: str | None = None
     require_visa: str | None = None
     website: str | None = None
     linkedin_url: str | None = None
     resume_path: str | None = None
-    us_citizenship: str | None = None
+    citizenship: str | None = None
     desired_salary: Decimal | None = None
     current_ctc: Decimal | None = None
     notice_period: int | None = None
@@ -63,28 +71,10 @@ class JobPreferenceBase(BaseModel):
     recent_employer: str | None = None
     confidence_level: str | None = None
     extra_data: dict = Field(default_factory=dict)
-
-
-class JobPreferenceRead(JobPreferenceBase, OrmModel):
-    id: UUID
-    user_id: UUID
-    created_at: datetime
-    updated_at: datetime
-
-
-class SearchProfileBase(BaseModel):
-    name: str = "Default LinkedIn Search"
-    platform: str = "linkedin"
-    platform_account_id: UUID | None = None
-    search_terms: list = Field(default_factory=list)
-    search_location: str | None = None
-    filters: dict = Field(default_factory=dict)
-    blacklist_rules: dict = Field(default_factory=dict)
-    whitelist_rules: dict = Field(default_factory=dict)
     is_default: bool = True
 
 
-class SearchProfileRead(SearchProfileBase, OrmModel):
+class JobHuntingProfileRead(JobHuntingProfileBase, OrmModel):
     id: UUID
     user_id: UUID
     created_at: datetime
@@ -158,6 +148,7 @@ class JobApplicationBase(BaseModel):
     resume_path: str | None = None
     date_posted: str | None = None
     date_applied: datetime | None = None
+    status_updated_at: datetime | None = None
     questions: Any = Field(default_factory=list)
     skip_reason: str | None = None
     screenshot_path: str | None = None
@@ -196,27 +187,10 @@ class JobApplicationUpdate(BaseModel):
     resume_path: str | None = None
     date_posted: str | None = None
     date_applied: datetime | None = None
+    status_updated_at: datetime | None = None
     questions: Any | None = None
     screenshot_path: str | None = None
     raw_data: dict | None = None
-
-
-class AutomationRunBase(BaseModel):
-    platform_account_id: UUID | None = None
-    search_profile_id: UUID | None = None
-    status: str = "pending"
-    started_at: datetime | None = None
-    finished_at: datetime | None = None
-    current_message: str | None = None
-    summary: dict = Field(default_factory=dict)
-    error_message: str | None = None
-
-
-class AutomationRunRead(AutomationRunBase, OrmModel):
-    id: UUID
-    user_id: UUID
-    created_at: datetime
-    updated_at: datetime
 
 
 class SkillBase(BaseModel):
@@ -229,4 +203,3 @@ class SkillRead(SkillBase, OrmModel):
     id: int
     created_at: datetime
     updated_at: datetime
-

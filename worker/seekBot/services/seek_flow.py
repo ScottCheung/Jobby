@@ -128,7 +128,7 @@ def _build_seek_apply_config(runtime_globals: dict) -> dict:
         "linkedin": str(runtime_globals.get("linkedIn") or "").strip(),
         "website": str(runtime_globals.get("website") or "").strip(),
         "right_to_work": str(
-            runtime_globals.get("us_citizenship") or runtime_globals.get("require_visa") or "Yes"
+            runtime_globals.get("citizenship") or runtime_globals.get("require_visa") or "Yes"
         ).strip(),
     }
 

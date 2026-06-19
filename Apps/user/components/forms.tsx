@@ -18,12 +18,16 @@ import {
   UserRound,
 } from 'lucide-react';
 import type {
-  JobPreferences,
   RuntimeSettings,
-  SearchProfile,
+  JobHuntingProfile,
   UserProfile,
 } from '@/lib/types';
 import CardWithNorth from '@/components/UI/card/CardWithNorth';
+import { InputField, Input } from '@/components/UI/input';
+import { Textarea } from '@/components/UI/textarea';
+import { Switch } from '@/components/UI/switch';
+import { Checkbox } from '@/components/UI/checkbox';
+import { Select } from '@/components/UI/select/select';
 
 type FieldProps = {
   label: string;
@@ -64,6 +68,7 @@ type ChoiceCardGroupProps = {
     icon?: string;
   }>;
   full?: boolean;
+  icon?: any;
 };
 
 type MultiChoiceGroupProps = {
@@ -184,24 +189,28 @@ export function Field({
   full = false,
   hint,
 }: FieldProps) {
+  if (multiline) {
+    return (
+      <Textarea
+        label={label}
+        value={value ?? ''}
+        onChange={(event) => onChange(event.target.value)}
+        helpTextShort={hint}
+        containerClassName={full ? 'field full' : 'field'}
+        showCharCount={false}
+      />
+    );
+  }
   return (
-    <div className={`field ${full ? 'full' : ''}`}>
-      <label>{label}</label>
-      {hint ?
-        <p className='field-hint'>{hint}</p>
-      : null}
-      {multiline ?
-        <textarea
-          value={value ?? ''}
-          onChange={(event) => onChange(event.target.value)}
-        />
-      : <input
-          type={type}
-          value={value ?? ''}
-          onChange={(event) => onChange(event.target.value)}
-        />
-      }
-    </div>
+    <InputField
+      label={label}
+      type={type}
+      value={value ?? ''}
+      onChange={(event) => onChange(event.target.value)}
+      helpTextShort={hint}
+      containerClassName={full ? 'field full' : 'field'}
+      showCharCount={false}
+    />
   );
 }
 
@@ -271,8 +280,8 @@ function TagEditor({
             </button>
           ))}
         </div>
-        <div className='tag-input-row'>
-          <input
+        <div className='tag-input-row flex gap-2 w-full items-center'>
+          <Input
             value={draft}
             placeholder={placeholder}
             onChange={(event) => setDraft(event.target.value)}
@@ -282,8 +291,13 @@ function TagEditor({
                 addTag();
               }
             }}
+            className='flex-1'
           />
-          <button type='button' className='ghost mini' onClick={addTag}>
+          <button
+            type='button'
+            className='ghost mini shrink-0'
+            onClick={addTag}
+          >
             Add
           </button>
         </div>
@@ -300,10 +314,17 @@ function ToggleCard({
   icon,
 }: ToggleCardProps) {
   return (
-    <button
-      type='button'
-      className={`toggle-card ${checked ? 'active' : ''}`}
+    <div
+      role='button'
+      tabIndex={0}
+      className={`toggle-card cursor-pointer select-none ${checked ? 'active' : ''}`}
       onClick={() => onChange(!checked)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onChange(!checked);
+        }
+      }}
     >
       <div className='toggle-card-copy'>
         <div className='toggle-card-title'>
@@ -312,10 +333,10 @@ function ToggleCard({
         </div>
         <p>{description}</p>
       </div>
-      <div className={`toggle-card-switch ${checked ? 'on' : ''}`}>
-        <span />
+      <div onClick={(e) => e.stopPropagation()}>
+        <Switch checked={checked} onCheckedChange={onChange} />
       </div>
-    </button>
+    </div>
   );
 }
 
@@ -326,32 +347,24 @@ function ChoiceCardGroup({
   onChange,
   options,
   full = false,
+  icon,
 }: ChoiceCardGroupProps) {
   return (
-    <div className={`field ${full ? 'full' : ''}`}>
-      <label>{label}</label>
-      {hint ?
-        <p className='field-hint'>{hint}</p>
-      : null}
-      <div className='choice-grid'>
-        {options.map((option) => (
-          <button
-            key={option.value}
-            type='button'
-            className={`choice-card ${value === option.value ? 'active' : ''}`}
-            onClick={() => onChange(option.value)}
-          >
-            <div className='choice-card-head'>
-              <span>{option.icon ?? '•'}</span>
-              <strong>{option.title}</strong>
-            </div>
-            {option.description ?
-              <p>{option.description}</p>
-            : null}
-          </button>
-        ))}
-      </div>
-    </div>
+    <Select
+      label={label}
+      helpTextShort={hint}
+      value={value ?? ''}
+      onChange={(event) => onChange(event.target.value)}
+      containerClassName={full ? 'field full' : 'field'}
+      placeholder={`Select ${label.toLowerCase()}...`}
+      icon={icon}
+    >
+      {options.map((option) => (
+        <option key={option.value} value={option.value}>
+          {option.title}
+        </option>
+      ))}
+    </Select>
   );
 }
 
@@ -373,24 +386,29 @@ function MultiChoiceGroup({
 
   return (
     <div className={`field ${full ? 'full' : ''}`}>
-      <label>{label}</label>
+      <label className='block text-sm font-medium mb-1'>{label}</label>
       {hint ?
-        <p className='field-hint'>{hint}</p>
+        <p className='field-hint mb-2'>{hint}</p>
       : null}
-      <div className='choice-grid'>
-        {options.map((option) => (
-          <button
-            key={option.value}
-            type='button'
-            className={`choice-card compact ${values.includes(option.value) ? 'active' : ''}`}
-            onClick={() => toggle(option.value)}
-          >
-            <div className='choice-card-head'>
-              <span>{option.icon ?? '•'}</span>
-              <strong>{option.title}</strong>
-            </div>
-          </button>
-        ))}
+      <div className='flex flex-wrap gap-4 mt-2'>
+        {options.map((option) => {
+          const isChecked = values.includes(option.value);
+          const id = `${label}-${option.value}`;
+          return (
+            <label
+              key={option.value}
+              htmlFor={id}
+              className='flex items-center gap-2 cursor-pointer text-xs text-ink-secondary hover:text-ink-primary select-none'
+            >
+              <Checkbox
+                id={id}
+                checked={isChecked}
+                onCheckedChange={() => toggle(option.value)}
+              />
+              <span>{option.title}</span>
+            </label>
+          );
+        })}
       </div>
     </div>
   );
@@ -425,7 +443,7 @@ function updateExtra<T extends { extra_data?: Record<string, unknown> }>(
   };
 }
 
-function searchExtra(value: SearchProfile, key: string) {
+function searchExtra(value: JobHuntingProfile, key: string) {
   return (
     value.filters?.[key] ??
     value.blacklist_rules?.[key] ??
@@ -434,22 +452,18 @@ function searchExtra(value: SearchProfile, key: string) {
 }
 
 function updateSearchSetting(
-  value: SearchProfile,
+  value: JobHuntingProfile,
   key: string,
   next: unknown,
-): SearchProfile {
+): JobHuntingProfile {
   const filters = { ...value.filters };
   const blacklistRules = { ...value.blacklist_rules };
   const whitelistRules = { ...value.whitelist_rules };
 
-  if (
-    [
-      'about_company_bad_words',
-      'about_company_good_words',
-      'bad_words',
-    ].includes(key)
-  ) {
+  if (['about_company_bad_words', 'bad_words'].includes(key)) {
     blacklistRules[key] = next;
+  } else if (key === 'about_company_good_words') {
+    whitelistRules[key] = next;
   } else {
     filters[key] = next;
   }
@@ -559,6 +573,7 @@ export function ProfileForm({
               icon: '◌',
             }))}
             full
+            icon={UserRound}
           />
           <ChoiceCardGroup
             label='Gender'
@@ -569,6 +584,7 @@ export function ProfileForm({
               title: item,
               icon: '◌',
             }))}
+            icon={UserRound}
           />
           <ChoiceCardGroup
             label='Gender identity'
@@ -579,6 +595,7 @@ export function ProfileForm({
               title: item,
               icon: '◌',
             }))}
+            icon={UserRound}
           />
           <ChoiceCardGroup
             label='Disability status'
@@ -592,6 +609,7 @@ export function ProfileForm({
                 : item === 'No' ? '○'
                 : '—',
             }))}
+            icon={ShieldCheck}
           />
           <ChoiceCardGroup
             label='Veteran status'
@@ -605,165 +623,15 @@ export function ProfileForm({
                 : item === 'No' ? '○'
                 : '—',
             }))}
+            icon={ShieldCheck}
           />
         </div>
         <div className='actions'>
-          <button className='primary hover:opacity-90 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 cursor-pointer shadow-sm' onClick={onSave}>
+          <button
+            className='primary hover:opacity-90 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 cursor-pointer shadow-sm'
+            onClick={onSave}
+          >
             Save profile
-          </button>
-        </div>
-      </div>
-    </CardWithNorth>
-  );
-}
-
-export function PreferencesForm({
-  value,
-  onChange,
-  onSave,
-}: {
-  value: JobPreferences;
-  onChange: (value: JobPreferences) => void;
-  onSave: () => void;
-}) {
-  const set = (key: keyof JobPreferences, nextValue: string) =>
-    onChange({ ...value, [key]: nextValue });
-
-  return (
-    <CardWithNorth title='Application Inputs'>
-      <div className='pb-6 pr-6 flex flex-col gap-6'>
-        <div className='flex items-center gap-2 text-zinc-400 dark:text-zinc-500 -mt-2'>
-          <Briefcase className='w-4 h-4 text-emerald-500 shrink-0' />
-          <p className='text-xs'>
-            These answers feed resume uploads, salary questions, work authorization, and cover letters.
-          </p>
-        </div>
-        <div className='form-grid'>
-          <Field
-            label='Default resume path'
-            value={value.resume_path}
-            onChange={(next) => onChange({ ...value, resume_path: next })}
-            full
-            hint='Maps to default_resume_path in the worker config.'
-          />
-          <Field
-            label='Years of experience'
-            value={value.years_of_experience}
-            onChange={(next) => set('years_of_experience', next)}
-          />
-          <ChoiceCardGroup
-            label='Visa sponsorship required'
-            value={value.require_visa}
-            onChange={(next) => set('require_visa', next)}
-            options={[
-              {
-                value: 'Yes',
-                title: 'Yes',
-                description: 'Need sponsorship now or later.',
-                icon: '✦',
-              },
-              {
-                value: 'No',
-                title: 'No',
-                description: 'Can work without sponsorship.',
-                icon: '✓',
-              },
-            ]}
-          />
-          <Field
-            label='Website / portfolio'
-            value={value.website}
-            onChange={(next) => set('website', next)}
-            full
-          />
-          <Field
-            label='LinkedIn URL'
-            value={value.linkedin_url}
-            onChange={(next) => set('linkedin_url', next)}
-            full
-          />
-          <ChoiceCardGroup
-            label='Citizenship / work authorization'
-            value={value.us_citizenship}
-            onChange={(next) => set('us_citizenship', next)}
-            options={statusOptions.citizenship.map((item) => ({
-              value: item,
-              title: item,
-              icon: '◌',
-            }))}
-            full
-          />
-          <Field
-            label='Desired salary'
-            value={value.desired_salary}
-            onChange={(next) => set('desired_salary', next)}
-            type='number'
-          />
-          <Field
-            label='Current CTC'
-            value={value.current_ctc}
-            onChange={(next) => set('current_ctc', next)}
-            type='number'
-          />
-          <Field
-            label='Notice period (days)'
-            value={value.notice_period}
-            onChange={(next) => set('notice_period', next)}
-            type='number'
-          />
-          <Field
-            label='Recent employer'
-            value={value.recent_employer}
-            onChange={(next) => set('recent_employer', next)}
-          />
-          <Field
-            label='Confidence level'
-            value={value.confidence_level}
-            onChange={(next) => set('confidence_level', next)}
-          />
-          <Field
-            label='LinkedIn headline'
-            value={value.linkedin_headline}
-            onChange={(next) => set('linkedin_headline', next)}
-            full
-          />
-          <Field
-            label='LinkedIn summary'
-            value={value.linkedin_summary}
-            onChange={(next) => set('linkedin_summary', next)}
-            multiline
-            full
-          />
-          <Field
-            label='Cover letter'
-            value={value.cover_letter}
-            onChange={(next) => set('cover_letter', next)}
-            multiline
-            full
-          />
-          <Field
-            label='User information for AI'
-            value={
-              value.user_information_all ??
-              String(value.extra_data?.user_information_all ?? '')
-            }
-            onChange={(next) =>
-              onChange(
-                updateExtra(
-                  { ...value, user_information_all: next },
-                  'user_information_all',
-                  next,
-                ),
-              )
-            }
-            multiline
-            full
-            hint='Optional long-form context passed to AI for answering application questions.'
-          />
-        </div>
-        <div className='actions'>
-          <button className='primary hover:opacity-90 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 cursor-pointer shadow-sm' onClick={onSave}>
-            Save preferences
           </button>
         </div>
       </div>
@@ -775,333 +643,485 @@ export function SearchForm({
   value,
   onChange,
   onSave,
+  section = 'overview',
 }: {
-  value: SearchProfile;
-  onChange: (value: SearchProfile) => void;
-  onSave: () => void;
+  value: JobHuntingProfile;
+  onChange: (value: JobHuntingProfile) => void;
+  onSave: (value: JobHuntingProfile) => void;
+  section?: 'overview' | 'filters' | 'rules' | 'application';
 }) {
   const filters = value.filters ?? {};
+  const showOverview = section === 'overview';
+  const showFilters = section === 'filters';
+  const showRules = section === 'rules';
+  const showApplication = section === 'application';
+  const setProfileField = (key: keyof JobHuntingProfile, nextValue: string) =>
+    onChange({ ...value, [key]: nextValue });
 
   return (
     <section className='panel'>
       <SectionHeader
         icon={<Search size={18} />}
         title='Search Strategy'
-        description='Define the roles you want, the filters LinkedIn should use, and the rules the worker should skip.'
+        description={
+          showApplication ?
+            'Bind this job hunting profile to its own resume, cover letter, work authorization, and AI answer context.'
+          : 'Define the roles you want, the filters LinkedIn should use, and the rules the worker should skip.'
+        }
       />
       <div className='form-grid'>
-        <Field
-          label='Profile name'
-          value={value.name}
-          onChange={(next) => onChange({ ...value, name: next })}
-        />
-        <Field
-          label='Search location'
-          value={value.search_location}
-          onChange={(next) => onChange({ ...value, search_location: next })}
-        />
-
-        <TagEditor
-          label='Search terms'
-          values={value.search_terms}
-          onChange={(next) => onChange({ ...value, search_terms: next })}
-          placeholder='Software Engineer'
-          hint='Each tag becomes one LinkedIn search term.'
-          full
-        />
-
-        <Field
-          label='Applications per term before switching'
-          value={String(searchExtra(value, 'switch_number') ?? 30)}
-          onChange={(next) =>
-            onChange(
-              updateSearchSetting(value, 'switch_number', Number(next) || 0),
-            )
-          }
-          type='number'
-        />
-
-        <ChoiceCardGroup
-          label='Sort by'
-          value={String(filters.sort_by ?? 'Most recent')}
-          onChange={(next) =>
-            onChange(updateSearchSetting(value, 'sort_by', next))
-          }
-          options={statusOptions.sortBy.map((item) => ({
-            value: item,
-            title: item,
-            icon: item === 'Most recent' ? '⚡' : '◎',
-          }))}
-        />
-
-        <ChoiceCardGroup
-          label='Date posted'
-          value={String(filters.date_posted ?? 'Past week')}
-          onChange={(next) =>
-            onChange(updateSearchSetting(value, 'date_posted', next))
-          }
-          options={statusOptions.datePosted.map((item) => ({
-            value: item,
-            title: item,
-            icon: '◷',
-          }))}
-        />
-
-        <ChoiceCardGroup
-          label='Minimum salary'
-          value={String(filters.salary ?? '')}
-          onChange={(next) =>
-            onChange(updateSearchSetting(value, 'salary', next))
-          }
-          options={statusOptions.salary.map((item) => ({
-            value: item,
-            title: item || 'No salary filter',
-            icon: item ? '$' : '○',
-          }))}
-          full
-        />
-
-        <MultiChoiceGroup
-          label='Experience level'
-          values={asStringList(filters.experience_level)}
-          onChange={(next) =>
-            onChange(updateSearchSetting(value, 'experience_level', next))
-          }
-          options={statusOptions.experienceLevel.map((item) => ({
-            value: item,
-            title: item,
-            icon: '◌',
-          }))}
-          full
-        />
-
-        <MultiChoiceGroup
-          label='Job type'
-          values={asStringList(filters.job_type)}
-          onChange={(next) =>
-            onChange(updateSearchSetting(value, 'job_type', next))
-          }
-          options={statusOptions.jobType.map((item) => ({
-            value: item,
-            title: item,
-            icon: '◌',
-          }))}
-          full
-        />
-
-        <MultiChoiceGroup
-          label='Workplace'
-          values={asStringList(filters.on_site)}
-          onChange={(next) =>
-            onChange(updateSearchSetting(value, 'on_site', next))
-          }
-          options={statusOptions.workplace.map((item) => ({
-            value: item,
-            title: item,
-            icon:
-              item === 'Remote' ? '⌂'
-              : item === 'Hybrid' ? '◐'
-              : '◉',
-          }))}
-          full
-        />
-
-        <TagEditor
-          label='Companies'
-          values={asStringList(filters.companies)}
-          onChange={(next) =>
-            onChange(updateSearchSetting(value, 'companies', next))
-          }
-          placeholder='Google'
-        />
-        <TagEditor
-          label='Locations'
-          values={asStringList(filters.location)}
-          onChange={(next) =>
-            onChange(updateSearchSetting(value, 'location', next))
-          }
-          placeholder='Sydney'
-        />
-        <TagEditor
-          label='Industries'
-          values={asStringList(filters.industry)}
-          onChange={(next) =>
-            onChange(updateSearchSetting(value, 'industry', next))
-          }
-          placeholder='Software Development'
-        />
-        <TagEditor
-          label='Job functions'
-          values={asStringList(filters.job_function)}
-          onChange={(next) =>
-            onChange(updateSearchSetting(value, 'job_function', next))
-          }
-          placeholder='Engineering'
-        />
-        <TagEditor
-          label='Job titles'
-          values={asStringList(filters.job_titles)}
-          onChange={(next) =>
-            onChange(updateSearchSetting(value, 'job_titles', next))
-          }
-          placeholder='Frontend Engineer'
-        />
-        <TagEditor
-          label='Benefits'
-          values={asStringList(filters.benefits)}
-          onChange={(next) =>
-            onChange(updateSearchSetting(value, 'benefits', next))
-          }
-          placeholder='401(k)'
-        />
-        <TagEditor
-          label='Commitments'
-          values={asStringList(filters.commitments)}
-          onChange={(next) =>
-            onChange(updateSearchSetting(value, 'commitments', next))
-          }
-          placeholder='Full-time'
-        />
-
-        <div className='field full'>
-          <label>LinkedIn filter toggles</label>
-          <div className='toggle-grid'>
-            <ToggleCard
-              label='Easy Apply only'
-              description='Only target jobs with LinkedIn Easy Apply.'
-              checked={asBoolean(filters.easy_apply_only, true)}
-              onChange={(next) =>
-                onChange(updateSearchSetting(value, 'easy_apply_only', next))
-              }
-              icon='⚡'
+        {showOverview && (
+          <>
+            <Field
+              label='Profile name'
+              value={value.name}
+              onChange={(next) => onChange({ ...value, name: next })}
             />
-            <ToggleCard
-              label='Under 10 applicants'
-              description='Prefer fresher postings with less competition.'
-              checked={asBoolean(filters.under_10_applicants)}
+            <Field
+              label='Search location'
+              value={value.search_location}
+              onChange={(next) => onChange({ ...value, search_location: next })}
+            />
+
+            <TagEditor
+              label='Search terms'
+              values={value.search_terms}
+              onChange={(next) => onChange({ ...value, search_terms: next })}
+              placeholder='Software Engineer'
+              hint='Each tag becomes one LinkedIn search term.'
+              full
+            />
+
+            <Field
+              label='Applications per term before switching'
+              value={String(searchExtra(value, 'switch_number') ?? 30)}
               onChange={(next) =>
                 onChange(
-                  updateSearchSetting(value, 'under_10_applicants', next),
+                  updateSearchSetting(value, 'switch_number', Number(next) || 0),
                 )
               }
-              icon='10'
+              type='number'
             />
-            <ToggleCard
-              label='In your network'
-              description='Prefer jobs connected to your existing network.'
-              checked={asBoolean(filters.in_your_network)}
-              onChange={(next) =>
-                onChange(updateSearchSetting(value, 'in_your_network', next))
-              }
-              icon='◎'
-            />
-            <ToggleCard
-              label='Fair chance employer'
-              description='Bias toward employers that flag fair-chance hiring.'
-              checked={asBoolean(filters.fair_chance_employer)}
-              onChange={(next) =>
-                onChange(
-                  updateSearchSetting(value, 'fair_chance_employer', next),
-                )
-              }
-              icon='✓'
-            />
-            <ToggleCard
-              label='Randomize term order'
-              description='Shuffle search terms instead of using a fixed sequence.'
-              checked={asBoolean(filters.randomize_search_order, true)}
-              onChange={(next) =>
-                onChange(
-                  updateSearchSetting(value, 'randomize_search_order', next),
-                )
-              }
-              icon='↺'
-            />
-            <ToggleCard
-              label='Pause after filters'
-              description='Stop after applying filters so you can inspect the result.'
-              checked={asBoolean(filters.pause_after_filters, true)}
-              onChange={(next) =>
-                onChange(
-                  updateSearchSetting(value, 'pause_after_filters', next),
-                )
-              }
-              icon='⏸'
-            />
-            <ToggleCard
-              label='Has security clearance'
-              description='Allow jobs that require clearance or polygraph.'
-              checked={asBoolean(filters.security_clearance)}
-              onChange={(next) =>
-                onChange(updateSearchSetting(value, 'security_clearance', next))
-              }
-              icon='🛡'
-            />
-            <ToggleCard
-              label='Has masters degree'
-              description="Expand eligibility where master's is mentioned."
-              checked={asBoolean(filters.did_masters)}
-              onChange={(next) =>
-                onChange(updateSearchSetting(value, 'did_masters', next))
-              }
-              icon='🎓'
-            />
-          </div>
-        </div>
+          </>
+        )}
 
-        <Field
-          label='Current experience cap'
-          value={String(searchExtra(value, 'current_experience') ?? 5)}
-          onChange={(next) =>
-            onChange(
-              updateSearchSetting(
-                value,
-                'current_experience',
-                Number(next) || 0,
-              ),
-            )
-          }
-          type='number'
-          hint='Use -1 to stop filtering by required experience.'
-        />
+        {(showOverview || showFilters) && (
+          <>
+            <ChoiceCardGroup
+              label='Sort by'
+              value={String(filters.sort_by ?? 'Most recent')}
+              onChange={(next) =>
+                onChange(updateSearchSetting(value, 'sort_by', next))
+              }
+              options={statusOptions.sortBy.map((item) => ({
+                value: item,
+                title: item,
+                icon: item === 'Most recent' ? '⚡' : '◎',
+              }))}
+              icon={TimerReset}
+            />
 
-        <TagEditor
-          label='About company bad words'
-          values={asStringList(value.blacklist_rules?.about_company_bad_words)}
-          onChange={(next) =>
-            onChange(
-              updateSearchSetting(value, 'about_company_bad_words', next),
-            )
-          }
-          placeholder='Staffing'
-          hint='Skip companies whose About page contains these words.'
-          full
-        />
-        <TagEditor
-          label='About company good words'
-          values={asStringList(value.blacklist_rules?.about_company_good_words)}
-          onChange={(next) =>
-            onChange(
-              updateSearchSetting(value, 'about_company_good_words', next),
-            )
-          }
-          placeholder='Robert Half'
-          hint='Whitelist exceptions to bad-company rules.'
-          full
-        />
-        <TagEditor
-          label='Job description bad words'
-          values={asStringList(value.blacklist_rules?.bad_words)}
-          onChange={(next) =>
-            onChange(updateSearchSetting(value, 'bad_words', next))
-          }
-          placeholder='Security Clearance'
-          hint='Skip jobs whose descriptions contain these phrases.'
-          full
-        />
+            <ChoiceCardGroup
+              label='Date posted'
+              value={String(filters.date_posted ?? 'Past week')}
+              onChange={(next) =>
+                onChange(updateSearchSetting(value, 'date_posted', next))
+              }
+              options={statusOptions.datePosted.map((item) => ({
+                value: item,
+                title: item,
+                icon: '◷',
+              }))}
+              icon={MoonStar}
+            />
+
+            <ChoiceCardGroup
+              label='Minimum salary'
+              value={String(filters.salary ?? '')}
+              onChange={(next) =>
+                onChange(updateSearchSetting(value, 'salary', next))
+              }
+              options={statusOptions.salary.map((item) => ({
+                value: item,
+                title: item || 'No salary filter',
+                icon: item ? '$' : '○',
+              }))}
+              full
+              icon={Briefcase}
+            />
+
+            <MultiChoiceGroup
+              label='Experience level'
+              values={asStringList(filters.experience_level)}
+              onChange={(next) =>
+                onChange(updateSearchSetting(value, 'experience_level', next))
+              }
+              options={statusOptions.experienceLevel.map((item) => ({
+                value: item,
+                title: item,
+                icon: '◌',
+              }))}
+              full
+            />
+
+            <MultiChoiceGroup
+              label='Job type'
+              values={asStringList(filters.job_type)}
+              onChange={(next) =>
+                onChange(updateSearchSetting(value, 'job_type', next))
+              }
+              options={statusOptions.jobType.map((item) => ({
+                value: item,
+                title: item,
+                icon: '◌',
+              }))}
+              full
+            />
+
+            <MultiChoiceGroup
+              label='Workplace'
+              values={asStringList(filters.on_site)}
+              onChange={(next) =>
+                onChange(updateSearchSetting(value, 'on_site', next))
+              }
+              options={statusOptions.workplace.map((item) => ({
+                value: item,
+                title: item,
+                icon:
+                  item === 'Remote' ? '⌂'
+                  : item === 'Hybrid' ? '◐'
+                  : '◉',
+              }))}
+              full
+            />
+
+            <TagEditor
+              label='Companies'
+              values={asStringList(filters.companies)}
+              onChange={(next) =>
+                onChange(updateSearchSetting(value, 'companies', next))
+              }
+              placeholder='Google'
+            />
+            <TagEditor
+              label='Locations'
+              values={asStringList(filters.location)}
+              onChange={(next) =>
+                onChange(updateSearchSetting(value, 'location', next))
+              }
+              placeholder='Sydney'
+            />
+            <TagEditor
+              label='Industries'
+              values={asStringList(filters.industry)}
+              onChange={(next) =>
+                onChange(updateSearchSetting(value, 'industry', next))
+              }
+              placeholder='Software Development'
+            />
+            <TagEditor
+              label='Job functions'
+              values={asStringList(filters.job_function)}
+              onChange={(next) =>
+                onChange(updateSearchSetting(value, 'job_function', next))
+              }
+              placeholder='Engineering'
+            />
+            <TagEditor
+              label='Job titles'
+              values={asStringList(filters.job_titles)}
+              onChange={(next) =>
+                onChange(updateSearchSetting(value, 'job_titles', next))
+              }
+              placeholder='Frontend Engineer'
+            />
+            <TagEditor
+              label='Benefits'
+              values={asStringList(filters.benefits)}
+              onChange={(next) =>
+                onChange(updateSearchSetting(value, 'benefits', next))
+              }
+              placeholder='401(k)'
+            />
+            <TagEditor
+              label='Commitments'
+              values={asStringList(filters.commitments)}
+              onChange={(next) =>
+                onChange(updateSearchSetting(value, 'commitments', next))
+              }
+              placeholder='Full-time'
+            />
+
+            <div className='field full'>
+              <label>LinkedIn filter toggles</label>
+              <div className='toggle-grid'>
+                <ToggleCard
+                  label='Easy Apply only'
+                  description='Only target jobs with LinkedIn Easy Apply.'
+                  checked={asBoolean(filters.easy_apply_only, true)}
+                  onChange={(next) =>
+                    onChange(updateSearchSetting(value, 'easy_apply_only', next))
+                  }
+                  icon='⚡'
+                />
+                <ToggleCard
+                  label='Under 10 applicants'
+                  description='Prefer fresher postings with less competition.'
+                  checked={asBoolean(filters.under_10_applicants)}
+                  onChange={(next) =>
+                    onChange(
+                      updateSearchSetting(value, 'under_10_applicants', next),
+                    )
+                  }
+                  icon='10'
+                />
+                <ToggleCard
+                  label='In your network'
+                  description='Prefer jobs connected to your existing network.'
+                  checked={asBoolean(filters.in_your_network)}
+                  onChange={(next) =>
+                    onChange(updateSearchSetting(value, 'in_your_network', next))
+                  }
+                  icon='◎'
+                />
+                <ToggleCard
+                  label='Fair chance employer'
+                  description='Bias toward employers that flag fair-chance hiring.'
+                  checked={asBoolean(filters.fair_chance_employer)}
+                  onChange={(next) =>
+                    onChange(
+                      updateSearchSetting(value, 'fair_chance_employer', next),
+                    )
+                  }
+                  icon='✓'
+                />
+                <ToggleCard
+                  label='Randomize term order'
+                  description='Shuffle search terms instead of using a fixed sequence.'
+                  checked={asBoolean(filters.randomize_search_order, true)}
+                  onChange={(next) =>
+                    onChange(
+                      updateSearchSetting(value, 'randomize_search_order', next),
+                    )
+                  }
+                  icon='↺'
+                />
+                <ToggleCard
+                  label='Pause after filters'
+                  description='Stop after applying filters so you can inspect the result.'
+                  checked={asBoolean(filters.pause_after_filters, true)}
+                  onChange={(next) =>
+                    onChange(
+                      updateSearchSetting(value, 'pause_after_filters', next),
+                    )
+                  }
+                  icon='⏸'
+                />
+                <ToggleCard
+                  label='Has security clearance'
+                  description='Allow jobs that require clearance or polygraph.'
+                  checked={asBoolean(searchExtra(value, 'security_clearance'))}
+                  onChange={(next) =>
+                    onChange(updateSearchSetting(value, 'security_clearance', next))
+                  }
+                  icon='🛡'
+                />
+                <ToggleCard
+                  label='Has masters degree'
+                  description="Expand eligibility where master's is mentioned."
+                  checked={asBoolean(searchExtra(value, 'did_masters'))}
+                  onChange={(next) =>
+                    onChange(updateSearchSetting(value, 'did_masters', next))
+                  }
+                  icon='🎓'
+                />
+              </div>
+            </div>
+          </>
+        )}
+
+        {(showOverview || showRules) && (
+          <>
+            <Field
+              label='Current experience cap'
+              value={String(searchExtra(value, 'current_experience') ?? 5)}
+              onChange={(next) =>
+                onChange(
+                  updateSearchSetting(
+                    value,
+                    'current_experience',
+                    Number(next) || 0,
+                  ),
+                )
+              }
+              type='number'
+              hint='Use -1 to stop filtering by required experience.'
+            />
+
+            <TagEditor
+              label='About company bad words'
+              values={asStringList(value.blacklist_rules?.about_company_bad_words)}
+              onChange={(next) =>
+                onChange(
+                  updateSearchSetting(value, 'about_company_bad_words', next),
+                )
+              }
+              placeholder='Staffing'
+              hint='Skip companies whose About page contains these words.'
+              full
+            />
+            <TagEditor
+              label='About company good words'
+              values={asStringList(value.whitelist_rules?.about_company_good_words)}
+              onChange={(next) =>
+                onChange(
+                  updateSearchSetting(value, 'about_company_good_words', next),
+                )
+              }
+              placeholder='Robert Half'
+              hint='Whitelist exceptions to bad-company rules.'
+              full
+            />
+            <TagEditor
+              label='Job description bad words'
+              values={asStringList(value.blacklist_rules?.bad_words)}
+              onChange={(next) =>
+                onChange(updateSearchSetting(value, 'bad_words', next))
+              }
+              placeholder='Security Clearance'
+              hint='Skip jobs whose descriptions contain these phrases.'
+              full
+            />
+          </>
+        )}
+
+        {showApplication && (
+          <>
+            <Field
+              label='Resume path'
+              value={value.resume_path}
+              onChange={(next) => setProfileField('resume_path', next)}
+              full
+              hint='Each profile can point to a different resume version.'
+            />
+            <Field
+              label='Years of experience'
+              value={value.years_of_experience}
+              onChange={(next) => setProfileField('years_of_experience', next)}
+            />
+            <ChoiceCardGroup
+              label='Visa sponsorship required'
+              value={value.require_visa}
+              onChange={(next) => setProfileField('require_visa', next)}
+              options={[
+                {
+                  value: 'Yes',
+                  title: 'Yes',
+                },
+                {
+                  value: 'No',
+                  title: 'No',
+                },
+              ]}
+              icon={Globe}
+            />
+            <Field
+              label='Website / portfolio'
+              value={value.website}
+              onChange={(next) => setProfileField('website', next)}
+              full
+            />
+            <Field
+              label='LinkedIn URL'
+              value={value.linkedin_url}
+              onChange={(next) => setProfileField('linkedin_url', next)}
+              full
+            />
+            <ChoiceCardGroup
+              label='Citizenship / work authorization'
+              value={value.citizenship}
+              onChange={(next) => setProfileField('citizenship', next)}
+              options={statusOptions.citizenship.map((item) => ({
+                value: item,
+                title: item,
+                icon: '◌',
+              }))}
+              full
+              icon={Globe}
+            />
+            <Field
+              label='Desired salary'
+              value={value.desired_salary}
+              onChange={(next) => setProfileField('desired_salary', next)}
+              type='number'
+            />
+            <Field
+              label='Current CTC'
+              value={value.current_ctc}
+              onChange={(next) => setProfileField('current_ctc', next)}
+              type='number'
+            />
+            <Field
+              label='Notice period (days)'
+              value={value.notice_period}
+              onChange={(next) =>
+                onChange({ ...value, notice_period: Number(next) || 0 })
+              }
+              type='number'
+            />
+            <Field
+              label='Recent employer'
+              value={value.recent_employer}
+              onChange={(next) => setProfileField('recent_employer', next)}
+            />
+            <Field
+              label='Confidence level'
+              value={value.confidence_level}
+              onChange={(next) => setProfileField('confidence_level', next)}
+            />
+            <Field
+              label='LinkedIn headline'
+              value={value.linkedin_headline}
+              onChange={(next) => setProfileField('linkedin_headline', next)}
+              full
+            />
+            <Field
+              label='LinkedIn summary'
+              value={value.linkedin_summary}
+              onChange={(next) => setProfileField('linkedin_summary', next)}
+              multiline
+              full
+            />
+            <Field
+              label='Cover letter'
+              value={value.cover_letter}
+              onChange={(next) => setProfileField('cover_letter', next)}
+              multiline
+              full
+            />
+            <Field
+              label='User information for AI'
+              value={
+                value.user_information_all ??
+                String(value.extra_data?.user_information_all ?? '')
+              }
+              onChange={(next) =>
+                onChange(
+                  updateExtra(
+                    { ...value, user_information_all: next },
+                    'user_information_all',
+                    next,
+                  ),
+                )
+              }
+              multiline
+              full
+            />
+          </>
+        )}
       </div>
       <div className='actions'>
-        <button className='primary' onClick={onSave}>
+        <button className='primary' onClick={() => onSave(value)}>
           Save search config
         </button>
       </div>
@@ -1116,7 +1136,7 @@ export function RuntimeForm({
 }: {
   value: RuntimeSettings;
   onChange: (value: RuntimeSettings) => void;
-  onSave: () => void;
+  onSave: (value: RuntimeSettings) => void;
 }) {
   const settings = value.settings ?? {};
 
@@ -1308,7 +1328,7 @@ export function RuntimeForm({
         />
       </div>
       <div className='actions'>
-        <button className='primary' onClick={onSave}>
+        <button className='primary' onClick={() => onSave(value)}>
           Save runtime settings
         </button>
       </div>

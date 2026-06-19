@@ -1,11 +1,11 @@
 import hashlib
 import re
-from datetime import datetime
 from difflib import SequenceMatcher
 
 from shared_services.persistence.api_client import BotApiError, api_client
 from shared_services.persistence.logging import persistence_log
 from shared_services.runtime import get_runtime_value
+from shared_services.time_utils import utc_isoformat, utc_now
 
 
 def normalize_label(label: str) -> str:
@@ -149,7 +149,7 @@ class QuestionCache:
 
         normalized = normalize_label(label)
         entry_id = hashlib.sha256(f"{normalized}|{field_type}".encode()).hexdigest()[:16]
-        now = datetime.now().isoformat(timespec="seconds")
+        now = utc_isoformat(utc_now())
         questions = self._data.setdefault("questions", [])
 
         existing = next((q for q in questions if q.get("id") == entry_id), None)

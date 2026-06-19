@@ -1,9 +1,8 @@
 import type {
   JobApplication,
-  JobPreferences,
   QuestionCacheEntry,
   RuntimeSettings,
-  SearchProfile,
+  JobHuntingProfile,
   User,
   UserProfile,
   WorkerConfig,
@@ -44,17 +43,30 @@ export const api = {
       method: "PUT",
       body: JSON.stringify(payload),
     }),
-  jobPreferences: () => apiRequest<JobPreferences>("/api/job-preferences"),
-  updateJobPreferences: (payload: JobPreferences) =>
-    apiRequest<JobPreferences>("/api/job-preferences", {
+  jobHuntingProfiles: () => apiRequest<JobHuntingProfile[]>("/api/job-hunting-profiles"),
+  jobHuntingProfile: () => apiRequest<JobHuntingProfile>("/api/job-hunting-profile"),
+  updateJobHuntingProfile: (payload: JobHuntingProfile) =>
+    apiRequest<JobHuntingProfile>("/api/job-hunting-profile", {
       method: "PUT",
       body: JSON.stringify(payload),
     }),
-  searchProfile: () => apiRequest<SearchProfile>("/api/search-profile"),
-  updateSearchProfile: (payload: SearchProfile) =>
-    apiRequest<SearchProfile>("/api/search-profile", {
+  createJobHuntingProfile: (payload: JobHuntingProfile) =>
+    apiRequest<JobHuntingProfile>("/api/job-hunting-profiles", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  updateJobHuntingProfileById: (profileId: string, payload: JobHuntingProfile) =>
+    apiRequest<JobHuntingProfile>(`/api/job-hunting-profiles/${profileId}`, {
       method: "PUT",
       body: JSON.stringify(payload),
+    }),
+  activateJobHuntingProfile: (profileId: string) =>
+    apiRequest<JobHuntingProfile>(`/api/job-hunting-profiles/${profileId}/activate`, {
+      method: "POST",
+    }),
+  deleteJobHuntingProfile: (profileId: string) =>
+    apiRequest<void>(`/api/job-hunting-profiles/${profileId}`, {
+      method: "DELETE",
     }),
   runtimeSettings: () => apiRequest<RuntimeSettings>("/api/runtime-settings"),
   updateRuntimeSettings: (payload: RuntimeSettings) =>

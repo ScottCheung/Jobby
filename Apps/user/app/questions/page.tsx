@@ -8,6 +8,8 @@ import { api } from '@/lib/api';
 import { withMinimumLoadingTime } from '@/lib/loading';
 import type { QuestionCacheEntry } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import { motion } from 'framer-motion';
+import { CollapsibleHeader, springTransition } from '@/components/UI/CollapsibleHeader';
 
 type QuestionListItem =
   | { type: 'row'; id: string; data: QuestionCacheEntry }
@@ -32,6 +34,21 @@ export default function QuestionsPage() {
   const [hasMore, setHasMore] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [searchText, setSearchText] = useState('');
+
+  const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
+  const lastScrollTop = React.useRef(0);
+
+  const handleListScroll = React.useCallback((event: React.UIEvent<HTMLDivElement>) => {
+    const scrollTop = event.currentTarget.scrollTop;
+    if (scrollTop <= 10) {
+      setIsHeaderCollapsed(false);
+    } else if (scrollTop > lastScrollTop.current && scrollTop > 50) {
+      setIsHeaderCollapsed(true);
+    } else if (scrollTop < lastScrollTop.current) {
+      setIsHeaderCollapsed(false);
+    }
+    lastScrollTop.current = scrollTop;
+  }, []);
 
   const fetchMore = async (reset = false) => {
     if (isLoading) return;
@@ -106,41 +123,68 @@ export default function QuestionsPage() {
   }, [hasMore, isLoading, items]);
 
   return (
-    <div className='bg-panel rounded-2xl p-6 shadow-xs flex flex-col h-[calc(100vh-140px)] min-h-[500px]'>
-      <h2 className='text-lg font-bold text-zinc-900 dark:text-zinc-50 mb-4 flex items-center gap-2 shrink-0'>
-        <MessageSquareCode className='w-5 h-5 text-emerald-500' />
-        Question Cache
-      </h2>
-
-      <div className='flex items-center gap-4 bg-zinc-50 dark:bg-zinc-900/40 p-4 rounded-xl border border-zinc-100 dark:border-zinc-800/60 mb-6 shrink-0'>
-        <div className='relative flex-1 max-w-md'>
-          <Search className='absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400' />
-          <input
-            placeholder='Search question text or answer...'
-            value={searchText}
-            onChange={(event) => setSearchText(event.target.value)}
-            className='pl-9 pr-4 py-2 w-full text-sm rounded-xl border border-zinc-200 bg-panel dark:bg-zinc-955 dark:border-zinc-800 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-750 focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-750 transition-all text-zinc-900 dark:text-zinc-100'
-          />
-        </div>
-      </div>
+    <div className='bg-panel rounded-2xl p-6 shadow-xs flex flex-col h-[calc(100vh-140px)] min-h-[500px] overflow-hidden'>
+      <CollapsibleHeader
+        title="Question Cache"
+        icon={<MessageSquareCode className={cn('transition-transform', isHeaderCollapsed ? 'w-4 h-4' : 'w-5 h-5')} />}
+        isCollapsed={isHeaderCollapsed}
+        actions={
+          <motion.div
+            layout
+            transition={springTransition}
+            className={cn(
+              'flex items-center gap-4 transition-all duration-350 ease-in-out',
+              isHeaderCollapsed
+                ? 'p-0 bg-transparent border-transparent mb-0 flex-1 justify-end max-w-md'
+                : 'bg-zinc-50 dark:bg-zinc-900/40 p-4 rounded-xl border border-zinc-100 dark:border-zinc-800/60 mb-2 w-full'
+            )}
+          >
+            <motion.div
+              layout
+              transition={springTransition}
+              className={cn(
+                'relative',
+                isHeaderCollapsed ? 'w-48' : 'flex-1 max-w-md'
+              )}
+            >
+              <Search className='absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400' />
+              <input
+                placeholder={isHeaderCollapsed ? 'Search...' : 'Search question text or answer...'}
+                value={searchText}
+                onChange={(event) => setSearchText(event.target.value)}
+                className='pl-9 pr-4 py-1.5 w-full text-sm rounded-xl border border-zinc-200 bg-panel dark:bg-zinc-955 dark:border-zinc-800 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-750 focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-750 text-zinc-900 dark:text-zinc-100'
+              />
+            </motion.div>
+          </motion.div>
+        }
+      />
 
       {items.length === 0 && !isLoading ?
         <div className='p-8 text-center text-zinc-500 dark:text-zinc-400 flex-1 flex items-center justify-center'>
           No saved answers yet.
         </div>
-      : <div className='flex-1 overflow-hidden relative border border-zinc-100 dark:border-zinc-800/60 rounded-xl bg-panel'>
-          <div className='grid grid-cols-[minmax(0,4fr)_minmax(0,1.5fr)_minmax(0,2.5fr)_minmax(0,1fr)_minmax(0,1fr)] gap-0 border-b border-zinc-100 dark:border-zinc-800 text-[11px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider px-4 py-3 shrink-0'>
+      : <motion.div
+          layout
+          transition={springTransition}
+          className='flex-1 overflow-hidden relative border border-zinc-100 dark:border-zinc-800/60 rounded-xl bg-panel'
+        >
+          <motion.div
+            layout
+            transition={springTransition}
+            className='grid grid-cols-[minmax(0,4fr)_minmax(0,1.5fr)_minmax(0,2.5fr)_minmax(0,1fr)_minmax(0,1fr)] gap-0 border-b border-zinc-100 dark:border-zinc-800 text-[11px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider px-4 py-3 shrink-0'
+          >
             <div className='pr-4'>Question</div>
             <div className='px-4'>Type</div>
             <div className='px-4'>Answer</div>
             <div className='px-4'>Used</div>
             <div className='pl-4 text-right'></div>
-          </div>
+          </motion.div>
 
           <VirtualList
             className='custom-scrollbar-primary'
             items={listItems}
             rowHeight={ROW_HEIGHT}
+            onScroll={handleListScroll}
             onEndReached={() => {
               if (hasMore && !isLoading) {
                 void fetchMore();
@@ -221,7 +265,7 @@ export default function QuestionsPage() {
               );
             }}
           />
-        </div>
+        </motion.div>
       }
     </div>
   );

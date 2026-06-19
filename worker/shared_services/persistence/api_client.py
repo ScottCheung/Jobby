@@ -1,12 +1,12 @@
 import json
 import os
-from datetime import datetime
 from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 from shared_services.persistence.logging import persistence_log
+from shared_services.time_utils import utc_isoformat
 
 
 class BotApiError(RuntimeError):
@@ -104,17 +104,7 @@ class BotApiClient:
 
     @staticmethod
     def parse_datetime(value: Any) -> str | None:
-        if value in ("", None):
-            return None
-        if isinstance(value, datetime):
-            return value.isoformat()
-        text = str(value).strip()
-        if not text or text.lower() in {"none", "null", "pending", "not available"}:
-            return None
-        try:
-            return datetime.fromisoformat(text).isoformat()
-        except ValueError:
-            return None
+        return utc_isoformat(value)
 
 
 api_client = BotApiClient()

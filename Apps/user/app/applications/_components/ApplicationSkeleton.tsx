@@ -12,7 +12,7 @@ export function ApplicationSkeleton({ style }: ApplicationSkeletonProps) {
   return (
     <div
       style={style}
-      className='grid grid-cols-[minmax(0,3fr)_minmax(0,2fr)_minmax(0,2fr)_minmax(0,1.5fr)_minmax(0,2fr)] items-center px-4 animate-pulse'
+      className='grid grid-cols-[minmax(0,3.5fr)_minmax(0,2fr)_minmax(0,2.5fr)_minmax(0,1.3fr)_minmax(0,1.2fr)] items-center px-4 animate-pulse'
     >
       <div className='pr-4'>
         <div className='h-3 bg-ink-secondary/50 rounded w-3/4 mb-2'></div>

@@ -62,14 +62,14 @@ def _apply_profile(profile: dict, modules: list[ModuleType], globals_dict: dict)
             _set_if_present(module, key, value)
 
 
-def _apply_job_preferences(preferences: dict, modules: list[ModuleType], globals_dict: dict) -> None:
-    mapping = {
+def _apply_job_hunting_profile(job_hunting_profile: dict, modules: list[ModuleType], globals_dict: dict) -> None:
+    profile_input_mapping = {
         "linkedin_url": "linkedIn",
         "resume_path": "default_resume_path",
         "user_information_all": "user_information_all",
         "years_of_experience": "years_of_experience",
         "website": "website",
-        "us_citizenship": "us_citizenship",
+        "citizenship": "citizenship",
         "linkedin_headline": "linkedin_headline",
         "linkedin_summary": "linkedin_summary",
         "cover_letter": "cover_letter",
@@ -77,10 +77,45 @@ def _apply_job_preferences(preferences: dict, modules: list[ModuleType], globals
         "confidence_level": "confidence_level",
         "require_visa": "require_visa",
     }
-    for key, value in preferences.items():
-        if key in {"id", "user_id", "created_at", "updated_at", "extra_data"}:
+
+    globals_dict["search_terms"] = job_hunting_profile.get("search_terms") or []
+    globals_dict["search_location"] = job_hunting_profile.get("search_location") or ""
+
+    for module in modules:
+        _set_if_present(module, "search_terms", globals_dict["search_terms"])
+        _set_if_present(module, "search_location", globals_dict["search_location"])
+
+    merged = {}
+    merged.update(job_hunting_profile.get("filters") or {})
+    merged.update(job_hunting_profile.get("blacklist_rules") or {})
+    merged.update(job_hunting_profile.get("whitelist_rules") or {})
+
+    for key, value in merged.items():
+        globals_dict[key] = value
+        for module in modules:
+            _set_if_present(module, key, value)
+
+    for key, value in job_hunting_profile.items():
+        if key in {
+            "id",
+            "user_id",
+            "platform_account_id",
+            "name",
+            "platform",
+            "search_terms",
+            "search_location",
+            "filters",
+            "blacklist_rules",
+            "whitelist_rules",
+            "is_default",
+            "created_at",
+            "updated_at",
+            "extra_data",
+        }:
             continue
-        target = mapping.get(key, key)
+        if value in (None, ""):
+            continue
+        target = profile_input_mapping.get(key, key)
         if target in {"desired_salary", "current_ctc"}:
             value = _to_float(value)
         elif target == "notice_period":
@@ -89,27 +124,8 @@ def _apply_job_preferences(preferences: dict, modules: list[ModuleType], globals
         for module in modules:
             _set_if_present(module, target, value)
 
-    extra_data = preferences.get("extra_data") or {}
+    extra_data = job_hunting_profile.get("extra_data") or {}
     for key, value in extra_data.items():
-        globals_dict[key] = value
-        for module in modules:
-            _set_if_present(module, key, value)
-
-
-def _apply_search_profile(search_profile: dict, modules: list[ModuleType], globals_dict: dict) -> None:
-    globals_dict["search_terms"] = search_profile.get("search_terms") or []
-    globals_dict["search_location"] = search_profile.get("search_location") or ""
-
-    for module in modules:
-        _set_if_present(module, "search_terms", globals_dict["search_terms"])
-        _set_if_present(module, "search_location", globals_dict["search_location"])
-
-    merged = {}
-    merged.update(search_profile.get("filters") or {})
-    merged.update(search_profile.get("blacklist_rules") or {})
-    merged.update(search_profile.get("whitelist_rules") or {})
-
-    for key, value in merged.items():
         globals_dict[key] = value
         for module in modules:
             _set_if_present(module, key, value)
@@ -170,10 +186,8 @@ def apply_api_worker_config(globals_dict: dict) -> bool:
 
     if worker_config.get("profile"):
         _apply_profile(worker_config["profile"], modules, globals_dict)
-    if worker_config.get("job_preferences"):
-        _apply_job_preferences(worker_config["job_preferences"], modules, globals_dict)
-    if worker_config.get("search_profile"):
-        _apply_search_profile(worker_config["search_profile"], modules, globals_dict)
+    if worker_config.get("job_hunting_profile"):
+        _apply_job_hunting_profile(worker_config["job_hunting_profile"], modules, globals_dict)
     if worker_config.get("runtime_settings"):
         _apply_runtime_settings(worker_config["runtime_settings"], modules, globals_dict)
 

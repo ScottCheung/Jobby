@@ -12,7 +12,6 @@ import pyautogui
 csv.field_size_limit(1000000)  # Set to 1MB instead of default 131KB
 
 from random import choice, shuffle
-from datetime import datetime
 
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
@@ -64,6 +63,7 @@ from shared_services.persistence import QuestionCache, ApplicationLogger, resolv
 from shared_services.persistence import answer_resolver as answer_resolver_module
 from shared_services.persistence.worker_config import apply_api_worker_config
 from shared_services.runtime import get_runtime_value, set_runtime_state
+from shared_services.time_utils import utc_now
 
 unanswered_questions = set()
 apply_api_worker_config(globals())
@@ -109,6 +109,7 @@ external_jobs_count = 0
 failed_count = 0
 skip_count = 0
 dailyEasyApplyLimitReached = False
+current_processing_record = None
 
 
 def sync_stats_to_status() -> None:
@@ -339,6 +340,39 @@ def external_apply(pagination_element, job_id, job_link, resume, date_listed, ap
     return True, link or application_link, tabs_count, dailyEasyApplyLimitReached
 
 
+def record_interrupted_application(
+    job_id,
+    title,
+    company,
+    work_location,
+    work_style,
+    job_link,
+    resume,
+    date_listed,
+    reason,
+    application_type="Easy Applied",
+    screenshot_name="Not Available",
+    **record,
+) -> None:
+    payload = {
+        "platform": "linkedin",
+        "job_id": job_id,
+        "title": title,
+        "company": company,
+        "work_location": work_location,
+        "work_style": work_style,
+        "job_link": job_link,
+        "resume": resume,
+        "date_posted": date_listed.isoformat() if hasattr(date_listed, "isoformat") else date_listed,
+        "status": "interrupted",
+        "application_type": application_type,
+        "skip_reason": reason,
+        "screenshot": screenshot_name,
+        **record,
+    }
+    application_logger.log_application(payload)
+
+
 
 
 
@@ -350,6 +384,7 @@ def apply_to_jobs(search_terms: list[str]) -> None:
     blacklisted_companies = set()
     global current_city, failed_count, skip_count, easy_applied_count, external_jobs_count, tabs_count
     global pause_before_submit, pause_at_failed_question, useNewResume, dailyEasyApplyLimitReached
+    global current_processing_record
     linkedin_apply.bind_context(driver, actions, question_cache, print_lg, unanswered_questions)
     set_runtime_state({"linkedin_tab": linkedIn_tab, "tabs_count": tabs_count, "daily_easy_apply_limit_reached": dailyEasyApplyLimitReached})
     current_city = current_city.strip()
@@ -454,6 +489,7 @@ def apply_to_jobs(search_terms: list[str]) -> None:
                     reposted = False
                     questions_list = None
                     screenshot_name = "Not Available"
+                    application_submitted = False
 
                     current_processing_record = {
                         "platform": "linkedin",
@@ -704,11 +740,13 @@ def apply_to_jobs(search_terms: list[str]) -> None:
                                 wait_if_bot_paused()
                                 bot_status(f'Submitting application for "{title}" at {company}...')
                                 if wait_span_click(driver, "Submit application", 2, scrollTop=True): 
-                                    date_applied = datetime.now()
+                                    date_applied = utc_now()
+                                    application_submitted = True
                                     bot_status(f'Application submitted for "{title}". Closing confirmation dialog...')
                                     if not wait_span_click(driver, "Done", 2): actions.send_keys(Keys.ESCAPE).perform()
                                 elif errored != "stuck" and cur_pause_before_submit and "Yes" in linkedin_apply.show_inpage_overlay("Failed to find Submit Application!", "You submitted the application manually, didn't you?", ["No", "Yes"]):
-                                    date_applied = datetime.now()
+                                    date_applied = utc_now()
+                                    application_submitted = True
                                     bot_status(f'Manual submission confirmed for "{title}".')
                                     wait_span_click(driver, "Done", 2)
                                 else:
@@ -716,7 +754,7 @@ def apply_to_jobs(search_terms: list[str]) -> None:
                                     print_lg("Since, Submit Application failed, discarding the job application...")
                                     # if screenshot_name == "Not Available":  screenshot_name = screenshot(driver, job_id, "Failed to click Submit application")
                                     # else:   screenshot_name = [screenshot_name, screenshot(driver, job_id, "Failed to click Submit application")]
-                                    if errored == "nose": raise Exception("Failed to click Submit application 😑")
+                                    raise Exception("Failed to confirm application submission")
 
 
                         except Exception as e:
@@ -724,6 +762,26 @@ def apply_to_jobs(search_terms: list[str]) -> None:
                             print_lg("Failed to Easy apply!")
                             # print_lg(e)
                             critical_error_log("Somewhere in Easy Apply process",e)
+                            error_text = str(e).strip().lower()
+                            if "discarded by user" in error_text:
+                                record_interrupted_application(
+                                    job_id,
+                                    title,
+                                    company,
+                                    work_location,
+                                    work_style,
+                                    job_link,
+                                    resume,
+                                    date_listed,
+                                    "Application flow was interrupted before submission",
+                                    application_type=application_link,
+                                    screenshot_name=screenshot_name,
+                                    search_term=searchTerm,
+                                    questions=ApplicationLogger.format_questions(questions_list),
+                                    description=description,
+                                )
+                                current_processing_record = None
+                                continue
                             failed_job(job_id, job_link, resume, date_listed, "Problem in Easy Applying", e, application_link, screenshot_name,
                                                      title=title, company=company, search_term=searchTerm, work_location=work_location, work_style=work_style,
                                                      questions_list=questions_list, description=description)
@@ -736,6 +794,28 @@ def apply_to_jobs(search_terms: list[str]) -> None:
                         # Case 2: Apply externally
                         wait_if_bot_paused()
                         bot_status(f'No Easy Apply for "{title}". Checking external apply path...')
+                        try:
+                            current_url = driver.current_url
+                        except Exception:
+                            current_url = job_link
+                        if current_url and "linkedin.com/jobs/view/" in str(current_url):
+                            bot_status(f'Application flow for "{title}" looks interrupted before external handoff.')
+                            record_interrupted_application(
+                                job_id,
+                                title,
+                                company,
+                                work_location,
+                                work_style,
+                                job_link,
+                                resume,
+                                date_listed,
+                                "Application flow was interrupted before submission",
+                                application_type="Easy Applied",
+                                screenshot_name=screenshot_name,
+                                search_term=searchTerm,
+                            )
+                            current_processing_record = None
+                            continue
                         skip, application_link, tabs_count, dailyEasyApplyLimitReached = external_apply(pagination_element, job_id, job_link, resume, date_listed, application_link, screenshot_name)
                         if dailyEasyApplyLimitReached:
                             bot_status("Daily Easy Apply limit reached. Stopping this run.")
@@ -747,6 +827,26 @@ def apply_to_jobs(search_terms: list[str]) -> None:
                             continue
 
                     wait_if_bot_paused()
+                    if application_link == "Easy Applied" and not application_submitted:
+                        bot_status(f'Application flow for "{title}" ended before submission.')
+                        record_interrupted_application(
+                            job_id,
+                            title,
+                            company,
+                            work_location,
+                            work_style,
+                            job_link,
+                            resume,
+                            date_listed,
+                            "Application flow ended before submission",
+                            application_type=application_link,
+                            screenshot_name=screenshot_name,
+                            search_term=searchTerm,
+                            questions=ApplicationLogger.format_questions(questions_list),
+                            description=description,
+                        )
+                        current_processing_record = None
+                        continue
                     bot_status(f'Saving application result for "{title}" at {company}...')
                     submitted_jobs(job_id, title, company, work_location, work_style, description, experience_required, skills, hr_name, hr_link, resume, reposted, date_listed, date_applied, job_link, application_link, questions_list, connect_request, search_term=searchTerm)
                     if uploaded:   useNewResume = False
@@ -822,6 +922,7 @@ for _sig in (signal.SIGINT, signal.SIGTERM):
 def run_linkedin_flow() -> None:
     total_runs = 99
     interrupted = False
+    global current_processing_record
     current_processing_record = None
     bot_status("Starting LinkedIn automation...", status="starting")
     try:

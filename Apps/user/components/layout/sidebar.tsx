@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   User as UserIcon,
   Search,
+  Settings2,
   MessageSquareCode,
   Briefcase,
   LogOut,
@@ -24,7 +25,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 const navigation = [
   { name: 'Overview', href: '/', icon: LayoutDashboard },
   { name: 'Profile', href: '/profile', icon: UserIcon },
-  { name: 'Search', href: '/search', icon: Search },
+  { name: 'Job Hunting Profiles', href: '/job-hunting-profiles', icon: Search },
+  { name: 'Agent Settings', href: '/agent-settings', icon: Settings2 },
   { name: 'Question Cache', href: '/questions', icon: MessageSquareCode },
   { name: 'Applications History', href: '/applications', icon: Briefcase },
 ];

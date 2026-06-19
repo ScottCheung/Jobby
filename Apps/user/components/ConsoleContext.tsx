@@ -20,14 +20,13 @@ import type {
   DesktopRuntimeInfo,
   DesktopServiceStatus,
   JobApplication,
-  JobPreferences,
   QuestionCacheEntry,
   RuntimeSettings,
-  SearchProfile,
+  JobHuntingProfile,
   User,
   UserProfile,
 } from '@/lib/types';
-import { getApplicationDisplayDate } from '@/lib/types';
+import { getApplicationDisplayDate, isStatusSubmitted } from '@/lib/types';
 import { isDesktopRuntime, resolveApiBaseUrl } from '@/lib/runtime';
 
 import {
@@ -36,6 +35,43 @@ import {
   MessageSquareCode,
   ChevronLast,
 } from 'lucide-react';
+
+function getApplicationSortTimestamp(value?: string | null) {
+  if (!value) return 0;
+  const timestamp = new Date(value).getTime();
+  return Number.isFinite(timestamp) ? timestamp : 0;
+}
+
+function sortApplications(items: JobApplication[]) {
+  return [...items].sort((left, right) => {
+    const updatedDiff =
+      getApplicationSortTimestamp(right.status_updated_at) -
+      getApplicationSortTimestamp(left.status_updated_at);
+    if (updatedDiff !== 0) return updatedDiff;
+
+    const appliedDiff =
+      getApplicationSortTimestamp(right.date_applied) -
+      getApplicationSortTimestamp(left.date_applied);
+    if (appliedDiff !== 0) return appliedDiff;
+
+    return (
+      getApplicationSortTimestamp(right.created_at) -
+      getApplicationSortTimestamp(left.created_at)
+    );
+  });
+}
+
+function mergeProfileApplicationInputs(profile: JobHuntingProfile | null | undefined) {
+  if (!profile) return emptyJobHuntingProfile;
+  return {
+    ...profile,
+    resume_path:
+      profile.resume_path ||
+      (typeof profile.extra_data?.default_resume_path === 'string' ?
+        profile.extra_data.default_resume_path
+      : ''),
+  } as JobHuntingProfile;
+}
 
 export const emptyProfile: UserProfile = {
   first_name: '',
@@ -54,13 +90,20 @@ export const emptyProfile: UserProfile = {
   veteran_status: '',
 };
 
-export const emptyPreferences: JobPreferences = {
+export const emptyJobHuntingProfile: JobHuntingProfile = {
+  name: 'Default Search Profile',
+  platform: 'linkedin',
+  search_terms: [],
+  search_location: '',
+  filters: {},
+  blacklist_rules: {},
+  whitelist_rules: {},
   years_of_experience: '',
   require_visa: 'No',
   website: '',
   linkedin_url: '',
   resume_path: '',
-  us_citizenship: '',
+  citizenship: '',
   desired_salary: '',
   current_ctc: '',
   notice_period: null,
@@ -70,16 +113,7 @@ export const emptyPreferences: JobPreferences = {
   user_information_all: '',
   recent_employer: '',
   confidence_level: '',
-};
-
-export const emptySearch: SearchProfile = {
-  name: 'Default Search Profile',
-  platform: 'linkedin',
-  search_terms: [],
-  search_location: '',
-  filters: {},
-  blacklist_rules: {},
-  whitelist_rules: {},
+  extra_data: {},
   is_default: true,
 };
 
@@ -124,10 +158,10 @@ interface ConsoleContextType {
   user: User | null;
   profile: UserProfile;
   setProfile: React.Dispatch<React.SetStateAction<UserProfile>>;
-  preferences: JobPreferences;
-  setPreferences: React.Dispatch<React.SetStateAction<JobPreferences>>;
-  searchProfile: SearchProfile;
-  setSearchProfile: React.Dispatch<React.SetStateAction<SearchProfile>>;
+  jobHuntingProfile: JobHuntingProfile;
+  setJobHuntingProfile: React.Dispatch<React.SetStateAction<JobHuntingProfile>>;
+  jobHuntingProfiles: JobHuntingProfile[];
+  setJobHuntingProfiles: React.Dispatch<React.SetStateAction<JobHuntingProfile[]>>;
   runtimeSettings: RuntimeSettings;
   setRuntimeSettings: React.Dispatch<React.SetStateAction<RuntimeSettings>>;
   questions: QuestionCacheEntry[];
@@ -155,11 +189,14 @@ interface ConsoleContextType {
   error: string;
   setError: (err: string) => void;
   isPending: boolean;
+  hasLoadedInitialData: boolean;
   loadData: () => void;
   saveProfile: () => Promise<void>;
-  savePreferences: () => Promise<void>;
-  saveSearch: () => Promise<void>;
-  saveRuntime: () => Promise<void>;
+  saveJobHuntingProfile: (value?: JobHuntingProfile) => Promise<void>;
+  createJobHuntingProfile: (value: JobHuntingProfile) => Promise<JobHuntingProfile>;
+  activateJobHuntingProfile: (profileId: string) => Promise<void>;
+  deleteJobHuntingProfile: (profileId: string) => Promise<void>;
+  saveRuntime: (value?: RuntimeSettings) => Promise<void>;
   saveQuestion: (entry: QuestionCacheEntry, answer: string) => Promise<void>;
   deleteQuestion: (entryId: string) => Promise<void>;
   saveApplicationPatch: (
@@ -208,10 +245,9 @@ const ConsoleContext = createContext<ConsoleContextType | null>(null);
 export function ConsoleProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile>(emptyProfile);
-  const [preferences, setPreferences] =
-    useState<JobPreferences>(emptyPreferences);
-  const [searchProfile, setSearchProfile] =
-    useState<SearchProfile>(emptySearch);
+  const [jobHuntingProfile, setJobHuntingProfile] =
+    useState<JobHuntingProfile>(emptyJobHuntingProfile);
+  const [jobHuntingProfiles, setJobHuntingProfiles] = useState<JobHuntingProfile[]>([]);
   const [runtimeSettings, setRuntimeSettings] =
     useState<RuntimeSettings>(emptyRuntime);
   const [questions, setQuestions] = useState<QuestionCacheEntry[]>([]);
@@ -224,6 +260,7 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
   const [toast, setToast] = useState('');
   const [error, setError] = useState('');
   const [isPending, startTransition] = useTransition();
+  const [hasLoadedInitialData, setHasLoadedInitialData] = useState(false);
   const [desktopRuntime, setDesktopRuntime] =
     useState<DesktopRuntimeInfo | null>(null);
   const [desktopServiceStatus, setDesktopServiceStatus] =
@@ -286,10 +323,14 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
     startTransition(async () => {
       try {
         setError('');
+        const jobHuntingProfilesPromise = api.jobHuntingProfiles().catch((err) => {
+          console.warn('Falling back to single search profile endpoint', err);
+          return [] as JobHuntingProfile[];
+        });
         const [
           me,
           currentProfile,
-          jobPrefs,
+          jobHuntingProfilesRows,
           defaultSearch,
           questionRows,
           applicationRows,
@@ -298,26 +339,38 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
           Promise.all([
             api.me(),
             api.profile(),
-            api.jobPreferences(),
-            api.searchProfile(),
+            jobHuntingProfilesPromise,
+            api.jobHuntingProfile(),
             api.questionCache(),
             api.applications(),
             api.runtimeSettings(),
           ]),
         );
+        const resolvedJobHuntingProfiles =
+          jobHuntingProfilesRows.length > 0 ?
+            jobHuntingProfilesRows.map((item) => mergeProfileApplicationInputs(item))
+          : defaultSearch ? [mergeProfileApplicationInputs(defaultSearch)]
+          : [];
+        const resolvedDefaultSearch =
+          resolvedJobHuntingProfiles.find((profile) => profile.is_default) ??
+          mergeProfileApplicationInputs(defaultSearch) ??
+          resolvedJobHuntingProfiles[0] ??
+          emptyJobHuntingProfile;
         setUser(me);
         setProfile(currentProfile ?? emptyProfile);
-        setPreferences(jobPrefs ?? emptyPreferences);
-        setSearchProfile(defaultSearch ?? emptySearch);
+        setJobHuntingProfiles(resolvedJobHuntingProfiles);
+        setJobHuntingProfile(resolvedDefaultSearch);
         setRuntimeSettings(runtimeConfig ?? emptyRuntime);
         setQuestions(questionRows);
-        setApplications(applicationRows);
+        setApplications(sortApplications(applicationRows));
       } catch (loadError) {
         setError(
           loadError instanceof Error ?
             loadError.message
           : 'Failed to load data',
         );
+      } finally {
+        setHasLoadedInitialData(true);
       }
     });
   };
@@ -344,7 +397,7 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
           console.log('[SSE] Application created:', newApp);
           setApplications((current) => {
             if (current.some((app) => app.id === newApp.id)) return current;
-            return [newApp, ...current];
+            return sortApplications([newApp, ...current]);
           });
         } catch (e) {
           console.error('[SSE] Failed to parse application_created data', e);
@@ -356,7 +409,11 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
           const updatedApp = JSON.parse(event.data) as JobApplication;
           console.log('[SSE] Application updated:', updatedApp);
           setApplications((current) =>
-            current.map((app) => (app.id === updatedApp.id ? updatedApp : app)),
+            sortApplications(
+              current.map((app) =>
+                app.id === updatedApp.id ? updatedApp : app,
+              ),
+            ),
           );
         } catch (e) {
           console.error('[SSE] Failed to parse application_updated data', e);
@@ -529,23 +586,119 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
   };
 
   const saveProfile = async () => {
-    setProfile(await api.updateProfile(profile));
-    notify('Profile saved');
+    try {
+      setError('');
+      setProfile(await api.updateProfile(profile));
+      notify('Profile saved');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save profile');
+    }
   };
 
-  const savePreferences = async () => {
-    setPreferences(await api.updateJobPreferences(preferences));
-    notify('Preferences saved');
+  const saveJobHuntingProfile = async (value?: JobHuntingProfile) => {
+    try {
+      setError('');
+      const payload = value ?? jobHuntingProfile;
+      const saved =
+        payload.id ?
+          await api.updateJobHuntingProfileById(payload.id, payload)
+        : await api.createJobHuntingProfile(payload);
+      const normalizedSaved = mergeProfileApplicationInputs(saved);
+      setJobHuntingProfile(normalizedSaved);
+      setJobHuntingProfiles((current) => {
+        const exists = current.some((item) => item.id === normalizedSaved.id);
+        const next =
+          exists ?
+            current.map((item) =>
+              item.id === normalizedSaved.id ? normalizedSaved : item,
+            )
+          : [normalizedSaved, ...current];
+        return next.sort((left, right) => Number(Boolean(right.is_default)) - Number(Boolean(left.is_default)));
+      });
+      notify('Search config saved');
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : 'Failed to save search config',
+      );
+    }
   };
 
-  const saveSearch = async () => {
-    setSearchProfile(await api.updateSearchProfile(searchProfile));
-    notify('Search config saved');
+  const createJobHuntingProfile = async (value: JobHuntingProfile) => {
+    try {
+      setError('');
+      const created = mergeProfileApplicationInputs(
+        await api.createJobHuntingProfile(value),
+      );
+      setJobHuntingProfiles((current) => [created, ...current.filter((item) => item.id !== created.id)]);
+      setJobHuntingProfile(created);
+      notify('Search profile created');
+      return created;
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : 'Failed to create search profile',
+      );
+      throw err;
+    }
   };
 
-  const saveRuntime = async () => {
-    setRuntimeSettings(await api.updateRuntimeSettings(runtimeSettings));
-    notify('Runtime settings saved');
+  const activateJobHuntingProfile = async (profileId: string) => {
+    try {
+      setError('');
+      const activated = mergeProfileApplicationInputs(
+        await api.activateJobHuntingProfile(profileId),
+      );
+      setJobHuntingProfiles((current) =>
+        current
+          .map((item) => ({
+            ...item,
+            is_default: item.id === activated.id,
+          }))
+          .sort(
+            (left, right) =>
+              Number(Boolean(right.is_default)) - Number(Boolean(left.is_default)),
+          ),
+      );
+      setJobHuntingProfile(activated);
+      notify('Active search profile updated');
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : 'Failed to activate search profile',
+      );
+    }
+  };
+
+  const deleteJobHuntingProfile = async (profileId: string) => {
+    try {
+      setError('');
+      await api.deleteJobHuntingProfile(profileId);
+      setJobHuntingProfiles((current) => {
+        const next = current.filter((item) => item.id !== profileId);
+        const nextDefault = next.find((item) => item.is_default) ?? next[0];
+        if (nextDefault) {
+          setJobHuntingProfile(nextDefault);
+        }
+        return next;
+      });
+      notify('Search profile deleted');
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : 'Failed to delete search profile',
+      );
+    }
+  };
+
+  const saveRuntime = async (value?: RuntimeSettings) => {
+    try {
+      setError('');
+      setRuntimeSettings(
+        await api.updateRuntimeSettings(value ?? runtimeSettings),
+      );
+      notify('Runtime settings saved');
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : 'Failed to save runtime settings',
+      );
+    }
   };
 
   const saveQuestion = async (entry: QuestionCacheEntry, answer: string) => {
@@ -568,7 +721,9 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
   ) => {
     const updated = await api.updateApplication(applicationId, payload);
     setApplications((current) =>
-      current.map((item) => (item.id === updated.id ? updated : item)),
+      sortApplications(
+        current.map((item) => (item.id === updated.id ? updated : item)),
+      ),
     );
     notify('Application updated');
   };
@@ -579,7 +734,9 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
       setSyncingApplicationId(applicationId);
       const updated = await api.asyncApplicationFromLink(applicationId);
       setApplications((current) =>
-        current.map((item) => (item.id === updated.id ? updated : item)),
+        sortApplications(
+          current.map((item) => (item.id === updated.id ? updated : item)),
+        ),
       );
       notify(getLinkAsyncWarning(updated) || 'Application async completed');
     } catch (asyncError) {
@@ -683,7 +840,7 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
       item.status.toLowerCase().includes('skip'),
     ).length;
     const submitted = applications.filter((item) =>
-      item.status.toLowerCase().includes('submit'),
+      isStatusSubmitted(item.status),
     ).length;
     const interviewing = applications.filter(
       (item) => item.pipeline_stage === 'interviewing',
@@ -762,7 +919,7 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
       const match = days.find((day) => day.rawDateStr === appDateStr);
       if (match) {
         const statusLower = app.status.toLowerCase();
-        if (statusLower.includes('submit')) {
+        if (isStatusSubmitted(app.status)) {
           match.Submitted += 1;
         } else if (statusLower.includes('skip')) {
           match.Skipped += 1;
@@ -780,10 +937,11 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
     applications.forEach((app) => {
       let status = 'Other';
       const s = app.status.toLowerCase();
-      if (s.includes('submit')) status = 'Submitted';
+      if (isStatusSubmitted(app.status)) status = 'Submitted';
       else if (s.includes('skip')) status = 'Skipped';
       else if (s.includes('cancel')) status = 'Cancelled';
-      else if (s.includes('pending')) status = 'Pending';
+      else if (s.includes('pending') || s.includes('process'))
+        status = 'Pending';
       statusCounts[status] = (statusCounts[status] || 0) + 1;
     });
 
@@ -911,66 +1069,69 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
     };
   }, [applications, trendRange]);
 
+  const contextValue: ConsoleContextType = {
+    user,
+    profile,
+    setProfile,
+    jobHuntingProfile,
+    setJobHuntingProfile,
+    jobHuntingProfiles,
+    setJobHuntingProfiles,
+    runtimeSettings,
+    setRuntimeSettings,
+    questions,
+    setQuestions,
+    applications,
+    setApplications,
+    mainBotState,
+    mainBotName,
+    statusFilter,
+    setStatusFilter,
+    searchText,
+    setSearchText,
+    processingApplicationsCount,
+    syncingApplicationId,
+    batchSyncing,
+    expandedApplicationId,
+    setExpandedApplicationId,
+    toast,
+    notify,
+    error,
+    setError,
+    isPending,
+    hasLoadedInitialData,
+    loadData,
+    saveProfile,
+    saveJobHuntingProfile,
+    createJobHuntingProfile,
+    activateJobHuntingProfile,
+    deleteJobHuntingProfile,
+    saveRuntime,
+    saveQuestion,
+    deleteQuestion,
+    saveApplicationPatch,
+    asyncApplication,
+    batchAsyncApplications,
+    deleteApplication,
+    startWorker,
+    stopWorker,
+    stats,
+    dashboardData,
+    trendRange,
+    setTrendRange,
+    desktopRuntime,
+    desktopServiceStatus,
+    isDesktopApp: isDesktopRuntime(),
+    desktopConnectionConfig,
+    saveDesktopConnectionConfig,
+    resetDesktopConnectionConfig,
+    botStates,
+    startBot,
+    stopBot,
+  };
+
   return (
-    <ConsoleContext.Provider
-      value={{
-        user,
-        profile,
-        setProfile,
-        preferences,
-        setPreferences,
-        searchProfile,
-        setSearchProfile,
-        runtimeSettings,
-        setRuntimeSettings,
-        questions,
-        setQuestions,
-        applications,
-        setApplications,
-        mainBotState,
-        mainBotName,
-        statusFilter,
-        setStatusFilter,
-        searchText,
-        setSearchText,
-        processingApplicationsCount,
-        syncingApplicationId,
-        batchSyncing,
-        expandedApplicationId,
-        setExpandedApplicationId,
-        toast,
-        notify,
-        error,
-        setError,
-        isPending,
-        loadData,
-        saveProfile,
-        savePreferences,
-        saveSearch,
-        saveRuntime,
-        saveQuestion,
-        deleteQuestion,
-        saveApplicationPatch,
-        asyncApplication,
-        batchAsyncApplications,
-        deleteApplication,
-        startWorker,
-        stopWorker,
-        stats,
-        dashboardData,
-        trendRange,
-        setTrendRange,
-        desktopRuntime,
-        desktopServiceStatus,
-        isDesktopApp: isDesktopRuntime(),
-        desktopConnectionConfig,
-        saveDesktopConnectionConfig,
-        resetDesktopConnectionConfig,
-        botStates,
-        startBot,
-        stopBot,
-      }}
-    >
+    <ConsoleContext.Provider value={contextValue}>
       {children}
     </ConsoleContext.Provider>
   );

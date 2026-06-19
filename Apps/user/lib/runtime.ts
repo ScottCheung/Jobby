@@ -56,8 +56,8 @@ export async function resolveApiBaseUrl(): Promise<string> {
     }
   }
 
-  cachedApiBaseUrl =
-    process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8000';
+  // In the web app we proxy API traffic through Next so browser requests stay same-origin.
+  cachedApiBaseUrl = '';
   return cachedApiBaseUrl;
 }
 

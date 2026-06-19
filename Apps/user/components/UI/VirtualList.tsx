@@ -10,6 +10,7 @@ type VirtualListProps<T> = {
   className?: string;
   overscanCount?: number;
   onEndReached?: () => void;
+  onScroll?: (event: React.UIEvent<HTMLDivElement>) => void;
   scrollThreshold?: number;
 };
 
@@ -34,12 +35,17 @@ export function VirtualList<T>({
   className,
   overscanCount = 6,
   onEndReached,
+  onScroll,
   scrollThreshold = 500,
 }: VirtualListProps<T>) {
   const listRef = React.useRef<any>(null);
 
   const handleScroll = React.useCallback(
     (event: React.UIEvent<HTMLDivElement>) => {
+      if (onScroll) {
+        onScroll(event);
+      }
+
       if (!onEndReached) return;
       const { scrollTop, scrollHeight, clientHeight } = event.currentTarget;
       const distance = scrollHeight - scrollTop - clientHeight;
@@ -47,7 +53,7 @@ export function VirtualList<T>({
         onEndReached();
       }
     },
-    [onEndReached, scrollThreshold],
+    [onScroll, onEndReached, scrollThreshold],
   );
 
   // If the items height is less than or equal to the viewport height (no scrollbar),

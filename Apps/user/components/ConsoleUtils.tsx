@@ -10,12 +10,55 @@ import type { JobApplication } from '@/lib/types';
 export function formatDate(iso: string | null | undefined) {
   if (!iso) return '—';
   const d = new Date(iso);
-  return d.toLocaleDateString(undefined, {
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleString(undefined, {
     month: 'short',
     day: 'numeric',
+    year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
   });
+}
+
+export function formatRelativeDate(iso: string | null | undefined): string {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  const now = new Date();
+  const diffMs = now.getTime() - d.getTime();
+  const absDiffMs = Math.abs(diffMs);
+  const diffSec = Math.floor(absDiffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHr = Math.floor(diffMin / 60);
+  const diffDays = Math.floor(diffHr / 24);
+
+  if (diffDays >= 14) {
+    return formatDate(iso);
+  }
+
+  if (diffMs < 0) {
+    if (diffDays >= 1) {
+      return `in ${diffDays} ${diffDays === 1 ? 'day' : 'days'}`;
+    }
+    if (diffHr >= 1) {
+      return `in ${diffHr} ${diffHr === 1 ? 'hour' : 'hours'}`;
+    }
+    if (diffMin >= 1) {
+      return `in ${diffMin} ${diffMin === 1 ? 'min' : 'mins'}`;
+    }
+    return 'in moments';
+  }
+
+  if (diffDays >= 1) {
+    return `${diffDays} ${diffDays === 1 ? 'day' : 'days'} ago`;
+  }
+  if (diffHr >= 1) {
+    return `${diffHr} ${diffHr === 1 ? 'hour' : 'hours'} ago`;
+  }
+  if (diffMin >= 1) {
+    return `${diffMin} ${diffMin === 1 ? 'min' : 'mins'} ago`;
+  }
+  return 'just now';
 }
 
 export function IconButton({

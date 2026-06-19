@@ -8,6 +8,7 @@ from sqlalchemy.dialects.postgresql import JSONB, UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from services.shared.database import Base
+from services.shared.time_utils import parse_datetime_to_utc, utc_isoformat
 
 
 class UserRole(StrEnum):
@@ -23,15 +24,6 @@ class UserStatus(StrEnum):
 class Platform(StrEnum):
     linkedin = "linkedin"
     seek = "seek"
-
-
-class AutomationRunStatus(StrEnum):
-    pending = "pending"
-    running = "running"
-    cancel_requested = "cancel_requested"
-    success = "success"
-    failed = "failed"
-    cancelled = "cancelled"
 
 
 class TimestampMixin:
@@ -56,9 +48,6 @@ class User(Base, TimestampMixin):
 
     profile: Mapped["UserProfile"] = relationship(back_populates="user", cascade="all, delete-orphan")
     platform_accounts: Mapped[list["PlatformAccount"]] = relationship(back_populates="user")
-    job_preferences: Mapped["JobPreference"] = relationship(back_populates="user", cascade="all, delete-orphan")
-
-
 class UserProfile(Base, TimestampMixin):
     __tablename__ = "user_profiles"
 
@@ -97,34 +86,8 @@ class PlatformAccount(Base, TimestampMixin):
 
     user: Mapped[User] = relationship(back_populates="platform_accounts")
 
-
-class JobPreference(Base, TimestampMixin):
-    __tablename__ = "job_preferences"
-
-    id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid4)
-    user_id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), unique=True)
-    years_of_experience: Mapped[str | None] = mapped_column(String(50))
-    require_visa: Mapped[str | None] = mapped_column(String(50))
-    website: Mapped[str | None] = mapped_column(String(500))
-    linkedin_url: Mapped[str | None] = mapped_column(String(500))
-    resume_path: Mapped[str | None] = mapped_column(Text)
-    us_citizenship: Mapped[str | None] = mapped_column(String(255))
-    desired_salary: Mapped[float | None] = mapped_column(Numeric(12, 2))
-    current_ctc: Mapped[float | None] = mapped_column(Numeric(12, 2))
-    notice_period: Mapped[int | None] = mapped_column(Integer)
-    linkedin_headline: Mapped[str | None] = mapped_column(String(500))
-    linkedin_summary: Mapped[str | None] = mapped_column(Text)
-    cover_letter: Mapped[str | None] = mapped_column(Text)
-    user_information_all: Mapped[str | None] = mapped_column(Text)
-    recent_employer: Mapped[str | None] = mapped_column(String(255))
-    confidence_level: Mapped[str | None] = mapped_column(String(50))
-    extra_data: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
-
-    user: Mapped[User] = relationship(back_populates="job_preferences")
-
-
-class SearchProfile(Base, TimestampMixin):
-    __tablename__ = "search_profiles"
+class JobHuntingProfile(Base, TimestampMixin):
+    __tablename__ = "job_hunting_profiles"
 
     id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid4)
     user_id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True)
@@ -136,6 +99,22 @@ class SearchProfile(Base, TimestampMixin):
     filters: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     blacklist_rules: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     whitelist_rules: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    years_of_experience: Mapped[str | None] = mapped_column(String(50))
+    require_visa: Mapped[str | None] = mapped_column(String(50))
+    website: Mapped[str | None] = mapped_column(String(500))
+    linkedin_url: Mapped[str | None] = mapped_column(String(500))
+    resume_path: Mapped[str | None] = mapped_column(Text)
+    citizenship: Mapped[str | None] = mapped_column(String(255))
+    desired_salary: Mapped[float | None] = mapped_column(Numeric(12, 2))
+    current_ctc: Mapped[float | None] = mapped_column(Numeric(12, 2))
+    notice_period: Mapped[int | None] = mapped_column(Integer)
+    linkedin_headline: Mapped[str | None] = mapped_column(String(500))
+    linkedin_summary: Mapped[str | None] = mapped_column(Text)
+    cover_letter: Mapped[str | None] = mapped_column(Text)
+    user_information_all: Mapped[str | None] = mapped_column(Text)
+    recent_employer: Mapped[str | None] = mapped_column(String(255))
+    confidence_level: Mapped[str | None] = mapped_column(String(50))
+    extra_data: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     is_default: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
 
@@ -192,49 +171,157 @@ class JobApplication(Base, TimestampMixin):
 
     id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid4)
     user_id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True)
-    platform_account_id: Mapped[PyUUID | None] = mapped_column(PgUUID(as_uuid=True), ForeignKey("platform_accounts.id"))
     platform: Mapped[str] = mapped_column(String(50), nullable=False, default=Platform.linkedin.value)
     job_id: Mapped[str | None] = mapped_column(String(255), index=True)
     title: Mapped[str | None] = mapped_column(Text)
     company: Mapped[str | None] = mapped_column(String(255), index=True)
     work_location: Mapped[str | None] = mapped_column(String(255))
-    work_style: Mapped[str | None] = mapped_column(String(100))
-    job_description: Mapped[str | None] = mapped_column(Text)
     job_link: Mapped[str | None] = mapped_column(Text)
-    external_job_link: Mapped[str | None] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String(50), nullable=False, default="submitted", index=True)
-    pipeline_stage: Mapped[str] = mapped_column(String(50), nullable=False, default="applied", index=True)
-    interview_stage: Mapped[str | None] = mapped_column(String(100))
-    next_action: Mapped[str | None] = mapped_column(String(255))
-    next_action_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
-    notes: Mapped[str | None] = mapped_column(Text)
-    contact_name: Mapped[str | None] = mapped_column(String(255))
-    contact_email: Mapped[str | None] = mapped_column(String(255))
-    last_contacted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
-    application_type: Mapped[str | None] = mapped_column(String(100))
-    resume_path: Mapped[str | None] = mapped_column(Text)
     date_posted: Mapped[str | None] = mapped_column(String(100))
     date_applied: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
-    questions: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    status_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
     skip_reason: Mapped[str | None] = mapped_column(Text)
-    screenshot_path: Mapped[str | None] = mapped_column(Text)
     raw_data: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
 
+    @property
+    def questions(self) -> list:
+        return (self.raw_data or {}).get("questions") or []
 
-class AutomationRun(Base, TimestampMixin):
-    __tablename__ = "automation_runs"
+    @questions.setter
+    def questions(self, value: list) -> None:
+        self.raw_data = {**(self.raw_data or {}), "questions": value}
 
-    id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid4)
-    user_id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True)
-    platform_account_id: Mapped[PyUUID | None] = mapped_column(PgUUID(as_uuid=True), ForeignKey("platform_accounts.id"))
-    search_profile_id: Mapped[PyUUID | None] = mapped_column(PgUUID(as_uuid=True), ForeignKey("search_profiles.id"))
-    status: Mapped[str] = mapped_column(String(50), nullable=False, default=AutomationRunStatus.pending.value, index=True)
-    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    current_message: Mapped[str | None] = mapped_column(Text)
-    summary: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
-    error_message: Mapped[str | None] = mapped_column(Text)
+    @property
+    def screenshot_path(self) -> str | None:
+        return (self.raw_data or {}).get("screenshot_path")
+
+    @screenshot_path.setter
+    def screenshot_path(self, value: str | None) -> None:
+        self.raw_data = {**(self.raw_data or {}), "screenshot_path": value}
+
+    # Properties mapping dropped columns transparently to raw_data JSONB
+    @property
+    def platform_account_id(self) -> PyUUID | None:
+        val = (self.raw_data or {}).get("platform_account_id")
+        if val is None:
+            return None
+        return PyUUID(val) if isinstance(val, str) else val
+
+    @platform_account_id.setter
+    def platform_account_id(self, value: PyUUID | None) -> None:
+        self.raw_data = {**(self.raw_data or {}), "platform_account_id": str(value) if value else None}
+
+    @property
+    def work_style(self) -> str | None:
+        return (self.raw_data or {}).get("work_style")
+
+    @work_style.setter
+    def work_style(self, value: str | None) -> None:
+        self.raw_data = {**(self.raw_data or {}), "work_style": value}
+
+    @property
+    def external_job_link(self) -> str | None:
+        return (self.raw_data or {}).get("external_job_link")
+
+    @external_job_link.setter
+    def external_job_link(self, value: str | None) -> None:
+        self.raw_data = {**(self.raw_data or {}), "external_job_link": value}
+
+    @property
+    def pipeline_stage(self) -> str:
+        return (self.raw_data or {}).get("pipeline_stage") or "applied"
+
+    @pipeline_stage.setter
+    def pipeline_stage(self, value: str) -> None:
+        self.raw_data = {**(self.raw_data or {}), "pipeline_stage": value}
+
+    @property
+    def interview_stage(self) -> str | None:
+        return (self.raw_data or {}).get("interview_stage")
+
+    @interview_stage.setter
+    def interview_stage(self, value: str | None) -> None:
+        self.raw_data = {**(self.raw_data or {}), "interview_stage": value}
+
+    @property
+    def next_action(self) -> str | None:
+        return (self.raw_data or {}).get("next_action")
+
+    @next_action.setter
+    def next_action(self, value: str | None) -> None:
+        self.raw_data = {**(self.raw_data or {}), "next_action": value}
+
+    @property
+    def next_action_at(self) -> datetime | None:
+        val = (self.raw_data or {}).get("next_action_at")
+        if val is None:
+            return None
+        return parse_datetime_to_utc(val) if isinstance(val, str) else val
+
+    @next_action_at.setter
+    def next_action_at(self, value: datetime | None) -> None:
+        self.raw_data = {**(self.raw_data or {}), "next_action_at": utc_isoformat(value) if value else None}
+
+    @property
+    def notes(self) -> str | None:
+        return (self.raw_data or {}).get("notes")
+
+    @notes.setter
+    def notes(self, value: str | None) -> None:
+        self.raw_data = {**(self.raw_data or {}), "notes": value}
+
+    @property
+    def job_description(self) -> str | None:
+        return (self.raw_data or {}).get("job_description")
+
+    @job_description.setter
+    def job_description(self, value: str | None) -> None:
+        self.raw_data = {**(self.raw_data or {}), "job_description": value}
+
+    @property
+    def contact_name(self) -> str | None:
+        return (self.raw_data or {}).get("contact_name")
+
+    @contact_name.setter
+    def contact_name(self, value: str | None) -> None:
+        self.raw_data = {**(self.raw_data or {}), "contact_name": value}
+
+    @property
+    def contact_email(self) -> str | None:
+        return (self.raw_data or {}).get("contact_email")
+
+    @contact_email.setter
+    def contact_email(self, value: str | None) -> None:
+        self.raw_data = {**(self.raw_data or {}), "contact_email": value}
+
+    @property
+    def last_contacted_at(self) -> datetime | None:
+        val = (self.raw_data or {}).get("last_contacted_at")
+        if val is None:
+            return None
+        return parse_datetime_to_utc(val) if isinstance(val, str) else val
+
+    @last_contacted_at.setter
+    def last_contacted_at(self, value: datetime | None) -> None:
+        self.raw_data = {**(self.raw_data or {}), "last_contacted_at": utc_isoformat(value) if value else None}
+
+    @property
+    def application_type(self) -> str | None:
+        return (self.raw_data or {}).get("application_type")
+
+    @application_type.setter
+    def application_type(self, value: str | None) -> None:
+        self.raw_data = {**(self.raw_data or {}), "application_type": value}
+
+    @property
+    def resume_path(self) -> str | None:
+        return (self.raw_data or {}).get("resume_path")
+
+    @resume_path.setter
+    def resume_path(self, value: str | None) -> None:
+        self.raw_data = {**(self.raw_data or {}), "resume_path": value}
 
 
 class Skill(Base, TimestampMixin):

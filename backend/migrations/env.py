@@ -5,13 +5,11 @@ from sqlalchemy import engine_from_config, pool
 
 from services.shared.database import Base
 from services.shared.models import (
-    AutomationRun,
     JobApplication,
-    JobPreference,
+    JobHuntingProfile,
     PlatformAccount,
     QuestionCacheEntry,
     RuntimeSettings,
-    SearchProfile,
     User,
     UserProfile,
 )

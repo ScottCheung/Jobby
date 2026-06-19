@@ -7,7 +7,12 @@ import Link from 'next/link';
 import { useConsole } from '@/components/ConsoleContext';
 import { H2 } from '@/components/UI/text/typography';
 import { Chart, ChartWrapper } from '@/components/UI/Chart';
-import type { DesktopBotPlatform } from '@/lib/types';
+import {
+  getDisplayApplicationStatus,
+  getStatusBadgeClasses,
+  shouldShowApplicationSkipReason,
+  type DesktopBotPlatform,
+} from '@/lib/types';
 import {
   ChartNoAxesGantt,
   CalendarSearch,
@@ -526,6 +531,9 @@ export default function OverviewPage() {
                 dashboardData.recentActivities.length > 0
               ) ?
                 dashboardData.recentActivities.map((item) => (
+                  (() => {
+                    const displayStatus = getDisplayApplicationStatus(item);
+                    return (
                   <tr
                     key={item.id}
                     className='text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50/50 dark:hover:bg-zinc-900/10 transition-colors'
@@ -547,17 +555,13 @@ export default function OverviewPage() {
                     <td className='py-3 px-4'>
                       <span
                         className={cn(
-                          'inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider',
-                          item.status === 'submitted' ?
-                            'bg-green-500/5 text-green-600 dark:bg-green-900/20 dark:text-green-400'
-                          : item.status === 'skipped' ?
-                            'bg-amber-500/5 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400'
-                          : 'bg-zinc-500/5 text-zinc-600 dark:bg-zinc-800/20 dark:text-zinc-400',
+                          'inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider border',
+                          getStatusBadgeClasses(displayStatus),
                         )}
                       >
-                        {item.status}
+                        {displayStatus}
                       </span>
-                      {item.skip_reason && (
+                      {shouldShowApplicationSkipReason(item) && item.skip_reason && (
                         <p
                           className='text-[9px] text-zinc-400 dark:text-zinc-500 italic max-w-[150px] truncate'
                           title={item.skip_reason}
@@ -572,6 +576,8 @@ export default function OverviewPage() {
                       )}
                     </td>
                   </tr>
+                    );
+                  })()
                 ))
               : <tr>
                   <td

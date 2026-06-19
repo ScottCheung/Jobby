@@ -10,7 +10,7 @@ import { GeminiBackground } from '@/components/UI/GeminiBackground';
 export const metadata: Metadata = {
   title: 'Auto Job Apply - User Console',
   description:
-    'Manage user profile, job preferences, question cache, and application history.',
+    'Manage user profile, job hunting profiles, agent settings, question cache, and application history.',
 };
 
 export default function RootLayout({
