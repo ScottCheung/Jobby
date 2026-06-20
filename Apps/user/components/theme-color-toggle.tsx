@@ -32,10 +32,10 @@ export function ThemeColorToggle() {
     >
       <button
         onClick={toggleColor}
-        className='inline-flex items-center justify-center rounded-md p-2 text-sm font-medium transition-all duration-200 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 text-primary cursor-pointer'
+        className='inline-flex items-center cursor-pointer group justify-center text-ink-secondary hover:text-ink-primary rounded-md p-2 text-sm font-medium transition-colors hover:bg-primary/10 '
         aria-label='Toggle theme color'
       >
-        <Palette className='h-[1.2rem] w-[1.2rem] transition-transform duration-300 hover:rotate-45' />
+        <Palette className='h-[1.2rem] w-[1.2rem] transition-transform duration-300 group-hover:rotate-45' />
         <span className='sr-only'>Toggle theme color</span>
       </button>
     </Tooltip>

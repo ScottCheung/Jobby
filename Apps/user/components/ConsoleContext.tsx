@@ -27,7 +27,7 @@ import type {
   UserProfile,
 } from '@/lib/types';
 import { getApplicationDisplayDate, isStatusSubmitted } from '@/lib/types';
-import { isDesktopRuntime, resolveApiBaseUrl } from '@/lib/runtime';
+import { isDesktopRuntime, resolveApiBaseUrl, resolveSseBaseUrl } from '@/lib/runtime';
 
 import {
   Briefcase,
@@ -384,7 +384,7 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
     let active = true;
 
     async function initSSE() {
-      const apiBaseUrl = await resolveApiBaseUrl();
+      const apiBaseUrl = await resolveSseBaseUrl();
       if (!active) return;
 
       const sseUrl = `${apiBaseUrl.replace(/\/$/, '')}/api/sse`;
@@ -408,13 +408,17 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
         try {
           const updatedApp = JSON.parse(event.data) as JobApplication;
           console.log('[SSE] Application updated:', updatedApp);
-          setApplications((current) =>
-            sortApplications(
+          setApplications((current) => {
+            const exists = current.some((app) => app.id === updatedApp.id);
+            if (!exists) {
+              return sortApplications([updatedApp, ...current]);
+            }
+            return sortApplications(
               current.map((app) =>
                 app.id === updatedApp.id ? updatedApp : app,
               ),
-            ),
-          );
+            );
+          });
         } catch (e) {
           console.error('[SSE] Failed to parse application_updated data', e);
         }

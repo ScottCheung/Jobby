@@ -19,8 +19,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang='en' suppressHydrationWarning className='bg-background'>
-      <body suppressHydrationWarning>
+    <html lang='en' suppressHydrationWarning className='bg-background h-full'>
+      <body suppressHydrationWarning className='min-h-screen'>
         <ThemeProvider defaultTheme='system' defaultColor='green'>
           <GeminiBackground />
           <ConsoleProvider>

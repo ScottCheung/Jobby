@@ -1,6 +1,7 @@
 /** @format */
 
 @import 'tailwindcss';
+@config "../tailwind.config.js";
 @import '../styles/main.css';
 
 @variant dark (&:where(.dark, .dark *));
@@ -39,6 +40,14 @@
     background-color: var(--primary) !important;
     cursor: pointer;
   }
+}
+
+.app-drag {
+  -webkit-app-region: drag;
+}
+
+.app-no-drag {
+  -webkit-app-region: no-drag;
 }
 
 .hero {

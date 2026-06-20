@@ -33,7 +33,7 @@
     @apply bg-primary/5 backdrop-blur-[20px] dark:bg-primary/20;
   }
 
-  .bg-glass-secondary {
+  /* .bg-glass-secondary {
     @apply bg-background-secondary/80 backdrop-blur-[12px] dark:bg-background-secondary/60;
-  }
+  } */
 }

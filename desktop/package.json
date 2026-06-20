@@ -6,6 +6,7 @@
   "description": "Electron launcher for the Auto Job Apply desktop app",
   "scripts": {
     "start": "electron .",
+    "dev": "nodemon --watch main.js --watch service-manager.js --watch config.js --exec electron .",
     "start:containers": "electron .",
     "start:cloud": "electron .",
     "start:dev": "AUTO_JOB_DASHBOARD_MODE=local-next-dev electron .",
@@ -18,7 +19,8 @@
   },
   "devDependencies": {
     "electron": "^33.2.1",
-    "electron-builder": "^25.1.8"
+    "electron-builder": "^25.1.8",
+    "nodemon": "^3.1.14"
   },
   "build": {
     "appId": "com.autojobapply.desktop",

@@ -12,6 +12,7 @@ type VirtualListProps<T> = {
   onEndReached?: () => void;
   onScroll?: (event: React.UIEvent<HTMLDivElement>) => void;
   scrollThreshold?: number;
+  outerRef?: React.Ref<HTMLDivElement>;
 };
 
 type RowRendererProps<T> = {
@@ -37,6 +38,7 @@ export function VirtualList<T>({
   onEndReached,
   onScroll,
   scrollThreshold = 500,
+  outerRef,
 }: VirtualListProps<T>) {
   const listRef = React.useRef<any>(null);
 
@@ -65,6 +67,17 @@ export function VirtualList<T>({
       onEndReached();
     }
   }, [items.length, onEndReached]);
+
+  // Expose the internal scrollable container element via the outerRef prop
+  React.useEffect(() => {
+    if (outerRef && listRef.current) {
+      if (typeof outerRef === 'function') {
+        outerRef(listRef.current.element);
+      } else {
+        (outerRef as any).current = listRef.current.element;
+      }
+    }
+  }, [outerRef, listRef.current?.element]);
 
   const getRowHeight = React.useCallback(
     (index: number) =>

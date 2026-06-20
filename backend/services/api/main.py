@@ -89,7 +89,11 @@ async def store_sse_loop() -> None:
 
 
 def apply_updates(model: object, values: dict) -> None:
+    if "raw_data" in values and hasattr(model, "raw_data"):
+        setattr(model, "raw_data", values["raw_data"])
     for key, value in values.items():
+        if key == "raw_data":
+            continue
         setattr(model, key, value)
 
 

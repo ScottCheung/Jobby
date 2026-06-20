@@ -11,7 +11,7 @@ function getDesktopConfig(options = {}) {
     connectionConfig.dashboardUrl || process.env.AUTO_JOB_DASHBOARD_URL || '';
   const apiPort = process.env.AUTO_JOB_API_PORT || inferPort(apiUrl, '8000');
   const dashboardPort =
-    process.env.AUTO_JOB_DASHBOARD_PORT || inferPort(dashboardUrl, '3000');
+    process.env.AUTO_JOB_DASHBOARD_PORT || inferPort(dashboardUrl, '3001');
 
   return {
     rootDir,

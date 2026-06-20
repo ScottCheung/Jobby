@@ -14,7 +14,7 @@ export default function ProfilePage() {
   } = useConsole();
 
   return (
-    <div className='grid grid-cols-1 gap-6'>
+    <div className='custom-scrollbar-primary grid grid-cols-1 gap-6'>
       <ProfileForm
         value={profile}
         onChange={setProfile}

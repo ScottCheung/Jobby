@@ -2,177 +2,163 @@
 
 @layer base {
   :root {
-    /* Base Brand Colors as valid CSS colors */
-    --primary: rgb(15 98 71);
-    --primary-foreground: rgb(255 255 255);
+    /* 1. 核心底色 (Slate系：比纯灰更高级) */
+    --background-raw: 248 250 252; /* #f8fafc */
+    --foreground-raw: 15 23 42; /* #0f172a */
 
+    /* 2. 品牌主色 (使用 OKLCH 确保在不同亮度下色彩一致) */
+    --primary: oklch(0.45 0.15 160);
+    --primary-foreground: oklch(1 0 0);
     --secondary: rgb(0 0 0);
     --secondary-foreground: rgb(255 255 255);
 
-    --accent: rgb(30 41 59);
-    --accent-foreground: rgb(224 234 245);
+    /* 3. 中性系统 (用于Border/Input/Muted) */
+    --muted-raw: 226 232 240;
+    --muted-foreground-raw: 71 85 105;
+    --border-raw: 226 232 240;
+    --input-raw: 255 255 255;
+    --panel-raw: 255 255 255;
 
-    /* Semantic Colors */
-    --success: rgb(30, 103, 60);
-    --warning: rgb(245 120 0);
-    --error: rgb(200 40 40);
-    --info: rgb(30 120 220);
-
-    --ring-color: rgb(16 185 129);
-
-    /* Automatic Gradient Logic */
-    --primary-gradient-end: color-mix(in srgb, var(--primary), white 20%);
-    --primary-gradient: linear-gradient(
-      135deg,
-      var(--primary),
-      var(--primary-gradient-end)
-    );
+    /* 语义色：降低饱和度，提高易读性 */
+    --success: oklch(0.55 0.15 150);
+    --warning: oklch(0.65 0.18 50);
+    --error: oklch(0.6 0.2 25);
+    --info: oklch(0.6 0.15 250);
   }
 
   .dark {
-    --primary: rgb(52 211 153);
-    --primary-foreground: rgb(15 23 42);
-
-    --secondary: rgb(30 41 59);
-    --secondary-foreground: rgb(255 255 255);
-
-    --accent: rgb(30 41 59);
-    --accent-foreground: rgb(224 234 245);
-
-    /* Semantic Colors */
-    --success: rgb(34 180 110);
-    --warning: rgb(245 180 40);
-    --error: rgb(239 100 100);
-    --info: rgb(100 180 255);
-
-    --ring-color: rgb(52 211 153);
-
-    /* Dark mode gradient */
-    --primary-gradient-end: color-mix(in srgb, var(--primary), white 15%);
+    --background-raw: 15 23 42;
+    --foreground-raw: 248 250 252;
+    --primary: oklch(0.8 0.15 160);
+    --primary-foreground: oklch(0.2 0.05 160);
+    --border-raw: 30 41 59;
+    --panel-raw: 15 23 42;
   }
 
-  /* Color Themes */
+  /* 品牌配色矩阵：使用 oklch 调整饱和度，避免突兀 */
   [data-theme-color='blue'] {
-    --primary: rgb(15 76 129);
-    --primary-foreground: rgb(255 255 255);
-    --ring-color: rgb(15 76 129);
+    --primary: oklch(0.4 0.15 250);
+    --primary-foreground: oklch(100% 0.00011 271.152);
   }
-
   [data-theme-color='purple'] {
-    --primary: rgb(60 24 121);
-    --primary-foreground: rgb(255 255 255);
-    --ring-color: rgb(124 58 237);
+    --primary: oklch(0.45 0.2 300);
+    --primary-foreground: oklch(100% 0.00011 271.152);
   }
-
   [data-theme-color='green'] {
-    --primary: rgb(15 98 71);
-    --primary-foreground: rgb(255 255 255);
-    --ring-color: rgb(16 185 129);
+    --primary: oklch(0.45 0.15 160);
+    --primary-foreground: oklch(100% 0.00011 271.152);
   }
-
   [data-theme-color='orange'] {
-    --primary: rgb(129 61 13);
-    --primary-foreground: rgb(255 255 255);
-    --ring-color: rgb(255 106 0);
+    --primary: oklch(0.55 0.18 40);
+    --primary-foreground: oklch(100% 0.00011 271.152);
   }
-
   [data-theme-color='rose'] {
-    --primary: rgb(124 16 39);
-    --primary-foreground: rgb(255 255 255);
-    --ring-color: rgb(128 18 41);
-  }
-
-  .dark[data-theme-color='blue'] {
-    --primary: rgb(58 123 213);
-    --primary-foreground: rgb(255 255 255);
-    --ring-color: rgb(58 123 213);
-  }
-
-  .dark[data-theme-color='purple'] {
-    --primary: rgb(167 139 250);
-    --primary-foreground: rgb(255 255 255);
-    --ring-color: rgb(167 139 250);
-  }
-
-  .dark[data-theme-color='green'] {
-    --primary: rgb(52 211 153);
-    --primary-foreground: rgb(15 23 42);
-    --ring-color: rgb(52 211 153);
-  }
-
-  .dark[data-theme-color='orange'] {
-    --primary: rgb(251 146 60);
-    --primary-foreground: rgb(15 23 42);
-    --ring-color: rgb(251 146 60);
-  }
-
-  .dark[data-theme-color='rose'] {
-    --primary: rgb(251 113 133);
-    --primary-foreground: rgb(255 255 255);
-    --ring-color: rgb(251 113 133);
+    --primary: oklch(0.5 0.2 20);
+    --primary-foreground: oklch(100% 0.00011 271.152);
   }
 }
 
 @theme {
   --color-primary: var(--primary);
+
   --color-primary-foreground: var(--primary-foreground);
+
   --color-secondary: var(--secondary);
+
   --color-secondary-foreground: var(--secondary-foreground);
+
   --color-accent: var(--accent);
+
   --color-accent-foreground: var(--accent-foreground);
 
   --color-ink-primary: var(--ink-primary-raw);
+
   --color-ink-secondary: var(--ink-secondary-raw);
+
   --color-ink-muted: var(--ink-muted-raw);
+
   --color-ink-destructive: var(--ink-destructive-raw);
 
   --color-ink-error: var(--error);
+
   --color-ink-success: var(--success);
+
   --color-ink-warning: var(--warning);
 
   --color-success: var(--success);
+
   --color-warning: var(--warning);
+
   --color-error: var(--error);
+
   --color-info: var(--info);
 
   --color-destructive: var(--error);
+
   --color-destructive-foreground: var(--primary-foreground);
 
   --color-muted: var(--muted-raw);
+
   --color-muted-foreground: var(--muted-foreground-raw);
 
   --color-background: var(--background-raw);
+
   --color-background-secondary: var(--background-secondary-raw);
+
   --color-foreground: var(--foreground-raw);
 
   --color-panel: var(--panel-raw);
+
   --color-panel-secondary: var(--panel-secondary-raw);
+
   --color-panel-foreground: var(--panel-foreground-raw);
 
   --color-popover: var(--popover-raw);
+
   --color-popover-foreground: var(--popover-foreground-raw);
 
   --color-border: var(--border-raw);
+
   --color-input: var(--input-raw);
+
   --color-ring: var(--ring-color);
 
   --background-image-primary-gradient: var(--primary-gradient);
 
   /* BorderRadius */
+
   --radius-lg: var(--radius-lg-raw);
+
   --radius-md: var(--radius-md-raw);
+
   --radius-sm: var(--radius-sm-raw);
+
   --radius-xl: var(--radius-xl-raw);
+
   --radius-2xl: var(--radius-2xl-raw);
+
   --radius-3xl: var(--radius-3xl-raw);
 
   /* Spacing / Padding */
+
   --spacing-page: var(--padding-page);
+
   --spacing-panel: var(--padding-panel);
+
   --spacing-card: var(--padding-card);
+
   --spacing-sidebar: var(--padding-sidebar);
+
   --spacing-section: var(--padding-section);
+
   --spacing-input-x: var(--padding-input-x);
+
   --spacing-input-y: var(--padding-input-y);
+
   --spacing-table: var(--padding-table);
+  --background-image-primary-gradient: linear-gradient(
+    135deg,
+    var(--primary),
+    color-mix(in oklch, var(--primary), transparent 30%)
+  );
 }

@@ -9,6 +9,20 @@ const { ServiceManager } = require('./service-manager');
 const APP_NAME = 'Auto Job Apply';
 app.setName(APP_NAME);
 
+const WINDOW_CHROME_CSS = `
+  html, body {
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+
+  html::-webkit-scrollbar,
+  body::-webkit-scrollbar {
+    width: 0 !important;
+    height: 0 !important;
+    display: none !important;
+  }
+`;
+
 let mainWindow = null;
 let desktopConfig = null;
 let serviceManager = null;
@@ -17,12 +31,17 @@ let connectionConfig = null;
 let loadingFallback = false;
 
 function createWindow() {
+  const isMac = process.platform === 'darwin';
   mainWindow = new BrowserWindow({
     width: 2880,
     height: 1800,
     minWidth: (2880 * 1) / 3,
     minHeight: (1800 * 1) / 3,
     title: APP_NAME,
+    frame: !isMac,
+    titleBarStyle: isMac ? 'hiddenInset' : undefined,
+    trafficLightPosition: isMac ? { x: 16, y: 14 } : undefined,
+    autoHideMenuBar: true,
     backgroundColor: '#0e1116',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -43,6 +62,10 @@ function createWindow() {
       );
     },
   );
+
+  mainWindow.webContents.on('dom-ready', () => {
+    void mainWindow.webContents.insertCSS(WINDOW_CHROME_CSS);
+  });
 
   loadDashboardPage();
 

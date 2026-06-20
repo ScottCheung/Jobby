@@ -1,3 +1,5 @@
+/** @format */
+
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -9,7 +11,12 @@ import { withMinimumLoadingTime } from '@/lib/loading';
 import type { QuestionCacheEntry } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
-import { CollapsibleHeader, springTransition } from '@/components/UI/CollapsibleHeader';
+import { Stagger, ScrollLayout } from '@/components/animation';
+
+const springTransition = {
+  duration: 1,
+  ease: [0.22, 1, 0.36, 1] as const,
+};
 
 type QuestionListItem =
   | { type: 'row'; id: string; data: QuestionCacheEntry }
@@ -22,8 +29,11 @@ function matchesSearch(entry: QuestionCacheEntry, searchText: string) {
   const query = searchText.trim().toLowerCase();
   if (!query) return true;
 
-  return [entry.original_label, entry.answer]
-    .some((value) => String(value ?? '').toLowerCase().includes(query));
+  return [entry.original_label, entry.answer].some((value) =>
+    String(value ?? '')
+      .toLowerCase()
+      .includes(query),
+  );
 }
 
 export default function QuestionsPage() {
@@ -35,19 +45,14 @@ export default function QuestionsPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [searchText, setSearchText] = useState('');
 
-  const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
-  const lastScrollTop = React.useRef(0);
+  const [scrollContainer, setScrollContainer] = useState<HTMLDivElement | null>(
+    null,
+  );
+  const scrollContainerRef = React.useRef<HTMLDivElement | null>(null);
 
-  const handleListScroll = React.useCallback((event: React.UIEvent<HTMLDivElement>) => {
-    const scrollTop = event.currentTarget.scrollTop;
-    if (scrollTop <= 10) {
-      setIsHeaderCollapsed(false);
-    } else if (scrollTop > lastScrollTop.current && scrollTop > 50) {
-      setIsHeaderCollapsed(true);
-    } else if (scrollTop < lastScrollTop.current) {
-      setIsHeaderCollapsed(false);
-    }
-    lastScrollTop.current = scrollTop;
+  const setContainerRef = React.useCallback((el: HTMLDivElement | null) => {
+    scrollContainerRef.current = el;
+    setScrollContainer(el);
   }, []);
 
   const fetchMore = async (reset = false) => {
@@ -91,7 +96,10 @@ export default function QuestionsPage() {
   useEffect(() => {
     setItems((prevItems) => {
       const syncedItems = prevItems
-        .map((item) => questions.find((question) => question.id === item.id) ?? item)
+        .map(
+          (item) =>
+            questions.find((question) => question.id === item.id) ?? item,
+        )
         .filter((item) => questions.some((question) => question.id === item.id))
         .filter((item) => matchesSearch(item, searchText));
 
@@ -124,40 +132,37 @@ export default function QuestionsPage() {
 
   return (
     <div className='bg-panel rounded-2xl p-6 shadow-xs flex flex-col h-[calc(100vh-140px)] min-h-[500px] overflow-hidden'>
-      <CollapsibleHeader
-        title="Question Cache"
-        icon={<MessageSquareCode className={cn('transition-transform', isHeaderCollapsed ? 'w-4 h-4' : 'w-5 h-5')} />}
-        isCollapsed={isHeaderCollapsed}
-        actions={
-          <motion.div
-            layout
-            transition={springTransition}
-            className={cn(
-              'flex items-center gap-4 transition-all duration-350 ease-in-out',
-              isHeaderCollapsed
-                ? 'p-0 bg-transparent border-transparent mb-0 flex-1 justify-end max-w-md'
-                : 'bg-zinc-50 dark:bg-zinc-900/40 p-4 rounded-xl border border-zinc-100 dark:border-zinc-800/60 mb-2 w-full'
-            )}
-          >
-            <motion.div
-              layout
-              transition={springTransition}
-              className={cn(
-                'relative',
-                isHeaderCollapsed ? 'w-48' : 'flex-1 max-w-md'
-              )}
-            >
-              <Search className='absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400' />
-              <input
-                placeholder={isHeaderCollapsed ? 'Search...' : 'Search question text or answer...'}
-                value={searchText}
-                onChange={(event) => setSearchText(event.target.value)}
-                className='pl-9 pr-4 py-1.5 w-full text-sm rounded-xl border border-zinc-200 bg-panel dark:bg-zinc-955 dark:border-zinc-800 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-750 focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-750 text-zinc-900 dark:text-zinc-100'
-              />
-            </motion.div>
-          </motion.div>
-        }
-      />
+      <div className='pb-4 select-none shrink-0'>
+        <ScrollLayout
+          key={scrollContainer ? 'scrolling' : 'static'}
+          scrollContainerRef={scrollContainerRef}
+          progressRange={[0, 100]}
+          heightRange={[130, 65]}
+        >
+          <ScrollLayout.TopToLeft>
+            <div className='flex items-center gap-2 text-zinc-900 dark:text-zinc-50 font-bold shrink-0'>
+              {/* <MessageSquareCode className="w-5 h-5 text-emerald-500 shrink-0" /> */}
+              <h2 className='text-xl tracking-tight shrink-0'>
+                Question Cache
+              </h2>
+            </div>
+          </ScrollLayout.TopToLeft>
+
+          <ScrollLayout.BtmToRight>
+            <div className='flex items-center gap-4 w-full bg-zinc-50 dark:bg-zinc-900/40 px-4 py-2.5 rounded-xl border border-zinc-100 dark:border-zinc-800/60'>
+              <div className='relative flex-1 max-w-md'>
+                <Search className='absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400' />
+                <input
+                  placeholder='Search question text or answer...'
+                  value={searchText}
+                  onChange={(event) => setSearchText(event.target.value)}
+                  className='pl-9 pr-4 py-1.5 w-full text-sm rounded-xl border border-zinc-200 bg-panel dark:bg-zinc-955 dark:border-zinc-800 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-750 focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-750 text-zinc-900 dark:text-zinc-100'
+                />
+              </div>
+            </div>
+          </ScrollLayout.BtmToRight>
+        </ScrollLayout>
+      </div>
 
       {items.length === 0 && !isLoading ?
         <div className='p-8 text-center text-zinc-500 dark:text-zinc-400 flex-1 flex items-center justify-center'>
@@ -181,10 +186,10 @@ export default function QuestionsPage() {
           </motion.div>
 
           <VirtualList
+            outerRef={setContainerRef}
             className='custom-scrollbar-primary'
             items={listItems}
             rowHeight={ROW_HEIGHT}
-            onScroll={handleListScroll}
             onEndReached={() => {
               if (hasMore && !isLoading) {
                 void fetchMore();
@@ -229,10 +234,16 @@ export default function QuestionsPage() {
                   )}
                 >
                   <div className='pr-4 min-w-0'>
-                    <strong className='text-zinc-900 dark:text-zinc-100 block truncate' title={entry.original_label}>
+                    <strong
+                      className='text-zinc-900 dark:text-zinc-100 block truncate'
+                      title={entry.original_label}
+                    >
                       {entry.original_label}
                     </strong>
-                    <p className='text-xs text-zinc-400 dark:text-zinc-500 mt-0.5 truncate' title={entry.companies?.join(', ')}>
+                    <p
+                      className='text-xs text-zinc-400 dark:text-zinc-500 mt-0.5 truncate'
+                      title={entry.companies?.join(', ')}
+                    >
                       {entry.companies?.slice(0, 3).join(', ')}
                     </p>
                   </div>

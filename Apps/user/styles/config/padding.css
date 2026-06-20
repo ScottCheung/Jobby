@@ -1,9 +1,11 @@
-@layer utilities {
-    .p-card {
-        @apply p-page;
-    }
+/** @format */
 
-    .p-popover {
-        @apply p-page;
-    }
+@layer utilities {
+  .p-card {
+    @apply p-page;
+  }
+
+  .p-popover {
+    @apply p-page;
+  }
 }

@@ -40,7 +40,7 @@ export function GeminiBackground() {
   const palette = colorMap[themeColor] || colorMap.green;
 
   return (
-    <div className='fixed inset-0 -z-10 overflow-hidden pointer-events-none select-none'>
+    <div className='fixed inset-0 z-0 overflow-hidden pointer-events-none select-none '>
       {/* Styles for GPU-accelerated slow fluid movement */}
       <style>{`
         @keyframes gemini-orb-1 {
@@ -73,7 +73,7 @@ export function GeminiBackground() {
         className={`absolute bottom-[-10%] right-[10%] w-[40vw] h-[40vw] max-w-[550px] max-h-[550px] rounded-full blur-[100px] md:blur-[140px] transition-colors duration-1000 animate-gemini-2 ${palette.orb2}`}
       />
       <div
-        className={`absolute top-[30%] right-[15%] w-[35vw] h-[35vw] max-w-[480px] max-h-[480px] rounded-full blur-[100px] md:blur-[140px] transition-colors duration-1000 animate-gemini-3 ${palette.orb3}`}
+        className={`absolute top-[30%] right-[15%] w-[35vw] h-[35vw] max-w-[480px] max-h-[480px] rounded-full blur-[100px] md:blur-[140px] transition-colors duration-2000 animate-gemini-3 ${palette.orb3}`}
       />
     </div>
   );

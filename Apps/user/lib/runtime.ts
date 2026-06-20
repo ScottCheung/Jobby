@@ -37,6 +37,7 @@ declare global {
 }
 
 let cachedApiBaseUrl: string | null = null;
+let cachedSseBaseUrl: string | null = null;
 
 export async function resolveApiBaseUrl(): Promise<string> {
   if (cachedApiBaseUrl) {
@@ -59,6 +60,28 @@ export async function resolveApiBaseUrl(): Promise<string> {
   // In the web app we proxy API traffic through Next so browser requests stay same-origin.
   cachedApiBaseUrl = '';
   return cachedApiBaseUrl;
+}
+
+export async function resolveSseBaseUrl(): Promise<string> {
+  if (cachedSseBaseUrl) {
+    return cachedSseBaseUrl;
+  }
+
+  if (typeof window !== 'undefined' && window.autoJobDesktop?.getRuntimeInfo) {
+    try {
+      const runtimeInfo = await window.autoJobDesktop.getRuntimeInfo();
+      const desktopApiUrl = runtimeInfo?.api?.url;
+      if (desktopApiUrl) {
+        cachedSseBaseUrl = desktopApiUrl;
+        return desktopApiUrl;
+      }
+    } catch {
+      // Fall back to the public API URL or same-origin path if desktop runtime info is not ready.
+    }
+  }
+
+  cachedSseBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? '';
+  return cachedSseBaseUrl;
 }
 
 export function isDesktopRuntime(): boolean {

@@ -444,7 +444,7 @@ export default function OverviewPage() {
 
       {/* Row 2: Insights & Work Style Breakdown */}
       {/* Skip Reasons Card */}
-      <div className='col-span-12 md:col-span-4 bg-panel rounded-card p-card'>
+      <div className='col-span-12 md:col-span-12 lg:col-span-4 bg-panel rounded-card p-card'>
         <div>
           <H2>Top Skip Reasons</H2>
           <p className='text-xs text-zinc-400 dark:text-zinc-500 mb-4'>
@@ -465,7 +465,7 @@ export default function OverviewPage() {
       </div>
 
       {/* Top Companies Card */}
-      <div className='col-span-12 md:col-span-4 bg-panel rounded-card p-card'>
+      <div className='col-span-12 md:col-span-6 lg:col-span-4 bg-panel rounded-card p-card'>
         <div>
           <H2>Top Applied Companies</H2>
           <p className='text-xs text-zinc-400 dark:text-zinc-500 mb-4'>
@@ -485,7 +485,7 @@ export default function OverviewPage() {
       </div>
 
       {/* Top Cities Card */}
-      <div className='col-span-12 md:col-span-4 bg-panel rounded-card p-card'>
+      <div className='col-span-12 md:col-span-6 lg:col-span-4 bg-panel rounded-card p-card'>
         <div>
           <H2>Cities</H2>
           <p className='text-xs text-zinc-400 dark:text-zinc-500 mb-4'>
@@ -530,55 +530,58 @@ export default function OverviewPage() {
                 dashboardData.recentActivities &&
                 dashboardData.recentActivities.length > 0
               ) ?
-                dashboardData.recentActivities.map((item) => (
+                dashboardData.recentActivities.map((item) =>
                   (() => {
                     const displayStatus = getDisplayApplicationStatus(item);
                     return (
-                  <tr
-                    key={item.id}
-                    className='text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50/50 dark:hover:bg-zinc-900/10 transition-colors'
-                  >
-                    <td className='py-3 pr-4'>
-                      <div className='font-bold text-zinc-900 dark:text-zinc-100 truncate max-w-xs'>
-                        {item.title || 'Untitled Role'}
-                      </div>
-                      <span className='text-[10px] text-zinc-400 font-mono'>
-                        ID: {item.job_id}
-                      </span>
-                    </td>
-                    <td className='py-3 px-4 font-semibold text-zinc-800 dark:text-zinc-200 truncate max-w-[150px]'>
-                      {item.company || 'Unknown'}
-                    </td>
-                    <td className='py-3 px-4 text-xs text-zinc-500 dark:text-zinc-400 capitalize'>
-                      {item.work_location || 'Not specified'}
-                    </td>
-                    <td className='py-3 px-4'>
-                      <span
-                        className={cn(
-                          'inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider border',
-                          getStatusBadgeClasses(displayStatus),
-                        )}
+                      <tr
+                        key={item.id}
+                        className='text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50/50 dark:hover:bg-zinc-900/10 transition-colors'
                       >
-                        {displayStatus}
-                      </span>
-                      {shouldShowApplicationSkipReason(item) && item.skip_reason && (
-                        <p
-                          className='text-[9px] text-zinc-400 dark:text-zinc-500 italic max-w-[150px] truncate'
-                          title={item.skip_reason}
-                        >
-                          {item.skip_reason}
-                        </p>
-                      )}
-                    </td>
-                    <td className='py-3 pl-4 text-right text-xs text-zinc-500 dark:text-zinc-500 whitespace-nowrap'>
-                      {formatDate(
-                        item.date_applied ?? item.updated_at ?? item.created_at,
-                      )}
-                    </td>
-                  </tr>
+                        <td className='py-3 pr-4'>
+                          <div className='font-bold text-zinc-900 dark:text-zinc-100 truncate max-w-xs'>
+                            {item.title || 'Untitled Role'}
+                          </div>
+                          <span className='text-[10px] text-zinc-400 font-mono'>
+                            ID: {item.job_id}
+                          </span>
+                        </td>
+                        <td className='py-3 px-4 font-semibold text-zinc-800 dark:text-zinc-200 truncate max-w-[150px]'>
+                          {item.company || 'Unknown'}
+                        </td>
+                        <td className='py-3 px-4 text-xs text-zinc-500 dark:text-zinc-400 capitalize'>
+                          {item.work_location || 'Not specified'}
+                        </td>
+                        <td className='py-3 px-4'>
+                          <span
+                            className={cn(
+                              'inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider border',
+                              getStatusBadgeClasses(displayStatus),
+                            )}
+                          >
+                            {displayStatus}
+                          </span>
+                          {shouldShowApplicationSkipReason(item) &&
+                            item.skip_reason && (
+                              <p
+                                className='text-[9px] text-zinc-400 dark:text-zinc-500 italic max-w-[150px] truncate'
+                                title={item.skip_reason}
+                              >
+                                {item.skip_reason}
+                              </p>
+                            )}
+                        </td>
+                        <td className='py-3 pl-4 text-right text-xs text-zinc-500 dark:text-zinc-500 whitespace-nowrap'>
+                          {formatDate(
+                            item.date_applied ??
+                              item.updated_at ??
+                              item.created_at,
+                          )}
+                        </td>
+                      </tr>
                     );
-                  })()
-                ))
+                  })(),
+                )
               : <tr>
                   <td
                     colSpan={5}

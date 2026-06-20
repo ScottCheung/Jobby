@@ -558,7 +558,7 @@ export default function SearchPage() {
           </div>
         </div>
 
-        <div className='flex-1 overflow-y-auto px-6 py-6'>
+        <div className='custom-scrollbar-primary flex-1 overflow-y-auto px-6 py-6'>
           {isEditingProfile ?
             <div className='space-y-6'>
               {activeSection === 'overview' && (

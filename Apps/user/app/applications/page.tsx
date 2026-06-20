@@ -18,11 +18,12 @@ import {
 import { ApplicationRow } from './_components/ApplicationRow';
 import { ApplicationSkeleton } from './_components/ApplicationSkeleton';
 import { motion } from 'framer-motion';
-import { Stagger } from '@/components/animation';
-import {
-  CollapsibleHeader,
-  springTransition,
-} from '@/components/UI/CollapsibleHeader';
+import { Stagger, ScrollLayout } from '@/components/animation';
+
+const springTransition = {
+  duration: 1,
+  ease: [0.22, 1, 0.36, 1] as const,
+};
 
 type ApplicationListItem =
   | { type: 'row'; id: string; data: JobApplication }
@@ -98,28 +99,16 @@ export default function ApplicationsPage() {
   const [hasMore, setHasMore] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
 
-  const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
   const deferredSearchText = useDeferredValue(searchText);
-  const lastScrollTop = useRef(0);
-  const collapseFrameRef = useRef<number | null>(null);
+  const [scrollContainer, setScrollContainer] = useState<HTMLDivElement | null>(
+    null,
+  );
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
 
-  const handleListScroll = (event: React.UIEvent<HTMLDivElement>) => {
-    const scrollTop = event.currentTarget.scrollTop;
-    if (collapseFrameRef.current !== null) {
-      cancelAnimationFrame(collapseFrameRef.current);
-    }
-    collapseFrameRef.current = requestAnimationFrame(() => {
-      if (scrollTop <= 10) {
-        setIsHeaderCollapsed(false);
-      } else if (scrollTop > lastScrollTop.current && scrollTop > 50) {
-        setIsHeaderCollapsed(true);
-      } else if (scrollTop < lastScrollTop.current) {
-        setIsHeaderCollapsed(false);
-      }
-      lastScrollTop.current = scrollTop;
-      collapseFrameRef.current = null;
-    });
-  };
+  const setContainerRef = React.useCallback((el: HTMLDivElement | null) => {
+    scrollContainerRef.current = el;
+    setScrollContainer(el);
+  }, []);
 
   const fetchMore = async (reset = false) => {
     if (isLoading) return;
@@ -190,14 +179,6 @@ export default function ApplicationsPage() {
     });
   }, [applications, deferredSearchText, statusFilter]);
 
-  useEffect(() => {
-    return () => {
-      if (collapseFrameRef.current !== null) {
-        cancelAnimationFrame(collapseFrameRef.current);
-      }
-    };
-  }, []);
-
   const listItems = React.useMemo<ApplicationListItem[]>(() => {
     const nextItems: ApplicationListItem[] = [];
 
@@ -221,116 +202,88 @@ export default function ApplicationsPage() {
     }
 
     return nextItems;
-  }, [expandedApplicationId, hasMore, isLoading, items]);
+  }, [hasMore, isLoading, items]);
 
   return (
-    <div className='flex flex-col h-[calc(100vh-64px)] min-h-[500px] overflow-hidden '>
-      <CollapsibleHeader
-        title='Application History'
-        icon={
-          <Briefcase
-            className={cn(
-              'transition-transform',
-              isHeaderCollapsed ? 'w-4 h-4' : 'w-5 h-5',
-            )}
-          />
-        }
-        isCollapsed={isHeaderCollapsed}
-        actions={
-          <>
-            <motion.div
-              layout
-              transition={springTransition}
-              className={cn(
-                'flex items-center gap-3',
-                isHeaderCollapsed ?
-                  'flex-1 justify-end max-w-xl'
-                : 'flex-1 flex-wrap',
-              )}
-            >
-              <motion.div
-                layout
-                transition={springTransition}
-                className={cn(
-                  'relative',
-                  isHeaderCollapsed ? 'w-44' : 'flex-1 min-w-[200px] max-w-md',
-                )}
-              >
+    <motion.div
+      layout
+      transition={springTransition}
+      className='flex flex-col h-[calc(100vh-64px)] min-h-[500px] overflow-hidden '
+    >
+      <div className='pb-4 select-none shrink-0'>
+        <ScrollLayout
+          key={scrollContainer ? 'scrolling' : 'static'}
+          scrollContainerRef={scrollContainerRef}
+          progressRange={[0, 100]}
+          heightRange={[110, 50]}
+        >
+          <ScrollLayout.TopToLeft>
+            <div className='flex items-center gap-2 text-zinc-900 dark:text-zinc-50 font-bold shrink-0'>
+              <h2 className='text-xl tracking-tight shrink-0'>
+                Application History
+              </h2>
+            </div>
+          </ScrollLayout.TopToLeft>
+
+          <ScrollLayout.BtmToRight>
+            <div className='flex items-center gap-3 w-full'>
+              <div className='relative flex-1'>
                 <Search className='absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400' />
                 <input
-                  placeholder={
-                    isHeaderCollapsed ? 'Search...' : (
-                      'Search title, company, job id...'
-                    )
-                  }
+                  placeholder='Search title, company, job id...'
                   value={searchText}
                   onChange={(event) => setSearchText(event.target.value)}
                   className='input bg-glass pl-9 pr-3 py-1.5 text-sm w-full'
                 />
-              </motion.div>
-              <motion.select
-                layout
-                transition={springTransition}
+              </div>
+              <select
                 value={statusFilter}
                 onChange={(event) => setStatusFilter(event.target.value)}
-                className={cn(
-                  'rounded-xl bg-panel focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-750 text-zinc-900 dark:text-zinc-100 cursor-pointer text-sm border border-transparent',
-                  isHeaderCollapsed ? 'px-2.5 py-1.5' : 'px-3 py-2',
-                )}
+                className='rounded-xl bg-panel focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-750 text-zinc-900 dark:text-zinc-100 cursor-pointer text-sm border border-transparent px-3 py-2'
               >
                 <option value=''>All statuses</option>
                 <option value='submitted'>Submitted</option>
                 <option value='interrupted'>Needs review</option>
                 <option value='skipped'>Skipped</option>
                 <option value='cancelled'>Cancelled</option>
-              </motion.select>
-            </motion.div>
-            <motion.button
-              layout
-              transition={springTransition}
-              className={cn(
-                'inline-flex items-center gap-2 rounded-xl text-zinc-900 font-semibold dark:border-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-900 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none cursor-pointer text-sm shrink-0 border border-transparent',
-                isHeaderCollapsed ? 'px-3 py-1.5' : 'px-4 py-2',
-              )}
-              onClick={() => void batchAsyncApplications()}
-              disabled={batchSyncing}
-            >
-              <RefreshCw
-                className={cn('w-4 h-4', batchSyncing && 'animate-spin')}
-              />
-              <span
-                className={cn(
-                  'transition-all duration-300',
-                  isHeaderCollapsed ? 'hidden sm:inline text-xs' : 'inline',
-                )}
-              >
-                {batchSyncing ? 'Syncing...' : 'Sync from links'}
-              </span>
-            </motion.button>
-          </>
-        }
-      />
+              </select>
+            </div>
+          </ScrollLayout.BtmToRight>
+        </ScrollLayout>
+      </div>
 
       {items.length === 0 && !isLoading ?
-        <div className='p-8 text-center text-zinc-500 dark:text-zinc-400 flex-1 flex items-center justify-center'>
+        <motion.div
+          layout
+          transition={springTransition}
+          className='p-8 text-center text-zinc-500 dark:text-zinc-400 flex-1 flex items-center justify-center'
+        >
           No applications match this view.
-        </div>
-      : <div className='flex-1 overflow-hidden relative bg-panel rounded-xl'>
+        </motion.div>
+      : <motion.div
+          layout
+          transition={springTransition}
+          className='flex-1 overflow-hidden relative bg-panel rounded-xl'
+        >
           <div className='w-full h-full overflow-x-auto custom-scrollbar-primary'>
             <div className='min-w-[950px] h-full flex flex-col'>
-              <div className='grid grid-cols-[minmax(0,3.5fr)_minmax(0,2fr)_minmax(0,2.5fr)_minmax(0,1.3fr)_minmax(0,1.2fr)] text-ink-secondary/50 font-bold uppercase tracking-wider px-4 py-3 shrink-0 border-b border-zinc-100/10'>
+              <motion.div
+                layout
+                transition={springTransition}
+                className='grid grid-cols-[minmax(0,3.5fr)_minmax(0,2fr)_minmax(0,2.5fr)_minmax(0,1.3fr)_minmax(0,1.2fr)] text-ink-secondary/50 font-bold uppercase tracking-wider px-4 py-3 shrink-0 border-b border-zinc-100/10'
+              >
                 <div className='pr-4'>Role & Info</div>
                 <div className='px-4'>Company</div>
                 <div className='px-4'>Status</div>
                 <div className='pl-4 text-right'>Actions</div>
-              </div>
+              </motion.div>
 
               <div className='flex-1 min-h-0 relative'>
                 <VirtualList
+                  outerRef={setContainerRef}
                   className='custom-scrollbar-primary'
                   items={listItems}
                   rowHeight={() => ROW_HEIGHT}
-                  onScroll={handleListScroll}
                   onEndReached={() => {
                     if (hasMore && !isLoading) {
                       void fetchMore();
@@ -359,8 +312,8 @@ export default function ApplicationsPage() {
               </div>
             </div>
           </div>
-        </div>
+        </motion.div>
       }
-    </div>
+    </motion.div>
   );
 }

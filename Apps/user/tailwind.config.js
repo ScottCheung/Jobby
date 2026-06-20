@@ -26,27 +26,27 @@ module.exports = {
           foreground: 'rgb(var(--color-accent-foreground) / <alpha-value>)',
         },
         ink: {
-          primary: 'var(--color-ink-primary)', // Assuming these might still be hex or handled separately, but let's keep consistent if they are migrated
-          secondary: 'var(--color-ink-secondary)',
-          muted: 'var(--color-ink-muted)',
-          error: 'rgb(var(--color-error) / <alpha-value>)',
-          success: 'rgb(var(--color-success) / <alpha-value>)',
-          warning: 'rgb(var(--color-warning) / <alpha-value>)',
-          destructive: 'var(--color-ink-destructive)',
+          primary: 'var(--ink-primary-raw)', // Assuming these might still be hex or handled separately, but let's keep consistent if they are migrated
+          secondary: 'var(--ink-secondary-raw)',
+          muted: 'var(--ink-muted-raw)',
+          error: 'rgb(var(--ink-error-raw) / <alpha-value>)',
+          success: 'rgb(var(--ink-success-raw) / <alpha-value>)',
+          warning: 'rgb(var(--ink-warning-raw) / <alpha-value>)',
+          destructive: 'var(--ink-destructive-raw)',
         },
         muted: {
-          DEFAULT: 'var(--color-muted)',
-          foreground: 'var(--color-muted-foreground)',
+          DEFAULT: 'var(--ink-muted-raw)',
+          foreground: 'var(--ink-muted-foreground)',
         },
         background: {
-          DEFAULT: 'var(--color-background)',
-          secondary: 'var(--color-background-secondary)',
+          DEFAULT: 'var(--background-raw)',
+          secondary: 'var(--background-secondary-raw)',
         },
-        foreground: 'var(--color-foreground)',
+        foreground: 'var(--ink-primary-raw)',
         panel: {
-          DEFAULT: 'var(--color-panel)',
-          secondary: 'var(--color-panel-secondary)',
-          foreground: 'var(--color-panel-foreground)',
+          DEFAULT: 'var(--panel-raw)',
+          secondary: 'var(--panel-secondary-raw)',
+          foreground: 'var(--panel-foreground-raw)',
         },
         popover: {
           DEFAULT: 'var(--color-popover)',

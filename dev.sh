@@ -25,9 +25,8 @@ cleanup() {
         echo "Stopping Next.js dev server (PID: $NEXT_DEV_PID)..."
         kill $NEXT_DEV_PID 2>/dev/null || true
     fi
-    # Stop backend Docker containers
-    echo "Stopping Docker containers..."
-    docker compose down postgres api
+    echo "Note: Backend Docker containers (Postgres, API) are kept running in the background for fast startup."
+    echo "To stop them manually, run: docker compose down"
 }
 # Set up trap to clean up on exit (normal exit or interruption)
 trap cleanup EXIT
@@ -68,9 +67,9 @@ if [ ! -d "node_modules" ]; then
 fi
 
 # Start Next.js dev server in the background
-# echo "Starting Next.js dev server in background..."
-# npm run dev &
-# NEXT_DEV_PID=$!
+echo "Starting Next.js dev server in background..."
+npm run dev &
+NEXT_DEV_PID=$!
 
 # Give the Next.js server 3 seconds to spin up
 sleep 3
@@ -84,4 +83,4 @@ fi
 
 # Run the Electron desktop client pointing to local dev servers
 echo "Starting Electron desktop client (Hot Reloading)..."
-AUTO_JOB_API_URL=http://127.0.0.1:8000 AUTO_JOB_DASHBOARD_URL=http://127.0.0.1:3000 npm run start
+AUTO_JOB_API_URL=http://127.0.0.1:8000 AUTO_JOB_DASHBOARD_URL=http://127.0.0.1:3000 npm run dev

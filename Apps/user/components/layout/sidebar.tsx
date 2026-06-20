@@ -85,15 +85,15 @@ export function Sidebar() {
       animate={{ width: isCollapsed ? 80 : 288 }}
       transition={springTransition}
       className={cn(
-        'sticky top-0 z-10 hidden h-screen flex-col justify-between bg-panel lg:flex overflow-hidden',
+        'app-drag sticky top-0 z-10 hidden h-screen flex-col justify-between bg-panel lg:flex overflow-hidden',
         isCollapsed ? 'p-4' : 'p-sidebar',
       )}
     >
-      <div className='flex flex-col gap-10'>
+      <div className='flex flex-col gap-10 pt-[48px]'>
         {/* Brand */}
         <div
           className={cn(
-            'flex items-center gap-4',
+            'app-no-drag flex items-center gap-4',
             isCollapsed ? 'justify-center px-0' : 'px-2',
           )}
         >
@@ -104,7 +104,7 @@ export function Sidebar() {
             <motion.div
               layout
               onClick={toggleSidebar}
-              className='flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-xl bg-primary-gradient text-white transition-transform hover:scale-105'
+              className='app-no-drag flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-xl bg-primary-gradient text-white transition-transform hover:scale-105'
             >
               <LayoutGrid className='size-6' />
             </motion.div>
@@ -129,7 +129,7 @@ export function Sidebar() {
 
         {/* Navigation */}
 
-        <nav className='flex flex-col gap-1'>
+        <nav className='app-no-drag flex flex-col gap-1'>
           <Stagger className='flex flex-col gap-1'>
             {' '}
             {navigation.map((item) => {
@@ -143,11 +143,13 @@ export function Sidebar() {
                     <Link
                       href={item.href}
                       className={cn(
-                        'group flex items-center gap-3 rounded-full transition-all',
-                        isCollapsed ? 'justify-center p-2.5' : 'px-4 py-3.5',
+                        'app-no-drag group flex items-center gap-3  transition-all',
+                        isCollapsed ?
+                          'justify-center p-2.5 rounded-full '
+                        : 'px-4 py-3.5 rounded-full',
                         isActive ?
-                          'text-primary bg-primary/5'
-                        : 'text-ink-secondary hover:bg-background',
+                          'text-primary-foreground  bg-primary-gradient'
+                        : 'text-ink-secondary hover:bg-background-secondary',
                       )}
                     >
                       <motion.div layout className='shrink-0'>
@@ -156,10 +158,10 @@ export function Sidebar() {
                       <AnimatePresence mode='popLayout'>
                         {!isCollapsed && (
                           <motion.p
-                            variants={textVariants}
-                            initial='hidden'
-                            animate='visible'
-                            exit='exit'
+                            // variants={textVariants}
+                            // initial='hidden'
+                            // animate='visible'
+                            // exit='exit'
                             className={cn(
                               'text-sm whitespace-nowrap overflow-hidden',
                               isActive ? 'font-bold' : 'font-medium',
@@ -183,34 +185,34 @@ export function Sidebar() {
         <AnimatePresence mode='popLayout'>
           {!isCollapsed ?
             <motion.div
-              key='expanded-footer'
-              variants={{
-                hidden: {
-                  opacity: 0,
-                  height: 0,
-                  marginBottom: 0,
-                  paddingTop: 0,
-                  borderTopWidth: 0,
-                },
-                visible: {
-                  opacity: 1,
-                  height: 'auto',
-                  marginBottom: 24,
-                  paddingTop: 24,
-                  borderTopWidth: 1,
-                },
-                exit: {
-                  opacity: 0,
-                  height: 0,
-                  marginBottom: 0,
-                  paddingTop: 0,
-                  borderTopWidth: 0,
-                },
-              }}
-              initial='hidden'
-              animate='visible'
-              exit='exit'
-              className='flex flex-col gap-4 border-primary/10 overflow-hidden'
+              // key='expanded-footer'
+              // variants={{
+              //   hidden: {
+              //     opacity: 0,
+              //     height: 0,
+              //     marginBottom: 0,
+              //     paddingTop: 0,
+              //     borderTopWidth: 0,
+              //   },
+              //   visible: {
+              //     opacity: 1,
+              //     height: 'auto',
+              //     marginBottom: 24,
+              //     paddingTop: 24,
+              //     borderTopWidth: 1,
+              //   },
+              //   exit: {
+              //     opacity: 0,
+              //     height: 0,
+              //     marginBottom: 0,
+              //     paddingTop: 0,
+              //     borderTopWidth: 0,
+              //   },
+              // }}
+              // initial='hidden'
+              // animate='visible'
+              // exit='exit'
+              className='app-no-drag flex flex-col gap-4 border-primary/10 overflow-hidden'
             >
               <div className='flex items-center justify-between'>
                 <p className='text-xs font-medium text-ink-secondary dark:text-gray-400'>
@@ -230,33 +232,33 @@ export function Sidebar() {
             </motion.div>
           : <motion.div
               key='collapsed-footer'
-              variants={{
-                hidden: {
-                  opacity: 0,
-                  height: 0,
-                  marginBottom: 0,
-                  paddingTop: 0,
-                  borderTopWidth: 0,
-                },
-                visible: {
-                  opacity: 1,
-                  height: 'auto',
-                  marginBottom: 24,
-                  paddingTop: 24,
-                  borderTopWidth: 1,
-                },
-                exit: {
-                  opacity: 0,
-                  height: 0,
-                  marginBottom: 0,
-                  paddingTop: 0,
-                  borderTopWidth: 0,
-                },
-              }}
-              initial='hidden'
-              animate='visible'
-              exit='exit'
-              className='flex flex-col items-center gap-2 border-primary/10 overflow-hidden'
+              // variants={{
+              //   hidden: {
+              //     opacity: 0,
+              //     height: 0,
+              //     marginBottom: 0,
+              //     paddingTop: 0,
+              //     borderTopWidth: 0,
+              //   },
+              //   visible: {
+              //     opacity: 1,
+              //     height: 'auto',
+              //     marginBottom: 24,
+              //     paddingTop: 24,
+              //     borderTopWidth: 1,
+              //   },
+              //   exit: {
+              //     opacity: 0,
+              //     height: 0,
+              //     marginBottom: 0,
+              //     paddingTop: 0,
+              //     borderTopWidth: 0,
+              //   },
+              // }}
+              // initial='hidden'
+              // animate='visible'
+              // exit='exit'
+              className='app-no-drag flex flex-col items-center gap-2 border-primary/10 overflow-hidden'
             >
               <ThemeToggle />
               <ThemeColorToggle />
@@ -266,7 +268,7 @@ export function Sidebar() {
 
         <div
           className={cn(
-            'flex items-center gap-3',
+            'app-no-drag flex items-center gap-3 mt-6',
             isCollapsed ? 'justify-center' : 'px-2',
           )}
         >
@@ -297,7 +299,7 @@ export function Sidebar() {
                 </p>
                 <button
                   onClick={logout}
-                  className='flex items-center gap-1.5 mt-0.5 text-[11px] text-ink-secondary hover:text-red-650 dark:text-gray-400 dark:hover:text-red-400 transition-colors whitespace-nowrap'
+                  className='app-no-drag flex items-center gap-1.5 mt-0.5 text-[11px] text-ink-secondary hover:text-red-650 dark:text-gray-400 dark:hover:text-red-400 transition-colors whitespace-nowrap'
                 >
                   <LogOut className='size-3' />
                   Log Out
