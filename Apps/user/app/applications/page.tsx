@@ -193,11 +193,6 @@ export default function ApplicationsPage() {
         { type: 'skeleton', id: 'application-skeleton-3' },
         { type: 'skeleton', id: 'application-skeleton-4' },
         { type: 'skeleton', id: 'application-skeleton-5' },
-        { type: 'skeleton', id: 'application-skeleton-6' },
-        { type: 'skeleton', id: 'application-skeleton-7' },
-        { type: 'skeleton', id: 'application-skeleton-8' },
-        { type: 'skeleton', id: 'application-skeleton-9' },
-        { type: 'skeleton', id: 'application-skeleton-10' },
       );
     }
 

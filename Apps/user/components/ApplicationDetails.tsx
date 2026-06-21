@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatRelativeDate, formatDate } from '@/components/ConsoleUtils';
+import { Button } from './UI/Button';
 
 const stageConfig: Record<
   string,
@@ -426,8 +427,8 @@ export function ApplicationDetails({
   };
 
   return (
-    <div className='flex flex-col h-full bg-background text-ink-primary'>
-      <div className='sticky top-0 z-20 bg-panel  border-b border-border'>
+    <div className='flex flex-col h-full  text-ink-primary'>
+      <div className='sticky top-0 z-20  border-b border-border'>
         <div className='flex items-start justify-between px-6 py-5'>
           <div className='min-w-0 pr-4'>
             <div className='flex items-center gap-2 flex-wrap'>
@@ -727,26 +728,19 @@ export function ApplicationDetails({
       </div>
 
       {/* Floating Save Actions Bar */}
-      <div className='px-6 py-4 border-t border-border bg-panel flex items-center justify-between shrink-0'>
+      <div className='px-6 py-4 flex items-center justify-between shrink-0'>
         <span className='text-xs text-ink-secondary font-semibold'>
           {draft.updated_at ?
             `Updated: ${formatRelativeDate(draft.updated_at)}`
           : ''}
         </span>
         <div className='flex items-center gap-3'>
-          <button
-            onClick={actions.closeDrawer}
-            className='px-4 py-2 text-xs font-bold text-ink-primary hover:bg-glass rounded-xl transition-all cursor-pointer border border-border'
-          >
+          <Button variant='ghost' onClick={actions.closeDrawer}>
             Cancel
-          </button>
-          <button
-            onClick={() => void save()}
-            disabled={saving}
-            className='px-5 py-2 text-xs font-bold text-white bg-gradient-to-r from-emerald-600 to-green-700 hover:opacity-90 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none rounded-xl transition-all shadow-sm shadow-emerald-500/10 cursor-pointer'
-          >
+          </Button>
+          <Button onClick={() => void save()} disabled={saving}>
             {saving ? 'Saving...' : 'Save Changes'}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

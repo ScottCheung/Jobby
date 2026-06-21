@@ -18,6 +18,7 @@ import {
 import { useConsole } from '@/components/ConsoleContext';
 import { useLayoutStore } from '@/lib/store/layout-store';
 import { ApplicationDetails } from '@/components/ApplicationDetails';
+import { motion } from 'framer-motion';
 
 interface ApplicationRowProps {
   entry: JobApplication;
@@ -38,7 +39,8 @@ export const ApplicationRow = React.memo(
     deleteApplication,
   }: ApplicationRowProps) {
     const { saveApplicationPatch } = useConsole();
-    const { actions } = useLayoutStore();
+    const { isDrawerOpen, drawerConfig, actions } = useLayoutStore();
+    const isActive = isDrawerOpen && drawerConfig.id === entry.id;
 
     const displayStatus = getDisplayApplicationStatus(entry);
     const isLiveProcessing =
@@ -47,8 +49,12 @@ export const ApplicationRow = React.memo(
     const openDrawerDetails = () => {
       actions.openDrawer({
         width: 640,
+        id: entry.id,
         content: (
-          <ApplicationDetails application={entry} onSave={saveApplicationPatch} />
+          <ApplicationDetails
+            application={entry}
+            onSave={saveApplicationPatch}
+          />
         ),
       });
     };
@@ -77,7 +83,7 @@ export const ApplicationRow = React.memo(
     );
 
     return (
-      <div
+      <motion.div
         style={style}
         onClick={(e) => {
           // Exclude interactive items from triggering the drawer click
@@ -91,8 +97,12 @@ export const ApplicationRow = React.memo(
           openDrawerDetails();
         }}
         className={cn(
-          'grid grid-cols-[minmax(0,3.5fr)_minmax(0,2fr)_minmax(0,2.5fr)_minmax(0,1.3fr)_minmax(0,1.2fr)] items-center px-4 text-sm text-ink-secondary transition-colors cursor-pointer hover:bg-glass border-b border-zinc-100/5',
-          isLiveProcessing && 'bg-amber-500/5 border-l-2 border-l-amber-500',
+          'grid grid-cols-[minmax(0,3.5fr)_minmax(0,2fr)_minmax(0,2.5fr)_minmax(0,1.3fr)_minmax(0,1.2fr)] items-center px-4 text-sm text-ink-secondary transition-all duration-300 ease-in-out cursor-pointer border-b border-zinc-100/5 border-l-2 border-l-transparent',
+          isActive ?
+            'bg-primary/5 border-l-primary border-l-4 hover:bg-primary/10 text-ink-primary'
+          : isLiveProcessing ?
+            'bg-amber-500/5 border-l-amber-500 border-l-4 hover:bg-amber-500/10'
+          : 'hover:bg-primary/20 border-l-0',
         )}
       >
         <div className='pr-4 min-w-0 flex flex-col gap-1 py-2'>
@@ -130,7 +140,9 @@ export const ApplicationRow = React.memo(
             )}
           >
             <span className='inline-flex items-center gap-1.5'>
-              {isLiveProcessing && <RefreshCw className='w-3 h-3 animate-spin' />}
+              {isLiveProcessing && (
+                <RefreshCw className='w-3 h-3 animate-spin' />
+              )}
               {displayStatus}
             </span>
           </span>
@@ -172,7 +184,9 @@ export const ApplicationRow = React.memo(
                   label='Async from link'
                   icon='async'
                   onClick={() => void asyncApplication(entry.id)}
-                  disabled={!entry.job_link || syncingApplicationId === entry.id}
+                  disabled={
+                    !entry.job_link || syncingApplicationId === entry.id
+                  }
                 />
                 <IconButton
                   label='Edit application details'
@@ -189,7 +203,7 @@ export const ApplicationRow = React.memo(
             )}
           </div>
         </div>
-      </div>
+      </motion.div>
     );
   },
   (prevProps, nextProps) => {
@@ -234,5 +248,5 @@ export const ApplicationRow = React.memo(
     }
 
     return true;
-  }
+  },
 );

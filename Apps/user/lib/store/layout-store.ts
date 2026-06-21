@@ -17,12 +17,13 @@ interface LayoutState {
   drawerConfig: {
     width: number | string;
     content: ReactNode;
+    id?: string;
   };
   actions: {
     toggleSidebar: () => void;
     addNotification: (notification: Omit<Notification, 'id'>) => void;
     removeNotification: (id: string) => void;
-    openDrawer: (config: { width?: number | string; content: ReactNode }) => void;
+    openDrawer: (config: { width?: number | string; content: ReactNode; id?: string }) => void;
     closeDrawer: () => void;
   };
 }
@@ -34,6 +35,7 @@ export const useLayoutStore = create<LayoutState>()((set) => ({
   drawerConfig: {
     width: 400,
     content: null,
+    id: undefined,
   },
   actions: {
     toggleSidebar: () =>
@@ -55,11 +57,16 @@ export const useLayoutStore = create<LayoutState>()((set) => ({
         drawerConfig: {
           width: config.width ?? 400,
           content: config.content,
+          id: config.id,
         },
       })),
     closeDrawer: () =>
-      set(() => ({
+      set((state) => ({
         isDrawerOpen: false,
+        drawerConfig: {
+          ...state.drawerConfig,
+          id: undefined,
+        },
       })),
   },
 }));

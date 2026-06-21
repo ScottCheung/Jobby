@@ -80,7 +80,19 @@ export async function resolveSseBaseUrl(): Promise<string> {
     }
   }
 
-  cachedSseBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? '';
+  const envUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+  if (envUrl) {
+    cachedSseBaseUrl = envUrl;
+  } else if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      cachedSseBaseUrl = `http://${hostname}:8000`;
+    } else {
+      cachedSseBaseUrl = '';
+    }
+  } else {
+    cachedSseBaseUrl = '';
+  }
   return cachedSseBaseUrl;
 }
 

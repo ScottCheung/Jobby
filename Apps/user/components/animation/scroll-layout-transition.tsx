@@ -36,8 +36,15 @@ const ScrollLayoutRoot: React.FC<ScrollLayoutProps> = ({
   scrollContainerRef,
   heightRange,
 }) => {
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  const hasContainer = isMounted && scrollContainerRef && scrollContainerRef.current;
   const { scrollY } = useScroll({
-    container: scrollContainerRef as React.RefObject<HTMLElement>,
+    container: hasContainer ? (scrollContainerRef as React.RefObject<HTMLElement>) : undefined,
   });
   const topToLeftRef = useRef<HTMLDivElement>(null);
 
