@@ -1,12 +1,16 @@
+import json
 import re
 import time
-from typing import Iterable
 from html import unescape
+from pathlib import Path
+from typing import Iterable
 from urllib.parse import urlparse
 
 from selenium.webdriver.common.by import By
 
 
+# Load skills cache if available, merge with hardcoded keywords
+_SKILLS_MAP = {}
 _TECH_KEYWORDS = [
     "python", "java", "javascript", "typescript", "c#", "c++", "golang", "go", "ruby", "php", "scala",
     "kotlin", "swift", "rust", "sql", "mysql", "postgresql", "postgres", "mongodb", "redis", "sqlite",
@@ -19,6 +23,23 @@ _TECH_KEYWORDS = [
     "airflow", "spark", "hadoop", "etl", "nlp", "llm", "openai", "deepseek", "langchain", "rag",
     "json", "xml", "technical support", "microsoft word", "low-code", "no-code", "automation", "ai",
 ]
+
+try:
+    _cache_file = Path(__file__).resolve().parents[2] / "data" / "skills" / "skills_cache.json"
+    if _cache_file.exists():
+        with open(_cache_file, "r", encoding="utf-8") as _f:
+            _cache_data = json.load(_f)
+            _index = _cache_data.get("index", {})
+            if _index:
+                _SKILLS_MAP = _index
+                # Merge keys into _TECH_KEYWORDS while keeping order and uniqueness
+                _seen = set(_TECH_KEYWORDS)
+                for _k in _index.keys():
+                    if _k not in _seen:
+                        _TECH_KEYWORDS.append(_k)
+                        _seen.add(_k)
+except Exception:
+    pass
 
 _SKILL_BLACKLIST = {
     "functions",
@@ -128,27 +149,15 @@ def _extract_salary(driver, description: str | None = None) -> str | None:
     return None
 
 
-def _extract_work_style(driver, description: str | None = None) -> str | None:
-    work_style = _first_text(
-        driver,
-        [
-            "[data-automation='job-detail-work-type']",
-            "[data-testid='job-work-type']",
-        ],
-    )
-    if work_style:
-        return work_style
-
-    haystack = (description or "").lower()
-    for label in ("remote", "hybrid", "on-site", "onsite"):
-        if label in haystack:
-            return "on-site" if label == "onsite" else label
-    return None
 
 
 def _normalize_skill(skill: str) -> str:
     value = clean_text(skill) or ""
     lowered = value.lower()
+    
+    if lowered in _SKILLS_MAP:
+        return _SKILLS_MAP[lowered]
+        
     alias_map = {
         "postgres": "postgresql",
         "go": "golang",
@@ -274,7 +283,6 @@ def extract_seek_job_details(driver, job_url: str, settle_seconds: float = 2.0) 
     if not work_location:
         work_location = _extract_location_from_description(job_description)
     salary = _extract_salary(driver, job_description)
-    work_style = _extract_work_style(driver, job_description)
     experience_years, experience_requirement_text = _extract_experience_requirement(job_description)
 
     current_url = clean_text(driver.current_url) or job_url
@@ -287,7 +295,6 @@ def extract_seek_job_details(driver, job_url: str, settle_seconds: float = 2.0) 
         "title": title or "Unknown",
         "company": company or "Unknown",
         "work_location": work_location or "Unknown",
-        "work_style": work_style,
         "job_link": canonical_url,
         "job_description": job_description,
         "salary": salary,
@@ -368,7 +375,6 @@ def extract_seek_job_details_from_html(html: str, job_url: str) -> dict:
         "title": title or "Unknown",
         "company": company or "Unknown",
         "work_location": work_location or "Unknown",
-        "work_style": None,
         "job_link": canonical_seek_job_url(job_id) if job_id else job_url,
         "job_description": description,
         "salary": salary,

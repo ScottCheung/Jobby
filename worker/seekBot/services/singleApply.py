@@ -10,6 +10,11 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
+# Setup path before importing shared_services
+WORKER_ROOT = Path(__file__).resolve().parents[2]
+if str(WORKER_ROOT) not in sys.path:
+    sys.path.insert(0, str(WORKER_ROOT))
+
 from shared_services.runtime import get_runtime_value
 REVIEW_KEYWORDS = [
     "review your application",
@@ -29,6 +34,9 @@ CONTINUE_PATTERNS = [
     "save and continue",
     "save & continue",
     "save and next",
+    "review",
+    "review application",
+    "review your application",
 ]
 FAST_WAIT = 0.4
 PAGE_SETTLE_WAIT = 0.8
@@ -332,27 +340,47 @@ def _fill_cover_letter(page, config: dict) -> None:
 
 
 def _click_continue(page) -> bool:
-    button_selector = "button, a[role='button']"
+    button_selector = "button, a[role='button'], input[type='submit'], input[type='button']"
     buttons = page.locator(button_selector)
+    found_buttons = []
     for i in range(buttons.count()):
         try:
             button = buttons.nth(i)
             if not button.is_visible():
                 continue
-            text = normalize(button.inner_text() or "")
+            
+            # Ignore sidebar/stepper navigation indicators (typically tabindex="-1")
+            tabindex = button.get_attribute("tabindex")
+            if tabindex == "-1":
+                continue
+
+            text = normalize(
+                button.inner_text() or 
+                button.get_attribute("value") or 
+                button.get_attribute("aria-label") or 
+                ""
+            )
+            if text:
+                found_buttons.append(text)
             if any(pattern == text or pattern in text for pattern in CONTINUE_PATTERNS):
-                button.click(timeout=1200)
-                return True
+                try:
+                    button.scroll_into_view_if_needed(timeout=1000)
+                    button.click(timeout=1500, force=True)
+                    return True
+                except Exception as click_err:
+                    print(f"[seek] Attempted to click continue button '{text}' but failed: {click_err}")
+                    continue
         except Exception:
             continue
+    print(f"[seek] Debug: No continue button was successfully clicked. Visible elements found: {found_buttons}")
     return False
 
 
-def apply_to_job(job_url: str, config: dict | None = None, job_context: dict | None = None) -> dict:
-    return run(job_url, config_overrides=config, job_context=job_context)
+def apply_to_job(job_url: str, config: dict | None = None, job_context: dict | None = None, steps: list[str] | None = None) -> dict:
+    return run(job_url, config_overrides=config, job_context=job_context, steps=steps)
 
 
-def run(job_url: str, config_overrides: dict | None = None, job_context: dict | None = None) -> dict:
+def run(job_url: str, config_overrides: dict | None = None, job_context: dict | None = None, keep_open: bool = False, steps: list[str] | None = None) -> dict:
     sync_api = _install_playwright()
     playwright = sync_api.sync_playwright().start()
     browser = None
@@ -374,9 +402,139 @@ def run(job_url: str, config_overrides: dict | None = None, job_context: dict | 
         page.wait_for_timeout(int(PAGE_SETTLE_WAIT * 1000))
         snapshot = capture_job_snapshot(page, job_url, snapshot)
         if page_text_contains(page, ["sign in", "log in", "login"]):
-            result = {"status": "needs_login", "message": "Seek sign-in is required before Quick Apply can continue.", "final_url": page.url}
-            record_application(snapshot, result)
-            return result
+            print("[seek] Seek sign-in is required before Quick Apply can continue. Waiting for manual login...")
+            logged_in = False
+            # Wait up to 5 minutes (300 seconds)
+            for _ in range(300):
+                if page.is_closed():
+                    break
+                
+                # Check login status (if sign-in/login text is gone, we are logged in)
+                if not page_text_contains(page, ["sign in", "log in", "login"]):
+                    logged_in = True
+                    break
+
+                # Check if user clicked the "I have logged in" button on the overlay
+                confirmed = False
+                try:
+                    confirmed = page.evaluate("() => window.seekBotLoggedInConfirmed === true")
+                except Exception:
+                    pass
+                if confirmed:
+                    logged_in = True
+                    break
+
+                # Inject/re-inject the prompt overlay if it is not present
+                try:
+                    page.evaluate("""() => {
+                        if (document.getElementById('seek-bot-login-prompt')) return;
+                        
+                        const banner = document.createElement('div');
+                        banner.id = 'seek-bot-login-prompt';
+                        Object.assign(banner.style, {
+                            position: 'fixed',
+                            top: '24px',
+                            left: '50%',
+                            transform: 'translateX(-50%)',
+                            zIndex: '2147483647',
+                            width: '450px',
+                            backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                            backdropFilter: 'blur(12px)',
+                            webkitBackdropFilter: 'blur(12px)',
+                            border: '1px solid rgba(15, 23, 42, 0.1)',
+                            borderRadius: '16px',
+                            boxShadow: '0 20px 40px rgba(15, 23, 42, 0.15)',
+                            padding: '16px 20px',
+                            fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '12px',
+                            pointerEvents: 'auto',
+                            transition: 'all 0.3s ease-in-out'
+                        });
+
+                        const header = document.createElement('div');
+                        Object.assign(header.style, { display: 'flex', alignItems: 'center', gap: '10px' });
+                        
+                        const orb = document.createElement('div');
+                        Object.assign(orb.style, {
+                            width: '12px',
+                            height: '12px',
+                            borderRadius: '50%',
+                            backgroundColor: '#e11d48',
+                            boxShadow: '0 0 0 0 rgba(225, 29, 72, 0.7)',
+                            animation: 'seekPulse 1.8s infinite'
+                        });
+
+                        if (!document.getElementById('seek-bot-style')) {
+                            const style = document.createElement('style');
+                            style.id = 'seek-bot-style';
+                            style.textContent = `
+                                @keyframes seekPulse {
+                                    0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(225, 29, 72, 0.7); }
+                                    70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(225, 29, 72, 0); }
+                                    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(225, 29, 72, 0); }
+                                }
+                            `;
+                            document.head.appendChild(style);
+                        }
+
+                        const title = document.createElement('div');
+                        title.textContent = 'Auto Apply: Login Required';
+                        Object.assign(title.style, { fontWeight: '800', fontSize: '15px', color: '#0f172a' });
+
+                        header.appendChild(orb);
+                        header.appendChild(title);
+
+                        const body = document.createElement('div');
+                        body.textContent = 'Please log into your SEEK account in this browser window. The automator will resume automatically once you sign in, or you can click the button below after logging in.';
+                        Object.assign(body.style, { fontSize: '13px', color: '#475569', lineHeight: '1.5', fontWeight: '500' });
+
+                        const button = document.createElement('button');
+                        button.id = 'seek-bot-confirm-login-btn';
+                        button.textContent = 'I have logged in';
+                        Object.assign(button.style, {
+                            background: 'linear-gradient(135deg, #0a66c2, #1e3a8a)',
+                            color: '#ffffff',
+                            border: 'none',
+                            borderRadius: '20px',
+                            padding: '8px 16px',
+                            fontSize: '12px',
+                            fontWeight: '800',
+                            cursor: 'pointer',
+                            alignSelf: 'flex-end',
+                            boxShadow: '0 4px 12px rgba(10, 102, 194, 0.2)',
+                            transition: 'all 0.2s ease'
+                        });
+                        button.onclick = function() {
+                            window.seekBotLoggedInConfirmed = true;
+                        };
+
+                        banner.appendChild(header);
+                        banner.appendChild(body);
+                        banner.appendChild(button);
+                        document.body.appendChild(banner);
+                    }""")
+                except Exception:
+                    pass
+
+                page.wait_for_timeout(1000)
+
+            # Cleanup banner when loop completes
+            try:
+                page.evaluate("() => { const b = document.getElementById('seek-bot-login-prompt'); if(b) b.remove(); }")
+            except Exception:
+                pass
+
+            if not logged_in:
+                result = {"status": "needs_login", "message": "Seek sign-in is required before Quick Apply can continue.", "final_url": page.url}
+                record_application(snapshot, result)
+                return result
+
+            # If logged in successfully, return to original job URL if we were redirected away
+            if not page.url.startswith(job_url):
+                page.goto(job_url, wait_until="domcontentloaded")
+                page.wait_for_timeout(int(PAGE_SETTLE_WAIT * 1000))
         apply_triggers = [
             "a[data-automation='job-detail-apply']",
             "button[data-automation='job-detail-apply']",
@@ -400,17 +558,52 @@ def run(job_url: str, config_overrides: dict | None = None, job_context: dict | 
             record_application(snapshot, result)
             return result
         page.wait_for_timeout(int(PAGE_SETTLE_WAIT * 1000))
+
+        if steps:
+            print(f"[seek] Running custom click steps: {steps}")
+            for step in steps:
+                step = step.strip()
+                if not step:
+                    continue
+                # Support data-testid, data-automation, or raw CSS selector
+                if "=" in step or "[" in step or "." in step or "#" in step:
+                    selector = step
+                else:
+                    selector = f"[data-testid='{step}'], [data-automation='{step}']"
+                
+                print(f"[seek] Custom step: clicking selector '{selector}'...")
+                try:
+                    locator = page.locator(selector).first
+                    locator.scroll_into_view_if_needed(timeout=2000)
+                    locator.click(timeout=3000, force=True)
+                    print(f"[seek] Clicked '{selector}' successfully.")
+                except Exception as e:
+                    print(f"[seek] Failed to click '{selector}': {e}")
+                page.wait_for_timeout(1000)
+            
+            # Post custom steps check
+            if is_review_page(page):
+                result = {"status": "review", "message": "Reached SEEK review page after custom steps.", "final_url": page.url}
+            else:
+                result = {"status": "stopped", "message": "Custom steps finished.", "final_url": page.url}
+            record_application(snapshot, result)
+            return result
+
         for _step in range(12):
+            print(f"[seek] Form step {_step + 1}: Filling text inputs, selects, radios, checkboxes, resume and cover letter...")
             _fill_text_inputs(page, config)
             _fill_selects(page, config)
             _fill_radios_and_checkboxes(page, config)
             _upload_resume(page, config)
             _fill_cover_letter(page, config)
             if is_review_page(page):
+                print("[seek] Review page detected.")
                 result = {"status": "review", "message": "Reached SEEK review page and stopped before submit.", "final_url": page.url}
                 record_application(snapshot, result)
                 return result
+            print("[seek] Clicking continue/next...")
             if not _click_continue(page):
+                print("[seek] Stopped: Could not click continue/next button.")
                 break
             page.wait_for_timeout(int(FAST_WAIT * 1000))
             page.wait_for_timeout(int(PAGE_SETTLE_WAIT * 1000))
@@ -418,6 +611,11 @@ def run(job_url: str, config_overrides: dict | None = None, job_context: dict | 
         record_application(snapshot, result)
         return result
     finally:
+        if keep_open:
+            try:
+                input("\n[seek] Automation finished/stopped. Press Enter to close the browser...")
+            except Exception:
+                pass
         try:
             if context:
                 context.close()
@@ -436,9 +634,17 @@ def run(job_url: str, config_overrides: dict | None = None, job_context: dict | 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run SEEK Quick Apply against a single job URL.")
-    parser.add_argument("--url", required=True, help="Full SEEK job URL")
+    parser.add_argument("url", nargs="?", help="Full SEEK job URL")
+    parser.add_argument("--url", dest="url_opt", help="Full SEEK job URL")
+    parser.add_argument("--steps", help="Comma-separated data-testid values or CSS selectors to click sequentially")
     args = parser.parse_args()
-    result = run(args.url)
+    
+    url = args.url or args.url_opt
+    if not url:
+        parser.error("The following arguments are required: url (or --url)")
+    
+    steps_list = [s.strip() for s in args.steps.split(",")] if args.steps else None
+    result = run(url, keep_open=True, steps=steps_list)
     print(result)
 
 

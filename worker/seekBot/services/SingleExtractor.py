@@ -11,11 +11,9 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.selenium_manager import SeleniumManager
 
-ROOT = next(
-    (parent for parent in Path(__file__).resolve().parents if (parent / "worker").is_dir()),
-    Path(__file__).resolve().parents[3],
-)
-sys.path.append(str(ROOT / "worker"))
+ROOT = Path(__file__).resolve().parents[2]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from seekBot.services.extractor import (
     extract_seek_job_details,
@@ -113,10 +111,15 @@ def main() -> None:
     import argparse
 
     parser = argparse.ArgumentParser(description="Extract structured job details from a SEEK job URL.")
-    parser.add_argument("--url", required=True, help="Full SEEK job URL")
+    parser.add_argument("url", nargs="?", help="Full SEEK job URL")
+    parser.add_argument("--url", dest="url_opt", help="Full SEEK job URL")
     parser.add_argument("--headless", action="store_true", help="Run without showing the browser window")
     args = parser.parse_args()
-    print(json.dumps(extract_job(args.url, headless=args.headless), ensure_ascii=False, indent=2))
+    
+    url = args.url or args.url_opt
+    if not url:
+        parser.error("The following arguments are required: url (or --url)")
+    print(json.dumps(extract_job(url, headless=args.headless), ensure_ascii=False, indent=2))
 
 
 if __name__ == "__main__":
