@@ -72,7 +72,7 @@ def get_job_description(
             current_experience = int(get_runtime_value("current_experience", -1) or -1)
             if current_experience > -1 and experience_required > current_experience + found_masters:
                 skip_message = f'\n{job_description}\n\nExperience required {experience_required} > Current Experience {current_experience + found_masters}. Skipping this job!\n'
-                skip_reason = "Required experience is high"
+                skip_reason = "Your experience doesn't match requirment."
                 skip = True
     except Exception:
         if job_description == "Unknown":
@@ -80,8 +80,8 @@ def get_job_description(
         else:
             experience_required = "Error in extraction"
             _log("Unable to extract years of experience required!")
-    finally:
-        return job_description, experience_required, skip, skip_reason, skip_message
+
+    return job_description, experience_required, skip, skip_reason, skip_message
 
 
 def upload_resume(modal, resume: str) -> tuple[bool, str]:

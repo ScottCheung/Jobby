@@ -183,6 +183,7 @@ class JobApplication(Base, TimestampMixin):
     date_applied: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
     status_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
     skip_reason: Mapped[str | None] = mapped_column(Text)
+    job_description: Mapped[str | None] = mapped_column(Text)
     raw_data: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
 
     @property
@@ -272,13 +273,7 @@ class JobApplication(Base, TimestampMixin):
     def notes(self, value: str | None) -> None:
         self.raw_data = {**(self.raw_data or {}), "notes": value}
 
-    @property
-    def job_description(self) -> str | None:
-        return (self.raw_data or {}).get("job_description")
 
-    @job_description.setter
-    def job_description(self, value: str | None) -> None:
-        self.raw_data = {**(self.raw_data or {}), "job_description": value}
 
     @property
     def contact_name(self) -> str | None:

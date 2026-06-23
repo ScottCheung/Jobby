@@ -5,6 +5,9 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 import { Loader2, LucideIcon } from 'lucide-react';
 
+/** 加载动画最短显示时长（ms），防止 API 太快导致按钮闪烁跳动 */
+const MIN_LOADING_MS = 200;
+
 const buttonVariants = cva(
   'inline-flex items-center gap-3 p-1 justify-center whitespace-nowrap rounded-full transition-all focus-visible:outline-none duration-400 focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50 active:scale-95 cursor-pointer',
   {
@@ -65,6 +68,25 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const resolvedVariant = variant || (Icon && !children ? 'icon' : undefined);
     const resolvedSize = size || (Icon && !children ? 'icon' : undefined);
 
+    const [latch, setLatch] = React.useState(false);
+    const timerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    React.useEffect(() => {
+      if (isLoading) {
+        if (timerRef.current) clearTimeout(timerRef.current);
+        setLatch(true);
+      } else {
+        timerRef.current = setTimeout(() => {
+          setLatch(false);
+        }, MIN_LOADING_MS);
+      }
+      return () => {
+        if (timerRef.current) clearTimeout(timerRef.current);
+      };
+    }, [isLoading]);
+
+    const displayLoading = isLoading || latch;
+
     return (
       <button
         className={cn(
@@ -73,14 +95,14 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
             size: resolvedSize,
             className,
           }),
-          isLoading && 'cursor-not-allowed opacity-50',
+          displayLoading && 'cursor-not-allowed opacity-50',
         )}
         ref={ref}
         {...props}
       >
-        {Icon && !isLoading && <Icon className={cn('size-4')} />}
-        {children}
-        {isLoading && <Loader2 className='size-4 animate-spin' />}
+        {Icon && !displayLoading && <Icon className={cn('size-4')} />}
+        <div className={displayLoading ? 'opacity-0' : ''}>{children}</div>
+        {displayLoading && <Loader2 className='size-6 animate-spin absolute' />}
       </button>
     );
   },

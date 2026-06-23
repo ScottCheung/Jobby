@@ -1,3 +1,5 @@
+/** @format */
+
 export type User = {
   id: string;
   email: string;
@@ -206,14 +208,18 @@ export type ApplicationTimelineEntry = {
 };
 
 function normalizeStatusToStage(status: string | null | undefined): string {
-  const value = String(status || '').trim().toLowerCase();
+  const value = String(status || '')
+    .trim()
+    .toLowerCase();
   if (!value) return 'applied';
   if (value === 'submitted') return 'applied';
   return value;
 }
 
 function normalizeDisplayStatus(status: string | null | undefined): string {
-  const value = String(status || '').trim().toLowerCase();
+  const value = String(status || '')
+    .trim()
+    .toLowerCase();
   if (!value) return 'applied';
   if (value === 'submitted') return 'applied';
   if (value === 'interrupted') return 'needs review';
@@ -230,8 +236,9 @@ export function getApplicationTimeline(
   application: JobApplication,
 ): ApplicationTimelineEntry[] {
   const rawTimeline = application.raw_data?.timeline;
-  const entries = Array.isArray(rawTimeline)
-    ? rawTimeline.filter(
+  const entries =
+    Array.isArray(rawTimeline) ?
+      rawTimeline.filter(
         (entry): entry is ApplicationTimelineEntry =>
           !!entry &&
           typeof entry === 'object' &&
@@ -240,7 +247,9 @@ export function getApplicationTimeline(
     : [];
 
   const fallback: ApplicationTimelineEntry[] = [];
-  const statusValue = String(application.status || '').trim().toLowerCase();
+  const statusValue = String(application.status || '')
+    .trim()
+    .toLowerCase();
   const currentStageFallback =
     statusValue === 'submitted' ? 'applied'
     : statusValue === 'interrupted' ? 'interrupted'
@@ -251,9 +260,13 @@ export function getApplicationTimeline(
 
   if (
     (currentStageFallback === 'applied' &&
-      (application.status_updated_at || application.date_applied || application.created_at)) ||
+      (application.status_updated_at ||
+        application.date_applied ||
+        application.created_at)) ||
     (currentStageFallback !== 'applied' &&
-      (application.status_updated_at || application.updated_at || application.created_at))
+      (application.status_updated_at ||
+        application.updated_at ||
+        application.created_at))
   ) {
     fallback.push({
       stage: currentStageFallback || 'applied',
@@ -297,9 +310,7 @@ export function getApplicationTimeline(
   });
 }
 
-function getLatestTimelineStage(
-  timeline: ApplicationTimelineEntry[],
-): string {
+function getLatestTimelineStage(timeline: ApplicationTimelineEntry[]): string {
   if (!timeline.length) return 'applied';
 
   const latestEntry = timeline[timeline.length - 1];
@@ -383,7 +394,9 @@ export function isProcessingApplication(application: JobApplication): boolean {
   return application.status === 'processing';
 }
 
-export function isStaleProcessingApplication(application: JobApplication): boolean {
+export function isStaleProcessingApplication(
+  application: JobApplication,
+): boolean {
   if (!isProcessingApplication(application)) return false;
 
   const updatedAt = application.updated_at ?? application.created_at;
@@ -395,7 +408,9 @@ export function isStaleProcessingApplication(application: JobApplication): boole
   return Date.now() - updatedAtMs > PROCESSING_TIMEOUT_MS;
 }
 
-export function getDisplayApplicationStatus(application: JobApplication): string {
+export function getDisplayApplicationStatus(
+  application: JobApplication,
+): string {
   if (isStaleProcessingApplication(application)) {
     return 'needs review';
   }
@@ -437,7 +452,14 @@ export function isStatusSubmitted(status: string): boolean {
   const s = status.toLowerCase();
   return (
     s.includes('submit') ||
-    ['applied', 'screening', 'interviewing', 'offer', 'rejected', 'withdrawn'].includes(s)
+    [
+      'applied',
+      'screening',
+      'interviewing',
+      'offer',
+      'rejected',
+      'withdrawn',
+    ].includes(s)
   );
 }
 
@@ -446,7 +468,7 @@ export function getStatusBadgeClasses(status: string): string {
   switch (s) {
     case 'submitted':
     case 'applied':
-      return 'bg-green-500/5 text-green-600 border-green-500/20';
+      return 'bg-green-500/20 text-green-600 border-green-500/20';
     case 'processing':
       return 'bg-sky-500/10 text-sky-600 border-sky-500/20';
     case 'needs review':

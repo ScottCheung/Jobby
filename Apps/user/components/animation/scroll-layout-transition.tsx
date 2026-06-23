@@ -8,6 +8,7 @@ import React, {
   useRef,
   useState,
   useEffect,
+  useCallback,
 } from 'react';
 import {
   motion,
@@ -42,9 +43,13 @@ const ScrollLayoutRoot: React.FC<ScrollLayoutProps> = ({
     setIsMounted(true);
   }, []);
 
-  const hasContainer = isMounted && scrollContainerRef && scrollContainerRef.current;
+  const hasContainer =
+    isMounted && scrollContainerRef && scrollContainerRef.current;
   const { scrollY } = useScroll({
-    container: hasContainer ? (scrollContainerRef as React.RefObject<HTMLElement>) : undefined,
+    container:
+      hasContainer ?
+        (scrollContainerRef as React.RefObject<HTMLElement>)
+      : undefined,
   });
   const topToLeftRef = useRef<HTMLDivElement>(null);
 
@@ -72,7 +77,7 @@ const TopToLeft: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { progress, topToLeftRef } = useContext(ScrollLayoutContext)!;
 
   const y = useTransform(progress, [0, 1], [30, 0]);
-  const scale = useTransform(progress, [0, 1], [1, 0.8]);
+  const scale = useTransform(progress, [0, 1], [1, 0.9]);
 
   return (
     <motion.div ref={topToLeftRef} className='shrink-0'>
@@ -86,7 +91,6 @@ const TopToLeft: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 const BtmToRight: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { progress, topToLeftRef, scrollContainerRef } =
     useContext(ScrollLayoutContext)!;
-  const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({
     startWidth: 0,
     endWidth: 0,
@@ -98,87 +102,68 @@ const BtmToRight: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const width = useMotionValue(dimensions.startWidth);
   const x = useMotionValue(dimensions.startX);
   const y = useMotionValue(dimensions.startY);
-  const opacity = useTransform(progress, [0, 0.3], [0.8, 1]);
+
+  const updateDimensions = useCallback(() => {
+    if (!topToLeftRef.current || !scrollContainerRef?.current) {
+      return;
+    }
+
+    const topToLeftRect = topToLeftRef.current.getBoundingClientRect();
+    const scrollContainerRect =
+      scrollContainerRef.current.getBoundingClientRect();
+
+    const startWidth = scrollContainerRect.width;
+    const endWidth = Math.max(0, startWidth - topToLeftRect.width - 16);
+    const startX = -(topToLeftRect.width + 16);
+    const startY = topToLeftRect.height + 40;
+
+    setDimensions((previous) => {
+      if (
+        previous.startWidth === startWidth &&
+        previous.endWidth === endWidth &&
+        previous.startX === startX &&
+        previous.startY === startY
+      ) {
+        return previous;
+      }
+
+      return {
+        startWidth,
+        endWidth,
+        startX,
+        startY,
+      };
+    });
+  }, [scrollContainerRef, topToLeftRef]);
 
   useEffect(() => {
-    const updateDimensions = () => {
-      if (topToLeftRef.current && scrollContainerRef?.current) {
-        const topToLeftRect = topToLeftRef.current.getBoundingClientRect();
-        const scrollContainerRect =
-          scrollContainerRef.current.getBoundingClientRect();
-
-        // 整个父容器宽度 到 父容器宽度-TopToLeft宽度的差
-        const startWidth = scrollContainerRect.width;
-        const endWidth = scrollContainerRect.width - topToLeftRect.width - 16; // 16px for gap-4
-
-        // TopToLeft 的左侧 到 0
-        const startX = -(topToLeftRect.width + 16); // width + gap
-
-        // TopToLeft 的高度+40px 到 0
-        const startY = topToLeftRect.height + 40;
-
-        console.log('📐 Updating dimensions:', {
-          scrollContainerWidth: scrollContainerRect.width,
-          topToLeftWidth: topToLeftRect.width,
-          topToLeftHeight: topToLeftRect.height,
-          startWidth,
-          endWidth,
-          startX,
-          startY,
-        });
-
-        setDimensions({
-          startWidth,
-          endWidth,
-          startX,
-          startY,
-        });
-      }
-    };
-
-    // Initial update
-    updateDimensions();
-
-    // Listen for window resize
-    window.addEventListener('resize', updateDimensions);
-
-    // Use ResizeObserver to track topToLeft element size changes
-    let topToLeftResizeObserver: ResizeObserver | null = null;
-    if (topToLeftRef.current) {
-      topToLeftResizeObserver = new ResizeObserver(updateDimensions);
-      topToLeftResizeObserver.observe(topToLeftRef.current);
+    if (!topToLeftRef.current || !scrollContainerRef?.current) {
+      return;
     }
 
-    // Use ResizeObserver to track scroll container size changes
-    let scrollContainerResizeObserver: ResizeObserver | null = null;
-    if (scrollContainerRef?.current) {
-      scrollContainerResizeObserver = new ResizeObserver(updateDimensions);
-      scrollContainerResizeObserver.observe(scrollContainerRef.current);
-    }
-
-    // Check periodically if refs become available
-    const checkForElement = () => {
-      if (topToLeftRef.current && !topToLeftResizeObserver) {
-        topToLeftResizeObserver = new ResizeObserver(updateDimensions);
-        topToLeftResizeObserver.observe(topToLeftRef.current);
-        updateDimensions();
-      }
-      if (scrollContainerRef?.current && !scrollContainerResizeObserver) {
-        scrollContainerResizeObserver = new ResizeObserver(updateDimensions);
-        scrollContainerResizeObserver.observe(scrollContainerRef.current);
-        updateDimensions();
-      }
+    let frameId = 0;
+    const scheduleUpdate = () => {
+      cancelAnimationFrame(frameId);
+      frameId = window.requestAnimationFrame(updateDimensions);
     };
 
-    const intervalId = setInterval(checkForElement, 100);
+    scheduleUpdate();
+
+    const topToLeftResizeObserver = new ResizeObserver(scheduleUpdate);
+    topToLeftResizeObserver.observe(topToLeftRef.current);
+
+    const scrollContainerResizeObserver = new ResizeObserver(scheduleUpdate);
+    scrollContainerResizeObserver.observe(scrollContainerRef.current);
+
+    window.addEventListener('resize', scheduleUpdate);
 
     return () => {
-      window.removeEventListener('resize', updateDimensions);
-      topToLeftResizeObserver?.disconnect();
-      scrollContainerResizeObserver?.disconnect();
-      clearInterval(intervalId);
+      cancelAnimationFrame(frameId);
+      window.removeEventListener('resize', scheduleUpdate);
+      topToLeftResizeObserver.disconnect();
+      scrollContainerResizeObserver.disconnect();
     };
-  }, []); // Empty dependency array - we handle all updates internally via listeners
+  }, [scrollContainerRef, topToLeftRef, updateDimensions]);
 
   // Update motion values when progress or dimensions change
   useEffect(() => {
@@ -198,14 +183,6 @@ const BtmToRight: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       const interpolatedY =
         dimensions.startY + (0 - dimensions.startY) * latest;
       y.set(interpolatedY);
-
-      console.log('🎬 Animation update:', {
-        progress: latest,
-        width: interpolatedWidth,
-        x: interpolatedX,
-        y: interpolatedY,
-        dimensions,
-      });
     });
 
     // Set initial values
@@ -221,7 +198,7 @@ const BtmToRight: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   }, [progress, dimensions, width, x, y]);
 
   return (
-    <motion.div ref={containerRef} style={{ x, y, width }} className='flex '>
+    <motion.div style={{ x, y, width }} className='flex'>
       {children}
     </motion.div>
   );

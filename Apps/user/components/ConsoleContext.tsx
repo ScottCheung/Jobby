@@ -34,6 +34,11 @@ import {
   CheckCircle2,
   MessageSquareCode,
   ChevronLast,
+  ArrowUpRight,
+  ArrowDownRight,
+  MoveRight,
+  CalendarCheck,
+  Activity,
 } from 'lucide-react';
 
 function getApplicationSortTimestamp(value?: string | null) {
@@ -175,10 +180,6 @@ interface ConsoleContextType {
     logs: Array<{ at: string; line: string }>;
   } | null;
   mainBotName: DesktopBotPlatform;
-  statusFilter: string;
-  setStatusFilter: (s: string) => void;
-  searchText: string;
-  setSearchText: (s: string) => void;
   processingApplicationsCount: number;
   syncingApplicationId: string;
   batchSyncing: boolean;
@@ -216,6 +217,9 @@ interface ConsoleContextType {
     textColor: string;
     bgColor: string;
     borderColor: string;
+    comparison?: string;
+    comparisonColor?: string;
+    comparisonIcon?: any;
   }>;
   dashboardData: {
     trend: Array<{ date: string; Submitted: number; Skipped: number }>;
@@ -252,8 +256,6 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
     useState<RuntimeSettings>(emptyRuntime);
   const [questions, setQuestions] = useState<QuestionCacheEntry[]>([]);
   const [applications, setApplications] = useState<JobApplication[]>([]);
-  const [statusFilter, setStatusFilter] = useState('');
-  const [searchText, setSearchText] = useState('');
   const [syncingApplicationId, setSyncingApplicationId] = useState('');
   const [batchSyncing, setBatchSyncing] = useState(false);
   const [expandedApplicationId, setExpandedApplicationId] = useState('');
@@ -849,6 +851,69 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
     const interviewing = applications.filter(
       (item) => item.pipeline_stage === 'interviewing',
     ).length;
+
+    const getLocalDateStr = (d: Date) => {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    const todayStr = getLocalDateStr(new Date());
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = getLocalDateStr(yesterday);
+
+    let submittedToday = 0;
+    let submittedYesterday = 0;
+    let processedToday = 0;
+    let processedYesterday = 0;
+
+    applications.forEach((item) => {
+      const displayDate = getApplicationDisplayDate(item);
+      if (!displayDate) return;
+      const d = new Date(displayDate);
+      if (Number.isNaN(d.getTime())) return;
+      const dateStr = getLocalDateStr(d);
+
+      const isSub = isStatusSubmitted(item.status);
+
+      if (dateStr === todayStr) {
+        processedToday++;
+        if (isSub) {
+          submittedToday++;
+        }
+      } else if (dateStr === yesterdayStr) {
+        processedYesterday++;
+        if (isSub) {
+          submittedYesterday++;
+        }
+      }
+    });
+
+    const getComparisonDetails = (todayVal: number, yesterdayVal: number) => {
+      const diff = todayVal - yesterdayVal;
+      if (diff > 0) {
+        return {
+          comparison: `+${diff} vs yesterday`,
+          comparisonColor: 'text-emerald-500 dark:text-emerald-400',
+          comparisonIcon: ArrowUpRight,
+        };
+      } else if (diff < 0) {
+        return {
+          comparison: `-${Math.abs(diff)} vs yesterday`,
+          comparisonColor: 'text-rose-500 dark:text-rose-400',
+          comparisonIcon: ArrowDownRight,
+        };
+      } else {
+        return {
+          comparison: 'Same as yesterday',
+          comparisonColor: 'text-zinc-500 dark:text-zinc-400',
+          comparisonIcon: MoveRight,
+        };
+      }
+    };
+
     return [
       {
         label: 'Processing',
@@ -867,6 +932,26 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
         textColor: 'text-emerald-600 dark:text-emerald-400',
         bgColor: 'bg-emerald-500/5 dark:bg-emerald-500/20',
         borderColor: 'border-emerald-500/20',
+      },
+      {
+        label: "Today's Submitted",
+        value: submittedToday,
+        icon: CalendarCheck,
+        iconColor: 'text-emerald-500/50 dark:text-emerald-400',
+        textColor: 'text-emerald-600 dark:text-emerald-400',
+        bgColor: 'bg-emerald-500/5 dark:bg-emerald-500/20',
+        borderColor: 'border-emerald-500/20',
+        ...getComparisonDetails(submittedToday, submittedYesterday),
+      },
+      {
+        label: "Today's Processed",
+        value: processedToday,
+        icon: Activity,
+        iconColor: 'text-blue-500/50 dark:text-blue-400',
+        textColor: 'text-blue-600 dark:text-blue-400',
+        bgColor: 'bg-blue-500/5 dark:bg-blue-500/20',
+        borderColor: 'border-blue-500/20',
+        ...getComparisonDetails(processedToday, processedYesterday),
       },
       {
         label: 'Interviewing',
@@ -1094,10 +1179,6 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
     setApplications,
     mainBotState,
     mainBotName,
-    statusFilter,
-    setStatusFilter,
-    searchText,
-    setSearchText,
     processingApplicationsCount,
     syncingApplicationId,
     batchSyncing,

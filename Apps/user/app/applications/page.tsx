@@ -1,38 +1,38 @@
 /** @format */
 
 'use client';
-import React, { useDeferredValue, useEffect, useRef, useState } from 'react';
-import { Briefcase, RefreshCw, Search } from 'lucide-react';
+import React, { useDeferredValue, useEffect, useMemo, useState } from 'react';
+import { Search } from 'lucide-react';
+import { ApplicationDetails } from './_components/ApplicationDetails';
 import { useConsole } from '@/components/ConsoleContext';
-import { cn } from '@/lib/utils';
+import { ScrollLayout } from '@/components/animation';
 import { api } from '@/lib/api';
 import { VirtualList } from '@/components/UI/VirtualList';
+import { formatRelativeDate } from '@/components/ConsoleUtils';
 import { withMinimumLoadingTime } from '@/lib/loading';
+import { useLayoutStore } from '@/lib/store/layout-store';
 import {
+  getCurrentApplicationStageTimestamp,
   getDisplayApplicationStatus,
+  getStatusBadgeClasses,
   isProcessingApplication,
   isStaleProcessingApplication,
   isStatusSubmitted,
+  shouldShowApplicationSkipReason,
   type JobApplication,
 } from '@/lib/types';
-import { ApplicationRow } from './_components/ApplicationRow';
+import {
+  ApplicationRow,
+  type ApplicationRowViewModel,
+} from './_components/ApplicationRow';
 import { ApplicationSkeleton } from './_components/ApplicationSkeleton';
-import { motion } from 'framer-motion';
-import { Stagger, ScrollLayout } from '@/components/animation';
-
-const springTransition = {
-  duration: 1,
-  ease: [0.22, 1, 0.36, 1] as const,
-};
 
 type ApplicationListItem =
-  | { type: 'row'; id: string; data: JobApplication }
-  | { type: 'details'; id: string; data: JobApplication }
+  | { type: 'row'; id: string; data: ApplicationRowViewModel }
   | { type: 'skeleton'; id: string };
 
 const PAGE_SIZE = 20;
 const ROW_HEIGHT = 92;
-const DETAILS_HEIGHT = 560;
 
 function matchesApplication(
   application: JobApplication,
@@ -80,30 +80,32 @@ function matchesApplication(
 export default function ApplicationsPage() {
   const {
     applications,
-    statusFilter,
-    setStatusFilter,
-    searchText,
-    setSearchText,
-    batchSyncing,
-    batchAsyncApplications,
     syncingApplicationId,
     asyncApplication,
-    expandedApplicationId,
-    setExpandedApplicationId,
     saveApplicationPatch,
     deleteApplication,
   } = useConsole();
 
+  const [statusFilter, setStatusFilter] = useState('');
+  const [searchText, setSearchText] = useState('');
   const [items, setItems] = useState<JobApplication[]>([]);
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
-
-  const deferredSearchText = useDeferredValue(searchText);
   const [scrollContainer, setScrollContainer] = useState<HTMLDivElement | null>(
     null,
   );
-  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+
+  const deferredSearchText = useDeferredValue(searchText);
+  const scrollContainerRef = React.useRef<HTMLDivElement | null>(null);
+  const applicationsById = useMemo(
+    () =>
+      new Map(applications.map((application) => [application.id, application])),
+    [applications],
+  );
+  const openDrawer = useLayoutStore((state) => state.actions.openDrawer);
+  const isDrawerOpen = useLayoutStore((state) => state.isDrawerOpen);
+  const drawerOpenId = useLayoutStore((state) => state.drawerConfig.id);
 
   const setContainerRef = React.useCallback((el: HTMLDivElement | null) => {
     scrollContainerRef.current = el;
@@ -133,9 +135,8 @@ export default function ApplicationsPage() {
       }
 
       setItems((prev) => {
-        const nextItems = data.filter(
-          (item) => !prev.some((prevItem) => prevItem.id === item.id),
-        );
+        const existingIds = new Set(prev.map((item) => item.id));
+        const nextItems = data.filter((item) => !existingIds.has(item.id));
         return [...prev, ...nextItems];
       });
       setOffset((prev) => prev + data.length);
@@ -155,36 +156,71 @@ export default function ApplicationsPage() {
 
   useEffect(() => {
     setItems((prevItems) => {
-      const filteredApplications = applications.filter((application) => {
-        if (
-          !matchesApplication(application, statusFilter, deferredSearchText)
-        ) {
-          return false;
-        }
-        return true;
-      });
-
-      const pinnedProcessingItems = filteredApplications.filter(
-        (item) =>
-          isProcessingApplication(item) && !isStaleProcessingApplication(item),
-      );
-      const regularItems = filteredApplications.filter(
-        (item) =>
-          !(
-            isProcessingApplication(item) && !isStaleProcessingApplication(item)
-          ),
-      );
-
-      return [...pinnedProcessingItems, ...regularItems];
+      const syncedItems = prevItems
+        .map((item) => applicationsById.get(item.id) ?? item)
+        .filter((item) =>
+          matchesApplication(item, statusFilter, deferredSearchText),
+        );
+      return syncedItems;
     });
-  }, [applications, deferredSearchText, statusFilter]);
+  }, [applicationsById, deferredSearchText, statusFilter]);
+
+  const rowItems = useMemo<ApplicationRowViewModel[]>(
+    () =>
+      items.map((item) => {
+        const displayStatus = getDisplayApplicationStatus(item);
+        const isLiveProcessing =
+          isProcessingApplication(item) && !isStaleProcessingApplication(item);
+        const stageTimestamp = getCurrentApplicationStageTimestamp(item);
+
+        return {
+          id: item.id,
+          title: item.title || 'Untitled role',
+          company: item.company || 'Unknown',
+          jobId: item.job_id || 'Unknown',
+          platform: item.platform,
+          workStyle: item.work_style,
+          workLocation: item.work_location || 'Location not recorded',
+          displayStatus,
+          statusBadgeClassName: getStatusBadgeClasses(displayStatus),
+          isLiveProcessing,
+          stageTimestamp,
+          displayStageTime: formatRelativeDate(stageTimestamp),
+          skipReason: item.skip_reason,
+          shouldShowSkipReason: shouldShowApplicationSkipReason(item),
+          jobLink: item.job_link,
+        };
+      }),
+    [items],
+  );
+
+  const openApplicationDetails = React.useCallback(
+    (applicationId: string) => {
+      const application = applicationsById.get(applicationId);
+      if (!application) {
+        return;
+      }
+
+      openDrawer({
+        width: 640,
+        id: applicationId,
+        content: (
+          <ApplicationDetails
+            application={application}
+            onSave={saveApplicationPatch}
+          />
+        ),
+      });
+    },
+    [applicationsById, openDrawer, saveApplicationPatch],
+  );
 
   const listItems = React.useMemo<ApplicationListItem[]>(() => {
-    const nextItems: ApplicationListItem[] = [];
-
-    items.forEach((item) => {
-      nextItems.push({ type: 'row', id: `${item.id}-row`, data: item });
-    });
+    const nextItems: ApplicationListItem[] = rowItems.map((item) => ({
+      type: 'row',
+      id: `${item.id}-row`,
+      data: item,
+    }));
 
     if (isLoading && hasMore) {
       nextItems.push(
@@ -192,49 +228,75 @@ export default function ApplicationsPage() {
         { type: 'skeleton', id: 'application-skeleton-2' },
         { type: 'skeleton', id: 'application-skeleton-3' },
         { type: 'skeleton', id: 'application-skeleton-4' },
-        { type: 'skeleton', id: 'application-skeleton-5' },
       );
     }
 
     return nextItems;
-  }, [hasMore, isLoading, items]);
+  }, [hasMore, isLoading, rowItems]);
+
+  const renderRow = React.useCallback(
+    (item: ApplicationListItem, index: number, style: React.CSSProperties) => {
+      if (item.type === 'skeleton') {
+        return <ApplicationSkeleton key={item.id} style={style} />;
+      }
+
+      return (
+        <ApplicationRow
+          key={item.id}
+          entry={item.data}
+          style={style}
+          isLast={index === listItems.length - 1}
+          isSyncing={syncingApplicationId === item.data.id}
+          isSelected={isDrawerOpen && drawerOpenId === item.data.id}
+          onOpenDetails={openApplicationDetails}
+          onAsync={asyncApplication}
+          onDelete={deleteApplication}
+        />
+      );
+    },
+    [
+      asyncApplication,
+      deleteApplication,
+      drawerOpenId,
+      isDrawerOpen,
+      listItems.length,
+      openApplicationDetails,
+      syncingApplicationId,
+    ],
+  );
 
   return (
-    <motion.div
-      layout
-      transition={springTransition}
-      className='flex flex-col h-[calc(100vh-64px)] min-h-[500px] overflow-hidden '
-    >
+    <div className='flex flex-col h-[calc(100vh-66px)] min-h-[500px] overflow-hidden'>
       <div className='pb-4 select-none shrink-0'>
         <ScrollLayout
           key={scrollContainer ? 'scrolling' : 'static'}
           scrollContainerRef={scrollContainerRef}
           progressRange={[0, 100]}
-          heightRange={[110, 50]}
+          heightRange={[130, 65]}
         >
           <ScrollLayout.TopToLeft>
-            <div className='flex items-center gap-2 text-zinc-900 dark:text-zinc-50 font-bold shrink-0'>
-              <h2 className='text-xl tracking-tight shrink-0'>
+            <div className='flex items-center gap-2 font-bold shrink-0'>
+              <h2 className='text-2xl bg-primary-gradient bg-clip-text text-transparent tracking-tight shrink-0'>
                 Application History
               </h2>
             </div>
           </ScrollLayout.TopToLeft>
 
           <ScrollLayout.BtmToRight>
-            <div className='flex items-center gap-3 w-full'>
+            <div className='flex items-center gap-4 w-full'>
               <div className='relative flex-1'>
                 <Search className='absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400' />
                 <input
                   placeholder='Search title, company, job id...'
                   value={searchText}
                   onChange={(event) => setSearchText(event.target.value)}
-                  className='input bg-glass pl-9 pr-3 py-1.5 text-sm w-full'
+                  className='pl-9 pr-4 py-1.5 w-full text-sm rounded-xl border border-zinc-200 bg-panel dark:bg-zinc-955 dark:border-zinc-800 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-750 focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-750 text-zinc-900 dark:text-zinc-100'
                 />
               </div>
               <select
                 value={statusFilter}
                 onChange={(event) => setStatusFilter(event.target.value)}
-                className='rounded-xl bg-panel focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-750 text-zinc-900 dark:text-zinc-100 cursor-pointer text-sm border border-transparent px-3 py-2'
+                className='h-9 rounded-xl border border-zinc-200 bg-panel px-3 text-sm text-zinc-900 outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400 dark:border-zinc-800 dark:bg-zinc-955 dark:text-zinc-100 dark:focus:border-zinc-750 dark:focus:ring-zinc-750'
               >
                 <option value=''>All statuses</option>
                 <option value='submitted'>Submitted</option>
@@ -248,30 +310,23 @@ export default function ApplicationsPage() {
       </div>
 
       {items.length === 0 && !isLoading ?
-        <motion.div
-          layout
-          transition={springTransition}
-          className='p-8 text-center text-zinc-500 dark:text-zinc-400 flex-1 flex items-center justify-center'
-        >
+        <div className='p-8 text-center text-zinc-500 dark:text-zinc-400 flex-1 flex items-center justify-center'>
           No applications match this view.
-        </motion.div>
-      : <motion.div
-          layout
-          transition={springTransition}
-          className='flex-1 overflow-hidden relative bg-panel rounded-xl'
-        >
+        </div>
+      : <div className='flex-1 overflow-hidden relative border border-zinc-100 dark:border-zinc-800/60 rounded-xl bg-panel'>
           <div className='w-full h-full overflow-x-auto custom-scrollbar-primary'>
             <div className='min-w-[950px] h-full flex flex-col'>
-              <motion.div
-                layout
-                transition={springTransition}
-                className='grid grid-cols-[minmax(0,3.5fr)_minmax(0,2fr)_minmax(0,2.5fr)_minmax(0,1.3fr)_minmax(0,1.2fr)] text-ink-secondary/50 font-bold uppercase tracking-wider px-4 py-3 shrink-0 border-b border-zinc-100/10'
-              >
-                <div className='pr-4'>Role & Info</div>
-                <div className='px-4'>Company</div>
-                <div className='px-4'>Status</div>
-                <div className='pl-4 text-right'>Actions</div>
-              </motion.div>
+              <div className='grid grid-cols-[minmax(0,3.5fr)_minmax(0,2fr)_minmax(0,2.5fr)_minmax(0,1.3fr)_minmax(0,1.2fr)] text-[11px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider px-4 py-3 shrink-0 border-b border-zinc-100 dark:border-zinc-800/60'>
+                <div className=' flex items-center justify-start'>
+                  Role & Info
+                </div>
+                <div className=' flex items-center justify-start'>Company</div>
+                <div className=' flex items-center justify-center'>Status</div>
+                <div className=' flex items-center justify-center'>Time</div>
+                <div className=' text-right flex items-center justify-end'>
+                  Actions
+                </div>
+              </div>
 
               <div className='flex-1 min-h-0 relative'>
                 <VirtualList
@@ -279,36 +334,19 @@ export default function ApplicationsPage() {
                   className='custom-scrollbar-primary'
                   items={listItems}
                   rowHeight={() => ROW_HEIGHT}
+                  overscanCount={3}
                   onEndReached={() => {
                     if (hasMore && !isLoading) {
                       void fetchMore();
                     }
                   }}
-                  renderRow={(item, index, style) => {
-                    if (item.type === 'skeleton') {
-                      return (
-                        <ApplicationSkeleton key={item.id} style={style} />
-                      );
-                    }
-
-                    return (
-                      <ApplicationRow
-                        key={item.id}
-                        entry={item.data}
-                        style={style}
-                        isLast={index === listItems.length - 1}
-                        syncingApplicationId={syncingApplicationId}
-                        asyncApplication={asyncApplication}
-                        deleteApplication={deleteApplication}
-                      />
-                    );
-                  }}
+                  renderRow={renderRow}
                 />
               </div>
             </div>
           </div>
-        </motion.div>
+        </div>
       }
-    </motion.div>
+    </div>
   );
 }

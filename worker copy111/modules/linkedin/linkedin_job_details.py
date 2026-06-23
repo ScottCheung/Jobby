@@ -73,7 +73,7 @@ def get_job_description(
             experience_required = extract_years_of_experience(job_description)
             if personals.current_experience > -1 and experience_required > personals.current_experience + found_masters:
                 skip_message = f'\n{job_description}\n\nExperience required {experience_required} > Current Experience {personals.current_experience + found_masters}. Skipping this job!\n'
-                skip_reason = "Required experience is high"
+                skip_reason = "Your experience doesn't match requirment."
                 skip = True
     except Exception:
         if job_description == "Unknown":

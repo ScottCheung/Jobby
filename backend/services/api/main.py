@@ -1243,7 +1243,7 @@ def async_applications_from_link_batch(
             (JobApplication.title.is_(None))
             | (JobApplication.company.is_(None))
             | (JobApplication.work_location.is_(None))
-            | (JobApplication.raw_data['job_description'].as_string().is_(None))
+            | (JobApplication.job_description.is_(None))
         )
 
     rows = list(db.scalars(query))

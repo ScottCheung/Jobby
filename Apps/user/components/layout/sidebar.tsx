@@ -130,53 +130,53 @@ export function Sidebar() {
         {/* Navigation */}
 
         <nav className='app-no-drag flex flex-col gap-1'>
-          <Stagger className='flex flex-col gap-1'>
-            {' '}
-            {navigation.map((item) => {
-              const isActive = pathname === item.href;
-              return (
-                <StaggerItem key={item.name} xOffset={5}>
-                  <Tooltip
-                    content={isCollapsed ? item.name : null}
-                    side='right'
-                  >
-                    <Link
-                      href={item.href}
-                      className={cn(
-                        'app-no-drag group flex items-center gap-3  transition-all',
-                        isCollapsed ?
-                          'justify-center p-2.5 rounded-full '
-                        : 'px-4 py-3.5 rounded-full',
-                        isActive ?
-                          'text-primary-foreground  bg-primary-gradient'
-                        : 'text-ink-secondary hover:bg-background-secondary',
-                      )}
-                    >
-                      <motion.div layout className='shrink-0'>
-                        <item.icon className='size-5' />
-                      </motion.div>
-                      <AnimatePresence mode='popLayout'>
-                        {!isCollapsed && (
-                          <motion.p
-                            // variants={textVariants}
-                            // initial='hidden'
-                            // animate='visible'
-                            // exit='exit'
-                            className={cn(
-                              'text-sm whitespace-nowrap overflow-hidden',
-                              isActive ? 'font-bold' : 'font-medium',
-                            )}
-                          >
-                            {item.name}
-                          </motion.p>
+          {/* <Stagger className='flex flex-col gap-1'> */}{' '}
+          {navigation.map((item) => {
+            const isActive = pathname === item.href;
+            return (
+              // <StaggerItem key={item.name} xOffset={5}>
+              <Tooltip
+                key={item.name}
+                content={isCollapsed ? item.name : null}
+                side='right'
+              >
+                <Link
+                  href={item.href}
+                  className={cn(
+                    'app-no-drag group flex items-center gap-3  transition-all',
+                    isCollapsed ?
+                      'justify-center p-2.5 rounded-full '
+                    : 'px-4 py-3.5 rounded-full',
+                    isActive ?
+                      'text-primary-foreground  bg-primary-gradient'
+                    : 'text-ink-secondary hover:bg-background-secondary',
+                  )}
+                >
+                  <motion.div layout className='shrink-0'>
+                    <item.icon className='size-5' />
+                  </motion.div>
+                  <AnimatePresence mode='popLayout'>
+                    {!isCollapsed && (
+                      <motion.p
+                        // variants={textVariants}
+                        // initial='hidden'
+                        // animate='visible'
+                        // exit='exit'
+                        className={cn(
+                          'text-sm whitespace-nowrap overflow-hidden',
+                          isActive ? 'font-bold' : 'font-medium',
                         )}
-                      </AnimatePresence>
-                    </Link>
-                  </Tooltip>
-                </StaggerItem>
-              );
-            })}
-          </Stagger>
+                      >
+                        {item.name}
+                      </motion.p>
+                    )}
+                  </AnimatePresence>
+                </Link>
+              </Tooltip>
+              // </StaggerItem>
+            );
+          })}
+          {/* </Stagger> */}
         </nav>
       </div>
 

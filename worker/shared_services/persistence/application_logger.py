@@ -110,6 +110,9 @@ class ApplicationLogger:
         if not application_id:
             return self.create_processing_application(record)
 
+        raw_data = dict(record)
+        raw_data.pop("job_description", None)
+        raw_data.pop("description", None)
         payload = {
             "status": "processing",
             "title": record.get("title"),
@@ -122,7 +125,7 @@ class ApplicationLogger:
             "application_type": record.get("application_type"),
             "resume_path": record.get("resume"),
             "date_posted": record.get("date_posted"),
-            "raw_data": dict(record),
+            "raw_data": raw_data,
         }
         try:
             saved_record = api_client.update_application(application_id, payload)
@@ -212,6 +215,8 @@ class ApplicationLogger:
         if status in {"submitted", "cancelled"} and date_applied is None:
             date_applied = utc_isoformat(utc_now())
         raw_data = dict(record)
+        raw_data.pop("job_description", None)
+        raw_data.pop("description", None)
         skip_reason = record.get("skip_reason") or record.get("error")
         if status == "submitted":
             normalized_reason = str(skip_reason or "").strip().lower()
@@ -219,8 +224,6 @@ class ApplicationLogger:
                 skip_reason = None
             raw_data.pop("error", None)
             raw_data.pop("skip_reason", None)
-        if description and not raw_data.get("job_description"):
-            raw_data["job_description"] = description
         persistence_log(
             "Prepared application payload:",
             record.get("job_id"),
