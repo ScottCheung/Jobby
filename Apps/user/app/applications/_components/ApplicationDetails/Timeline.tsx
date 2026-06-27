@@ -218,7 +218,7 @@ export function Timeline({
                     duration: 0.3,
                   }}
                   className={cn(
-                    'display-panel ml-[25px] mt-[-50px] overflow-hidden',
+                    'display-panel  ml-[25px] mt-1 overflow-hidden',
                   )}
                 >
                   {/* Card Body - View Mode or Edit Mode */}

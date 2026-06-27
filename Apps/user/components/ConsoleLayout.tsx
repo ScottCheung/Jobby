@@ -7,6 +7,7 @@ import { usePathname } from 'next/navigation';
 import { useConsole } from '@/components/ConsoleContext';
 import { Sidebar } from '@/components/layout/sidebar';
 import { GlobalDrawer } from '@/components/layout/global-drawer';
+import { useToastStore } from '@/lib/store/toast-store';
 import { cn } from '@/lib/utils';
 import CardWithNorth from '@/components/UI/card/CardWithNorth';
 import { H1 } from '@/components/UI/text/typography';
@@ -29,9 +30,9 @@ export default function ConsoleLayout({
     stats,
     error,
     isPending,
-    toast,
     isDesktopApp,
   } = useConsole();
+  const toast = useToastStore((state) => state.message);
   return (
     <div className='min-h-screen z-10 flex transition-colors duration-300'>
       {/* Sidebar */}

@@ -5,6 +5,7 @@ import sys
 import subprocess
 import pathlib
 import tempfile
+import shutil
 import certifi
 
 def _configure_ssl_certificates() -> None:
@@ -66,9 +67,10 @@ def _binary_arch(path: str) -> str | None:
 
 def _get_chrome_version_main() -> int | None:
     chrome_paths = []
-    if sys.platform == "darwin":
-        chrome_paths.append("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome")
-    elif sys.platform.startswith("linux"):
+    system_chrome_path = _get_system_chrome_path()
+    if system_chrome_path:
+        chrome_paths.append(system_chrome_path)
+    if sys.platform.startswith("linux"):
         chrome_paths.extend(["/usr/bin/google-chrome", "/usr/bin/chromium-browser"])
     elif sys.platform.startswith("win"):
         chrome_paths.append(os.path.expandvars(r"%ProgramFiles%\Google\Chrome\Application\chrome.exe"))
@@ -89,6 +91,24 @@ def _get_chrome_version_main() -> int | None:
                 return int(match.group(1))
         except Exception:
             continue
+    return None
+
+
+def _get_system_chrome_path() -> str | None:
+    candidates: list[str] = []
+    if sys.platform == "darwin":
+        candidates.append("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome")
+    elif sys.platform.startswith("linux"):
+        candidates.extend(["/usr/bin/google-chrome", "/usr/bin/google-chrome-stable", "/usr/bin/chromium-browser"])
+    elif sys.platform.startswith("win"):
+        candidates.extend([
+            os.path.expandvars(r"%ProgramFiles%\Google\Chrome\Application\chrome.exe"),
+            os.path.expandvars(r"%ProgramFiles(x86)%\Google\Chrome\Application\chrome.exe"),
+        ])
+
+    for candidate in candidates:
+        if candidate and os.path.isfile(candidate):
+            return candidate
     return None
 
 
@@ -139,7 +159,19 @@ def _prepare_undetected_cache() -> None:
 def _is_dedicated_bot_profile(profile_dir: str | None) -> bool:
     if not profile_dir:
         return False
-    return pathlib.Path(profile_dir).name == "auto-job-apply-profile"
+    name = pathlib.Path(profile_dir).name
+    if name in ("auto-job-apply-profile", ".auto-job-apply-profile") or "auto-job-apply-profile" in name:
+        return True
+    
+    custom_path = get_runtime_value("browser_profile_path")
+    if custom_path:
+        try:
+            resolved_custom = os.path.abspath(os.path.expanduser(str(custom_path)))
+            if os.path.abspath(profile_dir) == resolved_custom:
+                return True
+        except Exception:
+            pass
+    return False
 
 
 def _cleanup_profile_locks(profile_dir: str | None) -> None:
@@ -166,6 +198,41 @@ def _create_ephemeral_profile_dir() -> str:
     return profile_dir
 
 
+def _runtime_profile_copy_dir(source_dir: str) -> str:
+    source_name = pathlib.Path(source_dir).name or "profile"
+    return os.path.join(tempfile.gettempdir(), f"auto-job-apply-runtime-{source_name}")
+
+
+def _ignore_profile_copy_entries(_src: str, names: list[str]) -> set[str]:
+    ignored = {
+        "SingletonCookie",
+        "SingletonLock",
+        "SingletonSocket",
+        "RunningChromeVersion",
+        "lockfile",
+        "DevToolsActivePort",
+    }
+    return {name for name in names if name in ignored}
+
+
+def prepare_runtime_profile_copy(source_dir: str) -> str:
+    resolved_source = os.path.abspath(os.path.expanduser(source_dir))
+    runtime_dir = _runtime_profile_copy_dir(resolved_source)
+    if os.path.exists(runtime_dir):
+        shutil.rmtree(runtime_dir, ignore_errors=True)
+    print_lg(f"Creating runtime browser profile copy from: {resolved_source}")
+    shutil.copytree(
+        resolved_source,
+        runtime_dir,
+        symlinks=True,
+        ignore=_ignore_profile_copy_entries,
+        dirs_exist_ok=True,
+    )
+    _cleanup_profile_locks(runtime_dir)
+    print_lg(f"Using runtime browser profile copy: {runtime_dir}")
+    return runtime_dir
+
+
 def _build_chrome_options(use_uc: bool):
     if use_uc:
         import undetected_chromedriver as uc
@@ -175,6 +242,10 @@ def _build_chrome_options(use_uc: bool):
         options = Options()
         if bool(get_runtime_value("stealth_mode", True)):
             _apply_stealth_chrome_args(options)
+
+    system_chrome_path = _get_system_chrome_path()
+    if system_chrome_path:
+        options.binary_location = system_chrome_path
 
     if bool(get_runtime_value("run_in_background", False)):
         options.add_argument("--headless=new")
@@ -191,7 +262,37 @@ def _build_chrome_options(use_uc: bool):
     return options
 
 
+def _build_attach_options():
+    from selenium.webdriver.chrome.options import Options
+
+    options = Options()
+    system_chrome_path = _get_system_chrome_path()
+    if system_chrome_path:
+        options.binary_location = system_chrome_path
+    debugger_address = _debugger_address()
+    if debugger_address:
+        options.add_experimental_option("debuggerAddress", debugger_address)
+    return options
+
+
+def _debugger_address() -> str:
+    return str(os.environ.get("AUTO_JOB_CHROME_DEBUGGER_ADDRESS", "") or "").strip()
+
+
+def _profile_path_from_env() -> str:
+    return str(os.environ.get("AUTO_JOB_CHROME_PROFILE_PATH", "") or "").strip()
+
+
 def _create_driver(options, use_uc: bool):
+    debugger_address = _debugger_address()
+    if debugger_address:
+        from selenium import webdriver
+        print_lg(f"Attaching Selenium to existing Chrome session at {debugger_address}...")
+        driver = webdriver.Chrome(options=options)
+        if bool(get_runtime_value("stealth_mode", True)):
+            _apply_cdp_stealth(driver)
+        return driver
+
     if use_uc:
         import undetected_chromedriver as uc
         print_lg("Starting Chrome in undetected mode...")
@@ -223,6 +324,37 @@ def _should_fallback_to_selenium(error: Exception) -> bool:
     ]
     return any(marker in message for marker in fallback_markers)
 
+def _resolve_profile_dir(force_fresh_profile: bool = False) -> str:
+    if force_fresh_profile:
+        return _create_ephemeral_profile_dir()
+
+    custom_path = get_runtime_value("browser_profile_path")
+    if custom_path:
+        profile_dir = os.path.abspath(os.path.expanduser(str(custom_path)))
+        print_lg(f"Using custom configured browser profile source: {profile_dir}")
+        _cleanup_profile_locks(profile_dir)
+        profile_dir = prepare_runtime_profile_copy(profile_dir)
+        return profile_dir
+
+    profile_dir = None
+    if not bool(get_runtime_value("safe_mode", True)):
+        profile_dir = find_default_profile_directory()
+    if profile_dir:
+        print_lg(f"Using existing dedicated bot profile for LinkedIn session: {profile_dir}")
+        _cleanup_profile_locks(profile_dir)
+    else:
+        profile_dir = get_default_temp_profile()
+        print_lg(f"Using persistent dedicated bot profile: {profile_dir}")
+        _cleanup_profile_locks(profile_dir)
+    return profile_dir
+
+
+def get_configured_profile_dir() -> str:
+    custom_path = get_runtime_value("browser_profile_path")
+    if custom_path:
+        return os.path.abspath(os.path.expanduser(str(custom_path)))
+    return os.path.abspath(_resolve_profile_dir(False))
+
 
 def createChromeSession(isRetry: bool = False, force_fresh_profile: bool = False):
     file_name = str(get_runtime_value("file_name", "worker/log/applications.csv"))
@@ -239,21 +371,22 @@ def createChromeSession(isRetry: bool = False, force_fresh_profile: bool = False
     if use_uc:
         _prepare_undetected_cache()
 
+    debugger_address = _debugger_address()
+
+    if debugger_address:
+        options = _build_attach_options()
+        driver = _create_driver(options, False)
+        try:
+            driver.maximize_window()
+        except Exception:
+            pass
+        wait = WebDriverWait(driver, 5)
+        actions = ActionChains(driver)
+        return options, driver, actions, wait
+
     options = _build_chrome_options(use_uc)
 
-    profile_dir = None
-    if force_fresh_profile:
-        profile_dir = _create_ephemeral_profile_dir()
-    else:
-        if not bool(get_runtime_value("safe_mode", True)):
-            profile_dir = find_default_profile_directory()
-        if profile_dir:
-            print_lg(f"Using existing dedicated bot profile for LinkedIn session: {profile_dir}")
-            _cleanup_profile_locks(profile_dir)
-        else:
-            profile_dir = get_default_temp_profile()
-            print_lg(f"Using persistent dedicated bot profile: {profile_dir}")
-            _cleanup_profile_locks(profile_dir)
+    profile_dir = _resolve_profile_dir(force_fresh_profile)
     options.add_argument(f"--user-data-dir={profile_dir}")
 
     try:
@@ -262,15 +395,7 @@ def createChromeSession(isRetry: bool = False, force_fresh_profile: bool = False
         if use_uc and _should_fallback_to_selenium(error):
             print_lg("Undetected Chrome startup failed. Falling back to standard Selenium mode...")
             options = _build_chrome_options(False)
-            if force_fresh_profile:
-                profile_dir = _create_ephemeral_profile_dir()
-            elif profile_dir and not bool(get_runtime_value("safe_mode", True)):
-                print_lg(f"Using existing dedicated bot profile for LinkedIn session: {profile_dir}")
-                _cleanup_profile_locks(profile_dir)
-            else:
-                profile_dir = get_default_temp_profile()
-                print_lg(f"Using persistent dedicated bot profile: {profile_dir}")
-                _cleanup_profile_locks(profile_dir)
+            profile_dir = _resolve_profile_dir(force_fresh_profile)
             options.add_argument(f"--user-data-dir={profile_dir}")
             driver = _create_driver(options, False)
         else:
@@ -322,14 +447,23 @@ def initialize_chrome_session():
     try:
         options, driver, actions, wait = createChromeSession()
     except SessionNotCreatedException as e:
+        custom_path = get_runtime_value("browser_profile_path")
+        if custom_path:
+            msg = (
+                "Failed to open Chrome with your configured browser profile.\n\n"
+                "To keep login sessions consistent, the bot did not switch to a temporary profile.\n\n"
+                f"Configured profile: {os.path.abspath(os.path.expanduser(str(custom_path)))}\n\n"
+                "Please close any Chrome windows using this profile and try again."
+            )
+            print_lg(msg)
+            critical_error_log("Failed to create Chrome Session with configured persistent profile", e)
+            raise
         critical_error_log("Failed to create Chrome Session with persistent profile, retrying with a fresh temporary profile", e)
         options, driver, actions, wait = createChromeSession(True, force_fresh_profile=True)
     except Exception as e:
         msg = _format_chrome_startup_error(e)
         print_lg(msg)
         critical_error_log("In Opening Chrome", e)
-        from pyautogui import alert
-        alert(msg, "Error in opening chrome")
         if driver:
             try:
                 driver.quit()

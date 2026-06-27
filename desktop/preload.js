@@ -25,4 +25,15 @@ contextBridge.exposeInMainWorld("autoJobDesktop", {
     ipcRenderer.on("desktop:bot-status", listener);
     return () => ipcRenderer.removeListener("desktop:bot-status", listener);
   },
+  openChromeSession: (profilePath) => ipcRenderer.invoke("desktop:open-chrome-session", profilePath),
+  closeChromeSession: () => ipcRenderer.invoke("desktop:close-chrome-session"),
+  closeAllChromeWindows: () => ipcRenderer.invoke("desktop:close-all-chrome-windows"),
+  clearChromeSession: (profilePath) => ipcRenderer.invoke("desktop:clear-chrome-session", profilePath),
+  checkChromeSessionStatus: (profilePath) => ipcRenderer.invoke("desktop:check-chrome-session-status", profilePath),
+  verifyBrowserSession: (profilePath) => ipcRenderer.invoke("desktop:verify-browser-session", profilePath),
+  onManualChromeExit: (callback) => {
+    const listener = () => callback();
+    ipcRenderer.on("desktop:manual-chrome-exit", listener);
+    return () => ipcRenderer.removeListener("desktop:manual-chrome-exit", listener);
+  },
 });

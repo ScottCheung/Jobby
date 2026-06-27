@@ -8,6 +8,7 @@ export interface Notification {
   type: NotificationType;
   message: string;
   title?: string;
+  duration?: number;
 }
 
 interface LayoutState {

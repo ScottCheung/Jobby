@@ -17,6 +17,7 @@ class ServiceManager extends EventEmitter {
     };
     this.botStates = new Map();
     this.botProcesses = new Map();
+    this.manualChromeSession = null;
   }
 
   getRuntimeInfo() {
@@ -39,6 +40,10 @@ class ServiceManager extends EventEmitter {
 
   updateConfig(nextConfig) {
     this.config = nextConfig;
+  }
+
+  setManualChromeSession(session) {
+    this.manualChromeSession = session || null;
   }
 
   getServiceStatus() {
@@ -412,7 +417,11 @@ class ServiceManager extends EventEmitter {
         AUTO_JOB_API_BASE_URL: this.config.api.url,
         AUTO_JOB_PLATFORM: platform,
         AUTO_JOB_ASSIST_MODE: platform === "third_party" ? "guided" : "full",
-        AUTO_JOB_DISABLE_PYAUTOGUI_DIALOGS: "1"
+        AUTO_JOB_DISABLE_PYAUTOGUI_DIALOGS: "1",
+        ...(this.manualChromeSession?.debuggerAddress ? {
+          AUTO_JOB_CHROME_DEBUGGER_ADDRESS: this.manualChromeSession.debuggerAddress,
+          AUTO_JOB_CHROME_PROFILE_PATH: this.manualChromeSession.profilePath || "",
+        } : {}),
       },
     };
   }
@@ -420,6 +429,17 @@ class ServiceManager extends EventEmitter {
   async startBot(platform) {
     if (this.botProcesses.has(platform)) {
       return { ok: false, error: `${platform} bot is already running` };
+    }
+
+    if (
+      platform === "linkedin" &&
+      (!this.manualChromeSession || !this.manualChromeSession.debuggerAddress)
+    ) {
+      return {
+        ok: false,
+        code: "login_browser_required",
+        error: "Open the login browser first, and keep it open while auto apply runs.",
+      };
     }
 
     const state = {

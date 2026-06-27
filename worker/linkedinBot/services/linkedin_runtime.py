@@ -1,6 +1,4 @@
 from random import choice
-
-import pyautogui
 from selenium.common.exceptions import WebDriverException
 
 

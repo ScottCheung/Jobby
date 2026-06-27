@@ -1,8 +1,13 @@
-/* Text Effects */
+/**
+ * Text Effects
+ *
+ * @format
+ */
+
 .text-gradient {
-    @apply bg-gradient-to-br from-primary to-primary/70 bg-clip-text text-transparent;
+  @apply bg-linear-to-br from-primary to-primary/70 bg-clip-text text-transparent;
 }
 
 .text-gradient-secondary {
-    @apply bg-gradient-to-br from-secondary to-secondary/70 bg-clip-text text-transparent;
+  @apply bg-linear-to-br from-secondary to-secondary/70 bg-clip-text text-transparent;
 }

@@ -1,6 +1,5 @@
 import csv
 
-import pyautogui
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 
@@ -47,13 +46,11 @@ def login() -> None:
     username = str(get_runtime_value("username", "") or "")
     password = str(get_runtime_value("password", "") or "")
     if username == "username@example.com" and password == "example_password":
-        pyautogui.alert("User did not configure username and password in secrets.py, hence can't login automatically! Please login manually!", "Login Manually", "Okay")
-        _log("User did not configure username and password in secrets.py, hence can't login automatically! Please login manually!")
+        _log("Auto login is not set up. Please sign in manually in the browser window.")
         manual_login_retry(is_logged_in, 2)
         return
     if not username or not password:
-        pyautogui.alert("API did not provide LinkedIn login details, so automatic login is unavailable. Please log in manually.", "Login Manually", "Okay")
-        _log("API did not provide LinkedIn login details, so automatic login is unavailable. Please log in manually.")
+        _log("Auto login details are unavailable. Please sign in manually in the browser window.")
         manual_login_retry(is_logged_in, 2)
         return
     try:

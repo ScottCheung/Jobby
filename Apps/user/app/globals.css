@@ -43,6 +43,10 @@
   }
 }
 
+strong {
+  @apply bg-clip-text text-transparent bg-primary-gradient from-95% to-100%;
+}
+
 .app-drag {
   -webkit-app-region: drag;
 }

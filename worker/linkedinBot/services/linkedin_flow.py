@@ -110,6 +110,7 @@ failed_count = 0
 skip_count = 0
 dailyEasyApplyLimitReached = False
 current_processing_record = None
+stop_after_current_submission = False
 
 
 def sync_stats_to_status() -> None:
@@ -384,6 +385,7 @@ def apply_to_jobs(search_terms: list[str]) -> None:
     blacklisted_companies = set()
     global current_city, failed_count, skip_count, easy_applied_count, external_jobs_count, tabs_count
     global pause_before_submit, pause_at_failed_question, useNewResume, dailyEasyApplyLimitReached
+    global stop_after_current_submission
     global current_processing_record
     linkedin_apply.bind_context(driver, actions, question_cache, print_lg, unanswered_questions)
     set_runtime_state({"linkedin_tab": linkedIn_tab, "tabs_count": tabs_count, "daily_easy_apply_limit_reached": dailyEasyApplyLimitReached})
@@ -730,9 +732,17 @@ def apply_to_jobs(search_terms: list[str]) -> None:
                                 cur_pause_before_submit = pause_before_submit
                                 if errored != "stuck" and cur_pause_before_submit:
                                     bot_status(f'Waiting for your confirmation before submitting "{title}".')
-                                    decision = linkedin_apply.show_inpage_overlay("Double Check your Application", '1. Please verify your information Before submiting.\n2. If you edited something, please return back.\n3. DO NOT CLICK "Submit Application" Button in LinkedIn,this will fail to record your submission.\n\n\nYou can turn off "Double Check" in your Agent settings.\nTo TEMPORARILY disable pausing, click "Disable Double Check <strong>(High Risk)</strong>", because AI will make mistakes sometime.', ["Disable Double Check", "Discard Application", "Submit Application"])
-                                    if decision == "Discard Application": raise Exception("Job application discarded by user!")
-                                    pause_before_submit = False if "Disable Verify (High Risk)" == decision else True
+                                    decision = linkedin_apply.show_inpage_overlay(
+                                        "Ready to submit?",
+                                        "Quick check before sending.\nIf you changed anything on LinkedIn, come back here first.\nChoose what to do next.",
+                                        ["Turn Off Checks", "Discard Job", "Submit and Exit", "Submit and Continue"],
+                                    )
+                                    if decision == "Discard Job":
+                                        raise Exception("Job application discarded by user!")
+                                    if decision == "Turn Off Checks":
+                                        pause_before_submit = False
+                                    if decision == "Submit and Exit":
+                                        stop_after_current_submission = True
                                     # try_xp(modal, ".//span[normalize-space(.)='Review']")
                                 wait_if_bot_paused()
                                 bot_status(f'Checking follow-company option for "{title}"...')
@@ -850,6 +860,10 @@ def apply_to_jobs(search_terms: list[str]) -> None:
                     bot_status(f'Saving application result for "{title}" at {company}...')
                     submitted_jobs(job_id, title, company, work_location, work_style, description, experience_required, skills, hr_name, hr_link, resume, reposted, date_listed, date_applied, job_link, application_link, questions_list, connect_request, search_term=searchTerm)
                     if uploaded:   useNewResume = False
+                    if stop_after_current_submission:
+                        bot_status(f'Finished "{title}". Stopping after this submission as requested.')
+                        print_lg("Stopping after current submission by user choice.")
+                        return
 
                     bot_status(f'Finished "{title}" at {company}. Moving to the next job.')
                     print_lg(f'Successfully saved "{title} | {company}" job. Job ID: {job_id} info')
@@ -922,8 +936,9 @@ for _sig in (signal.SIGINT, signal.SIGTERM):
 def run_linkedin_flow() -> None:
     total_runs = 99
     interrupted = False
-    global current_processing_record
+    global current_processing_record, stop_after_current_submission
     current_processing_record = None
+    stop_after_current_submission = False
     bot_status("Starting LinkedIn automation...", status="starting")
     try:
         global linkedIn_tab, tabs_count, useNewResume, aiClient, driver, actions, wait, options
@@ -944,13 +959,18 @@ def run_linkedin_flow() -> None:
         
         default_resume_path = str(get_runtime_value("default_resume_path", ""))
         if not os.path.exists(default_resume_path):
-            pyautogui.alert(text='Your default resume "{}" is missing. Please update the resume path in your API profile settings.\n\nOR\n\nAdd a resume with the exact configured name and path.\n\n\nFor now the bot will continue using your previous upload from LinkedIn!'.format(default_resume_path), title="Missing Resume", button="OK")
+            print_lg(
+                'Default resume is missing: "{}". Please update the resume path in your settings. '
+                "The bot will keep using your last LinkedIn upload for now.".format(default_resume_path)
+            )
+            bot_status("Default resume file is missing. Reusing your last LinkedIn upload.", status="warning")
             useNewResume = False
         
         # Login to LinkedIn
-        print_lg("Opening LinkedIn login page...")
+        print_lg("Checking LinkedIn session...")
         tabs_count = len(driver.window_handles)
-        driver.get("https://www.linkedin.com/login")
+        driver.get("https://www.linkedin.com/feed/")
+        time.sleep(2)
         print_lg(f"Current page after startup: {driver.current_url}")
         if not linkedin_auth.is_logged_in():
             print_lg("LinkedIn session not detected. Starting login flow...")
@@ -1034,7 +1054,7 @@ def run_linkedin_flow() -> None:
             )
         critical_error_log("In Applier Main", e)
         bot_status(f"Fatal error: {str(e)}", status="failed")
-        pyautogui.alert(e,alert_title)
+        print_lg(f"{alert_title} {e}")
     finally:
         if not interrupted:
             manual_learned = question_cache.get_session_manual_learned()

@@ -11,6 +11,7 @@ import React, {
   useTransition,
 } from 'react';
 import { api } from '@/lib/api';
+import { showGlobalToast } from '@/lib/toast';
 import { withMinimumLoadingTime } from '@/lib/loading';
 import type {
   DesktopBotPlatform,
@@ -185,7 +186,6 @@ interface ConsoleContextType {
   batchSyncing: boolean;
   expandedApplicationId: string;
   setExpandedApplicationId: (id: string) => void;
-  toast: string;
   notify: (message: string) => void;
   error: string;
   setError: (err: string) => void;
@@ -259,7 +259,6 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
   const [syncingApplicationId, setSyncingApplicationId] = useState('');
   const [batchSyncing, setBatchSyncing] = useState(false);
   const [expandedApplicationId, setExpandedApplicationId] = useState('');
-  const [toast, setToast] = useState('');
   const [error, setError] = useState('');
   const [isPending, startTransition] = useTransition();
   const [hasLoadedInitialData, setHasLoadedInitialData] = useState(false);
@@ -285,7 +284,66 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
           'Opening assisted apply mode...'
         : `Starting ${platform.replace('_', ' ')}...`,
       );
-      const res = await window.autoJobDesktop.startBot(platform);
+
+      const ensureLoginBrowserOpen = async () => {
+        if (!window.autoJobDesktop?.openChromeSession) {
+          return { ok: false, error: 'Could not open the login browser.' };
+        }
+
+        const managedProfilePath =
+          String(runtimeSettings.settings?.browser_profile_path || '').trim() ||
+          '~/.auto-job-apply-profile';
+
+        notify('Opening login browser...');
+        let openRes = await window.autoJobDesktop.openChromeSession(managedProfilePath);
+
+        if (
+          !openRes.ok &&
+          openRes.code === 'close_other_chrome_windows' &&
+          window.autoJobDesktop?.closeAllChromeWindows
+        ) {
+          notify('Closing other Chrome windows...');
+          const closeRes = await window.autoJobDesktop.closeAllChromeWindows();
+          if (!closeRes.ok) {
+            return {
+              ok: false,
+              error: closeRes.error || 'Please close your other Chrome windows first.',
+            };
+          }
+
+          await sleep(700);
+          notify('Opening login browser...');
+          openRes = await window.autoJobDesktop.openChromeSession(managedProfilePath);
+        }
+
+        if (!openRes.ok) {
+          return {
+            ok: false,
+            error: openRes.error || 'Could not open the login browser.',
+          };
+        }
+
+        notify('Login browser opened. Starting auto apply...');
+        await sleep(1800);
+        return { ok: true };
+      };
+
+      let res = await window.autoJobDesktop.startBot(platform);
+      const needsManagedSession =
+        platform === 'linkedin' &&
+        (res.code === 'login_browser_required' ||
+          res.error?.includes('requires an open managed browser session'));
+
+      if (needsManagedSession) {
+        const ensured = await ensureLoginBrowserOpen();
+        if (!ensured.ok) {
+          setError(ensured.error || 'Could not open the login browser.');
+          return;
+        }
+
+        res = await window.autoJobDesktop.startBot(platform);
+      }
+
       if (!res.ok) {
         setError(res.error || `Failed to start ${platform} bot`);
       }
@@ -312,8 +370,7 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
   };
 
   const notify = (message: string) => {
-    setToast(message);
-    window.setTimeout(() => setToast(''), 2600);
+    showGlobalToast(message);
   };
 
   const processingApplicationsCount = useMemo(
@@ -1184,7 +1241,6 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
     batchSyncing,
     expandedApplicationId,
     setExpandedApplicationId,
-    toast,
     notify,
     error,
     setError,

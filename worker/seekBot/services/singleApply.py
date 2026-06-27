@@ -16,6 +16,7 @@ if str(WORKER_ROOT) not in sys.path:
     sys.path.insert(0, str(WORKER_ROOT))
 
 from shared_services.runtime import get_runtime_value
+from shared_services.browser.chrome import prepare_runtime_profile_copy
 REVIEW_KEYWORDS = [
     "review your application",
     "submit your application",
@@ -195,7 +196,27 @@ def _browser_launch_args() -> list[str]:
     return args
 
 
+def _system_chrome_path() -> str | None:
+    candidates: list[str] = []
+    if sys.platform.startswith("darwin"):
+        candidates.append("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome")
+    elif sys.platform.startswith("linux"):
+        candidates.extend(["/usr/bin/google-chrome", "/usr/bin/google-chrome-stable"])
+    elif sys.platform.startswith("win"):
+        candidates.extend([
+            r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+            r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+        ])
+    for candidate in candidates:
+        if os.path.exists(candidate):
+            return candidate
+    return None
+
+
 def _default_user_data_dir() -> str:
+    custom_path = str(get_runtime_value("browser_profile_path", "") or "").strip()
+    if custom_path:
+        return prepare_runtime_profile_copy(os.path.abspath(os.path.expanduser(custom_path)))
     home = Path.home()
     if sys.platform.startswith("darwin"):
         return str(home / ".auto-job-apply-profile-seek")
@@ -389,12 +410,18 @@ def run(job_url: str, config_overrides: dict | None = None, job_context: dict | 
     try:
         user_data_dir = _default_user_data_dir()
         os.makedirs(user_data_dir, exist_ok=True)
-        browser = playwright.chromium.launch_persistent_context(
-            user_data_dir=user_data_dir,
-            headless=False,
-            args=_browser_launch_args(),
-            viewport={"width": 1440, "height": 1200},
-        )
+        launch_kwargs = {
+            "user_data_dir": user_data_dir,
+            "headless": False,
+            "args": _browser_launch_args(),
+            "viewport": {"width": 1440, "height": 1200},
+        }
+        system_chrome_path = _system_chrome_path()
+        if system_chrome_path:
+            launch_kwargs["executable_path"] = system_chrome_path
+        else:
+            launch_kwargs["channel"] = "chrome"
+        browser = playwright.chromium.launch_persistent_context(**launch_kwargs)
         context = browser
         page = context.pages[0] if context.pages else context.new_page()
         config = merge_config(config_overrides)

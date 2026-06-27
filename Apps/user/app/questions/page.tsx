@@ -12,6 +12,7 @@ import type { QuestionCacheEntry } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import { Stagger, ScrollLayout } from '@/components/animation';
+import { Input } from '@/components/UI/input';
 
 const springTransition = {
   duration: 1,
@@ -131,7 +132,7 @@ export default function QuestionsPage() {
   }, [hasMore, isLoading, items]);
 
   return (
-    <div className='bg-panel rounded-2xl p-6 shadow-xs flex flex-col h-[calc(100vh-140px)] min-h-[500px] overflow-hidden'>
+    <div className='flex flex-col h-[calc(100vh-66px)] min-h-[500px] overflow-hidden'>
       <div className='pb-4 select-none shrink-0'>
         <ScrollLayout
           key={scrollContainer ? 'scrolling' : 'static'}
@@ -149,17 +150,13 @@ export default function QuestionsPage() {
           </ScrollLayout.TopToLeft>
 
           <ScrollLayout.BtmToRight>
-            <div className='flex items-center gap-4 w-full bg-zinc-50 dark:bg-zinc-900/40 px-4 py-2.5 rounded-xl border border-zinc-100 dark:border-zinc-800/60'>
-              <div className='relative flex-1 max-w-md'>
-                <Search className='absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400' />
-                <input
-                  placeholder='Search question text or answer...'
-                  value={searchText}
-                  onChange={(event) => setSearchText(event.target.value)}
-                  className='pl-9 pr-4 py-1.5 w-full text-sm rounded-xl border border-zinc-200 bg-panel dark:bg-zinc-955 dark:border-zinc-800 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-750 focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-750 text-zinc-900 dark:text-zinc-100'
-                />
-              </div>
-            </div>
+            <Input
+              icon={Search}
+              placeholder='Search question text or answer...'
+              value={searchText}
+              onChange={(event) => setSearchText(event.target.value)}
+              className='w-full'
+            />
           </ScrollLayout.BtmToRight>
         </ScrollLayout>
       </div>
@@ -234,12 +231,12 @@ export default function QuestionsPage() {
                   )}
                 >
                   <div className='pr-4 min-w-0'>
-                    <strong
+                    <h2
                       className='text-zinc-900 dark:text-zinc-100 block truncate'
                       title={entry.original_label}
                     >
                       {entry.original_label}
-                    </strong>
+                    </h2>
                     <p
                       className='text-xs text-zinc-400 dark:text-zinc-500 mt-0.5 truncate'
                       title={entry.companies?.join(', ')}

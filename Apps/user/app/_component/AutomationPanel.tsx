@@ -3,57 +3,41 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { motion, useDragControls, useMotionValue } from 'framer-motion';
+import { motion, useDragControls, useMotionValue, AnimatePresence } from 'framer-motion';
 import { useConsole } from '@/components/ConsoleContext';
 import { cn } from '@/lib/utils';
-import {
-  Bot,
-  Search,
-  RefreshCw,
-  Play,
-  Square,
-  X,
-  Activity,
-} from 'lucide-react';
+import { Bot, Play, Square, RefreshCw } from 'lucide-react';
 import type { DesktopBotPlatform } from '@/lib/types';
 
-const LinkedinIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    viewBox='0 0 24 24'
-    fill='none'
-    stroke='currentColor'
-    strokeWidth='2'
-    strokeLinecap='round'
-    strokeLinejoin='round'
-    {...props}
-  >
-    <path d='M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z' />
-    <rect x='2' y='9' width='4' height='12' />
-    <circle cx='4' cy='4' r='2' />
+// Premium SVG Logos
+const LinkedInIcon = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 34 34" fill="currentColor">
+    <path
+      className="fill-[#0a66c2]"
+      d="M34 2.5v29a2.5 2.5 0 0 1-2.5 2.5h-29A2.5 2.5 0 0 1 0 31.5v-29A2.5 2.5 0 0 1 2.5 0h29A2.5 2.5 0 0 1 34 2.5M10 13H5v16h5zm.45-5.5a2.88 2.88 0 0 0-2.86-2.9H7.5a2.9 2.9 0 0 0 0 5.8 2.88 2.88 0 0 0 2.95-2.81zM29 19.28c0-4.81-3.06-6.68-6.1-6.68a5.7 5.7 0 0 0-5.06 2.58h-.14V13H13v16h5v-8.51a3.32 3.32 0 0 1 3-3.58h.19c1.59 0 2.77 1 2.77 3.52V29h5z"
+    />
   </svg>
 );
 
-const PLATFORM_CARDS: Array<{
-  key: DesktopBotPlatform;
-  label: string;
-}> = [
-  { key: 'linkedin', label: 'LinkedIn Easy Apply' },
-  { key: 'seek', label: 'Seek Quick Apply' },
-  { key: 'third_party', label: 'Third-Party Assist' },
-];
+const SeekIcon = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 68 68" fill="currentColor">
+    <path
+      className="fill-[#0d3880]"
+      d="M34.015,1.51c-17.952,0-32.506,14.552-32.506,32.507c0,17.952,14.554,32.505,32.506,32.505 c17.958,0,32.508-14.553,32.508-32.505C66.523,16.062,51.972,1.51,34.015,1.51z M8.262,41.733c-0.281,0-0.511-0.226-0.511-0.504 c0-0.281,0.229-0.511,0.511-0.511c0.278,0,0.504,0.229,0.504,0.511C8.766,41.508,8.541,41.733,8.262,41.733z M8.262,34.907 c-0.281,0-0.511-0.229-0.511-0.51s0.229-0.509,0.511-0.509c0.278,0,0.504,0.228,0.504,0.509S8.541,34.907,8.262,34.907z M8.262,28.077c-0.281,0-0.511-0.229-0.511-0.509c0-0.281,0.229-0.507,0.511-0.507c0.278,0,0.504,0.226,0.504,0.507 C8.766,27.849,8.541,28.077,8.262,28.077z M11.764,41.991c-0.422,0-0.762-0.342-0.762-0.762c0-0.422,0.34-0.765,0.762-0.765 c0.421,0,0.762,0.343,0.762,0.765C12.526,41.649,12.186,41.991,11.764,41.991z M11.764,35.158c-0.422,0-0.762-0.339-0.762-0.761 c0-0.42,0.34-0.761,0.762-0.761c0.421,0,0.762,0.341,0.762,0.761C12.526,34.819,12.186,35.158,11.764,35.158z M11.764,28.33 c-0.422,0-0.762-0.341-0.762-0.762c0-0.422,0.34-0.763,0.762-0.763c0.421,0,0.762,0.341,0.762,0.763 C12.526,27.989,12.186,28.33,11.764,28.33z M15.867,42.246c-0.562,0-1.019-0.455-1.019-1.017c0-0.561,0.457-1.018,1.019-1.018 c0.558,0,1.016,0.457,1.016,1.018C16.882,41.791,16.424,42.246,15.867,42.246z M15.867,35.412c-0.562,0-1.019-0.453-1.019-1.015 c0-0.562,0.457-1.016,1.019-1.016c0.558,0,1.016,0.453,1.016,1.016C16.882,34.959,16.424,35.412,15.867,35.412z M15.867,28.583 c-0.562,0-1.019-0.451-1.019-1.015c0-0.562,0.457-1.016,1.019-1.016c0.558,0,1.016,0.453,1.016,1.016 C16.882,28.132,16.424,28.583,15.867,28.583z M20.18,42.497c-0.702,0-1.27-0.567-1.27-1.268c0-0.705,0.568-1.27,1.27-1.27 c0.704,0,1.27,0.564,1.27,1.27C21.45,41.93,20.884,42.497,20.18,42.497z M20.18,35.669c-0.702,0-1.27-0.568-1.27-1.271 s0.568-1.269,1.27-1.269c0.704,0,1.27,0.565,1.27,1.269S20.884,35.669,20.18,35.669z M20.18,28.84c-0.702,0-1.27-0.568-1.27-1.271 s0.568-1.271,1.27-1.271c0.704,0,1.27,0.567,1.27,1.271S20.884,28.84,20.18,28.84z M25.234,42.752c-0.842,0-1.523-0.681-1.523-1.522 c0-0.845,0.682-1.523,1.523-1.523c0.84,0,1.522,0.679,1.522,1.523C26.756,42.071,26.074,42.752,25.234,42.752z M25.234,35.922 c-0.842,0-1.523-0.684-1.523-1.524c0-0.842,0.682-1.523,1.523-1.523c0.84,0,1.522,0.682,1.522,1.523 C26.756,35.238,26.074,35.922,25.234,35.922z M25.234,29.093c-0.842,0-1.523-0.683-1.523-1.524s0.682-1.525,1.523-1.525 c0.84,0,1.522,0.684,1.522,1.525S26.074,29.093,25.234,29.093z M30.523,43.005c-0.983,0-1.778-0.792-1.778-1.775 c0-0.982,0.795-1.78,1.778-1.78c0.985,0,1.779,0.798,1.779,1.78C32.302,42.213,31.508,43.005,30.523,43.005z M30.523,36.176 c-0.983,0-1.778-0.796-1.778-1.778s0.795-1.776,1.778-1.776c0.985,0,1.779,0.794,1.779,1.776S31.508,36.176,30.523,36.176z M30.523,29.346c-0.983,0-1.778-0.796-1.778-1.777s0.795-1.776,1.778-1.776c0.985,0,1.779,0.795,1.779,1.776 S31.508,29.346,30.523,29.346z M36.812,56.922c-1.121,0-2.027-0.911-2.027-2.034c0-1.119,0.906-2.027,2.027-2.027 c1.125,0,2.035,0.908,2.035,2.027C38.847,56.011,37.938,56.922,36.812,56.922z M36.812,50.091c-1.121,0-2.027-0.91-2.027-2.03 c0-1.122,0.906-2.036,2.027-2.036c1.125,0,2.035,0.914,2.035,2.036C38.847,49.181,37.938,50.091,36.812,50.091z M36.812,43.26 c-1.121,0-2.027-0.909-2.027-2.030c0-1.123,0.906-2.033,2.027-2.033c1.125,0,2.035,0.91,2.035,2.033 C38.847,42.351,37.938,43.26,36.812,43.26z M36.812,36.43c-1.121,0-2.027-0.91-2.027-2.032c0-1.124,0.906-2.03,2.027-2.03 c1.125,0,2.035,0.906,2.035,2.03C38.847,35.52,37.938,36.43,36.812,36.43z M36.812,29.6c-1.121,0-2.027-0.908-2.027-2.031 c0-1.122,0.906-2.031,2.027-2.031c1.125,0,2.035,0.909,2.035,2.031C38.847,28.691,37.938,29.6,36.812,29.6z M36.812,22.77 c-1.121,0-2.027-0.912-2.027-2.032c0-1.123,0.906-2.03,2.027-2.03c1.125,0,2.035,0.907,2.035,2.03 C38.847,21.857,37.938,22.77,36.812,22.77z M36.812,15.938c-1.121,0-2.027-0.91-2.027-2.029c0-1.123,0.906-2.033,2.027-2.033 c1.125,0,2.035,0.91,2.035,2.033C38.847,15.027,37.938,15.938,36.812,15.938z M43.342,50.3c-1.233,0-2.238-1.002-2.238-2.239 c0-1.239,1.004-2.242,2.238-2.242c1.24,0,2.243,1.003,2.243,2.242C45.585,49.298,44.582,50.3,43.342,50.3z M43.342,43.469 c-1.233,0-2.238-1.003-2.238-2.239c0-1.239,1.004-2.242,2.238-2.242c1.24,0,2.243,1.003,2.243,2.242 C45.585,42.466,44.582,43.469,43.342,43.469z M43.342,36.64c-1.233,0-2.238-1.004-2.238-2.242c0-1.237,1.004-2.238,2.238-2.238 c1.24,0,2.243,1.001,2.243,2.238C45.585,35.636,44.582,36.64,43.342,36.64z M43.342,29.807c-1.233,0-2.238-1.002-2.238-2.238 c0-1.238,1.004-2.24,2.238-2.24c1.24,0,2.243,1.002,2.243,2.24C45.585,28.805,44.582,29.807,43.342,29.807z M43.342,22.977 c-1.233,0-2.238-1.003-2.238-2.239c0-1.239,1.004-2.242,2.238-2.242c1.24,0,2.243,1.003,2.243,2.242 C45.585,21.974,44.582,22.977,43.342,22.977z M50.351,43.765c-1.393,0-2.517-1.126-2.517-2.517c0-1.389,1.124-2.516,2.517-2.516 c1.391,0,2.513,1.127,2.513,2.516C52.863,42.639,51.742,43.765,50.351,43.765z M50.351,36.933c-1.393,0-2.517-1.123-2.517-2.515 c0-1.386,1.124-2.517,2.517-2.517c1.391,0,2.513,1.131,2.513,2.517C52.863,35.81,51.742,36.933,50.351,36.933z M50.351,30.104 c-1.393,0-2.517-1.125-2.517-2.515c0-1.393,1.124-2.517,2.517-2.517c1.391,0,2.513,1.124,2.513,2.517 C52.863,28.979,51.742,30.104,50.351,30.104z M57.49,37.219c-1.519,0-2.756-1.234-2.756-2.754c0-1.523,1.238-2.757,2.756-2.757 c1.521,0,2.754,1.233,2.754,2.757C60.244,35.984,59.012,37.219,57.49,37.219z"
+    />
+  </svg>
+);
 
 export default function AutomationPanel() {
   const {
     user,
-    mainBotState,
-    mainBotName,
     isDesktopApp,
     botStates,
     startBot,
     stopBot,
   } = useConsole();
 
-  const [isPanelOpen, setIsPanelOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   const [corner, setCorner] = useState<'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'>('bottom-right');
   const [mounted, setMounted] = useState(false);
 
@@ -64,29 +48,17 @@ export default function AutomationPanel() {
   useEffect(() => {
     setMounted(true);
     const saved = localStorage.getItem('automation-panel-corner');
-    if (saved === 'top-left' || saved === 'top-right' || saved === 'bottom-left' || saved === 'bottom-right') {
+    if (
+      saved === 'top-left' ||
+      saved === 'top-right' ||
+      saved === 'bottom-left' ||
+      saved === 'bottom-right'
+    ) {
       setCorner(saved);
     }
   }, []);
 
   if (!isDesktopApp) return null;
-
-  const desktopBotStatus = String(mainBotState?.status || 'idle').toLowerCase();
-  const desktopBotIsStarting = desktopBotStatus === 'starting';
-  const desktopBotIsStopping = desktopBotStatus === 'stopping';
-  const desktopBotIsActive = ['starting', 'running', 'stopping'].includes(
-    desktopBotStatus,
-  );
-  const desktopWorkerStatusCaption =
-    desktopBotIsStarting ? 'Starting on this machine'
-    : desktopBotIsStopping ? 'Stopping on this machine'
-    : desktopBotIsActive ? 'Python worker live'
-    : 'Ready on this machine';
-  const desktopWorkerStatusDetail =
-    mainBotState?.message && mainBotState.message !== 'Idle' ?
-      mainBotState.message
-    : desktopBotIsActive ? 'Python worker is ready to apply'
-    : 'Launch the local LinkedIn bot from this desktop app';
 
   const handleDragEnd = (event: any, info: any) => {
     const x = info.point.x;
@@ -94,7 +66,8 @@ export default function AutomationPanel() {
     const W = window.innerWidth;
     const H = window.innerHeight;
 
-    let newCorner: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' = 'bottom-right';
+    let newCorner: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' =
+      'bottom-right';
 
     if (x < W / 2) {
       if (y < H / 2) {
@@ -119,10 +92,56 @@ export default function AutomationPanel() {
   };
 
   const isTop = corner.startsWith('top');
-  const isLeft = corner.endsWith('left');
 
-  // Prevent rendering position logic on server to avoid hydration mismatch
+  // Prevent rendering positioning logic on server to avoid hydration mismatch
   if (!mounted) return null;
+
+  const handlePlatformClick = async (platform: DesktopBotPlatform, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const state = botStates?.[platform];
+    const status = state?.status || 'idle';
+    const isRunning = status === 'running';
+
+    if (status === 'starting' || status === 'stopping') return;
+
+    if (isRunning) {
+      await stopBot(platform);
+    } else {
+      if (!user?.can_use_auto_apply) return;
+      await startBot(platform);
+    }
+  };
+
+  // Determine if any bot is active to trigger glowing state on floating icon
+  const isAnyBotActive = Object.values(botStates || {}).some((s: any) =>
+    ['starting', 'running', 'stopping'].includes(s?.status),
+  );
+
+  const PLATFORMS: Array<{
+    key: 'linkedin' | 'seek';
+    name: string;
+    description: string;
+    icon: React.ReactNode;
+    brandHoverClass: string;
+    brandShadowClass: string;
+  }> = [
+    {
+      key: 'linkedin',
+      name: 'LinkedIn',
+      description: 'Easy Apply bot',
+      icon: <LinkedInIcon className="w-7 h-7" />,
+      brandHoverClass: 'hover:border-[#0a66c2]/45 dark:hover:border-[#0a66c2]/60 hover:bg-[#0a66c2]/5 dark:hover:bg-[#0a66c2]/10',
+      brandShadowClass: 'shadow-[#0a66c2]/5 hover:shadow-[#0a66c2]/10',
+    },
+    {
+      key: 'seek',
+      name: 'Seek',
+      description: 'Quick Apply bot',
+      icon: <SeekIcon className="w-7 h-7" />,
+      brandHoverClass: 'hover:border-[#0d3880]/45 dark:hover:border-[#0d3880]/60 hover:bg-[#0d3880]/5 dark:hover:bg-[#0d3880]/10',
+      brandShadowClass: 'shadow-[#0d3880]/5 hover:shadow-[#0d3880]/10',
+    },
+  ];
 
   return (
     <motion.div
@@ -134,296 +153,184 @@ export default function AutomationPanel() {
       style={{ x: dragX, y: dragY }}
       onDragEnd={handleDragEnd}
       layout
+      onMouseEnter={() => setIsOpen(true)}
+      onMouseLeave={() => setIsOpen(false)}
       transition={{ type: 'spring', stiffness: 220, damping: 28 }}
       className={cn(
-        'fixed z-40 flex gap-4 pointer-events-auto touch-none',
+        'fixed z-50 flex group gap-4 pointer-events-auto touch-none select-none',
         corner === 'top-left' && 'top-6 left-6 flex-col items-start',
         corner === 'top-right' && 'top-6 right-6 flex-col items-end',
-        corner === 'bottom-left' && 'bottom-6 left-6 flex-col-reverse items-start',
-        corner === 'bottom-right' && 'bottom-6 right-6 flex-col-reverse items-end',
+        corner === 'bottom-left' &&
+          'bottom-6 left-6 flex-col-reverse items-start',
+        corner === 'bottom-right' &&
+          'bottom-6 right-6 flex-col-reverse items-end',
       )}
     >
       {/* Floating Action Button (FAB) / Drag Handle */}
       <button
         onPointerDown={(e) => dragControls.start(e)}
-        onClick={() => setIsPanelOpen(!isPanelOpen)}
+        onClick={() => setIsOpen((prev) => !prev)}
         className={cn(
-          'w-14 h-14 rounded-full flex items-center justify-center shadow-lg border text-white transition-all duration-300 hover:scale-[1.05] active:scale-[0.95] cursor-grab active:cursor-grabbing z-40 relative select-none',
-          Object.values(botStates || {}).some((s: any) =>
-            ['starting', 'running', 'stopping'].includes(s?.status),
-          ) ?
+          'w-14 h-14 rounded-full flex items-center justify-center shadow-lg border text-white transition-all duration-300 hover:scale-[1.05] active:scale-[0.95] cursor-grab active:cursor-grabbing z-45 relative',
+          isAnyBotActive ?
             'bg-gradient-to-tr from-emerald-600 to-green-700 border-green-500/20 shadow-green-500/20'
           : 'bg-gradient-to-tr from-zinc-700 to-zinc-800 border-zinc-600/20 shadow-zinc-800/20',
         )}
       >
-        {Object.values(botStates || {}).some((s: any) =>
-          ['starting', 'running', 'stopping'].includes(s?.status),
-        ) && (
-          <span className='absolute -top-1 -right-1 flex h-4 w-4 pointer-events-none'>
-            <span className='animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75'></span>
-            <span className='relative inline-flex rounded-full h-4 w-4 bg-green-500 border-2 border-white dark:border-zinc-900'></span>
+        {isAnyBotActive && (
+          <span className="absolute -top-1 -right-1 flex h-4 w-4 pointer-events-none">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-4 w-4 bg-green-500 border-2 border-white dark:border-zinc-900"></span>
           </span>
         )}
         <Bot
           className={cn(
             'w-6 h-6 transition-transform duration-300 pointer-events-none',
-            isPanelOpen && 'rotate-180',
+            isOpen && 'rotate-180',
           )}
         />
       </button>
 
-      {/* Floating Launch Button */}
-      <button
-        className={cn(
-          'relative group flex flex-col items-start gap-0.5 rounded-2xl px-6 py-4 shadow-lg border text-white transition-all duration-300 hover:scale-[1.03] active:scale-[0.98] cursor-pointer min-w-[260px] select-none',
-          desktopBotIsStarting ?
-            'bg-gradient-to-tr from-sky-600 to-cyan-700 border-sky-500/20'
-          : desktopBotIsStopping ?
-            'bg-gradient-to-tr from-amber-600 to-orange-700 border-amber-500/20'
-          : desktopBotIsActive ?
-            'bg-gradient-to-tr from-red-600 to-rose-700 border-red-500/20'
-          : 'bg-gradient-to-tr from-green-600 to-emerald-700 border-green-500/20 disabled:opacity-50 disabled:pointer-events-none',
-        )}
-        onClick={() =>
-          void (desktopBotIsStarting || desktopBotIsStopping ? undefined
-          : desktopBotIsActive ? stopBot(mainBotName)
-          : startBot(mainBotName))
-        }
-        disabled={
-          desktopBotIsStarting ||
-          desktopBotIsStopping ||
-          (!desktopBotIsActive && !user?.can_use_auto_apply)
-        }
-      >
-        {!desktopBotIsActive &&
-          !desktopBotIsStarting &&
-          !desktopBotIsStopping &&
-          user?.can_use_auto_apply && (
-            <span className='absolute inset-0 rounded-2xl bg-green-500/20 animate-pulse pointer-events-none z-0'></span>
-          )}
-        {desktopBotIsStarting && (
-          <span className='absolute inset-0 rounded-2xl bg-sky-500/20 animate-pulse pointer-events-none z-0'></span>
-        )}
-        {desktopBotIsActive && !desktopBotIsStopping && (
-          <span className='absolute inset-0 rounded-2xl bg-red-500/20 animate-pulse pointer-events-none z-0'></span>
-        )}
-        {desktopBotIsStopping && (
-          <span className='absolute inset-0 rounded-2xl bg-amber-500/20 animate-pulse pointer-events-none z-0'></span>
-        )}
-
-        <span className='text-[10px] uppercase font-bold tracking-wider opacity-80 z-10 pointer-events-none'>
-          {desktopWorkerStatusCaption}
-        </span>
-        <strong className='text-sm font-extrabold tracking-tight z-10 flex items-center gap-1.5 pointer-events-none'>
-          {desktopBotIsStarting || desktopBotIsStopping ?
-            <RefreshCw className='w-3.5 h-3.5 animate-spin' />
-          : desktopBotIsActive ?
-            <Square className='w-3.5 h-3.5 fill-white' />
-          : <Play className='w-3.5 h-3.5 fill-white' />}
-          {desktopBotIsStarting ?
-            'Starting Auto Apply'
-          : desktopBotIsStopping ?
-            'Stopping Auto Apply'
-          : desktopBotIsActive ?
-            'Stop Auto Apply'
-          : 'Start Auto Apply'}
-        </strong>
-        <span className='text-[11px] leading-tight text-white/80 z-10 max-w-[240px] truncate pointer-events-none'>
-          {desktopWorkerStatusDetail}
-        </span>
-      </button>
-
-      {/* Automation Control Panel Overlay */}
-      {isPanelOpen && (
-        <div className='w-96 max-h-[520px] flex flex-col rounded-3xl border border-zinc-200/50 dark:border-zinc-800/80 bg-white/95 dark:bg-[#0f1219]/95 backdrop-blur-xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-5 duration-300'>
-          {/* Header */}
-          <div className='p-4 border-b border-zinc-100 dark:border-zinc-800/80 flex items-center justify-between bg-zinc-50/50 dark:bg-zinc-900/40 select-none'>
-            <div className='flex items-center gap-2.5'>
-              <div className='w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-600 to-green-700 flex items-center justify-center shadow-md'>
-                <Bot className='w-4 h-4 text-white' />
-              </div>
-              <div>
-                <h3 className='font-bold text-xs text-zinc-900 dark:text-zinc-150'>
-                  Platform Automation
-                </h3>
-                <p className='text-[9px] text-zinc-400 dark:text-zinc-500 uppercase tracking-wider font-semibold'>
-                  Direct process console
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={() => setIsPanelOpen(false)}
-              className='p-1.5 rounded-xl text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer'
-            >
-              <X className='w-4 h-4' />
-            </button>
-          </div>
-
-          {/* Scrollable Platform List */}
-          <div className='flex-1 overflow-y-auto p-4 space-y-4 scrollbar-none'>
-            {PLATFORM_CARDS.map((platformCard) => {
-              const platform = platformCard.key;
-              const state = botStates?.[platform] || {
+      {/* Pop-up Platform buttons */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9, y: isTop ? -15 : 15 }}
+            animate={{
+              opacity: 1,
+              scale: 1,
+              y: 0,
+              transition: {
+                type: 'spring',
+                stiffness: 280,
+                damping: 24,
+                staggerChildren: 0.06,
+              },
+            }}
+            exit={{
+              opacity: 0,
+              scale: 0.9,
+              y: isTop ? -10 : 10,
+              transition: { duration: 0.15, ease: 'easeIn' },
+            }}
+            className={cn(
+              'flex gap-3 z-30',
+              isTop ? 'flex-col' : 'flex-col-reverse',
+            )}
+          >
+            {PLATFORMS.map((platform) => {
+              const state = botStates?.[platform.key] || {
                 status: 'idle',
-                message: 'Idle',
                 stats: { submitted: 0, skipped: 0, failed: 0 },
-                logs: [],
               };
-              const isRunning = [
-                'starting',
-                'running',
-                'stopping',
-              ].includes(state.status);
-              const isStopping = state.status === 'stopping';
-              const isStarting = state.status === 'starting';
-
-              const label = platformCard.label;
-              const PlatformIcon =
-                platform === 'linkedin' ? LinkedinIcon
-                : platform === 'seek' ? Search
-                : Bot;
-
-              const statusBadgeColor =
-                state.status === 'success' ?
-                  'text-emerald-600 bg-emerald-500/10 border-emerald-500/20'
-                : state.status === 'failed' ?
-                  'text-red-500 bg-red-500/10 border-red-500/20'
-                : state.status === 'cancelled' ?
-                  'text-zinc-500 bg-zinc-500/10 border-zinc-500/20'
-                : isRunning ?
-                  'text-blue-500 bg-blue-500/10 border-blue-500/20'
-                : 'text-zinc-400 bg-zinc-500/5 border-zinc-500/10';
-
-              const dotColor =
-                state.status === 'success' ? 'bg-emerald-500'
-                : state.status === 'failed' ? 'bg-red-500'
-                : state.status === 'cancelled' ? 'bg-zinc-500'
-                : isRunning ? 'bg-blue-500 animate-pulse'
-                : 'bg-zinc-400';
+              const status = state.status || 'idle';
+              const isRunning = status === 'running';
+              const isStarting = status === 'starting';
+              const isStopping = status === 'stopping';
+              const isActive = isRunning || isStarting || isStopping;
+              const stats = state.stats || { submitted: 0, skipped: 0, failed: 0 };
+              const isLocked = !isActive && !user?.can_use_auto_apply;
 
               return (
-                <div
-                  key={platform}
-                  className='p-4 rounded-2xl border border-zinc-200/50 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-900/10 flex flex-col gap-3 transition-colors hover:border-zinc-300 dark:hover:border-zinc-700'
+                <motion.div
+                  key={platform.key}
+                  variants={{
+                    hidden: { opacity: 0, y: isTop ? -10 : 10, scale: 0.95 },
+                    visible: { opacity: 1, y: 0, scale: 1 },
+                  }}
+                  className={cn(
+                    'group/btn w-72 h-20 rounded-2xl flex items-center justify-between p-3.5 border transition-all duration-300 relative overflow-hidden backdrop-blur-xl shadow-xl',
+                    isLocked ?
+                      'bg-zinc-100/70 dark:bg-zinc-900/50 border-zinc-200/40 dark:border-zinc-800/40 opacity-70 cursor-not-allowed'
+                    : isRunning ?
+                      'bg-emerald-500/5 dark:bg-emerald-500/10 border-emerald-500/30 dark:border-emerald-500/20 shadow-emerald-500/5 cursor-pointer hover:border-emerald-500/50 hover:bg-emerald-500/10'
+                    : isStarting || isStopping ?
+                      'bg-sky-500/5 dark:bg-sky-500/10 border-sky-500/30 dark:border-sky-500/20 shadow-sky-500/5 cursor-wait'
+                    : cn(
+                        'bg-white/90 dark:bg-[#0f1219]/90 border-zinc-200/75 dark:border-zinc-800/80 cursor-pointer',
+                        platform.brandHoverClass,
+                        platform.brandShadowClass,
+                      ),
+                  )}
+                  onClick={(e) => {
+                    if (isLocked) return;
+                    handlePlatformClick(platform.key, e);
+                  }}
                 >
-                  {/* Row Header */}
-                  <div className='flex items-center justify-between select-none'>
-                    <div className='flex items-center gap-2.5'>
-                      <div className='w-8 h-8 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-600 dark:text-zinc-300 border border-zinc-200/20'>
-                        <PlatformIcon className='w-4 h-4' />
-                      </div>
-                      <div>
-                        <h4 className='font-bold text-xs text-zinc-800 dark:text-zinc-200'>
-                          {label}
-                        </h4>
-                        <span className='text-[9px] text-zinc-400 font-semibold uppercase tracking-wider'>
-                          {platform} bot
-                        </span>
+                  {/* Left Side: Logo */}
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-11 h-11 rounded-xl bg-white border border-zinc-150/85 dark:border-zinc-800/50 flex items-center justify-center shadow-sm shrink-0">
+                      {platform.icon}
+                    </div>
+
+                    {/* Middle: Name & Action status */}
+                    <div className="flex flex-col min-w-0 select-none">
+                      <span className="font-extrabold text-sm text-zinc-950 dark:text-zinc-50 tracking-tight leading-normal">
+                        {platform.name} Apply
+                      </span>
+
+                      {/* Status row */}
+                      <div className="flex items-center gap-1.5 min-h-[16px] mt-0.5">
+                        {isStarting && (
+                          <span className="text-[11px] font-bold text-sky-500 flex items-center gap-1">
+                            <RefreshCw className="w-3 h-3 animate-spin" /> Starting...
+                          </span>
+                        )}
+                        {isStopping && (
+                          <span className="text-[11px] font-bold text-amber-500 flex items-center gap-1">
+                            <RefreshCw className="w-3 h-3 animate-spin" /> Stopping...
+                          </span>
+                        )}
+                        {isLocked && (
+                          <span className="text-[11px] font-bold text-red-500 dark:text-red-400 flex items-center gap-1">
+                            <svg className="w-3.5 h-3.5 fill-current shrink-0" viewBox="0 0 24 24">
+                              <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z" />
+                            </svg>
+                            Upgrade Required
+                          </span>
+                        )}
+                        {!isActive && !isLocked && (
+                          <>
+                            <span className="text-[11px] font-bold text-zinc-400 dark:text-zinc-500 group-hover/btn:hidden flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-zinc-300 dark:bg-zinc-700" /> Inactive
+                            </span>
+                            <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 hidden group-hover/btn:flex items-center gap-1 animate-pulse">
+                              <Play className="w-3 h-3 fill-current" /> Start Bot
+                            </span>
+                          </>
+                        )}
+                        {isRunning && (
+                          <>
+                            <span className="text-[11px] font-bold text-green-500 group-hover/btn:hidden flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" /> Running
+                            </span>
+                            <span className="text-[11px] font-bold text-red-500 hidden group-hover/btn:flex items-center gap-1">
+                              <Square className="w-3 h-3 fill-current" /> Stop Bot
+                            </span>
+                          </>
+                        )}
                       </div>
                     </div>
-                    <span
-                      className={cn(
-                        'inline-flex items-center gap-1 text-[9px] font-bold uppercase px-2 py-0.5 rounded-full border tracking-wider',
-                        statusBadgeColor,
-                      )}
-                    >
-                      <span
-                        className={cn('w-1.5 h-1.5 rounded-full', dotColor)}
-                      />
-                      {state.status}
+                  </div>
+
+                  {/* Right Side: Stats Panel */}
+                  <div className="flex flex-col items-end text-[10px] font-bold font-mono bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-150/40 dark:border-zinc-800/40 rounded-xl px-2 py-1 select-none leading-tight shrink-0 gap-0.5 min-w-[52px]">
+                    <span className="text-emerald-600 dark:text-emerald-400 flex items-center justify-end gap-1">
+                      {stats.submitted} <span className="text-[8px] font-sans">✔</span>
+                    </span>
+                    <span className="text-amber-500 flex items-center justify-end gap-1">
+                      {stats.skipped} <span className="text-[8px] font-sans">➔</span>
+                    </span>
+                    <span className="text-red-500 flex items-center justify-end gap-1">
+                      {stats.failed} <span className="text-[8px] font-sans">✖</span>
                     </span>
                   </div>
-
-                  {/* Stats Grid */}
-                  <div className='grid grid-cols-3 gap-1 px-3 py-2 rounded-xl bg-zinc-100/60 dark:bg-zinc-900/30 text-center text-[10px] font-medium select-none'>
-                    <div>
-                      <div className='text-zinc-400 dark:text-zinc-500 font-semibold mb-0.5'>
-                        Submitted
-                      </div>
-                      <div className='font-bold text-emerald-600 dark:text-emerald-400 text-xs'>
-                        {state.stats?.submitted ?? 0}
-                      </div>
-                    </div>
-                    <div>
-                      <div className='text-zinc-400 dark:text-zinc-500 font-semibold mb-0.5'>
-                        Skipped
-                      </div>
-                      <div className='font-bold text-amber-500 text-xs'>
-                        {state.stats?.skipped ?? 0}
-                      </div>
-                    </div>
-                    <div>
-                      <div className='text-zinc-400 dark:text-zinc-500 font-semibold mb-0.5'>
-                        Failed
-                      </div>
-                      <div className='font-bold text-red-500 text-xs'>
-                        {state.stats?.failed ?? 0}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Action Button */}
-                  <div className='flex items-center gap-2'>
-                    {isRunning ?
-                      <button
-                        onClick={() => stopBot(platform)}
-                        disabled={isStopping}
-                        className='flex-1 py-2 rounded-xl bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-500 hover:to-rose-600 disabled:opacity-50 text-white text-xs font-bold transition-all shadow-md active:scale-98 cursor-pointer flex items-center justify-center gap-1.5'
-                      >
-                        {isStopping ?
-                          <RefreshCw className='w-3.5 h-3.5 animate-spin' />
-                        : <Square className='w-3 h-3 fill-white' />}
-                        {platform === 'third_party' ?
-                          'Stop Assist'
-                        : 'Stop Bot'}
-                      </button>
-                    : <button
-                        onClick={() => startBot(platform)}
-                        disabled={isStarting}
-                        className='flex-1 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-green-700 hover:from-emerald-500 hover:to-green-600 disabled:opacity-50 text-white text-xs font-bold transition-all shadow-md active:scale-98 cursor-pointer flex items-center justify-center gap-1.5'
-                      >
-                        {isStarting ?
-                          <RefreshCw className='w-3.5 h-3.5 animate-spin' />
-                        : <Play className='w-3 h-3 fill-white' />}
-                        {platform === 'third_party' ?
-                          'Open Assist'
-                        : 'Start Bot'}
-                      </button>
-                    }
-                  </div>
-
-                  {/* Status Message */}
-                  {state.message && state.message !== 'Idle' && (
-                    <div className='text-[10px] text-zinc-600 dark:text-zinc-400 flex items-center gap-1.5 truncate bg-zinc-100/30 dark:bg-zinc-900/10 px-2 py-1 rounded-lg border border-zinc-200/20 select-none'>
-                      <Activity className='w-3.5 h-3.5 text-blue-500 shrink-0 animate-pulse' />
-                      <span className='font-medium truncate'>
-                        {state.message}
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Real-time mini console preview */}
-                  {state.logs && state.logs.length > 0 && (
-                    <div className='h-20 rounded-xl bg-zinc-950/95 p-2.5 font-mono text-[9px] text-zinc-400 overflow-y-auto border border-zinc-800/80 scrollbar-none'>
-                      {state.logs.slice(-3).map((log, i) => (
-                        <div
-                          key={i}
-                          className='truncate opacity-80 leading-normal flex items-start gap-1'
-                        >
-                          <span className='text-zinc-600 shrink-0'>
-                            [{log.at.split('T')[1].split('.')[0]}]
-                          </span>
-                          <span className='break-all'>{log.line}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                </motion.div>
               );
             })}
-          </div>
-        </div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

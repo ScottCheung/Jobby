@@ -10,7 +10,6 @@ import pathlib
 from time import sleep
 from random import randint
 from datetime import datetime, timedelta
-from pyautogui import alert
 from pprint import pprint
 
 from shared_services.runtime import get_runtime_value
@@ -127,7 +126,7 @@ def print_lg(*msgs: str | dict, end: str = "\n", pretty: bool = False, flush: bo
     except Exception as e:
         logs_folder_path = str(get_runtime_value("logs_folder_path", "worker/log"))
         trail = f'Skipped saving this message: "{message}" to log.txt!' if from_critical else "We'll try one more time to log..."
-        alert(f"log.txt in {logs_folder_path} is open or is occupied by another program! Please close it! {trail}", "Failed Logging")
+        print(f'Failed logging: log.txt in {logs_folder_path} is open or in use. {trail}')
         if not from_critical:
             critical_error_log("Log.txt is open or is occupied by another program!", e)
 #>
@@ -154,19 +153,38 @@ def buffer(speed: int=0) -> None:
 
 def manual_login_retry(is_logged_in: callable, limit: int = 2) -> None:
     '''
-    Function to ask and validate manual login
+    Function to ask and validate manual login.
+    If GUI dialogs are disabled (common in Electron/desktop context), it blocks and polls
+    until the user logs in manually inside the browser window.
     '''
-    count = 0
+    print_lg("Prompting manual login in the browser window...")
+    max_wait_seconds = 300
+    interval = 3
+    elapsed = 0
+
+    bot_status_fn = None
+    try:
+        from linkedinBot.services.linkedin_status import bot_status as bot_status_fn
+    except Exception:
+        pass
+
     while not is_logged_in():
-        from pyautogui import alert
-        print_lg("Seems like you're not logged in!")
-        button = "Confirm Login"
-        message = 'After you successfully Log In, please click "{}" button below.'.format(button)
-        if count > limit:
-            button = "Skip Confirmation"
-            message = 'If you\'re seeing this message even after you logged in, Click "{}". Seems like auto login confirmation failed!'.format(button)
-        count += 1
-        if alert(message, "Login Required", button) and count > limit: return
+        if elapsed >= max_wait_seconds:
+            print_lg("Manual login timeout exceeded (5 minutes). Exiting.")
+            break
+
+        remaining = max_wait_seconds - elapsed
+        msg = f"Login required: Please sign in manually in the browser window ({remaining}s remaining)..."
+        print_lg(msg)
+
+        if bot_status_fn:
+            try:
+                bot_status_fn(msg, status="running")
+            except Exception:
+                pass
+
+        sleep(interval)
+        elapsed += interval
 
 
 

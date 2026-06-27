@@ -1,7 +1,6 @@
 import json
 import time
 
-import pyautogui
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
@@ -206,8 +205,12 @@ def show_inpage_overlay(title: str, message: str, buttons: list[str]) -> str:
         btnTexts.forEach((text, index) => {{
             const btn = document.createElement('button');
             btn.textContent = text;
+            const isPrimary = text === 'Submit and Continue';
+            const isSecondary = text === 'Submit and Exit';
+            const isDanger = text === 'Discard Job';
+            const isDisable = text === 'Turn Off Checks';
             btn.style.cssText = `
-                background-color: #dadce0;
+                background-color: #ffffff;
                 color: #1a73e8;
                 border: 1px solid #dadce0;
                 padding: 10px 16px;
@@ -220,7 +223,7 @@ def show_inpage_overlay(title: str, message: str, buttons: list[str]) -> str:
                 text-align: center;
                 box-shadow: none;
             `;
-            if (index === btnTexts.length - 1) {{
+            if (isPrimary) {{
                 btn.style.backgroundColor = '#1a73e8';
                 btn.style.color = '#ffffff';
                 btn.style.border = '1px solid transparent';
@@ -232,7 +235,34 @@ def show_inpage_overlay(title: str, message: str, buttons: list[str]) -> str:
                     btn.style.backgroundColor = '#1a73e8';
                     btn.style.boxShadow = 'none';
                 }};
+            }} else if (isSecondary) {{
+                btn.style.backgroundColor = '#e8f0fe';
+                btn.style.color = '#174ea6';
+                btn.style.border = '1px solid #c6dafc';
+                btn.onmouseover = () => {{
+                    btn.style.backgroundColor = '#d2e3fc';
+                    btn.style.borderColor = '#8ab4f8';
+                }};
+                btn.onmouseout = () => {{
+                    btn.style.backgroundColor = '#e8f0fe';
+                    btn.style.borderColor = '#c6dafc';
+                }};
+            }} else if (isDanger) {{
+                btn.style.backgroundColor = '#fce8e6';
+                btn.style.color = '#c5221f';
+                btn.style.border = '1px solid #f6aea9';
+                btn.onmouseover = () => {{
+                    btn.style.backgroundColor = '#fad2cf';
+                    btn.style.borderColor = '#ea4335';
+                }};
+                btn.onmouseout = () => {{
+                    btn.style.backgroundColor = '#fce8e6';
+                    btn.style.borderColor = '#f6aea9';
+                }};
             }} else {{
+                if (isDisable) {{
+                    btn.style.color = '#3c4043';
+                }}
                 btn.onmouseover = () => {{
                     btn.style.backgroundColor = '#f8f9fa';
                     btn.style.borderColor = '#1a73e8';
@@ -286,10 +316,9 @@ def show_inpage_overlay(title: str, message: str, buttons: list[str]) -> str:
         _driver.execute_script(js_script)
     except Exception as e:
         _log(f"Error injecting JS sidebar: {e}")
-        if len(buttons) == 1:
-            pyautogui.alert(message, title, button=buttons[0])
-            return buttons[0]
-        return pyautogui.confirm(message, title, buttons)
+        fallback = "Submit and Continue" if "Submit and Continue" in buttons else buttons[-1]
+        _log(f"Falling back without native popup. Auto-selecting: {fallback}")
+        return fallback
 
     while True:
         try:

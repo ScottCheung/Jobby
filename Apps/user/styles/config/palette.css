@@ -103,6 +103,8 @@
 
   --color-background: var(--background-raw);
 
+  --color-background-primary: var(--background-raw);
+
   --color-background-secondary: var(--background-secondary-raw);
 
   --color-foreground: var(--foreground-raw);
@@ -138,6 +140,8 @@
   --radius-2xl: var(--radius-2xl-raw);
 
   --radius-3xl: var(--radius-3xl-raw);
+
+  --radius-card: var(--radius-2xl-raw);
 
   /* Spacing / Padding */
 

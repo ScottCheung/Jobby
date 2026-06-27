@@ -697,7 +697,11 @@ export function SearchForm({
               value={String(searchExtra(value, 'switch_number') ?? 30)}
               onChange={(next) =>
                 onChange(
-                  updateSearchSetting(value, 'switch_number', Number(next) || 0),
+                  updateSearchSetting(
+                    value,
+                    'switch_number',
+                    Number(next) || 0,
+                  ),
                 )
               }
               type='number'
@@ -860,7 +864,9 @@ export function SearchForm({
                   description='Only target jobs with LinkedIn Easy Apply.'
                   checked={asBoolean(filters.easy_apply_only, true)}
                   onChange={(next) =>
-                    onChange(updateSearchSetting(value, 'easy_apply_only', next))
+                    onChange(
+                      updateSearchSetting(value, 'easy_apply_only', next),
+                    )
                   }
                   icon='⚡'
                 />
@@ -880,7 +886,9 @@ export function SearchForm({
                   description='Prefer jobs connected to your existing network.'
                   checked={asBoolean(filters.in_your_network)}
                   onChange={(next) =>
-                    onChange(updateSearchSetting(value, 'in_your_network', next))
+                    onChange(
+                      updateSearchSetting(value, 'in_your_network', next),
+                    )
                   }
                   icon='◎'
                 />
@@ -901,7 +909,11 @@ export function SearchForm({
                   checked={asBoolean(filters.randomize_search_order, true)}
                   onChange={(next) =>
                     onChange(
-                      updateSearchSetting(value, 'randomize_search_order', next),
+                      updateSearchSetting(
+                        value,
+                        'randomize_search_order',
+                        next,
+                      ),
                     )
                   }
                   icon='↺'
@@ -922,7 +934,9 @@ export function SearchForm({
                   description='Allow jobs that require clearance or polygraph.'
                   checked={asBoolean(searchExtra(value, 'security_clearance'))}
                   onChange={(next) =>
-                    onChange(updateSearchSetting(value, 'security_clearance', next))
+                    onChange(
+                      updateSearchSetting(value, 'security_clearance', next),
+                    )
                   }
                   icon='🛡'
                 />
@@ -960,7 +974,9 @@ export function SearchForm({
 
             <TagEditor
               label='About company bad words'
-              values={asStringList(value.blacklist_rules?.about_company_bad_words)}
+              values={asStringList(
+                value.blacklist_rules?.about_company_bad_words,
+              )}
               onChange={(next) =>
                 onChange(
                   updateSearchSetting(value, 'about_company_bad_words', next),
@@ -972,7 +988,9 @@ export function SearchForm({
             />
             <TagEditor
               label='About company good words'
-              values={asStringList(value.whitelist_rules?.about_company_good_words)}
+              values={asStringList(
+                value.whitelist_rules?.about_company_good_words,
+              )}
               onChange={(next) =>
                 onChange(
                   updateSearchSetting(value, 'about_company_good_words', next),

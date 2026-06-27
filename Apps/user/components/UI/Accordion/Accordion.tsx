@@ -1,3 +1,5 @@
+/** @format */
+
 // ... imports
 import { cn } from '@/lib/utils';
 import { motion, useReducedMotion } from 'framer-motion';
@@ -6,7 +8,10 @@ import React, { useCallback, useId, useRef, useState } from 'react';
 import { H4 } from '../text/typography';
 import { Collapse } from '@/components/animation';
 
-export interface AccordionProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 'onChange'> {
+export interface AccordionProps extends Omit<
+  React.HTMLAttributes<HTMLDivElement>,
+  'onChange'
+> {
   /** The title of the accordion header */
   title: string;
   /** The content to be displayed when expanded */
@@ -36,7 +41,7 @@ export interface AccordionProps extends Omit<React.HTMLAttributes<HTMLDivElement
 // Icon animation variants
 const iconVariants = {
   open: { rotate: 180 },
-  closed: { rotate: 0 }
+  closed: { rotate: 0 },
 };
 
 export const Accordion = React.forwardRef<HTMLDivElement, AccordionProps>(
@@ -57,7 +62,7 @@ export const Accordion = React.forwardRef<HTMLDivElement, AccordionProps>(
       iconContainerClassName,
       ...props
     },
-    ref
+    ref,
   ) => {
     const isControlled = controlledIsOpen !== undefined;
     const [uncontrolledIsOpen, setUncontrolledIsOpen] = useState(defaultOpen);
@@ -79,12 +84,15 @@ export const Accordion = React.forwardRef<HTMLDivElement, AccordionProps>(
     }, [disabled, isOpen, isControlled, onChange]);
 
     // Handle keyboard navigation
-    const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        toggleOpen();
-      }
-    }, [toggleOpen]);
+    const handleKeyDown = useCallback(
+      (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          toggleOpen();
+        }
+      },
+      [toggleOpen],
+    );
 
     // Calculate header classes
     const headerClasses = cn(
@@ -94,22 +102,22 @@ export const Accordion = React.forwardRef<HTMLDivElement, AccordionProps>(
         'flex w-full items-center justify-between gap-3',
         'p-[14px] md:text-md lg:text-lg font-medium text-ink-secondary',
       ],
-      headerClassName
+      headerClassName,
     );
 
     // Calculate container classes
     const containerClasses = cn(
-      'border border-gray-200 overflow-hidden bg-panel  rounded-card',
+      'overflow-hidden bg-panel  rounded-card',
       quickOpenClose && !disabled && 'cursor-pointer group',
       disabled && 'opacity-50 cursor-not-allowed',
-      className
+      className,
     );
 
     // Calculate icon container classes
     const iconContainerClasses = cn(
-      'group-hover:bg-primary z-30 bg-glass rounded-full p-2 ',
+      'group-hover:bg-primary-gradient  z-30 bg-glass rounded-full p-2 ',
       'transition-colors duration-200',
-      iconContainerClassName
+      iconContainerClassName,
     );
 
     return (
@@ -117,13 +125,13 @@ export const Accordion = React.forwardRef<HTMLDivElement, AccordionProps>(
         ref={ref}
         onClick={quickOpenClose ? toggleOpen : undefined}
         className={containerClasses}
-        role="region"
+        role='region'
         aria-labelledby={headerId}
         {...props}
       >
         <div
           id={headerId}
-          role="button"
+          role='button'
           tabIndex={disabled ? -1 : 0}
           aria-expanded={isOpen}
           aria-controls={contentId}
@@ -132,16 +140,23 @@ export const Accordion = React.forwardRef<HTMLDivElement, AccordionProps>(
           onKeyDown={handleKeyDown}
           className={headerClasses}
         >
-          <H4 className={cn(headerClassName, 'pl-2.5')}>{title}</H4>
+          <H4 className={cn(headerClassName, 'pl-2.5 text-ink-primary')}>
+            {title}
+          </H4>
           <motion.div
-            aria-hidden="true"
+            aria-hidden='true'
             variants={iconVariants}
             initial={false}
             animate={isOpen ? 'open' : 'closed'}
-            transition={{ duration: animationDuration, ease: [0.22, 1, 0.36, 1] }}
+            transition={{
+              duration: animationDuration,
+              ease: [0.22, 1, 0.36, 1],
+            }}
             className={iconContainerClasses}
           >
-            {icon || <ChevronDown className="text-ink-primary group-hover:text-primary-foreground" />}
+            {icon || (
+              <ChevronDown className='text-ink-primary group-hover:text-primary-foreground' />
+            )}
           </motion.div>
         </div>
 
@@ -151,13 +166,13 @@ export const Accordion = React.forwardRef<HTMLDivElement, AccordionProps>(
           id={contentId}
           className={contentClassName}
         >
-          <div className="text-sm text-gray-500 px-card pb-card">
+          <div className='text-sm text-ink-secondary px-card pb-card'>
             {children}
           </div>
         </Collapse>
       </div>
     );
-  }
+  },
 );
 
 Accordion.displayName = 'Accordion';

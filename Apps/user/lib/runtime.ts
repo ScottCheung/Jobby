@@ -21,7 +21,12 @@ declare global {
       onServiceStatus?: (callback: (payload: DesktopServiceStatus) => void) => () => void;
       startBot?: (
         platform: DesktopBotPlatform,
-      ) => Promise<{ ok: boolean; error?: string; state?: DesktopBotState }>;
+      ) => Promise<{
+        ok: boolean;
+        error?: string;
+        code?: string;
+        state?: DesktopBotState;
+      }>;
       stopBot?: (
         platform: DesktopBotPlatform,
       ) => Promise<{ ok: boolean; error?: string }>;
@@ -32,6 +37,36 @@ declare global {
           state: DesktopBotState;
         }) => void,
       ) => () => void;
+      openChromeSession?: (profilePath: string) => Promise<{
+        ok: boolean;
+        error?: string;
+        code?: string;
+      }>;
+      closeChromeSession?: () => Promise<{ ok: boolean; error?: string }>;
+      closeAllChromeWindows?: () => Promise<{ ok: boolean; error?: string }>;
+      clearChromeSession?: (profilePath: string) => Promise<{ ok: boolean; error?: string; message?: string }>;
+      checkChromeSessionStatus?: (profilePath: string) => Promise<{
+        exists: boolean;
+        isRunning: boolean;
+        path: string;
+        sizeMb: number;
+      }>;
+      verifyBrowserSession?: (profilePath: string) => Promise<{
+        ok: boolean;
+        error?: string;
+        checkedAt?: string;
+        results?: {
+          linkedin: {
+            loggedIn: boolean;
+            detail: string;
+          };
+          seek: {
+            loggedIn: boolean;
+            detail: string;
+          };
+        };
+      }>;
+      onManualChromeExit?: (callback: () => void) => () => void;
     };
   }
 }
