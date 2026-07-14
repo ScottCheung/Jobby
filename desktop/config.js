@@ -40,7 +40,7 @@ function getDesktopConfig(options = {}) {
         process.env.AUTO_JOB_DASHBOARD_MODE ||
         'external',
       url: dashboardUrl,
-      healthUrl: dashboardUrl,
+      healthUrl: dashboardUrl ? `${dashboardUrl.replace(/\/$/, '')}/health.html` : '',
       port: dashboardPort,
       npmCommand: process.env.AUTO_JOB_NPM_PATH || 'npm',
       cwd: path.join(rootDir, 'Apps', 'user'),

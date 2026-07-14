@@ -73,6 +73,7 @@ function createWindow() {
   });
 
   loadDashboardPage();
+  mainWindow.webContents.openDevTools(); // debug console
 
   mainWindow.on('closed', () => {
     mainWindow = null;

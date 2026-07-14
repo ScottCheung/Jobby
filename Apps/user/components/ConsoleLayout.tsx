@@ -11,14 +11,10 @@ import { useToastStore } from '@/lib/store/toast-store';
 import { cn } from '@/lib/utils';
 import CardWithNorth from '@/components/UI/card/CardWithNorth';
 import { H1 } from '@/components/UI/text/typography';
-import {
-  RefreshCw,
-} from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 import { Stagger, StaggerItem } from './animation';
 import { Number } from './UI/Number/Number';
 import AutomationPanel from '@/app/_component/AutomationPanel';
-
-
 
 export default function ConsoleLayout({
   children,
@@ -26,12 +22,7 @@ export default function ConsoleLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const {
-    stats,
-    error,
-    isPending,
-    isDesktopApp,
-  } = useConsole();
+  const { stats, error, isPending, isDesktopApp } = useConsole();
   const toast = useToastStore((state) => state.message);
   return (
     <div className='min-h-screen z-10 flex transition-colors duration-300'>
@@ -102,8 +93,15 @@ export default function ConsoleLayout({
                                 />
                               </H1>
                               {item.comparison && (
-                                <div className={cn('flex items-center gap-1 text-xs font-semibold mt-2', item.comparisonColor)}>
-                                  {item.comparisonIcon && <item.comparisonIcon className='w-3.5 h-3.5' />}
+                                <div
+                                  className={cn(
+                                    'flex items-center gap-1 text-xs font-semibold mt-2',
+                                    item.comparisonColor,
+                                  )}
+                                >
+                                  {item.comparisonIcon && (
+                                    <item.comparisonIcon className='w-3.5 h-3.5' />
+                                  )}
                                   <span>{item.comparison}</span>
                                 </div>
                               )}

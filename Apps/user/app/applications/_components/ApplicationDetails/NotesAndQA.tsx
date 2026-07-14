@@ -131,7 +131,6 @@ export function NotesAndQA({
       {status === 'skipped' && skipReason && (
         <div className='mt-6'>
           <h3 className='text-xs font-bold text-ink-secondary uppercase tracking-wider flex items-center gap-1.5 mb-2'>
-            <AlertTriangle className='w-4 h-4 text-amber-500' />
             Auto Apply Skip Reason
           </h3>
           <div className='whitespace-pre-wrap display-panel'>{skipReason}</div>
