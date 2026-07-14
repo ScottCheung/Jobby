@@ -48,6 +48,10 @@ class User(Base, TimestampMixin):
 
     profile: Mapped["UserProfile"] = relationship(back_populates="user", cascade="all, delete-orphan")
     platform_accounts: Mapped[list["PlatformAccount"]] = relationship(back_populates="user")
+    
+    interview_categories: Mapped[list["InterviewCategory"]] = relationship(back_populates="user")
+    interview_tags: Mapped[list["InterviewTag"]] = relationship(back_populates="user")
+    interview_questions: Mapped[list["InterviewQuestion"]] = relationship(back_populates="user")
 class UserProfile(Base, TimestampMixin):
     __tablename__ = "user_profiles"
 
@@ -326,3 +330,116 @@ class Skill(Base, TimestampMixin):
     name: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
     canonical_name: Mapped[str] = mapped_column(String(255), nullable=False)
     is_alias: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
+
+class InterviewCategory(Base, TimestampMixin):
+    __tablename__ = "interview_categories"
+
+    id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid4)
+    user_id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    
+    user: Mapped[User] = relationship(back_populates="interview_categories", foreign_keys=[user_id])
+    questions: Mapped[list["InterviewQuestion"]] = relationship(back_populates="category", cascade="all, delete-orphan")
+
+
+class InterviewTag(Base, TimestampMixin):
+    __tablename__ = "interview_tags"
+
+    id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid4)
+    user_id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+
+    user: Mapped[User] = relationship(back_populates="interview_tags", foreign_keys=[user_id])
+    questions: Mapped[list["InterviewQuestion"]] = relationship(
+        secondary="question_tag_association",
+        back_populates="tags"
+    )
+
+class QuestionTagAssociation(Base):
+    __tablename__ = "question_tag_association"
+    
+    question_id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("interview_questions.id", ondelete="CASCADE"), primary_key=True)
+    tag_id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("interview_tags.id", ondelete="CASCADE"), primary_key=True)
+
+
+class InterviewQuestion(Base, TimestampMixin):
+    __tablename__ = "interview_questions"
+
+    id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid4)
+    user_id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    category_id: Mapped[PyUUID | None] = mapped_column(PgUUID(as_uuid=True), ForeignKey("interview_categories.id", ondelete="SET NULL"))
+    
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    frequency: Mapped[str | None] = mapped_column(String(50))
+    importance_score: Mapped[int | None] = mapped_column(Integer, default=3)
+    
+    answer_objective: Mapped[str | None] = mapped_column(Text)
+    answer_framework: Mapped[str | None] = mapped_column(Text)
+    sample_answer: Mapped[str | None] = mapped_column(Text)
+    my_answer: Mapped[str | None] = mapped_column(Text)
+    improvement_notes: Mapped[str | None] = mapped_column(Text)
+
+    user: Mapped[User] = relationship(back_populates="interview_questions", foreign_keys=[user_id])
+    category: Mapped[InterviewCategory | None] = relationship(back_populates="questions", foreign_keys=[category_id])
+    tags: Mapped[list[InterviewTag]] = relationship(
+        secondary="question_tag_association",
+        back_populates="questions"
+    )
+    practice_records: Mapped[list["PracticeRecord"]] = relationship(back_populates="question", cascade="all, delete-orphan")
+
+
+class PracticeRecord(Base, TimestampMixin):
+    __tablename__ = "practice_records"
+
+    id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid4)
+    user_id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    question_id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("interview_questions.id", ondelete="CASCADE"), index=True)
+    
+    date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=func.now())
+    my_answer: Mapped[str | None] = mapped_column(Text)
+    confidence_score: Mapped[int | None] = mapped_column(Integer)
+    notes: Mapped[str | None] = mapped_column(Text)
+
+    user: Mapped[User] = relationship(foreign_keys=[user_id])
+    question: Mapped[InterviewQuestion] = relationship(back_populates="practice_records", foreign_keys=[question_id])
+    audio_records: Mapped[list["AudioRecord"]] = relationship(back_populates="practice_record", cascade="all, delete-orphan")
+
+
+class AudioRecord(Base, TimestampMixin):
+    __tablename__ = "audio_records"
+
+    id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid4)
+    practice_record_id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("practice_records.id", ondelete="CASCADE"), index=True)
+    url_path: Mapped[str] = mapped_column(Text, nullable=False)
+    duration: Mapped[int | None] = mapped_column(Integer)
+
+    practice_record: Mapped[PracticeRecord] = relationship(back_populates="audio_records", foreign_keys=[practice_record_id])
+
+
+class PracticePlan(Base, TimestampMixin):
+    __tablename__ = "practice_plans"
+
+    id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid4)
+    user_id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    target_days: Mapped[int] = mapped_column(Integer, nullable=False, default=30)
+    daily_questions_count: Mapped[int] = mapped_column(Integer, nullable=False, default=5)
+
+    user: Mapped[User] = relationship(foreign_keys=[user_id])
+    tasks: Mapped[list["PlanTask"]] = relationship(back_populates="plan", cascade="all, delete-orphan")
+
+
+class PlanTask(Base, TimestampMixin):
+    __tablename__ = "plan_tasks"
+
+    id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid4)
+    plan_id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("practice_plans.id", ondelete="CASCADE"), index=True)
+    question_id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("interview_questions.id", ondelete="CASCADE"), index=True)
+    
+    scheduled_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    status: Mapped[str] = mapped_column(String(50), nullable=False, default="pending")
+
+    plan: Mapped[PracticePlan] = relationship(back_populates="tasks", foreign_keys=[plan_id])
+    question: Mapped[InterviewQuestion] = relationship(foreign_keys=[question_id])
+

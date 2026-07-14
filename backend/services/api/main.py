@@ -72,6 +72,8 @@ from services.shared.settings import get_settings
 from services.shared.time_utils import parse_datetime_to_utc, utc_isoformat, utc_now
 
 
+from services.api.routers.interview import router as interview_router
+
 settings = get_settings()
 app = FastAPI(title="Auto Job Applier API", version="0.1.0")
 app.add_middleware(
@@ -81,6 +83,14 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(interview_router)
+
+from fastapi.staticfiles import StaticFiles
+import os
+audio_dir = "/app/storage/audio"
+os.makedirs(audio_dir, exist_ok=True)
+app.mount("/api/interview/audio", StaticFiles(directory=audio_dir), name="audio")
 
 
 @app.on_event("startup")

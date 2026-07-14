@@ -6,6 +6,12 @@ import type {
   User,
   UserProfile,
   WorkerConfig,
+  InterviewCategory,
+  InterviewTag,
+  InterviewQuestion,
+  PracticeRecord,
+  PracticePlan,
+  PlanTask,
 } from "./types";
 import { resolveApiBaseUrl } from "./runtime";
 
@@ -115,6 +121,72 @@ export const api = {
     }),
   deleteApplication: (applicationId: string) =>
     apiRequest<void>(`/api/applications/${applicationId}`, {
+      method: "DELETE",
+    }),
+  // Interview Playbook
+  interviewCategories: () => apiRequest<InterviewCategory[]>("/api/interview/categories"),
+  createInterviewCategory: (payload: { name: string }) =>
+    apiRequest<InterviewCategory>("/api/interview/categories", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  interviewTags: () => apiRequest<InterviewTag[]>("/api/interview/tags"),
+  createInterviewTag: (payload: { name: string }) =>
+    apiRequest<InterviewTag>("/api/interview/tags", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  interviewQuestions: () => apiRequest<InterviewQuestion[]>("/api/interview/questions"),
+  getInterviewQuestion: (id: string) => apiRequest<InterviewQuestion>(`/api/interview/questions/${id}`),
+  createInterviewQuestion: (payload: Partial<InterviewQuestion>) =>
+    apiRequest<InterviewQuestion>("/api/interview/questions", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  updateInterviewQuestion: (id: string, payload: Partial<InterviewQuestion>) =>
+    apiRequest<InterviewQuestion>(`/api/interview/questions/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
+  deleteInterviewQuestion: (id: string) =>
+    apiRequest<void>(`/api/interview/questions/${id}`, {
+      method: "DELETE",
+    }),
+  practiceRecords: () => apiRequest<PracticeRecord[]>("/api/interview/practice-records"),
+  createPracticeRecord: (payload: Partial<PracticeRecord>) =>
+    apiRequest<PracticeRecord>("/api/interview/practice-records", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  practicePlans: () => apiRequest<PracticePlan[]>("/api/interview/plans"),
+  createPracticePlan: (payload: Partial<PracticePlan>) =>
+    apiRequest<PracticePlan>("/api/interview/plans", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  planTasks: (planId: string) => apiRequest<PlanTask[]>(`/api/interview/plans/${planId}/tasks`),
+  createPlanTask: (planId: string, payload: Partial<PlanTask>) =>
+    apiRequest<PlanTask>(`/api/interview/plans/${planId}/tasks`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  uploadPracticeAudio: async (recordId: string, blob: Blob) => {
+    const apiBaseUrl = await resolveApiBaseUrl();
+    const formData = new FormData();
+    formData.append("file", blob, "audio.webm");
+    const response = await fetch(`${apiBaseUrl}/api/interview/practice-records/${recordId}/audio`, {
+      method: "POST",
+      body: formData,
+      cache: "no-store",
+    });
+    if (!response.ok) {
+      const detail = await response.text();
+      throw new Error(detail || `API request failed: ${response.status}`);
+    }
+    return response.json() as Promise<{ id: string; url_path: string }>;
+  },
+  deletePracticeRecord: (id: string) =>
+    apiRequest<void>(`/api/interview/practice-records/${id}`, {
       method: "DELETE",
     }),
 };

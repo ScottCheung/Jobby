@@ -491,3 +491,78 @@ export function getStatusBadgeClasses(status: string): string {
       return 'bg-glass text-ink-secondary border-border';
   }
 }
+
+export type InterviewCategory = {
+  id: string;
+  name: string;
+  user_id?: string;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type InterviewTag = {
+  id: string;
+  name: string;
+  user_id?: string;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type InterviewQuestion = {
+  id: string;
+  category_id?: string | null;
+  title: string;
+  frequency?: string | null;
+  importance_score?: number | null;
+  answer_objective?: string | null;
+  answer_framework?: string | null;
+  sample_answer?: string | null;
+  my_answer?: string | null;
+  improvement_notes?: string | null;
+  category?: InterviewCategory | null;
+  tags?: InterviewTag[];
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type AudioRecord = {
+  id: string;
+  practice_record_id: string;
+  url_path: string;
+  duration?: number | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type PracticeRecord = {
+  id: string;
+  question_id: string;
+  user_id?: string;
+  date?: string;
+  my_answer?: string | null;
+  confidence_score?: number | null;
+  notes?: string | null;
+  audio_records?: AudioRecord[];
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type PracticePlan = {
+  id: string;
+  name: string;
+  target_days: number;
+  daily_questions_count: number;
+  user_id?: string;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type PlanTask = {
+  id: string;
+  plan_id: string;
+  question_id: string;
+  scheduled_date: string;
+  status: string;
+  created_at?: string;
+  updated_at?: string;
+};

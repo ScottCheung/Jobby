@@ -12,6 +12,15 @@ from services.shared.models import (
     RuntimeSettings,
     User,
     UserProfile,
+    Skill,
+    InterviewCategory,
+    InterviewTag,
+    InterviewQuestion,
+    QuestionTagAssociation,
+    PracticeRecord,
+    AudioRecord,
+    PracticePlan,
+    PlanTask,
 )
 from services.shared.settings import get_settings
 

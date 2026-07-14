@@ -203,3 +203,112 @@ class SkillRead(SkillBase, OrmModel):
     id: int
     created_at: datetime
     updated_at: datetime
+
+
+class InterviewCategoryBase(BaseModel):
+    name: str
+
+class InterviewCategoryRead(InterviewCategoryBase, OrmModel):
+    id: UUID
+    user_id: UUID
+    created_at: datetime
+    updated_at: datetime
+
+
+class InterviewTagBase(BaseModel):
+    name: str
+
+class InterviewTagRead(InterviewTagBase, OrmModel):
+    id: UUID
+    user_id: UUID
+    created_at: datetime
+    updated_at: datetime
+
+
+class InterviewQuestionBase(BaseModel):
+    category_id: UUID | None = None
+    title: str
+    frequency: str | None = None
+    importance_score: int | None = 3
+    answer_objective: str | None = None
+    answer_framework: str | None = None
+    sample_answer: str | None = None
+    my_answer: str | None = None
+    improvement_notes: str | None = None
+
+class InterviewQuestionCreate(InterviewQuestionBase):
+    tags: list[UUID] | None = None
+
+class InterviewQuestionUpdate(BaseModel):
+    category_id: UUID | None = None
+    title: str | None = None
+    frequency: str | None = None
+    importance_score: int | None = None
+    answer_objective: str | None = None
+    answer_framework: str | None = None
+    sample_answer: str | None = None
+    my_answer: str | None = None
+    improvement_notes: str | None = None
+    tags: list[UUID] | None = None
+
+class InterviewQuestionRead(InterviewQuestionBase, OrmModel):
+    id: UUID
+    user_id: UUID
+    created_at: datetime
+    updated_at: datetime
+    category: InterviewCategoryRead | None = None
+    tags: list[InterviewTagRead] = Field(default_factory=list)
+
+
+class AudioRecordBase(BaseModel):
+    practice_record_id: UUID
+    url_path: str
+    duration: int | None = None
+
+class AudioRecordRead(AudioRecordBase, OrmModel):
+    id: UUID
+    created_at: datetime
+    updated_at: datetime
+
+
+class PracticeRecordBase(BaseModel):
+    question_id: UUID
+    my_answer: str | None = None
+    confidence_score: int | None = None
+    notes: str | None = None
+
+class PracticeRecordCreate(PracticeRecordBase):
+    pass
+
+class PracticeRecordRead(PracticeRecordBase, OrmModel):
+    id: UUID
+    user_id: UUID
+    date: datetime
+    created_at: datetime
+    updated_at: datetime
+    audio_records: list[AudioRecordRead] = []
+
+
+class PracticePlanBase(BaseModel):
+    name: str
+    target_days: int = 30
+    daily_questions_count: int = 5
+
+class PracticePlanRead(PracticePlanBase, OrmModel):
+    id: UUID
+    user_id: UUID
+    created_at: datetime
+    updated_at: datetime
+
+
+class PlanTaskBase(BaseModel):
+    plan_id: UUID
+    question_id: UUID
+    scheduled_date: datetime
+    status: str = "pending"
+
+class PlanTaskRead(PlanTaskBase, OrmModel):
+    id: UUID
+    created_at: datetime
+    updated_at: datetime
+
