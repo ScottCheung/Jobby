@@ -94,7 +94,7 @@ export function PracticeWorkspace({
 
         {/* Integrated Transcript Section */}
         <div className='ml-6 flex flex-col gap-1.5 mt-2 pt-4 z-50'>
-          <div className='w-full  max-h-[220px] text-ink-primary text-sm leading-relaxed flex flex-wrap gap-1.5 items-start overflow-y-auto'>
+          <div className='w-full  text-ink-primary text-sm leading-relaxed flex flex-wrap gap-1.5 items-start overflow-y-auto'>
             {transcriptSegments.length === 0 && !interimText ? null : (
               <InteractiveTranscript
                 segments={transcriptSegments}
