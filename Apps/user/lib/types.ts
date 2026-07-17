@@ -534,6 +534,14 @@ export type AudioRecord = {
   updated_at?: string;
 };
 
+export type GamificationUpdate = {
+  xp_gained: number;
+  coins_gained: number;
+  new_streak: number;
+  new_level: number;
+  is_streak_extended: boolean;
+};
+
 export type PracticeRecord = {
   id: string;
   question_id: string;
@@ -543,6 +551,7 @@ export type PracticeRecord = {
   confidence_score?: number | null;
   notes?: string | null;
   audio_records?: AudioRecord[];
+  gamification_update?: GamificationUpdate | null;
   created_at?: string;
   updated_at?: string;
 };
@@ -565,4 +574,25 @@ export type PlanTask = {
   status: string;
   created_at?: string;
   updated_at?: string;
+};
+
+export type DailySummary = {
+  completed_questions: number;
+  new_questions: number;
+  review_questions: number;
+  total_speaking_time_seconds: number;
+  best_answer_title: string | null;
+  current_streak: number;
+  xp_gained_today: number;
+  coins_gained_today: number;
+  level: number;
+};
+
+export type HeatmapDataEntry = {
+  date: string;
+  count: number;
+};
+
+export type HeatmapData = {
+  entries: HeatmapDataEntry[];
 };

@@ -12,6 +12,8 @@ import type {
   PracticeRecord,
   PracticePlan,
   PlanTask,
+  DailySummary,
+  HeatmapData
 } from "./types";
 import { resolveApiBaseUrl } from "./runtime";
 
@@ -143,6 +145,11 @@ export const api = {
       method: "POST",
       body: JSON.stringify(payload),
     }),
+  batchCreateInterviewQuestions: (payload: Partial<InterviewQuestion>[]) =>
+    apiRequest<InterviewQuestion[]>("/api/interview/questions/batch", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
   updateInterviewQuestion: (id: string, payload: Partial<InterviewQuestion>) =>
     apiRequest<InterviewQuestion>(`/api/interview/questions/${id}`, {
       method: "PUT",
@@ -170,6 +177,17 @@ export const api = {
       method: "POST",
       body: JSON.stringify(payload),
     }),
+  deletePracticePlan: (planId: string) =>
+    apiRequest<void>(`/api/interview/plans/${planId}`, {
+      method: "DELETE",
+    }),
+  updatePlanTask: (planId: string, taskId: string, payload: Partial<PlanTask>) =>
+    apiRequest<PlanTask>(`/api/interview/plans/${planId}/tasks/${taskId}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
+  gamificationSummary: () => apiRequest<DailySummary>("/api/interview/gamification/summary"),
+  gamificationHeatmap: () => apiRequest<HeatmapData>("/api/interview/gamification/heatmap"),
   uploadPracticeAudio: async (recordId: string, blob: Blob) => {
     const apiBaseUrl = await resolveApiBaseUrl();
     const formData = new FormData();

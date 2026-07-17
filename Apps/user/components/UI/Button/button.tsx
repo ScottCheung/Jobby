@@ -25,14 +25,21 @@ const buttonVariants = cva(
         ghost:
           'text-ink-primary bg-ink-secondary/20 hover:bg-primary/50 hover:text-primary-foreground',
         link: 'text-primary underline-offset-4 hover:underline',
+        toolbar:
+          'text-ink-secondary hover:text-ink-primary hover:bg-primary/10  rounded-full  transition-all duration-200 active:scale-95 disabled:opacity-40 disabled:scale-100 disabled:cursor-not-allowed',
+        toolbarActive:
+          'border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 rounded-full  transition-all duration-200 active:scale-95 disabled:opacity-40 disabled:scale-100 disabled:cursor-not-allowed',
       },
       size: {
         link: 'p-0',
-        sm: 'h-[40px] px-3 font-semibold',
+        sm: 'h-[30px] px-3 font-semibold',
+        md: 'h-[40px] pl-3 pr-4 font-semibold',
         icon: 'h-[40px] w-[40px] shrink-0',
         default: 'h-[48px] px-6 py-2 font-semibold',
         lg: 'h-[52px]  px-6 text-lg font-semibold uppercase italic',
         WithIcons: 'p-1',
+        toolbar: 'p-2 h-auto ',
+        toolbarSm: 'px-3 py-1.5 h-auto ',
       },
     },
     defaultVariants: {

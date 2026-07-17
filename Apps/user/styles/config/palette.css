@@ -40,21 +40,50 @@
     --primary: oklch(0.4 0.15 250);
     --primary-foreground: oklch(100% 0.00011 271.152);
   }
+  .dark[data-theme-color='blue'],
+  .dark [data-theme-color='blue'] {
+    --primary: oklch(0.75 0.14 250);
+    --primary-foreground: oklch(0.2 0.05 250);
+  }
+
   [data-theme-color='purple'] {
     --primary: oklch(0.45 0.2 300);
     --primary-foreground: oklch(100% 0.00011 271.152);
   }
+  .dark[data-theme-color='purple'],
+  .dark [data-theme-color='purple'] {
+    --primary: oklch(0.75 0.16 300);
+    --primary-foreground: oklch(0.2 0.05 300);
+  }
+
   [data-theme-color='green'] {
     --primary: oklch(0.45 0.15 160);
     --primary-foreground: oklch(100% 0.00011 271.152);
   }
+  .dark[data-theme-color='green'],
+  .dark [data-theme-color='green'] {
+    --primary: oklch(0.8 0.15 160);
+    --primary-foreground: oklch(0.2 0.05 160);
+  }
+
   [data-theme-color='orange'] {
     --primary: oklch(0.55 0.18 40);
     --primary-foreground: oklch(100% 0.00011 271.152);
   }
+  .dark[data-theme-color='orange'],
+  .dark [data-theme-color='orange'] {
+    --primary: oklch(0.78 0.14 40);
+    --primary-foreground: oklch(0.25 0.05 40);
+  }
+
   [data-theme-color='rose'] {
     --primary: oklch(0.5 0.2 20);
     --primary-foreground: oklch(100% 0.00011 271.152);
+  }
+  .dark[data-theme-color='rose'],
+  .dark [data-theme-color='rose'] {
+    --primary: oklch(0.76 0.15 20);
+    --primary-foreground: oklch(0.25 0.05 20);
   }
 }
 

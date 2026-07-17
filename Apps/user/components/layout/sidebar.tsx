@@ -48,7 +48,7 @@ const navigation = [
   { name: 'Overview', href: '/', icon: LayoutDashboard },
   { name: 'Profile', href: '/profile', icon: UserIcon },
   { name: 'Job Hunting Profiles', href: '/job-hunting-profiles', icon: Search },
-  { name: 'Interview Playbook', href: '/interview-playbook', icon: GraduationCap },
+  { name: 'Interview Prep', href: '/interview-prep', icon: GraduationCap },
   { name: 'Browser Session', href: '/browser-session', icon: ChromeIcon },
   { name: 'Agent Settings', href: '/agent-settings', icon: Settings2 },
   { name: 'Question Cache', href: '/questions', icon: MessageSquareCode },

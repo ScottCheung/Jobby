@@ -86,3 +86,5 @@ services:
 
 volumes:
   postgres_data:
+    name: auto_job_applier_linkedin_postgres_data
+    external: true

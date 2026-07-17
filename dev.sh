@@ -75,11 +75,11 @@ NEXT_DEV_PID=$!
 sleep 3
 
 # Check and install desktop dependencies if needed
-cd "$SCRIPT_DIR/desktop"
-if [ ! -d "node_modules" ]; then
-    echo "Installing desktop app dependencies..."
-    npm install
-fi
+# cd "$SCRIPT_DIR/desktop"
+# if [ ! -d "node_modules" ]; then
+#     echo "Installing desktop app dependencies..."
+#     npm install
+# fi
 
 # Run the Electron desktop client pointing to local dev servers
 echo "Starting Electron desktop client (Hot Reloading)..."

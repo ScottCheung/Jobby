@@ -43,6 +43,15 @@
   }
 }
 
+@utility no-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+  
+  &::-webkit-scrollbar {
+    display: none; /* Chrome, Safari and Opera */
+  }
+}
+
 strong {
   @apply bg-clip-text text-transparent bg-primary-gradient from-95% to-100%;
 }

@@ -27,16 +27,23 @@ export function InteractiveTranscript({
   draftAudioRef,
   interimText,
 }: InteractiveTranscriptProps) {
+  if (!Array.isArray(segments)) return null;
+
   return (
-    <div className='text-sm text-ink-primary leading-relaxed pl-6 border-l-4 border-primary dark:border-zinc-700 bg-zinc-50/10 dark:bg-zinc-900/10 p-2 my-2'>
+    <div className='text-sm text-ink-secondary leading-relaxed pl-6 border-l-4 border-primary p-2 my-2'>
       {segments.map((seg, segIdx) => {
+        if (!seg || typeof seg.text !== 'string') return null;
+
         const words = seg.text.split(/\s+/).filter(Boolean);
-        const duration = seg.end - seg.start;
+        const start = typeof seg.start === 'number' ? seg.start : 0;
+        const end = typeof seg.end === 'number' ? seg.end : start;
+        const duration = Math.max(0, end - start);
 
         return (
           <span key={segIdx} className='mr-2 inline-flex flex-wrap'>
             {words.map((word, wordIdx) => {
-              const wordTime = seg.start + (wordIdx / words.length) * duration;
+              const wordTime =
+                start + (wordIdx / Math.max(1, words.length)) * duration;
 
               return (
                 <span
@@ -55,7 +62,7 @@ export function InteractiveTranscript({
                       draftAudioRef.current.play().catch(() => {});
                     }
                   }}
-                  className='hover:text-primary hover:bg-primary/10 cursor-pointer px-0.5 rounded transition-all mr-1 border-b border-dashed border-zinc-300 dark:border-zinc-700/80 text-ink-primary select-none font-medium'
+                  className='hover:text-primary hover:bg-primary/10 cursor-pointer px-0.5 rounded transition-all mr-1 border-b-2 border-dashed border-ink-secondary/50 text-ink-primary select-none font-medium'
                   title={`Jump to ${formatTime(Math.round(wordTime))}`}
                 >
                   {word}

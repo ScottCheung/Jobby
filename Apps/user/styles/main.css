@@ -40,12 +40,97 @@
 
   .dark & {
     scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
-    
+
     &::-webkit-scrollbar-thumb {
       background-color: rgba(255, 255, 255, 0.2);
     }
-    &::-webkit-scrollbar-thumb:hover {
+    .dark &::-webkit-scrollbar-thumb:hover {
       background-color: rgba(255, 255, 255, 0.3);
     }
   }
+}
+
+@keyframes soundbar {
+  0% {
+    transform: scaleY(0.35);
+  }
+  100% {
+    transform: scaleY(1);
+  }
+}
+
+.animate-soundbar {
+  animation: soundbar 0.6s ease-in-out infinite alternate;
+  transform-origin: bottom;
+}
+
+@keyframes write-action {
+  0% {
+    transform: translate(0px, 0px) rotate(0deg);
+  }
+  15% {
+    transform: translate(3.75px, -1.5px) rotate(4deg);
+  }
+  30% {
+    transform: translate(7.5px, 1.5px) rotate(-4deg);
+  }
+  45% {
+    transform: translate(11.25px, -1.5px) rotate(4deg);
+  }
+  60% {
+    transform: translate(15px, 0px) rotate(0deg);
+  }
+  70% {
+    transform: translate(15px, -4px) rotate(10deg);
+  }
+  85% {
+    transform: translate(0px, -4px) rotate(10deg);
+  }
+  100% {
+    transform: translate(0px, 0px) rotate(0deg);
+  }
+}
+
+@keyframes draw-line {
+  0% {
+    stroke-dashoffset: 20;
+    opacity: 0;
+  }
+  1% {
+    stroke-dashoffset: 20;
+    opacity: 1;
+  }
+  60% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+  70% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+  85% {
+    stroke-dashoffset: 0;
+    opacity: 0;
+  }
+  100% {
+    stroke-dashoffset: 20;
+    opacity: 0;
+  }
+}
+
+.animate-write-pen {
+  animation: write-action 2.2s infinite ease-in-out;
+  transform-origin: 2px 18.5px;
+}
+
+.animate-draw-line {
+  stroke-dasharray: 20;
+  animation: draw-line 2.2s infinite ease-in-out;
+}
+
+@utility shadow-gemini {
+  box-shadow:
+    0 0 40px 0px color-mix(in srgb, var(--primary) 40%, transparent),
+    0 0 80px -10px color-mix(in srgb, oklch(0.65 0.2 300) 30%, transparent),
+    0 0 120px -20px color-mix(in srgb, oklch(0.6 0.18 250) 20%, transparent);
 }

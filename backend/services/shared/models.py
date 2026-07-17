@@ -52,6 +52,7 @@ class User(Base, TimestampMixin):
     interview_categories: Mapped[list["InterviewCategory"]] = relationship(back_populates="user")
     interview_tags: Mapped[list["InterviewTag"]] = relationship(back_populates="user")
     interview_questions: Mapped[list["InterviewQuestion"]] = relationship(back_populates="user")
+    gamification_profile: Mapped["UserGamification"] = relationship(back_populates="user", cascade="all, delete-orphan")
 class UserProfile(Base, TimestampMixin):
     __tablename__ = "user_profiles"
 
@@ -74,6 +75,20 @@ class UserProfile(Base, TimestampMixin):
     extra_data: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
 
     user: Mapped[User] = relationship(back_populates="profile")
+
+
+class UserGamification(Base, TimestampMixin):
+    __tablename__ = "user_gamification"
+
+    id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid4)
+    user_id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), unique=True)
+    xp: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    coins: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    level: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    streak_days: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    last_practice_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    user: Mapped[User] = relationship(back_populates="gamification_profile")
 
 
 class PlatformAccount(Base, TimestampMixin):

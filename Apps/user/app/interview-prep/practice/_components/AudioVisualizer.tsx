@@ -24,11 +24,15 @@ export function AudioVisualizer({ stream, isRecording }: AudioVisualizerProps) {
         animationRef.current = null;
       }
       if (sourceRef.current) {
-        sourceRef.current.disconnect();
+        try {
+          sourceRef.current.disconnect();
+        } catch (e) {}
         sourceRef.current = null;
       }
       if (analyserRef.current) {
-        analyserRef.current.disconnect();
+        try {
+          analyserRef.current.disconnect();
+        } catch (e) {}
         analyserRef.current = null;
       }
       if (
@@ -217,18 +221,26 @@ export function AudioVisualizer({ stream, isRecording }: AudioVisualizerProps) {
     return () => {
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
+        animationRef.current = null;
       }
       if (sourceRef.current) {
-        sourceRef.current.disconnect();
+        try {
+          sourceRef.current.disconnect();
+        } catch (e) {}
+        sourceRef.current = null;
       }
       if (analyserRef.current) {
-        analyserRef.current.disconnect();
+        try {
+          analyserRef.current.disconnect();
+        } catch (e) {}
+        analyserRef.current = null;
       }
       if (
         audioContextRef.current &&
         audioContextRef.current.state !== 'closed'
       ) {
         audioContextRef.current.close().catch(() => {});
+        audioContextRef.current = null;
       }
     };
   }, [stream, isRecording]);

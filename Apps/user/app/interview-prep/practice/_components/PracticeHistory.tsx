@@ -35,7 +35,7 @@ export function PracticeHistory({
       {attempts.map((attempt) => (
         <div
           key={attempt.id}
-          className='p-4 rounded-3xl bg-panel shadow-sm flex flex-col gap-3 relative group'
+          className='p-4 rounded-t-3xl rounded-b-2xl bg-linear-to-b from-primary-foreground dark:from-black/30 to-transparent flex flex-col gap-3 relative group'
         >
           {attempt.audio_records && attempt.audio_records.length > 0 && (
             <div className=''>
@@ -85,7 +85,7 @@ export function PracticeHistory({
                     }
                   } catch (e) {}
                   return (
-                    <span className='whitespace-pre-wrap'>
+                    <span className='whitespace-pre-wrap '>
                       {attempt.my_answer}
                     </span>
                   );

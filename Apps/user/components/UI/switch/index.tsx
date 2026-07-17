@@ -37,7 +37,9 @@ export function Switch({
       onClick={() => onCheckedChange(!checked)}
       className={cn(
         'relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50',
-        checked ? 'bg-secondary' : 'bg-glass',
+        checked ?
+          'bg-primary-gradient'
+        : 'bg-background-secondary/50 dark:bg-white/40',
         className,
       )}
     >
@@ -45,7 +47,7 @@ export function Switch({
         layout
         transition={{ type: 'spring', stiffness: 500, damping: 30 }}
         className={cn(
-          'pointer-events-none block h-5 w-5 rounded-full bg-primary-foreground -lg ring-0 transition-transform',
+          'pointer-events-none block h-5 w-5 rounded-full bg-background-primary -lg ring-0 transition-transform',
           checked ? 'translate-x-5' : 'translate-x-0',
         )}
       >

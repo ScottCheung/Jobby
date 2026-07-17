@@ -21,6 +21,20 @@ class UserRead(OrmModel):
     updated_at: datetime
 
 
+class UserGamificationBase(BaseModel):
+    xp: int = 0
+    coins: int = 0
+    level: int = 1
+    streak_days: int = 0
+    last_practice_date: datetime | None = None
+
+class UserGamificationRead(UserGamificationBase, OrmModel):
+    id: UUID
+    user_id: UUID
+    created_at: datetime
+    updated_at: datetime
+
+
 class UserProfileBase(BaseModel):
     first_name: str | None = None
     middle_name: str | None = None
@@ -280,6 +294,31 @@ class PracticeRecordBase(BaseModel):
 class PracticeRecordCreate(PracticeRecordBase):
     pass
 
+class GamificationUpdateSchema(BaseModel):
+    xp_gained: int
+    coins_gained: int
+    new_streak: int
+    new_level: int
+    is_streak_extended: bool
+
+class DailySummarySchema(BaseModel):
+    completed_questions: int
+    new_questions: int
+    review_questions: int
+    total_speaking_time_seconds: int
+    best_answer_title: str | None
+    current_streak: int
+    xp_gained_today: int
+    coins_gained_today: int
+    level: int
+
+class HeatmapDataEntry(BaseModel):
+    date: str
+    count: int
+
+class HeatmapDataSchema(BaseModel):
+    entries: list[HeatmapDataEntry]
+
 class PracticeRecordRead(PracticeRecordBase, OrmModel):
     id: UUID
     user_id: UUID
@@ -287,6 +326,7 @@ class PracticeRecordRead(PracticeRecordBase, OrmModel):
     created_at: datetime
     updated_at: datetime
     audio_records: list[AudioRecordRead] = []
+    gamification_update: GamificationUpdateSchema | None = None
 
 
 class PracticePlanBase(BaseModel):
@@ -306,6 +346,12 @@ class PlanTaskBase(BaseModel):
     question_id: UUID
     scheduled_date: datetime
     status: str = "pending"
+
+
+class PlanTaskUpdate(BaseModel):
+    scheduled_date: datetime | None = None
+    status: str | None = None
+
 
 class PlanTaskRead(PlanTaskBase, OrmModel):
     id: UUID

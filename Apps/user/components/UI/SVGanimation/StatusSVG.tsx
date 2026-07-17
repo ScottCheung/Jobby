@@ -1,10 +1,11 @@
 import React, { useEffect } from 'react';
 import { motion, Variants } from 'framer-motion';
 
-interface AnimatedIconProps {
+export interface AnimatedIconProps {
   className?: string;
   color?: string;
-  icon: 'success' | 'error' | 'warning' | 'info';
+  icon?: 'success' | 'error' | 'warning' | 'info' | 'check';
+  type?: 'success' | 'error' | 'warning' | 'info' | 'check';
 }
 
 const iconVariants: Variants = {
@@ -21,6 +22,18 @@ const iconVariants: Variants = {
 };
 
 const svgPaths = {
+  check: [
+    <motion.polyline
+      key='tick'
+      fill='none'
+      strokeWidth='12'
+      points='25,55 45,75 75,35'
+      strokeLinecap='round'
+      strokeLinejoin='round'
+      custom={0}
+      variants={iconVariants}
+    />,
+  ],
   success: [
     <motion.circle
       key='circle'
@@ -149,11 +162,13 @@ const svgPaths = {
   ],
 };
 
-const AnimatedIcon: React.FC<AnimatedIconProps> = ({
+export const AnimatedIcon: React.FC<AnimatedIconProps> = ({
   className = '',
   color,
   icon,
+  type,
 }) => {
+  const activeIcon = icon || type || 'success';
   return (
     <motion.svg
       xmlns='http://www.w3.org/2000/svg'
@@ -162,10 +177,10 @@ const AnimatedIcon: React.FC<AnimatedIconProps> = ({
       initial='hidden'
       animate='visible'
     >
-      {svgPaths[icon].map((path) => (
+      {svgPaths[activeIcon].map((path) => (
         <motion.g
           key={path.key}
-          className={color}
+          className={color || 'stroke-current'}
         >
           {path}
         </motion.g>
@@ -173,6 +188,8 @@ const AnimatedIcon: React.FC<AnimatedIconProps> = ({
     </motion.svg>
   );
 };
+
+export default AnimatedIcon;
 
 interface SVGAnimationProps {
   className?: string;

@@ -16,6 +16,8 @@ import { Stagger, StaggerItem } from './animation';
 import { Number } from './UI/Number/Number';
 import AutomationPanel from '@/app/_component/AutomationPanel';
 
+import { Toaster } from '@/components/UI/toast/toaster';
+
 export default function ConsoleLayout({
   children,
 }: {
@@ -36,8 +38,8 @@ export default function ConsoleLayout({
         )}
 
         <div className='custom-scrollbar-primary flex-1 overflow-y-auto'>
-          <div className='p-page'>
-            <div className='mx-auto grid gap-8'>
+          <div className={cn(!pathname?.startsWith('/interview-prep') && 'p-page')}>
+            <div className={cn(!pathname?.startsWith('/interview-prep') && 'mx-auto grid gap-8')}>
               {/* Hero Header */}
               {pathname === '/' && (
                 <header className='hero bg-gradient-to-br from-green-800 via-emerald-900 to-zinc-950'>
@@ -58,7 +60,7 @@ export default function ConsoleLayout({
               {/* Stats Bar */}
               {pathname === '/' && (
                 <Stagger
-                  staggerDelay={0.15}
+                   staggerDelay={0.15}
                   className='grid grid-cols-[repeat(auto-fill,minmax(250px,1fr))]  gap-6  pt-4'
                 >
                   {stats.map((item) => {
@@ -144,6 +146,9 @@ export default function ConsoleLayout({
 
       {/* Global Drawer */}
       <GlobalDrawer />
+
+      {/* Global Toaster */}
+      <Toaster />
     </div>
   );
 }

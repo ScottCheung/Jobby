@@ -29,7 +29,7 @@
 }
 
 .display-panel {
-  @apply p-4 rounded-2xl bg-panel  flex flex-col;
+  @apply p-4 rounded-4xl bg-panel  flex flex-col;
 }
 .display-panel-header {
   @apply text-xs font-bold uppercase tracking-wider text-ink-secondary;
@@ -45,4 +45,20 @@
 
 .status-badge {
   @apply inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-bold text-primary;
+}
+
+.label {
+  @apply text-sm font-semibold text-ink-primary;
+}
+
+.module-panel {
+  @apply p-4 rounded-2xl bg-background-secondary/30 dark:bg-black/30 flex flex-col;
+}
+
+.badge {
+  @apply bg-primary-gradient rounded-full text-primary-foreground px-2 py-1 text-[10px] flex;
+}
+
+.skeleton {
+  @apply dark:bg-panel bg-black/10 animate-pulse;
 }
