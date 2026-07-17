@@ -22,7 +22,7 @@ export const OpenLoginBrowserCard = memo(function OpenLoginBrowserCard({
   const closeChrome = useBrowserSessionStore((state) => state.closeChrome);
 
   return (
-    <div className='card'>
+    <div className='panel-xl'>
       <div className='flex items-start justify-between gap-3'>
         <div>
           <h2 className='text-base font-semibold text-ink-primary flex items-center gap-2'>
@@ -35,7 +35,7 @@ export const OpenLoginBrowserCard = memo(function OpenLoginBrowserCard({
         <HelpTip content='This opens the browser that Auto Apply uses later. Sign in to LinkedIn and Seek there, then close that browser.' />
       </div>
 
-      <div className='status-panel'>
+      <div className='panel-sm'>
         <div className='flex items-center justify-between gap-3'>
           <span className='text-sm text-ink-secondary'>Browser Status</span>
           {sessionStatus?.isRunning ?

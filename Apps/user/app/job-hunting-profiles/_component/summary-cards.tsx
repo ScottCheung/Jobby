@@ -11,7 +11,7 @@ interface SummaryCardProps {
 
 function SummaryCard({ label, value, hint }: SummaryCardProps) {
   return (
-    <div className='display-panel'>
+    <div className='panel-lg'>
       <div className='text-[11px] uppercase tracking-wider text-ink-secondary/70'>
         {label}
       </div>

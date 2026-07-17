@@ -424,7 +424,7 @@ export function CityVectorMap({
 
       {/* Footer Info Display */}
       {cities.length > 0 && (
-        <div className=' flex flex-wrap gap-4 items-center text-xs text-zinc-500 dark:text-zinc-400 shrink-0 font-medium'>
+        <div className=' flex flex-wrap gap-4 items-center text-xs text-ink-primary0 dark:text-zinc-400 shrink-0 font-medium'>
           {cities.slice(0, 3).map((city, idx) => (
             <span key={idx} className='flex items-center gap-1'>
               {city.name.split(',')[0]}{' '}

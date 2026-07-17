@@ -24,7 +24,7 @@ export function JobDescription({
   return (
     <div className='space-y-4 animate-in fade-in duration-200'>
       <div className='flex items-center justify-between'>
-        <h3 className='text-xs font-bold text-ink-secondary uppercase tracking-wider'>
+        <h3 className='label-overline'>
           Job Description
         </h3>
         <button
@@ -58,7 +58,7 @@ export function JobDescription({
           rows={15}
         />
       : description ?
-        <div className='whitespace-pre-wrap font-sans text-sm text-ink-secondary leading-relaxed display-panel'>
+        <div className='whitespace-pre-wrap font-sans text-sm text-ink-secondary leading-relaxed panel-lg'>
           {description}
         </div>
       : <EmptyPlaceHolder />}

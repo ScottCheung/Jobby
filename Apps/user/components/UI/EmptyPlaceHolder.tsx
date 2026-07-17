@@ -22,7 +22,7 @@ export function EmptyPlaceHolder({
   messageClassName,
 }: EmptyPlaceHolderProps) {
   return (
-    <div className={cn('display-panel items-center', className)}>
+    <div className={cn('panel-lg items-center', className)}>
       <div className='py-6 text-center w-full'>
         {Icon && (
           <Icon

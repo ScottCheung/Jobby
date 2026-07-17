@@ -458,9 +458,8 @@ function TaskItem({
       >
         <GripVertical className='w-3 h-3 text-zinc-300 dark:text-zinc-700 shrink-0 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity' />
         <button
-          onClick={() => handleToggleTaskStatus(task)}
           className={cn(
-            'w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 mt-0.5 transition-all',
+            'w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 mt-0.5 transition-all cursor-default',
             isCompleted
               ? 'bg-emerald-500 border-emerald-500 text-white'
               : 'border-zinc-300 dark:border-zinc-700 hover:border-primary',
@@ -701,9 +700,8 @@ function Roadmap3DView({ dayDataArr, dragState, questions, getDayFormattedDate, 
                               )}
                             >
                               <button
-                                onClick={(e) => { e.stopPropagation(); handleToggleTaskStatus(task); }}
                                 className={cn(
-                                  'w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all mt-0.5',
+                                  'w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all mt-0.5 cursor-default',
                                   isCompleted ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-white/60 hover:border-white text-white'
                                 )}
                               >

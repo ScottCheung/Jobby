@@ -139,11 +139,11 @@ export default function OverviewPage() {
   return (
     <div className='grid grid-cols-12 gap-6'>
       {isDesktopApp && (
-        <div className='col-span-12 bg-panel rounded-card p-card border border-zinc-200/50 dark:border-zinc-800/50'>
+        <div className='col-span-12 bg-panel rounded-card p-card border border-border/50'>
           <div className='flex items-start justify-between gap-4 mb-6'>
             <div>
               <H2>Platform Automation Console</H2>
-              <p className='text-xs text-zinc-400 dark:text-zinc-500'>
+              <p className='text-xs text-zinc-400 dark:text-ink-primary0'>
                 Launch and monitor automated job applications across active
                 platforms in real time
               </p>
@@ -170,27 +170,27 @@ export default function OverviewPage() {
                 state.status === 'success' ?
                   'text-emerald-500 bg-emerald-500/10'
                 : state.status === 'failed' ? 'text-red-500 bg-red-500/10'
-                : state.status === 'cancelled' ? 'text-zinc-500 bg-zinc-500/10'
+                : state.status === 'cancelled' ? 'text-ink-primary0 bg-zinc-500/10'
                 : isRunning ? 'text-blue-500 bg-blue-500/10 animate-pulse'
                 : 'text-zinc-400 bg-zinc-500/5';
 
               return (
                 <div
                   key={platform}
-                  className='rounded-3xl border border-zinc-200/50 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-900/20 p-5 flex flex-col justify-between transition-colors'
+                  className='rounded-3xl border border-border/60 bg-background-secondary/30 dark:bg-panel/20 p-5 flex flex-col justify-between transition-colors'
                 >
                   <div>
                     {/* Header */}
                     <div className='flex items-center justify-between gap-3 mb-4'>
                       <div className='flex items-center gap-3'>
-                        <div className='flex h-10 w-10 items-center justify-center rounded-2xl bg-zinc-200/50 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300'>
+                        <div className='flex h-10 w-10 items-center justify-center rounded-2xl bg-zinc-200/50 dark:bg-panel text-zinc-700 dark:text-zinc-300'>
                           <Globe className='h-5 w-5' />
                         </div>
                         <div>
-                          <div className='font-semibold text-zinc-900 dark:text-zinc-100'>
+                          <div className='font-semibold text-ink-primary'>
                             {label}
                           </div>
-                          <div className='text-[10px] uppercase tracking-wider text-zinc-400 dark:text-zinc-500'>
+                          <div className='text-[10px] uppercase tracking-wider text-zinc-400 dark:text-ink-primary0'>
                             {platformCard.subtitle}
                           </div>
                         </div>
@@ -203,9 +203,9 @@ export default function OverviewPage() {
                     </div>
 
                     {/* Stats */}
-                    <div className='grid grid-cols-3 gap-2 py-3 px-4 mb-4 rounded-2xl bg-zinc-100/60 dark:bg-zinc-900/40 text-center'>
+                    <div className='grid grid-cols-3 gap-2 py-3 px-4 mb-4 rounded-2xl bg-background-secondary/50 dark:bg-panel/40 text-center'>
                       <div>
-                        <div className='text-xs text-zinc-400 dark:text-zinc-500'>
+                        <div className='text-xs text-zinc-400 dark:text-ink-primary0'>
                           Submitted
                         </div>
                         <div className='text-lg font-bold text-emerald-600 dark:text-emerald-400'>
@@ -213,7 +213,7 @@ export default function OverviewPage() {
                         </div>
                       </div>
                       <div>
-                        <div className='text-xs text-zinc-400 dark:text-zinc-500'>
+                        <div className='text-xs text-zinc-400 dark:text-ink-primary0'>
                           Skipped
                         </div>
                         <div className='text-lg font-bold text-amber-500'>
@@ -221,7 +221,7 @@ export default function OverviewPage() {
                         </div>
                       </div>
                       <div>
-                        <div className='text-xs text-zinc-400 dark:text-zinc-500'>
+                        <div className='text-xs text-zinc-400 dark:text-ink-primary0'>
                           Failed
                         </div>
                         <div className='text-lg font-bold text-red-500'>
@@ -239,7 +239,7 @@ export default function OverviewPage() {
                     </div>
 
                     {/* Real-time terminal log stream */}
-                    <div className='mb-5 h-70 rounded-xl bg-zinc-950 p-3 font-mono text-[10px] text-zinc-400 overflow-y-auto border border-zinc-800/80 scrollbar-none'>
+                    <div className='mb-5 h-70 rounded-xl bg-secondary p-3 font-mono text-[10px] text-zinc-400 overflow-y-auto border border-zinc-800/80 scrollbar-none'>
                       {state.logs.length === 0 ?
                         <div className='text-zinc-600 italic'>
                           Waiting for logs...
@@ -286,18 +286,18 @@ export default function OverviewPage() {
           <div className='flex items-start justify-between gap-4 mb-5'>
             <div>
               <H2>Cloud Connection</H2>
-              <p className='text-xs text-zinc-400 dark:text-zinc-500'>
+              <p className='text-xs text-zinc-400 dark:text-ink-primary0'>
                 Persisted desktop endpoints for your current environment
               </p>
             </div>
-            <span className='inline-flex items-center rounded-full bg-zinc-900 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-white dark:bg-zinc-100 dark:text-zinc-900'>
+            <span className='inline-flex items-center rounded-full bg-secondary px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-white dark:bg-background-secondary dark:text-ink-primary'>
               {desktopRuntime?.environmentName || connectionForm.environmentName}
             </span>
           </div>
 
           <div className='grid gap-4 md:grid-cols-3'>
             <label className='grid gap-2 text-sm'>
-              <span className='text-zinc-500 dark:text-zinc-400'>Environment</span>
+              <span className='text-ink-primary0 dark:text-zinc-400'>Environment</span>
               <input
                 value={connectionForm.environmentName}
                 onChange={(event) =>
@@ -306,13 +306,13 @@ export default function OverviewPage() {
                     environmentName: event.target.value,
                   }))
                 }
-                className='rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-emerald-500 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100'
+                className='rounded-2xl border border-border bg-panel px-4 py-3 text-sm text-ink-primary outline-none transition focus:border-emerald-500 dark:border-border dark:bg-background dark:text-ink-primary'
                 placeholder='Production'
               />
             </label>
 
             <label className='grid gap-2 text-sm md:col-span-2'>
-              <span className='text-zinc-500 dark:text-zinc-400'>API URL</span>
+              <span className='text-ink-primary0 dark:text-zinc-400'>API URL</span>
               <input
                 value={connectionForm.apiUrl}
                 onChange={(event) =>
@@ -321,13 +321,13 @@ export default function OverviewPage() {
                     apiUrl: event.target.value,
                   }))
                 }
-                className='rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-emerald-500 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100'
+                className='rounded-2xl border border-border bg-panel px-4 py-3 text-sm text-ink-primary outline-none transition focus:border-emerald-500 dark:border-border dark:bg-background dark:text-ink-primary'
                 placeholder='https://api.example.com'
               />
             </label>
 
             <label className='grid gap-2 text-sm md:col-span-3'>
-              <span className='text-zinc-500 dark:text-zinc-400'>Dashboard URL</span>
+              <span className='text-ink-primary0 dark:text-zinc-400'>Dashboard URL</span>
               <input
                 value={connectionForm.dashboardUrl}
                 onChange={(event) =>
@@ -336,7 +336,7 @@ export default function OverviewPage() {
                     dashboardUrl: event.target.value,
                   }))
                 }
-                className='rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-emerald-500 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100'
+                className='rounded-2xl border border-border bg-panel px-4 py-3 text-sm text-ink-primary outline-none transition focus:border-emerald-500 dark:border-border dark:bg-background dark:text-ink-primary'
                 placeholder='https://app.example.com'
               />
             </label>
@@ -351,11 +351,11 @@ export default function OverviewPage() {
             </button>
             <button
               onClick={handleConnectionReset}
-              className='rounded-full border border-zinc-200 px-4 py-2 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-900'
+              className='rounded-full border border-zinc-200 px-4 py-2 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-100 dark:border-border dark:text-zinc-200 dark:hover:bg-zinc-900'
             >
               Reset Defaults
             </button>
-            <p className='text-xs text-zinc-400 dark:text-zinc-500'>
+            <p className='text-xs text-zinc-400 dark:text-ink-primary0'>
               API mode: {desktopConnectionConfig.apiMode} | Dashboard mode:{' '}
               {desktopConnectionConfig.dashboardMode} | Worker mode:{' '}
               {desktopConnectionConfig.workerMode}
@@ -370,7 +370,7 @@ export default function OverviewPage() {
         <div className='flex items-start justify-between mb-2'>
           <div>
             <H2>Application Trend</H2>
-            <p className='text-xs text-zinc-400 dark:text-zinc-500'>
+            <p className='text-xs text-zinc-400 dark:text-ink-primary0'>
               Daily tracking of submitted vs skipped applications
             </p>
           </div>
@@ -420,7 +420,7 @@ export default function OverviewPage() {
       <div className='col-span-12  md:col-span-5 h-full bg-panel rounded-card p-card'>
         <div>
           <H2>Application Status Breakdown</H2>
-          <p className='text-xs text-zinc-400 dark:text-zinc-500 mb-4'>
+          <p className='text-xs text-zinc-400 dark:text-ink-primary0 mb-4'>
             Proportions of all logged job application states
           </p>
         </div>
@@ -447,7 +447,7 @@ export default function OverviewPage() {
       <div className='col-span-12 md:col-span-12 lg:col-span-4 bg-panel rounded-card p-card'>
         <div>
           <H2>Top Skip Reasons</H2>
-          <p className='text-xs text-zinc-400 dark:text-zinc-500 mb-4'>
+          <p className='text-xs text-zinc-400 dark:text-ink-primary0 mb-4'>
             Main constraints preventing automatic job application
           </p>
 
@@ -468,7 +468,7 @@ export default function OverviewPage() {
       <div className='col-span-12 md:col-span-6 lg:col-span-4 bg-panel rounded-card p-card'>
         <div>
           <H2>Top Applied Companies</H2>
-          <p className='text-xs text-zinc-400 dark:text-zinc-500 mb-4'>
+          <p className='text-xs text-zinc-400 dark:text-ink-primary0 mb-4'>
             Most frequent companies targeted by automation bot
           </p>
           <Chart
@@ -488,7 +488,7 @@ export default function OverviewPage() {
       <div className='col-span-12 md:col-span-6 lg:col-span-4 bg-panel rounded-card p-card'>
         <div>
           <H2>Cities</H2>
-          <p className='text-xs text-zinc-400 dark:text-zinc-500 mb-4'>
+          <p className='text-xs text-zinc-400 dark:text-ink-primary0 mb-4'>
             Geographical distribution of job automation activity
           </p>
           <ChartWrapper className='h-64'>
@@ -502,7 +502,7 @@ export default function OverviewPage() {
         <div className='flex items-center justify-between mb-4'>
           <div>
             <H2>Recent Application History</H2>
-            <p className='text-xs text-zinc-400 dark:text-zinc-500'>
+            <p className='text-xs text-zinc-400 dark:text-ink-primary0'>
               The latest application attempts by the Jobbie
             </p>
           </div>
@@ -517,7 +517,7 @@ export default function OverviewPage() {
         <div className='overflow-x-auto'>
           <table className='w-full text-left border-collapse text-sm'>
             <thead>
-              <tr className='border-b border-zinc-100 dark:border-zinc-800 text-[10px] font-bold text-zinc-500 dark:text-zinc-500 uppercase tracking-wider'>
+              <tr className='border-b border-border/40 text-[10px] font-bold text-ink-primary0 dark:text-ink-primary0 uppercase tracking-wider'>
                 <th className='pb-3 pr-4'>Position</th>
                 <th className='pb-3 px-4'>Company</th>
                 <th className='pb-3 px-4'>Workplace Style</th>
@@ -525,7 +525,7 @@ export default function OverviewPage() {
                 <th className='pb-3 pl-4 text-right'>Applied Date</th>
               </tr>
             </thead>
-            <tbody className='divide-y divide-zinc-100 dark:divide-zinc-800/50'>
+            <tbody className='divide-y divide-border/40'>
               {(
                 dashboardData.recentActivities &&
                 dashboardData.recentActivities.length > 0
@@ -539,17 +539,17 @@ export default function OverviewPage() {
                         className='text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50/50 dark:hover:bg-zinc-900/10 transition-colors'
                       >
                         <td className='py-3 pr-4'>
-                          <div className='font-bold text-zinc-900 dark:text-zinc-100 truncate max-w-xs'>
+                          <div className='font-bold text-ink-primary truncate max-w-xs'>
                             {item.title || 'Untitled Role'}
                           </div>
                           <span className='text-[10px] text-zinc-400 font-mono'>
                             ID: {item.job_id}
                           </span>
                         </td>
-                        <td className='py-3 px-4 font-semibold text-zinc-800 dark:text-zinc-200 truncate max-w-[150px]'>
+                        <td className='py-3 px-4 font-semibold text-ink-primary truncate max-w-[150px]'>
                           {item.company || 'Unknown'}
                         </td>
-                        <td className='py-3 px-4 text-xs text-zinc-500 dark:text-zinc-400 capitalize'>
+                        <td className='py-3 px-4 text-xs text-ink-primary0 dark:text-zinc-400 capitalize'>
                           {item.work_location || 'Not specified'}
                         </td>
                         <td className='py-3 px-4'>
@@ -564,14 +564,14 @@ export default function OverviewPage() {
                           {shouldShowApplicationSkipReason(item) &&
                             item.skip_reason && (
                               <p
-                                className='text-[9px] text-zinc-400 dark:text-zinc-500 italic max-w-[150px] truncate'
+                                className='text-[9px] text-zinc-400 dark:text-ink-primary0 italic max-w-[150px] truncate'
                                 title={item.skip_reason}
                               >
                                 {item.skip_reason}
                               </p>
                             )}
                         </td>
-                        <td className='py-3 pl-4 text-right text-xs text-zinc-500 dark:text-zinc-500 whitespace-nowrap'>
+                        <td className='py-3 pl-4 text-right text-xs text-ink-primary0 dark:text-ink-primary0 whitespace-nowrap'>
                           {formatDate(
                             item.date_applied ??
                               item.updated_at ??
@@ -585,7 +585,7 @@ export default function OverviewPage() {
               : <tr>
                   <td
                     colSpan={5}
-                    className='py-8 text-center text-zinc-500 dark:text-zinc-500 italic'
+                    className='py-8 text-center text-ink-primary0 dark:text-ink-primary0 italic'
                   >
                     No application activities recorded yet.
                   </td>

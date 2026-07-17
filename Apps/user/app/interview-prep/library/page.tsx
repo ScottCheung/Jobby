@@ -161,7 +161,9 @@ export default function QuestionsLibraryPage() {
       const elapsed = Date.now() - startTime;
       const minDuration = 500; // 0.5 seconds
       if (elapsed < minDuration) {
-        await new Promise((resolve) => setTimeout(resolve, minDuration - elapsed));
+        await new Promise((resolve) =>
+          setTimeout(resolve, minDuration - elapsed),
+        );
       }
       setIsLoading(false);
     }
@@ -414,9 +416,9 @@ export default function QuestionsLibraryPage() {
       />
 
       {/* 2. Questions List (Full Width) */}
-      <div className='display-panel flex flex-col overflow-hidden'>
+      <div className='panel-xl pb-0! flex flex-col overflow-hidden '>
         {/* Header Tools */}
-        <div className='flex items-center justify-between p-4  gap-4 shrink-0'>
+        <div className='flex items-center justify-between gap-4 shrink-0'>
           <div className='flex items-center gap-2 flex-1 max-w-md'>
             <div className='relative flex-1'>
               <Search className='absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400' />
@@ -425,7 +427,7 @@ export default function QuestionsLibraryPage() {
                 placeholder='Search questions...'
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className='w-full pl-9 pr-4 py-2 text-sm rounded-xl  bg-panel dark:bg-zinc-955 dark:border-zinc-800 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-750 focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-750 text-ink-primary'
+                className='w-full pl-9 pr-4 py-2 text-sm rounded-xl  bg-panel dark:bg-zinc-955 dark:border-border focus:outline-none focus:border-primary/50 dark:focus:border-primary/50 focus:ring-1 focus:ring-primary/20 dark:focus:ring-zinc-750 text-ink-primary'
               />
             </div>
             <button
@@ -446,7 +448,7 @@ export default function QuestionsLibraryPage() {
                     selectedFrequencies.length > 0
                 ) ?
                   'bg-primary/10 text-primary border-primary/30'
-                : 'bg-panel border-zinc-200 dark:border-zinc-800 text-ink-secondary hover:text-ink-primary',
+                : 'bg-panel border-border dark:border-border text-ink-secondary hover:text-ink-primary',
               )}
             >
               <Tooltip content='Filters' side='bottom'>
@@ -456,7 +458,7 @@ export default function QuestionsLibraryPage() {
                     selectedTagIds.length > 0 ||
                     selectedImportances.length > 0 ||
                     selectedFrequencies.length > 0) && (
-                    <span className='absolute -top-1 -right-1 w-3.5 h-3.5 flex items-center justify-center bg-primary text-primary-foreground rounded-full text-[9px] font-bold ring-1 ring-white dark:ring-zinc-950'>
+                    <span className='absolute -top-1 -right-1 w-3.5 h-3.5 flex items-center justify-center bg-primary text-primary-foreground rounded-full text-[9px] font-bold ring-1 ring-white dark:ring-background'>
                       {selectedCategoryIds.length +
                         selectedTagIds.length +
                         selectedImportances.length +
@@ -477,7 +479,7 @@ export default function QuestionsLibraryPage() {
                       setSelectedIds([]);
                     }}
                     disabled={isSaving}
-                    className='flex items-center justify-center w-9 h-9 text-ink-primary bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 rounded-xl transition-colors dark:border-zinc-850/60'
+                    className='flex items-center justify-center w-9 h-9 text-ink-primary bg-background-secondary hover:bg-background-secondary dark:bg-panel dark:hover:bg-panel rounded-xl transition-colors dark:border-zinc-850/60'
                   >
                     <X className='w-4 h-4' />
                   </button>
@@ -501,7 +503,7 @@ export default function QuestionsLibraryPage() {
                 <button
                   onClick={() => setIsSelectionMode(true)}
                   disabled={isSaving}
-                  className='flex items-center justify-center w-9 h-9 text-ink-primary bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:hover:bg-zinc-700 rounded-xl transition-colors dark:border-zinc-850/60'
+                  className='flex items-center justify-center w-9 h-9 text-ink-primary bg-zinc-200 hover:bg-zinc-300 dark:bg-panel dark:hover:bg-panel rounded-xl transition-colors dark:border-zinc-850/60'
                 >
                   <Trash2 className='w-4 h-4' />
                 </button>
@@ -584,7 +586,7 @@ export default function QuestionsLibraryPage() {
         </div>
 
         {/* Table Content */}
-        <div className='flex-1 overflow-y-auto'>
+        <div className='flex-1 overflow-y-auto fade-out-tb'>
           {isLoading ?
             <QuestionListSkeleton />
           : filteredQuestions.length === 0 ?
@@ -674,7 +676,10 @@ function QuestionListSkeleton() {
   return (
     <div className='flex flex-col gap-3 p-4 animate-pulse'>
       {Array.from({ length: 5 }).map((_, i) => (
-        <div key={i} className='grid grid-cols-[minmax(0,2.5fr)_minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,3.5fr)] items-center py-4 border-b border-zinc-150 dark:border-zinc-800/60'>
+        <div
+          key={i}
+          className='grid grid-cols-[minmax(0,2.5fr)_minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,3.5fr)] items-center py-4 border-b border-border/50'
+        >
           <div className='h-4 bg-panel rounded w-2/3'></div>
           <div className='h-4 bg-panel rounded w-1/2'></div>
           <div className='h-4 bg-panel rounded w-1/3'></div>

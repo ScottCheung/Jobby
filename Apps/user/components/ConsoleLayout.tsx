@@ -38,8 +38,8 @@ export default function ConsoleLayout({
         )}
 
         <div className='custom-scrollbar-primary flex-1 overflow-y-auto'>
-          <div className={cn(!pathname?.startsWith('/interview-prep') && 'p-page')}>
-            <div className={cn(!pathname?.startsWith('/interview-prep') && 'mx-auto grid gap-8')}>
+          <div className={cn(!pathname?.startsWith('/interview-prep') && !pathname?.startsWith('/design-system') && 'p-page')}>
+            <div className={cn(!pathname?.startsWith('/interview-prep') && !pathname?.startsWith('/design-system') && 'mx-auto grid gap-8')}>
               {/* Hero Header */}
               {pathname === '/' && (
                 <header className='hero bg-gradient-to-br from-green-800 via-emerald-900 to-zinc-950'>

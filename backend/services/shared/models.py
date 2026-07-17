@@ -86,9 +86,49 @@ class UserGamification(Base, TimestampMixin):
     coins: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     level: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     streak_days: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    loot_boxes: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     last_practice_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_checkin_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
-    user: Mapped[User] = relationship(back_populates="gamification_profile")
+    user: Mapped["User"] = relationship(back_populates="gamification_profile")
+
+
+class UserDailyQuest(Base, TimestampMixin):
+    __tablename__ = "user_daily_quests"
+
+    id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid4)
+    user_id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    quest_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    quest_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str] = mapped_column(String(500), nullable=False)
+    target_value: Mapped[int] = mapped_column(Integer, nullable=False)
+    current_value: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    is_claimed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
+
+class UserAchievement(Base, TimestampMixin):
+    __tablename__ = "user_achievements"
+
+    id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid4)
+    user_id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    badge_id: Mapped[str] = mapped_column(String(50), nullable=False)
+    badge_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    description: Mapped[str] = mapped_column(String(500), nullable=False)
+    unlocked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class GamificationTransaction(Base, TimestampMixin):
+    __tablename__ = "gamification_transactions"
+
+    id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid4)
+    user_id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    amount: Mapped[int] = mapped_column(Integer, nullable=False)
+    currency: Mapped[str] = mapped_column(String(20), nullable=False)  # 'xp' or 'coin'
+    reason: Mapped[str] = mapped_column(String(255), nullable=False)
+    reference_id: Mapped[str | None] = mapped_column(String(255))
+
+    user: Mapped[User] = relationship(foreign_keys=[user_id])
 
 
 class PlatformAccount(Base, TimestampMixin):

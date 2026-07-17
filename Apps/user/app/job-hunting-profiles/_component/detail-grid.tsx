@@ -10,7 +10,7 @@ interface DetailGridProps {
 
 export function DetailGrid({ title, icon, items }: DetailGridProps) {
   return (
-    <section className='card'>
+    <section className='panel-xl'>
       <div className='flex items-center gap-2 text-ink-primary'>
         {icon}
         <h3 className='text-sm font-semibold'>{title}</h3>
@@ -19,7 +19,7 @@ export function DetailGrid({ title, icon, items }: DetailGridProps) {
         {items.map((item) => (
           <div
             key={item.label}
-            className='rounded-xl border border-zinc-200/70 dark:border-zinc-800/80 bg-zinc-50/60 dark:bg-zinc-900/30 px-4 py-3'
+            className='rounded-xl border border-border/60 bg-background-secondary/40 dark:bg-panel/30 px-4 py-3'
           >
             <div className='text-[11px] uppercase tracking-wider text-ink-secondary/70'>
               {item.label}

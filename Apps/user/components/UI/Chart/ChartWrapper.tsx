@@ -35,9 +35,9 @@ const ChartWrapper = ({
       >
         <InView>
           {isEmpty ?
-            <div className='flex h-full min-h-80 w-full flex-col items-center justify-center text-center p-6 bg-zinc-50/50 dark:bg-zinc-900/10 rounded-xl border border-dashed border-zinc-200 dark:border-zinc-800/80'>
+            <div className='flex h-full min-h-80 w-full flex-col items-center justify-center text-center p-6 bg-background-secondary/20 dark:bg-panel/10 rounded-xl border border-dashed border-border dark:border-border/80'>
               <BarChart3 className='w-8 h-8 text-zinc-300 dark:text-zinc-700 mb-3 animate-pulse' />
-              <p className='text-sm font-medium text-zinc-400 dark:text-zinc-500'>
+              <p className='text-sm font-medium text-zinc-400 dark:text-ink-primary0'>
                 {emptyMessage}
               </p>
             </div>

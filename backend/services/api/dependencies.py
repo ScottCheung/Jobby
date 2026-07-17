@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import Depends
+from fastapi import Depends, Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -8,10 +8,31 @@ from services.shared.database import get_db
 from services.shared.models import User
 from services.shared.settings import get_settings
 
-
-def get_or_create_current_user(db: Session = Depends(get_db)) -> User:
+def get_or_create_current_user(request: Request, db: Session = Depends(get_db)) -> User:
     settings = get_settings()
-    user = db.scalar(select(User).order_by(User.created_at.asc()).limit(1))
+    email = request.headers.get("X-User-Email")
+    print(f"DEBUG: X-User-Email received: {email}")
+
+    if email:
+        user = db.scalar(select(User).where(User.email == email))
+        if user:
+            return user
+
+        # Create a new user for this email
+        new_user = User(
+            email=email,
+            display_name=email.split("@")[0],
+            role="user",
+            status="active",
+            can_use_auto_apply=True,
+        )
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
+        return new_user
+
+    # Fallback to default user if no email header
+    user = db.scalar(select(User).where(User.email == settings.default_admin_email))
     if user:
         return user
 

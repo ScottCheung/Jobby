@@ -28,7 +28,7 @@ export function NavBarContainer({
   return (
     <div
       className={cn(
-        'relative overflow-hidden rounded-[28px] border border-zinc-200/70 bg-panel/95 px-5 shadow-[0px_12px_32px_rgba(15,23,42,0.08)] backdrop-blur-md dark:border-zinc-800/80',
+        'relative overflow-hidden rounded-[28px] border border-border/60 bg-panel/95 px-5 shadow-[0px_12px_32px_rgba(15,23,42,0.08)] backdrop-blur-md dark:border-border/80',
         className,
       )}
     >
@@ -52,11 +52,11 @@ export function NavBarContainer({
           )}
         >
           <div className='min-w-0'>
-            <h2 className='text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50'>
+            <h2 className='text-xl font-bold tracking-tight text-ink-primary'>
               {title}
             </h2>
             {description && (
-              <p className='mt-1 text-sm text-zinc-500 dark:text-zinc-400'>
+              <p className='mt-1 text-sm text-ink-primary0 dark:text-zinc-400'>
                 {description}
               </p>
             )}
@@ -71,7 +71,7 @@ export function NavBarContainer({
           )}
         >
           <div className='min-w-0 shrink-0'>
-            <h2 className='text-lg font-bold tracking-tight text-zinc-900 dark:text-zinc-50'>
+            <h2 className='text-lg font-bold tracking-tight text-ink-primary'>
               {title}
             </h2>
           </div>

@@ -180,7 +180,7 @@ export default function AutomationPanel() {
         {isAnyBotActive && (
           <span className="absolute -top-1 -right-1 flex h-4 w-4 pointer-events-none">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-4 w-4 bg-green-500 border-2 border-white dark:border-zinc-900"></span>
+            <span className="relative inline-flex rounded-full h-4 w-4 bg-green-500 border-2 border-white dark:border-border"></span>
           </span>
         )}
         <Bot
@@ -241,13 +241,13 @@ export default function AutomationPanel() {
                   className={cn(
                     'group/btn w-72 h-20 rounded-2xl flex items-center justify-between p-3.5 border transition-all duration-300 relative overflow-hidden backdrop-blur-xl shadow-xl',
                     isLocked ?
-                      'bg-zinc-100/70 dark:bg-zinc-900/50 border-zinc-200/40 dark:border-zinc-800/40 opacity-70 cursor-not-allowed'
+                      'bg-background-secondary/50 border-border/40 opacity-70 cursor-not-allowed'
                     : isRunning ?
                       'bg-emerald-500/5 dark:bg-emerald-500/10 border-emerald-500/30 dark:border-emerald-500/20 shadow-emerald-500/5 cursor-pointer hover:border-emerald-500/50 hover:bg-emerald-500/10'
                     : isStarting || isStopping ?
                       'bg-sky-500/5 dark:bg-sky-500/10 border-sky-500/30 dark:border-sky-500/20 shadow-sky-500/5 cursor-wait'
                     : cn(
-                        'bg-white/90 dark:bg-[#0f1219]/90 border-zinc-200/75 dark:border-zinc-800/80 cursor-pointer',
+                        'bg-white/90 dark:bg-[#0f1219]/90 border-border/60 cursor-pointer',
                         platform.brandHoverClass,
                         platform.brandShadowClass,
                       ),
@@ -259,13 +259,13 @@ export default function AutomationPanel() {
                 >
                   {/* Left Side: Logo */}
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-11 h-11 rounded-xl bg-white border border-zinc-150/85 dark:border-zinc-800/50 flex items-center justify-center shadow-sm shrink-0">
+                    <div className="w-11 h-11 rounded-xl bg-white border border-border/50 flex items-center justify-center shadow-sm shrink-0">
                       {platform.icon}
                     </div>
 
                     {/* Middle: Name & Action status */}
                     <div className="flex flex-col min-w-0 select-none">
-                      <span className="font-extrabold text-sm text-zinc-950 dark:text-zinc-50 tracking-tight leading-normal">
+                      <span className="font-extrabold text-sm text-ink-primary dark:text-ink-primary tracking-tight leading-normal">
                         {platform.name} Apply
                       </span>
 
@@ -291,7 +291,7 @@ export default function AutomationPanel() {
                         )}
                         {!isActive && !isLocked && (
                           <>
-                            <span className="text-[11px] font-bold text-zinc-400 dark:text-zinc-500 group-hover/btn:hidden flex items-center gap-1">
+                            <span className="text-[11px] font-bold text-zinc-400 dark:text-ink-primary0 group-hover/btn:hidden flex items-center gap-1">
                               <span className="w-1.5 h-1.5 rounded-full bg-zinc-300 dark:bg-zinc-700" /> Inactive
                             </span>
                             <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 hidden group-hover/btn:flex items-center gap-1 animate-pulse">
@@ -314,7 +314,7 @@ export default function AutomationPanel() {
                   </div>
 
                   {/* Right Side: Stats Panel */}
-                  <div className="flex flex-col items-end text-[10px] font-bold font-mono bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-150/40 dark:border-zinc-800/40 rounded-xl px-2 py-1 select-none leading-tight shrink-0 gap-0.5 min-w-[52px]">
+                  <div className="flex flex-col items-end text-[10px] font-bold font-mono bg-background-secondary/60 border border-border/40 rounded-xl px-2 py-1 select-none leading-tight shrink-0 gap-0.5 min-w-[52px]">
                     <span className="text-emerald-600 dark:text-emerald-400 flex items-center justify-end gap-1">
                       {stats.submitted} <span className="text-[8px] font-sans">✔</span>
                     </span>

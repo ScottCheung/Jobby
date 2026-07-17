@@ -63,7 +63,7 @@ export const CheckLoginStatusCard = memo(function CheckLoginStatusCard({
   }, [sessionVerification?.checkedAt]);
 
   return (
-    <div className='card'>
+    <div className='panel-xl'>
       <div className='flex items-start justify-between gap-3'>
         <div>
           <h2 className='text-base font-semibold text-ink-primary flex items-center gap-2'>
@@ -76,9 +76,9 @@ export const CheckLoginStatusCard = memo(function CheckLoginStatusCard({
         <HelpTip content='The app will close the login browser for you first if needed, then run the check.' />
       </div>
 
-      <div className='space-y-6 status-panel'>
+      <div className='space-y-6 panel-sm'>
         <div className='flex items-center justify-between'>
-          <span className='text-sm text-zinc-500 dark:text-zinc-400'>
+          <span className='text-sm text-ink-primary0 dark:text-zinc-400'>
             Saved Login Sessions
           </span>
           {sessionStatus?.exists ?
@@ -86,7 +86,7 @@ export const CheckLoginStatusCard = memo(function CheckLoginStatusCard({
               <CheckCircle2 className='h-3 w-3' />
               Ready
             </span>
-          : <span className='inline-flex items-center gap-1 rounded-full border border-zinc-500/20 bg-zinc-500/10 px-2 py-0.5 text-xs font-semibold text-zinc-500'>
+          : <span className='inline-flex items-center gap-1 rounded-full border border-zinc-500/20 bg-zinc-500/10 px-2 py-0.5 text-xs font-semibold text-ink-primary0'>
               <XCircle className='h-3 w-3' />
               Empty
             </span>
@@ -94,7 +94,7 @@ export const CheckLoginStatusCard = memo(function CheckLoginStatusCard({
         </div>
 
         <div className='flex items-center justify-between'>
-          <span className='text-sm text-zinc-500 dark:text-zinc-400'>
+          <span className='text-sm text-ink-primary0 dark:text-zinc-400'>
             Last check
           </span>
           <span
@@ -138,7 +138,7 @@ export const CheckLoginStatusCard = memo(function CheckLoginStatusCard({
                 ['Seek', sessionVerification.results.seek],
               ] as const
             ).map(([label, result]) => (
-              <div key={label} className='display-panel space-y-1.5'>
+              <div key={label} className='panel-lg space-y-1.5'>
                 <div className='flex items-center justify-between gap-3'>
                   <span className='font-semibold text-ink-primary'>
                     {label}
@@ -162,7 +162,7 @@ export const CheckLoginStatusCard = memo(function CheckLoginStatusCard({
             ))}
           </div>
         : null
-      : <div className='rounded-xl border border-dashed border-zinc-200 dark:border-zinc-800 px-4 py-6 text-center text-sm text-ink-secondary'>
+      : <div className='rounded-xl border border-dashed border-border dark:border-border px-4 py-6 text-center text-sm text-ink-secondary'>
           {isDesktop ?
             'Checking status...'
           : 'Status is only available in the desktop app.'}

@@ -13,19 +13,33 @@ import type {
   PracticePlan,
   PlanTask,
   DailySummary,
-  HeatmapData
+  HeatmapData,
+  GamificationTransaction,
+  DailyQuest,
+  Achievement,
+  LootBoxResponse,
 } from "./types";
 import { resolveApiBaseUrl } from "./runtime";
+import { createClient } from "./supabase/client";
 
 async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
   const apiBaseUrl = await resolveApiBaseUrl();
+  const supabase = createClient();
+  const { data: { session } } = await supabase.auth.getSession();
+  
+  const headers: Record<string, string> = {
+    Accept: "application/json",
+    "Content-Type": "application/json",
+    ...(init?.headers as Record<string, string> ?? {}),
+  };
+
+  if (session?.user?.email) {
+    headers["X-User-Email"] = session.user.email;
+  }
+
   const response = await fetch(`${apiBaseUrl}${path}`, {
     ...init,
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-      ...(init?.headers ?? {}),
-    },
+    headers,
     cache: "no-store",
   });
 
@@ -188,6 +202,28 @@ export const api = {
     }),
   gamificationSummary: () => apiRequest<DailySummary>("/api/interview/gamification/summary"),
   gamificationHeatmap: () => apiRequest<HeatmapData>("/api/interview/gamification/heatmap"),
+  gamificationTransactions: () =>
+    apiRequest<GamificationTransaction[]>('/api/interview/gamification/transactions'),
+  gamificationCheckin: () =>
+    apiRequest<{ message: string; xp_earned: number; loot_boxes_earned: number }>('/api/interview/gamification/checkin', {
+      method: 'POST',
+    }),
+  openLootBox: () =>
+    apiRequest<LootBoxResponse>('/api/interview/gamification/lootbox/open', {
+      method: 'POST',
+    }),
+  dailyQuests: () =>
+    apiRequest<DailyQuest[]>('/api/interview/gamification/quests'),
+  claimQuest: (questId: string) =>
+    apiRequest<{ message: string; loot_boxes_earned: number }>(`/api/interview/gamification/quests/${questId}/claim`, {
+      method: 'POST',
+    }),
+  achievements: () =>
+    apiRequest<Achievement[]>('/api/interview/gamification/achievements'),
+  resetGamification: () =>
+    apiRequest<{ message: string }>('/api/interview/gamification/reset', {
+      method: 'POST',
+    }),
   uploadPracticeAudio: async (recordId: string, blob: Blob) => {
     const apiBaseUrl = await resolveApiBaseUrl();
     const formData = new FormData();

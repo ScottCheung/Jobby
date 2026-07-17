@@ -63,7 +63,7 @@ export function PracticeHistory({
               {/* Delete Attempt Trigger */}
               <button
                 onClick={() => onDeleteAttempt(attempt.id)}
-                className='p-2 text-ink-secondary hover:text-red-500 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors'
+                className='p-2 text-ink-secondary hover:text-red-500 rounded-lg hover:bg-background-secondary hover:bg-background-secondary transition-colors'
               >
                 <Trash2 className='w-4 h-4' />
               </button>

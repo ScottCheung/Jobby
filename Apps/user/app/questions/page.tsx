@@ -141,7 +141,7 @@ export default function QuestionsPage() {
           heightRange={[130, 65]}
         >
           <ScrollLayout.TopToLeft>
-            <div className='flex items-center gap-2 text-zinc-900 dark:text-zinc-50 font-bold shrink-0'>
+            <div className='flex items-center gap-2 text-ink-primary font-bold shrink-0'>
               {/* <MessageSquareCode className="w-5 h-5 text-emerald-500 shrink-0" /> */}
               <h2 className='text-xl tracking-tight shrink-0'>
                 Question Cache
@@ -162,18 +162,18 @@ export default function QuestionsPage() {
       </div>
 
       {items.length === 0 && !isLoading ?
-        <div className='p-8 text-center text-zinc-500 dark:text-zinc-400 flex-1 flex items-center justify-center'>
+        <div className='p-8 text-center text-ink-primary0 dark:text-zinc-400 flex-1 flex items-center justify-center'>
           No saved answers yet.
         </div>
       : <motion.div
           layout
           transition={springTransition}
-          className='flex-1 overflow-hidden relative border border-zinc-100 dark:border-zinc-800/60 rounded-xl bg-panel'
+          className='flex-1 overflow-hidden relative border border-border/40 rounded-xl bg-panel'
         >
           <motion.div
             layout
             transition={springTransition}
-            className='grid grid-cols-[minmax(0,4fr)_minmax(0,1.5fr)_minmax(0,2.5fr)_minmax(0,1fr)_minmax(0,1fr)] gap-0 border-b border-zinc-100 dark:border-zinc-800 text-[11px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider px-4 py-3 shrink-0'
+            className='grid grid-cols-[minmax(0,4fr)_minmax(0,1.5fr)_minmax(0,2.5fr)_minmax(0,1fr)_minmax(0,1fr)] gap-0 border-b border-border/40 text-[11px] font-bold text-zinc-400 dark:text-ink-primary0 uppercase tracking-wider px-4 py-3 shrink-0'
           >
             <div className='pr-4'>Question</div>
             <div className='px-4'>Type</div>
@@ -198,23 +198,23 @@ export default function QuestionsPage() {
                   <div
                     key={item.id}
                     style={style}
-                    className='grid grid-cols-[minmax(0,4fr)_minmax(0,1.5fr)_minmax(0,2.5fr)_minmax(0,1fr)_minmax(0,1fr)] items-center px-4 animate-pulse border-b border-zinc-100 dark:border-zinc-800/50'
+                    className='grid grid-cols-[minmax(0,4fr)_minmax(0,1.5fr)_minmax(0,2.5fr)_minmax(0,1fr)_minmax(0,1fr)] items-center px-4 animate-pulse border-b border-border/40/50'
                   >
                     <div className='pr-4'>
-                      <div className='h-4 bg-zinc-200 dark:bg-zinc-800 rounded w-3/4 mb-1'></div>
+                      <div className='h-4 bg-background-secondary dark:bg-panel rounded w-3/4 mb-1'></div>
                       <div className='h-3 bg-zinc-200 dark:bg-zinc-850 rounded w-1/4'></div>
                     </div>
                     <div className='px-4'>
-                      <div className='h-4 bg-zinc-200 dark:bg-zinc-800 rounded w-16'></div>
+                      <div className='h-4 bg-background-secondary dark:bg-panel rounded w-16'></div>
                     </div>
                     <div className='px-4'>
-                      <div className='h-8 bg-zinc-200 dark:bg-zinc-800 rounded w-full'></div>
+                      <div className='h-8 bg-background-secondary dark:bg-panel rounded w-full'></div>
                     </div>
                     <div className='px-4'>
-                      <div className='h-4 bg-zinc-200 dark:bg-zinc-800 rounded w-8'></div>
+                      <div className='h-4 bg-background-secondary dark:bg-panel rounded w-8'></div>
                     </div>
                     <div className='pl-4'>
-                      <div className='h-6 bg-zinc-200 dark:bg-zinc-800 rounded w-12 ml-auto'></div>
+                      <div className='h-6 bg-background-secondary dark:bg-panel rounded w-12 ml-auto'></div>
                     </div>
                   </div>
                 );
@@ -226,31 +226,31 @@ export default function QuestionsPage() {
                   key={item.id}
                   style={style}
                   className={cn(
-                    'grid grid-cols-[minmax(0,4fr)_minmax(0,1.5fr)_minmax(0,2.5fr)_minmax(0,1fr)_minmax(0,1fr)] items-center px-4 border-b border-zinc-100 dark:border-zinc-800/50 text-sm text-zinc-700 dark:text-zinc-300 bg-panel',
+                    'grid grid-cols-[minmax(0,4fr)_minmax(0,1.5fr)_minmax(0,2.5fr)_minmax(0,1fr)_minmax(0,1fr)] items-center px-4 border-b border-border/40/50 text-sm text-zinc-700 dark:text-zinc-300 bg-panel',
                     index === listItems.length - 1 && 'border-b-0',
                   )}
                 >
                   <div className='pr-4 min-w-0'>
                     <h2
-                      className='text-zinc-900 dark:text-zinc-100 block truncate'
+                      className='text-ink-primary block truncate'
                       title={entry.original_label}
                     >
                       {entry.original_label}
                     </h2>
                     <p
-                      className='text-xs text-zinc-400 dark:text-zinc-500 mt-0.5 truncate'
+                      className='text-xs text-zinc-400 dark:text-ink-primary0 mt-0.5 truncate'
                       title={entry.companies?.join(', ')}
                     >
                       {entry.companies?.slice(0, 3).join(', ')}
                     </p>
                   </div>
-                  <div className='px-4 whitespace-nowrap text-xs text-zinc-500 font-mono'>
+                  <div className='px-4 whitespace-nowrap text-xs text-ink-primary0 font-mono'>
                     {entry.field_type}
                   </div>
                   <div className='px-4 min-w-0'>
                     <input
                       defaultValue={entry.answer ?? ''}
-                      className='w-full text-sm rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-1.5 focus:bg-panel focus:border-zinc-400 dark:border-zinc-800 dark:bg-zinc-900/60 dark:focus:bg-zinc-900 dark:focus:border-zinc-750 focus:outline-none transition-all text-zinc-900 dark:text-zinc-100'
+                      className='w-full text-sm rounded-lg border border-border bg-background-secondary/30 px-3 py-1.5 focus:bg-panel focus:border-primary/50 dark:border-border dark:bg-panel/60 dark:focus:bg-panel dark:focus:border-primary/50 focus:outline-none transition-all text-ink-primary'
                       onBlur={(event) => {
                         if (event.target.value !== (entry.answer ?? '')) {
                           void saveQuestion(entry, event.target.value);
@@ -258,7 +258,7 @@ export default function QuestionsPage() {
                       }}
                     />
                   </div>
-                  <div className='px-4 whitespace-nowrap text-zinc-500'>
+                  <div className='px-4 whitespace-nowrap text-ink-primary0'>
                     {entry.times_used}
                   </div>
                   <div className='pl-4 text-right'>

@@ -54,7 +54,7 @@ export function ProgressBarList<T = any>({
 }: ProgressBarListProps<T>) {
   if (!data || data.length === 0) {
     return (
-      <div className='py-8 text-center text-zinc-500 dark:text-zinc-500 italic text-sm w-full'>
+      <div className='py-8 text-center text-ink-primary0 dark:text-ink-primary0 italic text-sm w-full'>
         {emptyMessage}
       </div>
     );

@@ -66,8 +66,8 @@ export function QuestionRow({
         gridColsClass,
         isDrawerSelected ? 'bg-primary/10 hover:bg-primary/15'
         : isRowModified ?
-          'bg-primary/5 dark:bg-primary/10 hover:bg-primary/30 dark:hover:bg-zinc-900/20'
-        : 'hover:bg-primary/10 dark:hover:bg-zinc-900/20',
+          'bg-primary/5 dark:bg-primary/10 hover:bg-primary/30 dark:hover:bg-background-secondary/20'
+        : 'hover:bg-primary/10 dark:hover:bg-background-secondary/20',
       )}
     >
       {/* Selector Column */}
@@ -110,7 +110,7 @@ export function QuestionRow({
           />
         : <div
             onClick={() => setEditingCell({ id: question.id, field: 'title' })}
-            className='cursor-pointer w-full hover:bg-zinc-100/50 dark:hover:bg-zinc-800/50 px-2 py-1 rounded transition-colors min-h-[28px] flex items-center overflow-hidden'
+            className='cursor-pointer w-full hover:bg-background-secondary/50 px-2 py-1 rounded transition-colors min-h-[28px] flex items-center overflow-hidden'
           >
             <AutoTooltip className='text-sm text-ink-primary font-medium w-full text-left'>
               {question.title}
@@ -165,7 +165,7 @@ export function QuestionRow({
             onClick={() =>
               setEditingCell({ id: question.id, field: 'category' })
             }
-            className='cursor-pointer w-full hover:bg-zinc-100/50 dark:hover:bg-zinc-800/50 px-2 py-1 rounded transition-colors min-h-[28px] flex items-center overflow-hidden'
+            className='cursor-pointer w-full hover:bg-background-secondary/50 px-2 py-1 rounded transition-colors min-h-[28px] flex items-center overflow-hidden'
           >
             <AutoTooltip className='text-sm text-ink-secondary w-full text-left'>
               {categories.find((c) => c.id === question.category_id) ?
@@ -269,7 +269,7 @@ export function QuestionRow({
           />
         : <div
             onClick={() => setEditingCell({ id: question.id, field: 'answer' })}
-            className='cursor-pointer w-full hover:bg-zinc-100/50 dark:hover:bg-zinc-800/50 px-2 py-1 rounded transition-colors min-h-[28px] flex items-center overflow-hidden'
+            className='cursor-pointer w-full hover:bg-background-secondary/50 px-2 py-1 rounded transition-colors min-h-[28px] flex items-center overflow-hidden'
           >
             <AutoTooltip className='text-xs text-ink-secondary leading-relaxed w-full text-left'>
               {question.answer_objective || (

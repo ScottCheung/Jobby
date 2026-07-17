@@ -62,7 +62,7 @@ export function StandardAnswerCard({
   return (
     <div
       onClick={handleToggleClick}
-      className={cn('module-panel select-none transition-all duration-200 ')}
+      className={cn('panel-lg select-none transition-all duration-200 ')}
     >
       {/* Title / Action Header bar */}
       <div
@@ -105,13 +105,13 @@ export function StandardAnswerCard({
               value={editedText}
               onChange={(e) => setEditedText(e.target.value)}
               placeholder='Modify your personal standard answer here...'
-              className='w-full h-32 p-3 text-sm rounded-lg  bg-white dark:bg-zinc-955 focus:outline-none text-ink-primary resize-none leading-relaxed transition-all focus:border-primary/40'
+              className='w-full h-32 p-3 text-sm rounded-lg  bg-panel focus:outline-none text-ink-primary resize-none leading-relaxed transition-all focus:border-primary/40'
             />
             <div className='flex justify-end gap-2 text-xs'>
               <button
                 onClick={handleCancel}
                 disabled={isSavingAnswer}
-                className='px-3 py-1.5 rounded-lg border border-zinc-250 dark:border-zinc-800 text-ink-secondary font-bold hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors active:scale-95'
+                className='px-3 py-1.5 rounded-lg border border-border text-ink-secondary font-bold hover:bg-background-secondary transition-colors active:scale-95'
               >
                 Cancel
               </button>

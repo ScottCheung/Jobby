@@ -965,7 +965,7 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
       } else {
         return {
           comparison: 'Same as yesterday',
-          comparisonColor: 'text-zinc-500 dark:text-zinc-400',
+          comparisonColor: 'text-ink-primary0 dark:text-zinc-400',
           comparisonIcon: MoveRight,
         };
       }

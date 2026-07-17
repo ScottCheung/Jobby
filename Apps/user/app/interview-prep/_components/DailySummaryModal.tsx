@@ -20,10 +20,10 @@ export function DailySummaryModal({ isOpen, onClose, summary }: DailySummaryModa
       />
       
       {/* Modal */}
-      <div className="relative bg-panel border border-zinc-200 dark:border-zinc-800 rounded-3xl p-8 max-w-sm w-full shadow-2xl flex flex-col items-center text-center animate-in zoom-in-95 duration-300">
+      <div className="relative bg-panel border border-border dark:border-border rounded-3xl p-8 max-w-sm w-full shadow-2xl flex flex-col items-center text-center animate-in zoom-in-95 duration-300">
         <button 
           onClick={onClose}
-          className="absolute top-4 right-4 p-2 text-ink-secondary hover:text-ink-primary hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-colors"
+          className="absolute top-4 right-4 p-2 text-ink-secondary hover:text-ink-primary hover:bg-background-secondary hover:bg-background-secondary rounded-full transition-colors"
         >
           <X className="w-5 h-5" />
         </button>

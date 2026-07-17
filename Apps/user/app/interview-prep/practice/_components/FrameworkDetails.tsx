@@ -205,7 +205,7 @@ export function FrameworkDetails({ framework }: FrameworkDetailsProps) {
   if (framework === 'CAR') {
     return (
       <div className='grid grid-cols-3 gap-3 text-xs mt-1'>
-        <div className='p-3 bg-zinc-50/5 border border-zinc-50/10 rounded-xl'>
+        <div className='p-3 bg-background-secondary/5 border border-border/10 rounded-xl'>
           <span className='font-bold text-zinc-600 dark:text-zinc-400 uppercase tracking-wide block mb-1'>
             C - Context
           </span>

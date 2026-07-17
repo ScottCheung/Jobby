@@ -72,7 +72,7 @@ export function Modal({
             exit={{ scale: 0.95, opacity: 0, y: 15 }}
             transition={{ type: 'spring', duration: 0.4, bounce: 0.15 }}
             className={cn(
-              'relative z-10 display-panel backdrop-blur-[20px] shadow-gemini w-full flex flex-col overflow-hidden bg-background dark:bg-white/10!',
+              'relative z-10 card backdrop-blur-[20px] shadow-brand w-full flex flex-col overflow-hidden bg-background dark:bg-white/10!',
               className,
             )}
             {...props}

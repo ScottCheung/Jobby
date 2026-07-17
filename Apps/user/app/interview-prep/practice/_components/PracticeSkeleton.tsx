@@ -7,9 +7,9 @@ export function PracticeSkeleton() {
   return (
     <div className='grid grid-cols-2 gap-4 h-full overflow-hidden'>
       {/* ── Left Column ── */}
-      <div className='display-panel flex flex-col gap-4 overflow-hidden relative h-full '>
+      <div className='panel-xl flex flex-col gap-4 overflow-hidden relative h-full '>
         {/* Header Skeleton */}
-        <div className='flex items-center justify-between  dark:border-zinc-800/60  shrink-0'>
+        <div className='flex items-center justify-between  dark:border-border/60  shrink-0'>
           <div className='h-3 skeleton rounded w-1/3 '></div>
 
           <div className='flex gap-2'>
@@ -38,7 +38,7 @@ export function PracticeSkeleton() {
       </div>
 
       {/* ── Right Column ── */}
-      <div className='display-panel flex flex-col overflow-hidden '>
+      <div className='panel-xl flex flex-col overflow-hidden '>
         {/* Tab Header Skeleton */}
         <div className='flex   shrink-0'>
           <div className='flex-1 py-3 flex justify-center'>
@@ -51,7 +51,7 @@ export function PracticeSkeleton() {
         {/* Workspace Skeleton */}
         <div className='flex-1 p-6 flex flex-col gap-4'>
           <div className='h-4 skeleton rounded w-1/4 mb-4'></div>
-          <div className='flex-1 skeleton rounded-2xl p-6 flex flex-col gap-4 items-center justify-center border border-dashed border-zinc-200 dark:border-zinc-800/60'>
+          <div className='flex-1 skeleton rounded-2xl p-6 flex flex-col gap-4 items-center justify-center border border-dashed border-border dark:border-border/60'>
             <div className='w-16 h-16 rounded-full skeleton'></div>
             <div className='h-4 skeleton rounded w-1/3'></div>
             <div className='h-3 skeleton rounded w-1/2'></div>

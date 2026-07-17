@@ -55,7 +55,7 @@ export default function PlaybookGuidePage() {
             today.
           </p>
           <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
-            <div className='space-y-2 card'>
+            <div className='space-y-2 panel-xl'>
               <h4 className='font-bold text-ink-primary flex items-center gap-2'>
                 <Target className='w-4 h-4 text-primary' /> Today's Mission
               </h4>
@@ -67,7 +67,7 @@ export default function PlaybookGuidePage() {
                 <strong>Practice Mode</strong> focused only on today's tasks.
               </p>
             </div>
-            <div className='space-y-2 card'>
+            <div className='space-y-2 panel-xl'>
               <h4 className='font-bold text-ink-primary flex items-center gap-2'>
                 <Calendar className='w-4 h-4 text-green-500' /> Activity Heatmap
               </h4>
@@ -166,7 +166,7 @@ export default function PlaybookGuidePage() {
           </p>
 
           <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
-            <div className='card'>
+            <div className='panel-xl'>
               <h3 className='font-bold text-ink-primary text-lg mb-3 flex items-center gap-2'>
                 <Zap className='w-5 h-5 text-red-500' /> Two Modes
               </h3>
@@ -185,7 +185,7 @@ export default function PlaybookGuidePage() {
               </ul>
             </div>
 
-            <div className='card'>
+            <div className='panel-xl'>
               <h3 className='font-bold text-ink-primary text-lg mb-3 flex items-center gap-2'>
                 <Mic className='w-5 h-5 text-zinc-500' /> The Workspace
               </h3>
@@ -235,7 +235,7 @@ export default function PlaybookGuidePage() {
             automatically slices your Question Library into daily chunks.
           </p>
 
-          <div className='card'>
+          <div className='panel-xl'>
             <h3 className='font-bold text-purple-700 dark:text-purple-400 mb-3 flex items-center gap-2'>
               <Info className='w-5 h-5' />
               Important: Checking off vs. Practicing

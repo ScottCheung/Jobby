@@ -26,7 +26,7 @@ export const ClearSavedLoginCard = memo(function ClearSavedLoginCard({
   const clearSession = useBrowserSessionStore((state) => state.clearSession);
 
   return (
-    <div className='card'>
+    <div className='panel-xl'>
       <div className='flex items-start justify-between gap-3'>
         <div>
           <h2 className='text-base font-semibold text-ink-primary flex items-center gap-2'>
@@ -39,9 +39,9 @@ export const ClearSavedLoginCard = memo(function ClearSavedLoginCard({
         <HelpTip content='This removes the saved sign-in data for the login browser. After that, you will need to sign in to LinkedIn and Seek again.' />
       </div>
 
-      <div className='space-y-6 status-panel'>
+      <div className='space-y-6 panel-sm'>
         <div className='flex items-center justify-between gap-3'>
-          <span className='text-sm text-zinc-500 dark:text-zinc-400'>
+          <span className='text-sm text-ink-primary0 dark:text-zinc-400'>
             Saved login data
           </span>
           <span className='text-sm font-semibold text-ink-primary'>
@@ -79,7 +79,7 @@ export const ClearSavedLoginCard = memo(function ClearSavedLoginCard({
             <button
               onClick={() => setShowClearConfirm(false)}
               disabled={isClearingSession}
-              className='flex-1 py-2 rounded-lg border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-900 text-ink-primary text-sm font-semibold transition cursor-pointer'
+              className='flex-1 py-2 rounded-lg border border-border dark:border-border hover:bg-background-secondary text-ink-primary text-sm font-semibold transition cursor-pointer'
             >
               Cancel
             </button>

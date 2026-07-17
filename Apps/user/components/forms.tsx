@@ -509,7 +509,7 @@ export function ProfileForm({
   return (
     <CardWithNorth title='Personal Information'>
       <div className='pb-6 pr-6 flex flex-col gap-6'>
-        <div className='flex items-center gap-2 text-zinc-400 dark:text-zinc-500 -mt-2'>
+        <div className='flex items-center gap-2 text-zinc-400 dark:text-ink-primary0 -mt-2'>
           <UserRound className='w-4 h-4 text-emerald-500 shrink-0' />
           <p className='text-xs'>
             These values power most Easy Apply questions and identity checks.

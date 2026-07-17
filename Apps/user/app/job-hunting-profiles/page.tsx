@@ -267,7 +267,7 @@ export default function SearchPage() {
         onCreate={handleCreateProfile}
       />
 
-      <section className='min-h-0 overflow-hidden rounded-2xl border border-zinc-200/70 dark:border-zinc-800/80 bg-panel flex flex-col'>
+      <section className='min-h-0 overflow-hidden rounded-2xl border border-border/60 bg-panel flex flex-col'>
         <ProfileHeader
           profile={selectedProfile}
           profilesCount={jobHuntingProfiles.length}

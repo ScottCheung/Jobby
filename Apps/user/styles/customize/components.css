@@ -1,0 +1,253 @@
+/**
+ * ============================================================
+ *    LAYOUT PRIMITIVES
+ *    ============================================================
+ *
+ * @format
+ */
+
+/** Row: horizontal flex, center-aligned, standard gap */
+.row {
+  @apply flex items-center gap-2;
+}
+
+/** Row with larger gap */
+.row-md {
+  @apply flex items-center gap-3;
+}
+
+/** Row with space-between */
+.row-between {
+  @apply flex items-center justify-between;
+}
+
+/** Vertical stack, tight gap */
+.stack {
+  @apply flex flex-col gap-1.5;
+}
+
+/** Vertical stack, standard gap */
+.col {
+  @apply flex flex-col gap-3;
+}
+
+/** Flex wrap row */
+.wrap {
+  @apply flex flex-wrap gap-3;
+}
+
+/* ============================================================
+   SURFACE / CONTAINER COMPONENTS
+   ============================================================ */
+
+/** Extra Large Panel (was .card): top-level screen container */
+.panel-xl,
+.card {
+  @apply rounded-3xl p-8 bg-panel;
+}
+
+/** Large Panel (was .display-panel): sub-layout panel, nesting-safe */
+.panel-lg,
+.display-panel {
+  @apply rounded-2xl p-6 bg-panel flex flex-col;
+}
+
+/** Panel Header (was .display-panel-header): standard uppercase eyebrow header */
+.panel-header,
+.display-panel-header {
+  @apply text-xs font-bold text-ink-secondary uppercase tracking-wider;
+}
+
+/** Medium Panel (was .module-panel): secondary container nested in panel-lg */
+.panel-md,
+.module-panel {
+  @apply rounded-xl p-4 bg-background-secondary/30 dark:bg-black/30 flex flex-col border border-border/30;
+}
+
+/** Small Panel (was .status-panel): tertiary container nested in panel-md */
+.panel-sm,
+.status-panel {
+  @apply rounded-lg p-2 bg-background-secondary/50 dark:bg-black/30 flex flex-col;
+}
+
+/** Extra Small Panel (was .surface): custom border container */
+.panel-xs,
+.surface {
+  @apply rounded-md p-2 bg-background-secondary/40 dark:bg-black/20 border border-border/50;
+}
+
+/* ============================================================
+   TYPOGRAPHY
+   ============================================================ */
+
+/** Page Title: primary title for main pages */
+.title-page {
+  @apply text-2xl font-bold tracking-tight text-ink-primary;
+}
+
+/** Section Title: primary heading within a page section (with legacy .section-title) */
+.title-section,
+.section-title {
+  @apply text-xl font-bold text-ink-primary;
+}
+
+/** Card / Panel Title: heading inside container cards (with legacy .card-title) */
+.title-card,
+.card-title {
+  @apply text-lg font-bold text-ink-primary;
+}
+
+/** Sub Title: heading for inner groups or modules */
+.title-sub {
+  @apply text-base font-semibold text-ink-primary;
+}
+
+/** Body Large: readable text for detail/long paragraphs */
+.body-lg {
+  @apply text-base font-normal text-ink-primary leading-relaxed;
+}
+
+/** Body Medium: default application text size */
+.body-md {
+  @apply text-sm font-normal text-ink-primary leading-relaxed;
+}
+
+/** Body Small: secondary body text */
+.body-sm {
+  @apply text-xs font-normal text-ink-secondary leading-normal;
+}
+
+/** Form field label / standard bold label */
+.label {
+  @apply text-sm font-semibold text-ink-primary;
+}
+
+/** Secondary / small form label */
+.label-sm {
+  @apply text-xs font-semibold text-ink-secondary;
+}
+
+/** Overline label: uppercase section header (replaces repeated inline pattern) */
+.label-overline {
+  @apply text-xs font-bold text-ink-secondary uppercase tracking-wider;
+}
+
+/** Small muted metadata text (with legacy .meta-text) */
+.text-meta,
+.meta-text {
+  @apply text-xs text-ink-muted;
+}
+
+/** Help tip / small helper footnote */
+.text-hint {
+  @apply text-[11px] text-ink-muted leading-tight;
+}
+
+/* ============================================================
+   FORM ELEMENTS
+   ============================================================ */
+
+/** Primary text input */
+.input {
+  @apply flex h-12 w-full rounded-full backdrop-blur-sm border-2 text-ink-secondary
+    border-transparent bg-panel px-3.5 py-2 text-sm
+    focus:text-ink-secondary placeholder:text-ink-secondary/50
+    focus:bg-background focus:border-primary m-0.5
+    focus-visible:outline-none focus-visible:ring-primary
+    disabled:cursor-not-allowed disabled:opacity-50 transition-all;
+}
+
+/** Multi-line textarea — aligned to token system */
+.textarea {
+  @apply flex min-h-[100px] w-full rounded-xl border border-border
+    bg-background-secondary/50 px-3.5 py-2.5 text-sm text-ink-primary
+    placeholder:text-ink-secondary/60
+    focus:bg-panel focus:border-primary/50
+    focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/10
+    disabled:cursor-not-allowed disabled:opacity-50 transition-all
+    dark:bg-black/20 dark:focus:bg-panel;
+}
+
+/** Select dropdown — aligned to token system */
+.select {
+  @apply flex h-11 w-full rounded-xl border border-border
+    bg-background-secondary/50 px-3.5 py-2 text-sm text-ink-primary
+    placeholder:text-ink-secondary/60
+    focus:bg-panel focus:border-primary/50
+    focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/10
+    disabled:cursor-not-allowed disabled:opacity-50 transition-all
+    dark:bg-black/20 dark:focus:bg-panel;
+}
+
+/* ============================================================
+   BADGES & STATUS INDICATORS
+   ============================================================ */
+
+/** Primary status badge */
+.status-badge {
+  @apply inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5
+    text-xs font-bold text-primary;
+}
+
+/** Gradient badge (e.g. XP, level indicators) */
+.badge {
+  @apply bg-primary-gradient rounded-full text-primary-foreground px-2 py-1
+    text-[10px] flex;
+}
+
+/* ============================================================
+   DRAWER / FORM LAYOUT
+   ============================================================ */
+
+.header {
+  @apply flex items-center justify-between;
+}
+
+.fade-out-tb {
+  --mask-string:
+    linear-gradient(
+      to bottom,
+      transparent,
+      black 24px,
+      black calc(100% - 24px),
+      transparent
+    ),
+    linear-gradient(to left, black 16px, transparent 16px);
+  padding-top: 24px;
+  padding-bottom: 24px;
+
+  mask-image: var(--mask-string);
+  -webkit-mask-image: var(--mask-string);
+}
+
+.body {
+  --mask-string:
+    linear-gradient(
+      to bottom,
+      transparent,
+      black 24px,
+      black calc(100% - 24px),
+      transparent
+    ),
+    linear-gradient(to left, black 16px, transparent 16px);
+
+  mask-image: var(--mask-string);
+  -webkit-mask-image: var(--mask-string);
+
+  @apply flex-1 overflow-y-auto custom-scrollbar space-y-6;
+  padding-top: 24px;
+  padding-bottom: 24px;
+}
+
+.footer {
+  @apply flex items-center justify-end gap-3  border-t border-border/40 shrink-0;
+}
+
+/* ============================================================
+   UTILITY
+   ============================================================ */
+
+/** Loading skeleton */
+.skeleton {
+  @apply dark:bg-panel bg-black/10 animate-pulse;
+}

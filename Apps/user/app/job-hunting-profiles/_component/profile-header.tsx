@@ -40,7 +40,7 @@ export function ProfileHeader({
   ];
 
   return (
-    <div className='sticky top-0 z-10 border-b border-zinc-200/70 dark:border-zinc-800/80 bg-panel/95 backdrop-blur-md px-6 py-5'>
+    <div className='sticky top-0 z-10 border-b border-border/60 bg-panel/95 backdrop-blur-md px-6 py-5'>
       <div className='flex flex-col gap-4'>
         <div className='flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between'>
           <div>
@@ -64,7 +64,7 @@ export function ProfileHeader({
             {!profile?.is_default && profile?.id && (
               <button
                 type='button'
-                className='inline-flex items-center gap-2 rounded-xl border border-zinc-200/70 dark:border-zinc-800/80 px-3.5 py-2 text-sm font-medium text-ink-primary hover:bg-zinc-50 dark:hover:bg-zinc-900/60 cursor-pointer'
+                className='inline-flex items-center gap-2 rounded-xl border border-border/60 px-3.5 py-2 text-sm font-medium text-ink-primary hover:bg-background-secondary cursor-pointer'
                 onClick={() => void onActivate()}
               >
                 <Play className='h-4 w-4' />
@@ -77,7 +77,7 @@ export function ProfileHeader({
               !isEditing && (
                 <button
                   type='button'
-                  className='inline-flex items-center gap-2 rounded-xl border border-zinc-200/70 dark:border-zinc-800/80 px-3.5 py-2 text-sm font-medium text-ink-primary hover:bg-zinc-50 dark:hover:bg-zinc-900/60 cursor-pointer'
+                  className='inline-flex items-center gap-2 rounded-xl border border-border/60 px-3.5 py-2 text-sm font-medium text-ink-primary hover:bg-background-secondary cursor-pointer'
                   onClick={() => void onDelete()}
                 >
                   <Trash2 className='h-4 w-4' />
@@ -89,7 +89,7 @@ export function ProfileHeader({
               <>
                 <button
                   type='button'
-                  className='inline-flex items-center gap-2 rounded-xl border border-zinc-200/70 dark:border-zinc-800/80 px-3.5 py-2 text-sm font-medium text-ink-primary hover:bg-zinc-50 dark:hover:bg-zinc-900/60 cursor-pointer'
+                  className='inline-flex items-center gap-2 rounded-xl border border-border/60 px-3.5 py-2 text-sm font-medium text-ink-primary hover:bg-background-secondary cursor-pointer'
                   onClick={onCancel}
                 >
                   <X className='h-4 w-4' />
@@ -97,7 +97,7 @@ export function ProfileHeader({
                 </button>
                 <button
                   type='button'
-                  className='inline-flex items-center gap-2 rounded-xl bg-zinc-950 px-3.5 py-2 text-sm font-medium text-white dark:bg-zinc-100 dark:text-zinc-950 cursor-pointer disabled:opacity-60'
+                  className='inline-flex items-center gap-2 rounded-xl bg-secondary px-3.5 py-2 text-sm font-medium text-white dark:bg-background-secondary dark:text-ink-primary cursor-pointer disabled:opacity-60'
                   onClick={() => void onSave()}
                   disabled={isSaving}
                 >
@@ -107,7 +107,7 @@ export function ProfileHeader({
               </>
             : <button
                 type='button'
-                className='inline-flex items-center gap-2 rounded-xl bg-zinc-950 px-3.5 py-2 text-sm font-medium text-white dark:bg-zinc-100 dark:text-zinc-950 cursor-pointer'
+                className='inline-flex items-center gap-2 rounded-xl bg-secondary px-3.5 py-2 text-sm font-medium text-white dark:bg-background-secondary dark:text-ink-primary cursor-pointer'
                 onClick={onEdit}
               >
                 <Pencil className='h-4 w-4' />

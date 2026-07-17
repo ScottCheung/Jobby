@@ -74,7 +74,7 @@ export function QuestionsFilterDrawer({
   return (
     <div className='flex flex-col h-full bg-panel text-ink-primary'>
       {/* Header */}
-      <div className='p-5 border-b border-zinc-100 dark:border-zinc-800/60 flex items-center justify-between shrink-0 bg-zinc-50/20 dark:bg-zinc-900/10'>
+      <div className='p-5 border-b border-border/40 flex items-center justify-between shrink-0 bg-background-secondary/20'>
         <div>
           <h3 className='text-base font-bold'>Filters</h3>
           <p className='text-xs text-ink-secondary mt-0.5'>
@@ -84,7 +84,7 @@ export function QuestionsFilterDrawer({
         <button
           type='button'
           onClick={onClose}
-          className='text-ink-secondary hover:text-ink-primary p-1 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors'
+          className='text-ink-secondary hover:text-ink-primary p-1 rounded-lg hover:bg-background-secondary hover:bg-background-secondary transition-colors'
         >
           <X className='w-5 h-5' />
         </button>
@@ -95,7 +95,7 @@ export function QuestionsFilterDrawer({
         {/* Category Filter */}
         {categories.length > 0 && (
           <div className='flex flex-col gap-2.5'>
-            <span className='text-xs font-bold text-ink-secondary uppercase tracking-wider'>
+            <span className='label-overline'>
               Category
             </span>
             <div className='flex flex-wrap gap-1.5'>
@@ -106,7 +106,7 @@ export function QuestionsFilterDrawer({
                   'px-3 py-1.5 rounded-full text-xs font-semibold border transition-all',
                   selectedCategoryIds.length === 0 ?
                     'bg-primary/10 text-primary border-primary/30 font-bold'
-                  : 'border-zinc-200 dark:border-zinc-800 text-ink-secondary hover:text-ink-primary hover:border-primary/30 bg-panel',
+                  : 'border-border dark:border-border text-ink-secondary hover:text-ink-primary hover:border-primary/30 bg-panel',
                 )}
               >
                 All Categories
@@ -122,7 +122,7 @@ export function QuestionsFilterDrawer({
                       'px-3 py-1.5 rounded-full text-xs font-semibold border transition-all',
                       active ?
                         'bg-primary/10 text-primary border-primary/30 font-bold'
-                      : 'border-zinc-200 dark:border-zinc-800 text-ink-secondary hover:text-ink-primary hover:border-primary/30 bg-panel',
+                      : 'border-border dark:border-border text-ink-secondary hover:text-ink-primary hover:border-primary/30 bg-panel',
                     )}
                   >
                     {cleanName(cat.name)}
@@ -135,8 +135,8 @@ export function QuestionsFilterDrawer({
 
         {/* Tag Filter */}
         {tags.length > 0 && (
-          <div className='flex flex-col gap-2.5 pt-4 border-t border-zinc-100 dark:border-zinc-800/60'>
-            <span className='text-xs font-bold text-ink-secondary uppercase tracking-wider'>
+          <div className='flex flex-col gap-2.5 pt-4 border-t border-border/40'>
+            <span className='label-overline'>
               Tag
             </span>
             <div className='flex flex-wrap gap-1.5'>
@@ -147,7 +147,7 @@ export function QuestionsFilterDrawer({
                   'px-3 py-1.5 rounded-full text-xs font-semibold border transition-all',
                   selectedTagIds.length === 0 ?
                     'bg-primary/10 text-primary border-primary/30 font-bold'
-                  : 'border-zinc-200 dark:border-zinc-800 text-ink-secondary hover:text-ink-primary hover:border-primary/30 bg-panel',
+                  : 'border-border dark:border-border text-ink-secondary hover:text-ink-primary hover:border-primary/30 bg-panel',
                 )}
               >
                 All Tags
@@ -163,7 +163,7 @@ export function QuestionsFilterDrawer({
                       'px-3 py-1.5 rounded-full text-xs font-semibold border transition-all',
                       active ?
                         'bg-primary/10 text-primary border-primary/30 font-bold'
-                      : 'border-zinc-200 dark:border-zinc-800 text-ink-secondary hover:text-ink-primary hover:border-primary/30 bg-panel',
+                      : 'border-border dark:border-border text-ink-secondary hover:text-ink-primary hover:border-primary/30 bg-panel',
                     )}
                   >
                     #{cleanName(tag.name)}
@@ -175,8 +175,8 @@ export function QuestionsFilterDrawer({
         )}
 
         {/* Importance Filter */}
-        <div className='flex flex-col gap-2.5 pt-4 border-t border-zinc-100 dark:border-zinc-800/60'>
-          <span className='text-xs font-bold text-ink-secondary uppercase tracking-wider'>
+        <div className='flex flex-col gap-2.5 pt-4 border-t border-border/40'>
+          <span className='label-overline'>
             Importance
           </span>
           <div className='flex gap-1.5'>
@@ -197,7 +197,7 @@ export function QuestionsFilterDrawer({
                     'flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all',
                     active ?
                       'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-400/40 font-extrabold'
-                    : 'border-zinc-200 dark:border-zinc-800 text-ink-secondary hover:text-ink-primary bg-panel',
+                    : 'border-border dark:border-border text-ink-secondary hover:text-ink-primary bg-panel',
                   )}
                 >
                   {n}
@@ -214,8 +214,8 @@ export function QuestionsFilterDrawer({
         </div>
 
         {/* Frequency Filter */}
-        <div className='flex flex-col gap-2.5 pt-4 border-t border-zinc-100 dark:border-zinc-800/60'>
-          <span className='text-xs font-bold text-ink-secondary uppercase tracking-wider'>
+        <div className='flex flex-col gap-2.5 pt-4 border-t border-border/40'>
+          <span className='label-overline'>
             Frequency
           </span>
           <div className='flex gap-1.5'>
@@ -241,7 +241,7 @@ export function QuestionsFilterDrawer({
                   className={cn(
                     'px-3.5 py-1.5 rounded-lg text-xs font-bold border transition-all',
                     active ? activeColor : (
-                      'border-zinc-200 dark:border-zinc-800 text-ink-secondary hover:text-ink-primary bg-panel'
+                      'border-border dark:border-border text-ink-secondary hover:text-ink-primary bg-panel'
                     ),
                   )}
                 >
@@ -254,7 +254,7 @@ export function QuestionsFilterDrawer({
       </div>
 
       {/* Footer */}
-      <div className='p-5 border-t border-zinc-100 dark:border-zinc-800/60 flex justify-between gap-2 shrink-0 bg-zinc-50/20 dark:bg-zinc-900/10'>
+      <div className='p-5 border-t border-border/40 flex justify-between gap-2 shrink-0 bg-background-secondary/20'>
         {hasActiveFilters ?
           <button
             type='button'

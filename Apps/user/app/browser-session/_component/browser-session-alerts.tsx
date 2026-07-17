@@ -52,7 +52,7 @@ export const BrowserSessionAlerts = memo(function BrowserSessionAlerts({
             <button
               onClick={() => setShowCloseOtherChromePrompt(false)}
               disabled={isClosingAllChrome}
-              className='inline-flex items-center justify-center rounded-xl border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-900 text-ink-primary px-4 py-2.5 text-sm font-semibold transition active:scale-98 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed'
+              className='inline-flex items-center justify-center rounded-xl border border-border dark:border-border hover:bg-background-secondary text-ink-primary px-4 py-2.5 text-sm font-semibold transition active:scale-98 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed'
             >
               Cancel
             </button>

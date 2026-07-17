@@ -70,7 +70,7 @@ export function PracticeQueueDrawerContent({
                   'text-[9px] font-bold px-1.5 py-0.5 rounded-full border',
                   isShuffled ?
                     'bg-primary/10 text-primary border-primary/20'
-                  : 'bg-zinc-100 dark:bg-zinc-800 text-ink-secondary border-border',
+                  : 'bg-background-secondary text-ink-secondary border-border',
                 )}
               >
                 {isShuffled ? 'shuffle' : 'sequential'}
@@ -84,7 +84,7 @@ export function PracticeQueueDrawerContent({
         <button
           type='button'
           onClick={onClose}
-          className='p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors'
+          className='p-2 rounded-lg hover:bg-background-secondary hover:bg-background-secondary transition-colors'
         >
           <X className='w-4 h-4 text-ink-secondary' />
         </button>
@@ -107,7 +107,7 @@ export function PracticeQueueDrawerContent({
                 'w-full flex items-start gap-3 px-4 py-3 text-left transition-all group',
                 isCurrent ?
                   'bg-primary/10 border-l-4 border-primary'
-                : 'hover:bg-zinc-50 dark:hover:bg-zinc-900/30 border-r-2 border-transparent',
+                : 'hover:bg-background-secondary/60 border-r-2 border-transparent',
               )}
             >
               {/* Index / Playing indicator */}

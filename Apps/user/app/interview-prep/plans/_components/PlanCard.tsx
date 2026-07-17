@@ -12,7 +12,7 @@ export function PlanCard({ plan, onClick }: PlanCardProps) {
   return (
     <div 
       onClick={onClick}
-      className="p-5 rounded-2xl bg-panel border border-zinc-100 dark:border-zinc-800/60 flex flex-col gap-4 shadow-sm hover:border-primary/30 transition-colors cursor-pointer group"
+      className="p-5 rounded-2xl bg-panel border border-border/40 flex flex-col gap-4 shadow-sm hover:border-primary/30 transition-colors cursor-pointer group"
     >
       <div className="flex justify-between items-start">
         <h3 className="font-bold text-lg text-ink-primary line-clamp-2">
@@ -34,7 +34,7 @@ export function PlanCard({ plan, onClick }: PlanCardProps) {
         </div>
       </div>
 
-      <div className="mt-2 pt-4 border-t border-zinc-100 dark:border-zinc-800/60 flex justify-between items-center">
+      <div className="mt-2 pt-4 border-t border-border/40 flex justify-between items-center">
         <span className="text-xs text-ink-secondary">
           Created {formatRelativeDate(plan.created_at)}
         </span>

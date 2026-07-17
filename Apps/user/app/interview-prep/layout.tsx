@@ -11,10 +11,12 @@ import {
   PlayCircle,
   Calendar,
   BookOpen,
+  LogOut
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Tooltip } from '@/components/UI/tooltip';
 import { motion } from 'framer-motion';
+import { logout } from '../auth/actions';
 
 const baseTabs = [
   {
@@ -34,6 +36,12 @@ const baseTabs = [
     href: '/interview-prep/practice',
     icon: PlayCircle,
     description: 'Enter the practice simulator and earn XP',
+  },
+  {
+    name: 'History',
+    href: '/interview-prep/history',
+    icon: BookOpen,
+    description: 'View your practice records and XP/Coin transactions',
   },
 ];
 
@@ -128,8 +136,8 @@ export default function InterviewPlaybookLayout({
 
   return (
     <div className='flex flex-col h-[calc(100vh-18px)] min-h-[500px] px-page pt-3'>
-      <div className='flex flex-col  shrink-0'>
-        <div className='flex items-center  pb-px px-2'>
+      <div className='flex flex-row items-center justify-between shrink-0 w-full'>
+        <div className='flex items-center pb-px px-2'>
           {tabs.map((tab) => {
             const isActive =
               tab.href === '/interview-prep' ?
@@ -170,6 +178,17 @@ export default function InterviewPlaybookLayout({
               </Tooltip>
             );
           })}
+        </div>
+        <div className='flex items-center ml-auto px-4'>
+          <form action={logout}>
+            <button
+              type="submit"
+              className="flex items-center gap-2 text-sm text-ink-secondary hover:text-red-500 transition-colors"
+            >
+              <LogOut className="w-[18px] h-[18px]" />
+              <span className="font-medium">Logout</span>
+            </button>
+          </form>
         </div>
       </div>
       <div className='flex-1 overflow-y-auto pt-6' style={getMaskStyle()}>

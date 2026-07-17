@@ -15,7 +15,10 @@ from services.shared.models import (
     PlanTask,
     PracticePlan,
     AudioRecord,
-    UserGamification
+    UserGamification,
+    GamificationTransaction,
+    UserDailyQuest,
+    UserAchievement
 )
 from services.shared.schemas import (
     InterviewQuestionCreate,
@@ -33,7 +36,10 @@ from services.shared.schemas import (
     PlanTaskRead,
     PlanTaskUpdate,
     DailySummarySchema,
-    HeatmapDataSchema
+    HeatmapDataSchema,
+    GamificationTransactionRead,
+    DailyQuestRead,
+    AchievementRead
 )
 
 router = APIRouter(prefix="/api/interview", tags=["Interview Practice"])
@@ -366,48 +372,135 @@ def create_practice_record(
     record = PracticeRecord(user_id=current_user.id, **payload.model_dump())
     db.add(record)
     
+    # --- Auto-Complete Plan Task ---
+    pending_task = db.scalar(
+        select(PlanTask)
+        .join(PracticePlan)
+        .where(
+            PracticePlan.user_id == current_user.id,
+            PlanTask.question_id == payload.question_id,
+            PlanTask.status == "pending"
+        )
+        .order_by(PlanTask.scheduled_date.asc())
+        .limit(1)
+    )
+    if pending_task:
+        pending_task.status = "completed"
+
     # --- Gamification Logic ---
     gamification = db.scalar(select(UserGamification).where(UserGamification.user_id == current_user.id))
     if not gamification:
-        gamification = UserGamification(user_id=current_user.id)
+        gamification = UserGamification(user_id=current_user.id, xp=0, coins=0, level=1, streak_days=0, loot_boxes=0)
         db.add(gamification)
         
     now = datetime.now(timezone.utc)
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    
+    # Check if this question was already practiced today to prevent duplicate rewards
+    already_practiced_today = db.scalar(
+        select(func.count(PracticeRecord.id))
+        .where(
+            PracticeRecord.user_id == current_user.id,
+            PracticeRecord.question_id == payload.question_id,
+            PracticeRecord.date >= today_start,
+            PracticeRecord.id != record.id
+        )
+    ) > 0
+    
     last_practice = gamification.last_practice_date
     
-    xp_gained = 10
-    coins_gained = 2
+    xp_gained = 0
+    coins_gained = 0
     is_streak_extended = False
     
-    if not last_practice:
-        gamification.streak_days = 1
-        is_streak_extended = True
-    else:
-        # Check if last_practice was yesterday
-        # Normalize to date (ignore time)
-        last_date = last_practice.date()
-        today_date = now.date()
+    if not already_practiced_today:
+        xp_gained = 10
+        coins_gained = 2
         
-        diff = (today_date - last_date).days
-        if diff == 1:
-            gamification.streak_days += 1
-            is_streak_extended = True
-            # Bonus for continuous streak
-            if gamification.streak_days % 7 == 0:
-                xp_gained += 500
-        elif diff > 1:
-            # Streak broken
+        # Log basic practice transaction
+        practice_tx = GamificationTransaction(
+            user_id=current_user.id,
+            amount=xp_gained,
+            currency="xp",
+            reason="Practice Completed",
+            reference_id=str(record.id)
+        )
+        practice_coin_tx = GamificationTransaction(
+            user_id=current_user.id,
+            amount=coins_gained,
+            currency="coin",
+            reason="Practice Completed",
+            reference_id=str(record.id)
+        )
+        db.add(practice_tx)
+        db.add(practice_coin_tx)
+        
+        if not last_practice:
             gamification.streak_days = 1
             is_streak_extended = True
+        else:
+            last_date = last_practice.date()
+            today_date = now.date()
             
-    gamification.last_practice_date = now
-    gamification.xp += xp_gained
-    gamification.coins += coins_gained
+            diff = (today_date - last_date).days
+            if diff == 1:
+                gamification.streak_days += 1
+                is_streak_extended = True
+                if gamification.streak_days % 7 == 0:
+                    streak_xp = 500
+                    xp_gained += streak_xp
+                    streak_tx = GamificationTransaction(
+                        user_id=current_user.id,
+                        amount=streak_xp,
+                        currency="xp",
+                        reason=f"{gamification.streak_days}-Day Streak Bonus",
+                        reference_id=str(record.id)
+                    )
+                    db.add(streak_tx)
+            elif diff > 1:
+                gamification.streak_days = 1
+                is_streak_extended = True
+                
+        gamification.last_practice_date = now
+        gamification.xp += xp_gained
+        gamification.coins += coins_gained
+        
+        # Calculate Level
+        import math
+        new_level = int(math.floor(math.sqrt(gamification.xp / 100.0))) + 1
+        gamification.level = new_level
+        
+    # --- Update Daily Quests ---
+    quests = db.scalars(
+        select(UserDailyQuest)
+        .where(
+            UserDailyQuest.user_id == current_user.id,
+            func.date(UserDailyQuest.quest_date) == now.date()
+        )
+    ).all()
+    for q in quests:
+        if q.quest_type == "practice_1" and q.current_value < q.target_value:
+            q.current_value += 1
+        elif q.quest_type == "practice_3" and q.current_value < q.target_value:
+            q.current_value += 1
+            
+    # --- Check Achievements ---
+    total_practices = db.scalar(
+        select(func.count(PracticeRecord.id))
+        .where(PracticeRecord.user_id == current_user.id)
+    )
     
-    # Calculate Level (Simple formula: level = floor(sqrt(xp / 100)) + 1)
-    import math
-    new_level = int(math.floor(math.sqrt(gamification.xp / 100.0))) + 1
-    gamification.level = new_level
+    def award_achievement(badge_id, badge_name, description):
+        exists = db.scalar(select(UserAchievement).where(UserAchievement.user_id == current_user.id, UserAchievement.badge_id == badge_id).limit(1))
+        if not exists:
+            db.add(UserAchievement(user_id=current_user.id, badge_id=badge_id, badge_name=badge_name, description=description, unlocked_at=now))
+            
+    if total_practices >= 1:
+        award_achievement("first_steps", "First Steps", "Practice your first question")
+    if total_practices >= 10:
+        award_achievement("tenacious", "Tenacious", "Practice 10 questions")
+    if gamification.streak_days >= 7:
+        award_achievement("streak_master", "Streak Master", "Reach a 7-day streak")
     
     db.commit()
     db.refresh(record)
@@ -633,6 +726,15 @@ def get_daily_summary(
             if record.question:
                 best_answer_title = record.question.title
 
+    next_level_xp = ((gamification.level if gamification else 1) ** 2) * 100
+    
+    from datetime import datetime, timezone
+    now = datetime.now(timezone.utc)
+    has_checked_in_today = False
+    if gamification and gamification.last_checkin_date:
+        if gamification.last_checkin_date.date() == now.date():
+            has_checked_in_today = True
+
     return {
         "completed_questions": completed_questions,
         "new_questions": new_questions,
@@ -642,7 +744,12 @@ def get_daily_summary(
         "current_streak": gamification.streak_days if gamification else 0,
         "xp_gained_today": xp_gained_today,
         "coins_gained_today": coins_gained_today,
-        "level": gamification.level if gamification else 1
+        "level": gamification.level if gamification else 1,
+        "total_xp": gamification.xp if gamification else 0,
+        "next_level_xp": next_level_xp,
+        "loot_boxes": gamification.loot_boxes if gamification else 0,
+        "has_checked_in_today": has_checked_in_today,
+        "total_coins": gamification.coins if gamification else 0
     }
 
 @router.get("/gamification/heatmap", response_model=HeatmapDataSchema)
@@ -661,3 +768,178 @@ def get_gamification_heatmap(
     entries = [{"date": r.date.isoformat(), "count": r.count} for r in results]
     
     return {"entries": entries}
+
+
+@router.get("/gamification/transactions", response_model=list[GamificationTransactionRead])
+def get_gamification_transactions(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_or_create_current_user),
+):
+    transactions = db.scalars(
+        select(GamificationTransaction)
+        .where(GamificationTransaction.user_id == current_user.id)
+        .order_by(GamificationTransaction.created_at.desc())
+    ).all()
+    return transactions
+
+
+import random
+from datetime import datetime, timezone
+from sqlalchemy.orm import Session
+from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel
+
+class LootBoxResponse(BaseModel):
+    coins_won: int
+    new_balance: int
+
+@router.post("/gamification/checkin")
+def daily_checkin(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_or_create_current_user),
+):
+    gamification = db.scalar(select(UserGamification).where(UserGamification.user_id == current_user.id))
+    if not gamification:
+        gamification = UserGamification(user_id=current_user.id, xp=0, coins=0, level=1, streak_days=0, loot_boxes=0)
+        db.add(gamification)
+        
+    now = datetime.now(timezone.utc)
+    # Check if already checked in today
+    if gamification.last_checkin_date and gamification.last_checkin_date.date() == now.date():
+        raise HTTPException(status_code=400, detail="Already checked in today")
+        
+    # Award XP and Loot box
+    gamification.last_checkin_date = now
+    gamification.xp += 50
+    gamification.loot_boxes += 1
+    
+    # Log transaction
+    tx_xp = GamificationTransaction(
+        user_id=current_user.id,
+        amount=50,
+        currency="xp",
+        reason="Daily Check-in Bonus"
+    )
+    db.add(tx_xp)
+    db.commit()
+    
+    return {"message": "Checked in successfully", "xp_earned": 50, "loot_boxes_earned": 1}
+
+@router.post("/gamification/lootbox/open", response_model=LootBoxResponse)
+def open_lootbox(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_or_create_current_user),
+):
+    gamification = db.scalar(select(UserGamification).where(UserGamification.user_id == current_user.id))
+    if not gamification or gamification.loot_boxes <= 0:
+        raise HTTPException(status_code=400, detail="No loot boxes available")
+        
+    gamification.loot_boxes -= 1
+    
+    coins_won = random.randint(10, 50)
+    gamification.coins += coins_won
+    
+    tx_coin = GamificationTransaction(
+        user_id=current_user.id,
+        amount=coins_won,
+        currency="coin",
+        reason="Opened Loot Box"
+    )
+    db.add(tx_coin)
+    db.commit()
+    
+    return LootBoxResponse(coins_won=coins_won, new_balance=gamification.coins)
+
+@router.get("/gamification/quests", response_model=list[DailyQuestRead])
+def get_daily_quests(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_or_create_current_user),
+):
+    now = datetime.now(timezone.utc)
+    today = now.date()
+    
+    # Get today's quests
+    quests = db.scalars(
+        select(UserDailyQuest)
+        .where(UserDailyQuest.user_id == current_user.id)
+        .where(func.date(UserDailyQuest.quest_date) == today)
+    ).all()
+    
+    if not quests:
+        # Generate quests
+        quests = [
+            UserDailyQuest(user_id=current_user.id, quest_date=now, quest_type="practice_1", title="First Steps", description="Practice 1 question today", target_value=1),
+            UserDailyQuest(user_id=current_user.id, quest_date=now, quest_type="practice_3", title="Consistent Effort", description="Practice 3 questions today", target_value=3),
+            UserDailyQuest(user_id=current_user.id, quest_date=now, quest_type="high_confidence", title="Confident", description="Rate a practice 4 or 5 stars", target_value=1)
+        ]
+        for q in quests:
+            db.add(q)
+        db.commit()
+        for q in quests:
+            db.refresh(q)
+            
+    return quests
+
+@router.post("/gamification/quests/{quest_id}/claim")
+def claim_quest(
+    quest_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_or_create_current_user),
+):
+    quest = db.scalar(select(UserDailyQuest).where(UserDailyQuest.id == quest_id, UserDailyQuest.user_id == current_user.id))
+    if not quest:
+        raise HTTPException(status_code=404, detail="Quest not found")
+        
+    if quest.is_claimed:
+        raise HTTPException(status_code=400, detail="Quest already claimed")
+        
+    if quest.current_value < quest.target_value:
+        raise HTTPException(status_code=400, detail="Quest not completed yet")
+        
+    quest.is_claimed = True
+    
+    gamification = db.scalar(select(UserGamification).where(UserGamification.user_id == current_user.id))
+    if not gamification:
+        gamification = UserGamification(user_id=current_user.id, xp=0, coins=0, level=1, streak_days=0, loot_boxes=0)
+        db.add(gamification)
+    gamification.loot_boxes += 1
+        
+    db.commit()
+    return {"message": "Quest claimed", "loot_boxes_earned": 1}
+
+@router.get("/gamification/achievements", response_model=list[AchievementRead])
+def get_achievements(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_or_create_current_user),
+):
+    achievements = db.scalars(
+        select(UserAchievement)
+        .where(UserAchievement.user_id == current_user.id)
+        .order_by(UserAchievement.unlocked_at.desc())
+    ).all()
+    return achievements
+
+
+@router.post("/gamification/reset")
+def reset_account_data(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_or_create_current_user),
+):
+    from sqlalchemy import delete
+    
+    # Delete achievements
+    db.execute(delete(UserAchievement).where(UserAchievement.user_id == current_user.id))
+    # Delete daily quests
+    db.execute(delete(UserDailyQuest).where(UserDailyQuest.user_id == current_user.id))
+    # Delete transactions
+    db.execute(delete(GamificationTransaction).where(GamificationTransaction.user_id == current_user.id))
+    # Delete practice plans
+    db.execute(delete(PracticePlan).where(PracticePlan.user_id == current_user.id))
+    # Delete practice records
+    db.execute(delete(PracticeRecord).where(PracticeRecord.user_id == current_user.id))
+    # Delete gamification profile
+    db.execute(delete(UserGamification).where(UserGamification.user_id == current_user.id))
+    
+    db.commit()
+    return {"message": "Account data reset successfully"}
+

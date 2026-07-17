@@ -27,10 +27,10 @@ export default function AgentSettingsPage() {
 
   return (
     <div className='grid grid-cols-1 gap-6 h-[calc(100vh-88px)] min-h-[640px] overflow-hidden'>
-      <section className='min-h-0 overflow-hidden rounded-2xl border border-zinc-200/70 dark:border-zinc-800/80 bg-panel flex flex-col'>
-        <div className='sticky top-0 z-10 border-b border-zinc-200/70 dark:border-zinc-800/80 bg-panel/95 backdrop-blur-md px-6 py-5'>
+      <section className='min-h-0 overflow-hidden rounded-2xl border border-border/60 bg-panel flex flex-col'>
+        <div className='sticky top-0 z-10 border-b border-border/60 bg-panel/95 backdrop-blur-md px-6 py-5'>
           <div className='flex items-center gap-3'>
-            <div className='flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-100 dark:bg-zinc-900/60 text-ink-primary'>
+            <div className='flex h-10 w-10 items-center justify-center rounded-xl bg-background-secondary dark:bg-panel/60 text-ink-primary'>
               <Settings2 className='h-5 w-5' />
             </div>
             <div>

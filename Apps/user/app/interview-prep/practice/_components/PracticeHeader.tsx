@@ -112,7 +112,7 @@ export function PracticeHeader({
         </span>
 
         {/* Unified toolbar */}
-        <div className='flex items-center gap-1.5 shrink-0'>
+        <div className='row shrink-0'>
           {/* Mode Settings Button */}
           <Tooltip content='Practice Mode Settings' side='bottom'>
             <Button onClick={onShowModeModal} variant='toolbar' size='toolbar'>
@@ -231,7 +231,7 @@ export function PracticeHeader({
               {currentQuestion.tags?.map((t) => (
                 <span
                   key={t.id}
-                  className='text-[10px] bg-zinc-100 dark:bg-zinc-800/80 text-ink-primary px-2.5 py-1 rounded-full border border-zinc-200/50 dark:border-zinc-700/50 flex items-center gap-1 font-semibold '
+                  className='text-[10px] bg-background-secondary/80 text-ink-primary px-2.5 py-1 rounded-full border border-zinc-200/50 dark:border-zinc-700/50 flex items-center gap-1 font-semibold '
                 >
                   <Tag className='w-2.5 h-2.5 opacity-60' />
                   {cleanName(t.name)}

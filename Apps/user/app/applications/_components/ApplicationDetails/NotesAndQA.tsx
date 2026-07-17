@@ -49,7 +49,7 @@ export function NotesAndQA({
     if (QAList.length === 0) {
       return (
         <div className='text-ink-secondary mt-6'>
-          <h3 className='display-panel-header'>AI Auto-Apply Questions</h3>
+          <h3 className='panel-header'>AI Auto-Apply Questions</h3>
           <EmptyPlaceHolder message='No Q&A recorded for this application.' />
         </div>
       );
@@ -57,12 +57,12 @@ export function NotesAndQA({
 
     return (
       <div className='space-y-4 mt-6'>
-        <h3 className='text-xs font-bold text-ink-secondary uppercase tracking-wider mb-3'>
+        <h3 className='label-overline mb-3'>
           AI Auto-Apply Questions
         </h3>
         <div className='space-y-3'>
           {QAList.map((qa, index) => (
-            <div key={index} className='display-panel'>
+            <div key={index} className='panel-lg'>
               <div className='flex items-start gap-2.5'>
                 <span className='px-2 py-0.5 rounded-md bg-primary/10 text-[10px] font-bold text-ink-secondary uppercase tracking-wider mt-0.5 shrink-0'>
                   Q
@@ -91,7 +91,7 @@ export function NotesAndQA({
       {/* Custom Notes Card */}
       <div>
         <div className='flex items-center justify-between mb-2'>
-          <h3 className='display-panel-header'>Application Insights / Notes</h3>
+          <h3 className='panel-header'>Application Insights / Notes</h3>
           <button
             onClick={() => setIsEditingNotes(!isEditingNotes)}
             className={cn(
@@ -123,17 +123,17 @@ export function NotesAndQA({
             rows={5}
           />
         : notes ?
-          <div className='whitespace-pre-wrap display-panel'>{notes}</div>
+          <div className='whitespace-pre-wrap panel-lg'>{notes}</div>
         : <EmptyPlaceHolder message='No Insights/Notes recorded for this application.' />
         }
       </div>
 
       {status === 'skipped' && skipReason && (
         <div className='mt-6'>
-          <h3 className='text-xs font-bold text-ink-secondary uppercase tracking-wider flex items-center gap-1.5 mb-2'>
+          <h3 className='label-overline row mb-2'>
             Auto Apply Skip Reason
           </h3>
-          <div className='whitespace-pre-wrap display-panel'>{skipReason}</div>
+          <div className='whitespace-pre-wrap panel-lg'>{skipReason}</div>
         </div>
       )}
 

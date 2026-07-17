@@ -101,7 +101,7 @@ export function FilterSidebar({
   const activeTab =
     'bg-gradient-to-r from-primary/20 to-transparent text-primary font-semibold';
   const inactiveTab =
-    'text-ink-secondary hover:bg-zinc-50 dark:hover:bg-zinc-900/50 hover:text-ink-primary';
+    'text-ink-secondary hover:bg-background-secondary/60 hover:text-ink-primary';
 
   const CountClassNameInActive =
     'text-xs bg-zinc-200 dark:bg-zinc-700/80 px-2 py-0.5 rounded-full text-ink-secondary shrink-0';
@@ -148,7 +148,7 @@ export function FilterSidebar({
   return (
     <div
       className={cn(
-        'shrink-0 display-panel flex flex-col gap-5 overflow-y-auto no-scrollbar transition-all duration-300 relative',
+        'shrink-0 panel-xl flex flex-col gap-5 overflow-y-auto no-scrollbar transition-all duration-300 relative',
         isSidebarCollapsed ? 'w-16 items-center px-2' : 'w-64',
       )}
     >
@@ -161,14 +161,10 @@ export function FilterSidebar({
           : 'justify-between w-full px-2',
         )}
       >
-        {!isSidebarCollapsed && (
-          <span className='text-xs font-bold text-ink-secondary uppercase tracking-wider'>
-            Filters
-          </span>
-        )}
+        {!isSidebarCollapsed && <span className='label-overline'>Filters</span>}
         <button
           onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-          className='p-1.5 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 text-ink-secondary hover:text-ink-primary transition-colors'
+          className='p-1.5 rounded-full hover:bg-background-secondary  text-ink-secondary hover:text-ink-primary transition-colors'
           title={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
           {isSidebarCollapsed ?
@@ -185,9 +181,7 @@ export function FilterSidebar({
         )}
       >
         {!isSidebarCollapsed && (
-          <h3 className='text-xs font-bold text-ink-secondary px-2 mb-2 uppercase tracking-wider'>
-            Categories
-          </h3>
+          <h3 className='label-overline px-2 mb-2'>Categories</h3>
         )}
         <button
           onClick={() => handleCategoryClick(null)}
@@ -238,14 +232,12 @@ export function FilterSidebar({
       {/* Tags Section */}
       <div
         className={cn(
-          'flex flex-col gap-1 pt-4 border-t border-zinc-100 dark:border-zinc-800/60 w-full',
+          'flex flex-col gap-1 pt-4 border-t border-border/40 w-full',
           isSidebarCollapsed && 'items-center',
         )}
       >
         {!isSidebarCollapsed && (
-          <h3 className='text-xs font-bold text-ink-secondary px-2 mb-2 uppercase tracking-wider'>
-            Tags
-          </h3>
+          <h3 className='label-overline px-2 mb-2'>Tags</h3>
         )}
         <button
           onClick={() => handleTagClick(null)}

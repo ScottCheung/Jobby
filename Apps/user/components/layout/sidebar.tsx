@@ -15,6 +15,7 @@ import {
   LogOut,
   Sun,
   GraduationCap,
+  Palette,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ModeToggle } from '@/components/mode-toggle';
@@ -53,6 +54,7 @@ const navigation = [
   { name: 'Agent Settings', href: '/agent-settings', icon: Settings2 },
   { name: 'Question Cache', href: '/questions', icon: MessageSquareCode },
   { name: 'Applications History', href: '/applications', icon: Briefcase },
+  { name: 'Design System', href: '/design-system', icon: Palette },
 ];
 
 import { useAuthStore } from '@/lib/store';
@@ -318,7 +320,7 @@ export function Sidebar() {
                 exit='exit'
                 className='flex flex-col flex-1 min-w-0 overflow-hidden'
               >
-                <p className='text-sm font-semibold text-zinc-800 dark:text-zinc-200 truncate leading-tight'>
+                <p className='text-sm font-semibold text-ink-primary truncate leading-tight'>
                   {user?.display_name ?? 'Local Admin'}
                 </p>
                 <button

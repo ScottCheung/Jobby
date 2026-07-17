@@ -1,0 +1,711 @@
+{
+  "meta": {
+    "version": "1.0.0",
+    "title": "Jobby Design System",
+    "description": "所有组件类、颜色 token、排版规范的单一配置源"
+  },
+  "sections": [
+    {
+      "id": "colors",
+      "title": "颜色 Token",
+      "icon": "palette",
+      "groups": [
+        {
+          "id": "text-colors",
+          "title": "文本色",
+          "items": [
+            {
+              "token": "text-ink-primary",
+              "description": "主文本、标题、正文",
+              "preview": {
+                "type": "text",
+                "bg": "bg-panel",
+                "text": "text-ink-primary"
+              }
+            },
+            {
+              "token": "text-ink-secondary",
+              "description": "次级文本、说明、占位符",
+              "preview": {
+                "type": "text",
+                "bg": "bg-panel",
+                "text": "text-ink-secondary"
+              }
+            },
+            {
+              "token": "text-ink-muted",
+              "description": "弱化文本、禁用状态",
+              "preview": {
+                "type": "text",
+                "bg": "bg-panel",
+                "text": "text-ink-muted"
+              }
+            },
+            {
+              "token": "text-primary",
+              "description": "品牌强调色文本（链接、高亮等）",
+              "preview": {
+                "type": "text",
+                "bg": "bg-panel",
+                "text": "text-primary"
+              }
+            },
+            {
+              "token": ".text-gradient",
+              "description": "品牌强调色文本渐变",
+              "preview": {
+                "type": "text",
+                "bg": "bg-panel",
+                "text": "text-gradient"
+              }
+            },
+            {
+              "token": "text-ink-error",
+              "description": "错误状态文本",
+              "preview": {
+                "type": "text",
+                "bg": "bg-panel",
+                "text": "text-ink-error"
+              }
+            },
+            {
+              "token": "text-ink-success",
+              "description": "成功状态文本",
+              "preview": {
+                "type": "text",
+                "bg": "bg-panel",
+                "text": "text-ink-success"
+              }
+            },
+            {
+              "token": "text-ink-warning",
+              "description": "警告状态文本",
+              "preview": {
+                "type": "text",
+                "bg": "bg-panel",
+                "text": "text-ink-warning"
+              }
+            }
+          ]
+        },
+        {
+          "id": "bg-colors",
+          "title": "背景色",
+          "items": [
+            {
+              "token": "bg-background",
+              "description": "页面底层背景",
+              "preview": { "type": "swatch", "bg": "bg-background" }
+            },
+            {
+              "token": "bg-background-secondary",
+              "description": "区域分隔背景、表格行交替色",
+              "preview": { "type": "swatch", "bg": "bg-background-secondary" }
+            },
+            {
+              "token": "bg-panel",
+              "description": "浮层、卡片、面板背景（半透明）",
+              "preview": {
+                "type": "swatch",
+                "bg": "bg-panel border border-border/40"
+              }
+            },
+            {
+              "token": "bg-primary",
+              "description": "品牌主色填充（按钮等）",
+              "preview": { "type": "swatch", "bg": "bg-primary" }
+            },
+            {
+              "token": "bg-primary/10",
+              "description": "品牌色轻量背景（badge、选中态）",
+              "preview": { "type": "swatch", "bg": "bg-primary/10" }
+            },
+            {
+              "token": "bg-glass",
+              "description": "毛玻璃效果（bg-primary/5 backdrop-blur）",
+              "preview": { "type": "swatch", "bg": "bg-glass" }
+            },
+            {
+              "token": "bg-primary-gradient",
+              "description": "品牌渐变（badge、特殊强调）",
+              "preview": { "type": "swatch", "bg": "bg-primary-gradient" }
+            }
+          ]
+        },
+        {
+          "id": "border-colors",
+          "title": "边框色",
+          "items": [
+            {
+              "token": "border-border",
+              "description": "标准边框",
+              "preview": {
+                "type": "border",
+                "border": "border border-border bg-border"
+              }
+            },
+            {
+              "token": "border-border/60",
+              "description": "轻量边框（sticky header 等）",
+              "preview": {
+                "type": "border",
+                "border": "border border-border/60 bg-border/60"
+              }
+            },
+            {
+              "token": "border-border/40",
+              "description": "极轻边框（分割线）",
+              "preview": {
+                "type": "border",
+                "border": "border border-border/40 bg-border/40"
+              }
+            },
+            {
+              "token": "border-primary",
+              "description": "品牌色边框（聚焦态、选中态）",
+              "preview": {
+                "type": "border",
+                "border": "border-2 border-primary bg-primary"
+              }
+            },
+            {
+              "token": "border-primary/20",
+              "description": "轻量品牌边框",
+              "preview": {
+                "type": "border",
+                "border": "border border-primary/20 bg-primary/20"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "containers",
+      "title": "容器组件",
+      "icon": "layout",
+      "groups": [
+        {
+          "id": "surface-components",
+          "title": "层级体系",
+          "description": "bg-background (页面) → .panel-xl → .panel-lg → .panel-md → .panel-sm → .panel-xs (均经过同心圆角优化)",
+          "items": [
+            {
+              "token": ".panel-xl",
+              "classes": "rounded-[24px] p-6 bg-panel flex flex-col gap-6 border border-border/40",
+              "description": "超大面板（原 .card），最外层容器，大圆角",
+              "preview": { "type": "container", "classes": "panel-xl" }
+            },
+            {
+              "token": ".panel-lg",
+              "classes": "rounded-[16px] p-4 bg-panel flex flex-col",
+              "description": "大面板（原 .display-panel），通用展示区块",
+              "preview": { "type": "container", "classes": "panel-lg" }
+            },
+            {
+              "token": ".panel-header",
+              "classes": "text-xs font-bold uppercase tracking-wider text-ink-secondary",
+              "description": "面板内标题 eyebrow 标签",
+              "preview": {
+                "type": "text-sample",
+                "classes": "panel-header",
+                "sample": "PANEL HEADER EYEBROW"
+              }
+            },
+            {
+              "token": ".panel-md",
+              "classes": "rounded-[12px] p-3.5 bg-background-secondary/30 dark:bg-black/30 flex flex-col border border-border/30",
+              "description": "中面板（原 .module-panel），内嵌模块",
+              "preview": { "type": "container", "classes": "panel-md" }
+            },
+            {
+              "token": ".panel-sm",
+              "classes": "rounded-[8px] p-2.5 bg-background-secondary/50 dark:bg-black/30 flex flex-col",
+              "description": "小面板（原 .status-panel），紧凑状态展示",
+              "preview": { "type": "container", "classes": "panel-sm" }
+            },
+            {
+              "token": ".panel-xs",
+              "classes": "rounded-[6px] p-2 bg-background-secondary/40 dark:bg-black/20 border border-border/50",
+              "description": "极小内容区（原 .surface），带轻量边框",
+              "preview": { "type": "container", "classes": "panel-xs" }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "typography",
+      "title": "排版规范",
+      "icon": "type",
+      "groups": [
+        {
+          "id": "heading-styles",
+          "title": "标题类 (Headings)",
+          "items": [
+            {
+              "token": ".title-page",
+              "classes": "text-2xl font-bold tracking-tight text-ink-primary",
+              "description": "页面级主标题",
+              "preview": {
+                "type": "text-sample",
+                "classes": "title-page",
+                "sample": "Page Title"
+              }
+            },
+            {
+              "token": ".title-section",
+              "classes": "text-xl font-bold text-ink-primary",
+              "description": "页面区块标题（原 .section-title）",
+              "preview": {
+                "type": "text-sample",
+                "classes": "title-section",
+                "sample": "Section Title"
+              }
+            },
+            {
+              "token": ".title-card",
+              "classes": "text-lg font-bold text-ink-primary",
+              "description": "卡片/大面板标题（原 .card-title）",
+              "preview": {
+                "type": "text-sample",
+                "classes": "title-card",
+                "sample": "Card / Panel Title"
+              }
+            },
+            {
+              "token": ".title-sub",
+              "classes": "text-base font-semibold text-ink-primary",
+              "description": "次级或内嵌模块标题",
+              "preview": {
+                "type": "text-sample",
+                "classes": "title-sub",
+                "sample": "Sub-module Title"
+              }
+            }
+          ]
+        },
+        {
+          "id": "body-styles",
+          "title": "正文类 (Body Text)",
+          "items": [
+            {
+              "token": ".body-lg",
+              "classes": "text-base font-normal text-ink-primary leading-relaxed",
+              "description": "大段正文/详情说明",
+              "preview": {
+                "type": "text-sample",
+                "classes": "body-lg",
+                "sample": "Large body text for detailed readable content."
+              }
+            },
+            {
+              "token": ".body-md",
+              "classes": "text-sm font-normal text-ink-primary leading-relaxed",
+              "description": "标准正文大小",
+              "preview": {
+                "type": "text-sample",
+                "classes": "body-md",
+                "sample": "Standard body text for descriptions and normal sentences."
+              }
+            },
+            {
+              "token": ".body-sm",
+              "classes": "text-xs font-normal text-ink-secondary leading-normal",
+              "description": "次要说明或辅助正文",
+              "preview": {
+                "type": "text-sample",
+                "classes": "body-sm",
+                "sample": "Secondary body text for helper annotations and descriptions."
+              }
+            }
+          ]
+        },
+        {
+          "id": "label-styles",
+          "title": "标签与操作类 (Labels & Actions)",
+          "items": [
+            {
+              "token": ".label",
+              "classes": "text-sm font-semibold text-ink-primary",
+              "description": "表单字段标签或中等粗体标签",
+              "preview": {
+                "type": "text-sample",
+                "classes": "label",
+                "sample": "Field Label / Action"
+              }
+            },
+            {
+              "token": ".label-sm",
+              "classes": "text-xs font-semibold text-ink-secondary",
+              "description": "次要小粗体标签",
+              "preview": {
+                "type": "text-sample",
+                "classes": "label-sm",
+                "sample": "Secondary Label"
+              }
+            },
+            {
+              "token": ".label-overline",
+              "classes": "text-xs font-bold text-ink-secondary uppercase tracking-wider",
+              "description": "区块 Eyebrow 过线标签",
+              "preview": {
+                "type": "text-sample",
+                "classes": "label-overline",
+                "sample": "OVERLINE LABEL"
+              }
+            }
+          ]
+        },
+        {
+          "id": "meta-styles",
+          "title": "元信息与装饰类 (Metadata & Accent)",
+          "items": [
+            {
+              "token": ".text-meta",
+              "classes": "text-xs text-ink-muted",
+              "description": "时间、数量等弱化元信息（原 .meta-text）",
+              "preview": {
+                "type": "text-sample",
+                "classes": "text-meta",
+                "sample": "2 hours ago · 12 items"
+              }
+            },
+            {
+              "token": ".text-hint",
+              "classes": "text-[11px] text-ink-muted leading-tight",
+              "description": "小字脚注或输入提示",
+              "preview": {
+                "type": "text-sample",
+                "classes": "text-hint",
+                "sample": "* Maximum length is 100 characters."
+              }
+            },
+            {
+              "token": ".text-gradient",
+              "classes": "bg-linear-to-br from-primary to-primary/70 bg-clip-text text-transparent",
+              "description": "品牌色渐变文字，用于标题高亮",
+              "preview": {
+                "type": "text-sample",
+                "classes": "text-gradient text-xl font-bold",
+                "sample": "Gradient Text"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "layout",
+      "title": "布局工具",
+      "icon": "grid",
+      "groups": [
+        {
+          "id": "flex-utilities",
+          "title": "Flex 工具类",
+          "items": [
+            {
+              "token": ".row",
+              "classes": "flex items-center gap-2",
+              "description": "水平对齐容器（小间距 gap-2）",
+              "preview": { "type": "layout-row", "classes": "row" }
+            },
+            {
+              "token": ".row-md",
+              "classes": "flex items-center gap-3",
+              "description": "水平对齐容器（中间距 gap-3）",
+              "preview": { "type": "layout-row", "classes": "row-md" }
+            },
+            {
+              "token": ".row-between",
+              "classes": "flex items-center justify-between",
+              "description": "两端对齐行（header 常用）",
+              "preview": { "type": "layout-between", "classes": "row-between" }
+            },
+            {
+              "token": ".stack",
+              "classes": "flex flex-col gap-1.5",
+              "description": "紧凑纵向堆叠（gap-1.5）",
+              "preview": { "type": "layout-col", "classes": "stack" }
+            },
+            {
+              "token": ".col",
+              "classes": "flex flex-col gap-3",
+              "description": "标准纵向排列（gap-3）",
+              "preview": { "type": "layout-col", "classes": "col" }
+            },
+            {
+              "token": ".wrap",
+              "classes": "flex flex-wrap gap-3",
+              "description": "换行排列（tag 列表、badge 组等）",
+              "preview": { "type": "layout-wrap", "classes": "wrap" }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "forms",
+      "title": "表单元素",
+      "icon": "edit",
+      "groups": [
+        {
+          "id": "form-controls",
+          "title": "输入控件",
+          "items": [
+            {
+              "token": ".input",
+              "classes": "flex h-12 w-full rounded-full backdrop-blur-sm border-2 text-ink-secondary border-transparent bg-panel px-3.5 py-2 text-sm focus:text-ink-secondary placeholder:text-ink-secondary/50 focus:bg-background focus:border-primary m-0.5 focus-visible:outline-none focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50 transition-all",
+              "description": "主文本输入框（圆角全宽，h-12，rounded-full）",
+              "preview": { "type": "input", "placeholder": "Enter text..." }
+            },
+            {
+              "token": ".textarea",
+              "classes": "flex min-h-[100px] w-full rounded-xl border border-border bg-background-secondary/50 px-3.5 py-2.5 text-sm text-ink-primary placeholder:text-ink-secondary/60 focus:bg-panel focus:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/10 disabled:cursor-not-allowed disabled:opacity-50 transition-all dark:bg-black/20 dark:focus:bg-panel",
+              "description": "多行文本域（rounded-xl，使用 token 背景/边框）",
+              "preview": {
+                "type": "textarea",
+                "placeholder": "Enter multi-line text..."
+              }
+            },
+            {
+              "token": ".select",
+              "classes": "flex h-11 w-full rounded-xl border border-border bg-background-secondary/50 px-3.5 py-2 text-sm text-ink-primary placeholder:text-ink-secondary/60 focus:bg-panel focus:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/10 disabled:cursor-not-allowed disabled:opacity-50 transition-all dark:bg-black/20 dark:focus:bg-panel",
+              "description": "下拉选择（rounded-xl，与 textarea 保持一致）",
+              "preview": { "type": "select" }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "badges",
+      "title": "徽章 & 状态",
+      "icon": "tag",
+      "groups": [
+        {
+          "id": "badge-variants",
+          "title": "Badge 变体",
+          "items": [
+            {
+              "token": ".status-badge",
+              "classes": "inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-bold text-primary",
+              "description": "通用状态徽章（品牌色，rounded-full）",
+              "preview": {
+                "type": "badge",
+                "classes": "status-badge",
+                "sample": "Active"
+              }
+            },
+            {
+              "token": ".badge",
+              "classes": "bg-primary-gradient rounded-full text-primary-foreground px-2 py-1 text-[10px] flex",
+              "description": "渐变徽章（XP/等级等游戏化元素）",
+              "preview": {
+                "type": "badge",
+                "classes": "badge",
+                "sample": "+50 XP"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "buttons",
+      "title": "按钮变体",
+      "icon": "mouse-pointer",
+      "groups": [
+        {
+          "id": "button-variants",
+          "title": "Button CSS 变体",
+          "description": "配合 <Button variant=\"...\"> 组件使用，底层 CSS 在 customize/button.css",
+          "items": [
+            {
+              "token": ".button-default",
+              "classes": "bg-primary hover:bg-primary-gradient hover:ring-primary/20 text-primary-foreground transition-colors",
+              "description": "主要操作（品牌色填充）",
+              "preview": {
+                "type": "button",
+                "classes": "button-default",
+                "sample": "Primary Action"
+              }
+            },
+            {
+              "token": ".button-outline",
+              "classes": "border border-input bg-background text-ink-primary hover:bg-primary/10 hover:text-primary transition-colors",
+              "description": "次要操作（边框）",
+              "preview": {
+                "type": "button",
+                "classes": "button-outline",
+                "sample": "Secondary Action"
+              }
+            },
+            {
+              "token": ".button-ghost",
+              "classes": "hover:bg-background hover:text-ink-primary transition-colors",
+              "description": "透明按钮（hover 显示背景）",
+              "preview": {
+                "type": "button",
+                "classes": "button-ghost",
+                "sample": "Ghost Action"
+              }
+            },
+            {
+              "token": ".button-destructive",
+              "classes": "bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors",
+              "description": "危险操作（红色）",
+              "preview": {
+                "type": "button",
+                "classes": "button-destructive",
+                "sample": "Delete"
+              }
+            },
+            {
+              "token": ".button-secondary",
+              "classes": "bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors",
+              "description": "次级按钮（黑/白）",
+              "preview": {
+                "type": "button",
+                "classes": "button-secondary",
+                "sample": "Secondary"
+              }
+            },
+            {
+              "token": ".button-link",
+              "classes": "text-primary underline-offset-4 hover:underline transition-colors",
+              "description": "链接样式按钮",
+              "preview": {
+                "type": "button",
+                "classes": "button-link",
+                "sample": "Learn More →"
+              }
+            },
+            {
+              "token": ".button-icon",
+              "classes": "bg-background text-ink-secondary hover:bg-primary/90 hover:text-primary-foreground transition-colors",
+              "description": "图标按钮",
+              "preview": {
+                "type": "button",
+                "classes": "button-icon",
+                "sample": "Gear"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "utilities",
+      "title": "特殊工具类",
+      "icon": "zap",
+      "groups": [
+        {
+          "id": "utility-classes",
+          "title": "Utility 类",
+          "items": [
+            {
+              "token": ".custom-scrollbar",
+              "classes": "scrollbar-width: thin; scrollbar-color: rgba(0,0,0,0.2) transparent",
+              "description": "统一滚动条样式（细，自动深/浅色切换）",
+              "preview": { "type": "scrollbar" }
+            },
+            {
+              "token": ".skeleton",
+              "classes": "dark:bg-panel bg-black/10 animate-pulse",
+              "description": "加载占位符（animate-pulse）",
+              "preview": { "type": "skeleton" }
+            },
+            {
+              "token": ".bg-glass",
+              "classes": "bg-primary/5 backdrop-blur-[20px] dark:bg-primary/20",
+              "description": "毛玻璃效果背景",
+              "preview": { "type": "swatch", "bg": "bg-glass" }
+            },
+            {
+              "token": ".rounded-card",
+              "classes": "rounded-xl md:rounded-2xl lg:rounded-3xl",
+              "description": "响应式圆角（xl → 2xl → 3xl）",
+              "preview": {
+                "type": "border",
+                "border": "rounded-card border border-border bg-background-secondary/40 p-4"
+              }
+            },
+            {
+              "token": ".shadow-brand",
+              "classes": "box-shadow: 0 0 40px 0px color-mix(in srgb, var(--primary) 40%, transparent), ...",
+              "description": "彩虹光晕阴影（特殊组件专用）",
+              "preview": { "type": "shadow" }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "drawer",
+      "title": "Drawer / 表单布局",
+      "icon": "sidebar",
+      "groups": [
+        {
+          "id": "drawer-classes",
+          "title": "Drawer 布局类",
+          "items": [
+            {
+              "token": ".header",
+              "classes": "flex items-center justify-between mb-3",
+              "description": "抽屉顶部（标题 + 关闭按钮的横排）",
+              "preview": {
+                "type": "layout-between",
+                "classes": "header w-full"
+              }
+            },
+            {
+              "token": ".form-body",
+              "classes": "flex-1 overflow-y-auto custom-scrollbar space-y-6 py-page",
+              "description": "抽屉/表单滚动内容区域",
+              "preview": null
+            },
+            {
+              "token": ".footer",
+              "classes": "flex items-center justify-end gap-3",
+              "description": "操作按钮行（右对齐）",
+              "preview": null
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "rules": [
+    {
+      "id": "colors",
+      "title": "颜色规范",
+      "rule": "只用 token（text-ink-primary、bg-panel、border-border），禁止 zinc-*、slate-*、gray-* 等硬编码颜色"
+    },
+    {
+      "id": "spacing",
+      "title": "间距规范",
+      "rule": "使用语义 padding token：p-page、p-panel、p-card、p-sidebar"
+    },
+    {
+      "id": "radius",
+      "title": "圆角规范",
+      "rule": "优先 .rounded-card、.rounded-button；需要具体时：rounded-xl（panel）、rounded-2xl（card 内）、rounded-full（pill/button）"
+    },
+    {
+      "id": "typography",
+      "title": "文字规范",
+      "rule": "用排版类（.label、.label-overline、.section-title），禁止内联 font-size + weight + color 组合"
+    },
+    {
+      "id": "layout",
+      "title": "布局规范",
+      "rule": "用 .row、.col、.stack 等工具类替代高频内联 flex 组合"
+    },
+    {
+      "id": "exceptions",
+      "title": "例外情况",
+      "rule": "游戏化页面（schedule、特殊动画组件）允许保留特定设计色（emerald、rose、amber）"
+    }
+  ]
+}

@@ -38,7 +38,7 @@ const buttonVariants = cva(
         default: 'h-[48px] px-6 py-2 font-semibold',
         lg: 'h-[52px]  px-6 text-lg font-semibold uppercase italic',
         WithIcons: 'p-1',
-        toolbar: 'p-2 h-auto ',
+        toolbar: 'p-4 h-auto ',
         toolbarSm: 'px-3 py-1.5 h-auto ',
       },
     },

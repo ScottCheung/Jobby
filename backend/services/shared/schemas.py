@@ -35,6 +35,19 @@ class UserGamificationRead(UserGamificationBase, OrmModel):
     updated_at: datetime
 
 
+class GamificationTransactionBase(BaseModel):
+    amount: int
+    currency: str
+    reason: str
+    reference_id: str | None = None
+
+class GamificationTransactionRead(GamificationTransactionBase, OrmModel):
+    id: UUID
+    user_id: UUID
+    created_at: datetime
+    updated_at: datetime
+
+
 class UserProfileBase(BaseModel):
     first_name: str | None = None
     middle_name: str | None = None
@@ -311,6 +324,11 @@ class DailySummarySchema(BaseModel):
     xp_gained_today: int
     coins_gained_today: int
     level: int
+    total_xp: int = 0
+    next_level_xp: int = 0
+    loot_boxes: int = 0
+    has_checked_in_today: bool = False
+    total_coins: int = 0
 
 class HeatmapDataEntry(BaseModel):
     date: str
@@ -358,3 +376,26 @@ class PlanTaskRead(PlanTaskBase, OrmModel):
     created_at: datetime
     updated_at: datetime
 
+
+class DailyQuestRead(BaseModel):
+    id: UUID
+    quest_date: datetime
+    quest_type: str
+    title: str
+    description: str
+    target_value: int
+    current_value: int
+    is_claimed: bool
+
+    class Config:
+        from_attributes = True
+
+class AchievementRead(BaseModel):
+    id: UUID
+    badge_id: str
+    badge_name: str
+    description: str
+    unlocked_at: datetime
+
+    class Config:
+        from_attributes = True

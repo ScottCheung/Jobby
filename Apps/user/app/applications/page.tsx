@@ -290,13 +290,13 @@ export default function ApplicationsPage() {
                   placeholder='Search title, company, job id...'
                   value={searchText}
                   onChange={(event) => setSearchText(event.target.value)}
-                  className='pl-9 pr-4 py-1.5 w-full text-sm rounded-xl border border-zinc-200 bg-panel dark:bg-zinc-955 dark:border-zinc-800 focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-750 focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-750 text-zinc-900 dark:text-zinc-100'
+                  className='pl-9 pr-4 py-1.5 w-full text-sm rounded-xl border border-zinc-200 bg-panel dark:bg-zinc-955 dark:border-border focus:outline-none focus:border-primary/50 dark:focus:border-primary/50 focus:ring-1 focus:ring-primary/20 dark:focus:ring-zinc-750 text-ink-primary'
                 />
               </div>
               <select
                 value={statusFilter}
                 onChange={(event) => setStatusFilter(event.target.value)}
-                className='h-9 rounded-xl border border-zinc-200 bg-panel px-3 text-sm text-zinc-900 outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400 dark:border-zinc-800 dark:bg-zinc-955 dark:text-zinc-100 dark:focus:border-zinc-750 dark:focus:ring-zinc-750'
+                className='h-9 rounded-xl border border-zinc-200 bg-panel px-3 text-sm text-zinc-900 outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 dark:border-border dark:bg-zinc-955 dark:text-zinc-100 dark:focus:border-primary/50 dark:focus:ring-zinc-750'
               >
                 <option value=''>All statuses</option>
                 <option value='submitted'>Submitted</option>
@@ -310,13 +310,13 @@ export default function ApplicationsPage() {
       </div>
 
       {items.length === 0 && !isLoading ?
-        <div className='p-8 text-center text-zinc-500 dark:text-zinc-400 flex-1 flex items-center justify-center'>
+        <div className='p-8 text-center text-ink-primary0 dark:text-zinc-400 flex-1 flex items-center justify-center'>
           No applications match this view.
         </div>
-      : <div className='flex-1 overflow-hidden relative border border-zinc-100 dark:border-zinc-800/60 rounded-xl bg-panel'>
+      : <div className='flex-1 overflow-hidden relative border border-border/40 rounded-xl bg-panel'>
           <div className='w-full h-full overflow-x-auto custom-scrollbar-primary'>
             <div className='min-w-[950px] h-full flex flex-col'>
-              <div className='grid grid-cols-[minmax(0,3.5fr)_minmax(0,2fr)_minmax(0,2.5fr)_minmax(0,1.3fr)_minmax(0,1.2fr)] text-[11px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider px-4 py-3 shrink-0 border-b border-zinc-100 dark:border-zinc-800/60'>
+              <div className='grid grid-cols-[minmax(0,3.5fr)_minmax(0,2fr)_minmax(0,2.5fr)_minmax(0,1.3fr)_minmax(0,1.2fr)] text-[11px] font-bold text-zinc-400 dark:text-ink-primary0 uppercase tracking-wider px-4 py-3 shrink-0 border-b border-border/40'>
                 <div className=' flex items-center justify-start'>
                   Role & Info
                 </div>

@@ -88,8 +88,8 @@ export function PlanSetupSection({
   const InActiveCard = 'border-ink-secondary/50';
 
   return (
-    <div className='p-6 rounded-2xl bg-panel border border-zinc-100 dark:border-zinc-800/60 flex flex-col gap-6'>
-      <div className='flex flex-col gap-1 border-b border-zinc-100 dark:border-zinc-800/60 pb-4'>
+    <div className='p-6 rounded-2xl bg-panel border border-border/40 flex flex-col gap-6'>
+      <div className='flex flex-col gap-1 border-b border-border/40 pb-4'>
         <h2 className='text-xl font-bold text-ink-primary flex items-center gap-2'>
           <Calendar className='w-5.5 h-5.5 text-primary' />
           Prepare Your Practice Plan
@@ -157,7 +157,7 @@ export function PlanSetupSection({
                     'px-3.5 py-1.5 rounded-full font-bold text-xs uppercase tracking-wider shrink-0 transition-colors',
                     isSelected ?
                       template.activeBadgeClass
-                    : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400',
+                    : 'bg-background-secondary text-ink-primary0 dark:text-zinc-400',
                   )}
                 >
                   {template.durationLabel}
@@ -193,7 +193,7 @@ export function PlanSetupSection({
                   {template.description}
                 </p>
               </div>
-              <div className='mt-auto pt-3 border-t border-zinc-100 dark:border-zinc-800/60 text-xs transition-colors flex flex-col gap-1.5'>
+              <div className='mt-auto pt-3 border-t border-border/40 text-xs transition-colors flex flex-col gap-1.5'>
                 <div className='flex justify-between text-ink-secondary/80'>
                   <span>Daily Base Pace:</span>
                   <span className='font-semibold text-ink-primary'>
@@ -211,7 +211,7 @@ export function PlanSetupSection({
                     ~{avgTotalTasksPerDay} Qs / day
                   </span>
                 </div>
-                <div className='flex justify-between items-center text-[10px] text-ink-secondary/50 pt-1 border-t border-dashed border-zinc-100 dark:border-zinc-800/60 mt-0.5'>
+                <div className='flex justify-between items-center text-[10px] text-ink-secondary/50 pt-1 border-t border-dashed border-border/40 mt-0.5'>
                   <span>{template.strategyLabel}</span>
                   <span>incl. reviews</span>
                 </div>
@@ -222,7 +222,7 @@ export function PlanSetupSection({
       </div>
 
       {/* Action buttons */}
-      <div className='flex justify-end gap-3  dark:border-zinc-800/60 pt-4 mt-2'>
+      <div className='flex justify-end gap-3  dark:border-border/60 pt-4 mt-2'>
         <button
           onClick={() => setIsCustomizeOpen(true)}
           className='flex items-center gap-1.5 px-5 py-2.5 text-xs font-bold text-ink-primary rounded-xl transition-colors border dark:border-zinc-850/60'

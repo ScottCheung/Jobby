@@ -586,6 +586,35 @@ export type DailySummary = {
   xp_gained_today: number;
   coins_gained_today: number;
   level: number;
+  total_xp: number;
+  next_level_xp: number;
+  loot_boxes: number;
+  has_checked_in_today: boolean;
+  total_coins: number;
+};
+
+export type DailyQuest = {
+  id: string;
+  quest_date: string;
+  quest_type: string;
+  title: string;
+  description: string;
+  target_value: number;
+  current_value: number;
+  is_claimed: boolean;
+};
+
+export type Achievement = {
+  id: string;
+  badge_id: string;
+  badge_name: string;
+  description: string;
+  unlocked_at: string;
+};
+
+export type LootBoxResponse = {
+  coins_won: number;
+  new_balance: number;
 };
 
 export type HeatmapDataEntry = {
@@ -595,4 +624,15 @@ export type HeatmapDataEntry = {
 
 export type HeatmapData = {
   entries: HeatmapDataEntry[];
+};
+
+export type GamificationTransaction = {
+  id: string;
+  user_id?: string;
+  amount: number;
+  currency: string;
+  reason: string;
+  reference_id?: string | null;
+  created_at?: string;
+  updated_at?: string;
 };

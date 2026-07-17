@@ -141,7 +141,7 @@ export function FrameworkCard({
   if (!currentQuestion) return null;
 
   return (
-    <div className='module-panel  '>
+    <div className='panel-lg  '>
       <div className='flex justify-between items-center pb-2 mb-2 '>
         <span className='text-xs font-bold text-ink-primary flex items-center gap-1.5'>
           <Lightbulb className='w-3.5 h-3.5 text-amber-500 shrink-0' />
@@ -172,7 +172,7 @@ export function FrameworkCard({
                     isSelected ?
                       fw.selectedClass
                     : cn(
-                        'border-zinc-200 dark:border-zinc-800/80 bg-panel hover:-translate-y-0.5 hover:shadow-md dark:hover:bg-zinc-900/50',
+                        'border-border dark:border-border/80 bg-panel hover:-translate-y-0.5 hover:shadow-md dark:hover:bg-background-secondary/50',
                         fw.hoverClass,
                       ),
                   )}
@@ -208,7 +208,7 @@ export function FrameworkCard({
               value={customFrameworkText}
               onChange={(e) => setCustomFrameworkText(e.target.value)}
               placeholder='Define your custom answering framework details here...'
-              className='w-full h-24 p-3 text-sm rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-955 focus:outline-none text-ink-primary resize-none leading-relaxed mt-1 focus:border-primary/40 transition-all'
+              className='w-full h-24 p-3 text-sm rounded-lg border border-border dark:border-border bg-panel focus:outline-none text-ink-primary resize-none leading-relaxed mt-1 focus:border-primary/40 transition-all'
             />
           )}
 
@@ -216,7 +216,7 @@ export function FrameworkCard({
             <button
               onClick={onCancelEditing}
               disabled={isSavingFramework}
-              className='px-3 py-1.5 rounded-lg border border-zinc-250 dark:border-zinc-800 text-ink-secondary font-bold hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors active:scale-95'
+              className='px-3 py-1.5 rounded-lg border border-border text-ink-secondary font-bold hover:bg-background-secondary transition-colors active:scale-95'
             >
               Cancel
             </button>

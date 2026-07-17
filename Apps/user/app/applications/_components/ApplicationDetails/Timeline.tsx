@@ -62,7 +62,7 @@ export function Timeline({
         <div className='h-[50px] top-0 from-background to-transparent bg-linear-to-b  absolute left-0 right-0 -z-10' />
         <div className='h-[30px] top-0 from-background to-transparent bg-linear-to-b  absolute left-0 right-0 -z-10' />
         <div className='flex gap-2 items-center'>
-          <h3 className='text-xs font-bold text-ink-secondary uppercase tracking-wider'>
+          <h3 className='label-overline'>
             Timeline Stages
           </h3>
           <div
@@ -218,7 +218,7 @@ export function Timeline({
                     duration: 0.3,
                   }}
                   className={cn(
-                    'display-panel  ml-[25px] mt-1 overflow-hidden',
+                    'panel-lg  ml-[25px] mt-1 overflow-hidden',
                   )}
                 >
                   {/* Card Body - View Mode or Edit Mode */}
@@ -323,7 +323,7 @@ export function Timeline({
                 exit={{ opacity: 0, x: 1000, scale: 0 }}
                 transition={{ ease: [0.22, 1, 0.36, 1], duration: 0.6 }}
               >
-                <p className='text-xs font-bold text-ink-secondary uppercase tracking-wider mb-2.5'>
+                <p className='label-overline mb-2.5'>
                   Add Timeline Stage:
                 </p>
                 <div className='flex lg:flex-col max-lg:flex-row max-lg:flex-wrap gap-2 max-h-[70vh] overflow-y-auto custom-scrollbar-primary'>

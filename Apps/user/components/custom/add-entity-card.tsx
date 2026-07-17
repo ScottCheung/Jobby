@@ -26,7 +26,7 @@ export function AddEntityCard({
         className,
       )}
     >
-      <div className='flex w-12 h-12 items-center justify-center rounded-full bg-gray-500/10 text-gray-400 transition-all duration-300 ease-in-out group-hover:w-24 group-hover:h-24 group-hover:bg-primary/10 group-hover:text-primary dark:bg-zinc-800 dark:text-ink-secondary'>
+      <div className='flex w-12 h-12 items-center justify-center rounded-full bg-gray-500/10 text-gray-400 transition-all duration-300 ease-in-out group-hover:w-24 group-hover:h-24 group-hover:bg-primary/10 group-hover:text-primary dark:bg-panel dark:text-ink-secondary'>
         <Plus className='w-6 h-6 transition-all duration-300 ease-in-out group-hover:w-12 group-hover:h-12' />
       </div>
       <p className='text-sm font-semibold text-gray-600 transition-colors group-hover:text-primary dark:text-gray-400'>

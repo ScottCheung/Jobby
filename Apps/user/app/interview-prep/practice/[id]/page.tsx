@@ -84,7 +84,7 @@ function PracticeModeQuestionPageInner() {
 
   if (questions.length === 0) {
     return (
-      <div className='flex items-center justify-center h-full text-ink-secondary bg-panel rounded-4xl p-6'>
+      <div className='flex items-center justify-center h-full text-ink-secondary panel-lg p-6'>
         No interview questions found. Please add questions first.
       </div>
     );
@@ -92,7 +92,7 @@ function PracticeModeQuestionPageInner() {
 
   if (practiceMode === 'plan' && effectiveQueue.length === 0) {
     return (
-      <div className='flex items-center justify-center h-full bg-panel rounded-4xl p-6'>
+      <div className='flex items-center justify-center h-full panel-lg p-6'>
         <div className='flex flex-col items-center gap-3 text-center max-w-sm'>
           <CalendarCheck className='w-10 h-10 text-primary opacity-60' />
           <p className='font-semibold text-ink-primary'>
@@ -123,7 +123,7 @@ function PracticeModeQuestionPageInner() {
 
   if (!currentQuestion) {
     return (
-      <div className='flex items-center justify-center h-full text-ink-secondary bg-panel rounded-4xl p-6'>
+      <div className='flex items-center justify-center h-full text-ink-secondary panel-lg p-6'>
         Question not found.
       </div>
     );
@@ -133,7 +133,7 @@ function PracticeModeQuestionPageInner() {
     <>
       <div className='grid grid-cols-2 gap-4 h-full overflow-hidden'>
         {/* ── Left Column ── */}
-        <div className='display-panel flex flex-col gap-4 overflow-hidden relative h-full bg-panel'>
+        <div className='panel-xl  flex flex-col gap-4 overflow-hidden relative h-full '>
           <PracticeHeader
             currentQuestion={currentQuestion}
             currentIndex={currentQuestionIndex}
@@ -199,8 +199,8 @@ function PracticeModeQuestionPageInner() {
         </div>
 
         {/* ── Right Column ── */}
-        <div className='display-panel flex flex-col overflow-hidden bg-panel'>
-          <div className='flex border-b border-zinc-100 dark:border-zinc-800/60 bg-panel shrink-0'>
+        <div className='panel-xl flex flex-col overflow-hidden bg-panel'>
+          <div className='flex shrink-0'>
             {(['workspace', 'history'] as const).map((tab) => (
               <button
                 key={tab}

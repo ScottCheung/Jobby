@@ -49,7 +49,7 @@ export function CollapsibleHeader({
           layout
           transition={springTransition}
           className={cn(
-            'font-bold text-zinc-900 dark:text-zinc-50 origin-left tracking-tight shrink-0',
+            'font-bold text-ink-primary origin-left tracking-tight shrink-0',
             isCollapsed ? 'text-lg' : 'text-2xl',
           )}
         >

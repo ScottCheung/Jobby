@@ -234,7 +234,7 @@ export function CustomizePlanModal({
             <Sliders className='w-5 h-5 text-primary' />
             <h3 className='text-lg font-bold'>Customize Practice Strategy</h3>
           </div>
-          <button type='button' onClick={onClose} className='display-panel'>
+          <button type='button' onClick={onClose} className='panel-lg'>
             <X className='w-5 h-5' />
           </button>
         </div>
@@ -280,7 +280,7 @@ export function CustomizePlanModal({
             </div>
 
             {/* 3. Spaced Repetition Toggle */}
-            <div className='flex items-center justify-between py-2 border-t border-b border-zinc-100 dark:border-zinc-800/60'>
+            <div className='flex items-center justify-between py-2 border-t border-b border-border/40'>
               <div className='flex flex-col gap-1 pr-4'>
                 <span className='label'>
                   Spaced Repetition Review (Ebbinghaus curve)
@@ -297,7 +297,7 @@ export function CustomizePlanModal({
             </div>
 
             {/* 4. Total Question Limit */}
-            <div className='flex flex-col gap-2 py-2 border-b border-zinc-100 dark:border-zinc-800/60'>
+            <div className='flex flex-col gap-2 py-2 border-b border-border/40'>
               <div className='flex items-center justify-between'>
                 <div className='flex flex-col gap-1 pr-4'>
                   <span className='label'>Limit Total Questions</span>
@@ -334,7 +334,7 @@ export function CustomizePlanModal({
             {/* 5. Select Mode (Smart vs Manual) */}
             <div className='flex flex-col gap-2 pt-2'>
               <label className='label'>Question Select Mode</label>
-              <div className='grid grid-cols-2 gap-2 bg-zinc-50 dark:bg-zinc-900 rounded-xl p-1.5 max-w-sm'>
+              <div className='grid grid-cols-2 gap-2 bg-background-secondary rounded-xl p-1.5 max-w-sm'>
                 <button
                   type='button'
                   onClick={() => setSelectionMethod('smart')}
@@ -378,7 +378,7 @@ export function CustomizePlanModal({
                           'px-3 py-1.5 rounded-full text-xs font-semibold transition-all border',
                           isFocused ?
                             'bg-primary/10 text-primary border-primary/20'
-                          : 'bg-zinc-50 dark:bg-zinc-900 border-zinc-150 dark:border-zinc-800 text-ink-secondary hover:text-ink-primary',
+                          : 'bg-background-secondary border-border/50 text-ink-secondary hover:text-ink-primary',
                         )}
                       >
                         {cleanName(cat.name)}
@@ -391,16 +391,16 @@ export function CustomizePlanModal({
 
             {/* Manual Questions Checklist */}
             {selectionMethod === 'manual' && (
-              <div className='flex flex-col gap-3 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 bg-zinc-50/20 dark:bg-zinc-900/10 min-h-[420px] transition-all duration-300'>
+              <div className='flex flex-col gap-3 border border-border dark:border-border rounded-2xl p-4 bg-background-secondary/20 min-h-[420px] transition-all duration-300'>
                 <div className='flex items-center gap-2 shrink-0'>
-                  <div className='flex items-center gap-2.5 bg-white dark:bg-zinc-955 px-3.5 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 flex-1'>
+                  <div className='flex items-center gap-2.5 bg-panel px-3.5 py-2.5 rounded-xl border border-border dark:border-border flex-1'>
                     <Search className='w-4 h-4 text-zinc-400 shrink-0' />
                     <input
                       type='text'
                       value={questionSearch}
                       onChange={(e) => setQuestionSearch(e.target.value)}
                       placeholder='Search questions by title or category...'
-                      className='bg-transparent border-none text-sm w-full text-ink-primary focus:outline-none placeholder:text-zinc-400'
+                      className='bg-transparent border-none text-sm w-full text-ink-primary focus:outline-none placeholder:text-ink-secondary/60'
                     />
                   </div>
                   <button
@@ -413,7 +413,7 @@ export function CustomizePlanModal({
                         filterImportances.length > 0 ||
                         filterFrequencies.length > 0 ?
                         'bg-primary/10 text-primary border-primary/30 font-bold'
-                      : 'bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 text-ink-secondary hover:text-ink-primary',
+                      : 'bg-white dark:bg-background border-border dark:border-border text-ink-secondary hover:text-ink-primary',
                     )}
                   >
                     <Sliders className='w-4 h-4' />
@@ -432,7 +432,7 @@ export function CustomizePlanModal({
 
                 {/* Collapsible Filter Section */}
                 {showManualFilters && (
-                  <div className='flex flex-col gap-3 p-3 bg-zinc-100/50 dark:bg-zinc-900/40 rounded-xl border border-zinc-200/60 dark:border-zinc-800/60 animate-in fade-in slide-in-from-top-1 duration-150 shrink-0'>
+                  <div className='flex flex-col gap-3 p-3 bg-background-secondary/40 rounded-xl border border-border/50 animate-in fade-in slide-in-from-top-1 duration-150 shrink-0'>
                     {/* Category Filter */}
                     {categories.length > 0 && (
                       <div className='flex flex-col gap-1.5'>
@@ -457,7 +457,7 @@ export function CustomizePlanModal({
                                   'px-2 py-0.5 rounded-full text-[11px] font-semibold border transition-all',
                                   active ?
                                     'bg-primary/10 text-primary border-primary/35 font-bold'
-                                  : 'bg-white dark:bg-zinc-955 border-zinc-200 dark:border-zinc-850 text-ink-secondary hover:text-ink-primary',
+                                  : 'bg-panel border-zinc-200 dark:border-zinc-850 text-ink-secondary hover:text-ink-primary',
                                 )}
                               >
                                 {cleanName(cat.name)}
@@ -469,7 +469,7 @@ export function CustomizePlanModal({
                     )}
 
                     {/* Importance + Frequency Row */}
-                    <div className='flex flex-wrap gap-4 pt-1 border-t border-zinc-200/40 dark:border-zinc-800/40'>
+                    <div className='flex flex-wrap gap-4 pt-1 border-t border-border/40'>
                       {/* Importance */}
                       <div className='flex flex-col gap-1.5'>
                         <span className='text-[10px] uppercase font-bold text-ink-secondary tracking-wider'>
@@ -493,7 +493,7 @@ export function CustomizePlanModal({
                                   'flex items-center gap-0.5 px-2 py-0.5 rounded-md text-[11px] font-bold border transition-all',
                                   active ?
                                     'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-400/40'
-                                  : 'bg-white dark:bg-zinc-955 border-zinc-200 dark:border-zinc-850 text-ink-secondary hover:text-ink-primary',
+                                  : 'bg-panel border-zinc-200 dark:border-zinc-850 text-ink-secondary hover:text-ink-primary',
                                 )}
                               >
                                 {n}
@@ -537,7 +537,7 @@ export function CustomizePlanModal({
                                 className={cn(
                                   'px-2 py-0.5 rounded-md text-[11px] font-bold border transition-all',
                                   active ? activeColor : (
-                                    'bg-white dark:bg-zinc-955 border-zinc-200 dark:border-zinc-850 text-ink-secondary hover:text-ink-primary'
+                                    'bg-panel border-zinc-200 dark:border-zinc-850 text-ink-secondary hover:text-ink-primary'
                                   ),
                                 )}
                               >
@@ -553,7 +553,7 @@ export function CustomizePlanModal({
                     {(filterCategoryIds.length > 0 ||
                       filterImportances.length > 0 ||
                       filterFrequencies.length > 0) && (
-                      <div className='flex justify-end pt-1.5 border-t border-zinc-200/40 dark:border-zinc-800/40'>
+                      <div className='flex justify-end pt-1.5 border-t border-border/40'>
                         <button
                           type='button'
                           onClick={() => {
@@ -614,7 +614,7 @@ export function CustomizePlanModal({
                   )}
                 </div>
 
-                <div className='flex justify-between items-center text-xs text-ink-secondary pt-2.5 border-t border-zinc-200 dark:border-zinc-800 shrink-0 font-medium'>
+                <div className='flex justify-between items-center text-xs text-ink-secondary pt-2.5 border-t border-border dark:border-border shrink-0 font-medium'>
                   <span>Select study items manually:</span>
                   <span className='font-bold text-primary'>
                     {manuallySelectedQuestionIds.length} Selected
@@ -632,7 +632,7 @@ export function CustomizePlanModal({
               </h4>
 
               {/* Visual Preview Card */}
-              <div className='status-panel px-6! flex flex-col gap-4 relative overflow-hidden'>
+              <div className='panel-sm px-6! flex flex-col gap-4 relative overflow-hidden'>
                 <div className='flex flex-col gap-1'>
                   <h3 className='text-xl font-extrabold text-ink-primary line-clamp-2 leading-tight'>
                     {name.trim() || 'My Customized Plan'}
@@ -665,7 +665,7 @@ export function CustomizePlanModal({
                   </div>
                 </div>
 
-                <div className='flex flex-col  leading-relaxed gap-2 border-t border-zinc-100 dark:border-zinc-800/60 pt-3'>
+                <div className='flex flex-col  leading-relaxed gap-2 border-t border-border/40 pt-3'>
                   <div className='flex justify-between items-center text-ink-primary font-semibold'>
                     <span className='text-xs text-ink-secondary/50'>
                       Daily Base Pace:
@@ -690,7 +690,7 @@ export function CustomizePlanModal({
               </div>
 
               {/* Task Breakdown stats */}
-              <div className='flex flex-col px-6! gap-2 status-panel text-sm'>
+              <div className='flex flex-col px-6! gap-2 panel-sm text-sm'>
                 <div className='flex justify-between items-center font-medium'>
                   <span className='text-ink-secondary'>
                     Initial Practice Tasks
@@ -709,7 +709,7 @@ export function CustomizePlanModal({
                     </span>
                   </div>
                 )}
-                <div className='flex justify-between items-center pt-2.5 border-t border-zinc-200 dark:border-zinc-800 font-extrabold text-ink-primary'>
+                <div className='flex justify-between items-center pt-2.5 border-t border-border dark:border-border font-extrabold text-ink-primary'>
                   <span>Total Scheduled Tasks</span>
                   <span className='text-primary'>{totalTasksCount}</span>
                 </div>

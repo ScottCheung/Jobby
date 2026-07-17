@@ -26,7 +26,7 @@ export function CategorySelector({
           'group relative flex h-28 flex-col items-center justify-center overflow-hidden rounded-2xl  transition-all duration-300 cursor-pointer',
           importDefaultCategory === '' ?
             'bg-gradient-to-br from-primary/5 via-primary/5 to-background  scale-[1.02]'
-          : 'status-panel hover:-translate-y-1 hover:scale-[1.015] hover:shadow-xl hover:shadow-black/5',
+          : 'panel-sm hover:-translate-y-1 hover:scale-[1.015] hover:shadow-xl hover:shadow-black/5',
         )}
       >
         {/* Top Glow */}
@@ -75,7 +75,7 @@ export function CategorySelector({
               'group relative flex h-28 flex-col items-center justify-center overflow-hidden  transition-all duration-300 cursor-pointer',
               isSelected ?
                 'border-primary/30 rounded-xl  bg-gradient-to-br from-primary/10 via-primary/5 to-background  '
-              : 'status-panel hover:-translate-y-1 hover:scale-[1.015] hover:shadow-xl hover:shadow-black/5',
+              : 'panel-sm hover:-translate-y-1 hover:scale-[1.015] hover:shadow-xl hover:shadow-black/5',
             )}
           >
             {/* Top Glow */}

@@ -18,7 +18,7 @@ export function ProfileSidebar({
   onCreate,
 }: ProfileSidebarProps) {
   return (
-    <aside className='rounded-2xl border border-zinc-200/70 dark:border-zinc-800/80 bg-panel p-4 flex flex-col min-h-0'>
+    <aside className='rounded-2xl border border-border/60 bg-panel p-4 flex flex-col min-h-0'>
       <div className='flex items-start justify-between gap-3'>
         <div>
           <h2 className='text-base font-semibold text-ink-primary'>
@@ -31,7 +31,7 @@ export function ProfileSidebar({
         </div>
         <button
           type='button'
-          className='inline-flex h-9 w-9 items-center justify-center rounded-xl border border-zinc-200/70 dark:border-zinc-800/80 bg-zinc-50/70 dark:bg-zinc-900/40 text-ink-secondary hover:text-ink-primary cursor-pointer'
+          className='inline-flex h-9 w-9 items-center justify-center rounded-xl border border-border/60 bg-background-secondary/50 dark:bg-panel/40 text-ink-secondary hover:text-ink-primary cursor-pointer'
           onClick={() => void onCreate()}
           title='Create a new search profile'
         >
@@ -51,8 +51,8 @@ export function ProfileSidebar({
               className={cn(
                 'w-full rounded-2xl border px-4 py-3 text-left transition-colors cursor-pointer',
                 isSelected ?
-                  'border-zinc-900 dark:border-zinc-100 bg-zinc-950 text-white dark:bg-zinc-100 dark:text-zinc-950'
-                : 'border-zinc-200/70 dark:border-zinc-800/80 bg-zinc-50/60 dark:bg-zinc-900/40 text-ink-primary hover:border-zinc-400 dark:hover:border-zinc-700',
+                  'border-zinc-900 dark:border-zinc-100 bg-secondary text-white dark:bg-background-secondary dark:text-ink-primary'
+                : 'border-border/60 bg-zinc-50/60 dark:bg-panel/40 text-ink-primary hover:border-zinc-400 dark:hover:border-zinc-700',
               )}
             >
               <div className='flex items-center justify-between gap-2'>
@@ -76,7 +76,7 @@ export function ProfileSidebar({
                     className={cn(
                       'inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-semibold uppercase tracking-wider',
                       isSelected ?
-                        'bg-white/15 text-white dark:bg-zinc-900/10 dark:text-zinc-900'
+                        'bg-white/15 text-white dark:bg-panel/10 dark:text-ink-primary'
                       : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
                     )}
                   >
