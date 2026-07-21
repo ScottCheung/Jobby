@@ -2,7 +2,11 @@
 
 import React from 'react';
 import { Star } from 'lucide-react';
-import type { InterviewQuestion, InterviewCategory } from '@/lib/types';
+import type {
+  InterviewQuestion,
+  InterviewCategory,
+  InterviewCollection,
+} from '@/lib/types';
 import { cn, cleanName } from '@/lib/utils';
 import { AutoTooltip } from '@/components/UI/tooltip/auto-tooltip';
 
@@ -27,6 +31,8 @@ interface QuestionRowProps {
   onOpenEdit: (q: InterviewQuestion) => void;
   gridColsClass: string;
   isDrawerSelected: boolean;
+  collections: InterviewCollection[];
+  currentUserId?: string;
 }
 
 export function QuestionRow({
@@ -42,14 +48,47 @@ export function QuestionRow({
   onOpenEdit,
   gridColsClass,
   isDrawerSelected,
+  collections,
+  currentUserId,
 }: QuestionRowProps) {
+  const answerValue =
+    question.is_library_copy ?
+      question.my_answer || ''
+    : question.answer_objective || '';
+  const originalAnswerValue =
+    question.is_library_copy ?
+      originalQuestion?.my_answer || ''
+    : originalQuestion?.answer_objective || '';
   const isRowModified =
     originalQuestion &&
     (question.title !== originalQuestion.title ||
       question.category_id !== originalQuestion.category_id ||
       question.frequency !== originalQuestion.frequency ||
       question.importance_score !== originalQuestion.importance_score ||
-      question.answer_objective !== originalQuestion.answer_objective);
+      answerValue !== originalAnswerValue);
+
+  const parentCollection = collections.find(
+    (c) =>
+      question.source_collection_id === c.id ||
+      c.question_ids?.includes(question.id) ||
+      !!(
+        question.source_question_id &&
+        c.question_ids?.includes(question.source_question_id)
+      ),
+  );
+
+  const collectionName = parentCollection ? parentCollection.title : 'Upload';
+  const isPrivate = !parentCollection;
+
+  const authorName =
+    isPrivate ? 'Me'
+    : (
+      parentCollection.creator_user_id &&
+      parentCollection.creator_user_id === currentUserId
+    ) ?
+      'Me'
+    : parentCollection.collection_type === 'official' ? 'Official'
+    : parentCollection.creator_name || 'Community';
 
   const isEditingTitle =
     editingCell?.id === question.id && editingCell?.field === 'title';
@@ -106,13 +145,18 @@ export function QuestionRow({
                 });
               }
             }}
-            className='w-full bg-background-primary dark:bg-zinc-955 px-4 py-2 rounded-lg text-sm text-ink-primary font-medium focus:outline-none'
+            className='label w-full bg-background-primary dark:bg-background-secondary px-4 py-2 rounded-lg focus:outline-none'
+            disabled={question.is_library_copy}
           />
         : <div
-            onClick={() => setEditingCell({ id: question.id, field: 'title' })}
+            onClick={() => {
+              if (!question.is_library_copy) {
+                setEditingCell({ id: question.id, field: 'title' });
+              }
+            }}
             className='cursor-pointer w-full hover:bg-background-secondary/50 px-2 py-1 rounded transition-colors min-h-[28px] flex items-center overflow-hidden'
           >
-            <AutoTooltip className='text-sm text-ink-primary font-medium w-full text-left'>
+            <AutoTooltip className='label w-full text-left'>
               {question.title}
             </AutoTooltip>
           </div>
@@ -146,7 +190,8 @@ export function QuestionRow({
               setEditingCell(null);
             }}
             onBlur={() => setEditingCell(null)}
-            className='w-full bg-background-primary dark:bg-zinc-955 px-2 py-1 rounded  text-sm text-ink-secondary focus:outline-none cursor-pointer'
+            className='body-md w-full bg-background-primary dark:bg-background-secondary px-2 py-1 rounded text-ink-secondary focus:outline-none cursor-pointer'
+            disabled={question.is_library_copy}
           >
             <option value='' className='bg-panel text-ink-primary'>
               Unclassified
@@ -162,12 +207,14 @@ export function QuestionRow({
             ))}
           </select>
         : <div
-            onClick={() =>
-              setEditingCell({ id: question.id, field: 'category' })
-            }
+            onClick={() => {
+              if (!question.is_library_copy) {
+                setEditingCell({ id: question.id, field: 'category' });
+              }
+            }}
             className='cursor-pointer w-full hover:bg-background-secondary/50 px-2 py-1 rounded transition-colors min-h-[28px] flex items-center overflow-hidden'
           >
-            <AutoTooltip className='text-sm text-ink-secondary w-full text-left'>
+            <AutoTooltip className='body-md text-ink-secondary w-full text-left'>
               {categories.find((c) => c.id === question.category_id) ?
                 cleanName(
                   categories.find((c) => c.id === question.category_id)!.name,
@@ -178,6 +225,33 @@ export function QuestionRow({
         }
       </div>
 
+      {/* Collection Column */}
+      <div
+        className='pr-4 overflow-hidden w-full'
+        onClick={(e) => e.stopPropagation()}
+      >
+        <AutoTooltip className='body-md text-ink-secondary w-full text-left'>
+          {isPrivate ?
+            <span className='text-ink-secondary/70 italic'>PRIVATE</span>
+          : <span className='font-medium text-ink-primary'>
+              {collectionName}
+            </span>
+          }
+        </AutoTooltip>
+      </div>
+
+      {/* Author Column */}
+      <div
+        className='pr-4 overflow-hidden w-full'
+        onClick={(e) => e.stopPropagation()}
+      >
+        <AutoTooltip className='body-md text-ink-secondary w-full text-left'>
+          {authorName === 'Me' ?
+            <span className='font-semibold text-primary/80'>ME</span>
+          : <span>{authorName}</span>}
+        </AutoTooltip>
+      </div>
+
       {/* Frequency Column */}
       <div className='pr-4' onClick={(e) => e.stopPropagation()}>
         <select
@@ -186,8 +260,9 @@ export function QuestionRow({
             const val = e.target.value;
             onInlineUpdate(question.id, { frequency: val });
           }}
+          disabled={question.is_library_copy}
           className={cn(
-            'px-2 py-1 rounded-full text-xs font-semibold cursor-pointer bg-transparent',
+            'label-sm px-2 py-1 rounded-full cursor-pointer bg-transparent',
             (question.frequency === 'Low' || question.frequency === 'Easy') &&
               'text-green-600 dark:text-green-400',
             (question.frequency === 'Medium' || !question.frequency) &&
@@ -220,6 +295,7 @@ export function QuestionRow({
               key={i}
               type='button'
               onClick={() => {
+                if (question.is_library_copy) return;
                 const newScore = i + 1;
                 onInlineUpdate(question.id, {
                   importance_score: newScore,
@@ -232,7 +308,7 @@ export function QuestionRow({
                   'w-3.5 h-3.5 transition-colors',
                   i < score ?
                     'fill-amber-500 text-amber-500'
-                  : 'text-zinc-300 dark:text-zinc-700 hover:text-amber-400',
+                  : 'text-border/60 dark:text-border/40 hover:text-amber-400',
                 )}
               />
             </button>
@@ -247,33 +323,38 @@ export function QuestionRow({
       >
         {isEditingAnswer ?
           <textarea
-            value={question.answer_objective || ''}
+            value={answerValue}
             autoFocus
             onChange={(e) => {
-              onInlineUpdate(question.id, { answer_objective: e.target.value });
+              onInlineUpdate(
+                question.id,
+                question.is_library_copy ?
+                  { my_answer: e.target.value }
+                : { answer_objective: e.target.value },
+              );
             }}
             onBlur={(e) => {
               setEditingCell(null);
-              if (
-                originalQuestion &&
-                e.target.value !== (originalQuestion.answer_objective || '')
-              ) {
-                onInlineUpdate(question.id, {
-                  answer_objective: e.target.value,
-                });
+              if (originalQuestion && e.target.value !== originalAnswerValue) {
+                onInlineUpdate(
+                  question.id,
+                  question.is_library_copy ?
+                    { my_answer: e.target.value }
+                  : { answer_objective: e.target.value },
+                );
               }
             }}
             placeholder='Write your answer...'
             rows={3}
-            className='w-full bg-background-primary dark:bg-zinc-955 px-2 py-1 rounded  text-xs text-ink-secondary focus:outline-none resize-none leading-relaxed'
+            className='body-sm w-full bg-background-primary dark:bg-background-secondary px-2 py-1 rounded text-ink-secondary focus:outline-none resize-none'
           />
         : <div
             onClick={() => setEditingCell({ id: question.id, field: 'answer' })}
             className='cursor-pointer w-full hover:bg-background-secondary/50 px-2 py-1 rounded transition-colors min-h-[28px] flex items-center overflow-hidden'
           >
-            <AutoTooltip className='text-xs text-ink-secondary leading-relaxed w-full text-left'>
-              {question.answer_objective || (
-                <span className='text-zinc-400 italic'>
+            <AutoTooltip className='body-sm text-ink-secondary w-full text-left'>
+              {answerValue || (
+                <span className='text-ink-muted italic'>
                   Write your answer...
                 </span>
               )}

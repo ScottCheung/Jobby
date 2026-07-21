@@ -143,7 +143,7 @@ export default function OverviewPage() {
           <div className='flex items-start justify-between gap-4 mb-6'>
             <div>
               <H2>Platform Automation Console</H2>
-              <p className='text-xs text-zinc-400 dark:text-ink-primary0'>
+              <p className='text-meta dark:text-ink-primary0'>
                 Launch and monitor automated job applications across active
                 platforms in real time
               </p>
@@ -205,33 +205,33 @@ export default function OverviewPage() {
                     {/* Stats */}
                     <div className='grid grid-cols-3 gap-2 py-3 px-4 mb-4 rounded-2xl bg-background-secondary/50 dark:bg-panel/40 text-center'>
                       <div>
-                        <div className='text-xs text-zinc-400 dark:text-ink-primary0'>
+                        <div className='text-meta dark:text-ink-primary0'>
                           Submitted
                         </div>
-                        <div className='text-lg font-bold text-emerald-600 dark:text-emerald-400'>
+                        <div className='title-card text-emerald-600 dark:text-emerald-400'>
                           {state.stats.submitted}
                         </div>
                       </div>
                       <div>
-                        <div className='text-xs text-zinc-400 dark:text-ink-primary0'>
+                        <div className='text-meta dark:text-ink-primary0'>
                           Skipped
                         </div>
-                        <div className='text-lg font-bold text-amber-500'>
+                        <div className='title-card text-amber-500'>
                           {state.stats.skipped}
                         </div>
                       </div>
                       <div>
-                        <div className='text-xs text-zinc-400 dark:text-ink-primary0'>
+                        <div className='text-meta dark:text-ink-primary0'>
                           Failed
                         </div>
-                        <div className='text-lg font-bold text-red-500'>
+                        <div className='title-card text-red-500'>
                           {state.stats.failed}
                         </div>
                       </div>
                     </div>
 
                     {/* Current Log / Message */}
-                    <div className='text-xs mb-3 text-zinc-600 dark:text-zinc-300 flex items-center gap-1.5'>
+                    <div className='body-sm mb-3 flex items-center gap-1.5'>
                       <Activity className='h-3.5 w-3.5 text-zinc-400 animate-pulse' />
                       <span className='font-medium truncate'>
                         {state.message}
@@ -261,14 +261,14 @@ export default function OverviewPage() {
                     {isRunning ?
                       <button
                         onClick={() => stopBot(platform)}
-                        className='flex-1 py-2 rounded-full bg-red-600 hover:bg-red-500 text-white text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer flex items-center justify-center gap-1.5'
+                        className='label-sm flex-1 py-2 rounded-full bg-red-600 hover:bg-red-500 transition-all shadow-md active:scale-95 cursor-pointer flex items-center justify-center gap-1.5'
                       >
                         <Activity className='h-3.5 w-3.5 animate-spin' /> Stop
                         {platform === 'third_party' ? ' Assist' : ' Bot'}
                       </button>
                     : <button
                         onClick={() => startBot(platform)}
-                        className='flex-1 py-2 rounded-full bg-emerald-600 hover:bg-emerald-505 text-white text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer flex items-center justify-center gap-1.5'
+                        className='label-sm flex-1 py-2 rounded-full bg-emerald-600 hover:bg-emerald-505 transition-all shadow-md active:scale-95 cursor-pointer flex items-center justify-center gap-1.5'
                       >
                         {platformCard.actionLabel}
                       </button>
@@ -286,7 +286,7 @@ export default function OverviewPage() {
           <div className='flex items-start justify-between gap-4 mb-5'>
             <div>
               <H2>Cloud Connection</H2>
-              <p className='text-xs text-zinc-400 dark:text-ink-primary0'>
+              <p className='text-meta dark:text-ink-primary0'>
                 Persisted desktop endpoints for your current environment
               </p>
             </div>
@@ -296,7 +296,7 @@ export default function OverviewPage() {
           </div>
 
           <div className='grid gap-4 md:grid-cols-3'>
-            <label className='grid gap-2 text-sm'>
+            <label className='body-md grid gap-2'>
               <span className='text-ink-primary0 dark:text-zinc-400'>Environment</span>
               <input
                 value={connectionForm.environmentName}
@@ -306,12 +306,12 @@ export default function OverviewPage() {
                     environmentName: event.target.value,
                   }))
                 }
-                className='rounded-2xl border border-border bg-panel px-4 py-3 text-sm text-ink-primary outline-none transition focus:border-emerald-500 dark:border-border dark:bg-background dark:text-ink-primary'
+                className='body-md rounded-2xl border border-border bg-panel px-4 py-3 text-ink-primary outline-none transition focus:border-emerald-500 dark:border-border dark:bg-background dark:text-ink-primary'
                 placeholder='Production'
               />
             </label>
 
-            <label className='grid gap-2 text-sm md:col-span-2'>
+            <label className='body-md grid gap-2 md:col-span-2'>
               <span className='text-ink-primary0 dark:text-zinc-400'>API URL</span>
               <input
                 value={connectionForm.apiUrl}
@@ -321,12 +321,12 @@ export default function OverviewPage() {
                     apiUrl: event.target.value,
                   }))
                 }
-                className='rounded-2xl border border-border bg-panel px-4 py-3 text-sm text-ink-primary outline-none transition focus:border-emerald-500 dark:border-border dark:bg-background dark:text-ink-primary'
+                className='body-md rounded-2xl border border-border bg-panel px-4 py-3 text-ink-primary outline-none transition focus:border-emerald-500 dark:border-border dark:bg-background dark:text-ink-primary'
                 placeholder='https://api.example.com'
               />
             </label>
 
-            <label className='grid gap-2 text-sm md:col-span-3'>
+            <label className='body-md grid gap-2 md:col-span-3'>
               <span className='text-ink-primary0 dark:text-zinc-400'>Dashboard URL</span>
               <input
                 value={connectionForm.dashboardUrl}
@@ -336,7 +336,7 @@ export default function OverviewPage() {
                     dashboardUrl: event.target.value,
                   }))
                 }
-                className='rounded-2xl border border-border bg-panel px-4 py-3 text-sm text-ink-primary outline-none transition focus:border-emerald-500 dark:border-border dark:bg-background dark:text-ink-primary'
+                className='body-md rounded-2xl border border-border bg-panel px-4 py-3 text-ink-primary outline-none transition focus:border-emerald-500 dark:border-border dark:bg-background dark:text-ink-primary'
                 placeholder='https://app.example.com'
               />
             </label>
@@ -345,17 +345,17 @@ export default function OverviewPage() {
           <div className='mt-4 flex flex-wrap items-center gap-3'>
             <button
               onClick={handleConnectionSave}
-              className='rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500'
+              className='label rounded-full bg-emerald-600 px-4 py-2 transition hover:bg-emerald-500'
             >
               Save And Reconnect
             </button>
             <button
               onClick={handleConnectionReset}
-              className='rounded-full border border-zinc-200 px-4 py-2 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-100 dark:border-border dark:text-zinc-200 dark:hover:bg-zinc-900'
+              className='label rounded-full border border-zinc-200 px-4 py-2 transition hover:bg-zinc-100 dark:border-border dark:hover:bg-zinc-900'
             >
               Reset Defaults
             </button>
-            <p className='text-xs text-zinc-400 dark:text-ink-primary0'>
+            <p className='text-meta dark:text-ink-primary0'>
               API mode: {desktopConnectionConfig.apiMode} | Dashboard mode:{' '}
               {desktopConnectionConfig.dashboardMode} | Worker mode:{' '}
               {desktopConnectionConfig.workerMode}
@@ -370,7 +370,7 @@ export default function OverviewPage() {
         <div className='flex items-start justify-between mb-2'>
           <div>
             <H2>Application Trend</H2>
-            <p className='text-xs text-zinc-400 dark:text-ink-primary0'>
+            <p className='text-meta dark:text-ink-primary0'>
               Daily tracking of submitted vs skipped applications
             </p>
           </div>
@@ -420,7 +420,7 @@ export default function OverviewPage() {
       <div className='col-span-12  md:col-span-5 h-full bg-panel rounded-card p-card'>
         <div>
           <H2>Application Status Breakdown</H2>
-          <p className='text-xs text-zinc-400 dark:text-ink-primary0 mb-4'>
+          <p className='text-meta dark:text-ink-primary0 mb-4'>
             Proportions of all logged job application states
           </p>
         </div>
@@ -447,7 +447,7 @@ export default function OverviewPage() {
       <div className='col-span-12 md:col-span-12 lg:col-span-4 bg-panel rounded-card p-card'>
         <div>
           <H2>Top Skip Reasons</H2>
-          <p className='text-xs text-zinc-400 dark:text-ink-primary0 mb-4'>
+          <p className='text-meta dark:text-ink-primary0 mb-4'>
             Main constraints preventing automatic job application
           </p>
 
@@ -468,7 +468,7 @@ export default function OverviewPage() {
       <div className='col-span-12 md:col-span-6 lg:col-span-4 bg-panel rounded-card p-card'>
         <div>
           <H2>Top Applied Companies</H2>
-          <p className='text-xs text-zinc-400 dark:text-ink-primary0 mb-4'>
+          <p className='text-meta dark:text-ink-primary0 mb-4'>
             Most frequent companies targeted by automation bot
           </p>
           <Chart
@@ -488,7 +488,7 @@ export default function OverviewPage() {
       <div className='col-span-12 md:col-span-6 lg:col-span-4 bg-panel rounded-card p-card'>
         <div>
           <H2>Cities</H2>
-          <p className='text-xs text-zinc-400 dark:text-ink-primary0 mb-4'>
+          <p className='text-meta dark:text-ink-primary0 mb-4'>
             Geographical distribution of job automation activity
           </p>
           <ChartWrapper className='h-64'>
@@ -502,20 +502,20 @@ export default function OverviewPage() {
         <div className='flex items-center justify-between mb-4'>
           <div>
             <H2>Recent Application History</H2>
-            <p className='text-xs text-zinc-400 dark:text-ink-primary0'>
+            <p className='text-meta dark:text-ink-primary0'>
               The latest application attempts by the Jobbie
             </p>
           </div>
           <Link
             href='/applications'
-            className='inline-flex items-center gap-1 text-xs font-semibold text-primary/50 hover:text-primary  cursor-pointer'
+            className='label-sm inline-flex items-center gap-1 text-primary/50 hover:text-primary cursor-pointer'
           >
             View all history <ChevronRight className='w-3.5 h-3.5' />
           </Link>
         </div>
 
         <div className='overflow-x-auto'>
-          <table className='w-full text-left border-collapse text-sm'>
+          <table className='body-md w-full text-left border-collapse'>
             <thead>
               <tr className='border-b border-border/40 text-[10px] font-bold text-ink-primary0 dark:text-ink-primary0 uppercase tracking-wider'>
                 <th className='pb-3 pr-4'>Position</th>
@@ -549,7 +549,7 @@ export default function OverviewPage() {
                         <td className='py-3 px-4 font-semibold text-ink-primary truncate max-w-[150px]'>
                           {item.company || 'Unknown'}
                         </td>
-                        <td className='py-3 px-4 text-xs text-ink-primary0 dark:text-zinc-400 capitalize'>
+                        <td className='text-meta py-3 px-4 text-ink-primary0 capitalize'>
                           {item.work_location || 'Not specified'}
                         </td>
                         <td className='py-3 px-4'>
@@ -571,7 +571,7 @@ export default function OverviewPage() {
                               </p>
                             )}
                         </td>
-                        <td className='py-3 pl-4 text-right text-xs text-ink-primary0 dark:text-ink-primary0 whitespace-nowrap'>
+                        <td className='body-sm py-3 pl-4 text-right text-ink-primary0 dark:text-ink-primary0 whitespace-nowrap'>
                           {formatDate(
                             item.date_applied ??
                               item.updated_at ??

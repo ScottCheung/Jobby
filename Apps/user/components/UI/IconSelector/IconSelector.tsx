@@ -323,7 +323,7 @@ export const IconSelector: React.FC<IconSelectorProps> = ({
                       e.stopPropagation();
                       setSelectedCategory(category);
                     }}
-                    className={`px-3 py-1 text-xs rounded-full transition-colors ${selectedCategory === category
+                    className={`px-3 py-1 body-sm rounded-full transition-colors ${selectedCategory === category
                         ? 'bg-admin-100 text-admin-700'
                         : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                       }`}
@@ -378,7 +378,7 @@ export const IconSelector: React.FC<IconSelectorProps> = ({
                 e.stopPropagation();
                 handleClose();
               }}
-              className='w-full px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200'
+              className='label w-full px-4 py-2 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200'
             >
               Close
             </button>

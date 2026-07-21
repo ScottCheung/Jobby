@@ -168,10 +168,10 @@ export function PracticeModeModal({
       {/* Header */}
       <div className='header'>
         <div>
-          <h3 className='text-base font-bold text-ink-primary'>
+          <h3 className='title-sub'>
             Practice Mode
           </h3>
-          <p className='text-xs text-ink-secondary mt-0.5'>
+          <p className='body-sm text-ink-secondary mt-0.5'>
             Choose how questions are selected and sequenced
           </p>
         </div>
@@ -184,7 +184,7 @@ export function PracticeModeModal({
         </button>
       </div>
 
-      <div className='flex-1 overflow-y-auto custom-scrollbar-primary form'>
+      <div className='flex-1 overflow-y-auto custom-scrollbar-primary body  '>
         {/* Mode Cards */}
         <div className='grid grid-cols-3 gap-3'>
           {modeCards.map((m) => {
@@ -198,8 +198,8 @@ export function PracticeModeModal({
                 className={cn(
                   'relative flex flex-col gap-2.5! p-4!  text-left transition-all duration-200',
                   isSelected ?
-                    'border-primary/30 rounded-xl  bg-gradient-to-br from-primary/10 via-primary/5 to-background  '
-                  : 'panel-sm  hover:-translate-y-1 hover:scale-[1.015] hover:shadow-xl hover:shadow-black/5',
+                    'border-primary/30 rounded-xl  bg-linear-to-br from-primary/10 via-primary/5 to-background  '
+                  : 'panel-lg  hover:-translate-y-1 hover:scale-[1.015] hover:shadow-xl hover:shadow-black/5',
                 )}
               >
                 {isSelected && (
@@ -214,12 +214,12 @@ export function PracticeModeModal({
                   )}
                 />
                 <div>
-                  <p className={cn('text-base font-bold ', 'text-ink-primary')}>
+                  <p className={cn('title-sub', 'text-ink-primary')}>
                     {m.label}
                   </p>
                   <p
                     className={cn(
-                      'text-xs text-ink-secondary leading-snug mt-0.5',
+                      'body-sm text-ink-secondary mt-0.5',
                     )}
                   >
                     {m.desc}
@@ -246,7 +246,7 @@ export function PracticeModeModal({
                         type='button'
                         onClick={() => toggleCategory(cat.id)}
                         className={cn(
-                          'px-2.5 py-1 rounded-full text-xs font-semibold border transition-all',
+                          'label-sm px-2.5 py-1 rounded-full border transition-all',
                           active ?
                             'bg-primary/10 text-primary border-primary/30'
                           : 'border-border text-ink-secondary hover:text-ink-primary hover:border-primary/30',
@@ -274,7 +274,7 @@ export function PracticeModeModal({
                         type='button'
                         onClick={() => toggleImportance(n)}
                         className={cn(
-                          'flex items-center gap-0.5 px-2 py-1 rounded-lg text-xs font-bold border transition-all',
+                          'label-sm flex items-center gap-0.5 px-2 py-1 rounded-lg border transition-all',
                           active ?
                             'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-400/40'
                           : 'border-border text-ink-secondary hover:text-ink-primary',
@@ -311,7 +311,7 @@ export function PracticeModeModal({
                         type='button'
                         onClick={() => toggleFrequency(f)}
                         className={cn(
-                          'px-2.5 py-1 rounded-lg text-xs font-bold border transition-all',
+                          'label-sm px-2.5 py-1 rounded-lg border transition-all',
                           active ? activeColor : (
                             'border-border text-ink-secondary hover:text-ink-primary'
                           ),
@@ -334,11 +334,11 @@ export function PracticeModeModal({
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder={`Search ${filteredQuestions.length} questions...`}
-                  className='bg-transparent text-xs w-full focus:outline-none text-ink-primary placeholder:text-ink-secondary'
+                  className='body-sm bg-transparent w-full focus:outline-none text-ink-primary placeholder:text-ink-secondary'
                 />
                 {search && (
                   <button onClick={() => setSearch('')}>
-                    <X className='w-3 h-3 text-zinc-400 hover:text-ink-primary' />
+                    <X className='w-3 h-3 text-ink-secondary hover:text-ink-primary' />
                   </button>
                 )}
               </div>
@@ -348,7 +348,7 @@ export function PracticeModeModal({
                 type='button'
                 onClick={toggleSelectAllFiltered}
                 className={cn(
-                  'flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold border transition-all shrink-0 whitespace-nowrap',
+                  'label-sm flex items-center gap-1.5 px-3 py-2 rounded-lg border transition-all shrink-0 whitespace-nowrap',
                   allFilteredSelected ?
                     'bg-primary/10 text-primary border-primary/30'
                   : someFilteredSelected ?
@@ -396,7 +396,7 @@ export function PracticeModeModal({
                         onClick={(e) => e.stopPropagation()}
                         className='shrink-0'
                       />
-                      <span className='text-xs font-medium text-ink-primary flex-1 line-clamp-1'>
+                      <span className='label-sm text-ink-primary flex-1 line-clamp-1'>
                         {q.title}
                       </span>
                       <div className='flex items-center gap-2 shrink-0'>
@@ -434,7 +434,7 @@ export function PracticeModeModal({
                   );
                 })}
                 {filteredQuestions.length === 0 && (
-                  <div className='flex items-center justify-center p-8 text-sm text-ink-secondary italic'>
+                  <div className='body-md flex items-center justify-center p-8 text-ink-secondary italic'>
                     No questions match the current filters.
                   </div>
                 )}
@@ -442,7 +442,7 @@ export function PracticeModeModal({
 
               {/* Checklist footer */}
               <div className='flex items-center justify-between px-3 py-2 bg-background-secondary/20 border-t border-border/50'>
-                <span className='text-xs text-ink-secondary font-medium'>
+                <span className='label-sm'>
                   {localCustomIds.length === 0 ?
                     'No selection — all questions will be used'
                   : `${localCustomIds.length} / ${questions.length} questions selected`
@@ -452,7 +452,7 @@ export function PracticeModeModal({
                   <button
                     type='button'
                     onClick={() => setLocalCustomIds([])}
-                    className='text-xs text-rose-500 hover:text-rose-600 font-semibold transition-colors'
+                    className='label-sm text-rose-500 hover:text-rose-600 transition-colors'
                   >
                     Clear all
                   </button>
@@ -466,10 +466,10 @@ export function PracticeModeModal({
         {localMode === 'plan' && activePlan && (
           <div className='flex flex-col gap-2 border border-border rounded-2xl p-4 bg-background-secondary/10'>
             <p className='label-overline'>Active Plan</p>
-            <p className='text-sm font-semibold text-ink-primary'>
+            <p className='label'>
               {activePlan.name}
             </p>
-            <p className='text-xs text-ink-secondary leading-relaxed'>
+            <p className='body-sm text-ink-secondary'>
               Practice will follow today&apos;s scheduled tasks. When all
               today&apos;s tasks are submitted, the session will automatically
               advance to the next pending day.
@@ -479,7 +479,7 @@ export function PracticeModeModal({
       </div>
 
       {/* Footer */}
-      <div className='flex gap-3 p-5 border-t border-border shrink-0'>
+      <div className='footer'>
         <Button variant='ghost' onClick={onClose} className='flex-1'>
           Cancel
         </Button>

@@ -1,8 +1,8 @@
 /** @format */
 
 'use client';
-import React, { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useEffect, useRef, useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import type {
   InterviewQuestion,
@@ -10,6 +10,10 @@ import type {
   PracticePlan,
   PlanTask,
   InterviewCategory,
+  DailyQuest,
+  Achievement,
+  InterviewTag,
+  InterviewCollection,
 } from '@/lib/types';
 import {
   CheckCircle2,
@@ -30,139 +34,98 @@ import {
   Trophy,
   Loader2,
   Coins,
+  Compass,
 } from 'lucide-react';
 import { cn, cleanName } from '@/lib/utils';
 import { practiceCache } from './practice/practice-cache';
-
-const DEFAULT_SEED_QUESTIONS = [
-  {
-    title: 'Tell me about yourself and your background.',
-    categoryName: '01 About Yourself',
-    importance_score: 5,
-    frequency: 'High',
-    answer_objective:
-      'Provide a concise (2-3 minute) pitch highlighting your professional history, key achievements, and why you are a good fit for this role.',
-  },
-  {
-    title: 'Why do you want to join our company?',
-    categoryName: '05 Company Research',
-    importance_score: 5,
-    frequency: 'High',
-    answer_objective:
-      "Show that you have researched the company's culture, mission, and products, and explain how your values and goals align with theirs.",
-  },
-  {
-    title: 'Describe your most challenging software engineering project.',
-    categoryName: '02 Projects',
-    importance_score: 5,
-    frequency: 'High',
-    answer_objective:
-      'Explain the context of the project, the technical challenges faced, the architecture decisions you made, and the quantitative results achieved.',
-  },
-  {
-    title:
-      'Tell me about a time you had a technical disagreement with a team member. How did you resolve it?',
-    categoryName: '03 Behaviour Stories',
-    importance_score: 4,
-    frequency: 'Medium',
-    answer_objective:
-      'Describe a conflict in a professional manner, showing empathy, objective discussion of pros/cons, and how you focused on the best outcome for the project.',
-  },
-  {
-    title:
-      'Describe a situation where you had to work under a tight deadline and how you handled it.',
-    categoryName: '03 Behaviour Stories',
-    importance_score: 4,
-    frequency: 'High',
-    answer_objective:
-      'Focus on prioritization (MOSCOW method), managing expectations, maintaining code quality, and how you delivered the MVP successfully.',
-  },
-  {
-    title: 'What is your greatest professional strength and weakness?',
-    categoryName: '01 About Yourself',
-    importance_score: 4,
-    frequency: 'Medium',
-    answer_objective:
-      'For strength, give a concrete example with data. For weakness, choose a real technical or soft skill area and explain how you are actively working to improve it.',
-  },
-  {
-    title: 'How do you keep up with new technology and industry trends?',
-    categoryName: '07 Interview Tips',
-    importance_score: 3,
-    frequency: 'Low',
-    answer_objective:
-      'Mention specific newsletters, blogs, tech podcasts, GitHub contributions, side projects, and tech books you read or follow.',
-  },
-  {
-    title: 'Explain the architectural decisions of your latest project.',
-    categoryName: '02 Projects',
-    importance_score: 5,
-    frequency: 'High',
-    answer_objective:
-      'Describe the system architecture (e.g. microservices vs monolith, state management, DB choice) and why those specific choices were made.',
-  },
-  {
-    title: 'Describe a time you failed or made a mistake. What did you learn?',
-    categoryName: '03 Behaviour Stories',
-    importance_score: 4,
-    frequency: 'Medium',
-    answer_objective:
-      'Own up to a genuine mistake, explain the immediate remediation steps taken, and most importantly, detail the preventative measures implemented to ensure it never happens again.',
-  },
-  {
-    title: 'Do you have any questions for us?',
-    categoryName: '06 Questions To Ask',
-    importance_score: 5,
-    frequency: 'High',
-    answer_objective:
-      'Ask smart, open-ended questions about team engineering culture, technical challenges they are facing, and opportunities for growth.',
-  },
-  {
-    title: 'How do you handle scope creep or changing requirements mid-sprint?',
-    categoryName: '04 Professional',
-    importance_score: 4,
-    frequency: 'Medium',
-    answer_objective:
-      'Discuss communication with stakeholders, analyzing dependencies/impact on timeline, and negotiating to push non-critical scope to the next sprint.',
-  },
-  {
-    title: 'Explain how you optimize performance in a web application.',
-    categoryName: '04 Professional',
-    importance_score: 4,
-    frequency: 'High',
-    answer_objective:
-      'Discuss frontend optimization (code splitting, lazy loading, image compression) and backend optimization (caching, DB queries indexing, CDN).',
-  },
-];
 
 import { CustomizePlanModal } from './_components/CustomizePlanModal';
 import { PlanSetupSection } from './_components/PlanSetupSection';
 import { ActivityHeatmap } from './_components/ActivityHeatmap';
 import { Button } from '@/components/UI/Button';
+import { showGlobalToast } from '@/lib/toast';
+import { showCelebrationEvent } from '@/lib/celebration';
+import { useConfirmStore } from '@/lib/store/confirm-store';
+import { useLayoutStore } from '@/lib/store/layout-store';
+import { BatchImportModal } from './library/_components/BatchImportModal';
+import { FloatingWelcomeCard } from './_components/FloatingWelcomeCard';
+import { div } from 'framer-motion/client';
+
+const formatShortDate = (value?: string | null) => {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+  });
+};
+
+const getQuestTheme = (questType: string) => {
+  if (questType.startsWith('application')) {
+    return {
+      chip: 'bg-sky-500/10 text-sky-600 dark:text-sky-300',
+      bar: 'bg-sky-500',
+      label: 'Apply',
+    };
+  }
+  if (questType.startsWith('streak')) {
+    return {
+      chip: 'bg-amber-500/10 text-amber-600 dark:text-amber-300',
+      bar: 'bg-amber-500',
+      label: 'Streak',
+    };
+  }
+  if (questType.startsWith('checkin')) {
+    return {
+      chip: 'bg-success/10 text-success',
+      bar: 'bg-success/10',
+      label: 'Check-in',
+    };
+  }
+  return {
+    chip: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-300',
+    bar: 'bg-emerald-500',
+    label: 'Practice',
+  };
+};
 
 export default function InterviewPrepPage() {
   const router = useRouter();
+  const pathname = usePathname();
 
   // Core Data States
   const [questions, setQuestions] = useState<InterviewQuestion[]>([]);
   const [practiceRecords, setPracticeRecords] = useState<PracticeRecord[]>([]);
   const [categories, setCategories] = useState<InterviewCategory[]>([]);
+  const [collections, setCollections] = useState<InterviewCollection[]>([]);
+  const [tags, setTags] = useState<InterviewTag[]>([]);
+  const [isLoadingCollections, setIsLoadingCollections] = useState(false);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [isBatchImportOpen, setIsBatchImportOpen] = useState(false);
+  const [showWelcomeCard, setShowWelcomeCard] = useState(false);
 
   // Gamification States
   const [dailySummary, setDailySummary] = useState<any>(null);
   const [heatmapData, setHeatmapData] = useState<any>(null);
-  const [dailyQuests, setDailyQuests] = useState<any[]>([]);
-  const [achievements, setAchievements] = useState<any[]>([]);
+  const [dailyQuests, setDailyQuests] = useState<DailyQuest[]>([]);
+  const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [isCheckingIn, setIsCheckingIn] = useState(false);
   const [isOpeningBox, setIsOpeningBox] = useState(false);
   const [openedCoins, setOpenedCoins] = useState<number | null>(null);
+  const [welcomeCoins, setWelcomeCoins] = useState<number | null>(null);
+  const welcomeCheckedRef = useRef(false);
 
   // Plans & Tasks States
   const [activePlan, setActivePlan] = useState<PracticePlan | null>(null);
   const [planTasks, setPlanTasks] = useState<PlanTask[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isSeeding, setIsSeeding] = useState(false);
   const [isCreatingPlan, setIsCreatingPlan] = useState(false);
+
+  const confirm = useConfirmStore((state) => state.confirm);
+  const addNotification = useLayoutStore(
+    (state) => state.actions.addNotification,
+  );
 
   // Plan creation form states
   const [selectedPreset, setSelectedPreset] = useState<
@@ -170,7 +133,7 @@ export default function InterviewPrepPage() {
   >('tactical');
   const [isCustomizeOpen, setIsCustomizeOpen] = useState(false);
 
-  const initData = async (forceRefetch = false) => {
+  const initData = async (forceRefetch = false, silent = false) => {
     if (practiceCache.questions && !forceRefetch) {
       setQuestions(practiceCache.questions);
       setPracticeRecords(practiceCache.records || []);
@@ -181,28 +144,38 @@ export default function InterviewPrepPage() {
 
       // Load gamification data in background (SWR) so dashboard UI loads instantly
       try {
-        const [summary, heatmap, quests, achs] = await Promise.all([
-          api.gamificationSummary(),
-          api.gamificationHeatmap(),
-          api.dailyQuests(),
-          api.achievements(),
-        ]);
+        const [summary, heatmap, quests, achs, colData, tagsData] =
+          await Promise.all([
+            api.gamificationSummary(),
+            api.gamificationHeatmap(),
+            api.dailyQuests(),
+            api.achievements(),
+            api.interviewCollections().catch(() => []),
+            api.interviewTags().catch(() => []),
+          ]);
         setDailySummary(summary);
         setHeatmapData(heatmap);
         setDailyQuests(quests);
         setAchievements(achs);
+        setCollections(colData);
+        setTags(tagsData);
       } catch (e) {}
       return;
     }
 
-    setIsLoading(true);
+    if (!silent) {
+      setIsLoading(true);
+      setIsLoadingCollections(true);
+    }
     const startTime = Date.now();
     try {
-      const [qs, prs, cats, plans] = await Promise.all([
+      const [qs, prs, cats, plans, colData, tagsData] = await Promise.all([
         api.interviewQuestions(),
         api.practiceRecords(),
         api.interviewCategories(),
         api.practicePlans(),
+        api.interviewCollections().catch(() => []),
+        api.interviewTags().catch(() => []),
       ]);
 
       practiceCache.questions = qs;
@@ -212,6 +185,8 @@ export default function InterviewPrepPage() {
       setQuestions(qs);
       setPracticeRecords(prs);
       setCategories(cats);
+      setCollections(colData);
+      setTags(tagsData);
 
       let activePlan: PracticePlan | null = null;
       let tasks: PlanTask[] = [];
@@ -229,10 +204,16 @@ export default function InterviewPrepPage() {
       setPlanTasks(tasks);
 
       try {
-        const summary = await api.gamificationSummary();
+        const [summary, heatmap, quests, achs] = await Promise.all([
+          api.gamificationSummary(),
+          api.gamificationHeatmap(),
+          api.dailyQuests(),
+          api.achievements(),
+        ]);
         setDailySummary(summary);
-        const heatmap = await api.gamificationHeatmap();
         setHeatmapData(heatmap);
+        setDailyQuests(quests);
+        setAchievements(achs);
       } catch (e) {
         console.error('Failed to load gamification data', e);
       }
@@ -241,49 +222,188 @@ export default function InterviewPrepPage() {
     } finally {
       const elapsed = Date.now() - startTime;
       const minDuration = 500; // 0.5 seconds
-      if (elapsed < minDuration) {
+      if (!silent && elapsed < minDuration) {
         await new Promise((resolve) =>
           setTimeout(resolve, minDuration - elapsed),
         );
       }
-      setIsLoading(false);
+      if (!silent) {
+        setIsLoading(false);
+        setIsLoadingCollections(false);
+      }
     }
   };
 
   useEffect(() => {
-    void initData();
+    void initData(true);
+  }, [pathname]);
+
+  useEffect(() => {
+    const syncDashboard = () => void initData(true, true);
+    window.addEventListener('playbookLibraryUpdated', syncDashboard);
+    return () =>
+      window.removeEventListener('playbookLibraryUpdated', syncDashboard);
   }, []);
 
-  const handleSeedQuestions = async () => {
-    setIsSeeding(true);
+  useEffect(() => {
+    if (welcomeCheckedRef.current) return;
+    welcomeCheckedRef.current = true;
+    const claimWelcomeBonus = async () => {
+      try {
+        const res = await api.welcomeBonus();
+        if (!res.awarded) return;
+        setWelcomeCoins(res.coins_earned);
+        setShowWelcomeCard(true);
+        setDailySummary((prev: any) => ({
+          ...prev,
+          total_coins: (prev?.total_coins || 0) + res.coins_earned,
+          coins_gained_today:
+            (prev?.coins_gained_today || 0) + res.coins_earned,
+        }));
+        showGlobalToast(`Welcome bonus: +${res.coins_earned} coins`);
+        window.dispatchEvent(new Event('playbookGamificationUpdated'));
+      } catch (err) {
+        console.error('Failed to claim welcome bonus:', err);
+      }
+    };
+    void claimWelcomeBonus();
+  }, []);
+
+  const handleImportOwnQuestions = () => {
+    router.push('/interview-prep/library');
+  };
+
+  const handleAddCollection = async (collection: InterviewCollection) => {
+    setActiveId(collection.id);
     try {
-      const cats = await api.interviewCategories();
-      setCategories(cats);
-
-      const payload = DEFAULT_SEED_QUESTIONS.map((q) => {
-        const matchingCat = cats.find(
-          (c) =>
-            c.name.toLowerCase().includes(q.categoryName.toLowerCase()) ||
-            q.categoryName.toLowerCase().includes(c.name.toLowerCase()),
-        );
-        return {
-          title: q.title,
-          category_id: matchingCat ? matchingCat.id : null,
-          importance_score: q.importance_score,
-          frequency: q.frequency,
-          answer_objective: q.answer_objective,
-          tags: [],
-        };
-      });
-
-      await api.batchCreateInterviewQuestions(payload);
-      const updatedQuestions = await api.interviewQuestions();
-      setQuestions(updatedQuestions);
-    } catch (err) {
-      console.error('Failed to seed default questions:', err);
+      if (collection.price_coins > 0 && !collection.is_purchased) {
+        const ok = await confirm({
+          title: 'Purchase collection?',
+          message: `This will spend ${collection.price_coins} coins to add ${collection.title} to your library.`,
+          confirmLabel: 'Buy & Add',
+          cancelLabel: 'Cancel',
+        });
+        if (!ok) return;
+      }
+      const result = await api.addCollectionToLibrary(collection.id);
+      await initData(true, true);
+      window.dispatchEvent(new Event('playbookLibraryUpdated'));
+      showGlobalToast(
+        result.questions_added > 0 ?
+          `${result.questions_added} questions added to your library`
+        : 'This collection is already in your library',
+      );
+    } catch (actionError) {
+      showGlobalToast(
+        actionError instanceof Error ?
+          actionError.message
+        : 'Could not add collection.',
+      );
     } finally {
-      setIsSeeding(false);
+      setActiveId(null);
     }
+  };
+
+  const isStep1Done = questions.length > 0;
+  const isStep2Done = !!activePlan;
+  const showOnboardingStepper = !isStep1Done || !isStep2Done;
+
+  const renderOnboardingStepper = () => {
+    return (
+      <div className='flex flex-col md:flex-row  justify-between gap-6 panel-xl'>
+        <div className='absolute left-0 top-0 w-1.5 h-full bg-primary/40' />
+        <div className='flex-1 flex flex-col justify-center max-w-sm shrink-0 border-r border-border/40 pr-6 gap-1'>
+          <Sparkles className='w-7 h-7 text-primary mb-2' />
+          <h3 className='title-sub flex items-center gap-2'>
+            1 Min Quick Start
+          </h3>
+          <p className='body-sm text-ink-secondary'>
+            Follow the 2 steps below to build your question Library and create a
+            plan to start practice.
+          </p>
+        </div>
+
+        <div className='flex-1 flex flex-col gap-6 md:flex-row md:items-start md:gap-2 pl-4 md:pl-0'>
+          {/* Step 1 */}
+          {/* <div className='hidden md:block w-4 h-12 bg-primary/20 self-end' /> */}
+          <div className='flex-1 col'>
+            <div
+              className={cn(
+                'label w-8 h-8 rounded-full flex items-center justify-center shrink-0 border-2 transition-all',
+                isStep1Done ?
+                  'bg-emerald-500/10 text-emerald-500 border-emerald-500'
+                : 'bg-primary/10 text-primary border-primary animate-pulse',
+              )}
+            >
+              {isStep1Done ? '✓' : '1'}
+            </div>
+            <div className='flex-1 min-w-0'>
+              <h4
+                className={cn(
+                  'label',
+                  isStep1Done ?
+                    'text-ink-secondary line-through'
+                  : 'text-ink-primary',
+                )}
+              >
+                Step 1: Build Your Personal Library
+              </h4>
+              <p className='body-sm text-ink-secondary mt-1'>
+                One-click add recommended question sets or import custom
+                questions.
+              </p>
+              <span
+                onClick={() => router.push('/interview-prep/library')}
+                className='inline-block text-[10px] text-primary font-bold hover:underline cursor-pointer mt-1.5'
+              >
+                Manage your question bank in Library →
+              </span>
+            </div>
+          </div>
+
+          {/* Divider */}
+          {/* <div className='hidden md:block w-2 h-12 bg-primary/20 self-center' /> */}
+
+          {/* Step 2 */}
+          <div className='flex-1 col'>
+            <div
+              className={cn(
+                'label w-8 h-8 rounded-full flex items-center justify-center shrink-0 border-2 transition-all',
+                isStep2Done ?
+                  'bg-emerald-500/10 text-emerald-500 border-emerald-500'
+                : isStep1Done ?
+                  'bg-primary/10 text-primary border-primary animate-pulse'
+                : 'bg-background-secondary text-ink-muted border-border dark:bg-background-secondary/40',
+              )}
+            >
+              {isStep2Done ? '✓' : '2'}
+            </div>
+            <div className='flex-1 min-w-0'>
+              <h4
+                className={cn(
+                  'label',
+                  isStep2Done ? 'text-ink-secondary line-through'
+                  : isStep1Done ? 'text-ink-primary'
+                  : 'text-ink-secondary',
+                )}
+              >
+                Step 2: Create Your Learning Plan
+              </h4>
+              <p className='body-sm text-ink-secondary mt-1'>
+                Once your question bank is ready, set your daily goals and study
+                cycle.
+              </p>
+              <span
+                onClick={() => router.push('/interview-prep/schedule')}
+                className='inline-block text-[10px] text-primary font-bold hover:underline cursor-pointer mt-1.5'
+              >
+                Manage your plan in Schedule →
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   const handleCreatePlan = async (settings?: {
@@ -297,6 +417,7 @@ export default function InterviewPrepPage() {
     manuallySelectedQuestionIds: string[];
   }) => {
     setIsCreatingPlan(true);
+    const isFirstPlan = !activePlan;
     try {
       let planName = '';
       let targetDays = 14;
@@ -427,8 +548,12 @@ export default function InterviewPrepPage() {
       }
 
       // Reload data
-      await initData(true);
+      await initData(true, true);
       window.dispatchEvent(new Event('playbookPlanChanged'));
+      if (isFirstPlan) {
+        showGlobalToast('Quest and Badges unlocked');
+        showCelebrationEvent('quest_unlocked');
+      }
       setIsCustomizeOpen(false); // Close custom modal if open
     } catch (err) {
       console.error('Failed to create plan:', err);
@@ -571,7 +696,17 @@ export default function InterviewPrepPage() {
         has_checked_in_today: true,
         total_xp: (prev?.total_xp || 0) + res.xp_earned,
         loot_boxes: (prev?.loot_boxes || 0) + res.loot_boxes_earned,
+        total_coins: (prev?.total_coins || 0) + res.coins_earned,
+        coins_gained_today: (prev?.coins_gained_today || 0) + res.coins_earned,
       }));
+      if (
+        res.xp_earned > 0 ||
+        res.coins_earned > 0 ||
+        res.loot_boxes_earned > 0
+      ) {
+        showCelebrationEvent('daily_checkin');
+      }
+      window.dispatchEvent(new Event('playbookGamificationUpdated'));
     } catch (e) {
       console.error(e);
     } finally {
@@ -592,6 +727,11 @@ export default function InterviewPrepPage() {
         total_coins: (prev?.total_coins || 0) + res.coins_won,
       }));
       setTimeout(() => setOpenedCoins(null), 3000);
+      showCelebrationEvent(
+        'loot_box_opened',
+        `Loot box: +${res.coins_won} coins`,
+      );
+      window.dispatchEvent(new Event('playbookGamificationUpdated'));
     } catch (e) {
       console.error(e);
     } finally {
@@ -608,7 +748,18 @@ export default function InterviewPrepPage() {
       setDailySummary((prev: any) => ({
         ...prev,
         loot_boxes: (prev?.loot_boxes || 0) + res.loot_boxes_earned,
+        total_xp: (prev?.total_xp || 0) + res.xp_earned,
+        total_coins: (prev?.total_coins || 0) + res.coins_earned,
+        coins_gained_today: (prev?.coins_gained_today || 0) + res.coins_earned,
       }));
+      if (
+        res.xp_earned > 0 ||
+        res.coins_earned > 0 ||
+        res.loot_boxes_earned > 0
+      ) {
+        showCelebrationEvent('reward_claimed', 'Quest reward claimed');
+      }
+      window.dispatchEvent(new Event('playbookGamificationUpdated'));
     } catch (e) {
       console.error(e);
     }
@@ -616,17 +767,18 @@ export default function InterviewPrepPage() {
 
   const handleResetAccount = async () => {
     const confirm = window.confirm(
-      "Are you sure you want to permanently reset this account? All practice records, gamification status, quests, and achievements will be permanently deleted.",
+      'This will permanently delete all data for the current account, including library, questions, practice, gamification, and applications. The protected admin account is not affected. Continue?',
     );
     if (!confirm) return;
 
     try {
       await api.resetGamification();
+      showGlobalToast('Test account reset, including library data.');
       // Force reload data
       window.location.reload();
     } catch (e) {
       console.error(e);
-      alert("Failed to reset account data");
+      alert('Failed to reset account data');
     }
   };
 
@@ -639,6 +791,10 @@ export default function InterviewPrepPage() {
   const completedTasksCount = planTasks.filter(
     (t) => t.status === 'completed',
   ).length;
+  const unlockedAchievements = achievements.filter(
+    (achievement) => achievement.unlocked,
+  );
+  const recentAchievements = unlockedAchievements.slice(0, 3);
   const progressPercent =
     totalTasksCount > 0 ?
       Math.round((completedTasksCount / totalTasksCount) * 100)
@@ -652,38 +808,190 @@ export default function InterviewPrepPage() {
       <div className='flex justify-end'>
         <button
           onClick={handleResetAccount}
-          className='px-3 py-1.5 rounded-lg text-xs font-bold bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 border border-rose-500/20 active:scale-95 transition-transform cursor-pointer'
+          className='label-sm px-3 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 border border-rose-500/20 active:scale-95 transition-transform cursor-pointer'
         >
-          Reset Test Account (Dev Only)
+          Reset All My Data (Dev Only)
         </button>
       </div>
 
-      {/* 1. Header Metrics Grid - Gamification UI */}
-      <div className='grid grid-cols-2 md:grid-cols-4 gap-4'>
+      {showWelcomeCard && welcomeCoins && (
+        <FloatingWelcomeCard
+          welcomeCoins={welcomeCoins}
+          onClose={() => setShowWelcomeCard(false)}
+        />
+      )}
+
+      {showOnboardingStepper && renderOnboardingStepper()}
+
+      {/* 1. Empty Library State (Curated Collections Grid) */}
+      {questions.length === 0 && (
+        <div className='panel-xl flex flex-col gap-6 p-6 animate-in fade-in duration-500 text-left'>
+          <div className='flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/40 pb-4'>
+            <div>
+              <h3 className='title-card flex items-center gap-2'>
+                <Compass className='w-5 h-5 text-primary' />
+                Your Question Library is Empty
+              </h3>
+              <p className='body-md text-ink-secondary mt-1'>
+                Build your practice base from curated collections below, or
+                import your own questions.
+              </p>
+            </div>
+
+            <div className='col'>
+              <Button
+                layoutId='Import Questions'
+                variant={'outline'}
+                onClick={() => setIsBatchImportOpen(true)}
+                size='md'
+                // className='label flex items-center gap-2 rounded-xl border border-border/60 bg-background px-4! py-2! transition hover:border-primary/30 hover:text-primary'
+              >
+                Import Questions
+              </Button>
+              <button
+                onClick={() => router.push('/interview-prep/collections')}
+                className='label-sm flex items-center gap-1 text-primary hover:underline'
+              >
+                Browse Collections <ChevronRight className='w-4 h-4' />
+              </button>
+            </div>
+          </div>
+
+          {/* Flex-auto list of Collections */}
+          {isLoadingCollections ?
+            <div className='body-md flex items-center justify-center py-12 gap-2 text-ink-secondary'>
+              <Loader2 className='w-4 h-4 animate-spin text-primary' />
+              Loading recommended collections...
+            </div>
+          : collections.length === 0 ?
+            <div className='body-md text-center py-12 text-ink-secondary italic'>
+              No recommended collections found.
+            </div>
+          : <div className='flex flex-wrap gap-4'>
+              {collections.map((col) => {
+                const isFree = col.price_coins <= 0;
+
+                return (
+                  <div
+                    key={col.id}
+                    className='flex-auto  max-w-[280px] rounded-xl overflow-hidden  bg-primary/5 hover:bg-background/40 transition-all hover:shadow-sm flex flex-col justify-between gap-4'
+                  >
+                    <div className='col'>
+                      <div className='relative  aspect-[16/9]'>
+                        <div className='absolute inset-0 rounded-xl bg-gradient-to-br from-primary/10 to-emerald-500/10 flex items-center justify-center overflow-hidden'>
+                          {col.cover_url ?
+                            <img
+                              src={`${col.cover_url}?t=${col.last_updated_at ? new Date(col.last_updated_at).getTime() : ''}`}
+                              alt={col.title}
+                              className='w-full h-full object-cover'
+                            />
+                          : <div className='flex items-center justify-center h-full w-full'>
+                              <BookOpen className='w-12 h-12 text-primary' />
+                            </div>
+                          }
+                        </div>
+                      </div>
+                      <div className='p-4 flex min-w-0 col justify-between'>
+                        <div className='flex-1'>
+                          <div className='flex items-center gap-1.5 flex-wrap'>
+                            <span className='px-1.5 py-0.5 rounded bg-primary/10 text-[9px] font-bold text-primary uppercase'>
+                              {col.collection_type}
+                            </span>
+                            <span
+                              className={cn(
+                                'px-1.5 py-0.5 rounded text-[9px] font-bold uppercase',
+                                col.is_in_library ?
+                                  'bg-emerald-500/10 text-emerald-600'
+                                : 'bg-background-secondary text-ink-secondary',
+                              )}
+                            >
+                              {col.is_in_library ?
+                                'In Library'
+                              : isFree ?
+                                'Free'
+                              : `${col.price_coins} Coins`}
+                            </span>
+                          </div>
+                          <h4
+                            className='label mt-1.5 truncate'
+                            title={col.title}
+                          >
+                            {col.title}
+                          </h4>
+                          <p className='body-sm text-ink-secondary mt-1 line-clamp-2'>
+                            {col.description ||
+                              'Practice high quality standard interview questions.'}
+                          </p>
+                        </div>
+
+                        <div className='flex justify-between w-full items-end'>
+                          <div className='label-sm'>
+                            {col.question_count}{' '}
+                            <span className='text-hint'>Questions</span>
+                          </div>
+                          <button
+                            onClick={() => handleAddCollection(col)}
+                            disabled={activeId === col.id || col.is_in_library}
+                            className={cn(
+                              'px-3.5 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1.5',
+                              col.is_in_library ?
+                                'bg-emerald-500/10 text-emerald-600 cursor-default'
+                              : 'bg-primary text-white hover:opacity-90 active:scale-95 shadow-sm shadow-primary/10',
+                            )}
+                          >
+                            {activeId === col.id ?
+                              <Loader2 className='w-3 h-3 animate-spin' />
+                            : col.is_in_library ?
+                              'Already in Library'
+                            : 'Add to Library'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          }
+        </div>
+      )}
+
+      {/* 2. Plan Selection / Setup Screen (No Active Plan) */}
+      {questions.length > 0 && !activePlan && (
+        <div className='panel-xl'>
+          <PlanSetupSection
+            questions={questions}
+            selectedPreset={selectedPreset}
+            setSelectedPreset={setSelectedPreset}
+            setIsCustomizeOpen={setIsCustomizeOpen}
+            handleCreatePlan={handleCreatePlan}
+            isCreatingPlan={isCreatingPlan}
+          />
+        </div>
+      )}
+
+      {/* 3. Header Metrics Grid - Gamification UI */}
+      <div className='grid grid-cols-2 md:grid-cols-4 gap-6'>
         <div className='card flex flex-col justify-between group relative overflow-hidden'>
           <div className='absolute right-0 top-0 w-24 h-24 bg-amber-500/5 rounded-full blur-2xl group-hover:bg-amber-500/10 transition-colors' />
 
           <div>
             <div className='flex items-center gap-2 text-ink-secondary mb-1'>
-              <span className='text-lg'>🔥</span>
-              <h3 className='font-semibold text-ink-primary text-sm'>
-                Current Streak
-              </h3>
+              <span className='title-card'>🔥</span>
+              <h3 className='label'>Current Streak</h3>
             </div>
             <div className='flex items-end gap-1'>
-              <p className='text-3xl font-bold text-amber-600 dark:text-amber-500'>
+              <p className='title-page text-amber-600 dark:text-amber-500'>
                 {dailySummary?.current_streak || 0}
               </p>
-              <span className='text-sm text-ink-secondary mb-1 font-medium'>
-                Days
-              </span>
+              <span className='label text-ink-secondary mb-1'>Days</span>
             </div>
           </div>
 
           <button
             onClick={handleCheckIn}
             disabled={dailySummary?.has_checked_in_today || isCheckingIn}
-            className={`mt-4 w-full py-2 rounded-lg text-sm font-bold flex justify-center items-center gap-2 transition-all ${
+            className={`mt-4 w-full py-2 rounded-lg label flex justify-center items-center gap-2 transition-all ${
               dailySummary?.has_checked_in_today ?
                 'bg-background-secondary/50 text-ink-secondary cursor-not-allowed'
               : 'bg-amber-500 hover:bg-amber-600 text-white shadow-[0_0_15px_rgba(245,158,11,0.3)]'
@@ -702,12 +1010,10 @@ export default function InterviewPrepPage() {
           <div className='absolute right-0 top-0 w-24 h-24 bg-primary/5 rounded-full blur-2xl group-hover:bg-primary/10 transition-colors' />
           <div className='flex items-center justify-between mb-1 relative'>
             <div className='flex items-center gap-2 text-ink-secondary'>
-              <span className='text-lg'>⭐</span>
-              <h3 className='font-semibold text-ink-primary text-sm'>
-                Level {dailySummary?.level || 1}
-              </h3>
+              <span className='title-card'>⭐</span>
+              <h3 className='label'>Level {dailySummary?.level || 1}</h3>
             </div>
-            <span className='text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded'>
+            <span className='label-sm text-primary bg-primary/10 px-2 py-0.5 rounded'>
               {dailySummary?.total_xp || 0} XP
             </span>
           </div>
@@ -720,7 +1026,7 @@ export default function InterviewPrepPage() {
                 {dailySummary?.next_level_xp || 100} XP
               </span>
             </div>
-            <div className='h-2 w-full bg-zinc-200 dark:bg-zinc-800 rounded-full overflow-hidden'>
+            <div className='h-2 w-full bg-background-secondary rounded-full overflow-hidden'>
               <div
                 className='h-full bg-primary rounded-full transition-all duration-500 ease-out relative overflow-hidden'
                 style={{
@@ -737,37 +1043,87 @@ export default function InterviewPrepPage() {
               </div>
             </div>
           </div>
+          {dailySummary?.max_daily_xp_gain != null && (
+            <div className='mt-2 relative'>
+              <div className='flex items-center justify-between text-[10px] font-bold text-ink-secondary uppercase tracking-wider mb-1'>
+                <span>Daily XP Budget</span>
+                <span>
+                  {dailySummary?.xp_gained_today || 0} /{' '}
+                  {dailySummary.max_daily_xp_gain} XP
+                </span>
+              </div>
+              <div className='h-1.5 w-full bg-background-secondary rounded-full overflow-hidden'>
+                <div
+                  className='h-full rounded-full transition-all duration-500 ease-out'
+                  style={{
+                    width: `${Math.min(100, Math.max(0, ((dailySummary?.xp_gained_today || 0) / (dailySummary.max_daily_xp_gain || 1)) * 100))}%`,
+                    backgroundColor:
+                      (
+                        (dailySummary?.xp_gained_today || 0) /
+                          (dailySummary.max_daily_xp_gain || 1) >=
+                        0.9
+                      ) ?
+                        '#ef4444'
+                      : '#22c55e',
+                  }}
+                />
+              </div>
+            </div>
+          )}
         </div>
 
         <div className='card group relative overflow-hidden'>
           <div className='absolute right-0 top-0 w-24 h-24 bg-yellow-500/5 rounded-full blur-2xl group-hover:bg-yellow-500/10 transition-colors' />
           <div className='flex items-center gap-2 text-ink-secondary mb-1'>
-            <span className='text-lg'>🪙</span>
-            <h3 className='font-semibold text-ink-primary text-sm'>
-              Total Coins
-            </h3>
+            <span className='title-card'>🪙</span>
+            <h3 className='label'>Total Coins</h3>
           </div>
           <div className='flex items-end justify-between'>
-            <p className='text-3xl font-bold text-yellow-600 dark:text-yellow-400'>
+            <p className='title-page text-yellow-600 dark:text-yellow-400'>
               {dailySummary?.total_coins || 0}
             </p>
             {dailySummary?.coins_gained_today > 0 && (
-              <span className='text-xs text-emerald-500 font-bold mb-1'>
+              <span className='label-sm text-emerald-500 mb-1'>
                 +{dailySummary.coins_gained_today} today
               </span>
             )}
           </div>
+          {dailySummary?.max_daily_coin_gain != null && (
+            <div className='mt-2'>
+              <div className='flex items-center justify-between text-[10px] font-bold text-ink-secondary uppercase tracking-wider mb-1'>
+                <span>Daily Coin Budget</span>
+                <span>
+                  {dailySummary?.coins_gained_today || 0} /{' '}
+                  {dailySummary.max_daily_coin_gain}
+                </span>
+              </div>
+              <div className='h-1.5 w-full bg-background-secondary rounded-full overflow-hidden'>
+                <div
+                  className='h-full rounded-full transition-all duration-500 ease-out'
+                  style={{
+                    width: `${Math.min(100, Math.max(0, ((dailySummary?.coins_gained_today || 0) / (dailySummary.max_daily_coin_gain || 1)) * 100))}%`,
+                    backgroundColor:
+                      (
+                        (dailySummary?.coins_gained_today || 0) /
+                          (dailySummary.max_daily_coin_gain || 1) >=
+                        0.9
+                      ) ?
+                        '#ef4444'
+                      : '#eab308',
+                  }}
+                />
+              </div>
+            </div>
+          )}
         </div>
 
         <div className='card'>
           <div className='absolute right-0 top-0 w-24 h-24 bg-purple-500/5 rounded-full blur-2xl group-hover:bg-purple-500/10 transition-colors' />
           <div className='flex items-center gap-2 text-ink-secondary mb-1'>
             <BookOpen className='w-4 h-4 text-purple-500' />
-            <h3 className='font-semibold text-ink-primary text-sm'>
-              Library & Mastery
-            </h3>
+            <h3 className='label'>Library & Mastery</h3>
           </div>
-          <div className='flex flex-col gap-1 mt-1 text-sm font-medium'>
+          <div className='label flex flex-col gap-1 mt-1'>
             <div className='flex justify-between items-center'>
               <span className='text-ink-secondary'>Total Qs:</span>
               <span className='text-ink-primary'>{questions.length}</span>
@@ -781,168 +1137,6 @@ export default function InterviewPrepPage() {
           </div>
         </div>
       </div>
-
-      {/* 2. Empty Library State Seeder */}
-      {questions.length === 0 && (
-        <div className='p-8 rounded-2xl border-2 border-dashed border-border dark:border-border bg-panel flex flex-col items-center text-center gap-4 py-12 shadow-sm'>
-          <Sparkles className='w-12 h-12 text-primary animate-pulse' />
-          <div className='max-w-md flex flex-col gap-1'>
-            <h3 className='text-lg font-bold text-ink-primary'>
-              Your Question Library is Empty
-            </h3>
-            <p className='text-sm text-ink-secondary'>
-              Prepare for your interviews by seeding official standard questions
-              or adding custom ones in the Question Library.
-            </p>
-          </div>
-          <button
-            onClick={handleSeedQuestions}
-            disabled={isSeeding}
-            className='flex items-center gap-2 px-6 py-2.5 text-sm font-semibold text-primary-foreground bg-primary rounded-xl hover:opacity-95 transition-opacity disabled:opacity-50 shadow-md shadow-primary/10'
-          >
-            {isSeeding ?
-              'Importing High-Quality Questions...'
-            : 'Import 12 Default Interview Questions'}
-          </button>
-        </div>
-      )}
-
-      {/* 2.5 Gamification Module */}
-      <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-2'>
-        {/* Loot Box Inventory */}
-        <div className='panel-lg relative overflow-hidden'>
-          <div className='flex items-center gap-2 mb-4'>
-            <Gem className='w-5 h-5 text-purple-500' />
-            <h3 className='font-bold text-ink-primary'>Loot Boxes</h3>
-          </div>
-
-          <div className='panel-md flex-1 flex flex-col items-center justify-center py-6 relative overflow-hidden'>
-            <div className='absolute inset-0 bg-gradient-to-b from-purple-500/5 to-transparent' />
-            <div className='relative w-32 h-32 mb-4 group'>
-              <img
-                src='/loot-box.png'
-                alt='Loot Box'
-                className={`w-full h-full object-contain ${dailySummary?.loot_boxes > 0 ? 'drop-shadow-[0_0_15px_rgba(168,85,247,0.4)] animate-pulse' : 'opacity-50 grayscale'}`}
-              />
-              {dailySummary?.loot_boxes > 0 && (
-                <span className='absolute -top-2 -right-2 bg-primary text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg border-2 border-background'>
-                  x{dailySummary?.loot_boxes}
-                </span>
-              )}
-            </div>
-
-            {openedCoins ?
-              <div className='animate-bounce flex items-center gap-2 z-40 text-amber-500 bg-amber-500/10 px-4 py-2 rounded-full font-bold text-lg'>
-                <Coins className='w-5 h-5' /> +{openedCoins} Coins!
-              </div>
-            : <button
-                onClick={handleOpenBox}
-                disabled={(dailySummary?.loot_boxes || 0) <= 0 || isOpeningBox}
-                className={`px-6 py-2 rounded-xl font-bold cursor-pointer z-40 transition-all shadow-sm ${
-                  (dailySummary?.loot_boxes || 0) > 0 ?
-                    'bg-primary hover:bg-primary-gradient text-white hover:scale-105 active:scale-95 shadow-[0_4px_20px_rgba(147,51,234,0.4)]'
-                  : 'bg-background-secondary/50 text-ink-secondary cursor-not-allowed'
-                }`}
-              >
-                {isOpeningBox ?
-                  <Loader2 className='w-5 h-5 animate-spin mx-auto' />
-                : (dailySummary?.loot_boxes || 0) > 0 ?
-                  'Open Box'
-                : 'No Boxes'}
-              </button>
-            }
-          </div>
-        </div>
-
-        {/* Daily Quests */}
-        <div className='panel-lg'>
-          <div className='flex items-center gap-2 mb-4'>
-            <Target className='w-5 h-5 text-emerald-500' />
-            <h3 className='font-bold text-ink-primary'>Daily Quests</h3>
-          </div>
-          <div className='flex flex-col gap-3'>
-            {dailyQuests.map((q, idx) => (
-              <div
-                key={q.id}
-                className='panel-sm flex items-center justify-between group hover:bg-background-secondary/60 transition-colors'
-              >
-                <div className='flex-1 pr-3'>
-                  <h4 className='font-bold text-sm text-ink-primary mb-0.5'>
-                    {q.title}
-                  </h4>
-                  <p className='text-xs text-ink-secondary'>{q.description}</p>
-
-                  <div className='mt-2 h-1.5 w-full bg-zinc-200 dark:bg-zinc-800 rounded-full overflow-hidden'>
-                    <div
-                      className={`h-full rounded-full transition-all duration-500 ${q.current_value >= q.target_value ? 'bg-emerald-500' : 'bg-primary'}`}
-                      style={{
-                        width: `${Math.min(100, (q.current_value / q.target_value) * 100)}%`,
-                      }}
-                    />
-                  </div>
-                </div>
-
-                <div className='shrink-0 pl-3 border-l border-border/40 flex flex-col items-center justify-center min-w-[70px]'>
-                  <span className='text-xs font-bold text-ink-secondary mb-1.5'>
-                    {q.current_value}/{q.target_value}
-                  </span>
-                  {q.is_claimed ?
-                    <span className='text-xs font-bold text-emerald-500 flex items-center gap-1'>
-                      <CheckCircle2 className='w-3 h-3' /> Claimed
-                    </span>
-                  : q.current_value >= q.target_value ?
-                    <button
-                      onClick={() => handleClaimQuest(q.id)}
-                      className='text-xs font-bold bg-primary hover:bg-primary-hover text-white px-3 py-1 rounded-md shadow-sm active:scale-95 transition-transform'
-                    >
-                      Claim
-                    </button>
-                  : <span className='text-xs font-medium text-ink-tertiary flex items-center gap-1'>
-                      <Gem className='w-3 h-3' /> Reward
-                    </span>
-                  }
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Achievements */}
-        <div className='panel-lg'>
-          <div className='flex items-center gap-2 mb-4'>
-            <Trophy className='w-5 h-5 text-blue-500' />
-            <h3 className='font-bold text-ink-primary'>Recent Achievements</h3>
-          </div>
-          <div className='panel-md flex-1 overflow-y-auto'>
-            {achievements.length === 0 ?
-              <div className='h-full flex flex-col items-center justify-center text-center text-ink-secondary opacity-60'>
-                <Trophy className='w-8 h-8 mb-2 opacity-30' />
-                <p className='text-sm'>
-                  No badges yet.
-                  <br />
-                  Start practicing to earn!
-                </p>
-              </div>
-            : <div className='grid grid-cols-2 gap-3'>
-                {achievements.map((a, idx) => (
-                  <div
-                    key={a.id}
-                    className='flex flex-col items-center text-center bg-background/50 rounded-xl p-3 border border-border/40 shadow-sm'
-                  >
-                    <div className='w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-indigo-600 flex items-center justify-center shadow-inner mb-2 border-2 border-white dark:border-zinc-800'>
-                      <Trophy className='w-6 h-6 text-white' />
-                    </div>
-                    <h4 className='font-bold text-xs text-ink-primary line-clamp-1'>
-                      {a.badge_name}
-                    </h4>
-                  </div>
-                ))}
-              </div>
-            }
-          </div>
-        </div>
-      </div>
-
       {/* 3. Active Plan Dashboard View */}
       {questions.length > 0 && activePlan && (
         <div className='grid grid-cols-6 gap-6'>
@@ -952,7 +1146,7 @@ export default function InterviewPrepPage() {
               <div className='flex items-start justify-between border-b border-border/40 pb-3'>
                 <div className='flex items-start gap-3'>
                   <div>
-                    <h3 className='text-lg font-bold text-ink-primary flex items-center gap-2'>
+                    <h3 className='title-card flex items-center gap-2'>
                       Today's Mission
                     </h3>
                   </div>
@@ -963,10 +1157,8 @@ export default function InterviewPrepPage() {
                 {getTodayTasks().length === 0 ?
                   <div className='flex-1 flex flex-col items-center justify-center text-center p-6 text-ink-primary0 gap-2 border border-dashed border-border/40 rounded-xl bg-background-secondary/20 my-6'>
                     <CheckCircle2 className='w-10 h-10 text-emerald-500 opacity-80' />
-                    <p className='font-bold text-lg text-ink-primary'>
-                      Mission Accomplished!
-                    </p>
-                    <p className='text-sm text-ink-secondary'>
+                    <p className='title-card'>Mission Accomplished!</p>
+                    <p className='body-md text-ink-secondary'>
                       You've completed all scheduled questions for today.
                     </p>
                   </div>
@@ -990,14 +1182,14 @@ export default function InterviewPrepPage() {
                               : 'bg-panel border-border dark:border-border',
                             )}
                           >
-                            <div className='w-6 h-6 rounded-full bg-background-secondary flex items-center justify-center text-xs font-bold text-ink-secondary shrink-0'>
+                            <div className='label-sm w-6 h-6 rounded-full bg-background-secondary flex items-center justify-center shrink-0'>
                               {idx + 1}
                             </div>
                             <div className='flex flex-col flex-1'>
                               <div className='flex items-center gap-2'>
                                 <span
                                   className={cn(
-                                    'text-sm font-semibold text-ink-primary line-clamp-1',
+                                    'label line-clamp-1',
                                     isCompleted && 'line-through',
                                   )}
                                 >
@@ -1059,13 +1251,11 @@ export default function InterviewPrepPage() {
                   <span className='text-[10px] uppercase font-bold text-primary tracking-wider'>
                     Active Strategy
                   </span>
-                  <h2 className='text-lg font-bold text-ink-primary line-clamp-2'>
-                    {activePlan.name}
-                  </h2>
+                  <h2 className='title-card line-clamp-2'>{activePlan.name}</h2>
                 </div>
                 <button
                   onClick={handleDeletePlan}
-                  className='p-2 rounded-xl text-zinc-400 hover:text-rose-500 hover:bg-rose-500/10 transition-colors shrink-0'
+                  className='p-2 rounded-xl text-ink-muted hover:text-ink-error hover:bg-error/10 transition-colors shrink-0'
                   title='Delete Plan and Start Over'
                 >
                   <Trash2 className='w-4 h-4' />
@@ -1074,7 +1264,7 @@ export default function InterviewPrepPage() {
 
               {/* Progress Bar */}
               <div className='flex flex-col gap-2'>
-                <div className='flex justify-between items-center text-xs'>
+                <div className='body-sm flex justify-between items-center'>
                   <span className='text-ink-secondary font-medium'>
                     Progress Roadmap
                   </span>
@@ -1091,9 +1281,9 @@ export default function InterviewPrepPage() {
                 </div>
               </div>
 
-              <div className='flex flex-col gap-3.5 pt-4 border-t border-border/40 text-sm'>
+              <div className='body-md flex flex-col gap-3.5 pt-4 border-t border-border/40'>
                 <div className='flex justify-between items-center'>
-                  <span className='text-xs text-ink-secondary'>
+                  <span className='body-sm text-ink-secondary'>
                     Schedule Duration
                   </span>
                   <span className='font-semibold text-ink-primary'>
@@ -1101,7 +1291,7 @@ export default function InterviewPrepPage() {
                   </span>
                 </div>
                 <div className='flex justify-between items-center'>
-                  <span className='text-xs text-ink-secondary'>
+                  <span className='body-sm text-ink-secondary'>
                     Daily Base Questions
                   </span>
                   <span className='font-semibold text-ink-primary'>
@@ -1109,7 +1299,7 @@ export default function InterviewPrepPage() {
                   </span>
                 </div>
                 <div className='flex justify-between items-center'>
-                  <span className='text-xs text-ink-secondary'>
+                  <span className='body-sm text-ink-secondary'>
                     Plan Started
                   </span>
                   <span className='font-semibold text-ink-primary'>
@@ -1123,7 +1313,7 @@ export default function InterviewPrepPage() {
 
               <button
                 onClick={() => router.push('/interview-prep/schedule')}
-                className='w-full flex items-center justify-center gap-1.5 px-4 py-2.5 text-xs font-bold text-primary bg-primary/10 hover:bg-primary/15 rounded-xl transition-colors mt-2'
+                className='label-sm w-full flex items-center justify-center gap-1.5 px-4 py-2.5 text-primary bg-primary/10 hover:bg-primary/15 rounded-xl transition-colors mt-2'
               >
                 Open Detailed Roadmap
                 <ChevronRight className='w-4 h-4' />
@@ -1137,16 +1327,194 @@ export default function InterviewPrepPage() {
         </div>
       )}
 
-      {/* 5. Plan Selection / Setup Screen (No Active Plan) */}
-      {questions.length > 0 && !activePlan && (
-        <PlanSetupSection
-          questions={questions}
-          selectedPreset={selectedPreset}
-          setSelectedPreset={setSelectedPreset}
-          setIsCustomizeOpen={setIsCustomizeOpen}
-          handleCreatePlan={handleCreatePlan}
-          isCreatingPlan={isCreatingPlan}
-        />
+      {/* 4. Gamification Module */}
+      {activePlan && (
+        <div className='grid grid-cols-1 xl:grid-cols-[1.35fr_1fr] gap-6 mb-2'>
+          <div className='panel-lg relative overflow-hidden'>
+            <div className='flex flex-col gap-4 border-b border-border/40 pb-4 md:flex-row md:items-start md:justify-between'>
+              <div>
+                <div className='flex items-center gap-2 mb-1'>
+                  <Target className='w-5 h-5 text-emerald-500' />
+                  <h3 className='font-bold text-ink-primary'>Quest</h3>
+                </div>
+                <p className='body-md text-ink-secondary'>
+                  Rotating goals across practice, applications, streaks, and
+                  check-ins.
+                </p>
+              </div>
+            </div>
+
+            {dailyQuests.length === 0 ?
+              <div className='body-md panel-md mt-4 text-ink-secondary'>
+                Your quests are being prepared.
+              </div>
+            : <div className='grid grid-cols-1 lg:grid-cols-2 gap-3 mt-4'>
+                {dailyQuests.map((q) => {
+                  const theme = getQuestTheme(q.quest_type);
+                  const isComplete = q.current_value >= q.target_value;
+                  return (
+                    <div
+                      key={q.id}
+                      className='panel-sm flex flex-col gap-3 hover:bg-background-secondary/60 transition-colors'
+                    >
+                      <div className='flex items-start justify-between gap-3'>
+                        <div className='min-w-0'>
+                          <div className='flex items-center gap-2 mb-1'>
+                            <span
+                              className={cn(
+                                'rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-wider',
+                                theme.chip,
+                              )}
+                            >
+                              {theme.label}
+                            </span>
+                            <span className='label-sm'>
+                              {q.current_value}/{q.target_value}
+                            </span>
+                          </div>
+                          <h4 className='label'>{q.title}</h4>
+                          <p className='body-sm text-ink-secondary mt-1'>
+                            {q.description}
+                          </p>
+                        </div>
+
+                        {q.is_claimed ?
+                          <span className='shrink-0 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-300'>
+                            Claimed
+                          </span>
+                        : isComplete ?
+                          <button
+                            onClick={() => handleClaimQuest(q.id)}
+                            className='shrink-0 rounded-full bg-primary px-3 py-1.5 text-[11px] font-bold text-white hover:bg-primary-hover'
+                          >
+                            Claim
+                          </button>
+                        : <span className='shrink-0 rounded-full bg-background-secondary/60 px-2.5 py-1 text-[11px] font-bold text-ink-secondary'>
+                            +1 box
+                          </span>
+                        }
+                      </div>
+
+                      <div className='h-1.5 w-full bg-background-secondary rounded-full overflow-hidden'>
+                        <div
+                          className={cn(
+                            'h-full rounded-full transition-all duration-500',
+                            isComplete ? 'bg-emerald-500' : theme.bar,
+                          )}
+                          style={{
+                            width: `${Math.min(100, (q.current_value / q.target_value) * 100)}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            }
+          </div>
+
+          <div className='panel-lg'>
+            <div className='flex items-center justify-between gap-3 mb-4'>
+              <div className='flex items-center gap-2'>
+                <Trophy className='w-5 h-5 text-blue-500' />
+                <h3 className='font-bold text-ink-primary'>Badges</h3>
+              </div>
+              <span className='label-sm rounded-full bg-blue-500/10 px-2.5 py-1 text-blue-600 dark:text-blue-300'>
+                {unlockedAchievements.length}/{achievements.length} unlocked
+              </span>
+            </div>
+
+            <div className='space-y-4'>
+              <div className='panel-md'>
+                <div className='flex items-center justify-between mb-3'>
+                  <h4 className='label'>Recent Achievements</h4>
+                  <span className='text-[11px] font-medium text-ink-secondary'>
+                    Why you earned them
+                  </span>
+                </div>
+
+                {recentAchievements.length === 0 ?
+                  <div className='body-md text-ink-secondary'>
+                    No badges yet. Finish a quest, practice, or submit an
+                    application to start collecting them.
+                  </div>
+                : <div className='space-y-3'>
+                    {recentAchievements.map((achievement) => (
+                      <div
+                        key={achievement.badge_id}
+                        className='rounded-xl border border-border/40 bg-background/50 p-3'
+                      >
+                        <div className='flex items-center justify-between gap-3'>
+                          <div className='flex items-center gap-3'>
+                            <div className='w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-indigo-600 flex items-center justify-center text-white shadow-inner'>
+                              <Trophy className='w-5 h-5' />
+                            </div>
+                            <div>
+                              <h5 className='label'>
+                                {achievement.badge_name}
+                              </h5>
+                              <p className='body-sm text-ink-secondary'>
+                                {achievement.unlock_reason ||
+                                  achievement.description}
+                              </p>
+                            </div>
+                          </div>
+                          {formatShortDate(achievement.unlocked_at) && (
+                            <span className='text-[11px] font-medium text-ink-secondary shrink-0'>
+                              {formatShortDate(achievement.unlocked_at)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                }
+              </div>
+
+              <div className='panel-md'>
+                <h4 className='label mb-3'>All Badges</h4>
+                <div className='grid grid-cols-2 gap-3'>
+                  {achievements.map((achievement) => (
+                    <div
+                      key={achievement.badge_id}
+                      className={cn(
+                        'rounded-xl border p-3 transition-all',
+                        achievement.unlocked ?
+                          'border-blue-500/30 bg-blue-500/8 shadow-sm'
+                        : 'border-border/40 bg-background/35 opacity-55 grayscale-[0.35]',
+                      )}
+                    >
+                      <div
+                        className={cn(
+                          'w-11 h-11 rounded-full flex items-center justify-center mb-2 border',
+                          achievement.unlocked ?
+                            'bg-gradient-to-br from-blue-400 to-indigo-600 border-white dark:border-border text-white'
+                          : 'bg-background-secondary border-border/50 text-ink-muted',
+                        )}
+                      >
+                        <Trophy className='w-5 h-5' />
+                      </div>
+                      <h5 className='label-sm'>{achievement.badge_name}</h5>
+                      <p className='text-[11px] text-ink-secondary mt-1'>
+                        {achievement.description}
+                      </p>
+                      <span
+                        className={cn(
+                          'inline-flex mt-2 rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-wider',
+                          achievement.unlocked ?
+                            'bg-emerald-500/10 text-emerald-600 dark:text-emerald-300'
+                          : 'bg-background-secondary/70 text-ink-secondary',
+                        )}
+                      >
+                        {achievement.unlocked ? 'Unlocked' : 'Locked'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Customize Plan Modal Component */}
@@ -1158,6 +1526,19 @@ export default function InterviewPrepPage() {
         isSubmitting={isCreatingPlan}
         initialPreset={selectedPreset}
         onSubmit={handleCreatePlan}
+      />
+
+      {/* Batch Import Modal Component */}
+      <BatchImportModal
+        isOpen={isBatchImportOpen}
+        onClose={() => setIsBatchImportOpen(false)}
+        categories={categories}
+        tags={tags}
+        selectedCategoryId={null}
+        onImportSuccess={async () => {
+          await initData(true, true);
+        }}
+        addNotification={addNotification}
       />
     </div>
   );
@@ -1181,6 +1562,7 @@ function DashboardSkeleton() {
         {/* Today's Checklist */}
         <div className='lg:col-span-2 p-6 rounded-2xl bg-panel flex flex-col gap-4 min-h-[300px]'>
           <div className='flex items-center justify-between border-b border-border/40 pb-3'>
+            Practice Mode
             <div className='h-6 bg-panel rounded w-1/3'></div>
             <div className='h-6 bg-panel rounded w-1/4'></div>
           </div>

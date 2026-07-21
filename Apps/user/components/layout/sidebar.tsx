@@ -12,6 +12,8 @@ import {
   Settings2,
   MessageSquareCode,
   Briefcase,
+  ShieldCheck,
+  MessagesSquare,
   LogOut,
   Sun,
   GraduationCap,
@@ -47,20 +49,28 @@ const ChromeIcon = (props: React.SVGProps<SVGSVGElement>) => (
 
 const navigation = [
   { name: 'Overview', href: '/', icon: LayoutDashboard },
-  { name: 'Profile', href: '/profile', icon: UserIcon },
-  { name: 'Job Hunting Profiles', href: '/job-hunting-profiles', icon: Search },
   { name: 'Interview Prep', href: '/interview-prep', icon: GraduationCap },
-  { name: 'Browser Session', href: '/browser-session', icon: ChromeIcon },
-  { name: 'Agent Settings', href: '/agent-settings', icon: Settings2 },
-  { name: 'Question Cache', href: '/questions', icon: MessageSquareCode },
+  { name: 'Settings', href: '/settings', icon: Settings2 },
+  { name: 'Question Cache', href: '/question-cache', icon: MessageSquareCode },
   { name: 'Applications History', href: '/applications', icon: Briefcase },
   { name: 'Design System', href: '/design-system', icon: Palette },
+];
+
+const adminNavigation = [
+  { name: 'Incentive Admin', href: '/admin/incentives', icon: ShieldCheck },
+  {
+    name: 'Celebration Admin',
+    href: '/admin/celebrations',
+    icon: MessagesSquare,
+  },
 ];
 
 import { useAuthStore } from '@/lib/store';
 import { useLayoutStore } from '@/lib/store/layout-store';
 import { useConsole } from '@/components/ConsoleContext';
 import { useEffect } from 'react';
+import { createClient } from '@/lib/supabase/client';
+import { useRouter } from 'next/navigation';
 
 import {
   Tooltip,
@@ -70,13 +80,15 @@ import {
   TooltipProvider,
 } from '@/components/UI/tooltip';
 import { H4 } from '@/components/UI/text/typography';
-import { div } from 'framer-motion/client';
+import { NotificationCenter } from '@/components/notifications/NotificationCenter';
 import { Stagger, StaggerItem } from '../animation';
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { fetchMe, logout } = useAuthStore();
-  const { user } = useConsole();
+  const router = useRouter();
+  const supabase = createClient();
+  const { fetchMe, logout: authLogout } = useAuthStore();
+  const { user, profile } = useConsole();
   const isCollapsed = useLayoutStore((state) => state.isSidebarCollapsed);
   const { toggleSidebar } = useLayoutStore((state) => state.actions);
 
@@ -85,6 +97,38 @@ export function Sidebar() {
       fetchMe();
     }
   }, [user, fetchMe]);
+
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      authLogout();
+      router.push('/login');
+    } catch (err) {
+      console.error('Failed to log out:', err);
+    }
+  };
+
+  const displayName = (() => {
+    if (profile?.first_name || profile?.last_name) {
+      return `${profile.first_name || ''} ${profile.last_name || ''}`.trim();
+    }
+    if (user?.display_name && !user.display_name.includes('@')) {
+      return user.display_name;
+    }
+    return user?.email || 'Local Admin';
+  })();
+
+  const initials = (() => {
+    if (!displayName || displayName === 'Local Admin') return 'LA';
+    if (displayName.includes('@')) {
+      return displayName.slice(0, 2).toUpperCase();
+    }
+    const parts = displayName.split(' ').filter(Boolean);
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return displayName.slice(0, 2).toUpperCase();
+  })();
 
   const springTransition = {
     type: 'spring',
@@ -103,6 +147,8 @@ export function Sidebar() {
     },
     exit: { opacity: 0, x: -10, width: 0, transition: { duration: 0.1 } },
   };
+  const visibleNavigation =
+    user?.role === 'admin' ? [...navigation, ...adminNavigation] : navigation;
 
   return (
     <motion.aside
@@ -111,7 +157,7 @@ export function Sidebar() {
       animate={{ width: isCollapsed ? 80 : 288 }}
       transition={springTransition}
       className={cn(
-        'app-drag sticky top-0 z-10 h-screen flex-col justify-between bg-panel flex',
+        'app-drag sticky top-0 z-10 h-screen backdrop-blur-2xl flex-col justify-between bg-panel flex',
         isCollapsed ? 'p-4' : 'p-sidebar',
       )}
     >
@@ -145,9 +191,7 @@ export function Sidebar() {
                 className='flex flex-col whitespace-nowrap overflow-hidden'
               >
                 <H4>User Console</H4>
-                <p className='mt-1 text-xs font-medium text-ink-secondary'>
-                  Auto Job Apply
-                </p>
+                <p className='label-sm mt-1'>Auto Job Apply</p>
               </motion.div>
             )}
           </AnimatePresence>
@@ -157,7 +201,7 @@ export function Sidebar() {
 
         <nav className='app-no-drag flex flex-col gap-1'>
           {/* <Stagger className='flex flex-col gap-1'> */}{' '}
-          {navigation.map((item) => {
+          {visibleNavigation.map((item) => {
             const isActive = pathname === item.href;
             return (
               // <StaggerItem key={item.name} xOffset={5}>
@@ -189,7 +233,7 @@ export function Sidebar() {
                         // animate='visible'
                         // exit='exit'
                         className={cn(
-                          'text-sm whitespace-nowrap overflow-hidden',
+                          'body-md whitespace-nowrap overflow-hidden',
                           isActive ? 'font-bold' : 'font-medium',
                         )}
                       >
@@ -241,15 +285,11 @@ export function Sidebar() {
               className='app-no-drag flex flex-col gap-4 border-primary/10 overflow-hidden'
             >
               <div className='flex items-center justify-between'>
-                <p className='text-xs font-medium text-ink-secondary dark:text-gray-400'>
-                  Theme
-                </p>
+                <p className='label-sm dark:text-gray-400'>Theme</p>
                 <ModeToggle />
               </div>
               <div className='flex items-center justify-between'>
-                <p className='text-xs font-medium text-ink-secondary dark:text-gray-400'>
-                  Color
-                </p>
+                <p className='label-sm dark:text-gray-400'>Color</p>
                 <div className='flex items-center gap-2'>
                   <ColorPicker />
                   <ThemeColorToggle />
@@ -288,6 +328,7 @@ export function Sidebar() {
             >
               <ThemeToggle />
               <ThemeColorToggle />
+              <NotificationCenter />
             </motion.div>
           }
         </AnimatePresence>
@@ -299,16 +340,23 @@ export function Sidebar() {
           )}
         >
           <div className='relative shrink-0'>
-            <motion.div
-              layout
-              className='size-10 shrink-0 overflow-hidden rounded-full border border-emerald-500/20 shadow-xs transition-transform hover:scale-105'
+            <Tooltip
+              content={
+                isCollapsed ?
+                  `${displayName} (Expand sidebar to log out)`
+                : null
+              }
+              side='right'
             >
-              <div className='w-full h-full bg-emerald-600/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400 font-bold flex items-center justify-center text-sm'>
-                {user?.display_name ?
-                  user.display_name.slice(0, 2).toUpperCase()
-                : 'LU'}
-              </div>
-            </motion.div>
+              <motion.div
+                layout
+                className='size-10 shrink-0 overflow-hidden rounded-full border border-emerald-500/20 shadow-xs transition-transform hover:scale-105'
+              >
+                <div className='label w-full h-full bg-emerald-600/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400 flex items-center justify-center'>
+                  {initials}
+                </div>
+              </motion.div>
+            </Tooltip>
             <span className='absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-white dark:border-[#181C26] rounded-full'></span>
           </div>
           <AnimatePresence mode='popLayout'>
@@ -320,11 +368,11 @@ export function Sidebar() {
                 exit='exit'
                 className='flex flex-col flex-1 min-w-0 overflow-hidden'
               >
-                <p className='text-sm font-semibold text-ink-primary truncate leading-tight'>
-                  {user?.display_name ?? 'Local Admin'}
+                <p className='label truncate leading-tight' title={displayName}>
+                  {displayName}
                 </p>
                 <button
-                  onClick={logout}
+                  onClick={handleLogout}
                   className='app-no-drag flex items-center gap-1.5 mt-0.5 text-[11px] text-ink-secondary hover:text-red-650 dark:text-gray-400 dark:hover:text-red-400 transition-colors whitespace-nowrap'
                 >
                   <LogOut className='size-3' />

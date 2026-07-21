@@ -45,7 +45,7 @@ export function SegmentedControl({
                         key={option.value}
                         onClick={() => onChange(option.value)}
                         className={cn(
-                            'relative flex items-center justify-center text-sm font-medium transition-colors rounded-full',
+                            'label relative flex items-center justify-center transition-colors rounded-full',
                             isSelected
                                 ? 'text-primary'
                                 : 'text-ink-secondary hover:text-ink-primary hover:bg-glass',
@@ -62,9 +62,9 @@ export function SegmentedControl({
                             className={cn(
                                 'relative z-10 flex justify-center items-center',
 
-                                size === 'sm' && 'gap-1 text-xs px-3 py-2 ',
-                                size === 'md' && 'gap-2 text-sm px-3 py-2 ',
-                                size === 'lg' && 'gap-2.5 text-base px-4 py-2 ',
+                                size === 'sm' && 'body-sm gap-1 px-3 py-2',
+                                size === 'md' && 'body-md gap-2 px-3 py-2',
+                                size === 'lg' && 'body-lg gap-2.5 px-4 py-2',
                             )}
                         >
                             {option.icon && <option.icon className='size-3.5' />}

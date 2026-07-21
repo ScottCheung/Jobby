@@ -386,7 +386,7 @@ function MultiChoiceGroup({
 
   return (
     <div className={`field ${full ? 'full' : ''}`}>
-      <label className='block text-sm font-medium mb-1'>{label}</label>
+      <label className='label block mb-1'>{label}</label>
       {hint ?
         <p className='field-hint mb-2'>{hint}</p>
       : null}
@@ -398,7 +398,7 @@ function MultiChoiceGroup({
             <label
               key={option.value}
               htmlFor={id}
-              className='flex items-center gap-2 cursor-pointer text-xs text-ink-secondary hover:text-ink-primary select-none'
+              className='body-sm flex items-center gap-2 cursor-pointer text-ink-secondary hover:text-ink-primary select-none'
             >
               <Checkbox
                 id={id}
@@ -511,7 +511,7 @@ export function ProfileForm({
       <div className='pb-6 pr-6 flex flex-col gap-6'>
         <div className='flex items-center gap-2 text-zinc-400 dark:text-ink-primary0 -mt-2'>
           <UserRound className='w-4 h-4 text-emerald-500 shrink-0' />
-          <p className='text-xs'>
+          <p className='body-sm'>
             These values power most Easy Apply questions and identity checks.
           </p>
         </div>

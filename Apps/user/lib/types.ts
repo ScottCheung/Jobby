@@ -4,6 +4,7 @@ export type User = {
   id: string;
   email: string;
   display_name: string;
+  avatar_url?: string | null;
   role: string;
   status: string;
   can_use_auto_apply: boolean;
@@ -508,6 +509,14 @@ export type InterviewTag = {
   updated_at?: string;
 };
 
+export type Company = {
+  id: string;
+  name: string;
+  logo_url?: string | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
 export type InterviewQuestion = {
   id: string;
   category_id?: string | null;
@@ -519,11 +528,99 @@ export type InterviewQuestion = {
   sample_answer?: string | null;
   my_answer?: string | null;
   improvement_notes?: string | null;
+  source_collection_id?: string | null;
+  source_question_id?: string | null;
+  archived_at?: string | null;
+  is_library_copy?: boolean;
   category?: InterviewCategory | null;
   tags?: InterviewTag[];
+  companies?: Company[];
   created_at?: string;
   updated_at?: string;
 };
+
+export type InterviewCollection = {
+  id: string;
+  title: string;
+  slug: string;
+  description?: string | null;
+  cover_url?: string | null;
+  cover_storage_key?: string | null;
+  creator_user_id?: string | null;
+  collection_type: string;
+  price_coins: number;
+  status: string;
+  last_updated_at?: string | null;
+  library_adds: number;
+  question_count: number;
+  user_active_question_count: number;
+  missing_question_count: number;
+  library_status: 'not_added' | 'partial' | 'complete' | 'empty';
+  sample_questions?: string[];
+  question_ids?: string[];
+  creator_name?: string | null;
+  contributor_count: number;
+  is_owned: boolean;
+  is_in_library: boolean;
+  is_purchased: boolean;
+  can_purchase: boolean;
+  free_label?: string | null;
+};
+
+export type InterviewReport = {
+  id: string;
+  user_id: string;
+  question_id: string;
+  company?: string | null;
+  role?: string | null;
+  seen_in_interview: boolean;
+  happened_at: string;
+  notes?: string | null;
+  raw_data: Record<string, unknown>;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type QuestionCommunitySummary = {
+  importance_average?: number | null;
+  difficulty_average?: number | null;
+  rating_count: number;
+  upvote_count: number;
+  downvote_count: number;
+  seen_in_interview_count: number;
+  company_count: number;
+  top_companies: { name: string; count: number }[];
+  user_importance_rating?: number | null;
+  user_difficulty_rating?: number | null;
+  user_reaction?: 'up' | 'down' | null;
+  survey_bonus_xp?: number;
+  survey_bonus_coins?: number;
+};
+
+export type QuestionComment = {
+  id: string;
+  question_id: string;
+  parent_id?: string | null;
+  kind: 'discussion' | 'feedback' | 'example';
+  body: string;
+  author_name: string;
+  author_avatar_url?: string | null;
+  author_badge?: 'Admin' | 'Author' | 'VIP' | null;
+  is_author: boolean;
+  like_count: number;
+  is_liked: boolean;
+  is_reported: boolean;
+  reply_count: number;
+  created_at: string;
+  updated_at: string;
+  replies: QuestionComment[];
+};
+export type QuestionCommentPage = { items: QuestionComment[]; next_cursor?: string | null; question_id: string; };
+export type CommunityInterviewReport = { id: string; company?: string | null; role?: string | null; happened_at: string; };
+export type UserNotification = { id: string; kind: string; title?: string | null; message: string; action_url?: string | null; actor_user_id?: string | null; metadata?: Record<string, unknown>; question_id?: string | null; read_at?: string | null; created_at: string; };
+export type QuestionDuplicateCandidate = { id: string; title: string; owner_name: string; created_at: string; };
+export type QuestionDuplicateGroup = { normalized_title: string; questions: QuestionDuplicateCandidate[]; };
+export type QuestionDiscussionMerge = { target_question_id: string; merged_question_ids: string[]; comments_moved: number; };
 
 export type AudioRecord = {
   id: string;
@@ -591,6 +688,8 @@ export type DailySummary = {
   loot_boxes: number;
   has_checked_in_today: boolean;
   total_coins: number;
+  max_daily_xp_gain?: number;
+  max_daily_coin_gain?: number;
 };
 
 export type DailyQuest = {
@@ -609,12 +708,71 @@ export type Achievement = {
   badge_id: string;
   badge_name: string;
   description: string;
-  unlocked_at: string;
+  unlocked_at?: string | null;
+  unlocked: boolean;
+  unlock_reason?: string | null;
 };
 
 export type LootBoxResponse = {
   coins_won: number;
   new_balance: number;
+};
+
+export type WelcomeBonusResponse = {
+  awarded: boolean;
+  coins_earned: number;
+  xp_earned?: number;
+  loot_boxes_earned?: number;
+};
+
+export type GamificationQuestConfig = {
+  id: string;
+  title: string;
+  description: string;
+  metric_key: string;
+  target_value: number;
+  category: string;
+  enabled: boolean;
+  visible: boolean;
+  reward_xp: number;
+  reward_coins: number;
+  reward_loot_boxes: number;
+};
+
+export type GamificationBadgeConfig = {
+  badge_id: string;
+  badge_name: string;
+  description: string;
+  metric_key: string;
+  target_value: number;
+  enabled: boolean;
+  visible: boolean;
+};
+
+export type GamificationEventConfig = {
+  event_key: string;
+  label: string;
+  xp: number;
+  coins: number;
+  loot_boxes: number;
+  enabled: boolean;
+  application_origin: 'any' | 'manual' | 'auto';
+};
+
+export type GamificationAdminConfig = {
+  daily_selection_count: number;
+  weekly_selection_count: number;
+  daily_quest_pool: GamificationQuestConfig[];
+  weekly_quest_pool: GamificationQuestConfig[];
+  badges: GamificationBadgeConfig[];
+  reward_events: GamificationEventConfig[];
+  spend_events: GamificationEventConfig[];
+  max_daily_xp_gain?: number;
+  max_daily_coin_gain?: number;
+  welcome_bonus_coins?: number;
+  welcome_bonus_xp?: number;
+  welcome_bonus_loot_boxes?: number;
+  celebration_config?: unknown;
 };
 
 export type HeatmapDataEntry = {

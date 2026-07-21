@@ -9,6 +9,13 @@ import type {
   InterviewCategory,
   InterviewTag,
   InterviewQuestion,
+  InterviewCollection,
+  InterviewReport,
+  QuestionCommunitySummary,
+  QuestionComment,
+  QuestionCommentPage,
+  CommunityInterviewReport,
+  UserNotification,
   PracticeRecord,
   PracticePlan,
   PlanTask,
@@ -18,6 +25,10 @@ import type {
   DailyQuest,
   Achievement,
   LootBoxResponse,
+  WelcomeBonusResponse,
+  GamificationAdminConfig,
+  QuestionDiscussionMerge,
+  QuestionDuplicateGroup,
 } from "./types";
 import { resolveApiBaseUrl } from "./runtime";
 import { createClient } from "./supabase/client";
@@ -44,8 +55,17 @@ async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
   });
 
   if (!response.ok) {
-    const detail = await response.text();
-    throw new Error(detail || `API request failed: ${response.status}`);
+    const detailText = await response.text();
+    try {
+      const parsed = JSON.parse(detailText);
+      if (typeof parsed?.detail === "string") {
+        throw new Error(parsed.detail);
+      }
+      if (Array.isArray(parsed?.detail) && parsed.detail[0]?.msg) {
+        throw new Error(parsed.detail[0].msg);
+      }
+    } catch {}
+    throw new Error(detailText || `API request failed: ${response.status}`);
   }
 
   if (response.status === 204) {
@@ -122,6 +142,19 @@ export const api = {
     const qs = params.toString();
     return apiRequest<JobApplication[]>(qs ? `/api/applications?${qs}` : "/api/applications");
   },
+  applicationStats: (timezone?: string) => {
+    const tz = timezone ? `?timezone=${encodeURIComponent(timezone)}` : "";
+    return apiRequest<{
+      total_applications: number;
+      submitted: number;
+      today_submitted: number;
+      yesterday_submitted: number;
+      today_processed: number;
+      yesterday_processed: number;
+      interviewing: number;
+      skipped: number;
+    }>(`/api/applications/stats${tz}`);
+  },
   updateApplication: (applicationId: string, payload: Partial<JobApplication>) =>
     apiRequest<JobApplication>(`/api/applications/${applicationId}`, {
       method: "PUT",
@@ -153,6 +186,7 @@ export const api = {
       body: JSON.stringify(payload),
     }),
   interviewQuestions: () => apiRequest<InterviewQuestion[]>("/api/interview/questions"),
+  searchGlobalQuestions: (q: string) => apiRequest<InterviewQuestion[]>(`/api/interview/questions/search/global?q=${encodeURIComponent(q)}`),
   getInterviewQuestion: (id: string) => apiRequest<InterviewQuestion>(`/api/interview/questions/${id}`),
   createInterviewQuestion: (payload: Partial<InterviewQuestion>) =>
     apiRequest<InterviewQuestion>("/api/interview/questions", {
@@ -173,10 +207,110 @@ export const api = {
     apiRequest<void>(`/api/interview/questions/${id}`, {
       method: "DELETE",
     }),
+    interviewCollections: (kind?: string) => {
+    const params = new URLSearchParams();
+    if (kind) params.append("kind", kind);
+    params.append("_t", String(Date.now()));
+    const qs = params.toString();
+    return apiRequest<InterviewCollection[]>(`/api/interview/collections?${qs}`);
+  },
+  myCreatedCollections: () =>
+    apiRequest<InterviewCollection[]>(`/api/interview/collections/me/created?_t=${Date.now()}`),
+  purchasedInterviewCollections: () =>
+    apiRequest<InterviewCollection[]>(`/api/interview/collections?kind=purchased&_t=${Date.now()}`),
+  interviewCollection: (id: string) => apiRequest<InterviewCollection>(`/api/interview/collections/${id}?_t=${Date.now()}`),
+  addCollectionToLibrary: (id: string) =>
+    apiRequest<{ message: string; questions_added: number; purchased: boolean }>(`/api/interview/collections/${id}/add`, {
+      method: "POST",
+    }),
+  removeCollectionFromLibrary: (id: string) =>
+    apiRequest<{ message: string }>(`/api/interview/collections/${id}/remove`, {
+      method: "DELETE",
+    }),
+  uploadCollectionCover: async (id: string, file: File) => {
+    const apiBaseUrl = await resolveApiBaseUrl();
+    const supabase = createClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    const formData = new FormData();
+    formData.append('file', file, file.name);
+    const response = await fetch(`${apiBaseUrl}/api/interview/collections/${id}/cover`, {
+      method: 'POST',
+      body: formData,
+      headers: session?.user?.email ? { 'X-User-Email': session.user.email } : undefined,
+      cache: 'no-store',
+    });
+    if (!response.ok) {
+      const detail = await response.text();
+      try {
+        const parsed = JSON.parse(detail);
+        throw new Error(parsed?.detail || 'Could not upload cover image.');
+      } catch (error) {
+        if (error instanceof Error) throw error;
+      }
+      throw new Error(detail || 'Could not upload cover image.');
+    }
+    return response.json() as Promise<InterviewCollection>;
+  },
+  createInterviewCollection: (payload: { title: string; description?: string; price_coins?: number; status?: string; question_ids: string[] }) =>
+    apiRequest<InterviewCollection>("/api/interview/collections", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  updateInterviewCollection: (id: string, payload: { title?: string; description?: string; price_coins?: number; status?: string; question_ids?: string[] }) =>
+    apiRequest<InterviewCollection>(`/api/interview/collections/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
+  deleteInterviewCollection: (id: string) =>
+    apiRequest<{ message: string }>(`/api/interview/collections/${id}`, {
+      method: "DELETE",
+    }),
+  interviewReports: () => apiRequest<InterviewReport[]>("/api/interview/reports"),
+  createInterviewReport: (payload: Partial<InterviewReport>) =>
+    apiRequest<InterviewReport>("/api/interview/reports", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  questionCommunity: (id: string) =>
+    apiRequest<QuestionCommunitySummary>(`/api/interview/questions/${id}/community`),
+  updateQuestionCommunityRating: (id: string, payload: { importance_rating?: number | null; difficulty_rating?: number | null }) =>
+    apiRequest<QuestionCommunitySummary>(`/api/interview/questions/${id}/community/rating`, { method: 'PUT', body: JSON.stringify(payload) }),
+  updateQuestionCommunityReaction: (id: string, value: 'up' | 'down' | null) =>
+    apiRequest<QuestionCommunitySummary>(`/api/interview/questions/${id}/community/reaction`, { method: 'PUT', body: JSON.stringify({ value }) }),
+  questionComments: (id: string, options?: { kind?: string; before?: string; limit?: number }) => {
+    const params = new URLSearchParams();
+    if (options?.kind) params.set('kind', options.kind);
+    if (options?.before) params.set('before', options.before);
+    params.set('limit', String(options?.limit ?? 10));
+    return apiRequest<QuestionCommentPage>(`/api/interview/questions/${id}/comments?${params}`);
+  },
+  questionCommentReplies: (questionId: string, commentId: string, before?: string) =>
+    apiRequest<QuestionCommentPage>(`/api/interview/questions/${questionId}/comments/${commentId}/replies?limit=10${before ? `&before=${encodeURIComponent(before)}` : ''}`),
+  createQuestionComment: (id: string, payload: { kind: 'discussion' | 'feedback' | 'example'; body: string; parent_id?: string }) =>
+    apiRequest<QuestionComment>(`/api/interview/questions/${id}/comments`, { method: 'POST', body: JSON.stringify(payload) }),
+  updateQuestionComment: (questionId: string, commentId: string, payload: { body: string }) =>
+    apiRequest<QuestionComment>(`/api/interview/questions/${questionId}/comments/${commentId}`, { method: 'PUT', body: JSON.stringify(payload) }),
+  deleteQuestionComment: (questionId: string, commentId: string) =>
+    apiRequest<void>(`/api/interview/questions/${questionId}/comments/${commentId}`, { method: 'DELETE' }),
+  toggleQuestionCommentLike: (questionId: string, commentId: string) =>
+    apiRequest<{ liked: boolean; like_count: number }>(`/api/interview/questions/${questionId}/comments/${commentId}/like`, { method: 'PUT' }),
+  reportQuestionComment: (questionId: string, commentId: string, reason: 'spam' | 'off_topic' | 'unsafe') =>
+    apiRequest<void>(`/api/interview/questions/${questionId}/comments/${commentId}/report`, { method: 'POST', body: JSON.stringify({ reason }) }),
+  communityInterviewReports: (id: string) => apiRequest<CommunityInterviewReport[]>(`/api/interview/questions/${id}/community/reports`),
+  communityNotifications: () => apiRequest<UserNotification[]>('/api/interview/community/notifications'),
+  markCommunityNotificationsRead: () => apiRequest<{ message: string }>('/api/interview/community/notifications/read', { method: 'POST' }),
+  notifications: () => apiRequest<UserNotification[]>('/api/interview/notifications'),
+  markNotificationRead: (id: string) => apiRequest<{ message: string }>(`/api/interview/notifications/${id}/read`, { method: 'POST' }),
+  markAllNotificationsRead: () => apiRequest<{ message: string }>('/api/interview/notifications/read', { method: 'POST' }),
   practiceRecords: () => apiRequest<PracticeRecord[]>("/api/interview/practice-records"),
   createPracticeRecord: (payload: Partial<PracticeRecord>) =>
     apiRequest<PracticeRecord>("/api/interview/practice-records", {
       method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  updatePracticeRecord: (id: string, payload: Partial<PracticeRecord>) =>
+    apiRequest<PracticeRecord>(`/api/interview/practice-records/${id}`, {
+      method: "PUT",
       body: JSON.stringify(payload),
     }),
   practicePlans: () => apiRequest<PracticePlan[]>("/api/interview/plans"),
@@ -205,7 +339,11 @@ export const api = {
   gamificationTransactions: () =>
     apiRequest<GamificationTransaction[]>('/api/interview/gamification/transactions'),
   gamificationCheckin: () =>
-    apiRequest<{ message: string; xp_earned: number; loot_boxes_earned: number }>('/api/interview/gamification/checkin', {
+    apiRequest<{ message: string; xp_earned: number; coins_earned: number; loot_boxes_earned: number }>('/api/interview/gamification/checkin', {
+      method: 'POST',
+    }),
+  welcomeBonus: () =>
+    apiRequest<WelcomeBonusResponse>('/api/interview/gamification/welcome', {
       method: 'POST',
     }),
   openLootBox: () =>
@@ -215,11 +353,18 @@ export const api = {
   dailyQuests: () =>
     apiRequest<DailyQuest[]>('/api/interview/gamification/quests'),
   claimQuest: (questId: string) =>
-    apiRequest<{ message: string; loot_boxes_earned: number }>(`/api/interview/gamification/quests/${questId}/claim`, {
+    apiRequest<{ message: string; xp_earned: number; coins_earned: number; loot_boxes_earned: number }>(`/api/interview/gamification/quests/${questId}/claim`, {
       method: 'POST',
     }),
   achievements: () =>
     apiRequest<Achievement[]>('/api/interview/gamification/achievements'),
+  gamificationAdminConfig: () =>
+    apiRequest<{ scope: string; config: GamificationAdminConfig; updated_at?: string | null; updated_by_user_id?: string | null }>('/api/interview/gamification/admin-config'),
+  updateGamificationAdminConfig: (config: GamificationAdminConfig) =>
+    apiRequest<{ scope: string; config: GamificationAdminConfig; updated_at?: string | null; updated_by_user_id?: string | null }>('/api/interview/gamification/admin-config', {
+      method: 'PUT',
+      body: JSON.stringify({ config }),
+    }),
   resetGamification: () =>
     apiRequest<{ message: string }>('/api/interview/gamification/reset', {
       method: 'POST',

@@ -12,7 +12,7 @@ export function ThemeToggle() {
   return (
     <button
       onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
-      className='inline-flex items-center cursor-pointer group justify-center text-ink-secondary hover:text-ink-primary rounded-md p-2 text-sm font-medium transition-colors hover:bg-primary/10  '
+      className='label inline-flex items-center cursor-pointer group justify-center text-ink-secondary hover:text-ink-primary rounded-md p-2 transition-colors hover:bg-primary/10'
     >
       {/* Sun 图标 */}
       <Sun

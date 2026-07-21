@@ -180,7 +180,7 @@ export function ApplicationDetails({
 
       {/* Floating Save Actions Bar */}
       <div className='px-6 py-4 flex items-center justify-between shrink-0'>
-        <span className='text-xs text-ink-secondary font-semibold'>
+        <span className='label-sm'>
           {draft.updated_at ?
             `Updated: ${formatRelativeDate(draft.updated_at)}`
           : ''}

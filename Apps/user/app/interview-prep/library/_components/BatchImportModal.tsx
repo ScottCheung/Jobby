@@ -15,6 +15,9 @@ import { CategorySelector } from './selectors';
 import { Button } from '@/components/UI/Button';
 import { Modal } from '@/components/layout/modal';
 import { H3 } from '@/components/UI/text/typography';
+import { Tooltip } from '@/components/UI/tooltip';
+import { div } from 'framer-motion/client';
+import { Info, List } from 'lucide-react';
 
 interface BatchImportModalProps {
   isOpen: boolean;
@@ -189,6 +192,7 @@ export function BatchImportModal({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
+      layoutId='Import Questions'
       className='w-[90vw] max-h-[85vh] max-w-6xl text-ink-primary'
     >
       {/* Modal Header */}
@@ -211,16 +215,90 @@ export function BatchImportModal({
         <div className='flex-1 p-6 flex flex-col gap-5 overflow-y-auto'>
           <div className='flex flex-col gap-1.5  '>
             <label className='label'>Paste Questions Text</label>
-            <textarea
-              placeholder='Example:
-1. Explain the difference between Let and Var.
-2. What are the key lifecycle methods in React?
-- Describe a time when you solved a complex technical issue.
-- How do you prioritize tasks under tight deadlines?'
-              value={importText}
-              onChange={(e) => setImportText(e.target.value)}
-              className='textarea resize-y custom-scrollbar-primary'
-            />
+            <Tooltip
+              content={
+                <div className='col gap-5'>
+                  <div className='space-y-1'>
+                    <h3 className='title-sub flex items-center gap-2'>
+                      <List className='size-4 text-primary' />
+                      Supported formats
+                    </h3>
+
+                    <p className='body-sm'>
+                      Enter{' '}
+                      <span className='font-semibold text-primary'>
+                        ONE question per line
+                      </span>
+                      .
+                    </p>
+                  </div>
+
+                  <div className='rounded-xl border border-border/40 bg-background-secondary/40 p-4 font-mono text-sm leading-7'>
+                    <div className='text-ink-secondary'>
+                      1. Tell me about yourself.
+                    </div>
+
+                    <div className='text-ink-secondary'>
+                      2. Why do you want to work here?
+                    </div>
+
+                    <div className='text-ink-secondary'>
+                      3. Describe a challenging project.
+                    </div>
+
+                    <div className='my-3 border-t border-dashed border-border/50' />
+
+                    <div className='text-ink-secondary'>
+                      • Tell me about yourself.
+                    </div>
+
+                    <div className='text-ink-secondary'>
+                      • Why do you want to work here?
+                    </div>
+
+                    <div className='text-ink-secondary'>
+                      • Describe a challenging project.
+                    </div>
+                  </div>
+
+                  <div className='space-y-3'>
+                    <div className='flex gap-2'>
+                      <span className='mt-1 size-1.5 rounded-full bg-primary shrink-0' />
+                      <p className='body-sm'>
+                        Numbering and bullet points are automatically removed.
+                      </p>
+                    </div>
+
+                    <div className='flex gap-2'>
+                      <span className='mt-1 size-1.5 rounded-full bg-primary shrink-0' />
+                      <p className='body-sm'>
+                        Detection may occasionally be incorrect. Please review
+                        the extracted questions before submitting.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className='flex gap-3 rounded-xl border border-primary/20 bg-primary/5 p-3'>
+                    <Info className='mt-0.5 size-4 shrink-0 text-primary' />
+
+                    <p className='body-sm'>
+                      Large uploads may take a little longer because each
+                      question is automatically matched with relevant keywords
+                      on the server. We suggest limit it to{' '}
+                      <span className='text-primary'>&lt; 30 - 50</span> at a
+                      time.
+                    </p>
+                  </div>
+                </div>
+              }
+            >
+              <textarea
+                placeholder='Paste your questions here, one per line:'
+                value={importText}
+                onChange={(e) => setImportText(e.target.value)}
+                className='textarea resize-y custom-scrollbar-primary'
+              />
+            </Tooltip>
           </div>
 
           <div className='flex flex-col gap-2.5 shrink-0 max-w-full'>
@@ -259,7 +337,7 @@ export function BatchImportModal({
               <select
                 value={batchCategory}
                 onChange={(e) => setBatchCategory(e.target.value)}
-                className='px-3 py-1.5 text-xs rounded-lg  dark:border-border  text-ink-primary focus:outline-none'
+                className='body-sm px-3 py-1.5 rounded-lg dark:border-border text-ink-primary focus:outline-none'
               >
                 <option value='keep'>Keep Original Category</option>
                 <option value='none'>Set Classified-free</option>
@@ -272,7 +350,7 @@ export function BatchImportModal({
               <select
                 value={batchFrequency}
                 onChange={(e) => setBatchFrequency(e.target.value)}
-                className='px-3 py-1.5 text-xs rounded-lg  dark:border-border  text-ink-primary focus:outline-none'
+                className='body-sm px-3 py-1.5 rounded-lg dark:border-border text-ink-primary focus:outline-none'
               >
                 <option value='keep'>Keep Original Frequency</option>
                 <option value='Low'>Low</option>
@@ -282,7 +360,7 @@ export function BatchImportModal({
               <select
                 value={batchImportance}
                 onChange={(e) => setBatchImportance(e.target.value)}
-                className='px-3 py-1.5 text-xs rounded-lg  dark:border-border  text-ink-primary focus:outline-none'
+                className='body-sm px-3 py-1.5 rounded-lg dark:border-border text-ink-primary focus:outline-none'
               >
                 <option value='keep'>Keep Original Importance</option>
                 <option value='1'>1 Star</option>
@@ -294,7 +372,7 @@ export function BatchImportModal({
               <select
                 value={batchFramework}
                 onChange={(e) => setBatchFramework(e.target.value)}
-                className='px-3 py-1.5 text-xs rounded-lg  dark:border-border  text-ink-primary focus:outline-none'
+                className='body-sm px-3 py-1.5 rounded-lg dark:border-border text-ink-primary focus:outline-none'
               >
                 <option value='keep'>Keep Original Framework</option>
                 <option value='STAR'>STAR Framework</option>
@@ -308,7 +386,7 @@ export function BatchImportModal({
                 disabled={
                   parsedQuestions.filter((q) => q.selected).length === 0
                 }
-                className=' text-xs  rounded-lg '
+                className='body-sm rounded-lg'
               >
                 Apply to all Select
               </Button>
@@ -343,7 +421,7 @@ export function BatchImportModal({
           </div>
 
           {/* Table Preview list */}
-          <div className='flex-1 overflow-y-auto divide-y divide-border/40 px-4'>
+          <div className='body'>
             {parsedQuestions.length === 0 ?
               <div className='p-8 text-center text-ink-secondary italic'>
                 No questions parsed.
@@ -390,7 +468,7 @@ export function BatchImportModal({
                       }}
                       placeholder='Title is required'
                       required
-                      className='w-full  px-2 py-1 rounded  dark:border-border text-xs focus:outline-none focus:border-primary/50 text-ink-primary'
+                      className='body-sm w-full px-2 py-1 rounded dark:border-border focus:outline-none focus:border-primary/50 text-ink-primary'
                     />
                   </div>
 
@@ -408,7 +486,7 @@ export function BatchImportModal({
                           ),
                         );
                       }}
-                      className='w-full  px-2 py-1 rounded  dark:border-border text-xs focus:outline-none text-ink-primary'
+                      className='body-sm w-full px-2 py-1 rounded dark:border-border focus:outline-none text-ink-primary'
                     >
                       <option value=''>No Category</option>
                       {categories.map((cat) => (
@@ -433,7 +511,7 @@ export function BatchImportModal({
                           ),
                         );
                       }}
-                      className='w-full  px-2 py-1 rounded  dark:border-border text-xs focus:outline-none text-ink-primary'
+                      className='body-sm w-full px-2 py-1 rounded dark:border-border focus:outline-none text-ink-primary'
                     >
                       <option value='Low'>Low</option>
                       <option value='Medium'>Medium</option>
@@ -455,7 +533,7 @@ export function BatchImportModal({
                           ),
                         );
                       }}
-                      className='w-full  px-2 py-1 rounded  dark:border-border text-xs focus:outline-none text-ink-primary'
+                      className='body-sm w-full px-2 py-1 rounded dark:border-border focus:outline-none text-ink-primary'
                     >
                       <option value={1}>1 Star</option>
                       <option value={2}>2 Stars</option>
@@ -479,7 +557,7 @@ export function BatchImportModal({
                           ),
                         );
                       }}
-                      className='w-full  px-2 py-1 rounded  dark:border-border text-xs focus:outline-none text-ink-primary'
+                      className='body-sm w-full px-2 py-1 rounded dark:border-border focus:outline-none text-ink-primary'
                     >
                       <option value='STAR'>STAR</option>
                       <option value='PAR'>PAR</option>
@@ -504,7 +582,7 @@ export function BatchImportModal({
                       }}
                       placeholder='Your answer...'
                       rows={1}
-                      className='w-full  px-2 py-1 rounded  dark:border-border text-xs focus:outline-none resize-none focus:h-12 text-ink-primary'
+                      className='body-sm w-full px-2 py-1 rounded dark:border-border focus:outline-none resize-none focus:h-12 text-ink-primary'
                     />
                   </div>
 
@@ -528,18 +606,17 @@ export function BatchImportModal({
           </div>
 
           {/* Footer buttons for step 2 */}
-          <div className='p-5 border-t border-border/40 flex justify-between items-center shrink-0 bg-background-secondary/20'>
-            <Button
-              variant='outline'
-              onClick={() => setStep(1)}
-              Icon={ArrowLeft}
-            >
-              Back to text
-            </Button>
-
+          <div className='footer'>
             <div className='flex gap-4'>
               <Button variant='ghost' onClick={onClose}>
                 Cancel
+              </Button>
+              <Button
+                variant='outline'
+                onClick={() => setStep(1)}
+                Icon={ArrowLeft}
+              >
+                Back to text
               </Button>
               <Button
                 onClick={handleImportSubmit}

@@ -11,29 +11,29 @@ export function GeminiBackground() {
   // Define harmonious color palettes for each theme option
   const colorMap = {
     green: {
-      orb1: 'bg-emerald-500/25 dark:bg-emerald-500/25',
-      orb2: 'bg-teal-500/20 dark:bg-teal-500/15',
-      orb3: 'bg-cyan-500/15 dark:bg-cyan-500/10',
+      orb1: 'bg-emerald-500/20 dark:bg-emerald-500/20',
+      orb2: 'bg-teal-500/10 dark:bg-teal-500/10',
+      orb3: 'bg-cyan-500/5 dark:bg-cyan-500/5',
     },
     blue: {
-      orb1: 'bg-blue-500/25 dark:bg-blue-500/25',
-      orb2: 'bg-sky-500/20 dark:bg-sky-500/20',
-      orb3: 'bg-indigo-500/15 dark:bg-indigo-500/15',
+      orb1: 'bg-blue-500/20 dark:bg-blue-500/20',
+      orb2: 'bg-sky-500/10 dark:bg-sky-500/10',
+      orb3: 'bg-indigo-500/5 dark:bg-indigo-500/5',
     },
     purple: {
-      orb1: 'bg-purple-500/25 dark:bg-purple-500/25',
-      orb2: 'bg-fuchsia-500/20 dark:bg-fuchsia-500/20',
-      orb3: 'bg-pink-500/15 dark:bg-pink-500/15',
+      orb1: 'bg-purple-500/20 dark:bg-purple-500/20',
+      orb2: 'bg-fuchsia-500/10 dark:bg-fuchsia-500/10',
+      orb3: 'bg-pink-500/5 dark:bg-pink-500/5',
     },
     orange: {
       orb1: 'bg-orange-500/20 dark:bg-orange-500/20',
-      orb2: 'bg-amber-500/15 dark:bg-amber-500/15',
-      orb3: 'bg-yellow-500/12 dark:bg-yellow-500/12',
+      orb2: 'bg-amber-500/10 dark:bg-amber-500/10',
+      orb3: 'bg-yellow-500/5 dark:bg-yellow-500/5',
     },
     rose: {
-      orb1: 'bg-rose-500/25 dark:bg-rose-500/25',
-      orb2: 'bg-pink-500/20 dark:bg-pink-500/20',
-      orb3: 'bg-purple-500/15 dark:bg-purple-500/15',
+      orb1: 'bg-rose-500/20 dark:bg-rose-500/20',
+      orb2: 'bg-pink-500/10 dark:bg-pink-500/10',
+      orb3: 'bg-purple-500/5 dark:bg-purple-500/5',
     },
   };
 

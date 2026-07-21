@@ -60,12 +60,12 @@ export const FormDebugPanel: React.FC<FormDebugPanelProps> = ({
 
     return (
       <div key={key} className='mb-1 hover:bg-gray-50 p-1 rounded'>
-        <span className='text-blue-600 font-mono text-xs font-semibold'>
+        <span className='label-sm text-blue-600 font-mono'>
           {indent}
           {key}
         </span>
-        <span className='text-gray-500 text-xs ml-1'>({valueType})</span>
-        <span className='text-green-700 font-mono text-xs ml-2'>
+        <span className='text-meta ml-1'>({valueType})</span>
+        <span className='body-sm text-green-700 font-mono ml-2'>
           {formattedValue}
         </span>
       </div>
@@ -119,10 +119,10 @@ export const FormDebugPanel: React.FC<FormDebugPanelProps> = ({
         <div className='flex items-center justify-between p-3 border-b border-gray-200 bg-orange-50 rounded-t-lg'>
           <div className='flex items-center gap-2'>
             <Bug className='w-4 h-4 text-orange-600' />
-            <span className='text-sm font-semibold text-gray-700'>
+            <span className='label'>
               调试面板
             </span>
-            <span className='text-xs text-gray-500'>
+            <span className='text-meta'>
               ({Object.keys(watchedData).length} 字段)
             </span>
           </div>
@@ -172,11 +172,11 @@ export const FormDebugPanel: React.FC<FormDebugPanelProps> = ({
               <div className='p-3 max-h-96 overflow-y-auto'>
                 <div className='space-y-1'>
                   {Object.keys(watchedData).length === 0 ? (
-                    <div className='text-gray-500 text-sm text-center py-4'>
+                    <div className='body-md text-center py-4'>
                       暂无表单数据
                     </div>
                   ) : (
-                    <div className='font-mono text-xs'>
+                    <div className='body-sm font-mono'>
                       {renderObject(watchedData)}
                     </div>
                   )}

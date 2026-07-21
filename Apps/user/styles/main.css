@@ -21,24 +21,13 @@
 @layer utilities;
 
 @utility custom-scrollbar {
-  scrollbar-width: thin;
+  scrollbar-width: auto;
   scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
 
   .dark & {
     scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
   }
 }
-
-/* Global scrollbar styling using standard properties to enable native overlay behavior */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
-}
-
-.dark * {
-  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
-}
-
 
 @keyframes soundbar {
   0% {

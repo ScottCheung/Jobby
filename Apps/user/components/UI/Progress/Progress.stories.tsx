@@ -114,7 +114,7 @@ export const BasicCircularProgress: StoryObj<typeof CircularProgress> = {
   render: () => (
     <div className='grid grid-cols-2 gap-8'>
       <div className='space-y-4'>
-        <h3 className='text-lg font-medium'>Solid</h3>
+        <h3 className='title-card'>Solid</h3>
         <div className='flex items-center space-x-4'>
           <CircularProgress value={Math.floor(Math.random() * 100)} />
           <CircularProgress
@@ -124,7 +124,7 @@ export const BasicCircularProgress: StoryObj<typeof CircularProgress> = {
         </div>
       </div>
       <div className='space-y-4'>
-        <h3 className='text-lg font-medium'>Gradient</h3>
+        <h3 className='title-card'>Gradient</h3>
         <div className='flex items-center space-x-4'>
           <CircularProgress
             value={Math.floor(Math.random() * 100)}
@@ -145,7 +145,7 @@ export const CircularProgressSizes: StoryObj<typeof CircularProgress> = {
   render: () => (
     <div className='space-y-8'>
       <div className='space-y-4'>
-        <h3 className='text-lg font-medium'>Solid</h3>
+        <h3 className='title-card'>Solid</h3>
         <div className='flex items-center space-x-4'>
           <CircularProgress
             value={Math.floor(Math.random() * 100)}
@@ -175,7 +175,7 @@ export const CircularProgressSizes: StoryObj<typeof CircularProgress> = {
         </div>
       </div>
       <div className='space-y-4'>
-        <h3 className='text-lg font-medium'>Gradient</h3>
+        <h3 className='title-card'>Gradient</h3>
         <div className='flex items-center space-x-4'>
           <CircularProgress
             value={Math.floor(Math.random() * 100)}
@@ -217,7 +217,7 @@ export const CircularProgressColors: StoryObj<typeof CircularProgress> = {
   render: () => (
     <div className='space-y-8'>
       <div className='space-y-4'>
-        <h3 className='text-lg font-medium'>Solid</h3>
+        <h3 className='title-card'>Solid</h3>
         <div className='flex items-center space-x-4'>
           <CircularProgress
             value={Math.floor(Math.random() * 100)}
@@ -252,7 +252,7 @@ export const CircularProgressColors: StoryObj<typeof CircularProgress> = {
         </div>
       </div>
       <div className='space-y-4'>
-        <h3 className='text-lg font-medium'>Gradient</h3>
+        <h3 className='title-card'>Gradient</h3>
         <div className='flex items-center space-x-4'>
           <CircularProgress
             value={Math.floor(Math.random() * 100)}
@@ -300,7 +300,7 @@ export const IndeterminateCircularProgress: StoryObj<typeof CircularProgress> =
     render: () => (
       <div className='space-y-8'>
         <div className='space-y-4'>
-          <h3 className='text-lg font-medium'>Solid</h3>
+          <h3 className='title-card'>Solid</h3>
           <div className='flex items-center space-x-4'>
             <CircularProgress
               value={0}
@@ -314,7 +314,7 @@ export const IndeterminateCircularProgress: StoryObj<typeof CircularProgress> =
           </div>
         </div>
         <div className='space-y-4'>
-          <h3 className='text-lg font-medium'>Gradient</h3>
+          <h3 className='title-card'>Gradient</h3>
           <div className='flex items-center space-x-4'>
             <CircularProgress
               value={0}
@@ -337,7 +337,7 @@ export const CustomThickness: StoryObj<typeof CircularProgress> = {
   render: () => (
     <div className='space-y-8'>
       <div className='space-y-4'>
-        <h3 className='text-lg font-medium'>Solid</h3>
+        <h3 className='title-card'>Solid</h3>
         <div className='flex items-center space-x-4'>
           <CircularProgress
             value={Math.floor(Math.random() * 100)}
@@ -378,7 +378,7 @@ export const CustomThickness: StoryObj<typeof CircularProgress> = {
         </div>
       </div>
       <div className='space-y-4'>
-        <h3 className='text-lg font-medium'>Gradient</h3>
+        <h3 className='title-card'>Gradient</h3>
         <div className='flex items-center space-x-4'>
           <CircularProgress
             value={Math.floor(Math.random() * 100)}

@@ -12,7 +12,7 @@ export function H1({ className, ...props }: TypographyProps) {
   return (
     <h1
       className={cn(
-        'text-2xl font-bold tracking-tight text-ink-primary md:text-4xl',
+        'title-page md:text-4xl',
         className,
       )}
       {...props}
@@ -24,7 +24,7 @@ export function H2({ className, ...props }: TypographyProps) {
   return (
     <h2
       className={cn(
-        'text-xl font-bold tracking-tight text-ink-primary',
+        'title-section tracking-tight',
         className,
       )}
       {...props}
@@ -36,7 +36,7 @@ export function H3({ className, ...props }: TypographyProps) {
   return (
     <h3
       className={cn(
-        'text-lg font-semibold tracking-tight text-ink-primary',
+        'title-card tracking-tight',
         className,
       )}
       {...props}
@@ -48,7 +48,7 @@ export function H4({ className, ...props }: TypographyProps) {
   return (
     <h4
       className={cn(
-        'text-base font-semibold tracking-tight text-ink-secondary',
+        'title-sub text-ink-secondary',
         className,
       )}
       {...props}
@@ -59,7 +59,7 @@ export function H4({ className, ...props }: TypographyProps) {
 export function P({ className, ...props }: TypographyProps) {
   return (
     <p
-      className={cn('text-sm font-medium text-ink-secondary', className)}
+      className={cn('label text-ink-secondary', className)}
       {...props}
     />
   );
@@ -67,7 +67,7 @@ export function P({ className, ...props }: TypographyProps) {
 
 export function Lead({ className, ...props }: TypographyProps) {
   return (
-    <p className={cn('text-base text-ink-secondary', className)} {...props} />
+    <p className={cn('body-lg text-ink-secondary', className)} {...props} />
   );
 }
 
@@ -75,7 +75,7 @@ export function Small({ className, ...props }: TypographyProps) {
   return (
     <small
       className={cn(
-        'text-xs font-medium text-ink-secondary leading-none',
+        'label-sm leading-none',
         className,
       )}
       {...props}
@@ -85,7 +85,7 @@ export function Small({ className, ...props }: TypographyProps) {
 
 export function Muted({ className, ...props }: TypographyProps) {
   return (
-    <p className={cn('text-sm text-ink-secondary', className)} {...props} />
+    <p className={cn('body-md text-ink-secondary', className)} {...props} />
   );
 }
 

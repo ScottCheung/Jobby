@@ -2,8 +2,11 @@
 
 import * as React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
+import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { Loader2, LucideIcon } from 'lucide-react';
+import { style } from 'framer-motion/client';
+import { ref } from 'process';
 
 /** 加载动画最短显示时长（ms），防止 API 太快导致按钮闪烁跳动 */
 const MIN_LOADING_MS = 200;
@@ -36,7 +39,7 @@ const buttonVariants = cva(
         md: 'h-[40px] pl-3 pr-4 font-semibold',
         icon: 'h-[40px] w-[40px] shrink-0',
         default: 'h-[48px] px-6 py-2 font-semibold',
-        lg: 'h-[52px]  px-6 text-lg font-semibold uppercase italic',
+        lg: 'title-card h-[52px] px-6 uppercase italic',
         WithIcons: 'p-1',
         toolbar: 'p-4 h-auto ',
         toolbarSm: 'px-3 py-1.5 h-auto ',
@@ -56,6 +59,7 @@ export interface ButtonProps
   asChild?: boolean;
   Icon?: LucideIcon;
   isLoading?: boolean;
+  layoutId?: string;
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
@@ -68,6 +72,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       Icon,
       children,
       isLoading = false,
+      layoutId,
       ...props
     },
     ref,
@@ -95,7 +100,14 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const displayLoading = isLoading || latch;
 
     return (
-      <button
+      <motion.button
+        layoutId={layoutId}
+        transition={{
+          type: 'spring',
+          duration: 0.7,
+          bounce: 0.2,
+          ease: [0.22, 1, 0.36, 1],
+        }}
         className={cn(
           buttonVariants({
             variant: resolvedVariant,
@@ -104,13 +116,20 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
           }),
           displayLoading && 'cursor-not-allowed opacity-50',
         )}
-        ref={ref}
-        {...props}
+        style={
+          layoutId ?
+            {
+              transition: 'none',
+            }
+          : undefined
+        }
+        ref={ref as any}
+        {...(props as any)}
       >
-        {Icon && !displayLoading && <Icon className={cn('size-4')} />}
+        {Icon && <Icon className={cn('size-4')} />}
         <div className={displayLoading ? 'opacity-0' : ''}>{children}</div>
         {displayLoading && <Loader2 className='size-6 animate-spin absolute' />}
-      </button>
+      </motion.button>
     );
   },
 );

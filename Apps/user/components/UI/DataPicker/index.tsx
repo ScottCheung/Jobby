@@ -114,7 +114,7 @@ const MonthCalendar: React.FC<MonthCalendarProps> = ({
     return (
         <div className="w-full max-w-[280px]">
             <div className="flex items-center justify-center mb-4">
-                <span className="text-sm font-medium text-ink-primary">
+                <span className="label">
                     {monthDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
                 </span>
             </div>
@@ -175,7 +175,7 @@ const MonthCalendar: React.FC<MonthCalendarProps> = ({
                                     onChange(date)
                                 }}
                                 className={cn(
-                                    "relative z-10 w-8 h-8 rounded-full flex items-center justify-center text-xs transition-colors",
+                                    "body-sm relative z-10 w-8 h-8 rounded-full flex items-center justify-center transition-colors",
                                     selected ? "bg-primary text-primary-foreground font-medium shadow-sm hover:bg-primary/90" : "text-ink-primary hover:bg-black/5",
                                     inRangeMiddle && "text-primary font-medium" // Text color inside range
                                 )}
@@ -363,7 +363,7 @@ export const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
                             <AutoTooltip
                                 content={renderValue()}
                                 className={cn(
-                                    "truncate text-xs text-left",
+                                    "body-sm truncate text-left",
                                     !value || (Array.isArray(value) && value.length === 0) ? "text-ink-secondary" : "text-ink-primary"
                                 )}
                             >
@@ -478,7 +478,7 @@ export const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
                                             setIsOpen(false)
                                         }
                                     }}
-                                    className="text-xs text-primary font-medium hover:underline"
+                                    className="label-sm text-primary hover:underline"
                                 >
                                     Today
                                 </button>

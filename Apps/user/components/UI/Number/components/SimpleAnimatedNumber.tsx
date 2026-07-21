@@ -35,10 +35,10 @@ export const SimpleAnimatedNumber: React.FC<AnimatedNumberProps> = ({
 
   // Size class mapping
   const sizeClasses = {
-    sm: 'text-sm',
-    md: 'text-base',
-    lg: 'text-lg',
-    xl: 'text-xl',
+    sm: 'body-md',
+    md: 'body-lg',
+    lg: 'title-card',
+    xl: 'title-section',
   };
 
   // Weight class mapping

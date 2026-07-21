@@ -33,7 +33,7 @@ export function EmptyPlaceHolder({
           />
         )}
 
-        <p className={cn('text-sm text-ink-secondary/30', messageClassName)}>
+        <p className={cn('body-md text-ink-secondary/30', messageClassName)}>
           {message || 'No Content'}
         </p>
 

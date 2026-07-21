@@ -261,7 +261,7 @@ export const SVGAnimation: React.FC<SVGAnimationProps> = ({
 
       {withMessage && (
         <motion.h2
-          className='font-semibold mt-6 text-2xl text-gray-800 dark:text-white'
+          className='title-page mt-6'
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 1 }}

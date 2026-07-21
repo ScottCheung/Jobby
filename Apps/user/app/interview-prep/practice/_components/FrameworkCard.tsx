@@ -143,14 +143,14 @@ export function FrameworkCard({
   return (
     <div className='panel-lg  '>
       <div className='flex justify-between items-center pb-2 mb-2 '>
-        <span className='text-xs font-bold text-ink-primary flex items-center gap-1.5'>
+        <span className='label-sm flex items-center gap-1.5'>
           <Lightbulb className='w-3.5 h-3.5 text-amber-500 shrink-0' />
           Answer Framework
         </span>
         {!isEditingFramework && (
           <button
             onClick={onStartEditing}
-            className='text-xs text-primary font-bold hover:underline shrink-0 transition-colors active:scale-95'
+            className='label-sm text-primary hover:underline shrink-0 transition-colors active:scale-95'
           >
             Switch
           </button>
@@ -189,7 +189,7 @@ export function FrameworkCard({
                   )}
                   <span
                     className={cn(
-                      'text-xs font-bold uppercase tracking-wide',
+                      'label-sm uppercase',
                       !isSelected && 'text-ink-primary',
                     )}
                   >
@@ -208,11 +208,11 @@ export function FrameworkCard({
               value={customFrameworkText}
               onChange={(e) => setCustomFrameworkText(e.target.value)}
               placeholder='Define your custom answering framework details here...'
-              className='w-full h-24 p-3 text-sm rounded-lg border border-border dark:border-border bg-panel focus:outline-none text-ink-primary resize-none leading-relaxed mt-1 focus:border-primary/40 transition-all'
+              className='body-md w-full h-24 p-3 rounded-lg border border-border dark:border-border bg-panel focus:outline-none resize-none mt-1 focus:border-primary/40 transition-all'
             />
           )}
 
-          <div className='flex justify-end gap-2 text-xs pt-1 border-t border-zinc-150 dark:border-zinc-850'>
+          <div className='body-sm flex justify-end gap-2 pt-1 border-t border-zinc-150 dark:border-zinc-850'>
             <button
               onClick={onCancelEditing}
               disabled={isSavingFramework}

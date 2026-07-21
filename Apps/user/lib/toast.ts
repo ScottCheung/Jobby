@@ -2,21 +2,12 @@
 
 'use client';
 
-import { useToastStore } from '@/lib/store/toast-store';
+import { useLayoutStore } from '@/lib/store/layout-store';
 
-let toastTimer: number | null = null;
-
-export function showGlobalToast(message: string, duration = 2600) {
-  const { setMessage, clearMessage } = useToastStore.getState();
-
-  setMessage(message);
-
-  if (toastTimer) {
-    window.clearTimeout(toastTimer);
-  }
-
-  toastTimer = window.setTimeout(() => {
-    clearMessage();
-    toastTimer = null;
-  }, duration);
+export function showGlobalToast(message: string, duration = 4000) {
+  useLayoutStore.getState().actions.addNotification({
+    type: 'info',
+    message,
+    duration,
+  });
 }

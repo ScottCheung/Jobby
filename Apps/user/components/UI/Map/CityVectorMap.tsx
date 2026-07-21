@@ -412,7 +412,7 @@ export function CityVectorMap({
 
         {/* Hover City Tooltip */}
         {hoveredCity && (
-          <div className='absolute z-10 top-4 bg-black text-white p-2 rounded-lg text-xs shadow-md border border-zinc-700/50 pointer-events-none transition-opacity duration-200 flex flex-col font-sans'>
+          <div className='body-sm absolute z-10 top-4 bg-black p-2 rounded-lg shadow-md border border-zinc-700/50 pointer-events-none transition-opacity duration-200 flex flex-col font-sans'>
             <span className='font-bold truncate'>{hoveredCity.name}</span>
             <span className='bg-primary text-primary-foreground p-3 rounded-sm w-full justify-items-center flex mt-3'>
               {hoveredCity.value}{' '}
@@ -424,7 +424,7 @@ export function CityVectorMap({
 
       {/* Footer Info Display */}
       {cities.length > 0 && (
-        <div className=' flex flex-wrap gap-4 items-center text-xs text-ink-primary0 dark:text-zinc-400 shrink-0 font-medium'>
+        <div className='label-sm flex flex-wrap gap-4 items-center text-ink-primary0 shrink-0'>
           {cities.slice(0, 3).map((city, idx) => (
             <span key={idx} className='flex items-center gap-1'>
               {city.name.split(',')[0]}{' '}

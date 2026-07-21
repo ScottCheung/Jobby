@@ -54,7 +54,7 @@ export function ProgressBarList<T = any>({
 }: ProgressBarListProps<T>) {
   if (!data || data.length === 0) {
     return (
-      <div className='py-8 text-center text-ink-primary0 dark:text-ink-primary0 italic text-sm w-full'>
+      <div className='body-md py-8 text-center text-ink-primary0 dark:text-ink-primary0 italic w-full'>
         {emptyMessage}
       </div>
     );
@@ -111,7 +111,7 @@ export function ProgressBarList<T = any>({
             variants={itemVariants}
             className='space-y-1 w-full'
           >
-            <div className='flex items-baseline justify-between text-xs w-full gap-5'>
+            <div className='body-sm flex items-baseline justify-between w-full gap-5'>
               <span
                 className='font-semibold text-ink-primary truncate max-w-[280px]'
                 title={name}

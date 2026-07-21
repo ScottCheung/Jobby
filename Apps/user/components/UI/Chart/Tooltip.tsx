@@ -46,7 +46,7 @@ export const ChartTooltip: React.FC<ChartTooltipProps> = ({
     );
 
     return (
-      <m.div className='rounded-lg  bg-black transition-all duration-300 backdrop-blur-sm  text-sm shadow-lg  p-3'>
+      <m.div className='body-md rounded-lg bg-black transition-all duration-300 backdrop-blur-sm shadow-lg p-3'>
         {displayLabel && (
           <div className='mb-2 font-medium text-white'>{displayLabel}</div>
         )}
@@ -81,7 +81,7 @@ export const ChartTooltip: React.FC<ChartTooltipProps> = ({
                 <div className='flex flex-1 items-center justify-between w-full'>
                   {/* Conditionally render the item name (label) */}
                   {itemName && itemName.trim() !== '' && (
-                    <span className='text-white text-xs mr-3'>{itemName}</span>
+                    <span className='body-sm mr-3'>{itemName}</span>
                   )}
                   {/* Ensure value is always shown, adjust spacing if name is absent */}
                   <div className='flex flex-col items-center gap-2'>
@@ -89,7 +89,7 @@ export const ChartTooltip: React.FC<ChartTooltipProps> = ({
                       value={item.value}
                       duration={0.2}
                       {...ValueProps}
-                      className={`font-medium text-xs text-white ${
+                      className={`label-sm ${
                         !itemName || itemName.trim() === '' ? 'ml-auto' : ''
                       }`}
                     />

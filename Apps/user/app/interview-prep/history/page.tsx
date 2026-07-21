@@ -60,7 +60,7 @@ export default function HistoryPage() {
     <div className="max-w-5xl mx-auto pb-24">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-ink-primary mb-2">History & Rewards</h1>
+          <h1 className="title-page text-ink-primary mb-2">History & Rewards</h1>
           <p className="text-ink-secondary">View your past practice sessions and track your XP earnings.</p>
         </div>
       </div>
@@ -111,16 +111,16 @@ export default function HistoryPage() {
               <div key={record.id} className="bg-panel border border-border rounded-xl p-5 hover:border-primary/20 transition-colors">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div className="flex-1">
-                    <div className="flex items-center gap-2 text-xs font-medium text-ink-secondary mb-2">
+                    <div className="label-sm flex items-center gap-2 mb-2">
                       <Clock className="w-3.5 h-3.5" />
                       {record.created_at ? formatDate(record.created_at) : 'Unknown Date'}
                     </div>
-                    <h3 className="text-lg font-bold text-ink-primary mb-1">
+                    <h3 className="title-card mb-1">
                       {questions[record.question_id]?.title || 'Unknown Question'}
                     </h3>
                     {record.confidence_score !== null && (
                       <div className="flex items-center gap-2 mt-3">
-                        <span className="text-xs font-bold text-ink-secondary uppercase tracking-wider">Confidence Score:</span>
+                        <span className="label-overline">Confidence Score:</span>
                         <div className="flex gap-1">
                           {[1, 2, 3, 4, 5].map((s) => (
                             <div
@@ -161,7 +161,7 @@ export default function HistoryPage() {
               <div className="bg-panel border border-border rounded-xl overflow-hidden">
                 <table className="w-full text-left">
                   <thead>
-                    <tr className="bg-background-secondary/50 border-b border-border text-xs uppercase tracking-wider text-ink-secondary">
+                    <tr className="label-overline bg-background-secondary/50 border-b border-border text-ink-secondary">
                       <th className="px-5 py-3 font-semibold">Date & Time</th>
                       <th className="px-5 py-3 font-semibold">Event</th>
                       <th className="px-5 py-3 font-semibold text-right">Earned</th>
@@ -170,13 +170,13 @@ export default function HistoryPage() {
                   <tbody className="divide-y divide-border">
                     {transactions.map((tx) => (
                       <tr key={tx.id} className="hover:bg-background-secondary/20 transition-colors">
-                        <td className="px-5 py-4 text-sm text-ink-secondary">
+                        <td className="body-md px-5 py-4 text-ink-secondary">
                           {tx.created_at ? formatDate(tx.created_at) : 'Unknown Date'}
                         </td>
-                        <td className="px-5 py-4 text-sm font-medium text-ink-primary">
+                        <td className="label px-5 py-4">
                           {tx.reason}
                         </td>
-                        <td className="px-5 py-4 text-sm text-right font-bold">
+                        <td className="label px-5 py-4 text-right">
                           {tx.currency === 'xp' ? (
                             <span className="text-blue-500 bg-blue-500/10 px-2.5 py-1 rounded-md inline-flex items-center gap-1.5">
                               <Trophy className="w-3.5 h-3.5" />
@@ -203,7 +203,7 @@ export default function HistoryPage() {
                 <Info className="w-5 h-5 text-primary" />
                 <h3 className="font-bold text-ink-primary">Earning Rules</h3>
               </div>
-              <ul className="space-y-4 text-sm text-ink-secondary">
+              <ul className="body-md space-y-4 text-ink-secondary">
                 <li className="flex items-start gap-2">
                   <Trophy className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />
                   <span><strong className="text-ink-primary">+10 XP & +2 Coins</strong> when you practice a question for the first time each day.</span>

@@ -59,7 +59,7 @@ export default function LoginPage() {
         className="w-full max-w-md bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl p-8 relative z-10"
       >
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+          <h1 className="title-page bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
             {isLogin ? 'Welcome Back' : 'Create Account'}
           </h1>
           <p className="text-slate-400 mt-2">
@@ -68,14 +68,14 @@ export default function LoginPage() {
         </div>
 
         {error && (
-          <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+          <div className="body-md mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400">
             {error}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5" htmlFor="email">
+            <label className="label block mb-1.5" htmlFor="email">
               Email Address
             </label>
             <div className="relative">
@@ -94,7 +94,7 @@ export default function LoginPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5" htmlFor="password">
+            <label className="label block mb-1.5" htmlFor="password">
               Password
             </label>
             <div className="relative">
@@ -136,7 +136,7 @@ export default function LoginPage() {
           <div className="absolute inset-0 flex items-center">
             <div className="w-full border-t border-white/10"></div>
           </div>
-          <div className="relative flex justify-center text-sm">
+          <div className="body-md relative flex justify-center">
             <span className="px-2 bg-slate-900 text-slate-500">Or continue with</span>
           </div>
         </div>
@@ -168,7 +168,7 @@ export default function LoginPage() {
           Google
         </button>
 
-        <p className="mt-8 text-center text-sm text-slate-400">
+        <p className="body-md mt-8 text-center">
           {isLogin ? "Don't have an account? " : "Already have an account? "}
           <button
             onClick={() => {

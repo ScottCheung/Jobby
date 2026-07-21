@@ -14,17 +14,17 @@ import HoveredLink from "../components/HoveredLink";
     return (
           <Menu setActive={setActive}>
         <MenuItem setActive={ setActive } active={ active } item={ "<i class='flex fi fi-rs-search'></i>" } type={'tag'}>
-        <div className="flex flex-col text-sm ">
+        <div className="body-md flex flex-col">
 Search
         </div>
         </MenuItem>
                 <MenuItem setActive={ setActive } active={ active } item={ "<i class='flex fi fi-rr-user'></i>" } type={'tag'}>
-        <div className="flex flex-col text-sm">
+        <div className="body-md flex flex-col">
 User Center
         </div>
       </MenuItem>
               <MenuItem setActive={ setActive } active={ active } item={ "<i class='flex fi fi-rr-shopping-cart'></i>" } type={'tag'}>
-        <div className="flex flex-col text-sm">
+        <div className="body-md flex flex-col">
 Cart
         </div>
       </MenuItem>

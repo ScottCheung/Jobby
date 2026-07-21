@@ -209,6 +209,16 @@ interface ConsoleContextType {
   deleteApplication: (applicationId: string) => Promise<void>;
   startWorker: () => Promise<void>;
   stopWorker: () => Promise<void>;
+  appStats: {
+    total_applications: number;
+    submitted: number;
+    today_submitted: number;
+    yesterday_submitted: number;
+    today_processed: number;
+    yesterday_processed: number;
+    interviewing: number;
+    skipped: number;
+  } | null;
   stats: Array<{
     label: string;
     value: number;
@@ -248,6 +258,26 @@ const ConsoleContext = createContext<ConsoleContextType | null>(null);
 
 export function ConsoleProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [appStats, setAppStats] = useState<{
+    total_applications: number;
+    submitted: number;
+    today_submitted: number;
+    yesterday_submitted: number;
+    today_processed: number;
+    yesterday_processed: number;
+    interviewing: number;
+    skipped: number;
+  } | null>(null);
+
+  const loadAppStats = async () => {
+    try {
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const statsData = await api.applicationStats(tz);
+      setAppStats(statsData);
+    } catch (err) {
+      console.error('Failed to load application stats:', err);
+    }
+  };
   const [profile, setProfile] = useState<UserProfile>(emptyProfile);
   const [jobHuntingProfile, setJobHuntingProfile] =
     useState<JobHuntingProfile>(emptyJobHuntingProfile);
@@ -394,6 +424,7 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
           questionRows,
           applicationRows,
           runtimeConfig,
+          statsData,
         ] = await withMinimumLoadingTime(
           Promise.all([
             api.me(),
@@ -403,6 +434,7 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
             api.questionCache(),
             api.applications(),
             api.runtimeSettings(),
+            api.applicationStats(Intl.DateTimeFormat().resolvedOptions().timeZone).catch(() => null),
           ]),
         );
         const resolvedJobHuntingProfiles =
@@ -422,6 +454,9 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
         setRuntimeSettings(runtimeConfig ?? emptyRuntime);
         setQuestions(questionRows);
         setApplications(sortApplications(applicationRows));
+        if (statsData) {
+          setAppStats(statsData);
+        }
       } catch (loadError) {
         setError(
           loadError instanceof Error ?
@@ -441,16 +476,63 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let sse: EventSource | null = null;
     let active = true;
+    let reconnectTimer: number | undefined;
+    let reconnectAttempt = 0;
+    let hasConnected = false;
+
+    const scheduleReconnect = () => {
+      if (!active || reconnectTimer) return;
+      const baseDelay = Math.min(30_000, 1_000 * 2 ** reconnectAttempt);
+      const jitter = Math.round(baseDelay * (Math.random() * 0.4 - 0.2));
+      reconnectAttempt += 1;
+      reconnectTimer = window.setTimeout(() => {
+        reconnectTimer = undefined;
+        void initSSE();
+      }, baseDelay + jitter);
+    };
 
     async function initSSE() {
-      const apiBaseUrl = await resolveSseBaseUrl();
-      if (!active) return;
+      try {
+        const apiBaseUrl = await resolveSseBaseUrl();
+        if (!active) return;
 
-      const sseUrl = `${apiBaseUrl.replace(/\/$/, '')}/api/sse`;
-      console.log('[SSE] Connecting to', sseUrl);
-      sse = new EventSource(sseUrl);
+        const sseUrl = `${apiBaseUrl.replace(/\/$/, '')}/api/sse`;
+        sse?.close();
+        sse = new EventSource(sseUrl);
+      } catch (error) {
+        console.warn('[SSE] Could not create connection. Retrying.', error);
+        scheduleReconnect();
+        return;
+      }
 
-      sse.addEventListener('application_created', (event) => {
+      const connection = sse;
+      connection.onopen = () => {
+        const reconnected = hasConnected;
+        hasConnected = true;
+        reconnectAttempt = 0;
+        if (reconnectTimer) {
+          window.clearTimeout(reconnectTimer);
+          reconnectTimer = undefined;
+        }
+        // Reconcile state after an interrupted stream so no event is lost.
+        if (reconnected) void loadData();
+      };
+
+      ['comment.created', 'comment.deleted', 'comment.reaction_updated'].forEach((eventName) => {
+        connection.addEventListener(eventName, (event) => {
+          try {
+            window.dispatchEvent(new CustomEvent('jobby:comment-event', { detail: JSON.parse(event.data) }));
+          } catch {
+            // Ignore malformed optional realtime events.
+          }
+        });
+      });
+      connection.addEventListener('notification.created', (event) => {
+        try { window.dispatchEvent(new CustomEvent('jobby:notification-event', { detail: JSON.parse(event.data) })); }
+        catch { /* Ignore malformed optional realtime events. */ }
+      });
+
+      connection.addEventListener('application_created', (event) => {
         try {
           const newApp = JSON.parse(event.data) as JobApplication;
           console.log('[SSE] Application created:', newApp);
@@ -458,12 +540,13 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
             if (current.some((app) => app.id === newApp.id)) return current;
             return sortApplications([newApp, ...current]);
           });
+          void loadAppStats();
         } catch (e) {
           console.error('[SSE] Failed to parse application_created data', e);
         }
       });
 
-      sse.addEventListener('application_updated', (event) => {
+      connection.addEventListener('application_updated', (event) => {
         try {
           const updatedApp = JSON.parse(event.data) as JobApplication;
           console.log('[SSE] Application updated:', updatedApp);
@@ -478,22 +561,24 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
               ),
             );
           });
+          void loadAppStats();
         } catch (e) {
           console.error('[SSE] Failed to parse application_updated data', e);
         }
       });
 
-      sse.addEventListener('application_deleted', (event) => {
+      connection.addEventListener('application_deleted', (event) => {
         try {
           const { id } = JSON.parse(event.data) as { id: string };
           console.log('[SSE] Application deleted:', id);
           setApplications((current) => current.filter((app) => app.id !== id));
+          void loadAppStats();
         } catch (e) {
           console.error('[SSE] Failed to parse application_deleted data', e);
         }
       });
 
-      sse.addEventListener('question_cache_created', (event) => {
+      connection.addEventListener('question_cache_created', (event) => {
         try {
           const newEntry = JSON.parse(event.data) as QuestionCacheEntry;
           setQuestions((current) => {
@@ -505,7 +590,7 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
         }
       });
 
-      sse.addEventListener('question_cache_upserted', (event) => {
+      connection.addEventListener('question_cache_upserted', (event) => {
         try {
           const updatedEntry = JSON.parse(event.data) as QuestionCacheEntry;
           setQuestions((current) => {
@@ -525,7 +610,7 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
         }
       });
 
-      sse.addEventListener('question_cache_updated', (event) => {
+      connection.addEventListener('question_cache_updated', (event) => {
         try {
           const updatedEntry = JSON.parse(event.data) as QuestionCacheEntry;
           setQuestions((current) =>
@@ -538,7 +623,7 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
         }
       });
 
-      sse.addEventListener('question_cache_deleted', (event) => {
+      connection.addEventListener('question_cache_deleted', (event) => {
         try {
           const { id } = JSON.parse(event.data) as { id: string };
           setQuestions((current) => current.filter((item) => item.id !== id));
@@ -547,18 +632,33 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
         }
       });
 
-      sse.onerror = (err) => {
-        console.error('[SSE] Connection error or closed, will retry', err);
+      connection.onerror = () => {
+        if (!active || sse !== connection) return;
+        connection.close();
+        sse = null;
+        scheduleReconnect();
       };
     }
 
-    initSSE();
+    const reconnectNow = () => {
+      if (!active || sse?.readyState === EventSource.OPEN) return;
+      if (reconnectTimer) {
+        window.clearTimeout(reconnectTimer);
+        reconnectTimer = undefined;
+      }
+      void initSSE();
+    };
+
+    void initSSE();
+    window.addEventListener('online', reconnectNow);
+    document.addEventListener('visibilitychange', reconnectNow);
 
     return () => {
       active = false;
-      if (sse) {
-        sse.close();
-      }
+      if (reconnectTimer) window.clearTimeout(reconnectTimer);
+      window.removeEventListener('online', reconnectNow);
+      document.removeEventListener('visibilitychange', reconnectNow);
+      sse?.close();
     };
   }, []);
 
@@ -789,6 +889,7 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
       ),
     );
     notify('Application updated');
+    void loadAppStats();
   };
 
   const asyncApplication = async (applicationId: string) => {
@@ -802,6 +903,7 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
         ),
       );
       notify(getLinkAsyncWarning(updated) || 'Application async completed');
+      void loadAppStats();
     } catch (asyncError) {
       setError(
         asyncError instanceof Error ?
@@ -823,6 +925,7 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
       notify(
         `Async finished: ${result.synced} synced, ${result.failed} failed`,
       );
+      void loadAppStats();
     } catch (batchError) {
       setError(
         batchError instanceof Error ?
@@ -840,6 +943,7 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
       current.filter((item) => item.id !== applicationId),
     );
     notify('Application deleted');
+    void loadAppStats();
   };
 
   const startWorker = async () => {
@@ -899,55 +1003,6 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
   const [trendRange, setTrendRange] = useState<7 | 30>(7);
 
   const stats = useMemo(() => {
-    const skipped = applications.filter((item) =>
-      item.status.toLowerCase().includes('skip'),
-    ).length;
-    const submitted = applications.filter((item) =>
-      isStatusSubmitted(item.status),
-    ).length;
-    const interviewing = applications.filter(
-      (item) => item.pipeline_stage === 'interviewing',
-    ).length;
-
-    const getLocalDateStr = (d: Date) => {
-      const year = d.getFullYear();
-      const month = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    };
-
-    const todayStr = getLocalDateStr(new Date());
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = getLocalDateStr(yesterday);
-
-    let submittedToday = 0;
-    let submittedYesterday = 0;
-    let processedToday = 0;
-    let processedYesterday = 0;
-
-    applications.forEach((item) => {
-      const displayDate = getApplicationDisplayDate(item);
-      if (!displayDate) return;
-      const d = new Date(displayDate);
-      if (Number.isNaN(d.getTime())) return;
-      const dateStr = getLocalDateStr(d);
-
-      const isSub = isStatusSubmitted(item.status);
-
-      if (dateStr === todayStr) {
-        processedToday++;
-        if (isSub) {
-          submittedToday++;
-        }
-      } else if (dateStr === yesterdayStr) {
-        processedYesterday++;
-        if (isSub) {
-          submittedYesterday++;
-        }
-      }
-    });
-
     const getComparisonDetails = (todayVal: number, yesterdayVal: number) => {
       const diff = todayVal - yesterdayVal;
       if (diff > 0) {
@@ -974,7 +1029,7 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
     return [
       {
         label: 'Processing',
-        value: applications.length,
+        value: appStats?.total_applications ?? 0,
         icon: Briefcase,
         iconColor: 'text-blue-500/50 dark:text-blue-400',
         textColor: 'text-blue-600 dark:text-blue-400',
@@ -983,36 +1038,27 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
       },
       {
         label: 'Submitted',
-        value: submitted,
+        value: appStats?.today_submitted ?? 0,
         icon: CheckCircle2,
         iconColor: 'text-emerald-500/50 dark:text-emerald-400',
         textColor: 'text-emerald-600 dark:text-emerald-400',
         bgColor: 'bg-emerald-500/5 dark:bg-emerald-500/20',
         borderColor: 'border-emerald-500/20',
-      },
-      {
-        label: "Today's Submitted",
-        value: submittedToday,
-        icon: CalendarCheck,
-        iconColor: 'text-emerald-500/50 dark:text-emerald-400',
-        textColor: 'text-emerald-600 dark:text-emerald-400',
-        bgColor: 'bg-emerald-500/5 dark:bg-emerald-500/20',
-        borderColor: 'border-emerald-500/20',
-        ...getComparisonDetails(submittedToday, submittedYesterday),
+        ...getComparisonDetails(appStats?.today_submitted ?? 0, appStats?.yesterday_submitted ?? 0),
       },
       {
         label: "Today's Processed",
-        value: processedToday,
+        value: appStats?.today_processed ?? 0,
         icon: Activity,
         iconColor: 'text-blue-500/50 dark:text-blue-400',
         textColor: 'text-blue-600 dark:text-blue-400',
         bgColor: 'bg-blue-500/5 dark:bg-blue-500/20',
         borderColor: 'border-blue-500/20',
-        ...getComparisonDetails(processedToday, processedYesterday),
+        ...getComparisonDetails(appStats?.today_processed ?? 0, appStats?.yesterday_processed ?? 0),
       },
       {
         label: 'Interviewing',
-        value: interviewing,
+        value: appStats?.interviewing ?? 0,
         icon: MessageSquareCode,
         iconColor: 'text-purple-500/50 dark:text-purple-400',
         textColor: 'text-purple-600 dark:text-purple-400',
@@ -1021,7 +1067,7 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
       },
       {
         label: 'Skipped',
-        value: skipped,
+        value: appStats?.skipped ?? 0,
         icon: ChevronLast,
         iconColor: 'text-amber-500/50 dark:text-amber-400',
         textColor: 'text-amber-500 dark:text-amber-400',
@@ -1029,7 +1075,7 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
         borderColor: 'border-amber-500/20',
       },
     ];
-  }, [applications]);
+  }, [appStats]);
 
   const dashboardData = useMemo(() => {
     interface DayTrend {
@@ -1261,6 +1307,7 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
     deleteApplication,
     startWorker,
     stopWorker,
+    appStats,
     stats,
     dashboardData,
     trendRange,

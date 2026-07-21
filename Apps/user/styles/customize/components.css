@@ -240,7 +240,7 @@
 }
 
 .footer {
-  @apply flex items-center justify-end gap-3  border-t border-border/40 shrink-0;
+  @apply flex items-center justify-end gap-4 shrink-0;
 }
 
 /* ============================================================

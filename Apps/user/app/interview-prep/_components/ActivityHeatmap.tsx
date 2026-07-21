@@ -103,7 +103,7 @@ export function ActivityHeatmap({ data, className }: ActivityHeatmapProps) {
         <h3 className='text-[10px] uppercase font-bold text-primary tracking-wider'>
           Practice Consistency
         </h3>
-        <span className='row text-xs text-ink-secondary font-medium'>
+        <span className='label-sm row'>
           <div className='title-card'>{totalCount}</div>contributions /{' '}
           <div className='title-card'>{weeks}</div>weeks
         </span>
@@ -146,7 +146,7 @@ export function ActivityHeatmap({ data, className }: ActivityHeatmapProps) {
         ))}
       </div>
 
-      <div className='flex items-center gap-2 text-xs text-ink-secondary self-end mt-[-10px]'>
+      <div className='body-sm flex items-center gap-2 text-ink-secondary self-end mt-[-10px]'>
         <span>Less</span>
         <div className='w-3 h-3 rounded-sm bg-background-secondary/50' />
         <div className='w-3 h-3 rounded-sm bg-emerald-200 dark:bg-emerald-900/40' />

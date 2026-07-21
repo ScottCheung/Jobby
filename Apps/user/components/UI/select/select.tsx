@@ -126,7 +126,7 @@ const Select = React.forwardRef<HTMLDivElement, SelectProps>(
                             disabled={disabled}
                         >
                             <AutoTooltip className={cn(
-                                'text-xs',
+                                'body-sm',
                                 !selectedOption ? "text-ink-secondary" : "text-ink-primary"
                             )} content={selectedOption ? selectedOption.label : placeholder}>
                                 {selectedOption ? selectedOption.label : placeholder}</AutoTooltip>
@@ -167,7 +167,7 @@ const Select = React.forwardRef<HTMLDivElement, SelectProps>(
                                             onClick={() => handleSelect(option.value)}
                                             xOffset={20}
                                             className={cn(
-                                                "relative flex w-full text-ink-secondary cursor-pointer select-none items-center rounded-card py-2.5 pl-3 pr-9 text-xs outline-none transition-colors",
+                                                "body-sm relative flex w-full text-ink-secondary cursor-pointer select-none items-center rounded-card py-2.5 pl-3 pr-9 outline-none transition-colors",
                                                 "hover:bg-primary hover:text-primary-foreground",
                                                 isSelected && "bg-primary/20 text-ink-primary font-medium"
                                             )}
@@ -182,7 +182,7 @@ const Select = React.forwardRef<HTMLDivElement, SelectProps>(
                                     )
                                 })}
                                 {options.length === 0 && (
-                                    <div className="py-6 text-center text-sm text-muted-foreground">
+                                    <div className="body-md py-6 text-center text-muted-foreground">
                                         No options found
                                     </div>
                                 )}

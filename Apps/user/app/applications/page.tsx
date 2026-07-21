@@ -276,7 +276,7 @@ export default function ApplicationsPage() {
         >
           <ScrollLayout.TopToLeft>
             <div className='flex items-center gap-2 font-bold shrink-0'>
-              <h2 className='text-2xl bg-primary-gradient bg-clip-text text-transparent tracking-tight shrink-0'>
+              <h2 className='title-page bg-primary-gradient bg-clip-text text-transparent shrink-0'>
                 Application History
               </h2>
             </div>
@@ -290,13 +290,13 @@ export default function ApplicationsPage() {
                   placeholder='Search title, company, job id...'
                   value={searchText}
                   onChange={(event) => setSearchText(event.target.value)}
-                  className='pl-9 pr-4 py-1.5 w-full text-sm rounded-xl border border-zinc-200 bg-panel dark:bg-zinc-955 dark:border-border focus:outline-none focus:border-primary/50 dark:focus:border-primary/50 focus:ring-1 focus:ring-primary/20 dark:focus:ring-zinc-750 text-ink-primary'
+                  className='body-md pl-9 pr-4 py-1.5 w-full rounded-xl border border-zinc-200 bg-panel dark:bg-zinc-955 dark:border-border focus:outline-none focus:border-primary/50 dark:focus:border-primary/50 focus:ring-1 focus:ring-primary/20 dark:focus:ring-zinc-750 text-ink-primary'
                 />
               </div>
               <select
                 value={statusFilter}
                 onChange={(event) => setStatusFilter(event.target.value)}
-                className='h-9 rounded-xl border border-zinc-200 bg-panel px-3 text-sm text-zinc-900 outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 dark:border-border dark:bg-zinc-955 dark:text-zinc-100 dark:focus:border-primary/50 dark:focus:ring-zinc-750'
+                className='body-md h-9 rounded-xl border border-zinc-200 bg-panel px-3 outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 dark:border-border dark:bg-zinc-955 dark:focus:border-primary/50 dark:focus:ring-zinc-750'
               >
                 <option value=''>All statuses</option>
                 <option value='submitted'>Submitted</option>

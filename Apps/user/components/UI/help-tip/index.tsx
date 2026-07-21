@@ -16,7 +16,7 @@ export function HelpTip({ content, className }: HelpTipProps) {
   return (
     <Tooltip
       content={
-        <div className='max-w-xs text-xs leading-relaxed'>{content}</div>
+        <div className='body-sm max-w-xs'>{content}</div>
       }
       side='top'
     >

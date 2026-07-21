@@ -1,5 +1,10 @@
 import { create } from 'zustand';
 import type { ReactNode } from 'react';
+import type {
+  CelebrationEventKey,
+  CelebrationStyleConfig,
+  CelebrationType,
+} from '@/lib/celebration-config';
 
 export type NotificationType = 'success' | 'error' | 'info' | 'warning';
 
@@ -11,9 +16,19 @@ export interface Notification {
   duration?: number;
 }
 
+export interface Celebration {
+  id: string;
+  message?: string;
+  duration?: number;
+  type?: CelebrationType;
+  eventKey?: CelebrationEventKey;
+  style?: CelebrationStyleConfig;
+}
+
 interface LayoutState {
   isSidebarCollapsed: boolean;
-  notifications: Notification[];
+  notification: Notification | null;
+  celebration: Celebration | null;
   isDrawerOpen: boolean;
   drawerConfig: {
     width: number | string;
@@ -24,6 +39,8 @@ interface LayoutState {
     toggleSidebar: () => void;
     addNotification: (notification: Omit<Notification, 'id'>) => void;
     removeNotification: (id: string) => void;
+    triggerCelebration: (celebration?: Omit<Celebration, 'id'>) => void;
+    clearCelebration: () => void;
     openDrawer: (config: { width?: number | string; content: ReactNode; id?: string }) => void;
     closeDrawer: () => void;
   };
@@ -31,7 +48,8 @@ interface LayoutState {
 
 export const useLayoutStore = create<LayoutState>()((set) => ({
   isSidebarCollapsed: true,
-  notifications: [],
+  notification: null,
+  celebration: null,
   isDrawerOpen: false,
   drawerConfig: {
     width: 400,
@@ -42,16 +60,28 @@ export const useLayoutStore = create<LayoutState>()((set) => ({
     toggleSidebar: () =>
       set((state) => ({ isSidebarCollapsed: !state.isSidebarCollapsed })),
     addNotification: (notification) =>
-      set((state) => ({
-        notifications: [
-          ...state.notifications,
-          { ...notification, id: Math.random().toString(36).substring(7) },
-        ],
+      set(() => ({
+        notification: {
+          ...notification,
+          id: Math.random().toString(36).substring(7),
+        },
       })),
     removeNotification: (id) =>
       set((state) => ({
-        notifications: state.notifications.filter((n) => n.id !== id),
+        notification: state.notification?.id === id ? null : state.notification,
       })),
+    triggerCelebration: (celebration) =>
+      set(() => ({
+        celebration: {
+          id: Math.random().toString(36).substring(7),
+          duration: celebration?.duration ?? 2600,
+          message: celebration?.message,
+          type: celebration?.type,
+          eventKey: celebration?.eventKey,
+          style: celebration?.style,
+        },
+      })),
+    clearCelebration: () => set(() => ({ celebration: null })),
     openDrawer: (config) =>
       set(() => ({
         isDrawerOpen: true,

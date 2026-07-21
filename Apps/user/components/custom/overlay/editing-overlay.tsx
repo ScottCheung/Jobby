@@ -7,7 +7,7 @@ export function EditingOverlay() {
                 <div className="rounded-full bg-primary-foreground/10 flex size-12 items-center justify-center rounded-2xl">
                     <Edit2 className="size-4 text-primary-foreground " />
                 </div>
-                <span className="text-sm font-medium animate-pulse text-primary-foreground">
+                <span className="label animate-pulse text-primary-foreground">
                     Editing...
                 </span>
             </div>

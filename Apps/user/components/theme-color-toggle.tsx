@@ -21,7 +21,7 @@ export function ThemeColorToggle() {
   return (
     <Tooltip
       content={
-        <span className='text-xs'>
+        <span className='body-sm'>
           Theme Color:{' '}
           <span className='capitalize font-bold'>{themeColor}</span> (Click to
           change)
@@ -32,7 +32,7 @@ export function ThemeColorToggle() {
     >
       <button
         onClick={toggleColor}
-        className='inline-flex items-center cursor-pointer group justify-center text-ink-secondary hover:text-ink-primary rounded-md p-2 text-sm font-medium transition-colors hover:bg-primary/10 '
+        className='label inline-flex items-center cursor-pointer group justify-center text-ink-secondary hover:text-ink-primary rounded-md p-2 transition-colors hover:bg-primary/10'
         aria-label='Toggle theme color'
       >
         <Palette className='h-[1.2rem] w-[1.2rem] transition-transform duration-300 group-hover:rotate-45' />

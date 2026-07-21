@@ -25,10 +25,10 @@ export default function PlaybookGuidePage() {
         <div className='w-20 h-20 bg-primary/10 rounded-[2rem] flex items-center justify-center text-primary mb-2 ring-8 ring-primary/5'>
           <BookOpen className='w-10 h-10' />
         </div>
-        <h1 className='text-4xl md:text-5xl font-black text-ink-primary tracking-tight'>
+        <h1 className='title-page text-ink-primary'>
           The Ultimate Guide to Your Interview Playbook
         </h1>
-        <p className='text-ink-secondary max-w-3xl text-lg md:text-xl leading-relaxed'>
+        <p className='title-card text-ink-secondary max-w-3xl'>
           Welcome to your personal interview training system. This guide will
           walk you step-by-step through every feature, from organizing your
           questions to practicing like a pro and earning rewards.
@@ -43,7 +43,7 @@ export default function PlaybookGuidePage() {
           <div className='w-12 h-12 bg-blue-500/10 rounded-2xl flex items-center justify-center text-blue-600 dark:text-blue-500 shrink-0 md:absolute md:-left-[4.2rem] z-10'>
             <LayoutDashboard className='w-6 h-6' />
           </div>
-          <h2 className='text-3xl font-bold text-ink-primary'>
+          <h2 className='title-page text-ink-primary'>
             1. Dashboard (The Command Center)
           </h2>
         </div>
@@ -59,7 +59,7 @@ export default function PlaybookGuidePage() {
               <h4 className='font-bold text-ink-primary flex items-center gap-2'>
                 <Target className='w-4 h-4 text-primary' /> Today's Mission
               </h4>
-              <p className='text-sm'>
+              <p className='body-md'>
                 If you have an active Practice Roadmap (plan), your daily
                 scheduled questions will appear here. It tells you exactly how
                 many questions to do and estimates the time required. Clicking
@@ -71,7 +71,7 @@ export default function PlaybookGuidePage() {
               <h4 className='font-bold text-ink-primary flex items-center gap-2'>
                 <Calendar className='w-4 h-4 text-green-500' /> Activity Heatmap
               </h4>
-              <p className='text-sm'>
+              <p className='body-md'>
                 Just like GitHub, this tracks your practice consistency over the
                 last 20 weeks. Every day you submit a practice attempt, a square
                 lights up. The more questions you practice in a single day, the
@@ -90,7 +90,7 @@ export default function PlaybookGuidePage() {
           <div className='w-12 h-12 bg-indigo-500/10 rounded-2xl flex items-center justify-center text-indigo-600 dark:text-indigo-500 shrink-0 md:absolute md:-left-[4.2rem] z-10'>
             <Library className='w-6 h-6' />
           </div>
-          <h2 className='text-3xl font-bold text-ink-primary'>
+          <h2 className='title-page text-ink-primary'>
             2. Question Library (Your Brain)
           </h2>
         </div>
@@ -104,7 +104,7 @@ export default function PlaybookGuidePage() {
           <ul className='space-y-4 list-none p-0'>
             <li className='flex gap-3'>
               <div className='w-6 h-6 rounded-full bg-indigo-500/10 text-indigo-600 flex items-center justify-center shrink-0 mt-0.5'>
-                <span className='text-xs font-bold'>1</span>
+                <span className='label-sm'>1</span>
               </div>
               <div>
                 <strong className='text-ink-primary'>Adding Questions:</strong>{' '}
@@ -115,7 +115,7 @@ export default function PlaybookGuidePage() {
             </li>
             <li className='flex gap-3'>
               <div className='w-6 h-6 rounded-full bg-indigo-500/10 text-indigo-600 flex items-center justify-center shrink-0 mt-0.5'>
-                <span className='text-xs font-bold'>2</span>
+                <span className='label-sm'>2</span>
               </div>
               <div>
                 <strong className='text-ink-primary'>
@@ -130,7 +130,7 @@ export default function PlaybookGuidePage() {
             </li>
             <li className='flex gap-3'>
               <div className='w-6 h-6 rounded-full bg-indigo-500/10 text-indigo-600 flex items-center justify-center shrink-0 mt-0.5'>
-                <span className='text-xs font-bold'>3</span>
+                <span className='label-sm'>3</span>
               </div>
               <div>
                 <strong className='text-ink-primary'>
@@ -153,7 +153,7 @@ export default function PlaybookGuidePage() {
           <div className='w-12 h-12 bg-red-500/10 rounded-2xl flex items-center justify-center text-red-600 dark:text-red-500 shrink-0 md:absolute md:-left-[4.2rem] z-10'>
             <PlayCircle className='w-6 h-6' />
           </div>
-          <h2 className='text-3xl font-bold text-ink-primary'>
+          <h2 className='title-page text-ink-primary'>
             3. Practice Mode (The Gym)
           </h2>
         </div>
@@ -167,10 +167,10 @@ export default function PlaybookGuidePage() {
 
           <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
             <div className='panel-xl'>
-              <h3 className='font-bold text-ink-primary text-lg mb-3 flex items-center gap-2'>
+              <h3 className='title-card mb-3 flex items-center gap-2'>
                 <Zap className='w-5 h-5 text-red-500' /> Two Modes
               </h3>
-              <ul className='space-y-3 text-sm'>
+              <ul className='body-md space-y-3'>
                 <li>
                   <strong>Free Mode:</strong> Pick specific tags, random
                   questions, or manually choose what to practice right now. No
@@ -186,14 +186,14 @@ export default function PlaybookGuidePage() {
             </div>
 
             <div className='panel-xl'>
-              <h3 className='font-bold text-ink-primary text-lg mb-3 flex items-center gap-2'>
+              <h3 className='title-card mb-3 flex items-center gap-2'>
                 <Mic className='w-5 h-5 text-zinc-500' /> The Workspace
               </h3>
-              <p className='text-sm mb-2'>
+              <p className='body-md mb-2'>
                 On the right side of the practice screen, you have your
                 workspace:
               </p>
-              <ul className='space-y-2 text-sm list-disc pl-5'>
+              <ul className='body-md space-y-2 list-disc pl-5'>
                 <li>
                   <strong>Record Audio:</strong> Speak your answer out loud. The
                   system will transcribe it via speech-to-text.
@@ -222,7 +222,7 @@ export default function PlaybookGuidePage() {
           <div className='w-12 h-12 bg-purple-500/10 rounded-2xl flex items-center justify-center text-purple-600 dark:text-purple-500 shrink-0 md:absolute md:-left-[4.2rem] z-10'>
             <Calendar className='w-6 h-6' />
           </div>
-          <h2 className='text-3xl font-bold text-ink-primary'>
+          <h2 className='title-page text-ink-primary'>
             4. Practice Roadmap (The Schedule)
           </h2>
         </div>
@@ -240,18 +240,18 @@ export default function PlaybookGuidePage() {
               <Info className='w-5 h-5' />
               Important: Checking off vs. Practicing
             </h3>
-            <p className='text-sm text-purple-900/80 dark:text-purple-200/80 leading-relaxed mb-4'>
+            <p className='body-md text-purple-900/80 dark:text-purple-200/80 mb-4'>
               In the Roadmap view, you might notice checkboxes next to tasks.
               Checking these boxes is purely for{' '}
               <strong>visual organization</strong>—it tells the system "I'm done
               studying this".
             </p>
-            <p className='text-sm text-purple-900/80 dark:text-purple-200/80 leading-relaxed font-bold'>
+            <p className='label text-purple-900/80 dark:text-purple-200/80'>
               However, clicking checkboxes in the Roadmap does NOT give you XP,
               does NOT increase your Streak, and does NOT light up your Activity
               Heatmap.
             </p>
-            <p className='text-sm text-purple-900/80 dark:text-purple-200/80 leading-relaxed mt-2'>
+            <p className='body-md text-purple-900/80 dark:text-purple-200/80 mt-2'>
               To earn rewards, you must click "Practice Today's Tasks" which
               takes you to <strong>Practice Mode</strong>. You only earn rewards
               by actually submitting recorded attempts or notes.
@@ -266,7 +266,7 @@ export default function PlaybookGuidePage() {
           <div className='w-12 h-12 bg-amber-500/10 rounded-2xl flex items-center justify-center text-amber-600 dark:text-amber-500 shrink-0 md:absolute md:-left-[4.2rem] z-10'>
             <Star className='w-6 h-6' />
           </div>
-          <h2 className='text-3xl font-bold text-ink-primary'>
+          <h2 className='title-page text-ink-primary'>
             Gamification Exact Rules
           </h2>
         </div>
@@ -277,7 +277,7 @@ export default function PlaybookGuidePage() {
               <Star className='w-6 h-6 text-primary' />
             </div>
             <h4 className='font-bold text-ink-primary mb-2'>XP (Experience)</h4>
-            <p className='text-sm text-ink-secondary'>
+            <p className='body-md text-ink-secondary'>
               +10 XP per submitted practice attempt. +500 XP bonus for
               maintaining a 7-day streak.
             </p>
@@ -288,7 +288,7 @@ export default function PlaybookGuidePage() {
               <Coins className='w-6 h-6 text-yellow-500' />
             </div>
             <h4 className='font-bold text-ink-primary mb-2'>Coins</h4>
-            <p className='text-sm text-ink-secondary'>
+            <p className='body-md text-ink-secondary'>
               +2 Coins per submitted practice attempt. Save these for future
               system unlocks!
             </p>
@@ -299,7 +299,7 @@ export default function PlaybookGuidePage() {
               <Flame className='w-6 h-6 text-amber-500' />
             </div>
             <h4 className='font-bold text-ink-primary mb-2'>Streaks</h4>
-            <p className='text-sm text-ink-secondary'>
+            <p className='body-md text-ink-secondary'>
               Grows by 1 if you practice exactly the day after your last
               practice. Resets to 1 if you skip a day.
             </p>
@@ -309,7 +309,7 @@ export default function PlaybookGuidePage() {
 
       {/* Footer Encouragement */}
       <div className='text-center py-8 mt-8 border-t border-zinc-100 dark:border-zinc-800/60'>
-        <p className='text-ink-secondary text-lg font-medium'>
+        <p className='title-card text-ink-secondary'>
           Ready to level up your career? Go to the Dashboard and click{' '}
           <strong className='text-primary'>Start Mission</strong>.
         </p>

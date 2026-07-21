@@ -30,7 +30,7 @@ export function JobDescription({
         <button
           onClick={() => setIsEditing(!isEditing)}
           className={cn(
-            'inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all border cursor-pointer',
+            'label-sm inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl transition-all border cursor-pointer',
             isEditing ?
               'text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 border-emerald-500/20'
             : 'text-primary hover:bg-primary/10 border-primary/20',
@@ -58,7 +58,7 @@ export function JobDescription({
           rows={15}
         />
       : description ?
-        <div className='whitespace-pre-wrap font-sans text-sm text-ink-secondary leading-relaxed panel-lg'>
+        <div className='body-md whitespace-pre-wrap font-sans text-ink-secondary panel-lg'>
           {description}
         </div>
       : <EmptyPlaceHolder />}

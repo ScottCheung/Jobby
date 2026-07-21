@@ -44,7 +44,7 @@ export default function PracticeIndexPage() {
         }
 
         if (qs.length === 0) {
-          router.replace('/interview-prep/questions');
+          router.replace('/interview-prep/library');
           return;
         }
 

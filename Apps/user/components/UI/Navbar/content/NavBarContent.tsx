@@ -15,7 +15,7 @@ const Menubar = () => {
     <motion.div className='hidden md:flex '>
       <Menu setActive={setActive}>
         <MenuItem setActive={setActive} active={active} item='Services'>
-          <div className='flex flex-col space-y-4 text-sm'>
+          <div className='body-md flex flex-col space-y-4'>
             <HoveredLink href='/hobby'>Zodiac Forecast</HoveredLink>
             <HoveredLink href='/individual'>Lucky Colors</HoveredLink>
             <HoveredLink href='/individual'>AI Recommendations</HoveredLink>
@@ -25,7 +25,7 @@ const Menubar = () => {
         </MenuItem>
         <MenuItem setActive={setActive} active={active} item='Products'>
           <div className='col  p-4 '>
-            <div className='text-sm max-h-[80vh] grid gap-10 overflow-visible lg:grid-cols-2'>
+            <div className='body-md max-h-[80vh] grid gap-10 overflow-visible lg:grid-cols-2'>
               <ProductItem
                 title="Men's Fragrances"
                 href='/mens-fragrances'
@@ -51,7 +51,7 @@ const Menubar = () => {
                 description='Indulge in the world of luxury fragrances from top brands worldwide.'
               />
             </div>
-            <div className=' bg-transparent mt-10 text-xs text-muted '>
+            <div className='body-sm bg-transparent mt-10 text-muted'>
               We honor gender equality and diverse gender identities. Fragrances
               have no inherent gender; our categories simply aim to help you
               find the perfect scent with ease.
@@ -59,7 +59,7 @@ const Menubar = () => {
           </div>
         </MenuItem>
         <MenuItem setActive={setActive} active={active} item='Rank'>
-          <div className='flex flex-col space-y-4 text-sm'>
+          <div className='body-md flex flex-col space-y-4'>
             <HoveredLink href='/hobby'>Sillage Duration</HoveredLink>
             <HoveredLink href='/individual'>By Fragrance</HoveredLink>
             <HoveredLink href='/team'>By Fragrance Elements</HoveredLink>

@@ -79,7 +79,7 @@ export function StandardAnswerCard({
             'cursor-pointer hover:opacity-80 transition-opacity',
         )}
       >
-        <span className='text-xs font-bold text-ink-primary flex items-center gap-1.5'>
+        <span className='label-sm flex items-center gap-1.5'>
           <Target className='w-3.5 h-3.5 text-blue-500 shrink-0' />
           Your Answer
         </span>
@@ -87,7 +87,7 @@ export function StandardAnswerCard({
           {shouldShowAnswer && !isEditingAnswer && (
             <button
               onClick={handleStart}
-              className='text-xs text-primary font-bold hover:underline transition-colors active:scale-95'
+              className='label-sm text-primary hover:underline transition-colors active:scale-95'
             >
               Edit
             </button>
@@ -105,9 +105,9 @@ export function StandardAnswerCard({
               value={editedText}
               onChange={(e) => setEditedText(e.target.value)}
               placeholder='Modify your personal standard answer here...'
-              className='w-full h-32 p-3 text-sm rounded-lg  bg-panel focus:outline-none text-ink-primary resize-none leading-relaxed transition-all focus:border-primary/40'
+              className='body-md w-full h-32 p-3 rounded-lg bg-panel focus:outline-none resize-none transition-all focus:border-primary/40'
             />
-            <div className='flex justify-end gap-2 text-xs'>
+            <div className='body-sm flex justify-end gap-2'>
               <button
                 onClick={handleCancel}
                 disabled={isSavingAnswer}
@@ -125,19 +125,19 @@ export function StandardAnswerCard({
             </div>
           </div>
         : currentQuestion.answer_objective?.trim() ?
-          <div className='text-sm text-ink-secondary leading-relaxed flex flex-col gap-2.5 max-h-[300px] overflow-y-auto custom-scrollbar-primary pr-1'>
+          <div className='body-md text-ink-secondary flex flex-col gap-2.5 max-h-[300px] overflow-y-auto custom-scrollbar-primary pr-1'>
             {currentQuestion.answer_objective
               .split('\n')
               .map((paragraph, index) => (
                 <p key={index}>{paragraph}</p>
               ))}
           </div>
-        : <p className='text-sm text-ink-secondary italic leading-relaxed'>
+        : <p className='body-md text-ink-secondary italic'>
             No standard answer provided. Click &quot;Edit&quot; to define your
             answer.
           </p>
 
-      : <p className='text-xs text-ink-secondary italic leading-relaxed py-1'>
+      : <p className='body-sm text-ink-secondary italic py-1'>
           Standard answer is hidden. Click anywhere on this card or toggle the
           eye button in the top-right toolbar to view it.
         </p>

@@ -166,7 +166,7 @@ export const Accordion = React.forwardRef<HTMLDivElement, AccordionProps>(
           id={contentId}
           className={contentClassName}
         >
-          <div className='text-sm text-ink-secondary px-card pb-card'>
+          <div className='body-md text-ink-secondary px-card pb-card'>
             {children}
           </div>
         </Collapse>

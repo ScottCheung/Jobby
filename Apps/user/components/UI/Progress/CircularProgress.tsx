@@ -29,11 +29,11 @@ interface CircularProgressProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 const textSizes = {
-  xs: 'text-xs',
-  sm: 'text-sm',
-  md: 'text-base',
-  lg: 'text-lg',
-  xl: 'text-xl',
+  xs: 'body-sm',
+  sm: 'body-md',
+  md: 'body-lg',
+  lg: 'title-card',
+  xl: 'title-section',
 };
 
 const colorStyles = {

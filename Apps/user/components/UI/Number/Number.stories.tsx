@@ -225,7 +225,7 @@ const CodeBlock = ({
   language?: string;
 }) => (
   <div className='relative bg-gray-800 rounded-md p-4 mt-4'>
-    <pre className='text-gray-100 text-sm font-mono overflow-x-auto'>
+    <pre className='body-md font-mono overflow-x-auto'>
       <code>{code}</code>
     </pre>
     <div className='absolute top-2 right-2'>
@@ -331,7 +331,7 @@ const InteractiveDemo = (props: any) => {
           />
         </div>
 
-        <div className='mb-6 text-lg text-gray-500'>
+        <div className='title-card mb-6'>
           Current Value: {value.toLocaleString()}
         </div>
         <div className='grid grid-cols-2 md:grid-cols-4 gap-4'>
@@ -400,7 +400,7 @@ const InteractiveDemo = (props: any) => {
         </div>
 
         <div className='flex items-center gap-4 w-full'>
-          <span className='text-sm text-gray-500 whitespace-nowrap'>
+          <span className='body-md whitespace-nowrap'>
             Custom Value:
           </span>
           <input
@@ -411,7 +411,7 @@ const InteractiveDemo = (props: any) => {
               const parsed = parseFloat(e.target.value);
               if (!isNaN(parsed)) handleChange(parsed);
             }}
-            className='text-lg rounded-[14px] w-full'
+            className='title-card rounded-[14px] w-full'
           />
         </div>
       </div>

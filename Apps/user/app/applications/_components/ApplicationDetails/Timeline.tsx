@@ -67,7 +67,7 @@ export function Timeline({
           </h3>
           <div
             className={cn(
-              ' text-sm flex gap-2 items-baseline font-extrabold capitalize tracking-wide text-transparent bg-clip-text ',
+              'body-md flex gap-2 items-baseline capitalize text-transparent bg-clip-text',
               stageConfig[timeline[timeline.length - 1].stage].bgColorClass,
             )}
             style={{
@@ -81,7 +81,7 @@ export function Timeline({
         <button
           onClick={() => setIsEditingTimeline(!isEditingTimeline)}
           className={cn(
-            'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border cursor-pointer border-primary text-primary hover:bg-primary/10 bg-background/60',
+            'label-sm inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all border cursor-pointer border-primary text-primary hover:bg-primary/10 bg-background/60',
           )}
         >
           {isEditingTimeline ?
@@ -146,7 +146,7 @@ export function Timeline({
                 <div className='flex ml-[35px] justify-between items-center h-8'>
                   <span
                     className={cn(
-                      ' text-sm flex gap-2 items-baseline font-extrabold capitalize tracking-wide text-transparent bg-clip-text ',
+                      'body-md flex gap-2 items-baseline capitalize text-transparent bg-clip-text',
                       cfg.bgColorClass,
                     )}
                     style={{
@@ -184,7 +184,7 @@ export function Timeline({
                         </button>
                         <button
                           onClick={() => setEditingIndex(null)}
-                          className='inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-success/10 text-success border border-success/20 hover:bg-success/20 transition-all  cursor-pointer active:scale-95'
+                          className='label-sm inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-success/10 text-success border border-success/20 hover:bg-success/20 transition-all cursor-pointer active:scale-95'
                           title='Done editing'
                         >
                           <Check className='w-3.5 h-3.5' />
@@ -235,7 +235,7 @@ export function Timeline({
                             ease: [0.22, 1, 0.36, 1],
                             duration: 0.3,
                           }}
-                          className='text-xs text-ink-secondary leading-relaxed bg-glass/60 whitespace-pre-wrap overflow-hidden'
+                          className='body-sm text-ink-secondary bg-glass/60 whitespace-pre-wrap overflow-hidden'
                         >
                           {entry.notes}
                         </motion.p>
@@ -272,7 +272,7 @@ export function Timeline({
                                   : new Date().toISOString(),
                                 )
                               }
-                              className='pl-9 pr-3 py-2 bg-glass border border-border/40 text-ink-primary rounded-xl text-xs w-full focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all'
+                              className='body-sm pl-9 pr-3 py-2 bg-glass border border-border/40 text-ink-primary rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all'
                             />
                           </div>
                         </div>
@@ -293,7 +293,7 @@ export function Timeline({
                                 e.target.value,
                               )
                             }
-                            className='px-3 py-2 bg-glass border border-border/40 text-ink-primary rounded-xl text-xs w-full focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all'
+                            className='body-sm px-3 py-2 bg-glass border border-border/40 text-ink-primary rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all'
                           />
                         </div>
                       </motion.div>
@@ -337,7 +337,7 @@ export function Timeline({
                           setIsEditingTimeline(false);
                         }}
                         className={cn(
-                          'inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer active:scale-95 border hover:opacity-90 lg:w-full justify-start',
+                          'label-sm inline-flex items-center gap-2 px-3 py-2 rounded-xl transition-all cursor-pointer active:scale-95 border hover:opacity-90 lg:w-full justify-start',
                           cfg.bgColorClass,
                           cfg.colorClass,
                           cfg.borderClass,

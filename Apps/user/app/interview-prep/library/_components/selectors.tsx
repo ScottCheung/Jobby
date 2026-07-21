@@ -26,7 +26,7 @@ export function CategorySelector({
           'group relative flex h-28 flex-col items-center justify-center overflow-hidden rounded-2xl  transition-all duration-300 cursor-pointer',
           importDefaultCategory === '' ?
             'bg-gradient-to-br from-primary/5 via-primary/5 to-background  scale-[1.02]'
-          : 'panel-sm hover:-translate-y-1 hover:scale-[1.015] hover:shadow-xl hover:shadow-black/5',
+          : ' hover:-translate-y-1 hover:scale-[1.015]',
         )}
       >
         {/* Top Glow */}
@@ -45,14 +45,14 @@ export function CategorySelector({
           className={cn(
             'mb-3 h-10 w-10 transition-all duration-300',
             importDefaultCategory === '' ?
-              'text-primary drop-shadow-sm'
-            : 'text-zinc-400 group-hover:text-zinc-600 dark:group-hover:text-zinc-300',
+              'text-primary fill-primary '
+            : 'text-muted fill-muted',
           )}
         />
 
         <span
           className={cn(
-            'max-w-[120px] truncate px-2 text-sm font-medium tracking-tight',
+            'label max-w-[120px] truncate px-2',
             importDefaultCategory === '' ? 'text-primary' : (
               'text-zinc-700 dark:text-zinc-300'
             ),
@@ -75,7 +75,7 @@ export function CategorySelector({
               'group relative flex h-28 flex-col items-center justify-center overflow-hidden  transition-all duration-300 cursor-pointer',
               isSelected ?
                 'border-primary/30 rounded-xl  bg-gradient-to-br from-primary/10 via-primary/5 to-background  '
-              : 'panel-sm hover:-translate-y-1 hover:scale-[1.015] hover:shadow-xl hover:shadow-black/5',
+              : ' hover:-translate-y-1 hover:scale-[1.015] ',
             )}
           >
             {/* Top Glow */}
@@ -95,13 +95,13 @@ export function CategorySelector({
                 'mb-3 h-10 w-10 transition-all duration-300',
                 isSelected ?
                   'text-primary fill-primary '
-                : 'text-zinc-400 group-hover:text-zinc-600 dark:group-hover:text-zinc-300',
+                : 'text-muted fill-muted',
               )}
             />
 
             <span
               className={cn(
-                ' truncate px-2 text-center text-sm font-medium tracking-tight',
+                'label truncate px-2 text-center',
                 isSelected ? 'text-primary' : (
                   'text-zinc-700 dark:text-zinc-300'
                 ),

@@ -29,10 +29,10 @@ const ProductItem = ({
         />
       </div>
       <div className=' transition-all ease-in-out duration-500 group-hover:translate-x-1'>
-        <h4 className='font-bold text-xl text-black mb-1 darkk:text-white'>
+        <h4 className='title-section mb-1 darkk:text-white'>
           {title}
         </h4>
-        <p className='text-sm max-w-[10rem] opacity-50 transition-all text-neutral-700 darkk:text-white group-hover:opacity-100'>
+        <p className='body-md max-w-[10rem] opacity-50 transition-all darkk:text-white group-hover:opacity-100'>
           {description}
         </p>
       </div>

@@ -50,7 +50,7 @@ export function ToggleGroup({
             <button
               onClick={() => onValueChange(item.value)}
               className={cn(
-                'relative flex size-8 items-center justify-center rounded-full text-sm font-medium transition-colors',
+                'label relative flex size-8 items-center justify-center rounded-full transition-colors',
                 isSelected ? 'text-ink-primary' : 'text-ink-secondary',
               )}
               type='button'

@@ -135,7 +135,7 @@ export const ApplicationRow = React.memo(
           onOpenDetails(entry.id);
         }}
         className={cn(
-          'grid grid-cols-[minmax(0,3.5fr)_minmax(0,2fr)_minmax(0,2.5fr)_minmax(0,1.3fr)_minmax(0,1.2fr)] pl-4 items-center text-sm border-ink-secondary/10 text-ink-secondary ease-in-out cursor-pointer border-b border-l-2 border-l-transparent',
+          'body-md grid grid-cols-[minmax(0,3.5fr)_minmax(0,2fr)_minmax(0,2.5fr)_minmax(0,1.3fr)_minmax(0,1.2fr)] pl-4 items-center border-ink-secondary/10 text-ink-secondary ease-in-out cursor-pointer border-b border-l-2 border-l-transparent',
           entry.isLiveProcessing ?
             'bg-amber-500/5 border-l-amber-500 border-l-4 hover:bg-amber-500/10'
           : isSelected ?
@@ -203,7 +203,7 @@ export const ApplicationRow = React.memo(
           )}
         </div>
         {entry.stageTimestamp && (
-          <div className='flex flex-col items-center justify-center gap-0.5 text-xs text-ink-secondary font-medium'>
+          <div className='label-sm flex flex-col items-center justify-center gap-0.5'>
             <span title={entry.stageTimestamp}>{entry.displayStageTime}</span>
           </div>
         )}

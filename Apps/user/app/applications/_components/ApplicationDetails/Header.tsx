@@ -41,17 +41,17 @@ export function Header({
         </div>
 
         <h2
-          className='text-lg font-extrabold text-ink-primary mt-2 truncate'
+          className='title-card text-ink-primary mt-2 truncate'
           title={title || 'Untitled Role'}
         >
           {title || 'Untitled Role'}
         </h2>
-        <div className='flex items-center gap-1.5 text-sm text-ink-secondary mt-1 font-semibold flex-wrap'>
+        <div className='label flex items-center gap-1.5 text-ink-secondary mt-1 flex-wrap'>
           <span>{company || 'Unknown Company'}</span>
           {workLocation && (
             <>
               <span className='text-border'>•</span>
-              <span className='inline-flex items-center gap-1 text-xs font-normal'>
+              <span className='body-sm inline-flex items-center gap-1'>
                 <MapPin className='w-3.5 h-3.5' />
                 {workLocation}
               </span>

@@ -24,7 +24,7 @@ export const LabelWithHelp: React.FC<LabelWithHelpProps> = ({
 
     return (
         <div className={cn("flex items-center gap-2", className)}>
-            <label className="text-sm font-medium text-ink-primary">
+            <label className="label">
                 {label}
                 {required && <span className="text-red-500 ml-1">*</span>}
             </label>
@@ -38,7 +38,7 @@ export const LabelWithHelp: React.FC<LabelWithHelpProps> = ({
                         </TooltipTrigger>
                         <TooltipContent
                             side="right"
-                            className="max-w-xs text-xs"
+                            className="body-sm max-w-xs"
                             sideOffset={5}
                         >
                             <p>{helpTextLong}</p>
@@ -47,7 +47,7 @@ export const LabelWithHelp: React.FC<LabelWithHelpProps> = ({
                 </TooltipProvider>
             )}
             {hasShortHelp && !hasLongHelp && (
-                <span className="text-xs text-ink-secondary">
+                <span className="body-sm text-ink-secondary">
                     {helpTextShort}
                 </span>
             )}

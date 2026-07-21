@@ -4,10 +4,12 @@
 
 import React, { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
+import { LayoutGroup } from 'framer-motion';
 import { useConsole } from '@/components/ConsoleContext';
 import { Sidebar } from '@/components/layout/sidebar';
 import { GlobalDrawer } from '@/components/layout/global-drawer';
-import { useToastStore } from '@/lib/store/toast-store';
+import { GlobalConfirm } from '@/components/layout/global-confirm';
+import { GlobalModal } from '@/components/layout/global-modal';
 import { cn } from '@/lib/utils';
 import CardWithNorth from '@/components/UI/card/CardWithNorth';
 import { H1 } from '@/components/UI/text/typography';
@@ -17,6 +19,7 @@ import { Number } from './UI/Number/Number';
 import AutomationPanel from '@/app/_component/AutomationPanel';
 
 import { Toaster } from '@/components/UI/toast/toaster';
+import { CelebrationLayer } from '@/components/UI/celebration/confetti';
 
 export default function ConsoleLayout({
   children,
@@ -25,9 +28,9 @@ export default function ConsoleLayout({
 }) {
   const pathname = usePathname();
   const { stats, error, isPending, isDesktopApp } = useConsole();
-  const toast = useToastStore((state) => state.message);
   return (
-    <div className='min-h-screen z-10 flex transition-colors duration-300'>
+    <LayoutGroup id='console-layout'>
+      <div className='min-h-screen z-10 flex transition-colors duration-300'>
       {/* Sidebar */}
       <Sidebar />
 
@@ -97,7 +100,7 @@ export default function ConsoleLayout({
                               {item.comparison && (
                                 <div
                                   className={cn(
-                                    'flex items-center gap-1 text-xs font-semibold mt-2',
+                                    'label-sm flex items-center gap-1 mt-2',
                                     item.comparisonColor,
                                   )}
                                 >
@@ -117,12 +120,12 @@ export default function ConsoleLayout({
               )}
 
               {error && (
-                <div className='fixed bottom-1/2 flex items-center gap-2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50  text-error bg-red-500/30 backdrop-blur-sm  py-3 px-card rounded-card text-xs font-semibold animate-in fade-in slide-in-from-bottom-2 duration-300'>
+                <div className='label-sm fixed bottom-1/2 flex items-center gap-2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 text-error bg-red-500/30 backdrop-blur-sm py-3 px-card rounded-card animate-in fade-in slide-in-from-bottom-2 duration-300'>
                   <div>{error}</div>
                 </div>
               )}
               {isPending && (
-                <div className='fixed bottom-1/2 flex items-center left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50  text-white bg-black/30 backdrop-blur-sm  py-3 pl-3 gap-3 pr-card rounded-card text-xs font-semibold animate-in fade-in slide-in-from-bottom-2 duration-300'>
+                <div className='label-sm fixed bottom-1/2 flex items-center left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 bg-black/30 backdrop-blur-sm py-3 pl-3 gap-3 pr-card rounded-card animate-in fade-in slide-in-from-bottom-2 duration-300'>
                   <RefreshCw className='w-4 h-4 animate-spin' />
                   Refreshing data...
                 </div>
@@ -138,17 +141,21 @@ export default function ConsoleLayout({
       {/* Floating Launch Button / Automation Panel */}
       <AutomationPanel />
 
-      {toast && (
-        <div className='fixed bottom-1/2 flex items-center gap-2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50  text-white bg-black/30 backdrop-blur-sm  py-3 px-card rounded-card text-xs font-semibold animate-in fade-in slide-in-from-bottom-2 duration-300'>
-          <div>{toast}</div>
-        </div>
-      )}
-
       {/* Global Drawer */}
       <GlobalDrawer />
 
+      {/* Global Confirm */}
+      <GlobalConfirm />
+
+      {/* Global Modal */}
+      <GlobalModal />
+
       {/* Global Toaster */}
       <Toaster />
-    </div>
+
+      {/* Global Celebration */}
+      <CelebrationLayer />
+      </div>
+    </LayoutGroup>
   );
 }

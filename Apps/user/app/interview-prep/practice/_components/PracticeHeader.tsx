@@ -13,12 +13,15 @@ import {
   LandPlot,
   Tag,
   Star,
+  Zap,
+  Building2,
 } from 'lucide-react';
 import type { InterviewQuestion } from '@/lib/types';
 import { cn, cleanName } from '@/lib/utils';
 import { Tooltip } from '@/components/UI/tooltip';
 import { Button } from '@/components/UI/Button';
 import type { PracticeMode } from './PracticeModeModal';
+import { QuestionCommentActions } from './Comments/QuestionCommentActions';
 
 interface PracticeHeaderProps {
   currentQuestion: InterviewQuestion | null;
@@ -36,6 +39,8 @@ interface PracticeHeaderProps {
   onOpenQueue: () => void;
   onPrevious: () => void;
   onNext: () => void;
+  onReportInterview: () => void;
+  reportRefreshKey: number;
 }
 
 const modeIcons: Record<PracticeMode, React.ElementType> = {
@@ -90,6 +95,8 @@ export function PracticeHeader({
   onOpenQueue,
   onPrevious,
   onNext,
+  onReportInterview,
+  reportRefreshKey,
 }: PracticeHeaderProps) {
   const ModeIcon = modeIcons[practiceMode] ?? Shuffle;
   const modeLabel = modeLabels[practiceMode] ?? 'Free Roam';
@@ -97,15 +104,22 @@ export function PracticeHeader({
   const isQueueActive = isDrawerOpen && drawerId === 'practice-queue';
 
   return (
-    <div className='flex flex-col gap-2.5 shrink-0'>
+    <div className='flex flex-col gap-2.5 shrink-0 '>
       {/* Top row: toolbar aligned to the right, mode modal button inside the toolbar */}
-      <div className='flex items-baseline justify-between gap-2'>
+      <div className='flex items-baseline justify-between gap-2 opacity-60 -mr-4'>
         {/* Progress counter */}
-        <span className='text-[10px] text-ink-primary font-bold'>
-          Question {currentIndex + 1} of {totalQuestions}
-          <span className='ml-1 font-normal opacity-60'>· {modeLabel}</span>
+        <span className='text-[10px] text-ink-secondary '>
+          Question{' '}
+          <span className='text-primary text-[12px]  font-bold'>
+            {currentIndex + 1}
+          </span>{' '}
+          of{' '}
+          <span className='text-primary text-[12px] font-bold'>
+            {totalQuestions}
+          </span>
+          <span className='ml-1 font-normal '>· {modeLabel}</span>
           {practiceMode !== 'plan' && (
-            <span className='ml-1 font-normal opacity-60'>
+            <span className='ml-1 font-normal '>
               · {isShuffled ? 'shuffle' : 'sequential'}
             </span>
           )}
@@ -161,7 +175,7 @@ export function PracticeHeader({
           )}
 
           {/* View Queue List Button */}
-          <Tooltip content='View Playlist Queue' side='bottom'>
+          <Tooltip content='View Practice Queue' side='bottom'>
             <Button
               onClick={onOpenQueue}
               variant={isQueueActive ? 'toolbarActive' : 'toolbar'}
@@ -201,16 +215,14 @@ export function PracticeHeader({
       {/* Title, tags, rating */}
       {currentQuestion && (
         <div className='flex flex-col -mt-4 gap-2'>
-          <h2 className='text-lg font-bold text-ink-primary leading-snug'>
-            {currentQuestion.title}
-          </h2>
+          <h2 className='title-card leading-snug'>{currentQuestion.title}</h2>
           {((currentQuestion.tags && currentQuestion.tags.length > 0) ||
             currentQuestion.frequency) && (
             <div className='flex flex-wrap gap-1'>
               {currentQuestion.frequency && (
                 <span
                   className={cn(
-                    'px-2.5 py-1 rounded-full text-[10px] font-semibold tracking-wide ',
+                    'px-2.5 py-1 flex items-center gap-1 rounded-full text-[10px] font-semibold tracking-wide ',
                     (currentQuestion.frequency === 'Low' ||
                       currentQuestion.frequency === 'Easy') &&
                       'bg-green-500/10 text-green-600 dark:text-green-400',
@@ -221,6 +233,7 @@ export function PracticeHeader({
                       'bg-rose-500/10 text-rose-600 dark:text-rose-400',
                   )}
                 >
+                  <Zap className='w-2.5 h-2.5 opacity-50' />
                   {currentQuestion.frequency === 'Hard' ?
                     'High'
                   : currentQuestion.frequency === 'Easy' ?
@@ -231,27 +244,68 @@ export function PracticeHeader({
               {currentQuestion.tags?.map((t) => (
                 <span
                   key={t.id}
-                  className='text-[10px] bg-background-secondary/80 text-ink-primary px-2.5 py-1 rounded-full border border-zinc-200/50 dark:border-zinc-700/50 flex items-center gap-1 font-semibold '
+                  className='text-[10px] bg-background-secondary/40 text-ink-primary px-2.5 py-1 rounded-full  flex items-center gap-1 font-semibold '
                 >
-                  <Tag className='w-2.5 h-2.5 opacity-60' />
+                  <Tag className='w-2.5 h-2.5 opacity-50' />
                   {cleanName(t.name)}
+                </span>
+              ))}
+
+              {/* Real Stacked Companies UI from DB */}
+              {currentQuestion.companies?.map((c) => (
+                <span
+                  key={c.id}
+                  className='text-[10px] bg-blue-500/10 text-blue-600 dark:text-blue-400 pl-1 pr-2.5 py-1 rounded-full flex items-center gap-1.5 font-semibold border border-blue-500/20'
+                >
+                  {c.logo_url ?
+                    <img
+                      src={c.logo_url}
+                      alt={c.name}
+                      className='w-3.5 h-3.5 rounded-full object-cover bg-white'
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
+                  : <Building2 className='w-3 h-3 opacity-60 ml-1' />}
+                  {c.name}
                 </span>
               ))}
             </div>
           )}
-          <div className='flex gap-0.5 mt-0.5'>
-            {Array.from({ length: 5 }).map((_, i) => (
-              <Star
-                key={i}
-                className={cn(
-                  'w-3.5 h-3.5 transition-all duration-300',
-                  i < (currentQuestion.importance_score || 0) ?
-                    'fill-amber-500 text-amber-500 scale-110 drop-'
-                  : 'text-zinc-300 dark:text-zinc-750',
-                )}
-              />
-            ))}
+          <div className='flex gap-4 mt-0.5 items-center justify-between'>
+            <div className='flex items-center gap-1.5' title='Author priority'>
+              <span className='text-[10px] font-semibold text-ink-secondary'>
+                Author priority
+              </span>
+              <div className='flex gap-0.5'>
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Star
+                    key={i}
+                    className={cn(
+                      'w-3.5 h-3.5 transition-all duration-300',
+                      i < (currentQuestion.importance_score || 0) ?
+                        'fill-amber-500 text-amber-500 scale-110 drop-'
+                      : 'text-zinc-300 dark:text-zinc-750',
+                    )}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <Button
+              layoutId='Seen in Interview'
+              onClick={onReportInterview}
+              // className='label-sm flex items-center gap-1.5 text-primary hover:text-primary/80 transition-none! px-2 py-1 rounded-md hover:bg-primary/5'
+            >
+              <Eye className='w-3.5 h-3.5' />
+              Seen in Interview
+            </Button>
           </div>
+          <QuestionCommentActions
+            questionId={currentQuestion.id}
+            reportRefreshKey={reportRefreshKey}
+            onReport={onReportInterview}
+          />
         </div>
       )}
     </div>

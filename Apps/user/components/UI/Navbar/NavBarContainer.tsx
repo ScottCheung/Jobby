@@ -52,11 +52,11 @@ export function NavBarContainer({
           )}
         >
           <div className='min-w-0'>
-            <h2 className='text-xl font-bold tracking-tight text-ink-primary'>
+            <h2 className='title-section tracking-tight'>
               {title}
             </h2>
             {description && (
-              <p className='mt-1 text-sm text-ink-primary0 dark:text-zinc-400'>
+              <p className='body-md mt-1 text-ink-primary0'>
                 {description}
               </p>
             )}
@@ -71,7 +71,7 @@ export function NavBarContainer({
           )}
         >
           <div className='min-w-0 shrink-0'>
-            <h2 className='text-lg font-bold tracking-tight text-ink-primary'>
+            <h2 className='title-card tracking-tight'>
               {title}
             </h2>
           </div>

@@ -61,7 +61,7 @@ export function PracticeQueueDrawerContent({
         <div className='flex flex-col gap-0.5'>
           <div className='flex items-center gap-2'>
             <ModeIcon className='w-3.5 h-3.5 text-primary' />
-            <span className='text-sm font-bold text-ink-primary'>
+            <span className='label'>
               {modeLabels[practiceMode]}
             </span>
             {practiceMode !== 'plan' && (
@@ -77,7 +77,7 @@ export function PracticeQueueDrawerContent({
               </span>
             )}
           </div>
-          <span className='text-xs text-ink-secondary font-medium'>
+          <span className='label-sm'>
             {currentIndex + 1} / {queue.length} questions
           </span>
         </div>
@@ -149,7 +149,7 @@ export function PracticeQueueDrawerContent({
               <div className='flex-1 min-w-0'>
                 <p
                   className={cn(
-                    'text-xs font-semibold leading-snug line-clamp-2',
+                    'label-sm line-clamp-2',
                     isCurrent ? 'text-primary' : 'text-ink-primary',
                   )}
                 >

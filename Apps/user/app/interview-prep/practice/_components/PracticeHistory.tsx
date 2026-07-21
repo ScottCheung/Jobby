@@ -10,19 +10,24 @@ interface PracticeHistoryProps {
   attempts: PracticeRecord[];
   apiBaseUrl: string;
   onDeleteAttempt: (id: string) => void;
+  onUpdateAttempt?: (
+    id: string,
+    updatedRecord: Partial<PracticeRecord>,
+  ) => void;
 }
 
 export function PracticeHistory({
   attempts,
   apiBaseUrl,
   onDeleteAttempt,
+  onUpdateAttempt,
 }: PracticeHistoryProps) {
   if (attempts.length === 0) {
     return (
       <div className='flex-1 flex flex-col items-center justify-center text-center p-6 text-ink-secondary opacity-65 h-full min-h-[300px]'>
         <Award className='w-10 h-10 mb-3 text-zinc-400' />
-        <p className='text-sm'>No practice records for this question yet.</p>
-        <p className='text-xs mt-1'>
+        <p className='body-md'>No practice records for this question yet.</p>
+        <p className='body-sm mt-1'>
           Submit your response in the Workspace tab to create your first history
           record.
         </p>
@@ -35,7 +40,7 @@ export function PracticeHistory({
       {attempts.map((attempt) => (
         <div
           key={attempt.id}
-          className='p-4 rounded-t-3xl rounded-b-2xl bg-linear-to-b from-primary-foreground dark:from-black/30 to-transparent flex flex-col gap-3 relative group'
+          className='p-4 rounded-t-3xl rounded-b-2xl bg-linear-to-b from-primary/30  to-transparent flex flex-col gap-3 relative group'
         >
           {attempt.audio_records && attempt.audio_records.length > 0 && (
             <div className=''>
@@ -43,14 +48,14 @@ export function PracticeHistory({
                 id={`audio-player-${attempt.id}`}
                 src={`${apiBaseUrl}${attempt.audio_records[0].url_path}`}
                 controls
-                className='w-full text-xs focus:outline-none'
+                className='body-sm w-full focus:outline-none'
               />
             </div>
           )}
           <div className='ml-6 mb-4'>
             <div className='flex justify-between'>
               <div className='flex items-center gap-4'>
-                <span className='text-xs text-ink-secondary font-medium'>
+                <span className='label-sm'>
                   {formatRelativeDate(attempt.date || attempt.created_at)}
                 </span>
                 {attempt.confidence_score && (
@@ -63,7 +68,7 @@ export function PracticeHistory({
               {/* Delete Attempt Trigger */}
               <button
                 onClick={() => onDeleteAttempt(attempt.id)}
-                className='p-2 text-ink-secondary hover:text-red-500 rounded-lg hover:bg-background-secondary hover:bg-background-secondary transition-colors'
+                className='p-2 text-ink-secondary hover:text-red-500 rounded-lg hover:bg-background-secondary transition-colors'
               >
                 <Trash2 className='w-4 h-4' />
               </button>
@@ -80,6 +85,14 @@ export function PracticeHistory({
                         <InteractiveTranscript
                           segments={parsed}
                           attemptId={attempt.id}
+                          onEditSegment={(index, newText) => {
+                            if (!onUpdateAttempt) return;
+                            const updatedSegments = [...parsed];
+                            updatedSegments[index].text = newText;
+                            onUpdateAttempt(attempt.id, {
+                              my_answer: JSON.stringify(updatedSegments),
+                            });
+                          }}
                         />
                       );
                     }
@@ -94,7 +107,7 @@ export function PracticeHistory({
             )}
 
             {attempt.notes && (
-              <div className='text-xs text-ink-secondary bg-amber-500/5 p-2 rounded border border-amber-500/10 flex flex-col gap-0.5 mt-2'>
+              <div className='body-sm text-ink-secondary bg-amber-500/5 p-2 rounded border border-amber-500/10 flex flex-col gap-0.5 mt-2'>
                 <span className='font-bold text-[10px] uppercase text-amber-600 dark:text-amber-400'>
                   Notes
                 </span>

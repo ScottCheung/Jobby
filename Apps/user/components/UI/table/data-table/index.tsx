@@ -164,7 +164,7 @@ export function DataTable<TData, TValue>({
                   {selectionMode ? 'Exit Selection' : 'Select Rows'}
                 </Button>
                 {selectionMode && (
-                  <div className='text-sm text-ink-secondary animate-in fade-in slide-in-from-left-2'>
+                  <div className='body-md text-ink-secondary animate-in fade-in slide-in-from-left-2'>
                     {table.getFilteredSelectedRowModel().rows.length} selected
                   </div>
                 )}
@@ -188,7 +188,7 @@ export function DataTable<TData, TValue>({
       {/* Table */}
       <div className={cn('overflow-hidden  ')}>
         <div className='overflow-x-auto max-h-[600px] relative'>
-          <table className='w-full text-left text-sm relative caption-bottom'>
+          <table className='body-md w-full text-left relative caption-bottom'>
             <thead className='bg-panel  text-ink-primary sticky top-0 z-40 '>
               {table.getHeaderGroups().map((headerGroup) => (
                 <tr key={headerGroup.id}>

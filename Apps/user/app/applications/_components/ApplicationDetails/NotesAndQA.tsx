@@ -67,7 +67,7 @@ export function NotesAndQA({
                 <span className='px-2 py-0.5 rounded-md bg-primary/10 text-[10px] font-bold text-ink-secondary uppercase tracking-wider mt-0.5 shrink-0'>
                   Q
                 </span>
-                <p className='text-sm font-semibold text-ink-primary'>
+                <p className='label'>
                   {qa.question}
                 </p>
               </div>
@@ -75,7 +75,7 @@ export function NotesAndQA({
                 <span className='px-2 py-0.5 rounded-md bg-primary/10 text-[10px] font-bold uppercase tracking-wider mt-0.5 shrink-0'>
                   A
                 </span>
-                <p className='text-sm text-ink-secondary font-medium'>
+                <p className='label text-ink-secondary'>
                   {qa.answer}
                 </p>
               </div>
@@ -95,7 +95,7 @@ export function NotesAndQA({
           <button
             onClick={() => setIsEditingNotes(!isEditingNotes)}
             className={cn(
-              'inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all border cursor-pointer',
+              'label-sm inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl transition-all border cursor-pointer',
               isEditingNotes ?
                 'text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 border-emerald-500/20'
               : 'text-primary hover:bg-primary/10 border-primary/20',

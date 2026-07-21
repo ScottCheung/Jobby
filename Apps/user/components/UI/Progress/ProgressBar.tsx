@@ -63,9 +63,9 @@ export const ProgressBar = React.memo<ProgressBarProps>(
       <div className='w-full' {...props}>
         {(label || showValue) && (
           <div className='flex justify-between mb-1'>
-            {label && <span className='text-sm text-gray-600'>{label}</span>}
+            {label && <span className='body-md'>{label}</span>}
             {showValue && (
-              <span className='text-sm text-gray-600'>
+              <span className='body-md'>
                 {Math.round(percentage)}%
               </span>
             )}

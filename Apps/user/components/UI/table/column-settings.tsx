@@ -52,7 +52,7 @@ function SortableColumnItem({
       ref={setNodeRef}
       style={style}
       {...attributes}
-      className='flex items-center gap-2 p-2 text-sm rounded-full bg-background'
+      className='body-md flex items-center gap-2 p-2 rounded-full bg-background'
     >
       <div
         ref={setActivatorNodeRef}
@@ -142,7 +142,7 @@ export function ColumnSettingsDialog<TData>({
       <div className='flex items-center justify-between p-6 pb-0'>
         <div>
           <H2 className='text-primary'>View Settings</H2>
-          <P className='text-sm text-ink-secondary'>
+          <P className='body-md text-ink-secondary'>
             Customize column visibility and order.
           </P>
         </div>
@@ -153,7 +153,7 @@ export function ColumnSettingsDialog<TData>({
       <div className='p-6 space-y-6'>
         {enableTextTruncationToggle && onTextExpandedChange && (
           <div className='flex items-center justify-between p-3 border rounded-full bg-background border-border'>
-            <span className='text-sm font-medium text-ink-primary'>
+            <span className='label'>
               Wrap Text
             </span>
             <Switch
@@ -164,7 +164,7 @@ export function ColumnSettingsDialog<TData>({
         )}
 
         <div className='space-y-4'>
-          <H3 className='text-sm font-medium text-ink-primary'>
+          <H3 className='label'>
             Visible Columns
           </H3>
           <DndContext

@@ -126,7 +126,7 @@ export function QuestionForm({
     >
       {/* Header */}
       <div className='header'>
-        <h3 className='text-base font-bold'>Edit Question</h3>
+        <h3 className='title-sub'>Edit Question</h3>
         <button
           type='button'
           onClick={onCancel}
@@ -139,7 +139,7 @@ export function QuestionForm({
       {/* Scrollable Content */}
       <div className='body '>
         {errorMsg && (
-          <div className='p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm rounded-lg flex items-center gap-2'>
+          <div className='body-md p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg flex items-center gap-2'>
             <AlertCircle className='w-4 h-4 shrink-0' />
             {errorMsg}
           </div>
@@ -156,7 +156,7 @@ export function QuestionForm({
             placeholder='Question title'
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className='w-full px-4 py-2.5 rounded-xl border border-border dark:border-border bg-panel text-ink-primary text-sm focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20'
+            className='body-md w-full px-4 py-2.5 rounded-xl border border-border dark:border-border bg-panel text-ink-primary focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20'
           />
         </div>
 
@@ -166,7 +166,7 @@ export function QuestionForm({
           <select
             value={categoryId}
             onChange={(e) => setCategoryId(e.target.value)}
-            className='w-full px-4 py-2.5 rounded-xl border border-border dark:border-border bg-panel text-ink-primary text-sm focus:outline-none focus:border-primary/50'
+            className='body-md w-full px-4 py-2.5 rounded-xl border border-border dark:border-border bg-panel text-ink-primary focus:outline-none focus:border-primary/50'
           >
             <option value=''>No Category</option>
             {categories.map((cat) => (
@@ -187,12 +187,12 @@ export function QuestionForm({
               placeholder='New tag name'
               value={newTagName}
               onChange={(e) => setNewTagName(e.target.value)}
-              className='flex-1 px-3 py-1.5 rounded-lg border border-border dark:border-border bg-panel text-ink-primary text-xs focus:outline-none focus:border-primary/50'
+              className='body-sm flex-1 px-3 py-1.5 rounded-lg border border-border dark:border-border bg-panel text-ink-primary focus:outline-none focus:border-primary/50'
             />
             <button
               type='button'
               onClick={handleCreateTag}
-              className='px-3 py-1.5 text-xs bg-background-secondary hover:bg-background-secondary dark:bg-panel dark:hover:bg-panel text-ink-primary rounded-lg border border-border dark:border-border font-semibold'
+              className='label-sm px-3 py-1.5 bg-background-secondary hover:bg-background-secondary dark:bg-panel dark:hover:bg-panel text-ink-primary rounded-lg border border-border dark:border-border'
             >
               Create Tag
             </button>
@@ -200,7 +200,7 @@ export function QuestionForm({
 
           <div className='flex flex-wrap gap-1.5 max-h-28 overflow-y-auto p-1.5 border border-border/40/80 rounded-lg'>
             {tags.length === 0 ?
-              <span className='text-xs text-ink-secondary italic p-1'>
+              <span className='body-sm text-ink-secondary italic p-1'>
                 No tags created yet.
               </span>
             : tags.map((tag) => {
@@ -211,7 +211,7 @@ export function QuestionForm({
                     key={tag.id}
                     onClick={() => toggleTag(tag.id)}
                     className={cn(
-                      'px-2.5 py-1 text-xs rounded-lg transition-colors border',
+                      'body-sm px-2.5 py-1 rounded-lg transition-colors border',
                       active ?
                         'bg-primary border-primary text-primary-foreground font-semibold'
                       : 'bg-background-secondary/50 border-border hover:bg-background-secondary text-ink-secondary dark:bg-panel dark:border-border dark:hover:bg-background-secondary',
@@ -232,7 +232,7 @@ export function QuestionForm({
             <select
               value={frequency}
               onChange={(e) => setFrequency(e.target.value)}
-              className='w-full px-4 py-2.5 rounded-xl border border-border dark:border-border bg-panel text-ink-primary text-sm focus:outline-none focus:border-primary/50'
+              className='body-md w-full px-4 py-2.5 rounded-xl border border-border dark:border-border bg-panel text-ink-primary focus:outline-none focus:border-primary/50'
             >
               <option value='Low'>Low Frequency</option>
               <option value='Medium'>Medium Frequency</option>
@@ -244,7 +244,7 @@ export function QuestionForm({
             <select
               value={importanceScore}
               onChange={(e) => setImportanceScore(Number(e.target.value))}
-              className='w-full px-4 py-2.5 rounded-xl border border-border dark:border-border bg-panel text-ink-primary text-sm focus:outline-none focus:border-primary/50'
+              className='body-md w-full px-4 py-2.5 rounded-xl border border-border dark:border-border bg-panel text-ink-primary focus:outline-none focus:border-primary/50'
             >
               <option value={1}>1 Star</option>
               <option value={2}>2 Stars</option>
@@ -261,7 +261,7 @@ export function QuestionForm({
           <select
             value={frameworkType}
             onChange={(e) => setFrameworkType(e.target.value)}
-            className='w-full px-4 py-2.5 rounded-xl border border-border dark:border-border bg-panel text-ink-primary text-sm focus:outline-none focus:border-primary/50'
+            className='body-md w-full px-4 py-2.5 rounded-xl border border-border dark:border-border bg-panel text-ink-primary focus:outline-none focus:border-primary/50'
           >
             <option value='STAR'>
               STAR Framework (Situation, Task, Action, Result)
@@ -285,7 +285,7 @@ export function QuestionForm({
               placeholder='Define your custom answering framework details here...'
               value={customFramework}
               onChange={(e) => setCustomFramework(e.target.value)}
-              className='w-full px-4 py-2.5 h-20 rounded-xl border border-border dark:border-border bg-panel resize-none text-ink-primary text-sm focus:outline-none focus:border-primary/50'
+              className='body-md w-full px-4 py-2.5 h-20 rounded-xl border border-border dark:border-border bg-panel resize-none text-ink-primary focus:outline-none focus:border-primary/50'
             />
           )}
         </div>
@@ -297,7 +297,7 @@ export function QuestionForm({
             placeholder='Write your answer here...'
             value={answerObjective}
             onChange={(e) => setAnswerObjective(e.target.value)}
-            className='w-full px-4 py-2.5 h-44 rounded-xl border border-border dark:border-border bg-panel resize-none text-ink-primary text-sm focus:outline-none focus:border-primary/50 leading-relaxed'
+            className='body-md w-full px-4 py-2.5 h-44 rounded-xl border border-border dark:border-border bg-panel resize-none focus:outline-none focus:border-primary/50'
           />
         </div>
       </div>
@@ -307,14 +307,14 @@ export function QuestionForm({
         <button
           type='button'
           onClick={onCancel}
-          className='px-4 py-2 rounded-lg hover:bg-background-secondary hover:bg-background-secondary text-sm font-semibold transition-colors text-ink-secondary'
+          className='label px-4 py-2 rounded-lg hover:bg-background-secondary hover:bg-background-secondary transition-colors text-ink-secondary'
         >
           Cancel
         </button>
         <button
           type='submit'
           disabled={isSubmitting || !title.trim()}
-          className='px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50'
+          className='label px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-50'
         >
           {isSubmitting ? 'Saving...' : 'Save Question'}
         </button>

@@ -82,7 +82,7 @@ export function TableToolbar({
                     <Button
                       variant='ghost'
                       size='sm'
-                      className='h-auto p-0 text-xs text-ink-secondary hover:text-ink-primary'
+                      className='body-sm h-auto p-0 text-ink-secondary hover:text-ink-primary'
                       onClick={() => filter.onSelectionChange([])}
                     >
                       Reset

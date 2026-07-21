@@ -9,7 +9,7 @@ interface FrameworkDetailsProps {
 export function FrameworkDetails({ framework }: FrameworkDetailsProps) {
   if (!framework) {
     return (
-      <p className='text-sm text-ink-secondary italic'>
+      <p className='body-md text-ink-secondary italic'>
         No answering framework configured.
       </p>
     );
@@ -17,7 +17,7 @@ export function FrameworkDetails({ framework }: FrameworkDetailsProps) {
 
   if (framework === 'STAR') {
     return (
-      <div className='grid grid-cols-2 gap-3 text-xs mt-1'>
+      <div className='body-sm grid grid-cols-2 gap-3 mt-1'>
         <div className='p-3 bg-blue-500/5 border border-blue-500/10 rounded-xl'>
           <span className='font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wide block mb-1'>
             S - Situation
@@ -56,7 +56,7 @@ export function FrameworkDetails({ framework }: FrameworkDetailsProps) {
 
   if (framework === 'STARE') {
     return (
-      <div className='grid grid-cols-2 md:grid-cols-2 gap-3 text-xs mt-1'>
+      <div className='body-sm grid grid-cols-2 md:grid-cols-2 gap-3 mt-1'>
         <div className='p-3 bg-blue-500/5 border border-blue-500/10 rounded-xl'>
           <span className='font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wide block mb-1'>
             S - Situation
@@ -103,7 +103,7 @@ export function FrameworkDetails({ framework }: FrameworkDetailsProps) {
 
   if (framework === 'SOAR') {
     return (
-      <div className='grid grid-cols-1 md:grid-cols-2 gap-3 text-xs mt-1'>
+      <div className='body-sm grid grid-cols-1 md:grid-cols-2 gap-3 mt-1'>
         <div className='p-3 bg-blue-500/5 border border-blue-500/10 rounded-xl'>
           <span className='font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wide block mb-1'>
             S - Situation
@@ -142,7 +142,7 @@ export function FrameworkDetails({ framework }: FrameworkDetailsProps) {
 
   if (framework === 'XYZ') {
     return (
-      <div className='grid grid-cols-3 gap-3 text-xs mt-1'>
+      <div className='body-sm grid grid-cols-3 gap-3 mt-1'>
         <div className='p-3 bg-emerald-500/5 border border-emerald-500/10 rounded-xl'>
           <span className='font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wide block mb-1'>
             X - Accomplished
@@ -173,7 +173,7 @@ export function FrameworkDetails({ framework }: FrameworkDetailsProps) {
 
   if (framework === 'PAR') {
     return (
-      <div className='grid grid-cols-3 gap-3 text-xs mt-1'>
+      <div className='body-sm grid grid-cols-3 gap-3 mt-1'>
         <div className='p-3 bg-rose-500/5 border border-rose-500/10 rounded-xl'>
           <span className='font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wide block mb-1'>
             P - Problem
@@ -204,7 +204,7 @@ export function FrameworkDetails({ framework }: FrameworkDetailsProps) {
 
   if (framework === 'CAR') {
     return (
-      <div className='grid grid-cols-3 gap-3 text-xs mt-1'>
+      <div className='body-sm grid grid-cols-3 gap-3 mt-1'>
         <div className='p-3 bg-background-secondary/5 border border-border/10 rounded-xl'>
           <span className='font-bold text-zinc-600 dark:text-zinc-400 uppercase tracking-wide block mb-1'>
             C - Context
@@ -235,7 +235,7 @@ export function FrameworkDetails({ framework }: FrameworkDetailsProps) {
 
   if (framework === '5W2H') {
     return (
-      <div className='grid grid-cols-2 md:grid-cols-3 gap-3 text-xs mt-1'>
+      <div className='body-sm grid grid-cols-2 md:grid-cols-3 gap-3 mt-1'>
         <div className='p-3 bg-blue-500/5 border border-blue-500/10 rounded-xl'>
           <span className='font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wide block mb-1'>
             What
@@ -297,7 +297,7 @@ export function FrameworkDetails({ framework }: FrameworkDetailsProps) {
   }
 
   return (
-    <p className='text-sm text-ink-secondary whitespace-pre-wrap leading-relaxed mt-1'>
+    <p className='body-md text-ink-secondary whitespace-pre-wrap mt-1'>
       {framework}
     </p>
   );

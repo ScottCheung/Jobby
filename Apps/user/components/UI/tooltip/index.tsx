@@ -13,7 +13,7 @@ const TooltipRoot = TooltipPrimitive.Root;
 
 const TooltipTrigger = TooltipPrimitive.Trigger;
 const style =
-  'z-50 max-w-[50vw] break-words rounded-xl bg-panel backdrop-blur-sm px-3 py-2 text-[13px] text-ink-primary shadow-lg pointer-events-none dark:border-border dark:bg-background dark:text-zinc-100';
+  'z-50 max-w-[50vw] break-words rounded-xl bg-white/90 dark:bg-black/90 backdrop-blur-xl px-3 py-2 text-[13px] border-3 border-primary/20 text-ink-primary  shadow-lg pointer-events-none dark:border-border dark:bg-background dark:text-zinc-100';
 const TooltipContent = React.forwardRef<
   React.ElementRef<typeof TooltipPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof TooltipPrimitive.Content>

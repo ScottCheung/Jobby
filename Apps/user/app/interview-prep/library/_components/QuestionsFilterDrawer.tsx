@@ -6,6 +6,7 @@ import React from 'react';
 import { X, Star } from 'lucide-react';
 import type { InterviewCategory, InterviewTag } from '@/lib/types';
 import { cn, cleanName } from '@/lib/utils';
+import { Button } from '@/components/UI/Button';
 
 export interface QuestionsFilterDrawerProps {
   categories: InterviewCategory[];
@@ -72,12 +73,12 @@ export function QuestionsFilterDrawer({
   };
 
   return (
-    <div className='flex flex-col h-full bg-panel text-ink-primary'>
+    <div className=' bg-panel h-full p-page col'>
       {/* Header */}
-      <div className='p-5 border-b border-border/40 flex items-center justify-between shrink-0 bg-background-secondary/20'>
+      <div className='header'>
         <div>
-          <h3 className='text-base font-bold'>Filters</h3>
-          <p className='text-xs text-ink-secondary mt-0.5'>
+          <h3 className='title-sub'>Filters</h3>
+          <p className='body-sm text-ink-secondary mt-0.5'>
             Refine the questions library list
           </p>
         </div>
@@ -91,19 +92,17 @@ export function QuestionsFilterDrawer({
       </div>
 
       {/* Scrollable Content */}
-      <div className='flex-1 overflow-y-auto p-6 flex flex-col gap-6 custom-scrollbar-primary'>
+      <div className='body'>
         {/* Category Filter */}
         {categories.length > 0 && (
           <div className='flex flex-col gap-2.5'>
-            <span className='label-overline'>
-              Category
-            </span>
+            <span className='label-overline'>Category</span>
             <div className='flex flex-wrap gap-1.5'>
               <button
                 type='button'
                 onClick={() => handleCategoryClick(null)}
                 className={cn(
-                  'px-3 py-1.5 rounded-full text-xs font-semibold border transition-all',
+                  'label-sm px-3 py-1.5 rounded-full border transition-all',
                   selectedCategoryIds.length === 0 ?
                     'bg-primary/10 text-primary border-primary/30 font-bold'
                   : 'border-border dark:border-border text-ink-secondary hover:text-ink-primary hover:border-primary/30 bg-panel',
@@ -119,7 +118,7 @@ export function QuestionsFilterDrawer({
                     type='button'
                     onClick={() => handleCategoryClick(cat.id)}
                     className={cn(
-                      'px-3 py-1.5 rounded-full text-xs font-semibold border transition-all',
+                      'label-sm px-3 py-1.5 rounded-full border transition-all',
                       active ?
                         'bg-primary/10 text-primary border-primary/30 font-bold'
                       : 'border-border dark:border-border text-ink-secondary hover:text-ink-primary hover:border-primary/30 bg-panel',
@@ -136,15 +135,13 @@ export function QuestionsFilterDrawer({
         {/* Tag Filter */}
         {tags.length > 0 && (
           <div className='flex flex-col gap-2.5 pt-4 border-t border-border/40'>
-            <span className='label-overline'>
-              Tag
-            </span>
+            <span className='label-overline'>Tag</span>
             <div className='flex flex-wrap gap-1.5'>
               <button
                 type='button'
                 onClick={() => handleTagClick(null)}
                 className={cn(
-                  'px-3 py-1.5 rounded-full text-xs font-semibold border transition-all',
+                  'label-sm px-3 py-1.5 rounded-full border transition-all',
                   selectedTagIds.length === 0 ?
                     'bg-primary/10 text-primary border-primary/30 font-bold'
                   : 'border-border dark:border-border text-ink-secondary hover:text-ink-primary hover:border-primary/30 bg-panel',
@@ -160,7 +157,7 @@ export function QuestionsFilterDrawer({
                     type='button'
                     onClick={() => handleTagClick(tag.id)}
                     className={cn(
-                      'px-3 py-1.5 rounded-full text-xs font-semibold border transition-all',
+                      'label-sm px-3 py-1.5 rounded-full border transition-all',
                       active ?
                         'bg-primary/10 text-primary border-primary/30 font-bold'
                       : 'border-border dark:border-border text-ink-secondary hover:text-ink-primary hover:border-primary/30 bg-panel',
@@ -176,9 +173,7 @@ export function QuestionsFilterDrawer({
 
         {/* Importance Filter */}
         <div className='flex flex-col gap-2.5 pt-4 border-t border-border/40'>
-          <span className='label-overline'>
-            Importance
-          </span>
+          <span className='label-overline'>Importance</span>
           <div className='flex gap-1.5'>
             {[5, 4, 3, 2, 1].map((n) => {
               const active = selectedImportances.includes(n);
@@ -194,7 +189,7 @@ export function QuestionsFilterDrawer({
                     )
                   }
                   className={cn(
-                    'flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all',
+                    'label-sm flex items-center gap-1 px-3 py-1.5 rounded-lg border transition-all',
                     active ?
                       'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-400/40 font-extrabold'
                     : 'border-border dark:border-border text-ink-secondary hover:text-ink-primary bg-panel',
@@ -215,9 +210,7 @@ export function QuestionsFilterDrawer({
 
         {/* Frequency Filter */}
         <div className='flex flex-col gap-2.5 pt-4 border-t border-border/40'>
-          <span className='label-overline'>
-            Frequency
-          </span>
+          <span className='label-overline'>Frequency</span>
           <div className='flex gap-1.5'>
             {['High', 'Medium', 'Low'].map((f) => {
               const active = selectedFrequencies.includes(f);
@@ -239,7 +232,7 @@ export function QuestionsFilterDrawer({
                     )
                   }
                   className={cn(
-                    'px-3.5 py-1.5 rounded-lg text-xs font-bold border transition-all',
+                    'label-sm px-3.5 py-1.5 rounded-lg border transition-all',
                     active ? activeColor : (
                       'border-border dark:border-border text-ink-secondary hover:text-ink-primary bg-panel'
                     ),
@@ -254,23 +247,15 @@ export function QuestionsFilterDrawer({
       </div>
 
       {/* Footer */}
-      <div className='p-5 border-t border-border/40 flex justify-between gap-2 shrink-0 bg-background-secondary/20'>
+      <div className='footer'>
         {hasActiveFilters ?
-          <button
-            type='button'
-            onClick={handleClearAll}
-            className='px-4 py-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-955/20 text-red-600 dark:text-red-400 text-sm font-semibold transition-colors'
-          >
+          <Button variant={'ghost'} onClick={handleClearAll}>
             Clear All
-          </button>
+          </Button>
         : <div />}
-        <button
-          type='button'
-          onClick={onClose}
-          className='px-5 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-bold hover:opacity-90 transition-opacity'
-        >
-          Close Drawer
-        </button>
+        <Button onClick={onClose} className='w-full'>
+          Confirm
+        </Button>
       </div>
     </div>
   );

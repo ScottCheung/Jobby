@@ -112,7 +112,7 @@ export function renderPagination(
 
   return (
     <div className='flex items-center justify-between border-t border-border/50 pt-4 mt-4'>
-      <span className='text-xs text-ink-primary0 dark:text-zinc-400'>
+      <span className='text-meta text-ink-primary0'>
         Showing <span className='font-semibold'>{startIdx}</span> to{' '}
         <span className='font-semibold'>{endIdx}</span> of{' '}
         <span className='font-semibold'>{totalItems}</span> entries
@@ -125,7 +125,7 @@ export function renderPagination(
         >
           <ChevronLeft className='w-4 h-4' />
         </button>
-        <span className='text-xs font-semibold text-zinc-700 dark:text-zinc-300 px-2'>
+        <span className='label-sm px-2'>
           Page {currentPage} of {totalPages}
         </span>
         <button

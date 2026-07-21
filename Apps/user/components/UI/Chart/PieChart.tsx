@@ -160,7 +160,7 @@ const renderCustomizedLabel = ({
         fill='var(--color-ink-primary)'
         textAnchor={x > cx ? 'start' : 'end'}
         dominantBaseline='central'
-        className='text-xs font-bold'
+        className='label-sm'
         stroke='var(--color-background)'
         strokeWidth='3'
         paintOrder='stroke'
@@ -331,7 +331,7 @@ const CustomLegend = (props: any) => {
   if (!payload) return null;
 
   return (
-    <div className='flex flex-wrap items-center gap-3 justify-center mt-5 text-xs font-semibold'>
+    <div className='label-sm flex flex-wrap items-center gap-3 justify-center mt-5'>
       {payload.map((entry: any, index: number) => {
         const { value, color } = entry;
         return (

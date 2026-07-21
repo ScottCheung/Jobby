@@ -265,7 +265,7 @@ export default function AutomationPanel() {
 
                     {/* Middle: Name & Action status */}
                     <div className="flex flex-col min-w-0 select-none">
-                      <span className="font-extrabold text-sm text-ink-primary dark:text-ink-primary tracking-tight leading-normal">
+                      <span className="body-md text-ink-primary dark:text-ink-primary">
                         {platform.name} Apply
                       </span>
 

@@ -78,7 +78,7 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, LabeledTextareaProps>(
           {showCharCount && maxLength && (
             <p
               className={cn(
-                'text-xs transition-colors',
+                'body-sm transition-colors',
                 isExceeded
                   ? 'text-red-500 dark:text-red-400 font-medium'
                   : 'text-gray-400 dark:text-ink-secondary',

@@ -90,7 +90,7 @@ function CopyButton({
 function TokenChip({ token }: { token: string }) {
   return (
     <div className='flex items-center gap-1.5 min-w-0'>
-      <code className='text-xs font-mono font-bold text-primary bg-primary/8 px-2 py-0.5 rounded-md truncate'>
+      <code className='label-sm font-mono text-primary bg-primary/8 px-2 py-0.5 rounded-md truncate'>
         {token}
       </code>
       <CopyButton value={token} size='xs' />
@@ -111,7 +111,7 @@ function TextPreview({
   textClass: string;
   sample: string;
 }) {
-  return <p className={cn(textClass, 'text-xl font-black')}>{sample}</p>;
+  return <p className={cn(textClass, 'title-section')}>{sample}</p>;
 }
 
 function ContainerPreview({ classes }: { classes: string }) {
@@ -119,7 +119,7 @@ function ContainerPreview({ classes }: { classes: string }) {
     <div
       className={cn(classes, 'w-full min-h-[48px] items-center justify-center')}
     >
-      <span className='text-ink-secondary text-xs'>Content area</span>
+      <span className='body-sm text-ink-secondary'>Content area</span>
     </div>
   );
 }
@@ -134,7 +134,7 @@ function LayoutRowPreview({ classes }: { classes: string }) {
       {['A', 'B', 'C'].map((l) => (
         <span
           key={l}
-          className='px-3 py-1 rounded-lg bg-primary/10 text-primary text-xs font-bold'
+          className='label-sm px-3 py-1 rounded-lg bg-primary/10 text-primary'
         >
           {l}
         </span>
@@ -146,10 +146,10 @@ function LayoutRowPreview({ classes }: { classes: string }) {
 function LayoutBetweenPreview({ classes }: { classes: string }) {
   return (
     <div className={cn(classes, 'w-full')}>
-      <span className='px-3 py-1 rounded-lg bg-primary/10 text-primary text-xs font-bold'>
+      <span className='label-sm px-3 py-1 rounded-lg bg-primary/10 text-primary'>
         Left
       </span>
-      <span className='px-3 py-1 rounded-lg bg-background-secondary text-ink-secondary text-xs font-bold'>
+      <span className='label-sm px-3 py-1 rounded-lg bg-background-secondary'>
         Right
       </span>
     </div>
@@ -162,7 +162,7 @@ function LayoutColPreview({ classes }: { classes: string }) {
       {['Row 1', 'Row 2'].map((l) => (
         <div
           key={l}
-          className='px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-bold'
+          className='label-sm px-3 py-1.5 rounded-lg bg-primary/10 text-primary'
         >
           {l}
         </div>
@@ -177,7 +177,7 @@ function LayoutWrapPreview({ classes }: { classes: string }) {
       {['Tag A', 'Tag B', 'Tag C', 'Tag D'].map((t) => (
         <span
           key={t}
-          className='px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold'
+          className='label-sm px-2.5 py-1 rounded-full bg-primary/10 text-primary'
         >
           {t}
         </span>
@@ -231,7 +231,7 @@ function ButtonPreview({
     <button
       className={cn(
         classes,
-        'px-4 py-2 rounded-xl text-sm font-semibold cursor-pointer',
+        'label px-4 py-2 rounded-xl cursor-pointer',
       )}
     >
       {sample}
@@ -256,7 +256,7 @@ function ScrollbarPreview() {
   return (
     <div className='custom-scrollbar w-full h-14 overflow-y-auto rounded-lg bg-background-secondary/30 p-2'>
       {Array.from({ length: 6 }).map((_, i) => (
-        <div key={i} className='text-xs text-ink-secondary py-0.5'>
+        <div key={i} className='body-sm text-ink-secondary py-0.5'>
           Scrollable item {i + 1}
         </div>
       ))}
@@ -401,7 +401,7 @@ function RulesPanel() {
         {config.rules.map((rule) => (
           <div key={rule.id} className='panel-xs p-4 col gap-1.5'>
             <span className='label-overline'>{rule.title}</span>
-            <p className='text-sm text-ink-secondary leading-relaxed'>
+            <p className='body-md text-ink-secondary'>
               {rule.rule}
             </p>
           </div>
@@ -436,7 +436,7 @@ function SideNav({
             key={s.id}
             onClick={() => onSelect(s.id)}
             className={cn(
-              'row px-3 py-2 rounded-xl text-sm font-semibold text-left w-full transition-all cursor-pointer',
+              'label row px-3 py-2 rounded-xl text-left w-full transition-all cursor-pointer',
               isActive ?
                 'bg-primary/10 text-primary'
               : 'text-ink-secondary hover:bg-background-secondary/60 hover:text-ink-primary',
@@ -474,7 +474,7 @@ export default function DesignSystemPage() {
               <Palette className='w-4 h-4 text-primary-foreground' />
             </div>
             <div className='stack gap-0'>
-              <h1 className='text-base font-bold text-ink-primary leading-tight'>
+              <h1 className='title-sub leading-tight'>
                 {config.meta.title}
               </h1>
               <span className='text-meta'>
@@ -509,7 +509,7 @@ export default function DesignSystemPage() {
         <main className='flex-1 min-w-0 p-6 col gap-16'>
           {/* Description */}
           <div className='panel-xs p-4'>
-            <p className='text-sm text-ink-secondary leading-relaxed'>
+            <p className='body-md text-ink-secondary'>
               {config.meta.description}
             </p>
           </div>

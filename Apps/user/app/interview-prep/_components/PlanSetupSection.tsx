@@ -7,6 +7,8 @@ import { Calendar, Sliders, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import AnimatedIcon from '@/components/UI/SVGanimation/StatusSVG';
 import type { InterviewQuestion } from '@/lib/types';
+import { Button } from '@/components/UI/Button';
+import { motion } from 'framer-motion';
 
 type PresetType = 'sprint' | 'tactical' | 'master';
 
@@ -88,13 +90,13 @@ export function PlanSetupSection({
   const InActiveCard = 'border-ink-secondary/50';
 
   return (
-    <div className='p-6 rounded-2xl bg-panel border border-border/40 flex flex-col gap-6'>
+    <div className=''>
       <div className='flex flex-col gap-1 border-b border-border/40 pb-4'>
-        <h2 className='text-xl font-bold text-ink-primary flex items-center gap-2'>
+        <h2 className='title-section flex items-center gap-2'>
           <Calendar className='w-5.5 h-5.5 text-primary' />
           Prepare Your Practice Plan
         </h2>
-        <p className='text-sm text-ink-secondary'>
+        <p className='body-md text-ink-secondary'>
           Select one of our high-efficiency official prep modes, or click
           "Customize Strategy" below to fine-tune your scope.
         </p>
@@ -129,7 +131,10 @@ export function PlanSetupSection({
           let reviewsCount = 0;
           const intervals = [1, 3, 7, 14];
           for (let i = 0; i < poolSize; i++) {
-            const baseDayIndex = Math.min(Math.floor(i / baseQsPerDay), duration - 1);
+            const baseDayIndex = Math.min(
+              Math.floor(i / baseQsPerDay),
+              duration - 1,
+            );
             for (const interval of intervals) {
               if (baseDayIndex + interval < duration) {
                 reviewsCount++;
@@ -138,7 +143,10 @@ export function PlanSetupSection({
           }
 
           const totalTasksCount = poolSize + reviewsCount;
-          const avgTotalTasksPerDay = Math.max(1, Math.ceil(totalTasksCount / duration));
+          const avgTotalTasksPerDay = Math.max(
+            1,
+            Math.ceil(totalTasksCount / duration),
+          );
 
           return (
             <div
@@ -154,7 +162,7 @@ export function PlanSetupSection({
               <div className='flex justify-between items-start'>
                 <div
                   className={cn(
-                    'px-3.5 py-1.5 rounded-full font-bold text-xs uppercase tracking-wider shrink-0 transition-colors',
+                    'label-sm px-3.5 py-1.5 rounded-full uppercase shrink-0 transition-colors',
                     isSelected ?
                       template.activeBadgeClass
                     : 'bg-background-secondary text-ink-primary0 dark:text-zinc-400',
@@ -178,7 +186,7 @@ export function PlanSetupSection({
               <div className='flex flex-col gap-1.5'>
                 <h3
                   className={cn(
-                    'font-bold text-lg transition-colors',
+                    'title-card transition-colors',
                     isSelected ? 'text-ink-primary' : 'text-ink-primary/90',
                   )}
                 >
@@ -186,14 +194,14 @@ export function PlanSetupSection({
                 </h3>
                 <p
                   className={cn(
-                    'text-xs transition-colors leading-relaxed',
+                    'body-sm transition-colors',
                     isSelected ? 'text-ink-secondary' : 'text-ink-secondary/90',
                   )}
                 >
                   {template.description}
                 </p>
               </div>
-              <div className='mt-auto pt-3 border-t border-border/40 text-xs transition-colors flex flex-col gap-1.5'>
+              <div className='body-sm mt-auto pt-3 border-t border-border/40 transition-colors flex flex-col gap-1.5'>
                 <div className='flex justify-between text-ink-secondary/80'>
                   <span>Daily Base Pace:</span>
                   <span className='font-semibold text-ink-primary'>
@@ -205,7 +213,9 @@ export function PlanSetupSection({
                   <span
                     className={cn(
                       'font-bold',
-                      isSelected ? template.activeTextClass : 'text-ink-primary',
+                      isSelected ?
+                        template.activeTextClass
+                      : 'text-ink-primary',
                     )}
                   >
                     ~{avgTotalTasksPerDay} Qs / day
@@ -223,23 +233,23 @@ export function PlanSetupSection({
 
       {/* Action buttons */}
       <div className='flex justify-end gap-3  dark:border-border/60 pt-4 mt-2'>
-        <button
+        <Button
+          variant='outline'
+          Icon={Sliders}
+          layoutId='Customize Your Plan'
           onClick={() => setIsCustomizeOpen(true)}
-          className='flex items-center gap-1.5 px-5 py-2.5 text-xs font-bold text-ink-primary rounded-xl transition-colors border dark:border-zinc-850/60'
         >
-          <Sliders className='w-4 h-4' />
-          Customize Strategy...
-        </button>
-        <button
+          Customize
+        </Button>
+        <Button
+          Icon={Plus}
           onClick={() => void handleCreatePlan()}
           disabled={isCreatingPlan}
-          className='flex items-center gap-2 px-6 py-2.5 text-sm font-bold text-primary-foreground bg-primary rounded-xl  shadow-md shadow-primary/10'
         >
-          <Plus className='w-4 h-4' />
           {isCreatingPlan ?
             'Formulating Plan Timeline...'
           : 'Activate Practice Plan'}
-        </button>
+        </Button>
       </div>
     </div>
   );

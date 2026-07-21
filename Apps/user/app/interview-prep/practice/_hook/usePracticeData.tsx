@@ -21,6 +21,7 @@ import type {
   DailySummary,
 } from '@/lib/types';
 import { showGlobalToast } from '@/lib/toast';
+import { showCelebrationEvent } from '@/lib/celebration';
 import { useLayoutStore } from '@/lib/store/layout-store';
 import { practiceCache } from '../practice-cache';
 import { seededShuffle, getPlanQueue } from '../practice-utils';
@@ -158,13 +159,19 @@ export function usePracticeData() {
 
   // ── UI ──
   const [showModeModal, setShowModeModal] = useState(false);
-  const [activeTab, setActiveTab] = useState<'workspace' | 'history'>(
-    'workspace',
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [showCompletionModal, setShowCompletionModal] = useState(false);
+  const [completionReward, setCompletionReward] = useState<PracticeRecord['gamification_update']>(null);
+  const [isSubmittingReport, setIsSubmittingReport] = useState(false);
+  const [activeTab, setActiveTab] = useState<'workspace' | 'history' | 'comment'>(
+    (searchParams?.get('tab') as 'workspace' | 'history' | 'comment') || 'workspace',
   );
   const [globalShowAnswers, setGlobalShowAnswers] = useState(false);
   const [showThisAnswer, setShowThisAnswer] = useState(false);
   const [showDailySummaryModal, setShowDailySummaryModal] = useState(false);
-  const [dailySummaryData, setDailySummaryData] = useState<DailySummary | null>(null);
+  const [dailySummaryData, setDailySummaryData] = useState<DailySummary | null>(
+    null,
+  );
 
   // ── Answer editing ──
   const [isEditingAnswer, setIsEditingAnswer] = useState(false);
@@ -249,7 +256,9 @@ export function usePracticeData() {
       const elapsed = Date.now() - startTime;
       const minDuration = 500; // 0.5 seconds
       if (elapsed < minDuration) {
-        await new Promise((resolve) => setTimeout(resolve, minDuration - elapsed));
+        await new Promise((resolve) =>
+          setTimeout(resolve, minDuration - elapsed),
+        );
       }
       setIsLoading(false);
     }
@@ -281,14 +290,26 @@ export function usePracticeData() {
           );
         } catch {}
       }
+      
+      const tabParam = searchParams?.get('tab');
+      const tabString = tabParam ? `&tab=${tabParam}` : '';
+      
       router.replace(
-        `/interview-prep/practice/${id}?mode=${mode}&shuffle=${shuffle ? '1' : '0'}`,
+        `/interview-prep/practice/${id}?mode=${mode}&shuffle=${shuffle ? '1' : '0'}${tabString}`,
       );
     }
 
     void initData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Sync tab from URL
+  useEffect(() => {
+    const tabParam = searchParams?.get('tab');
+    if (tabParam === 'workspace' || tabParam === 'history' || tabParam === 'comment') {
+      setActiveTab(tabParam);
+    }
+  }, [searchParams]);
 
   // Reset per-question UI state on id change
   useEffect(() => {
@@ -485,7 +506,9 @@ export function usePracticeData() {
     rec.interimResults = true;
     rec.lang = 'en-US';
     const recordStartTime = Date.now();
-    let lastSegmentEndTime = 0;
+    let currentSegmentStartTime: number | null = null;
+    let segmentLastUpdateTime: number = 0;
+    
     rec.onresult = (event: any) => {
       let interim = '';
       const finalSegments: Array<{ text: string; start: number; end: number }> =
@@ -493,15 +516,29 @@ export function usePracticeData() {
       for (let i = event.resultIndex; i < event.results.length; ++i) {
         const transcript = event.results[i][0].transcript;
         const elapsed = (Date.now() - recordStartTime) / 1000;
+        
+        if (currentSegmentStartTime === null) {
+          // Compensate for typical API network latency on the first interim result
+          currentSegmentStartTime = Math.max(0, elapsed - 0.4);
+        }
+
         if (event.results[i].isFinal) {
+          // The 'isFinal' event often arrives 1-2s after actual speech ends.
+          // Using the last interim time gives a much tighter bound on the true audio end time.
+          const actualEnd = segmentLastUpdateTime > currentSegmentStartTime 
+            ? segmentLastUpdateTime 
+            : Math.max(currentSegmentStartTime + 0.5, elapsed - 0.4);
+
           finalSegments.push({
             text: transcript.trim(),
-            start: lastSegmentEndTime,
-            end: elapsed,
+            start: currentSegmentStartTime,
+            end: actualEnd,
           });
-          lastSegmentEndTime = elapsed;
+          currentSegmentStartTime = null;
+          segmentLastUpdateTime = 0;
         } else {
           interim += transcript;
+          segmentLastUpdateTime = elapsed;
         }
       }
       if (finalSegments.length > 0) {
@@ -520,7 +557,14 @@ export function usePracticeData() {
       }
       setInterimText(interim);
     };
-    rec.onerror = (err: any) => console.error('Speech recognition error:', err);
+    rec.onerror = (event: any) => {
+      const error = event?.error || '';
+      if (!error || ['no-speech', 'aborted', 'audio-capture'].includes(error)) {
+        return;
+      }
+      console.warn('Speech recognition stopped:', error);
+      showGlobalToast('Voice input stopped.');
+    };
     recognitionRef.current = rec;
     rec.start();
   };
@@ -539,8 +583,11 @@ export function usePracticeData() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       setActiveStream(stream);
+      const opusMimeType = 'audio/webm;codecs=opus';
       const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: 'audio/webm',
+        // Speech needs little bandwidth; Opus at 24 kbps keeps practice audio inexpensive.
+        mimeType: MediaRecorder.isTypeSupported(opusMimeType) ? opusMimeType : 'audio/webm',
+        audioBitsPerSecond: 24_000,
       });
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
@@ -558,8 +605,8 @@ export function usePracticeData() {
       setRecordingSeconds(0);
       startSpeechRecognition();
       timerRef.current = setInterval(
-         () => setRecordingSeconds((p) => p + 1),
-         1000,
+        () => setRecordingSeconds((p) => p + 1),
+        1000,
       );
     } catch (err) {
       console.error('Failed to start recording:', err);
@@ -587,6 +634,16 @@ export function usePracticeData() {
         });
       }, 300);
     }
+  };
+
+  const handleUpdateTranscriptSegment = (index: number, newText: string) => {
+    setTranscriptSegments((prev) => {
+      const updated = [...prev];
+      if (updated[index]) {
+        updated[index].text = newText;
+      }
+      return updated;
+    });
   };
 
   const resetRecording = () => {
@@ -619,8 +676,16 @@ export function usePracticeData() {
       });
 
       if (record?.gamification_update) {
-         const { xp_gained, coins_gained, is_streak_extended } = record.gamification_update;
-         showGlobalToast(`Awesome! +${xp_gained} XP, +${coins_gained} Coins ${is_streak_extended ? '🔥 Streak Extended!' : ''}`);
+        setCompletionReward(record.gamification_update);
+        const { xp_gained, coins_gained, is_streak_extended } =
+          record.gamification_update;
+        if (xp_gained > 0 || coins_gained > 0) {
+          showGlobalToast(
+            `+${xp_gained} XP, +${coins_gained} Coins${is_streak_extended ? ' Streak Extended!' : ''}`,
+          );
+          showCelebrationEvent('practice_completed');
+        }
+        window.dispatchEvent(new Event('playbookGamificationUpdated'));
       }
 
       if (audioBlob && record?.id)
@@ -642,17 +707,21 @@ export function usePracticeData() {
             setPlanTasks(updatedTasks);
 
             const todayStr = new Date().toDateString();
-            const todayTasks = updatedTasks.filter(t => new Date(t.scheduled_date).toDateString() === todayStr);
-            const allTodayCompleted = todayTasks.length > 0 && todayTasks.every(t => t.status === 'completed');
+            const todayTasks = updatedTasks.filter(
+              (t) => new Date(t.scheduled_date).toDateString() === todayStr,
+            );
+            const allTodayCompleted =
+              todayTasks.length > 0 &&
+              todayTasks.every((t) => t.status === 'completed');
 
             if (practiceMode === 'plan') {
               if (allTodayCompleted) {
-                 const summary = await api.gamificationSummary();
-                 setDailySummaryData(summary);
-                 setShowDailySummaryModal(true);
+                const summary = await api.gamificationSummary();
+                setDailySummaryData(summary);
+                setShowDailySummaryModal(true);
               } else {
-                 const nextQ = effectiveQueue[currentQuestionIndex + 1];
-                 if (nextQ) navigateTo(nextQ.id, 'plan');
+                const nextQ = effectiveQueue[currentQuestionIndex + 1];
+                if (nextQ) navigateTo(nextQ.id, 'plan');
               }
             }
           }
@@ -667,7 +736,7 @@ export function usePracticeData() {
       resetRecording();
       setConfidenceScore(null);
       setNotes('');
-      setActiveTab('history');
+      setShowCompletionModal(true);
     } catch (err) {
       console.error('Failed to save practice record:', err);
     } finally {
@@ -687,6 +756,37 @@ export function usePracticeData() {
       setPracticeRecords(updated);
     } catch (err) {
       console.error('Failed to delete practice record:', err);
+    }
+  };
+
+  const handleUpdateAttempt = async (attemptId: string, updatedRecord: Partial<PracticeRecord>) => {
+    try {
+      await api.updatePracticeRecord(attemptId, updatedRecord);
+      const updated = await api.practiceRecords();
+      practiceCache.records = updated;
+      setPracticeRecords(updated);
+    } catch (err) {
+      console.error('Failed to update practice record:', err);
+    }
+  };
+
+  const handleReportSubmit = async (data: { company: string; role: string; happened_at: string }) => {
+    if (!currentQuestion) return;
+    setIsSubmittingReport(true);
+    try {
+      await api.createInterviewReport({
+        question_id: currentQuestion.id,
+        company: data.company,
+        role: data.role || undefined,
+        happened_at: data.happened_at,
+        seen_in_interview: true,
+      });
+      showGlobalToast('Interview report submitted successfully!');
+    } catch (err) {
+      console.error('Failed to submit interview report:', err);
+      throw err;
+    } finally {
+      setIsSubmittingReport(false);
     }
   };
 
@@ -764,6 +864,12 @@ export function usePracticeData() {
     drawerId,
     showModeModal,
     setShowModeModal,
+    showReportModal,
+    setShowReportModal,
+    showCompletionModal,
+    setShowCompletionModal,
+    completionReward,
+    isSubmittingReport,
     activeTab,
     setActiveTab,
     globalShowAnswers,
@@ -792,7 +898,7 @@ export function usePracticeData() {
     transcriptSegments,
     interimText,
     draftAudioRef,
-    
+
     // Handlers
     initData,
     toggleShuffle,
@@ -807,9 +913,12 @@ export function usePracticeData() {
     resetRecording,
     handleSubmit,
     handleDeleteAttempt,
+    handleUpdateAttempt,
+    handleUpdateTranscriptSegment,
     handleSaveStandardAnswer,
     handleSaveFramework,
-    
+    handleReportSubmit,
+
     // Derived
     effectiveQueue,
     currentQuestionIndex,
