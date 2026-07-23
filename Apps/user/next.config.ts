@@ -3,6 +3,12 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   outputFileTracingRoot: process.cwd(),
+  experimental: {
+    optimizePackageImports: ['lucide-react', 'framer-motion', 'recharts'],
+  },
+  images: {
+    formats: ['image/avif', 'image/webp'],
+  },
   allowedDevOrigins: [
     'http://127.0.0.1:3000',
     'http://localhost:3000',

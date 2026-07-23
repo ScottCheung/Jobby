@@ -1,6 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 import asyncio
+from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, File, HTTPException, Query, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -68,6 +69,13 @@ tags_metadata = [
     {"name": "applications", "description": "Job Applications Tracking & Auto-Apply APIs"},
 ]
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    broadcaster.loop = asyncio.get_running_loop()
+    yield
+
+
 app = FastAPI(
     title="Auto Job Applier & Interview Prep API",
     description="High-performance backend API for AI Job Application Automation, Interview Question Library, Gamification, and Practice Mode.",
@@ -77,6 +85,7 @@ app = FastAPI(
     openapi_url="/openapi.json",
     openapi_tags=tags_metadata,
     default_response_class=DefaultResponseClass,
+    lifespan=lifespan,
 )
 app.add_middleware(
     CORSMiddleware,
@@ -96,11 +105,6 @@ if not os.path.exists("/app") or not os.access("/", os.W_OK):
     audio_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "storage", "audio"))
 os.makedirs(audio_dir, exist_ok=True)
 app.mount("/api/interview/audio", StaticFiles(directory=audio_dir), name="audio")
-
-
-@app.on_event("startup")
-async def store_sse_loop() -> None:
-    broadcaster.loop = asyncio.get_running_loop()
 
 
 def apply_updates(model: object, values: dict) -> None:

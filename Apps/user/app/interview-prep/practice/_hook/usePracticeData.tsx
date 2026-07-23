@@ -90,7 +90,9 @@ type PracticePreferenceSnapshot = {
   customIds: string[];
 };
 
-function parsePracticePreference(value: unknown): PracticePreferenceSnapshot | null {
+function parsePracticePreference(
+  value: unknown,
+): PracticePreferenceSnapshot | null {
   if (!value || typeof value !== 'object') return null;
   const candidate = value as Partial<PracticePreferenceSnapshot>;
   if (
@@ -566,10 +568,12 @@ export function usePracticeData() {
   useEffect(() => {
     if (!baseCurrentQuestion) return;
     const startTime = Date.now();
-    const minSkeletonDuration = 500; // Enforce minimum 0.5s skeleton display for smooth UX
+    const minSkeletonDuration = 1000; // Enforce minimum 0.5s skeleton display for smooth UX
     let cancelled = false;
 
-    const hasCachedAnswers = Boolean(questionAnswersByQuestion[baseCurrentQuestion.id]);
+    const hasCachedAnswers = Boolean(
+      questionAnswersByQuestion[baseCurrentQuestion.id],
+    );
 
     setIsAnswersLoading(true);
 
@@ -589,7 +593,9 @@ export function usePracticeData() {
         .finally(async () => {
           const elapsed = Date.now() - startTime;
           if (elapsed < minSkeletonDuration) {
-            await new Promise((resolve) => setTimeout(resolve, minSkeletonDuration - elapsed));
+            await new Promise((resolve) =>
+              setTimeout(resolve, minSkeletonDuration - elapsed),
+            );
           }
           if (!cancelled) setIsAnswersLoading(false);
         });

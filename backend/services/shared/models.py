@@ -273,6 +273,8 @@ class JobApplication(Base, TimestampMixin):
             unique=True,
             postgresql_where=text("deleted_at IS NULL AND job_id IS NOT NULL"),
         ),
+        Index("idx_job_app_user_status_date", "user_id", "deleted_at", "status", "date_applied"),
+        Index("idx_job_app_user_company", "user_id", "deleted_at", "company"),
     )
 
     id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid4)
