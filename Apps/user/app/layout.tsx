@@ -2,6 +2,7 @@
 
 import type { Metadata } from 'next';
 import './globals.css';
+import { QueryProvider } from '@/components/providers/QueryProvider';
 import { ThemeProvider } from '@/components/theme-provider';
 import { ConsoleProvider } from '@/components/ConsoleContext';
 import ConsoleLayout from '@/components/ConsoleLayout';
@@ -21,12 +22,14 @@ export default function RootLayout({
   return (
     <html lang='en' suppressHydrationWarning className='bg-background h-full'>
       <body suppressHydrationWarning className='min-h-screen'>
-        <ConsoleProvider>
-          <ThemeProvider defaultTheme='system' defaultColor='green'>
-            <GeminiBackground />
-            <ConsoleLayout>{children}</ConsoleLayout>
-          </ThemeProvider>
-        </ConsoleProvider>
+        <QueryProvider>
+          <ConsoleProvider>
+            <ThemeProvider defaultTheme='system' defaultColor='green'>
+              <GeminiBackground />
+              <ConsoleLayout>{children}</ConsoleLayout>
+            </ThemeProvider>
+          </ConsoleProvider>
+        </QueryProvider>
       </body>
     </html>
   );

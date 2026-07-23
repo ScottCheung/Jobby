@@ -122,6 +122,9 @@ class UserInventoryItem(Base, TimestampMixin):
 
 class UserDailyQuest(Base, TimestampMixin):
     __tablename__ = "user_daily_quests"
+    __table_args__ = (
+        Index("idx_user_daily_quests_user_date", "user_id", "quest_date"),
+    )
 
     id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid4)
     user_id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True)
@@ -136,6 +139,9 @@ class UserDailyQuest(Base, TimestampMixin):
 
 class UserAchievement(Base, TimestampMixin):
     __tablename__ = "user_achievements"
+    __table_args__ = (
+        Index("idx_user_achievements_user_badge", "user_id", "badge_id"),
+    )
 
     id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid4)
     user_id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True)
@@ -147,6 +153,9 @@ class UserAchievement(Base, TimestampMixin):
 
 class GamificationTransaction(Base, TimestampMixin):
     __tablename__ = "gamification_transactions"
+    __table_args__ = (
+        Index("idx_gamification_tx_user_created", "user_id", "created_at"),
+    )
 
     id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid4)
     user_id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True)

@@ -88,7 +88,7 @@ const modeLabels: Record<PracticeMode, string> = {
   plan: 'Plan Mode',
 };
 
-export function PracticeHeader({
+export const PracticeHeader = React.memo(function PracticeHeader({
   currentQuestion,
   currentIndex,
   totalQuestions,
@@ -409,4 +409,4 @@ export function PracticeHeader({
       )}
     </div>
   );
-}
+});

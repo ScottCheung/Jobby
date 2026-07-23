@@ -12,19 +12,34 @@ import {
   MessageCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import dynamic from 'next/dynamic';
+
+const PracticeModeModal = dynamic(
+  () => import('../_components/PracticeModeModal').then((mod) => mod.PracticeModeModal),
+  { ssr: false },
+);
+const DailySummaryModal = dynamic(
+  () => import('../../_components/DailySummaryModal').then((mod) => mod.DailySummaryModal),
+  { ssr: false },
+);
+const InterviewReportModal = dynamic(
+  () => import('../_components/InterviewReportModal').then((mod) => mod.InterviewReportModal),
+  { ssr: false },
+);
+const PracticeCompletionModal = dynamic(
+  () => import('../_components/PracticeCompletionModal').then((mod) => mod.PracticeCompletionModal),
+  { ssr: false },
+);
+
 import { api } from '@/lib/api';
 import { showGlobalToast } from '@/lib/toast';
 import { PracticeWorkspace } from '../_components/PracticeWorkspace';
 import { PracticeHistory } from '../_components/PracticeHistory';
-import { PracticeModeModal } from '../_components/PracticeModeModal';
 import { PracticeHeader } from '../_components/PracticeHeader';
 import { StandardAnswerCard } from '../_components/StandardAnswerCard';
-import { DailySummaryModal } from '../../_components/DailySummaryModal';
-import { InterviewReportModal } from '../_components/InterviewReportModal';
 import { PracticeSkeleton } from '../_components/PracticeSkeleton';
 import { usePracticeData } from '../_hook/usePracticeData';
 import { QuestionComments } from '../_components/Comments/QuestionComments';
-import { PracticeCompletionModal } from '../_components/PracticeCompletionModal';
 import { Tooltip, Kbd } from '@/components/UI/tooltip';
 
 function PracticeModeQuestionPageInner() {

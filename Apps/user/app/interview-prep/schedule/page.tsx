@@ -34,9 +34,21 @@ import {
 import { cn, cleanName } from '@/lib/utils';
 import { practiceCache } from '../practice/practice-cache';
 import { motion, AnimatePresence } from 'framer-motion';
-import { PlanSetupSection } from '../_components/PlanSetupSection';
-import { CustomizePlanModal } from '../_components/CustomizePlanModal';
-import { InventoryModal } from '../_components/InventoryModal';
+import dynamic from 'next/dynamic';
+
+const PlanSetupSection = dynamic(
+  () => import('../_components/PlanSetupSection').then((mod) => mod.PlanSetupSection),
+  { ssr: false },
+);
+const CustomizePlanModal = dynamic(
+  () => import('../_components/CustomizePlanModal').then((mod) => mod.CustomizePlanModal),
+  { ssr: false },
+);
+const InventoryModal = dynamic(
+  () => import('../_components/InventoryModal').then((mod) => mod.InventoryModal),
+  { ssr: false },
+);
+
 import { showCelebrationEvent } from '@/lib/celebration';
 import { Modal } from '@/components/layout/modal';
 import { Button } from '@/components/UI/Button';

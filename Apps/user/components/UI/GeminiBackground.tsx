@@ -5,7 +5,7 @@
 import React from 'react';
 import { useTheme } from '@/components/theme-provider';
 
-export function GeminiBackground() {
+export const GeminiBackground = React.memo(function GeminiBackground() {
   const { themeColor } = useTheme();
 
   // Define harmonious color palettes for each theme option
@@ -77,4 +77,4 @@ export function GeminiBackground() {
       />
     </div>
   );
-}
+});

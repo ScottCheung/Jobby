@@ -34,15 +34,30 @@ import type {
 import { Tooltip } from '@/components/UI/tooltip';
 import { cn, cleanName, matchesCollection } from '@/lib/utils';
 import { useLayoutStore } from '@/lib/store/layout-store';
+import dynamic from 'next/dynamic';
+
+const BatchImportModal = dynamic(
+  () => import('./_components/BatchImportModal').then((mod) => mod.BatchImportModal),
+  { ssr: false },
+);
+const AddQuestionsToCollectionModal = dynamic(
+  () => import('./_components/AddQuestionsToCollectionModal').then((mod) => mod.AddQuestionsToCollectionModal),
+  { ssr: false },
+);
+const BatchAssignCategoryModal = dynamic(
+  () => import('./_components/BatchAssignCategoryModal').then((mod) => mod.BatchAssignCategoryModal),
+  { ssr: false },
+);
+const CollectionFormModal = dynamic(
+  () => import('../collections/_components/CollectionFormModal').then((mod) => mod.CollectionFormModal),
+  { ssr: false },
+);
+
 import { QuestionForm } from './_components/QuestionForm';
-import { BatchImportModal } from './_components/BatchImportModal';
 import { FilterSidebar } from './_components/FilterSidebar';
 import { QuestionRow } from './_components/QuestionRow';
 import { QuestionsFilterDrawer } from './_components/QuestionsFilterDrawer';
-import { AddQuestionsToCollectionModal } from './_components/AddQuestionsToCollectionModal';
-import { BatchAssignCategoryModal } from './_components/BatchAssignCategoryModal';
 import { Button } from '@/components/UI/Button';
-import { CollectionFormModal } from '../collections/_components/CollectionFormModal';
 import { showGlobalToast } from '@/lib/toast';
 import { VirtualList } from '@/components/UI/VirtualList';
 

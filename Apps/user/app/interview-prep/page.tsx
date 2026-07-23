@@ -39,7 +39,18 @@ import {
 import { cn, cleanName } from '@/lib/utils';
 import { practiceCache } from './practice/practice-cache';
 
-import { CustomizePlanModal } from './_components/CustomizePlanModal';
+import dynamic from 'next/dynamic';
+
+const CustomizePlanModal = dynamic(
+  () => import('./_components/CustomizePlanModal').then((mod) => mod.CustomizePlanModal),
+  { ssr: false },
+);
+
+const BatchImportModal = dynamic(
+  () => import('./library/_components/BatchImportModal').then((mod) => mod.BatchImportModal),
+  { ssr: false },
+);
+
 import { PlanSetupSection } from './_components/PlanSetupSection';
 import { ActivityHeatmap } from './_components/ActivityHeatmap';
 import { Button } from '@/components/UI/Button';
@@ -47,7 +58,6 @@ import { showGlobalToast } from '@/lib/toast';
 import { showCelebrationEvent } from '@/lib/celebration';
 import { useConfirmStore } from '@/lib/store/confirm-store';
 import { useLayoutStore } from '@/lib/store/layout-store';
-import { BatchImportModal } from './library/_components/BatchImportModal';
 import { FloatingWelcomeCard } from './_components/FloatingWelcomeCard';
 import { CollectionCard } from './collections/_components/CollectionCard';
 import { div } from 'framer-motion/client';
