@@ -4,7 +4,15 @@ import asyncio
 
 from fastapi import Depends, FastAPI, File, HTTPException, Query, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse, ORJSONResponse
+from fastapi.responses import StreamingResponse, JSONResponse
+
+try:
+    import orjson
+    from fastapi.responses import ORJSONResponse
+    DefaultResponseClass = ORJSONResponse
+except ImportError:
+    DefaultResponseClass = JSONResponse
+
 from sqlalchemy import or_, select, text, func, cast, Date
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -55,7 +63,7 @@ settings = get_settings()
 app = FastAPI(
     title="Auto Job Applier API",
     version="0.1.0",
-    default_response_class=ORJSONResponse,
+    default_response_class=DefaultResponseClass,
 )
 app.add_middleware(
     CORSMiddleware,
