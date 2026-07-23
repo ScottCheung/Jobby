@@ -565,31 +565,48 @@ export function usePracticeData() {
 
   useEffect(() => {
     if (!baseCurrentQuestion) return;
-    if (questionAnswersByQuestion[baseCurrentQuestion.id]) {
-      setIsAnswersLoading(false);
-      return;
-    }
-    setIsAnswersLoading(true);
+    const startTime = Date.now();
+    const minSkeletonDuration = 500; // Enforce minimum 0.5s skeleton display for smooth UX
     let cancelled = false;
-    void api
-      .questionAnswers(baseCurrentQuestion.id)
-      .then((answers) => {
-        if (cancelled) return;
-        setQuestionAnswersByQuestion((prev) => ({
-          ...prev,
-          [baseCurrentQuestion.id]: answers,
-        }));
-      })
-      .catch((err) => {
-        console.error('Failed to load question answers:', err);
-      })
-      .finally(() => {
+
+    const hasCachedAnswers = Boolean(questionAnswersByQuestion[baseCurrentQuestion.id]);
+
+    setIsAnswersLoading(true);
+
+    if (!hasCachedAnswers) {
+      void api
+        .questionAnswers(baseCurrentQuestion.id)
+        .then((answers) => {
+          if (cancelled) return;
+          setQuestionAnswersByQuestion((prev) => ({
+            ...prev,
+            [baseCurrentQuestion.id]: answers,
+          }));
+        })
+        .catch((err) => {
+          console.error('Failed to load question answers:', err);
+        })
+        .finally(async () => {
+          const elapsed = Date.now() - startTime;
+          if (elapsed < minSkeletonDuration) {
+            await new Promise((resolve) => setTimeout(resolve, minSkeletonDuration - elapsed));
+          }
+          if (!cancelled) setIsAnswersLoading(false);
+        });
+    } else {
+      const timer = setTimeout(() => {
         if (!cancelled) setIsAnswersLoading(false);
-      });
+      }, minSkeletonDuration);
+      return () => {
+        cancelled = true;
+        clearTimeout(timer);
+      };
+    }
+
     return () => {
       cancelled = true;
     };
-  }, [baseCurrentQuestion, questionAnswersByQuestion]);
+  }, [baseCurrentQuestion?.id]);
 
   // ─── Queue Drawer ───
   const handleOpenQueue = useCallback(() => {
