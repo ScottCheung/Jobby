@@ -391,6 +391,7 @@ interface StandardAnswerCardProps {
   onUpdateAuthorAnswer?: (answerId: string, text: string) => Promise<void>;
   onDeleteAuthorAnswer?: (answerId: string) => Promise<void>;
   isSavingAnswer: boolean;
+  isAnswersLoading?: boolean;
   featuredAnswers?: QuestionAnswer[];
   allCommunityAnswers?: QuestionAnswer[];
   aiAnswers?: QuestionAnswer[];
@@ -424,6 +425,7 @@ export function StandardAnswerCard({
   onUpdateAuthorAnswer,
   onDeleteAuthorAnswer,
   isSavingAnswer,
+  isAnswersLoading = false,
   featuredAnswers = [],
   allCommunityAnswers = [],
   aiAnswers = [],
@@ -649,7 +651,7 @@ export function StandardAnswerCard({
   ];
 
   return (
-    <div onClick={handleToggleClick} className=''>
+    <div onClick={handleToggleClick} className='min-h-[380px] transition-all duration-200 ease-out flex flex-col justify-between'>
       {/* ── Tab Row ── */}
       <div
         onClick={(e) => e.stopPropagation()}
@@ -762,8 +764,23 @@ export function StandardAnswerCard({
             {/* ══════════════════════════════════════════ TAB: AI ══════════════════════════════════════════ */}
             {activeTab === 'ai' && (
               <div className='space-y-3' onClick={(e) => e.stopPropagation()}>
-                {/* Generating skeleton */}
-                {isGeneratingAiAnswer ?
+                {/* Answers Loading Skeleton (quiet placeholder during question switch) */}
+                {isAnswersLoading ?
+                  <div className='rounded-xl border border-border/40 bg-background-secondary/30 p-4 space-y-3 min-h-[300px] animate-pulse'>
+                    <div className='flex items-center gap-2'>
+                      <div className='h-4 w-28 bg-muted/60 rounded-md' />
+                    </div>
+                    <div className='space-y-2.5 pt-1'>
+                      {[5, 4, 3, 4, 3].map((w, i) => (
+                        <div
+                          key={i}
+                          className={`h-2.5 w-${w}/5 bg-muted/40 rounded-full`}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                : /* Generating skeleton */
+                isGeneratingAiAnswer ?
                   <div className='rounded-xl border border-violet-500/20 bg-violet-500/[0.05] p-4 space-y-3'>
                     <div className='flex items-center gap-2'>
                       <Sparkles className='h-4 w-4 animate-pulse text-violet-500' />

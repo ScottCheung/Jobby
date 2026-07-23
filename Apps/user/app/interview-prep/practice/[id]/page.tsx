@@ -116,6 +116,7 @@ function PracticeModeQuestionPageInner() {
     authorAnswers,
     myAnswer,
     isGeneratingAiAnswer,
+    isAnswersLoading,
     isGeneratingQuestionMetadata,
     isQuestionAuthor,
     currentAttempts,
@@ -326,6 +327,7 @@ function PracticeModeQuestionPageInner() {
             <StandardAnswerCard
               currentQuestion={currentQuestion}
               shouldShowAnswer={shouldShowAnswer}
+              isAnswersLoading={isAnswersLoading}
               onShowAnswerToggle={() => {
                 // If it is in local hook return
                 if (setShowThisAnswer) {

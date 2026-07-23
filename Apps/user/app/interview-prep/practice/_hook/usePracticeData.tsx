@@ -561,9 +561,15 @@ export function usePracticeData() {
     return baseCurrentQuestion;
   }, [baseCurrentQuestion]);
 
+  const [isAnswersLoading, setIsAnswersLoading] = useState(false);
+
   useEffect(() => {
     if (!baseCurrentQuestion) return;
-    if (questionAnswersByQuestion[baseCurrentQuestion.id]) return;
+    if (questionAnswersByQuestion[baseCurrentQuestion.id]) {
+      setIsAnswersLoading(false);
+      return;
+    }
+    setIsAnswersLoading(true);
     let cancelled = false;
     void api
       .questionAnswers(baseCurrentQuestion.id)
@@ -576,6 +582,9 @@ export function usePracticeData() {
       })
       .catch((err) => {
         console.error('Failed to load question answers:', err);
+      })
+      .finally(() => {
+        if (!cancelled) setIsAnswersLoading(false);
       });
     return () => {
       cancelled = true;
@@ -1521,6 +1530,7 @@ export function usePracticeData() {
     featuredCommunityAnswers,
     aiReferenceAnswers,
     isGeneratingAiAnswer,
+    isAnswersLoading,
     isGeneratingQuestionMetadata,
     isQuestionAuthor,
     shouldShowAnswer,
