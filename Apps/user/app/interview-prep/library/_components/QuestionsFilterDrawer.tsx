@@ -110,6 +110,18 @@ export function QuestionsFilterDrawer({
               >
                 All Categories
               </button>
+              <button
+                type='button'
+                onClick={() => handleCategoryClick('uncategorized')}
+                className={cn(
+                  'label-sm px-3 py-1.5 rounded-full border transition-all',
+                  selectedCategoryIds.includes('uncategorized') ?
+                    'bg-primary/10 text-primary border-primary/30 font-bold'
+                  : 'border-border dark:border-border text-ink-secondary hover:text-ink-primary hover:border-primary/30 bg-panel',
+                )}
+              >
+                Uncategorized
+              </button>
               {categories.map((cat) => {
                 const active = selectedCategoryIds.includes(cat.id);
                 return (

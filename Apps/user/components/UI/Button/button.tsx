@@ -16,6 +16,7 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
+        custom: '',
         default:
           'bg-primary-gradient hover:bg-primary text-primary-foreground ',
         secondary:
@@ -31,7 +32,7 @@ const buttonVariants = cva(
         toolbar:
           'text-ink-secondary hover:text-ink-primary hover:bg-primary/10  rounded-full  transition-all duration-200 active:scale-95 disabled:opacity-40 disabled:scale-100 disabled:cursor-not-allowed',
         toolbarActive:
-          'border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 rounded-full  transition-all duration-200 active:scale-95 disabled:opacity-40 disabled:scale-100 disabled:cursor-not-allowed',
+          'text-primary hover:bg-primary/20 rounded-full text-primary transition-all duration-200 active:scale-95 disabled:opacity-40 disabled:scale-100 disabled:cursor-not-allowed',
       },
       size: {
         link: 'p-0',
@@ -41,7 +42,7 @@ const buttonVariants = cva(
         default: 'h-[48px] px-6 py-2 font-semibold',
         lg: 'title-card h-[52px] px-6 uppercase italic',
         WithIcons: 'p-1',
-        toolbar: 'p-4 h-auto ',
+        toolbar: 'p-3 h-auto ',
         toolbarSm: 'px-3 py-1.5 h-auto ',
       },
     },
@@ -114,7 +115,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
             size: resolvedSize,
             className,
           }),
-          displayLoading && 'cursor-not-allowed opacity-50',
+          displayLoading && 'cursor-not-allowed  opacity-50',
         )}
         style={
           layoutId ?

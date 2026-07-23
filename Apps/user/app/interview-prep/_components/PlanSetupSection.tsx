@@ -90,9 +90,9 @@ export function PlanSetupSection({
   const InActiveCard = 'border-ink-secondary/50';
 
   return (
-    <div className=''>
-      <div className='flex flex-col gap-1 border-b border-border/40 pb-4'>
-        <h2 className='title-section flex items-center gap-2'>
+    <div className='col h-full overflow-y-hidden'>
+      <div className='header col items-start '>
+        <h2 className='title-section flex w-full items-center gap-2'>
           <Calendar className='w-5.5 h-5.5 text-primary' />
           Prepare Your Practice Plan
         </h2>
@@ -103,7 +103,7 @@ export function PlanSetupSection({
       </div>
 
       {/* Preset templates cards */}
-      <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
+      <div className='max-h-[50vh] body overflow-y-auto grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-2'>
         {PRESET_TEMPLATES.map((template) => {
           const isSelected = selectedPreset === template.id;
 
@@ -153,7 +153,7 @@ export function PlanSetupSection({
               key={template.id}
               onClick={() => setSelectedPreset(template.id)}
               className={cn(
-                'p-5 rounded-2xl border transition-all cursor-pointer flex flex-col gap-4 relative group ',
+                'p-5 rounded-2xl border h-full  transition-all cursor-pointer flex flex-col gap-4 relative group ',
                 isSelected ?
                   cn(template.activeBorderClass, template.activeBgClass)
                 : InActiveCard,
@@ -232,17 +232,19 @@ export function PlanSetupSection({
       </div>
 
       {/* Action buttons */}
-      <div className='flex justify-end gap-3  dark:border-border/60 pt-4 mt-2'>
+      <div className='footer'>
         <Button
           variant='outline'
           Icon={Sliders}
           layoutId='Customize Your Plan'
+          className='w-full'
           onClick={() => setIsCustomizeOpen(true)}
         >
           Customize
         </Button>
         <Button
           Icon={Plus}
+          className='w-full'
           onClick={() => void handleCreatePlan()}
           disabled={isCreatingPlan}
         >

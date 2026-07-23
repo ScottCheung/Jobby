@@ -76,7 +76,6 @@ export function BatchImportModal({
       category_id: string | null;
       frequency: string;
       importance_score: number;
-      answer_framework: string;
       answer_objective: string;
       tags: string[];
       selected: boolean;
@@ -88,7 +87,6 @@ export function BatchImportModal({
   const [batchCategory, setBatchCategory] = useState<string>('keep');
   const [batchFrequency, setBatchFrequency] = useState<string>('keep');
   const [batchImportance, setBatchImportance] = useState<string>('keep');
-  const [batchFramework, setBatchFramework] = useState<string>('keep');
 
   // Sync default category when opened
   useEffect(() => {
@@ -107,9 +105,8 @@ export function BatchImportModal({
       id: Math.random().toString(36).substring(7),
       title,
       category_id: importDefaultCategory || null,
-      frequency: 'Medium',
-      importance_score: 3,
-      answer_framework: 'STAR',
+      frequency: '',
+      importance_score: 0,
       answer_objective: '',
       tags: [] as string[],
       selected: true,
@@ -131,9 +128,6 @@ export function BatchImportModal({
         }
         if (batchImportance !== 'keep') {
           updated.importance_score = Number(batchImportance);
-        }
-        if (batchFramework !== 'keep') {
-          updated.answer_framework = batchFramework;
         }
         return updated;
       }),
@@ -161,9 +155,8 @@ export function BatchImportModal({
       const payload = toImport.map((q) => ({
         title: q.title.trim(),
         category_id: q.category_id,
-        frequency: q.frequency,
-        importance_score: q.importance_score,
-        answer_framework: q.answer_framework,
+        frequency: q.frequency || null,
+        importance_score: q.importance_score > 0 ? q.importance_score : null,
         answer_objective: q.answer_objective.trim() || null,
         my_answer: null,
         improvement_notes: null,
@@ -369,17 +362,6 @@ export function BatchImportModal({
                 <option value='4'>4 Stars</option>
                 <option value='5'>5 Stars</option>
               </select>
-              <select
-                value={batchFramework}
-                onChange={(e) => setBatchFramework(e.target.value)}
-                className='body-sm px-3 py-1.5 rounded-lg dark:border-border text-ink-primary focus:outline-none'
-              >
-                <option value='keep'>Keep Original Framework</option>
-                <option value='STAR'>STAR Framework</option>
-                <option value='PAR'>PAR Framework</option>
-                <option value='CAR'>CAR Framework</option>
-                <option value='5W2H'>5W2H Framework</option>
-              </select>
               <Button
                 size='sm'
                 onClick={handleApplyBatchUpdate}
@@ -394,7 +376,7 @@ export function BatchImportModal({
           </div>
 
           {/* Table Preview header */}
-          <div className='grid grid-cols-[50px_minmax(0,2fr)_minmax(0,1.2fr)_minmax(0,0.8fr)_minmax(0,0.8fr)_minmax(0,0.8fr)_minmax(0,2fr)_50px] text-[11px] font-bold text-ink-secondary uppercase tracking-wider px-6 py-3 border-b border-border/40 bg-background-secondary/20 shrink-0'>
+          <div className='grid grid-cols-[50px_minmax(0,2fr)_minmax(0,1.2fr)_minmax(0,0.8fr)_minmax(0,0.8fr)_minmax(0,2fr)_50px] text-[11px] font-bold text-ink-secondary uppercase tracking-wider px-6 py-3 border-b border-border/40 bg-background-secondary/20 shrink-0'>
             <div className='flex justify-center items-center'>
               <input
                 type='checkbox'
@@ -415,8 +397,7 @@ export function BatchImportModal({
             <div className='px-2'>Category</div>
             <div className='px-2'>Frequency</div>
             <div className='px-2'>Importance</div>
-            <div className='px-2'>Framework</div>
-            <div className='px-2'>Your Answer</div>
+            <div className='px-2'>Author's Answer</div>
             <div className='text-center'></div>
           </div>
 
@@ -430,7 +411,7 @@ export function BatchImportModal({
                 <div
                   key={q.id}
                   className={cn(
-                    'grid grid-cols-[50px_minmax(0,2fr)_minmax(0,1.2fr)_minmax(0,0.8fr)_minmax(0,0.8fr)_minmax(0,0.8fr)_minmax(0,2fr)_50px] items-center py-2.5 hover:bg-background-secondary/10 transition-colors',
+                    'grid grid-cols-[50px_minmax(0,2fr)_minmax(0,1.2fr)_minmax(0,0.8fr)_minmax(0,0.8fr)_minmax(0,2fr)_50px] items-center py-2.5 hover:bg-background-secondary/10 transition-colors',
                     !q.selected && 'opacity-60',
                   )}
                 >
@@ -540,29 +521,6 @@ export function BatchImportModal({
                       <option value={3}>3 Stars</option>
                       <option value={4}>4 Stars</option>
                       <option value={5}>5 Stars</option>
-                    </select>
-                  </div>
-
-                  {/* Framework Select */}
-                  <div className='px-2'>
-                    <select
-                      value={q.answer_framework}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setParsedQuestions((prev) =>
-                          prev.map((item) =>
-                            item.id === q.id ?
-                              { ...item, answer_framework: val }
-                            : item,
-                          ),
-                        );
-                      }}
-                      className='body-sm w-full px-2 py-1 rounded dark:border-border focus:outline-none text-ink-primary'
-                    >
-                      <option value='STAR'>STAR</option>
-                      <option value='PAR'>PAR</option>
-                      <option value='CAR'>CAR</option>
-                      <option value='5W2H'>5W2H</option>
                     </select>
                   </div>
 

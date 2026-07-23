@@ -7,6 +7,9 @@ import { Button } from '@/components/UI/Button';
 type ImageCropperProps = {
   file: File;
   aspectRatio?: number;
+  maxOutputEdge?: number;
+  outputQuality?: number;
+  title?: string;
   onConfirm: (file: File) => void;
   onCancel: () => void;
 };
@@ -16,6 +19,9 @@ type Size = { width: number; height: number };
 export function ImageCropper({
   file,
   aspectRatio = 16 / 9,
+  maxOutputEdge = 1280,
+  outputQuality = 0.85,
+  title = 'Crop image',
   onConfirm,
   onCancel,
 }: ImageCropperProps) {
@@ -230,7 +236,7 @@ export function ImageCropper({
     const sourceWidth = Math.max(1, Math.min(imageSize.width - sourceX, crop.width * scale));
     const sourceHeight = Math.max(1, Math.min(imageSize.height - sourceY, crop.height * scale));
 
-    const outputWidth = Math.min(1280, Math.max(1, Math.round(sourceWidth)));
+    const outputWidth = Math.min(maxOutputEdge, Math.max(1, Math.round(sourceWidth)));
     const outputHeight = Math.max(1, Math.round(outputWidth / aspectRatio));
 
     const image = new Image();
@@ -260,13 +266,13 @@ export function ImageCropper({
           onConfirm(
             new File(
               [blob],
-              `${file.name.replace(/\.[^.]+$/, '')}-cover.webp`,
+              `${file.name.replace(/\.[^.]+$/, '')}.webp`,
               { type: 'image/webp' }
             )
           );
         },
         'image/webp',
-        0.85
+        outputQuality
       );
     };
     image.src = sourceUrl;
@@ -274,7 +280,7 @@ export function ImageCropper({
 
   return (
     <div className='rounded-2xl border border-border bg-background/35 p-4 flex flex-col gap-4 w-full'>
-      <div className='text-sm font-semibold text-ink-primary'>Crop cover image</div>
+      <div className='text-sm font-semibold text-ink-primary'>{title}</div>
 
       <div
         ref={frameRef}

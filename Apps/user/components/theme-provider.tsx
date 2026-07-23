@@ -3,6 +3,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { useConsole } from '@/components/ConsoleContext';
 
 type Theme = 'dark' | 'light' | 'system';
 export type ThemeColor = 'blue' | 'purple' | 'green' | 'orange' | 'rose';
@@ -39,26 +40,28 @@ export function ThemeProvider({
   colorStorageKey = 'auto-job-ui-theme-color',
   ...props
 }: ThemeProviderProps) {
+  const { profile, hasLoadedInitialData, updateProfileExtra } = useConsole();
   const [theme, setTheme] = useState<Theme>(defaultTheme);
   const [themeColor, setThemeColor] = useState<ThemeColor>(defaultColor);
   const [mounted, setMounted] = useState(false);
 
-  // Load initial state from localStorage
   useEffect(() => {
-    const savedTheme = localStorage.getItem(storageKey) as Theme | null;
+    if (!hasLoadedInitialData) return;
+
+    const savedTheme = profile.extra_data?.[storageKey] as Theme | undefined;
     if (savedTheme) {
       setTheme(savedTheme);
     }
 
-    const savedColor = localStorage.getItem(
-      colorStorageKey,
-    ) as ThemeColor | null;
+    const savedColor = profile.extra_data?.[colorStorageKey] as
+      | ThemeColor
+      | undefined;
     if (savedColor) {
       setThemeColor(savedColor);
     }
 
     setMounted(true);
-  }, [storageKey, colorStorageKey]);
+  }, [colorStorageKey, hasLoadedInitialData, profile.extra_data, storageKey]);
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -116,13 +119,13 @@ export function ThemeProvider({
   const value = {
     theme,
     setTheme: (theme: Theme) => {
-      localStorage.setItem(storageKey, theme);
       setTheme(theme);
+      void updateProfileExtra({ [storageKey]: theme });
     },
     themeColor,
     setThemeColor: (color: ThemeColor) => {
-      localStorage.setItem(colorStorageKey, color);
       setThemeColor(color);
+      void updateProfileExtra({ [colorStorageKey]: color });
     },
   };
 

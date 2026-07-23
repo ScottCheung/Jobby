@@ -16,8 +16,10 @@ import { Input } from '@/components/UI/input';
 
 const springTransition = {
   duration: 1,
-  ease: [0.22, 1, 0.36, 1] as const,
-};
+  ease: [0.22, 1, 0.36, 1],
+  type: 'spring',
+  bounce: 0.3,
+} as const;
 
 type QuestionListItem =
   | { type: 'row'; id: string; data: QuestionCacheEntry }
@@ -143,9 +145,7 @@ export default function QuestionsPage() {
           <ScrollLayout.TopToLeft>
             <div className='flex items-center gap-2 text-ink-primary font-bold shrink-0'>
               {/* <MessageSquareCode className="w-5 h-5 text-emerald-500 shrink-0" /> */}
-              <h2 className='title-section shrink-0'>
-                Question Cache
-              </h2>
+              <h2 className='title-section shrink-0'>Question Cache</h2>
             </div>
           </ScrollLayout.TopToLeft>
 

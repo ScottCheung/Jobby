@@ -3,6 +3,7 @@
 'use client';
 
 import { KeyboardEvent, RefObject, useEffect, useRef, useState } from 'react';
+import { Avatar } from '@/components/UI/Avatar/Avatar';
 import {
   ChevronDown,
   ChevronUp,
@@ -27,7 +28,6 @@ import { useConsole } from '@/components/ConsoleContext';
 const kinds = [
   ['discussion', 'Discussion'],
   ['feedback', 'Feedback'],
-  ['example', 'Example'],
 ] as const;
 type CommentKind = QuestionComment['kind'];
 type ReportReason = 'spam' | 'off_topic' | 'unsafe';
@@ -88,7 +88,6 @@ export function QuestionCommunity({ questionId }: { questionId: string }) {
   const { user } = useConsole();
   const [comments, setComments] = useState<QuestionComment[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
-  const [threadId, setThreadId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadingReplies, setLoadingReplies] = useState<string | null>(null);
   const [expandedReplyIds, setExpandedReplyIds] = useState<Set<string>>(
@@ -108,15 +107,6 @@ export function QuestionCommunity({ questionId }: { questionId: string }) {
   const mainInputRef = useRef<HTMLTextAreaElement>(null);
   const footerRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (footerRef.current && !footerRef.current.contains(e.target as Node)) {
-        setIsComposing(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
   const load = async (reset = true, showSkeleton = true) => {
     const startedAt = Date.now();
     if (showSkeleton) setIsLoading(true);
@@ -129,7 +119,6 @@ export function QuestionCommunity({ questionId }: { questionId: string }) {
       await new Promise((resolve) => window.setTimeout(resolve, remaining));
     setComments((items) => (reset ? page.items : [...items, ...page.items]));
     setNextCursor(page.next_cursor || null);
-    setThreadId(page.question_id);
     if (showSkeleton) setIsLoading(false);
   };
   useEffect(() => {
@@ -142,13 +131,33 @@ export function QuestionCommunity({ questionId }: { questionId: string }) {
   }, [questionId, kind]);
   useEffect(() => {
     const onRealtime = (event: Event) => {
-      const detail = (event as CustomEvent<{ question_id?: string }>).detail;
-      if (threadId && detail?.question_id === threadId)
-        void load(true, false).catch(() => undefined);
+      const detail = (
+        event as CustomEvent<{
+          question_id?: string;
+          comment_id?: string;
+          like_count?: number;
+          event_type?: string;
+        }>
+      ).detail;
+      if (detail?.question_id !== questionId) return;
+      if (
+        detail.event_type === 'comment.reaction_updated' &&
+        detail.comment_id &&
+        typeof detail.like_count === 'number'
+      ) {
+        setComments((items) =>
+          updateComment(items, detail.comment_id!, (comment) => ({
+            ...comment,
+            like_count: detail.like_count!,
+          })),
+        );
+        return;
+      }
+      void load(true, false).catch(() => undefined);
     };
     window.addEventListener('jobby:comment-event', onRealtime);
     return () => window.removeEventListener('jobby:comment-event', onRealtime);
-  }, [questionId, kind, threadId]);
+  }, [questionId, kind]);
   useEffect(() => {
     if (replyTo) requestAnimationFrame(() => replyInputRef.current?.focus());
   }, [replyTo]);
@@ -165,8 +174,10 @@ export function QuestionCommunity({ questionId }: { questionId: string }) {
       parent_id: parentId || null,
       kind: parentId ? 'discussion' : draftKind,
       body,
-      author_name: 'You',
-      author_avatar_url: null,
+      author_name: user?.display_name || 'You',
+      author_avatar_url: user?.avatar_url || null,
+      author_badge:
+        user?.community_badge || (user?.role === 'admin' ? 'Admin' : null),
       is_author: true,
       like_count: 0,
       is_liked: false,
@@ -352,7 +363,7 @@ export function QuestionCommunity({ questionId }: { questionId: string }) {
   };
 
   return (
-    <div className='flex h-full min-h-0 flex-col'>
+    <div className='flex h-full min-h-0  flex-col'>
       <div className='header'>
         <div className='flex gap-0.5 rounded-full bg-background-secondary/70 p-0.5'>
           {(['all', ...kinds.map(([value]) => value)] as const).map((value) => (
@@ -383,8 +394,8 @@ export function QuestionCommunity({ questionId }: { questionId: string }) {
         : comments.length === 0 ?
           <EmptyState
             icon={MessageCircle}
-            title="No comments yet"
-            description="Be the first to start the conversation."
+            title='No comments yet'
+            description='Be the first to start the conversation.'
           />
         : comments.map((comment) => (
             <Comment
@@ -438,7 +449,7 @@ export function QuestionCommunity({ questionId }: { questionId: string }) {
       </div>
       <div className='footer col relative z-10 w-full' ref={footerRef}>
         {isComposing && (
-          <div className='mb-2 absolute -top-8 flex gap-1.5'>
+          <div className='mb-2 absolute -top-8 flex gap-1.5  -translate-x-1/2 right-1/2 '>
             {kinds.map(([value, label]) => (
               <button
                 key={value}
@@ -474,8 +485,8 @@ export function QuestionCommunity({ questionId }: { questionId: string }) {
         >
           <Avatar
             name={user?.display_name || 'You'}
-            url={user?.avatar_url}
-            small
+            src={user?.avatar_url || undefined}
+            size='sm'
           />
           <textarea
             ref={mainInputRef}
@@ -620,11 +631,12 @@ function Comment({
       <div className='flex gap-2.5'>
         <Avatar
           name={comment.author_name}
-          url={comment.author_avatar_url}
-          ring={
-            comment.author_badge === 'Admin' ? 'admin'
+          src={comment.author_avatar_url || undefined}
+          ring={Boolean(comment.author_badge || comment.is_author)}
+          ringColor={
+            comment.author_badge === 'Admin' ? 'ring-rose-500'
             : comment.is_author ?
-              'author'
+              'ring-primary'
             : undefined
           }
         />
@@ -745,7 +757,11 @@ function Comment({
               ref={replyContainerRef}
               className='mt-3 flex gap-2 rounded-2xl bg-background-secondary/60 p-2'
             >
-              <Avatar name={currentUserName} url={currentUserAvatar} small />
+              <Avatar
+                name={currentUserName}
+                src={currentUserAvatar || undefined}
+                size='sm'
+              />
               <textarea
                 ref={replyInputRef}
                 value={reply}
@@ -835,8 +851,8 @@ function ReplyItem({
     <div className='group/reply flex gap-2.5'>
       <Avatar
         name={replyItem.author_name}
-        url={replyItem.author_avatar_url}
-        small
+        src={replyItem.author_avatar_url || undefined}
+        size='sm'
       />
       <div className='min-w-0 flex-1'>
         <div className='row items-baseline '>
@@ -901,7 +917,11 @@ function ReplyItem({
         </div>
         {replyTo === replyItem.id && (
           <div className='mt-2 flex gap-2 rounded-lg bg-background-secondary/60 p-2 animate-in fade-in slide-in-from-top-1 duration-200'>
-            <Avatar name={currentUserName} url={currentUserAvatar} small />
+            <Avatar
+              name={currentUserName}
+              src={currentUserAvatar || undefined}
+              size='sm'
+            />
             <textarea
               value={reply}
               onChange={(event) => setReply(event.target.value)}
@@ -919,41 +939,6 @@ function ReplyItem({
             </Button>
           </div>
         )}
-      </div>
-    </div>
-  );
-}
-
-function Avatar({
-  name,
-  url,
-  small = false,
-  ring,
-}: {
-  name: string;
-  url?: string | null;
-  small?: boolean;
-  ring?: 'author' | 'admin';
-}) {
-  return (
-    <div
-      className={cn(
-        'shrink-0 rounded-full',
-        ring === 'admin' &&
-          'ring-2 ring-rose-400/70 ring-offset-2 ring-offset-panel',
-        ring === 'author' &&
-          'ring-2 ring-primary/50 ring-offset-2 ring-offset-panel',
-      )}
-    >
-      <div
-        className={cn(
-          'flex items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-primary/25 to-primary/10 font-extrabold text-primary',
-          small ? 'h-7 w-7 text-[9px]' : 'h-9 w-9 text-[11px]',
-        )}
-      >
-        {url ?
-          <img src={url} alt='' className='h-full w-full object-cover' />
-        : initials(name)}
       </div>
     </div>
   );

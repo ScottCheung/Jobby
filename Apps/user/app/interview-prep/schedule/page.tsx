@@ -24,14 +24,24 @@ import {
   Zap,
   ChevronRight,
   RefreshCw,
+  Navigation,
+  Lock,
+  Crown,
+  Sparkles,
+  Package,
+  Gift,
 } from 'lucide-react';
 import { cn, cleanName } from '@/lib/utils';
 import { practiceCache } from '../practice/practice-cache';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PlanSetupSection } from '../_components/PlanSetupSection';
 import { CustomizePlanModal } from '../_components/CustomizePlanModal';
+import { InventoryModal } from '../_components/InventoryModal';
+import { showCelebrationEvent } from '@/lib/celebration';
 import { Modal } from '@/components/layout/modal';
 import { Button } from '@/components/UI/Button';
+import { div } from 'framer-motion/client';
+import { useConsole } from '@/components/ConsoleContext';
 
 // ─────────────────────────────────────────────
 // Types
@@ -41,6 +51,7 @@ type ViewMode = '3d' | 'flat';
 interface DragState {
   taskId: string | null;
   sourceDayNum: number | null;
+  sourceIndex: number | null;
   overDayNum: number | null;
   overIndex: number | null;
 }
@@ -62,11 +73,15 @@ const getLucideIcon = (name: string): React.ElementType =>
 // ─────────────────────────────────────────────
 export default function PracticeRoadmapPage() {
   const router = useRouter();
+  const { profile, hasLoadedInitialData, updateProfileExtra } = useConsole();
 
   const [questions, setQuestions] = useState<InterviewQuestion[]>([]);
   const [categories, setCategories] = useState<InterviewCategory[]>([]);
   const [activePlan, setActivePlan] = useState<PracticePlan | null>(null);
   const [planTasks, setPlanTasks] = useState<PlanTask[]>([]);
+  const [claimedStageDays, setClaimedStageDays] = useState<number[]>([]);
+  const [isInventoryOpen, setIsInventoryOpen] = useState(false);
+  const [claimingDayNum, setClaimingDayNum] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const [isResetOpen, setIsResetOpen] = useState(false);
@@ -78,13 +93,14 @@ export default function PracticeRoadmapPage() {
 
   const [viewMode, setViewMode] = useState<ViewMode>('3d');
   useEffect(() => {
-    const stored = localStorage.getItem('scheduleViewMode') as ViewMode | null;
+    if (!hasLoadedInitialData) return;
+    const stored = profile.extra_data?.scheduleViewMode as ViewMode | undefined;
     if (stored === 'flat' || stored === '3d') setViewMode(stored);
-  }, []);
+  }, [hasLoadedInitialData, profile.extra_data]);
   const toggleViewMode = () => {
     setViewMode((prev) => {
       const next = prev === '3d' ? 'flat' : '3d';
-      localStorage.setItem('scheduleViewMode', next);
+      void updateProfileExtra({ scheduleViewMode: next });
       return next;
     });
   };
@@ -92,6 +108,7 @@ export default function PracticeRoadmapPage() {
   const [dragState, setDragState] = useState<DragState>({
     taskId: null,
     sourceDayNum: null,
+    sourceIndex: null,
     overDayNum: null,
     overIndex: null,
   });
@@ -102,6 +119,7 @@ export default function PracticeRoadmapPage() {
       setCategories(practiceCache.categories || []);
       setActivePlan(practiceCache.activePlan);
       setPlanTasks(practiceCache.planTasks || []);
+      setClaimedStageDays(practiceCache.activePlan?.claimed_stage_days || []);
       setIsLoading(false);
       return;
     }
@@ -124,9 +142,11 @@ export default function PracticeRoadmapPage() {
         practiceCache.activePlan = activePlan;
         tasks = await api.planTasks(activePlan.id);
         practiceCache.planTasks = tasks;
+        setClaimedStageDays(activePlan.claimed_stage_days || []);
       } else {
         practiceCache.activePlan = null;
         practiceCache.planTasks = [];
+        setClaimedStageDays([]);
       }
       setActivePlan(activePlan);
       setPlanTasks(tasks);
@@ -142,6 +162,31 @@ export default function PracticeRoadmapPage() {
   useEffect(() => {
     void initData();
   }, []);
+
+  const handleClaimStageReward = async (dayNum: number) => {
+    if (!activePlan) return;
+    setClaimingDayNum(dayNum);
+    try {
+      const res = await api.claimStageReward(activePlan.id, dayNum);
+      const updatedClaimed = res.claimed_stage_days || [];
+      setClaimedStageDays(updatedClaimed);
+      if (practiceCache.activePlan) {
+        practiceCache.activePlan.claimed_stage_days = updatedClaimed;
+      }
+      setActivePlan((prev) =>
+        prev ? { ...prev, claimed_stage_days: updatedClaimed } : prev,
+      );
+      showCelebrationEvent(
+        'reward_claimed',
+        `Stage ${dayNum} Reward Claimed: ${res.reward.badge}!`,
+      );
+    } catch (err: any) {
+      console.error('Failed to claim stage reward:', err);
+      alert(err?.message || 'Failed to claim stage reward');
+    } finally {
+      setClaimingDayNum(null);
+    }
+  };
 
   const handleDeletePlan = async () => {
     if (!activePlan) return;
@@ -345,18 +390,38 @@ export default function PracticeRoadmapPage() {
     e: React.DragEvent,
     taskId: string,
     sourceDayNum: number,
+    sourceIndex: number,
   ) => {
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', taskId);
-    setDragState({ taskId, sourceDayNum, overDayNum: null, overIndex: null });
+    setDragState({
+      taskId,
+      sourceDayNum,
+      sourceIndex,
+      overDayNum: null,
+      overIndex: null,
+    });
   };
   const handleDragEnd = () =>
     setDragState({
       taskId: null,
       sourceDayNum: null,
+      sourceIndex: null,
       overDayNum: null,
       overIndex: null,
     });
+
+  const updateDragTarget = useCallback((dayNum: number, index: number) => {
+    setDragState((current) => {
+      if (
+        !current.taskId ||
+        (current.overDayNum === dayNum && current.overIndex === index)
+      ) {
+        return current;
+      }
+      return { ...current, overDayNum: dayNum, overIndex: index };
+    });
+  }, []);
 
   const handleDrop = async (
     e: React.DragEvent,
@@ -364,31 +429,69 @@ export default function PracticeRoadmapPage() {
     insertIndex: number,
   ) => {
     e.preventDefault();
+    e.stopPropagation();
     const taskId = e.dataTransfer.getData('text/plain') || dragState.taskId;
+    const sourceDayNum = dragState.sourceDayNum;
+    const sourceIndex = dragState.sourceIndex;
     setDragState({
       taskId: null,
       sourceDayNum: null,
+      sourceIndex: null,
       overDayNum: null,
       overIndex: null,
     });
     if (!taskId || !activePlan) return;
-    const planStart = new Date(activePlan.created_at || new Date());
-    const targetDate = new Date(planStart);
-    targetDate.setDate(planStart.getDate() + (targetDayNum - 1));
-    targetDate.setHours(9, Math.max(0, insertIndex), 0, 0);
-    setPlanTasks((prev) => {
-      const updated = prev.map((t) =>
-        t.id === taskId ?
-          { ...t, scheduled_date: targetDate.toISOString() }
-        : t,
-      );
+
+    const targetTasks = getTasksByDayIndex(targetDayNum);
+    const draggedTask = planTasks.find((task) => task.id === taskId);
+    if (!draggedTask) return;
+
+    const targetWithoutDragged = targetTasks.filter(
+      (task) => task.id !== taskId,
+    );
+    const correctedIndex =
+      (
+        sourceDayNum === targetDayNum &&
+        sourceIndex !== null &&
+        sourceIndex < insertIndex
+      ) ?
+        insertIndex - 1
+      : insertIndex;
+    const safeIndex = Math.max(
+      0,
+      Math.min(correctedIndex, targetWithoutDragged.length),
+    );
+    const reorderedTasks = [...targetWithoutDragged];
+    reorderedTasks.splice(safeIndex, 0, draggedTask);
+
+    const targetDayStart = getDayDate(targetDayNum);
+    targetDayStart.setHours(9, 0, 0, 0);
+    const scheduleUpdates = reorderedTasks.map((task, index) => {
+      const scheduledDate = new Date(targetDayStart);
+      scheduledDate.setMinutes(index);
+      return { id: task.id, scheduled_date: scheduledDate.toISOString() };
+    });
+    const scheduleByTaskId = new globalThis.Map(
+      scheduleUpdates.map((update) => [update.id, update.scheduled_date]),
+    );
+    setPlanTasks((current) => {
+      const updated = current.map((task) => {
+        const scheduledDate = scheduleByTaskId.get(task.id);
+        return scheduledDate ?
+            { ...task, scheduled_date: scheduledDate }
+          : task;
+      });
       practiceCache.planTasks = updated;
       return updated;
     });
     try {
-      await api.updatePlanTask(activePlan.id, taskId, {
-        scheduled_date: targetDate.toISOString(),
-      });
+      await Promise.all(
+        scheduleUpdates.map((update) =>
+          api.updatePlanTask(activePlan.id, update.id, {
+            scheduled_date: update.scheduled_date,
+          }),
+        ),
+      );
     } catch {
       const fresh = await api.planTasks(activePlan.id);
       practiceCache.planTasks = fresh;
@@ -485,7 +588,7 @@ export default function PracticeRoadmapPage() {
         </p>
         <button
           onClick={() => router.push('/interview-prep')}
-          className='label mt-2 px-5 py-2 text-primary-foreground bg-primary rounded-xl hover:opacity-90 transition-opacity'
+          className='label mt-2 px-5 py-2 text-primary-foreground bg-primary rounded-xl hover:opacity-90 opacity'
         >
           Go to Dashboard
         </button>
@@ -529,32 +632,43 @@ export default function PracticeRoadmapPage() {
         isReviewTask={isReviewTask}
         handleDragStart={handleDragStart}
         handleDragEnd={handleDragEnd}
-        setDragState={setDragState}
+        updateDragTarget={updateDragTarget}
         handleDrop={handleDrop}
         handleToggleTaskStatus={handleToggleTaskStatus}
         router={router}
+        claimedStageDays={claimedStageDays}
+        onClaimStageReward={handleClaimStageReward}
+        claimingDayNum={claimingDayNum}
+        activePlanId={activePlan.id}
       />
     ),
   );
 
   return (
-    <div className='relative flex flex-col gap-5 pb-12 pr-1'>
+    <div className='relative flex flex-col gap-5  pr-1'>
       {/* Header */}
-      <div className='flex flex-col md:flex-row justify-between items-start md:items-center gap-3 border-b border-border/60 pb-4 shrink-0'>
+      <div className='flex flex-col md:flex-row justify-between items-start md:items-center gap-3 -b -/60 pb-4 shrink-0'>
         <div className='flex flex-col gap-0.5'>
           <div className='flex items-center gap-2 flex-wrap'>
             <h2 className='title-section'>{activePlan.name}</h2>
             <Button
+              onClick={() => setIsInventoryOpen(true)}
+              className='flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold text-purple-400 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 rounded-lg colors'
+            >
+              <Package className='w-3.5 h-3.5' />
+              Backpack / Items
+            </Button>
+            <Button
               onClick={handleDeletePlan}
-              className='flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold text-rose-500 bg-rose-500/8 hover:bg-rose-500/15 rounded-lg transition-colors'
+              className='flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold text-rose-500 bg-rose-500/8 hover:bg-rose-500/15 rounded-lg colors'
             >
               <Trash2 className='w-3 h-3' />
               Delete
             </Button>
             <Button
-              layoutId='Prepare Your Practice Plan'
+              layoutId='Reset Plan'
               onClick={() => setIsResetOpen(true)}
-              className='flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold text-primary bg-primary/10 hover:bg-primary/15 rounded-lg transition-colors'
+              className='flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold text-primary bg-primary/10 hover:bg-primary/15 rounded-lg colors'
             >
               <RefreshCw className='w-3 h-3' />
               Reset Plan
@@ -610,10 +724,14 @@ export default function PracticeRoadmapPage() {
               isReviewTask={isReviewTask}
               handleDragStart={handleDragStart}
               handleDragEnd={handleDragEnd}
-              setDragState={setDragState}
+              updateDragTarget={updateDragTarget}
               handleDrop={handleDrop}
               handleToggleTaskStatus={handleToggleTaskStatus}
               router={router}
+              activePlanId={activePlan.id}
+              claimedStageDays={claimedStageDays}
+              onClaimStageReward={handleClaimStageReward}
+              claimingDayNum={claimingDayNum}
             />
           </motion.div>
         }
@@ -626,10 +744,10 @@ export default function PracticeRoadmapPage() {
           whileHover={{ scale: 1.08 }}
           whileTap={{ scale: 0.94 }}
           className={cn(
-            'w-10 h-10 rounded-2xl flex items-center justify-center shadow-xl transition-colors duration-200',
+            'w-10 h-10 rounded-2xl flex items-center justify-center  colors duration-200',
             viewMode === '3d' ?
-              'bg-primary text-ink-primary shadow-primary/30'
-            : 'bg-panel border border-border text-ink-secondary hover:text-ink-primary',
+              'bg-primary text-ink-primary '
+            : 'bg-panel  - text-ink-secondary hover:text-ink-primary',
           )}
           title={viewMode === '3d' ? 'Switch to Flat Grid' : 'Switch to 3D Map'}
         >
@@ -665,8 +783,9 @@ export default function PracticeRoadmapPage() {
       {/* Reset Plan Modal (Prepare Practice Plan card popup) */}
       <Modal
         isOpen={isResetOpen}
+        layoutId='Reset Plan'
         onClose={() => setIsResetOpen(false)}
-        className='w-[92vw] max-w-4xl max-h-[90vh] overflow-y-auto'
+        className='w-[92vw] max-w-5xl max-h-[90vh] md:overflow-hidden  '
       >
         <div className='p-1'>
           <PlanSetupSection
@@ -690,6 +809,13 @@ export default function PracticeRoadmapPage() {
         initialPreset={selectedPreset}
         onSubmit={handleCreatePlan}
       />
+
+      {/* Inventory / Backpack Modal */}
+      <InventoryModal
+        isOpen={isInventoryOpen}
+        onClose={() => setIsInventoryOpen(false)}
+        onInventoryUpdated={() => void initData(true)}
+      />
     </div>
   );
 }
@@ -704,9 +830,15 @@ interface TaskItemProps {
   dragState: DragState;
   questions: InterviewQuestion[];
   isReviewTask: (t: PlanTask) => boolean;
-  handleDragStart: (e: React.DragEvent, taskId: string, dayNum: number) => void;
+  handleDragStart: (
+    e: React.DragEvent,
+    taskId: string,
+    dayNum: number,
+    taskIndex: number,
+  ) => void;
   handleDragEnd: () => void;
-  setDragState: React.Dispatch<React.SetStateAction<DragState>>;
+  updateDragTarget: (dayNum: number, index: number) => void;
+  handleDrop: (e: React.DragEvent, dayNum: number, index: number) => void;
   handleToggleTaskStatus: (task: PlanTask) => void;
   router: ReturnType<typeof useRouter>;
 }
@@ -720,7 +852,8 @@ function TaskItem({
   isReviewTask,
   handleDragStart,
   handleDragEnd,
-  setDragState,
+  updateDragTarget,
+  handleDrop,
   handleToggleTaskStatus,
   router,
 }: TaskItemProps) {
@@ -732,61 +865,41 @@ function TaskItem({
   const showPlaceholder =
     dragState.taskId !== null &&
     dragState.overDayNum === dayNum &&
-    dragState.overIndex === taskIdx &&
+    dragState.overIndex === taskIdx + 1 &&
     dragState.taskId !== task.id;
 
   return (
-    <React.Fragment>
-      {showPlaceholder && (
-        <motion.div
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: 32 }}
-          className='rounded-lg border-2 border-dashed border-primary/50 bg-primary/5 flex items-center justify-center'
-        >
-          <span className='text-[9px] text-primary/70 font-semibold'>
-            Drop here
-          </span>
-        </motion.div>
-      )}
+    <div className='relative'>
       <div
         draggable
-        onDragStart={(e) => handleDragStart(e, task.id, dayNum)}
+        onDragStart={(e) => handleDragStart(e, task.id, dayNum, taskIdx)}
         onDragEnd={handleDragEnd}
         onDragOver={(e) => {
           e.preventDefault();
           e.stopPropagation();
-          setDragState((p) => ({
-            ...p,
-            overDayNum: dayNum,
-            overIndex: taskIdx,
-          }));
+          updateDragTarget(dayNum, taskIdx + 1);
         }}
+        onDrop={(e) => handleDrop(e, dayNum, taskIdx)}
         className={cn(
-          'group px-2.5 py-2 rounded-xl border flex items-start gap-2 cursor-grab active:cursor-grabbing transition-all duration-150',
-          isDraggingThis && 'opacity-30 scale-[0.97]',
+          'group relative flex items-start gap-2 rounded-md px-2.5 py-2 colors duration-150 cursor-grab active:cursor-grabbing',
+
+          isDraggingThis && 'opacity-30',
           isCompleted ?
-            'border-border/40 bg-transparent'
-          : 'border-border bg-panel shadow-sm hover:border-primary/25 hover:shadow-md',
+            '-/40 bg-transparent'
+          : '- bg-primary/10 hover:-primary/25 ',
         )}
       >
-        <GripVertical className='w-3 h-3 text-ink-muted/40 shrink-0 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity' />
-        <button
-          className={cn(
-            'w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 mt-0.5 transition-all cursor-default',
-            isCompleted ?
-              'bg-emerald-500 border-emerald-500 text-ink-primary'
-            : 'border-border hover:border-primary',
-          )}
-        >
-          {isCompleted && <Check className='w-2 h-2' />}
-        </button>
+        <div className=' absolute -left-2 -top-2 bg-primary p-1 rounded-full opacity-0 group-hover:opacity-100 '>
+          <GripVertical className='w-3 h-3 text-primary-foreground shrink-0  opacity' />
+        </div>
+
         <div
           onClick={() => router.push(`/interview-prep/practice/${qObj.id}`)}
           className='flex flex-col flex-1 min-w-0 cursor-pointer'
         >
           <span
             className={cn(
-              'text-[11px] font-medium text-ink-primary leading-snug hover:text-primary transition-colors line-clamp-2',
+              'text-[11px] font-medium text-ink-primary leading-snug hover:text-primary colors line-clamp-2',
               isCompleted && 'line-through text-ink-secondary',
             )}
           >
@@ -796,15 +909,22 @@ function TaskItem({
             <span className='text-[8px] text-ink-secondary/70 font-medium'>
               {qObj.category?.name ? cleanName(qObj.category.name) : 'General'}
             </span>
+            {isCompleted && <Check className='w-2 h-2' />}
             {isReview && (
               <span className='text-[8px] bg-blue-500/10 text-blue-500 dark:text-blue-400 px-1 rounded font-bold'>
-                ↩ Review
+                Review
               </span>
             )}
           </div>
         </div>
       </div>
-    </React.Fragment>
+      {showPlaceholder && (
+        <div className='group relative mt-2 truncate w-full line-clamp-2 flex items-center gap-2 rounded-md px-2.5 py-2 bg-primary/10 text-primary/50 colors text-[10px] duration-150 cursor-grab active:cursor-grabbing'>
+          <span className='w-2 h-2 bg-primary-foreground rounded-full mr-1'></span>
+          Drop here
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -823,10 +943,14 @@ function FlatDayCard({
   isReviewTask,
   handleDragStart,
   handleDragEnd,
-  setDragState,
+  updateDragTarget,
   handleDrop,
   handleToggleTaskStatus,
   router,
+  claimedStageDays = [],
+  onClaimStageReward,
+  claimingDayNum,
+  activePlanId,
 }: {
   dayNum: number;
   dayTasks: PlanTask[];
@@ -837,54 +961,61 @@ function FlatDayCard({
   questions: InterviewQuestion[];
   getDayFormattedDate: (d: number) => string;
   isReviewTask: (t: PlanTask) => boolean;
-  handleDragStart: (e: React.DragEvent, id: string, d: number) => void;
+  handleDragStart: (
+    e: React.DragEvent,
+    id: string,
+    dayNum: number,
+    taskIndex: number,
+  ) => void;
   handleDragEnd: () => void;
-  setDragState: React.Dispatch<React.SetStateAction<DragState>>;
+  updateDragTarget: (dayNum: number, index: number) => void;
   handleDrop: (e: React.DragEvent, d: number, i: number) => void;
   handleToggleTaskStatus: (t: PlanTask) => void;
   router: ReturnType<typeof useRouter>;
+  claimedStageDays?: number[];
+  onClaimStageReward?: (dayNum: number) => void;
+  claimingDayNum?: number | null;
+  activePlanId?: string;
 }) {
   const isDraggedOver = dragState.overDayNum === dayNum;
   const completedCount = dayTasks.filter(
     (t) => t.status === 'completed',
   ).length;
+  const isClaimed = claimedStageDays.includes(dayNum);
+  const canClaim = dayCompleted && !isClaimed;
+  const reward = getStageReward(dayNum, activePlanId);
 
   return (
     <div
       className={cn(
-        'rounded-2xl flex flex-col gap-2.5 p-3.5 min-h-[140px] transition-all duration-200 select-none',
-        isToday ?
-          'bg-primary/10 border border-primary/25 shadow-md shadow-primary/10'
-        : isDraggedOver ? 'bg-primary/8 border border-primary/30 scale-[1.01]'
-        : dayCompleted ? 'bg-emerald-500/8 border border-emerald-500/15'
-        : isPast ? 'bg-background-secondary/40 border border-border/40'
-        : 'bg-panel border border-border/50',
+        'rounded-2xl flex flex-col gap-2.5 p-3.5 min-h-[140px] colors duration-150 select-none',
+        isToday ? 'bg-primary/10  -primary/25 '
+        : isDraggedOver ? 'bg-primary/8  -primary/30 ring-2 ring-primary/30'
+        : dayCompleted ? 'bg-emerald-500/8  -emerald-500/15'
+        : isPast ? 'bg-background-secondary/40  -/40'
+        : 'bg-panel  -/50',
       )}
       onDragOver={(e) => {
         e.preventDefault();
-        setDragState((p) => ({
-          ...p,
-          overDayNum: dayNum,
-          overIndex: dayTasks.length,
-        }));
+        updateDragTarget(dayNum, dayTasks.length);
       }}
       onDrop={(e) =>
         handleDrop(e, dayNum, dragState.overIndex ?? dayTasks.length)
       }
     >
       {/* Header */}
-      <div className='flex items-center justify-between'>
+      <div className='flex items-start justify-between'>
         <div className='flex items-center gap-1.5'>
           <span
             className={cn(
-              'label-sm',
-              isToday ? 'text-primary' : 'text-ink-primary',
+              'text-3xl font-semibold',
+              isToday ? 'text-primary' : 'text-ink-primary/20',
             )}
           >
             Day {dayNum}
           </span>
           {isToday && (
-            <span className='text-[8px] px-1.5 py-0.5 bg-primary text-ink-primary rounded-full font-bold tracking-wider'>
+            <span className='text-[8px] px-1.5 py-0.5 bg-primary text-primary-foreground! rounded-full font-bold tracking-wider'>
               TODAY
             </span>
           )}
@@ -892,20 +1023,17 @@ function FlatDayCard({
             <CheckCircle2 className='w-3 h-3 text-emerald-500' />
           )}
         </div>
-        <div className='flex items-center gap-1.5'>
-          <span className='text-[9px] text-ink-secondary'>
-            {getDayFormattedDate(dayNum)}
-          </span>
+        <div className='flex items-start gap-1.5'>
           {dayTasks.length > 0 && (
             <span
               className={cn(
-                'text-[9px] font-bold px-1.5 py-0.5 rounded-full',
+                'text-[9px] font-bold px-3 py-1.5 rounded-full',
                 dayCompleted ?
-                  'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-                : 'bg-background-secondary text-ink-secondary',
+                  'bg-emerald-500 text-primary-foreground dark:text-emerald-400'
+                : 'bg-background-secondary/50 text-ink-secondary',
               )}
             >
-              {completedCount}/{dayTasks.length}
+              {completedCount} / {dayTasks.length}
             </span>
           )}
         </div>
@@ -924,32 +1052,88 @@ function FlatDayCard({
             isReviewTask={isReviewTask}
             handleDragStart={handleDragStart}
             handleDragEnd={handleDragEnd}
-            setDragState={setDragState}
+            updateDragTarget={updateDragTarget}
+            handleDrop={handleDrop}
             handleToggleTaskStatus={handleToggleTaskStatus}
             router={router}
           />
         ))}
 
-        {/* End placeholder */}
-        {dragState.taskId !== null &&
-          dragState.overDayNum === dayNum &&
-          dragState.overIndex === dayTasks.length && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 32 }}
-              className='rounded-lg border-2 border-dashed border-primary/50 bg-primary/5 flex items-center justify-center'
-            >
-              <span className='text-[9px] text-primary/70 font-semibold'>
-                Drop here
-              </span>
-            </motion.div>
+        <div
+          onDragOver={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            updateDragTarget(dayNum, dayTasks.length);
+          }}
+          onDrop={(e) => handleDrop(e, dayNum, dayTasks.length)}
+          className={cn(
+            'group relative truncate w-full line-clamp-2 flex ',
+            dragState.taskId !== null &&
+              dragState.overDayNum === dayNum &&
+              dragState.overIndex === dayTasks.length &&
+              'bg-primary text-primary/50 items-center gap-2 rounded-md px-2.5 py-2 colors text-[10px] duration-150 cursor-grab active:cursor-grabbing - bg-primary/10 hover:-primary/25',
           )}
+        />
 
         {dayTasks.length === 0 && (
-          <div className='py-3 flex items-center justify-center border border-dashed border-border/50 rounded-xl text-[9px] text-ink-muted italic'>
+          <div className='py-3 flex items-center justify-center  -dashed -/50 rounded-xl text-[9px] text-ink-muted italic'>
             {dragState.taskId ? 'Drop here' : 'Empty'}
           </div>
         )}
+      </div>
+
+      {/* Stage Reward Banner */}
+      <div
+        className={cn(
+          'mt-2 pt-2 border-t flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-xl text-xs colors',
+          isClaimed ?
+            'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-300'
+          : canClaim ?
+            'bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-300'
+          : 'bg-background-secondary/30 border-border/20 text-ink-secondary',
+        )}
+      >
+        <div className='flex items-center gap-2 min-w-0'>
+          <img
+            src={reward.icon}
+            alt={reward.name}
+            className='w-6 h-6 object-contain shrink-0'
+          />
+          <div className='flex flex-col min-w-0'>
+            <span className='text-[8px] font-bold uppercase opacity-60'>
+              {isClaimed ?
+                'CLAIMED'
+              : canClaim ?
+                'REWARD UNLOCKED'
+              : 'STAGE REWARD'}
+            </span>
+            <span className='text-[10px] font-extrabold truncate text-ink-primary'>
+              {reward.badge}
+            </span>
+          </div>
+        </div>
+        {isClaimed ?
+          <span className='text-[8px] bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider shrink-0 flex items-center gap-0.5 border border-emerald-500/30'>
+            <Check className='w-2.5 h-2.5 stroke-[3]' /> CLAIMED
+          </span>
+        : canClaim && onClaimStageReward ?
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            disabled={claimingDayNum === dayNum}
+            onClick={(e) => {
+              e.stopPropagation();
+              onClaimStageReward(dayNum);
+            }}
+            className='px-2.5 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-black text-[9px] uppercase tracking-wider shadow-md shadow-emerald-500/30 animate-pulse flex items-center gap-1 cursor-pointer shrink-0'
+          >
+            <Gift className='w-3 h-3' />
+            {claimingDayNum === dayNum ? 'Claiming...' : 'Claim'}
+          </motion.button>
+        : <span className='text-[8px] bg-background-secondary text-ink-secondary px-2 py-0.5 rounded-full font-semibold uppercase tracking-wider shrink-0'>
+            {reward.type === 'loot_box' ? 'RARE' : 'BONUS'}
+          </span>
+        }
       </div>
     </div>
   );
@@ -958,6 +1142,63 @@ function FlatDayCard({
 // ─────────────────────────────────────────────
 // 3D Roadmap View
 // ─────────────────────────────────────────────
+// ─────────────────────────────────────────────
+// Rewards Pool & Helpers
+// ─────────────────────────────────────────────
+const REWARD_POOL = [
+  {
+    type: 'loot_box',
+    name: 'Mystic Loot Box',
+    badge: '🧰 Mystery Loot Box',
+    icon: '/loot-box.png',
+  },
+  {
+    type: 'gold_coins',
+    name: '100 Gold Coins',
+    badge: '🪙 +100 Gold Coins',
+    icon: '/gold-coin.png',
+  },
+  {
+    type: 'streak_card',
+    name: 'Streak Saver Card',
+    badge: '🔥 Streak Saver',
+    icon: '/streak-card.png',
+  },
+  {
+    type: 'double_xp',
+    name: '2X XP Booster Card',
+    badge: '⚡ 2X XP Booster',
+    icon: '/double-xp-card.png',
+  },
+  {
+    type: 'vip_days',
+    name: '3-Day VIP Pass',
+    badge: '👑 3-Day VIP Pass',
+    icon: '/vip-card.png',
+  },
+];
+
+function getStageReward(dayNum: number, planId: string = 'default') {
+  let hash = dayNum * 37;
+  for (let i = 0; i < planId.length; i++) {
+    hash = (hash << 5) - hash + planId.charCodeAt(i);
+    hash |= 0;
+  }
+  const index = Math.abs(hash) % REWARD_POOL.length;
+  return REWARD_POOL[index];
+}
+
+const CIRCLE_GRADIENTS = [
+  'bg-gradient-to-br from-amber-400 via-orange-500 to-amber-600 text-black border-amber-200 shadow-amber-500/40',
+  'bg-gradient-to-br from-emerald-400 via-teal-500 to-emerald-600 text-white border-emerald-200 shadow-emerald-500/40',
+  'bg-gradient-to-br from-cyan-400 via-blue-500 to-indigo-600 text-white border-cyan-200 shadow-cyan-500/40',
+  'bg-gradient-to-br from-purple-500 via-fuchsia-500 to-indigo-700 text-white border-purple-200 shadow-purple-500/40',
+  'bg-gradient-to-br from-rose-400 via-pink-500 to-red-600 text-white border-rose-200 shadow-rose-500/40',
+  'bg-gradient-to-br from-lime-400 via-emerald-500 to-teal-600 text-black border-lime-200 shadow-lime-500/40',
+  'bg-gradient-to-br from-yellow-300 via-amber-500 to-orange-600 text-black border-yellow-100 shadow-yellow-500/40',
+  'bg-gradient-to-br from-indigo-400 via-purple-600 to-pink-600 text-white border-indigo-200 shadow-indigo-500/40',
+];
+
 interface Roadmap3DViewProps {
   dayDataArr: {
     dayNum: number;
@@ -971,12 +1212,21 @@ interface Roadmap3DViewProps {
   questions: InterviewQuestion[];
   getDayFormattedDate: (d: number) => string;
   isReviewTask: (t: PlanTask) => boolean;
-  handleDragStart: (e: React.DragEvent, id: string, d: number) => void;
+  handleDragStart: (
+    e: React.DragEvent,
+    id: string,
+    dayNum: number,
+    taskIndex: number,
+  ) => void;
   handleDragEnd: () => void;
-  setDragState: React.Dispatch<React.SetStateAction<DragState>>;
+  updateDragTarget: (dayNum: number, index: number) => void;
   handleDrop: (e: React.DragEvent, d: number, i: number) => void;
   handleToggleTaskStatus: (t: PlanTask) => void;
   router: ReturnType<typeof useRouter>;
+  activePlanId?: string;
+  claimedStageDays?: number[];
+  onClaimStageReward?: (dayNum: number) => void;
+  claimingDayNum?: number | null;
 }
 
 function Roadmap3DView({
@@ -987,260 +1237,487 @@ function Roadmap3DView({
   isReviewTask,
   handleDragStart,
   handleDragEnd,
-  setDragState,
+  updateDragTarget,
   handleDrop,
   handleToggleTaskStatus,
   router,
+  activePlanId,
+  claimedStageDays = [],
+  onClaimStageReward,
+  claimingDayNum,
 }: Roadmap3DViewProps) {
+  const todayRef = React.useRef<HTMLDivElement | null>(null);
+
+  const handleJumpToToday = () => {
+    if (todayRef.current) {
+      todayRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  };
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (todayRef.current) {
+        todayRef.current.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center',
+        });
+      }
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [dayDataArr.length]);
+
+  // Calculate dynamic node circle positions in center corridor (alternating 38% and 62%)
+  // Dynamic vertical gap stretches dynamically if cards have many tasks!
+  const nodePositions = React.useMemo(() => {
+    let currentY = 240; // Generous top padding space so stage 1 doesn't collide with page header
+    return dayDataArr.map((dayData, i) => {
+      const isLeft = i % 2 === 0;
+      const xPercent = isLeft ? 38 : 62;
+      const yPos = currentY;
+      const circleCenterY = yPos + 44; // 88px circle pin center
+
+      const taskCount = dayData.dayTasks.length;
+      // Base gap 290 + 55px for each extra task beyond 2
+      const dynamicGap = 290 + Math.max(0, (taskCount - 2) * 55);
+      currentY += dynamicGap;
+
+      return {
+        xPercent,
+        yPos,
+        svgX: xPercent * 10,
+        svgY: circleCenterY,
+        isLeft,
+        dynamicGap,
+      };
+    });
+  }, [dayDataArr]);
+
+  const TOTAL_HEIGHT = React.useMemo(() => {
+    if (nodePositions.length === 0) return 750;
+    const lastNode = nodePositions[nodePositions.length - 1];
+    return Math.max(lastNode.yPos + 350, 750);
+  }, [nodePositions]);
+
+  // Construct ultra-smooth Bezier spline through center corridor
+  const pathD = React.useMemo(() => {
+    if (nodePositions.length === 0) return '';
+    if (nodePositions.length === 1) {
+      return `M ${nodePositions[0].svgX} ${nodePositions[0].svgY}`;
+    }
+
+    let d = `M ${nodePositions[0].svgX} ${nodePositions[0].svgY}`;
+    for (let i = 0; i < nodePositions.length - 1; i++) {
+      const curr = nodePositions[i];
+      const next = nodePositions[i + 1];
+
+      const segmentHeight = next.svgY - curr.svgY;
+      const cp1x = curr.svgX;
+      const cp1y = curr.svgY + segmentHeight * 0.5;
+      const cp2x = next.svgX;
+      const cp2y = next.svgY - segmentHeight * 0.5;
+
+      d += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${next.svgX} ${next.svgY}`;
+    }
+    return d;
+  }, [nodePositions]);
+
   return (
-    <div className='fixed w-full top-0 bottom-0 left-0 z-20 h-screen  overflow-hidden'>
+    <div
+      style={{
+        maskImage:
+          'linear-gradient(to bottom, transparent, black 64px, black calc(100% - 24px), transparent), linear-gradient(to left, black 0px, transparent 0px)',
+        WebkitMaskImage:
+          'linear-gradient(to bottom, transparent, black 64px, black calc(100% - 24px), transparent), linear-gradient(to left, black 0px, transparent 0px)',
+        maskSize: '100% 100%',
+        WebkitMaskSize: '100% 100%',
+        maskPosition: '0 0, 100% 0',
+        WebkitMaskPosition: '0 0, 100% 0',
+        maskRepeat: 'no-repeat, no-repeat',
+        WebkitMaskRepeat: 'no-repeat, no-repeat',
+        transform: 'none',
+      }}
+      className='fixed inset-0 z-20 h-screen overflow-y-auto overflow-x-hidden custom-scrollbar  text-white'
+    >
+      <style>{`
+        @keyframes pathDashFlow {
+          from { stroke-dashoffset: 0; }
+          to { stroke-dashoffset: -48; }
+        }
+        .animate-game-path {
+          animation: pathDashFlow 2s linear infinite;
+        }
+      `}</style>
+
       {/* Background Image */}
       <div
-        className='absolute inset-0 bg-cover bg-center bg-no-repeat transition-transform duration-1000'
+        className='fixed inset-0 bg-cover bg-center bg-no-repeat opacity-100 transform duration-1000 pointer-events-none'
         style={{ backgroundImage: 'url("/game-map-bg.jpeg")' }}
       />
-      {/* Overlay for contrast */}
-      <div className='absolute inset-0  dark:bg-black/50 ' />
+      <div className='fixed inset-0  bg-white/20 dark:bg-black/50 z-10 h-full w-full pointer-events-none' />
+      <div className='fixed inset-0 bg-linear-to-b from-white via-white  dark:from-black dark:via-black/70 to-transparent z-40 h-[100px] w-full pointer-events-none' />
 
-      {/* Scrollable Container */}
-      <div className='absolute inset-0 overflow-x-auto overflow-y-hidden custom-scrollbar pb-6'>
-        <div className='flex items-center min-w-max h-full px-24 gap-[180px] relative pt-10'>
-          {/* Decorative Path Line Behind Nodes */}
-          <svg
-            className='absolute top-1/2 left-0 w-full h-[200px] -translate-y-1/2 pointer-events-none'
-            preserveAspectRatio='none'
-          >
-            <path
-              d={`M 0 100 ${dayDataArr.map((_, i) => `Q ${i * 500 + 250} ${i % 2 === 0 ? -100 : 300}, ${i * 500 + 500} 100`).join(' ')}`}
-              fill='none'
-              stroke='rgba(255,255,255,0.2)'
-              strokeWidth='4'
-              strokeDasharray='12 12'
-            />
-          </svg>
+      {/* Jump to Today Floating Button */}
+      <div className='fixed bottom-20 right-6 z-50'>
+        <motion.button
+          onClick={handleJumpToToday}
+          whileHover={{ scale: 1.08 }}
+          whileTap={{ scale: 0.94 }}
+          className='flex items-center gap-2 px-4 py-2.5 rounded-full bg-primary text-primary-foreground font-bold shadow-2xl shadow-primary/40 border border-white/20 backdrop-blur-xl text-xs hover:opacity-95 all'
+          title='Jump to current level'
+        >
+          <Navigation className='w-4 h-4 animate-pulse' />
+          <span>Jump to Today</span>
+        </motion.button>
+      </div>
 
-          {dayDataArr.map((dayData, idx) => {
-            const { dayNum, dayTasks, dayCompleted, isToday, isPast } = dayData;
-            const isUp = idx % 2 === 0;
-            const yOffset = isUp ? -50 : 70;
-            const isDraggedOver = dragState.overDayNum === dayNum;
-            const completedCount = dayTasks.filter(
-              (t) => t.status === 'completed',
-            ).length;
+      {/* Scrollable Game Roadmap Canvas */}
+      <div
+        className='relative w-full max-w-6xl mx-auto px-4 md:px-8'
+        style={{ height: `${TOTAL_HEIGHT}px` }}
+      >
+        {/* Animated Dashed Game Path (ONLY passes through circle centers in the middle corridor) */}
+        <svg
+          className='absolute top-0 left-0 w-full h-full pointer-events-none z-0'
+          viewBox={`0 0 1000 ${TOTAL_HEIGHT}`}
+          preserveAspectRatio='none'
+        >
+          <defs>
+            <linearGradient id='gamePathGrad' x1='0%' y1='0%' x2='0%' y2='100%'>
+              <stop offset='0%' stopColor='#3b82f6' stopOpacity='0.95' />
+              <stop offset='33%' stopColor='#10b981' stopOpacity='0.95' />
+              <stop offset='66%' stopColor='#f59e0b' stopOpacity='0.95' />
+              <stop offset='100%' stopColor='#ec4899' stopOpacity='0.95' />
+            </linearGradient>
+            <filter id='pathGlow' x='-20%' y='-20%' width='140%' height='140%'>
+              <feGaussianBlur stdDeviation='5' result='blur' />
+              <feComposite in='SourceGraphic' in2='blur' operator='over' />
+            </filter>
+          </defs>
 
-            return (
+          {/* Path shadow line */}
+          <path
+            d={pathD}
+            fill='none'
+            stroke='rgba(0, 0, 0, 0.7)'
+            strokeWidth='10'
+            vectorEffect='non-scaling-stroke'
+          />
+
+          {/* Outer dashed track border */}
+          <path
+            d={pathD}
+            fill='none'
+            stroke='rgba(255, 255, 255, 0.3)'
+            strokeWidth='7'
+            strokeDasharray='14 10'
+            vectorEffect='non-scaling-stroke'
+          />
+
+          {/* Vibrant Animated Glowing Game Dashed Line */}
+          <path
+            d={pathD}
+            fill='none'
+            stroke='url(#gamePathGrad)'
+            strokeWidth='5'
+            strokeDasharray='14 10'
+            vectorEffect='non-scaling-stroke'
+            className='animate-game-path'
+            filter='url(#pathGlow)'
+          />
+        </svg>
+
+        {dayDataArr.map((dayData, idx) => {
+          const { dayNum, dayTasks, dayCompleted, isToday, isPast } = dayData;
+          const pos = nodePositions[idx] || {
+            xPercent: 50,
+            yPos: 160,
+            isLeft: true,
+          };
+          const isDraggedOver = dragState.overDayNum === dayNum;
+          const completedCount = dayTasks.filter(
+            (t) => t.status === 'completed',
+          ).length;
+          const gradientClass =
+            CIRCLE_GRADIENTS[(dayNum - 1) % CIRCLE_GRADIENTS.length];
+          const reward = getStageReward(dayNum, activePlanId);
+          const isClaimed = claimedStageDays.includes(dayNum);
+          const canClaim = dayCompleted && !isClaimed;
+
+          return (
+            <div
+              key={dayNum}
+              ref={isToday ? todayRef : null}
+              className='absolute -translate-x-1/2 flex items-start z-10'
+              style={{
+                left: `${pos.xPercent}%`,
+                top: `${pos.yPos}px`,
+              }}
+            >
+              {/* Level Circle Pin (Vibrant colorful background with ✔ checkmark for completed) */}
               <motion.div
-                key={dayNum}
-                animate={{ y: [yOffset, yOffset - 12, yOffset] }}
-                transition={{
-                  repeat: Infinity,
-                  duration: 4,
-                  ease: 'easeInOut',
-                  delay: idx * 0.4,
-                }}
-                className='relative w-[340px] shrink-0'
+                whileHover={{ scale: 1.15, rotate: pos.isLeft ? -5 : 5 }}
+                className={cn(
+                  'relative w-18 h-18 sm:w-22 sm:h-22 rounded-full flex flex-col items-center justify-center cursor-pointer shadow-2xl all duration-300 border-4 select-none shrink-0 z-20',
+                  isToday ?
+                    'bg-primary text-primary-foreground border-white ring-8 ring-primary/40  scale-105'
+                  : dayCompleted ?
+                    'bg-emerald-500 text-white border-emerald-300 ring-4 ring-emerald-500/40 shadow-emerald-500/50'
+                  : isPast ? 'bg-zinc-800/90 text-zinc-300 border-zinc-600'
+                  : cn(gradientClass, 'hover:scale-110'),
+                )}
               >
-                {/* Node marker (Level Circle) */}
-                <div
-                  className={cn(
-                    'title-page absolute -top-7 left-1/2 -translate-x-1/2 w-[72px] h-[72px] rounded-full flex items-center justify-center z-20 shadow-xl border-4 transition-all duration-300',
-                    isToday ?
-                      'bg-primary border-white text-ink-primary shadow-primary/60 shadow-[0_0_40px_rgba(var(--color-primary),0.6)]'
-                    : dayCompleted ?
-                      'bg-emerald-500 border-white text-ink-primary shadow-emerald-500/50 shadow-[0_0_30px_rgba(16,185,129,0.5)]'
-                    : isPast ? 'bg-zinc-800 border-zinc-500 text-zinc-300'
-                    : 'bg-black/60 backdrop-blur-xl border-white/40 text-ink-primary',
-                  )}
-                >
-                  {dayNum}
-                </div>
+                {isToday && (
+                  <span className='absolute -top-9 px-2.5 py-0.5 text-[9px] font-black bg-primary text-primary-foreground rounded-full shadow-lg uppercase tracking-wider animate-bounce border border-white/30'>
+                    Current
+                  </span>
+                )}
+                {dayCompleted ?
+                  <div className='flex flex-col items-center justify-center '>
+                    <Check className='w-8 h-8 sm:w-10 sm:h-10 text-white stroke-[3.5] drop-shadow-md' />
+                    <span className='text-[8px] font-black tracking-tighter uppercase opacity-95'>
+                      DAY {dayNum}
+                    </span>
+                  </div>
+                : <>
+                    <span className='text-[9px] font-extrabold uppercase tracking-widest opacity-85'>
+                      Stage
+                    </span>
+                    <span className='text-2xl sm:text-3xl font-black leading-none tracking-tight'>
+                      {dayNum}
+                    </span>
+                  </>
+                }
+              </motion.div>
 
-                {/* Glass Card */}
-                <div
-                  className={cn(
-                    'relative rounded-3xl p-6 transition-all duration-300 mt-6',
-                    'bg-white/10 backdrop-blur-xl border-t border-l border-white/30 shadow-2xl',
-                    isToday &&
-                      'ring-2 ring-primary/80 shadow-[0_0_50px_rgba(var(--color-primary),0.3)] bg-white/15',
-                    dayCompleted &&
-                      'ring-2 ring-emerald-500/60 shadow-[0_0_40px_rgba(16,185,129,0.2)] bg-emerald-500/10',
-                    isDraggedOver &&
-                      'ring-4 ring-primary scale-105 bg-primary/20',
-                  )}
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    setDragState((p) => ({
-                      ...p,
-                      overDayNum: dayNum,
-                      overIndex: dayTasks.length,
-                    }));
-                  }}
-                  onDrop={(e) =>
-                    handleDrop(
-                      e,
-                      dayNum,
-                      dragState.overIndex ?? dayTasks.length,
-                    )
-                  }
-                >
-                  {/* Header */}
-                  <div className='flex justify-between items-end mb-5 pt-8 border-b border-white/10 pb-3'>
-                    <div className='flex flex-col'>
-                      <span className='text-[10px] text-ink-primary/70 font-bold tracking-[0.15em] uppercase'>
-                        {getDayFormattedDate(dayNum)}
-                      </span>
-                      {isToday && (
-                        <span className='label-overline text-primary mt-1.5'>
-                          Current Level
+              {/* Stage Card (Positioned to Outer Left or Outer Right of circle, completely decoupled without touching lines!) */}
+              <motion.div
+                whileHover={{
+                  scale: 1.02,
+                  rotateX: 2,
+                  rotateY: pos.isLeft ? -3 : 3,
+                }}
+                transition={{ duration: 0.2 }}
+                className={cn(
+                  'absolute w-[270px] sm:w-[310px] md:w-[350px] rounded-3xl p-4 md:p-5 all duration-200 border text-white shadow-2xl z-10',
+                  'bg-zinc-900/85 dark:bg-black/90 backdrop-blur-2xl border-white/15',
+                  pos.isLeft ?
+                    'right-full mr-6 sm:mr-10'
+                  : 'left-full ml-6 sm:ml-10',
+                  isToday &&
+                    'ring-2 ring-primary border-primary/70 bg-black/95 shadow-primary/20',
+                  dayCompleted &&
+                    'ring-2 ring-emerald-500/80 border-emerald-500/40',
+                  isDraggedOver &&
+                    'ring-4 ring-primary border-primary bg-primary/20',
+                )}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  updateDragTarget(dayNum, dayTasks.length);
+                }}
+                onDrop={(e) =>
+                  handleDrop(e, dayNum, dragState.overIndex ?? dayTasks.length)
+                }
+              >
+                {/* Card Header */}
+                <div className='flex items-center justify-between pb-3 mb-3 border-b border-white/10'>
+                  <div className='flex flex-col'>
+                    <span className='text-[10px] text-white/70 font-bold uppercase tracking-widest'>
+                      {getDayFormattedDate(dayNum)}
+                    </span>
+                    <div className='flex items-center gap-1.5 mt-0.5'>
+                      {isToday ?
+                        <span className='text-xs font-bold text-primary flex items-center gap-1'>
+                          <Sparkles className='w-3.5 h-3.5' /> Today's Quest
                         </span>
-                      )}
-                      {dayCompleted && !isToday && (
-                        <span className='label-overline text-emerald-400 mt-1.5 flex items-center gap-1'>
+                      : dayCompleted ?
+                        <span className='text-xs font-bold text-emerald-400 flex items-center gap-1'>
                           <Trophy className='w-3.5 h-3.5' /> Cleared
                         </span>
-                      )}
+                      : <span className='text-xs font-semibold text-white/90'>
+                          Level {dayNum}
+                        </span>
+                      }
                     </div>
-                    {dayTasks.length > 0 && (
-                      <div className='flex items-center gap-1.5 bg-background-primary/80 px-2.5 py-1 rounded-full'>
-                        <Zap
-                          className={cn(
-                            'w-3.5 h-3.5',
-                            dayCompleted ? 'text-emerald-400' : 'text-primary',
-                          )}
-                        />
-                        <span className='label-sm'>
-                          {completedCount}/{dayTasks.length}
-                        </span>
-                      </div>
-                    )}
                   </div>
+                  {dayTasks.length > 0 && (
+                    <div className='flex items-center gap-1 bg-white/10 px-2.5 py-1 rounded-full border border-white/10'>
+                      <Zap
+                        className={cn(
+                          'w-3.5 h-3.5',
+                          dayCompleted ? 'text-emerald-400' : 'text-primary',
+                        )}
+                      />
+                      <span className='text-xs font-bold'>
+                        {completedCount}/{dayTasks.length}
+                      </span>
+                    </div>
+                  )}
+                </div>
 
-                  {/* Tasks / Quests */}
-                  <div className='flex flex-col gap-2.5 min-h-[140px]'>
-                    {dayTasks.length === 0 ?
-                      <div className='h-full flex-1 flex flex-col items-center justify-center border-2 border-dashed border-white/20 rounded-2xl py-8 opacity-70'>
-                        <span className='label-sm text-ink-primary/60'>
-                          {dragState.taskId ?
-                            'DROP QUEST HERE'
-                          : 'NO QUESTS SCHEDULED'}
-                        </span>
-                      </div>
-                    : dayTasks.map((task, taskIdx) => {
-                        const qObj = questions.find(
-                          (q) => q.id === task.question_id,
-                        );
-                        if (!qObj) return null;
-                        const isCompleted = task.status === 'completed';
-                        const isReview = isReviewTask(task);
-                        const isDraggingThis = dragState.taskId === task.id;
-                        const showPlaceholder =
-                          dragState.taskId !== null &&
-                          dragState.overDayNum === dayNum &&
-                          dragState.overIndex === taskIdx &&
-                          dragState.taskId !== task.id;
+                {/* Tasks List (Unclipped full list, height stretches dynamically!) */}
+                <div className='flex flex-col gap-2 pr-1'>
+                  {dayTasks.length === 0 ?
+                    <div className='py-6 flex flex-col items-center justify-center border-2 border-dashed border-white/15 rounded-2xl opacity-60'>
+                      <span className='text-xs font-medium text-white/60'>
+                        {dragState.taskId ?
+                          'DROP QUEST HERE'
+                        : 'NO QUESTS SCHEDULED'}
+                      </span>
+                    </div>
+                  : dayTasks.map((task, taskIdx) => {
+                      const qObj = questions.find(
+                        (q) => q.id === task.question_id,
+                      );
+                      if (!qObj) return null;
+                      const isCompleted = task.status === 'completed';
+                      const isReview = isReviewTask(task);
+                      const isDraggingThis = dragState.taskId === task.id;
+                      const showPlaceholder =
+                        dragState.taskId !== null &&
+                        dragState.overDayNum === dayNum &&
+                        dragState.overIndex === taskIdx &&
+                        dragState.taskId !== task.id;
 
-                        return (
-                          <React.Fragment key={task.id}>
-                            {showPlaceholder && (
-                              <motion.div
-                                initial={{ opacity: 0, height: 0 }}
-                                animate={{ opacity: 1, height: 48 }}
-                                className='rounded-xl border-2 border-dashed border-primary bg-primary/20 flex items-center justify-center shrink-0'
-                              >
-                                <span className='text-[10px] text-primary font-bold tracking-wider uppercase'>
-                                  Drop Here
-                                </span>
-                              </motion.div>
+                      return (
+                        <div key={task.id} className='relative'>
+                          <div
+                            draggable
+                            onDragStart={(e) =>
+                              handleDragStart(e, task.id, dayNum, taskIdx)
+                            }
+                            onDragEnd={handleDragEnd}
+                            onDragOver={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              updateDragTarget(dayNum, taskIdx);
+                            }}
+                            onDrop={(e) => handleDrop(e, dayNum, taskIdx)}
+                            onClick={() =>
+                              router.push(`/interview-prep/practice/${qObj.id}`)
+                            }
+                            className={cn(
+                              'group relative flex items-start gap-2.5 rounded-xl p-2.5 all cursor-pointer border select-none',
+                              isDraggingThis && 'opacity-30',
+                              isCompleted ?
+                                'bg-white/5 border-white/5 opacity-70 hover:opacity-100'
+                              : 'bg-white/10 hover:bg-white/20 border-white/15 backdrop-blur-md',
                             )}
-                            <div
-                              draggable
-                              onDragStart={(e) =>
-                                handleDragStart(e, task.id, dayNum)
-                              }
-                              onDragEnd={handleDragEnd}
-                              onDragOver={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                setDragState((p) => ({
-                                  ...p,
-                                  overDayNum: dayNum,
-                                  overIndex: taskIdx,
-                                }));
-                              }}
-                              onClick={() =>
-                                router.push(
-                                  `/interview-prep/practice/${qObj.id}`,
-                                )
-                              }
-                              className={cn(
-                                'group flex items-start gap-3 p-3.5 rounded-xl cursor-grab active:cursor-grabbing transition-all border',
-                                isDraggingThis && 'opacity-30 scale-95',
-                                isCompleted ?
-                                  'bg-black/30 border-white/10'
-                                : 'bg-white/15 hover:bg-white/25 border-white/30 hover:border-white/50 backdrop-blur-md shadow-lg',
-                              )}
-                            >
-                              <button
+                          >
+                            <div className='flex flex-col min-w-0 flex-1 cursor-pointer'>
+                              <span
                                 className={cn(
-                                  'w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all mt-0.5 cursor-default',
-                                  isCompleted ?
-                                    'bg-emerald-500 border-emerald-500 text-ink-primary'
-                                  : 'border-white/60 hover:border-white text-ink-primary',
+                                  'text-xs font-semibold text-white leading-snug line-clamp-2 group-hover:text-primary colors',
+                                  isCompleted && 'line-through opacity-60',
                                 )}
                               >
-                                {isCompleted && <Check className='w-3 h-3' />}
-                              </button>
-                              <div className='flex flex-col min-w-0 flex-1'>
-                                <span
-                                  className={cn(
-                                    'label leading-tight',
-                                    isCompleted &&
-                                      'line-through text-ink-primary/50',
-                                  )}
-                                >
-                                  {qObj.title}
+                                {qObj.title}
+                              </span>
+                              <div className='flex items-center gap-1.5 mt-1 flex-wrap'>
+                                <span className='text-[9px] bg-white/10 px-1.5 py-0.5 rounded text-white/70 font-medium'>
+                                  {qObj.category?.name ?
+                                    cleanName(qObj.category.name)
+                                  : 'General'}
                                 </span>
                                 {isReview && (
-                                  <span className='text-[9px] text-blue-300 font-black mt-1.5 uppercase tracking-widest'>
-                                    ↩ Review Quest
+                                  <span className='text-[9px] bg-blue-500/20 text-blue-300 border border-blue-500/30 px-1.5 py-0.5 rounded font-extrabold uppercase tracking-wider'>
+                                    Review
                                   </span>
                                 )}
                               </div>
                             </div>
-                          </React.Fragment>
-                        );
-                      })
-                    }
+                          </div>
+                          {showPlaceholder && (
+                            <div className='mt-2 truncate w-full flex items-center gap-2 rounded-xl p-2.5 bg-primary/20 border border-primary/50 text-primary text-xs'>
+                              <span className='w-2 h-2 bg-primary rounded-full animate-ping' />
+                              Drop quest here
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })
+                  }
 
-                    {/* End drop zone */}
-                    {dragState.taskId !== null &&
-                      dragState.overDayNum === dayNum &&
-                      dragState.overIndex === dayTasks.length && (
-                        <motion.div
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: 48 }}
-                          className='rounded-xl border-2 border-dashed border-primary bg-primary/20 flex items-center justify-center shrink-0 mt-2'
-                          onDragOver={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setDragState((p) => ({
-                              ...p,
-                              overDayNum: dayNum,
-                              overIndex: dayTasks.length,
-                            }));
-                          }}
-                        >
-                          <span className='text-[10px] text-primary font-bold tracking-wider uppercase'>
-                            Drop Here
-                          </span>
-                        </motion.div>
-                      )}
+                  <div
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      updateDragTarget(dayNum, dayTasks.length);
+                    }}
+                    onDrop={(e) => handleDrop(e, dayNum, dayTasks.length)}
+                    className={cn(
+                      'h-2 shrink-0 rounded-full colors',
+                      dragState.taskId !== null &&
+                        dragState.overDayNum === dayNum &&
+                        dragState.overIndex === dayTasks.length &&
+                        'bg-primary',
+                    )}
+                  />
+                </div>
+
+                {/* Stage Reward Banner (Visualized randomized 3D item reward) */}
+                <div
+                  className={cn(
+                    'mt-3.5 pt-3 border-t flex items-center justify-between gap-2 px-3 py-2 rounded-2xl all',
+                    isClaimed ?
+                      'bg-emerald-500/20 border-emerald-500/40 text-emerald-300'
+                    : canClaim ?
+                      'bg-amber-500/20 border-amber-500/40 text-amber-300'
+                    : 'bg-white/5 border-white/10 text-amber-300',
+                  )}
+                >
+                  <div className='flex items-center gap-2.5 min-w-0'>
+                    <div className='relative w-9 h-9 shrink-0 flex items-center justify-center bg-black/50 rounded-xl p-1 border border-white/15 shadow-inner'>
+                      <img
+                        src={reward.icon}
+                        alt={reward.name}
+                        className={cn(
+                          'w-full h-full object-contain filter drop-shadow-md transform duration-300',
+                          dayCompleted ? 'scale-110' : 'hover:scale-110',
+                        )}
+                      />
+                    </div>
+                    <div className='flex flex-col min-w-0'>
+                      <span className='text-[9px] text-white/60 font-bold uppercase tracking-wider'>
+                        {isClaimed ?
+                          'STAGE REWARD CLAIMED'
+                        : canClaim ?
+                          'REWARD UNLOCKED!'
+                        : 'STAGE REWARD'}
+                      </span>
+                      <span className='text-xs font-black truncate text-white'>
+                        {reward.badge}
+                      </span>
+                    </div>
                   </div>
+                  {isClaimed ?
+                    <span className='text-[9px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2.5 py-1 rounded-full font-black uppercase tracking-wider shrink-0 flex items-center gap-1'>
+                      <Check className='w-3 h-3 stroke-[3]' /> CLAIMED
+                    </span>
+                  : canClaim && onClaimStageReward ?
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      disabled={claimingDayNum === dayNum}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onClaimStageReward(dayNum);
+                      }}
+                      className='px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black font-black text-[10px] uppercase tracking-wider shadow-lg shadow-emerald-500/40 animate-pulse flex items-center gap-1 cursor-pointer shrink-0 border border-emerald-300'
+                    >
+                      <Gift className='w-3.5 h-3.5' />
+                      {claimingDayNum === dayNum ?
+                        'Claiming...'
+                      : 'Claim Reward'}
+                    </motion.button>
+                  : <span className='text-[9px] bg-white/10 text-white/80 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider shrink-0'>
+                      {reward.type === 'loot_box' ? 'RARE' : 'BONUS'}
+                    </span>
+                  }
                 </div>
               </motion.div>
-            );
-          })}
-        </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -1252,7 +1729,7 @@ function Roadmap3DView({
 function RoadmapSkeleton() {
   return (
     <div className='flex flex-col gap-5 animate-pulse pb-8'>
-      <div className='flex justify-between items-center pb-4 border-b border-border/60'>
+      <div className='flex justify-between items-center pb-4 -b -/60'>
         <div className='flex flex-col gap-1.5'>
           <div className='h-5 bg-panel rounded-lg w-48' />
           <div className='h-3 bg-panel rounded w-36' />
@@ -1263,7 +1740,7 @@ function RoadmapSkeleton() {
         {[1, 0.84, 0.72, 0.62].map((s, i) => (
           <div
             key={i}
-            className='rounded-2xl bg-panel border border-border/40 p-4'
+            className='rounded-2xl bg-panel  -/40 p-4'
             style={{
               transform: `scaleY(${s})`,
               transformOrigin: 'top center',

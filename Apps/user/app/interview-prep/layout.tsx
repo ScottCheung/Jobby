@@ -10,9 +10,6 @@ import {
   Library,
   Dumbbell,
   Calendar,
-  BookOpen,
-  Compass,
-  Globe,
   Search,
 } from 'lucide-react';
 import { api } from '@/lib/api';
@@ -22,6 +19,7 @@ import { GamificationStats } from './_components/GamificationStats';
 import { useConsole } from '@/components/ConsoleContext';
 import { GlobalSearchModal } from './library/_components/GlobalSearchModal';
 import { useGlobalModalStore } from '@/lib/store/global-modal-store';
+import { Button } from '@/components/UI/Button';
 
 const baseTabs = [
   {
@@ -31,11 +29,10 @@ const baseTabs = [
     description: 'Overview of your stats, heatmap, and daily mission',
   },
   {
-    name: 'Collections',
-    href: '/interview-prep/collections',
-    icon: Compass,
-    description:
-      'Browse official and community collections to grow your library',
+    name: 'Explore',
+    href: '/interview-prep/explore',
+    icon: Search,
+    description: 'Discover questions and Question Sets',
   },
   {
     name: 'Library',
@@ -48,12 +45,6 @@ const baseTabs = [
     href: '/interview-prep/practice',
     icon: Dumbbell,
     description: 'Enter the practice simulator and earn XP',
-  },
-  {
-    name: 'History',
-    href: '/interview-prep/history',
-    icon: BookOpen,
-    description: 'View your practice records and XP/Coin transactions',
   },
 ];
 
@@ -70,12 +61,13 @@ export default function InterviewPlaybookLayout({
   const getMaskStyle = () => {
     // Config: key is route prefix, value is whether it needs mask
     const maskConfig: Record<string, boolean> = {
-      '/interview-prep/collections': false,
+      '/interview-prep/collections': true,
+      '/interview-prep/explore': false,
       '/interview-prep/library': false,
       '/interview-prep/practice': false,
       '/interview-prep/schedule': false,
       '/interview-prep/guide': true,
-      '/interview-prep': true, // Dashboard or root
+      '/interview-prep': true,
     };
 
     const matchedKey = Object.keys(maskConfig)
@@ -91,7 +83,7 @@ export default function InterviewPlaybookLayout({
     }
 
     const maskString =
-      'linear-gradient(to bottom, transparent, black 24px, black calc(100% - 24px), transparent), linear-gradient(to left, black 16px, transparent 16px)';
+      'linear-gradient(to bottom, transparent, black 24px, black calc(100% - 24px), transparent), linear-gradient(to left, black 0px, transparent 0px)';
 
     return {
       maskImage: maskString,
@@ -122,7 +114,7 @@ export default function InterviewPlaybookLayout({
     return () => {
       window.removeEventListener('playbookPlanChanged', checkActivePlan);
     };
-  }, [pathname]);
+  }, []);
 
   const dynamicTabs =
     hasActivePlan ?
@@ -138,16 +130,7 @@ export default function InterviewPlaybookLayout({
       ]
     : baseTabs;
 
-  const tabs = [
-    ...dynamicTabs,
-    {
-      name: 'Guide',
-      href: '/interview-prep/guide',
-      icon: BookOpen,
-      description:
-        'Learn how to use the Playbook and understand gamification rules',
-    },
-  ];
+  const tabs = [...dynamicTabs];
 
   const openGlobalSearch = () => {
     openModal({
@@ -159,7 +142,7 @@ export default function InterviewPlaybookLayout({
   };
 
   return (
-    <div className='flex flex-col h-[calc(100vh-18px)] min-h-[500px] px-page pt-3'>
+    <div className='flex flex-col h-[calc(100vh-18px)] min-h-[500px] px-page pt-3 pb-0!'>
       <div className='flex z-20 flex-row items-center justify-between shrink-0 w-full'>
         <div className='flex items-center pb-px px-2'>
           {tabs.map((tab) => {
@@ -207,14 +190,16 @@ export default function InterviewPlaybookLayout({
           {/* <AnimationPresence></AnimationPresence> */}
           {/* Discover Community Search Button */}
           <Tooltip content='Discover Community' side='bottom'>
-            <motion.button
+            <Button
               type='button'
               layoutId='global-search-modal'
+              variant={'outline'}
               onClick={openGlobalSearch}
-              className='flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/5 px-3 py-1.5 text-[13px] font-bold text-primary transition-none!  hover:bg-primary/10 active:scale-95'
+              size={'md'}
+              Icon={Search}
             >
-              <Search className='w-3.5 h-3.5' />
-            </motion.button>
+              <div className='flex text-[13px] font-bold '>Global Search</div>
+            </Button>
           </Tooltip>
 
           <GamificationStats />

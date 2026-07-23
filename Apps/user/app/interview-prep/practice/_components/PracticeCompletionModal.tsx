@@ -1,13 +1,13 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Award, ChevronRight, RotateCcw, Star } from 'lucide-react';
+import { Award, ChevronRight, RotateCcw, Sparkles, Star } from 'lucide-react';
 import { Modal } from '@/components/layout/modal';
 import { api } from '@/lib/api';
 import type { GamificationUpdate } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { showGlobalToast } from '@/lib/toast';
-import { isQuickRatingLocked, lockQuickRating } from '../quick-rating-state';
+import { useConsole } from '@/components/ConsoleContext';
 
 const PRIORITY_OPTIONS = [
   { value: 1, label: 'Low', helper: 'Nice-to-have' },
@@ -27,18 +27,26 @@ export function PracticeCompletionModal({
   reward,
   onRedo,
   onReview,
+  onScore,
   onNext,
+  isScoring = false,
 }: {
   isOpen: boolean;
   questionId: string;
   reward?: GamificationUpdate | null;
   onRedo: () => void;
   onReview: () => void;
+  onScore: () => void;
   onNext: () => void;
+  isScoring?: boolean;
 }) {
+  const { profile, updateProfileExtra } = useConsole();
+  const quickRatingLocked =
+    (profile.extra_data?.practiceQuickRatingLocked as Record<string, true> | undefined) ??
+    {};
   const surveyLocked = useMemo(
-    () => isOpen && isQuickRatingLocked(questionId),
-    [isOpen, questionId],
+    () => isOpen && Boolean(quickRatingLocked[questionId]),
+    [isOpen, questionId, quickRatingLocked],
   );
   const [importance, setImportance] = useState<number | null>(null);
   const [difficulty, setDifficulty] = useState<number | null>(null);
@@ -66,11 +74,18 @@ export function PracticeCompletionModal({
         handleRedo();
       }
       if (event.key === 'Escape') handleReview();
-      if (event.key === 'Enter') handleNext();
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        handleScore();
+      }
+      if (event.key === 'ArrowRight') {
+        event.preventDefault();
+        handleNext();
+      }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [isOpen, onNext, onRedo, onReview]);
+  }, [isOpen, isScoring, onNext, onRedo, onReview, onScore]);
 
   const saveRating = async (
     nextImportance: number | null,
@@ -120,22 +135,38 @@ export function PracticeCompletionModal({
   };
 
   const handleDismiss = () => {
-    lockQuickRating(questionId);
+    void updateProfileExtra({
+      practiceQuickRatingLocked: { ...quickRatingLocked, [questionId]: true },
+    });
     onReview();
   };
 
   const handleRedo = () => {
-    lockQuickRating(questionId);
+    void updateProfileExtra({
+      practiceQuickRatingLocked: { ...quickRatingLocked, [questionId]: true },
+    });
     onRedo();
   };
 
   const handleReview = () => {
-    lockQuickRating(questionId);
+    void updateProfileExtra({
+      practiceQuickRatingLocked: { ...quickRatingLocked, [questionId]: true },
+    });
     onReview();
   };
 
+  const handleScore = () => {
+    if (isScoring) return;
+    void updateProfileExtra({
+      practiceQuickRatingLocked: { ...quickRatingLocked, [questionId]: true },
+    });
+    onScore();
+  };
+
   const handleNext = () => {
-    lockQuickRating(questionId);
+    void updateProfileExtra({
+      practiceQuickRatingLocked: { ...quickRatingLocked, [questionId]: true },
+    });
     onNext();
   };
 
@@ -275,11 +306,13 @@ export function PracticeCompletionModal({
           </button>
           <button
             type='button'
-            onClick={handleReview}
-            className='cursor-pointer rounded-xl border border-border p-3 text-xs font-semibold text-ink-secondary hover:text-primary'
+            onClick={handleScore}
+            disabled={isScoring}
+            className='flex cursor-pointer flex-col items-center gap-1 rounded-xl border border-primary/30 bg-primary/8 p-3 text-xs font-semibold text-primary hover:bg-primary/12 disabled:cursor-not-allowed disabled:opacity-60'
           >
-            Review
-            <span className='mt-1 block text-[9px] font-normal'>Esc</span>
+            <Sparkles className='h-4 w-4' />
+            {isScoring ? 'Scoring...' : 'Score This Attempt'}
+            <span className='text-[9px] font-normal'>Enter</span>
           </button>
           <button
             type='button'
@@ -288,7 +321,7 @@ export function PracticeCompletionModal({
           >
             <ChevronRight className='h-4 w-4' />
             Next
-            <span className='text-[9px] font-normal'>Enter</span>
+            <span className='text-[9px] font-normal'>Right Arrow</span>
           </button>
         </div>
       </div>

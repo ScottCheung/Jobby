@@ -1,198 +1,206 @@
+/**
+ * VirtualList — Universal Virtual Window & Infinite Scroll Component
+ *
+ * Renders only the items currently visible in the container viewport (+ buffer),
+ * preventing DOM bloat when displaying large dataset collections.
+ * Supports flexible prop interfaces for outerRef, renderRow/renderItem, rowHeight/itemHeight, etc.
+ *
+ * @format
+ */
+
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { Loader2 } from 'lucide-react';
 
-type VirtualListProps<T> = {
+export interface VirtualListProps<T> {
   items: T[];
-  rowHeight: number | ((index: number, item: T) => number);
-  renderRow: (
-    item: T,
-    index: number,
-    style: React.CSSProperties,
-  ) => React.ReactElement;
-  className?: string;
+  itemHeight?: number;
+  rowHeight?: number | (() => number);
+  buffer?: number;
   overscanCount?: number;
+  renderItem?: (item: T, index: number) => React.ReactNode;
+  renderRow?: (item: T, index: number, style: React.CSSProperties) => React.ReactNode;
+  getItemKey?: (item: T, index: number) => string | number;
+  onLoadMore?: () => void;
   onEndReached?: () => void;
-  onScroll?: (event: React.UIEvent<HTMLDivElement>) => void;
-  scrollThreshold?: number;
-  outerRef?: React.Ref<HTMLDivElement>;
-};
-
-function assignRef<T>(ref: React.Ref<T> | undefined, value: T) {
-  if (!ref) return;
-  if (typeof ref === 'function') {
-    ref(value);
-    return;
-  }
-  (ref as React.MutableRefObject<T>).current = value;
+  hasMore?: boolean;
+  isLoadingMore?: boolean;
+  className?: string;
+  emptyState?: React.ReactNode;
+  outerRef?: (el: HTMLDivElement | null) => void;
 }
 
 export function VirtualList<T>({
-  items,
-  rowHeight,
+  items = [],
+  itemHeight,
+  rowHeight = 56,
+  buffer,
+  overscanCount = 5,
+  renderItem,
   renderRow,
-  className,
-  overscanCount = 6,
+  getItemKey,
+  onLoadMore,
   onEndReached,
-  onScroll,
-  scrollThreshold = 500,
+  hasMore = false,
+  isLoadingMore = false,
+  className = '',
+  emptyState,
   outerRef,
 }: VirtualListProps<T>) {
-  const viewportRef = React.useRef<HTMLDivElement | null>(null);
-  const rafIdRef = React.useRef<number | null>(null);
-  const endReachedLockedRef = React.useRef(false);
-  const [scrollTop, setScrollTop] = React.useState(0);
-  const [viewportHeight, setViewportHeight] = React.useState(0);
+  const internalRef = useRef<HTMLDivElement>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
-  const resolvedRowHeight = React.useMemo(() => {
-    if (typeof rowHeight === 'number') {
-      return rowHeight;
-    }
-    if (items.length === 0) {
-      return 0;
-    }
-    return rowHeight(0, items[0]);
-  }, [items, rowHeight]);
+  const [scrollTop, setScrollTop] = useState(0);
+  const [containerHeight, setContainerHeight] = useState(600);
 
-  const totalHeight = items.length * resolvedRowHeight;
+  const effectiveItemHeight = useMemo(() => {
+    if (typeof itemHeight === 'number') return itemHeight;
+    if (typeof rowHeight === 'number') return rowHeight;
+    if (typeof rowHeight === 'function') return rowHeight();
+    return 56;
+  }, [itemHeight, rowHeight]);
 
-  const setCombinedRef = React.useCallback(
-    (node: HTMLDivElement | null) => {
-      viewportRef.current = node;
-      if (node) {
-        assignRef(outerRef, node);
-        setViewportHeight(node.clientHeight);
-        return;
-      }
-      assignRef(outerRef, node as any);
-    },
-    [outerRef],
-  );
+  const effectiveBuffer = buffer ?? overscanCount ?? 5;
+  const triggerLoadMore = onLoadMore || onEndReached;
 
-  const checkEndReached = React.useCallback(
-    (element: HTMLDivElement) => {
-      if (!onEndReached) return;
-      const distance = element.scrollHeight - element.scrollTop - element.clientHeight;
+  // Measure container height & listen for resize
+  useEffect(() => {
+    const el = internalRef.current;
+    if (!el) return;
 
-      if (distance <= scrollThreshold) {
-        if (!endReachedLockedRef.current) {
-          endReachedLockedRef.current = true;
-          onEndReached();
-        }
-        return;
-      }
-
-      endReachedLockedRef.current = false;
-    },
-    [onEndReached, scrollThreshold],
-  );
-
-  const handleScroll = React.useCallback(
-    (event: React.UIEvent<HTMLDivElement>) => {
-      const currentTarget = event.currentTarget;
-
-      if (rafIdRef.current !== null) {
-        return;
-      }
-
-      rafIdRef.current = window.requestAnimationFrame(() => {
-        rafIdRef.current = null;
-        setScrollTop(currentTarget.scrollTop);
-
-        if (onScroll) {
-          onScroll(event);
-        }
-
-        checkEndReached(currentTarget);
-      });
-    },
-    [checkEndReached, onScroll],
-  );
-
-  React.useEffect(() => {
-    const element = viewportRef.current;
-    if (!element || typeof ResizeObserver === 'undefined') {
-      return;
+    if (outerRef) {
+      outerRef(el);
     }
 
-    const observer = new ResizeObserver(() => {
-      setViewportHeight(element.clientHeight);
-      checkEndReached(element);
-    });
-
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, [checkEndReached]);
-
-  React.useEffect(() => {
-    const element = viewportRef.current;
-    if (!element) return;
-
-    endReachedLockedRef.current = false;
-    setViewportHeight(element.clientHeight);
-    checkEndReached(element);
-  }, [checkEndReached, items]);
-
-  React.useEffect(() => {
-    return () => {
-      if (rafIdRef.current !== null) {
-        window.cancelAnimationFrame(rafIdRef.current);
-      }
+    const updateHeight = () => {
+      setContainerHeight(el.clientHeight || 600);
     };
+
+    updateHeight();
+    const observer = new ResizeObserver(updateHeight);
+    observer.observe(el);
+
+    return () => observer.disconnect();
+  }, [outerRef]);
+
+  // Listen to scroll events
+  const handleScroll = useCallback(() => {
+    if (internalRef.current) {
+      setScrollTop(internalRef.current.scrollTop);
+    }
   }, []);
 
-  if (resolvedRowHeight <= 0) {
-    return (
-      <div
-        ref={setCombinedRef}
-        className={className}
-        style={{ height: '100%', width: '100%', overflow: 'auto' }}
-        onScroll={handleScroll}
-      />
+  // IntersectionObserver for infinite loading触底检测
+  useEffect(() => {
+    if (!triggerLoadMore || (!hasMore && !onEndReached) || isLoadingMore) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          triggerLoadMore();
+        }
+      },
+      {
+        root: internalRef.current,
+        rootMargin: '200px',
+        threshold: 0.1,
+      },
     );
-  }
 
-  const visibleStartIndex = Math.max(
-    0,
-    Math.floor(scrollTop / resolvedRowHeight) - overscanCount,
+    const sentinel = sentinelRef.current;
+    if (sentinel) observer.observe(sentinel);
+
+    return () => {
+      if (sentinel) observer.unobserve(sentinel);
+    };
+  }, [triggerLoadMore, hasMore, onEndReached, isLoadingMore]);
+
+  // Compute virtual window range
+  const totalCount = items.length;
+  const totalHeight = totalCount * effectiveItemHeight;
+
+  const { startIndex, endIndex, offsetY } = useMemo(() => {
+    const start = Math.max(0, Math.floor(scrollTop / effectiveItemHeight) - effectiveBuffer);
+    const end = Math.min(
+      totalCount,
+      Math.ceil((scrollTop + containerHeight) / effectiveItemHeight) + effectiveBuffer,
+    );
+    const topOffset = start * effectiveItemHeight;
+
+    return {
+      startIndex: start,
+      endIndex: end,
+      offsetY: topOffset,
+    };
+  }, [scrollTop, effectiveItemHeight, containerHeight, totalCount, effectiveBuffer]);
+
+  const visibleItems = useMemo(
+    () => items.slice(startIndex, endIndex),
+    [items, startIndex, endIndex],
   );
-  const visibleEndIndex = Math.min(
-    items.length - 1,
-    Math.ceil((scrollTop + viewportHeight) / resolvedRowHeight) + overscanCount - 1,
-  );
 
-  const visibleRows: React.ReactElement[] = [];
-  for (let index = visibleStartIndex; index <= visibleEndIndex; index += 1) {
-    const item = items[index];
-    if (item === undefined) continue;
+  const drawRow = (item: T, index: number, style?: React.CSSProperties) => {
+    if (renderRow) return renderRow(item, index, style ?? { height: effectiveItemHeight });
+    if (renderItem) return renderItem(item, index);
+    return null;
+  };
 
-    visibleRows.push(
-      renderRow(item, index, {
-        position: 'absolute',
-        top: index * resolvedRowHeight,
-        left: 0,
-        width: '100%',
-        height: resolvedRowHeight,
-      }),
+  const keyExtractor = (item: T, index: number) => {
+    if (getItemKey) return getItemKey(item, index);
+    if (item && typeof item === 'object' && 'id' in item) {
+      return String((item as any).id);
+    }
+    return index;
+  };
+
+  if (items.length === 0 && !isLoadingMore) {
+    return (
+      <div ref={internalRef} className={`relative overflow-y-auto ${className}`}>
+        {emptyState}
+      </div>
     );
   }
 
   return (
     <div
-      ref={setCombinedRef}
-      className={className}
-      style={{ height: '100%', width: '100%', overflow: 'auto' }}
+      ref={internalRef}
       onScroll={handleScroll}
+      className={`relative overflow-y-auto ${className}`}
     >
-      <div
-        style={{
-          position: 'relative',
-          height: totalHeight,
-          width: '100%',
-        }}
-      >
-        {visibleRows}
+      <div style={{ height: totalHeight, position: 'relative' }}>
+        <div
+          style={{
+            transform: `translateY(${offsetY}px)`,
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+          }}
+        >
+          {visibleItems.map((item, idx) => {
+            const actualIndex = startIndex + idx;
+            const key = keyExtractor(item, actualIndex);
+            const style = { height: effectiveItemHeight };
+            return (
+              <React.Fragment key={key}>
+                {drawRow(item, actualIndex, style)}
+              </React.Fragment>
+            );
+          })}
+        </div>
       </div>
+
+      {/* Sentinel for infinite scroll */}
+      <div ref={sentinelRef} className="h-4 w-full" />
+
+      {/* Loading More Spinner */}
+      {isLoadingMore && (
+        <div className="flex items-center justify-center py-4 gap-2 text-ink-secondary text-sm font-medium">
+          <Loader2 className="w-4 h-4 animate-spin text-primary" />
+          <span>Loading more items...</span>
+        </div>
+      )}
     </div>
   );
 }

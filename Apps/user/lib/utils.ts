@@ -10,15 +10,19 @@ export function cleanName(name: string): string {
   return name.replace(/^\d+[\.\-\s]*\s+/, '');
 }
 
+export function formatInterviewDuration(seconds?: number | null): string {
+  const value = Math.max(1, Math.round(seconds || 120));
+  if (value < 60) return `${value}s`;
+  if (value % 60 === 0) return `${value / 60} min`;
+  return `${Number((value / 60).toFixed(1))} min`;
+}
+
 export function matchesCollection(
-  q: { source_collection_id?: string | null; id: string; source_question_id?: string | null },
+  q: { collection_ids?: string[]; id: string },
   collection: { id: string; question_ids?: string[] }
 ): boolean {
   return (
-    q.source_collection_id === collection.id ||
-    (collection.question_ids && collection.question_ids.includes(q.id)) ||
-    !!(q.source_question_id && collection.question_ids && collection.question_ids.includes(q.source_question_id))
+    q.collection_ids?.includes(collection.id) ||
+    !!collection.question_ids?.includes(q.id)
   );
 }
-
-

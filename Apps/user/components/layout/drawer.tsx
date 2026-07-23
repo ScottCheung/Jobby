@@ -11,6 +11,7 @@ interface DrawerProps extends Omit<HTMLMotionProps<'div'>, 'children'> {
   onClose?: () => void;
   width?: number | string;
   children: React.ReactNode;
+  overlayClassName?: string;
 }
 
 export function Drawer({
@@ -19,6 +20,7 @@ export function Drawer({
   width = 400,
   children,
   className,
+  overlayClassName,
   ...props
 }: DrawerProps) {
   const springTransition = {
@@ -38,7 +40,7 @@ export function Drawer({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.18 }}
-            className='fixed inset-0 z-30   cursor-pointer'
+            className={cn('fixed inset-0 z-[60] cursor-pointer', overlayClassName)}
             onClick={onClose}
           />
           <motion.div
@@ -48,7 +50,7 @@ export function Drawer({
             // transition={springTransition}
             transition={{ ease: [0.22, 1, 0.36, 1], duration: 0.6 }}
             className={cn(
-              'fixed right-0 top-0 z-30 h-screen backdrop-blur-[20px] overflow-hidden border-l border-border bg-background/20 shadow-2xl shadow-primary/20',
+              'fixed right-0 top-0 z-[60] h-screen backdrop-blur-[20px] overflow-hidden border-l border-border bg-background/20 shadow-2xl shadow-primary/20',
               className,
             )}
             style={{ width }}

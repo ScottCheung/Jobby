@@ -11,18 +11,23 @@ from services.shared.settings import get_settings
 def get_or_create_current_user(request: Request, db: Session = Depends(get_db)) -> User:
     settings = get_settings()
     email = request.headers.get("X-User-Email")
-    print(f"DEBUG: X-User-Email received: {email}")
+    admin_emails = set(settings.admin_email_list)
 
     if email:
-        user = db.scalar(select(User).where(User.email == email))
+        normalized_email = email.strip().lower()
+        user = db.scalar(select(User).where(User.email == normalized_email))
         if user:
+            if normalized_email in admin_emails and user.role != "admin":
+                user.role = "admin"
+                db.commit()
+                db.refresh(user)
             return user
 
         # Create a new user for this email
         new_user = User(
-            email=email,
-            display_name=email.split("@")[0],
-            role="user",
+            email=normalized_email,
+            display_name=normalized_email.split("@")[0],
+            role="admin" if normalized_email in admin_emails else "user",
             status="active",
             can_use_auto_apply=True,
         )

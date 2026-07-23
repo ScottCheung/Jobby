@@ -142,9 +142,8 @@ export function ScrollableContainer({
       {/* Main List Container */}
       <motion.div
         ref={containerRef}
-        initial='hidden'
-        whileInView='visible'
-        viewport={{ once: true }}
+        initial={false}
+        animate='visible'
         variants={staggerVariants()}
         className={cn(
           'w-full grid grid-cols-12 gap-4 py-2 z-10',
@@ -154,9 +153,10 @@ export function ScrollableContainer({
       >
         {React.Children.map(children, (child, idx) => {
           if (!child) return null;
+          const key = React.isValidElement(child) && child.key ? child.key : idx;
           return (
             <motion.div
-              key={idx}
+              key={key}
               variants={itemVariants(15, 0)}
               className={cn(
                 'col-span-12 sm:col-span-6 lg:w-[380px] lg:shrink-0 lg:h-full',

@@ -14,6 +14,7 @@ import {
   PlayCircle,
   FolderPlus,
   FolderMinus,
+  FolderInput,
   Loader2,
   Link,
   Info,
@@ -38,15 +39,20 @@ import { BatchImportModal } from './_components/BatchImportModal';
 import { FilterSidebar } from './_components/FilterSidebar';
 import { QuestionRow } from './_components/QuestionRow';
 import { QuestionsFilterDrawer } from './_components/QuestionsFilterDrawer';
+import { AddQuestionsToCollectionModal } from './_components/AddQuestionsToCollectionModal';
+import { BatchAssignCategoryModal } from './_components/BatchAssignCategoryModal';
 import { Button } from '@/components/UI/Button';
 import { CollectionFormModal } from '../collections/_components/CollectionFormModal';
 import { showGlobalToast } from '@/lib/toast';
+import { VirtualList } from '@/components/UI/VirtualList';
 
 export default function QuestionsLibraryPage() {
   const [questions, setQuestions] = useState<InterviewQuestion[]>([]);
   const [originalQuestions, setOriginalQuestions] = useState<
     InterviewQuestion[]
   >([]);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -68,6 +74,8 @@ export default function QuestionsLibraryPage() {
     null,
   );
   const [isAddQuestionsModalOpen, setIsAddQuestionsModalOpen] = useState(false);
+  const [isBatchCategoryModalOpen, setIsBatchCategoryModalOpen] =
+    useState(false);
 
   const activeCollectionId =
     selectedCollectionIds.length === 1 ? selectedCollectionIds[0] : null;
@@ -144,22 +152,47 @@ export default function QuestionsLibraryPage() {
     handleOpenFilters,
   ]);
 
-  const fetchQuestions = async () => {
+  const BATCH_SIZE = 20;
+
+  const fetchQuestions = async (reset = true) => {
     try {
-      const data = await api.interviewQuestions();
-      practiceCache.questions = data;
-      setQuestions(data);
-      setOriginalQuestions(JSON.parse(JSON.stringify(data)));
-      setSelectedIds([]);
+      if (!reset) setIsLoadingMore(true);
+      const offset = reset ? 0 : questions.length;
+      const data = await api.interviewQuestions({ limit: BATCH_SIZE, offset });
+
+      if (reset) {
+        practiceCache.questions = data;
+        setQuestions(data);
+        setOriginalQuestions(JSON.parse(JSON.stringify(data)));
+        setSelectedIds([]);
+      } else {
+        setQuestions((prev) => {
+          const next = [...prev, ...data];
+          practiceCache.questions = next;
+          return next;
+        });
+        setOriginalQuestions((prev) => [...prev, ...JSON.parse(JSON.stringify(data))]);
+      }
+
+      setHasMore(data.length === BATCH_SIZE);
+      window.dispatchEvent(new CustomEvent('jobby:libraryCountUpdated', { detail: reset ? data.length : questions.length + data.length }));
       window.dispatchEvent(new Event('playbookLibraryUpdated'));
     } catch (err) {
       console.error('Failed to fetch questions:', err);
+    } finally {
+      setIsLoadingMore(false);
     }
   };
+
+  const loadNextBatch = useCallback(() => {
+    if (isLoading || isLoadingMore || !hasMore) return;
+    void fetchQuestions(false);
+  }, [isLoading, isLoadingMore, hasMore, questions.length]);
 
   const initData = async (forceRefetch = false, silent = false) => {
     if (practiceCache.questions && !forceRefetch) {
       setQuestions(practiceCache.questions);
+      window.dispatchEvent(new CustomEvent('jobby:libraryCountUpdated', { detail: practiceCache.questions.length }));
       setOriginalQuestions(JSON.parse(JSON.stringify(practiceCache.questions)));
       setCategories(practiceCache.categories || []);
       setIsLoading(false);
@@ -194,7 +227,7 @@ export default function QuestionsLibraryPage() {
     try {
       const [qs, cats, tagsData, collectionData, myCollections, user] =
         await Promise.all([
-          api.interviewQuestions(),
+          api.interviewQuestions({ limit: BATCH_SIZE, offset: 0 }),
           api.interviewCategories(),
           api.interviewTags(),
           api.interviewCollections(),
@@ -206,6 +239,8 @@ export default function QuestionsLibraryPage() {
       practiceCache.categories = cats;
 
       setQuestions(qs);
+      setHasMore(qs.length === BATCH_SIZE);
+      window.dispatchEvent(new CustomEvent('jobby:libraryCountUpdated', { detail: qs.length }));
       setOriginalQuestions(JSON.parse(JSON.stringify(qs)));
       setCategories(cats);
       setTags(tagsData);
@@ -253,9 +288,9 @@ export default function QuestionsLibraryPage() {
       const orig = originalQuestions.find((o) => o.id === q.id);
       if (!orig) return false;
       const answerChanged =
-        q.is_library_copy ?
-          q.my_answer !== orig.my_answer
-        : q.answer_objective !== orig.answer_objective;
+        q.can_edit ?
+          q.answer_objective !== orig.answer_objective
+        : q.my_answer !== orig.my_answer;
       return (
         q.title !== orig.title ||
         q.category_id !== orig.category_id ||
@@ -275,18 +310,24 @@ export default function QuestionsLibraryPage() {
     try {
       await Promise.all(
         modified.map((q) => {
-          if (q.is_library_copy) {
-            return api.updateInterviewQuestion(q.id, {
-              my_answer: q.my_answer,
-            });
-          }
-          return api.updateInterviewQuestion(q.id, {
-            title: q.title,
-            category_id: q.category_id,
-            frequency: q.frequency,
-            importance_score: q.importance_score,
-            answer_objective: q.answer_objective,
-          });
+          return api.updateInterviewQuestion(
+            q.id,
+            q.can_edit ?
+              {
+                title: q.title,
+                category_id: q.category_id,
+                frequency: q.frequency,
+                importance_score: q.importance_score,
+                answer_objective: q.answer_objective,
+                my_answer: q.my_answer,
+              }
+            : {
+                category_id: q.category_id,
+                frequency: q.frequency,
+                importance_score: q.importance_score,
+                my_answer: q.my_answer,
+              },
+          );
         }),
       );
       addNotification({
@@ -318,10 +359,10 @@ export default function QuestionsLibraryPage() {
 
   const handleDeleteQuestion = async (id: string) => {
     const accepted = await confirm({
-      title: 'Delete Question',
+      title: 'Remove Saved Question',
       message:
-        'Are you sure you want to delete this question? This will permanently remove it from your library and all collections.',
-      confirmLabel: 'Delete',
+        'Remove this question from your saved Library? If it belongs to a collection you subscribe to, it may still appear through that collection.',
+      confirmLabel: 'Remove Saved',
       type: 'delete',
     });
     if (!accepted) return;
@@ -329,8 +370,8 @@ export default function QuestionsLibraryPage() {
       const continueWithChanges = await confirm({
         title: 'Unsaved Changes Warning',
         message:
-          'You have unsaved changes. Deleting this question will reload the questions and discard all other unsaved changes. Continue?',
-        confirmLabel: 'Discard & Delete',
+          'You have unsaved changes. Removing this saved question will reload the questions and discard all other unsaved changes. Continue?',
+        confirmLabel: 'Discard & Remove',
         type: 'warning',
       });
       if (!continueWithChanges) return;
@@ -339,31 +380,85 @@ export default function QuestionsLibraryPage() {
       await api.deleteInterviewQuestion(id);
       addNotification({
         type: 'success',
-        message: 'Question deleted successfully',
+        message: 'Question removed from saved Library',
       });
       await fetchQuestions();
     } catch (err) {
-      console.error('Failed to delete question:', err);
-      addNotification({ type: 'error', message: 'Failed to delete question' });
+      console.error('Failed to remove saved question:', err);
+      addNotification({
+        type: 'error',
+        message: 'Failed to remove saved question',
+      });
+    }
+  };
+
+  const handleArchiveQuestion = async (id: string) => {
+    const question = questions.find((item) => item.id === id);
+    const accepted = await confirm({
+      title: 'Archive Public Question?',
+      message:
+        question ?
+          `Archive "${question.title}" from the public question bank? It will disappear from search, recommendations, Library practice lists, and Question Sets. Existing practice history is preserved.`
+        : 'Archive this question from the public question bank? It will disappear from search, recommendations, Library practice lists, and Question Sets. Existing practice history is preserved.',
+      confirmLabel: 'Archive Question',
+      type: 'delete',
+    });
+    if (!accepted) return;
+    if (hasChanges) {
+      const continueWithChanges = await confirm({
+        title: 'Unsaved Changes Warning',
+        message:
+          'You have unsaved changes. Archiving this question will reload the questions and discard all other unsaved changes. Continue?',
+        confirmLabel: 'Discard & Archive',
+        type: 'warning',
+      });
+      if (!continueWithChanges) return;
+    }
+    try {
+      await api.archiveInterviewQuestion(id);
+      addNotification({
+        type: 'success',
+        message: 'Question archived from the public question bank',
+      });
+      await fetchQuestions();
+      window.dispatchEvent(new Event('playbookLibraryUpdated'));
+    } catch (err) {
+      console.error('Failed to archive question:', err);
+      addNotification({
+        type: 'error',
+        message:
+          err instanceof Error ? err.message : 'Failed to archive question',
+      });
     }
   };
 
   const handleDeleteSelected = async () => {
     if (selectedIds.length === 0) return;
+    const savedSelectedIds = selectedIds.filter(
+      (id) => questions.find((q) => q.id === id)?.is_saved,
+    );
+    if (savedSelectedIds.length === 0) {
+      addNotification({
+        type: 'info',
+        message: 'No saved questions selected',
+      });
+      return;
+    }
     if (hasChanges) {
       const continueWithChanges = await confirm({
         title: 'Unsaved Changes Warning',
         message:
-          'You have unsaved changes. Batch deleting will reload the questions and discard all other unsaved changes. Continue?',
+          'You have unsaved changes. Removing saved questions will reload the questions and discard all other unsaved changes. Continue?',
         confirmLabel: 'Discard & Continue',
         type: 'warning',
       });
       if (!continueWithChanges) return;
     }
+    const savedQuestionLabel = `question${savedSelectedIds.length === 1 ? '' : 's'}`;
     const accepted = await confirm({
-      title: 'Delete Selected Questions',
-      message: `Are you sure you want to delete the ${selectedIds.length} selected questions? This will permanently remove them from your entire library and all collections. This action cannot be undone.`,
-      confirmLabel: 'Delete Permanently',
+      title: 'Remove Saved Questions',
+      message: `Remove ${savedSelectedIds.length} selected ${savedQuestionLabel} from your saved Library? Collection subscriptions can still show matching questions.`,
+      confirmLabel: 'Remove Saved',
       type: 'delete',
     });
     if (!accepted) return;
@@ -371,19 +466,19 @@ export default function QuestionsLibraryPage() {
     setIsSaving(true);
     try {
       await Promise.all(
-        selectedIds.map((id) => api.deleteInterviewQuestion(id)),
+        savedSelectedIds.map((id) => api.deleteInterviewQuestion(id)),
       );
       addNotification({
         type: 'success',
-        message: `Successfully deleted ${selectedIds.length} questions`,
+        message: `Removed ${savedSelectedIds.length} saved ${savedQuestionLabel}`,
       });
       setIsSelectionMode(false);
       await fetchQuestions();
     } catch (err) {
-      console.error('Failed to delete selected questions:', err);
+      console.error('Failed to remove selected saved questions:', err);
       addNotification({
         type: 'error',
-        message: 'Failed to delete some selected questions',
+        message: 'Failed to remove some saved questions',
       });
       await fetchQuestions(); // Sync back
     } finally {
@@ -404,13 +499,7 @@ export default function QuestionsLibraryPage() {
     try {
       const currentIds = activeCollection.question_ids || [];
       const idsToRemove = new Set(selectedIds);
-      const newIds = currentIds.filter((id) => {
-        const isSelected = idsToRemove.has(id);
-        const matchesSource = questions.some(
-          (q) => idsToRemove.has(q.id) && q.source_question_id === id,
-        );
-        return !isSelected && !matchesSource;
-      });
+      const newIds = currentIds.filter((id) => !idsToRemove.has(id));
 
       await api.updateInterviewCollection(activeCollection.id, {
         question_ids: newIds,
@@ -459,6 +548,40 @@ export default function QuestionsLibraryPage() {
             err.message
           : 'Failed to add questions to collection',
       });
+    }
+  };
+
+  const handleBatchAssignCategory = async (targetCategoryId: string | null) => {
+    if (selectedIds.length === 0) return;
+    setIsSaving(true);
+    try {
+      await Promise.all(
+        selectedIds.map((id) =>
+          api.updateInterviewQuestion(id, { category_id: targetCategoryId }),
+        ),
+      );
+      const catName =
+        targetCategoryId ?
+          categories.find((c) => c.id === targetCategoryId)?.name
+        : null;
+      addNotification({
+        type: 'success',
+        message:
+          targetCategoryId ?
+            `Updated category to "${cleanName(catName || '')}" for ${selectedIds.length} question${selectedIds.length === 1 ? '' : 's'}`
+          : `Cleared category for ${selectedIds.length} question${selectedIds.length === 1 ? '' : 's'}`,
+      });
+      setSelectedIds([]);
+      setIsSelectionMode(false);
+      await fetchQuestions();
+    } catch (err) {
+      console.error('Failed to batch assign category:', err);
+      addNotification({
+        type: 'error',
+        message: 'Failed to update category for selected questions',
+      });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -599,11 +722,11 @@ export default function QuestionsLibraryPage() {
   };
 
   const handleOpenEditQuestion = (q: InterviewQuestion) => {
-    if (q.is_library_copy) {
+    if (!q.can_edit) {
       addNotification({
         type: 'warning',
         message:
-          'Collection questions keep their original prompt locked. You can still write your own answer inline and practice them.',
+          'Only the contributor can edit public question details. You can still update your personal answer inline.',
       });
       return;
     }
@@ -643,9 +766,10 @@ export default function QuestionsLibraryPage() {
     const matchesSearch = q.title.toLowerCase().includes(search.toLowerCase());
     const matchesCategory =
       selectedCategoryIds.length === 0 ||
-      (q.category_id !== null &&
-        q.category_id !== undefined &&
-        selectedCategoryIds.includes(q.category_id));
+      selectedCategoryIds.some((catId) => {
+        if (catId === 'uncategorized') return !q.category_id;
+        return q.category_id === catId;
+      });
     const matchesTag =
       selectedTagIds.length === 0 ||
       q.tags?.some((t) => selectedTagIds.includes(t.id));
@@ -679,8 +803,8 @@ export default function QuestionsLibraryPage() {
     collections.map((collection) => [collection.id, collection]),
   );
   const sourceCollections = collections.filter((collection) =>
-    questions.some(
-      (question) => question.source_collection_id === collection.id,
+    questions.some((question) =>
+      question.collection_ids?.includes(collection.id),
     ),
   );
 
@@ -707,8 +831,8 @@ export default function QuestionsLibraryPage() {
 
   const gridColsClass =
     isSelectionMode ?
-      'grid-cols-[40px_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,0.8fr)_minmax(0,0.8fr)_minmax(0,0.8fr)_minmax(0,2.5fr)]'
-    : 'grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,0.8fr)_minmax(0,0.8fr)_minmax(0,0.8fr)_minmax(0,2.5fr)]';
+      'grid-cols-[40px_minmax(0,2.5fr)_minmax(0,1.2fr)_minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.9fr)_120px]'
+    : 'grid-cols-[minmax(0,2.5fr)_minmax(0,1.2fr)_minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.9fr)_120px]';
 
   return (
     <div className='flex gap-4 h-full relative overflow-hidden'>
@@ -805,34 +929,50 @@ export default function QuestionsLibraryPage() {
                     <X className='w-4 h-4' />
                   </button>
                 </Tooltip>
-                {selectedIds.length > 0 &&
-                  (activeCollection ?
-                    isActiveCollectionOwned && (
-                      <Tooltip
-                        content={`Remove from Collection (${selectedIds.length})`}
-                        side='bottom'
-                      >
-                        <button
-                          onClick={handleRemoveSelectedFromCollection}
-                          disabled={isSaving}
-                          className='flex items-center justify-center w-9 h-9 text-rose-605 bg-rose-50 hover:bg-rose-100/80 dark:text-rose-400 dark:bg-rose-955/20 dark:hover:bg-rose-955/30 rounded-xl transition-colors border border-rose-200/50 dark:border-rose-900/30 disabled:opacity-50'
-                        >
-                          <FolderMinus className='w-4 h-4' />
-                        </button>
-                      </Tooltip>
-                    )
-                  : <Tooltip
-                      content={`Delete Selected (${selectedIds.length})`}
+                {selectedIds.length > 0 && (
+                  <>
+                    <Tooltip
+                      content={`Assign Category (${selectedIds.length})`}
                       side='bottom'
                     >
                       <button
-                        onClick={handleDeleteSelected}
+                        onClick={() => setIsBatchCategoryModalOpen(true)}
                         disabled={isSaving}
-                        className='flex items-center justify-center w-9 h-9 text-red-655 bg-red-50 hover:bg-red-100/80 dark:text-red-400 dark:bg-red-955/20 dark:hover:bg-red-955/30 rounded-xl transition-colors border border-red-200/50 dark:border-red-900/30 disabled:opacity-50'
+                        className='flex items-center justify-center w-9 h-9 text-primary bg-primary/10 hover:bg-primary/20 rounded-xl transition-colors border border-primary/30 disabled:opacity-50'
                       >
-                        <Trash2 className='w-4 h-4' />
+                        <FolderInput className='w-4 h-4' />
                       </button>
-                    </Tooltip>)}
+                    </Tooltip>
+                    {activeCollection ?
+                      isActiveCollectionOwned && (
+                        <Tooltip
+                          content={`Remove from Collection (${selectedIds.length})`}
+                          side='bottom'
+                        >
+                          <button
+                            onClick={handleRemoveSelectedFromCollection}
+                            disabled={isSaving}
+                            className='flex items-center justify-center w-9 h-9 text-rose-605 bg-rose-50 hover:bg-rose-100/80 dark:text-rose-400 dark:bg-rose-955/20 dark:hover:bg-rose-955/30 rounded-xl transition-colors border border-rose-200/50 dark:border-rose-900/30 disabled:opacity-50'
+                          >
+                            <FolderMinus className='w-4 h-4' />
+                          </button>
+                        </Tooltip>
+                      )
+                    : <Tooltip
+                        content={`Remove Saved (${selectedIds.length})`}
+                        side='bottom'
+                      >
+                        <button
+                          onClick={handleDeleteSelected}
+                          disabled={isSaving}
+                          className='flex items-center justify-center w-9 h-9 text-red-655 bg-red-50 hover:bg-red-100/80 dark:text-red-400 dark:bg-red-955/20 dark:hover:bg-red-955/30 rounded-xl transition-colors border border-red-200/50 dark:border-red-900/30 disabled:opacity-50'
+                        >
+                          <Trash2 className='w-4 h-4' />
+                        </button>
+                      </Tooltip>
+                    }
+                  </>
+                )}
               </>
             : <Tooltip content='Select Multiple' side='bottom'>
                 <button
@@ -876,6 +1016,7 @@ export default function QuestionsLibraryPage() {
                 side='bottom'
               >
                 <Button
+                  layoutId='add-questions-to-collection'
                   onClick={() => setIsAddQuestionsModalOpen(true)}
                   Icon={FolderPlus}
                   disabled={isSaving}
@@ -941,11 +1082,11 @@ export default function QuestionsLibraryPage() {
           <div className='px-2'>Author</div>
           <div className='px-2'>Frequency</div>
           <div className='px-2'>Importance</div>
-          <div className='px-2'>Your Answer</div>
+          <div className='px-2 text-right pr-4'>Actions</div>
         </div>
 
         {/* Table Content */}
-        <div className='flex-1 overflow-y-auto fade-out-tb'>
+        <div className='flex-1 overflow-hidden fade-out-tb relative'>
           {isLoading ?
             <QuestionListSkeleton />
           : filteredQuestions.length === 0 ?
@@ -958,10 +1099,9 @@ export default function QuestionsLibraryPage() {
               </h3>
               <p className='body-md text-ink-secondary max-w-sm mb-4'>
                 {activeCollection ?
-                  'Add some questions from your library to this collection.'
-                : search ?
-                  'Try adjusting your search criteria.'
-                : 'Import your first interview question to get started.'}
+                  'Add questions from your library to populate this collection.'
+                : 'Import or add questions to build your personalized practice list.'
+                }
               </p>
               {activeCollection && isActiveCollectionOwned && (
                 <Button
@@ -972,34 +1112,38 @@ export default function QuestionsLibraryPage() {
                 </Button>
               )}
             </div>
-          : <div className='flex flex-col '>
-              {filteredQuestions.map((q) => {
-                const orig = originalQuestions.find((o) => o.id === q.id);
-                return (
-                  <QuestionRow
-                    key={q.id}
-                    question={q}
-                    originalQuestion={orig}
-                    isSelectionMode={isSelectionMode}
-                    isSelected={selectedIds.includes(q.id)}
-                    onSelectChange={(id, checked) => {
-                      setSelectedIds((prev) =>
-                        checked ? [...prev, id] : prev.filter((x) => x !== id),
-                      );
-                    }}
-                    editingCell={editingCell}
-                    setEditingCell={setEditingCell}
-                    onInlineUpdate={handleInlineUpdate}
-                    categories={categories}
-                    onOpenEdit={handleOpenEditQuestion}
-                    gridColsClass={gridColsClass}
-                    isDrawerSelected={isDrawerOpen && drawerOpenId === q.id}
-                    collections={collections}
-                    currentUserId={currentUser?.id}
-                  />
-                );
-              })}
-            </div>
+          : <VirtualList
+              items={filteredQuestions}
+              itemHeight={56}
+              buffer={5}
+              getItemKey={(q) => q.id}
+              onLoadMore={loadNextBatch}
+              hasMore={hasMore}
+              isLoadingMore={isLoadingMore}
+              className='h-full divide-y divide-border/40'
+              renderItem={(q) => (
+                <QuestionRow
+                  key={q.id}
+                  question={q}
+                  isSelectionMode={isSelectionMode}
+                  isSelected={selectedIds.includes(q.id)}
+                  onSelectChange={(id, checked) => {
+                    setSelectedIds((prev) =>
+                      checked ? [...prev, id] : prev.filter((x) => x !== id),
+                    );
+                  }}
+                  onInlineUpdate={handleInlineUpdate}
+                  onOpenEdit={handleOpenEditQuestion}
+                  onDeleteQuestion={handleDeleteQuestion}
+                  onArchiveQuestion={handleArchiveQuestion}
+                  categories={categories}
+                  gridColsClass={gridColsClass}
+                  isDrawerSelected={isDrawerOpen && drawerOpenId === q.id}
+                  currentUserId={currentUser?.id}
+                  collections={collections}
+                />
+              )}
+            />
           }
         </div>
       </div>
@@ -1095,7 +1239,18 @@ export default function QuestionsLibraryPage() {
           onClose={() => setIsAddQuestionsModalOpen(false)}
           collection={activeCollection}
           questions={questions}
+          categories={categories}
+          tags={tags}
           onSave={handleAddQuestionsToCollection}
+        />
+      )}
+      {isBatchCategoryModalOpen && (
+        <BatchAssignCategoryModal
+          isOpen={isBatchCategoryModalOpen}
+          onClose={() => setIsBatchCategoryModalOpen(false)}
+          selectedCount={selectedIds.length}
+          categories={categories}
+          onAssignCategory={handleBatchAssignCategory}
         />
       )}
     </div>
@@ -1119,153 +1274,6 @@ function QuestionListSkeleton() {
           <div className='h-4 bg-panel rounded w-3/4'></div>
         </div>
       ))}
-    </div>
-  );
-}
-
-interface AddQuestionsProps {
-  isOpen: boolean;
-  onClose: () => void;
-  collection: InterviewCollection;
-  questions: InterviewQuestion[];
-  onSave: (ids: string[]) => Promise<void>;
-}
-
-function AddQuestionsToCollectionModal({
-  isOpen,
-  onClose,
-  collection,
-  questions,
-  onSave,
-}: AddQuestionsProps) {
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [search, setSearch] = useState('');
-  const [isSaving, setIsSaving] = useState(false);
-
-  const isQuestionInCollection = (
-    q: InterviewQuestion,
-    col: InterviewCollection,
-  ) => {
-    return (
-      q.source_collection_id === col.id ||
-      col.question_ids?.includes(q.id) ||
-      !!(
-        q.source_question_id && col.question_ids?.includes(q.source_question_id)
-      )
-    );
-  };
-
-  const candidates = questions.filter(
-    (q) => !isQuestionInCollection(q, collection),
-  );
-
-  const filteredCandidates = candidates.filter((q) =>
-    q.title.toLowerCase().includes(search.toLowerCase()),
-  );
-
-  const toggleSelect = (id: string) => {
-    setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    );
-  };
-
-  const handleSave = async () => {
-    if (selectedIds.length === 0) return;
-    setIsSaving(true);
-    try {
-      await onSave(selectedIds);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  if (!isOpen) return null;
-
-  return (
-    <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4'>
-      <div className='relative flex flex-col w-full max-w-lg rounded-3xl border border-border bg-panel shadow-2xl overflow-hidden'>
-        {/* Header */}
-        <div className='flex items-center justify-between border-b border-border px-6 py-5 shrink-0 bg-background-secondary/5'>
-          <div>
-            <h2 className='title-card'>Add Questions to {collection.title}</h2>
-            <p className='body-sm text-ink-secondary mt-1'>
-              Select questions from your library to add to this collection
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            className='rounded-xl p-1.5 text-ink-secondary hover:bg-background-secondary hover:text-ink-primary transition-colors'
-          >
-            <X className='h-5 w-5' />
-          </button>
-        </div>
-        {/* Search */}
-        <div className='px-6 pt-5 shrink-0'>
-          <div className='relative'>
-            <Search className='absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-secondary' />
-            <input
-              type='text'
-              placeholder='Search questions...'
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className='body-md w-full pl-9 pr-4 py-2 rounded-xl bg-panel dark:bg-background-secondary dark:border-border focus:outline-none focus:border-primary/50 text-ink-primary'
-            />
-          </div>
-        </div>
-
-        {/* Content list */}
-        <div className='flex-1 overflow-y-auto p-6 flex flex-col gap-2 max-h-[40vh] min-h-[200px]'>
-          {filteredCandidates.length === 0 ?
-            <div className='body-sm text-center py-8 text-ink-secondary italic'>
-              No questions available to add.
-            </div>
-          : filteredCandidates.map((q) => {
-              const isChecked = selectedIds.includes(q.id);
-              return (
-                <label
-                  key={q.id}
-                  className={`flex items-start gap-3 rounded-xl p-3 border transition-colors cursor-pointer ${
-                    isChecked ?
-                      'bg-primary/5 border-primary/25'
-                    : 'border-border/40 hover:bg-background-secondary/30'
-                  }`}
-                >
-                  <input
-                    type='checkbox'
-                    checked={isChecked}
-                    onChange={() => toggleSelect(q.id)}
-                    className='mt-1 rounded border-border text-primary focus:ring-primary accent-primary'
-                  />
-                  <div className='min-w-0 flex-1 label leading-snug'>
-                    {q.title}
-                  </div>
-                </label>
-              );
-            })
-          }
-        </div>
-
-        {/* Footer */}
-        <div className='flex items-center justify-end gap-3 p-6 border-t border-border bg-background-secondary/5 shrink-0'>
-          <Button
-            variant='outline'
-            onClick={onClose}
-            disabled={isSaving}
-            className='rounded-full'
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleSave}
-            disabled={isSaving || selectedIds.length === 0}
-            className='rounded-full'
-          >
-            {isSaving ? 'Adding...' : `Add Selected (${selectedIds.length})`}
-          </Button>
-        </div>
-      </div>
     </div>
   );
 }

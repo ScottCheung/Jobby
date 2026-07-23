@@ -65,8 +65,6 @@ export const CELEBRATION_EVENT_ORDER: CelebrationEventKey[] = [
   'level_up',
 ];
 
-export const CELEBRATION_STORAGE_KEY = 'celebration-admin-config-v1';
-
 const DEFAULT_STYLES: Record<CelebrationType, CelebrationStyleConfig> = {
   basic: {
     type: 'basic',
@@ -336,39 +334,18 @@ export function normalizeCelebrationConfig(
 }
 
 export function loadCelebrationConfig(): CelebrationConfigSnapshot {
-  if (typeof window === 'undefined') {
-    return getDefaultCelebrationConfig();
-  }
-
-  try {
-    const raw = window.localStorage.getItem(CELEBRATION_STORAGE_KEY);
-    if (!raw) {
-      return getDefaultCelebrationConfig();
-    }
-    return normalizeCelebrationConfig(JSON.parse(raw));
-  } catch (error) {
-    console.error('Failed to load celebration config:', error);
-    return getDefaultCelebrationConfig();
-  }
-}
-
-function saveLocalCelebrationConfig(config: CelebrationConfigSnapshot) {
-  if (typeof window === 'undefined') return;
-  window.localStorage.setItem(CELEBRATION_STORAGE_KEY, JSON.stringify(config));
+  return getDefaultCelebrationConfig();
 }
 
 export async function loadCelebrationConfigFromServer() {
   try {
     const response = await api.gamificationAdminConfig();
     if (!response.config.celebration_config) {
-      // Preserve an administrator's existing browser draft until it is saved to JSONB.
       return loadCelebrationConfig();
     }
-    const config = normalizeCelebrationConfig(
+    return normalizeCelebrationConfig(
       response.config.celebration_config as Partial<CelebrationConfigSnapshot> | undefined,
     );
-    saveLocalCelebrationConfig(config);
-    return config;
   } catch (error) {
     console.error('Failed to load celebration config from server:', error);
     return loadCelebrationConfig();
@@ -385,7 +362,6 @@ export async function saveCelebrationConfig(config: CelebrationConfigSnapshot) {
   const saved = normalizeCelebrationConfig(
     response.config.celebration_config as Partial<CelebrationConfigSnapshot> | undefined,
   );
-  saveLocalCelebrationConfig(saved);
   return saved;
 }
 

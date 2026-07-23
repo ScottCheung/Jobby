@@ -10,6 +10,7 @@ import React, {
   useState,
   useTransition,
 } from 'react';
+import { usePathname } from 'next/navigation';
 import { api } from '@/lib/api';
 import { showGlobalToast } from '@/lib/toast';
 import { withMinimumLoadingTime } from '@/lib/loading';
@@ -80,6 +81,7 @@ function mergeProfileApplicationInputs(profile: JobHuntingProfile | null | undef
 }
 
 export const emptyProfile: UserProfile = {
+  preferred_name: '',
   first_name: '',
   middle_name: '',
   last_name: '',
@@ -94,6 +96,7 @@ export const emptyProfile: UserProfile = {
   gender_identity: '',
   disability_status: '',
   veteran_status: '',
+  extra_data: {},
 };
 
 export const emptyJobHuntingProfile: JobHuntingProfile = {
@@ -122,6 +125,51 @@ export const emptyJobHuntingProfile: JobHuntingProfile = {
   extra_data: {},
   is_default: true,
 };
+
+const legacyProfileSettingKeys = [
+  'practiceShowAnswersPreference',
+  'practiceAutoEvalPreference',
+  'auto-job-ui-theme',
+  'auto-job-ui-theme-color',
+  'vite-ui-theme',
+  'practiceModePreference',
+  'practiceQuickRatingLocked',
+  'saved-comment-ids',
+  'scheduleViewMode',
+  'automation-panel-corner',
+];
+
+function migrateLegacyProfileSettings(profile: UserProfile): {
+  profile: UserProfile;
+  changed: boolean;
+} {
+  if (typeof window === 'undefined') return { profile, changed: false };
+  const extra = { ...(profile.extra_data ?? {}) };
+  let changed = false;
+
+  for (const key of legacyProfileSettingKeys) {
+    const raw = window.localStorage.getItem(key);
+    if (raw === null || extra[key] !== undefined) continue;
+    try {
+      extra[key] =
+        key === 'practiceModePreference' ||
+        key === 'practiceQuickRatingLocked' ||
+        key === 'saved-comment-ids' ?
+          JSON.parse(raw)
+        : raw;
+      changed = true;
+    } catch {
+      extra[key] = raw;
+      changed = true;
+    }
+  }
+
+  if (!changed) return { profile, changed: false };
+  for (const key of legacyProfileSettingKeys) {
+    window.localStorage.removeItem(key);
+  }
+  return { profile: { ...profile, extra_data: extra }, changed: true };
+}
 
 export const emptyRuntime: RuntimeSettings = {
   run_in_background: false,
@@ -164,6 +212,11 @@ interface ConsoleContextType {
   user: User | null;
   profile: UserProfile;
   setProfile: React.Dispatch<React.SetStateAction<UserProfile>>;
+  updateProfileExtra: (
+    nextExtra:
+      | Record<string, unknown>
+      | ((currentExtra: Record<string, unknown>) => Record<string, unknown>),
+  ) => Promise<UserProfile>;
   jobHuntingProfile: JobHuntingProfile;
   setJobHuntingProfile: React.Dispatch<React.SetStateAction<JobHuntingProfile>>;
   jobHuntingProfiles: JobHuntingProfile[];
@@ -191,7 +244,11 @@ interface ConsoleContextType {
   setError: (err: string) => void;
   isPending: boolean;
   hasLoadedInitialData: boolean;
+  hasLoadedJobApplyData: boolean;
+  jobApplyLoading: boolean;
   loadData: () => void;
+  saveAvatar: (file: File) => Promise<void>;
+  removeAvatar: () => Promise<void>;
   saveProfile: () => Promise<void>;
   saveJobHuntingProfile: (value?: JobHuntingProfile) => Promise<void>;
   createJobHuntingProfile: (value: JobHuntingProfile) => Promise<JobHuntingProfile>;
@@ -408,54 +465,91 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
     [applications],
   );
 
+  const pathname = usePathname();
+  const [hasLoadedJobApplyData, setHasLoadedJobApplyData] = useState(false);
+  const [jobApplyLoading, setJobApplyLoading] = useState(false);
+  const hasLoadedJobApplyDataRef = React.useRef(false);
+  const jobApplyLoadingRef = React.useRef(false);
+
+  const loadJobApplyData = async (force = false) => {
+    if (jobApplyLoadingRef.current || (hasLoadedJobApplyDataRef.current && !force)) return;
+    setJobApplyLoading(true);
+    jobApplyLoadingRef.current = true;
+    try {
+      setError('');
+      const jobHuntingProfilesPromise = api.jobHuntingProfiles().catch((err) => {
+        console.warn('Falling back to single search profile endpoint', err);
+        return [] as JobHuntingProfile[];
+      });
+      const [
+        jobHuntingProfilesRows,
+        defaultSearch,
+        questionRows,
+        applicationRows,
+        runtimeConfig,
+        statsData,
+      ] = await Promise.all([
+        jobHuntingProfilesPromise,
+        api.jobHuntingProfile(),
+        api.questionCache(),
+        api.applications(),
+        api.runtimeSettings(),
+        api.applicationStats(Intl.DateTimeFormat().resolvedOptions().timeZone).catch(() => null),
+      ]);
+      const resolvedJobHuntingProfiles =
+        jobHuntingProfilesRows.length > 0 ?
+          jobHuntingProfilesRows.map((item) => mergeProfileApplicationInputs(item))
+        : defaultSearch ? [mergeProfileApplicationInputs(defaultSearch)]
+        : [];
+      const resolvedDefaultSearch =
+        resolvedJobHuntingProfiles.find((profile) => profile.is_default) ??
+        mergeProfileApplicationInputs(defaultSearch) ??
+        resolvedJobHuntingProfiles[0] ??
+        emptyJobHuntingProfile;
+      setJobHuntingProfiles(resolvedJobHuntingProfiles);
+      setJobHuntingProfile(resolvedDefaultSearch);
+      setRuntimeSettings(runtimeConfig ?? emptyRuntime);
+      setQuestions(questionRows);
+      setApplications(sortApplications(applicationRows));
+      if (statsData) {
+        setAppStats(statsData);
+      }
+      setHasLoadedJobApplyData(true);
+      hasLoadedJobApplyDataRef.current = true;
+    } catch (err) {
+      console.error('Failed to load Job Apply data:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load job search data');
+    } finally {
+      setJobApplyLoading(false);
+      jobApplyLoadingRef.current = false;
+    }
+  };
+
   const loadData = () => {
     startTransition(async () => {
       try {
         setError('');
-        const jobHuntingProfilesPromise = api.jobHuntingProfiles().catch((err) => {
-          console.warn('Falling back to single search profile endpoint', err);
-          return [] as JobHuntingProfile[];
-        });
         const [
           me,
           currentProfile,
-          jobHuntingProfilesRows,
-          defaultSearch,
-          questionRows,
-          applicationRows,
-          runtimeConfig,
-          statsData,
         ] = await withMinimumLoadingTime(
           Promise.all([
             api.me(),
             api.profile(),
-            jobHuntingProfilesPromise,
-            api.jobHuntingProfile(),
-            api.questionCache(),
-            api.applications(),
-            api.runtimeSettings(),
-            api.applicationStats(Intl.DateTimeFormat().resolvedOptions().timeZone).catch(() => null),
           ]),
         );
-        const resolvedJobHuntingProfiles =
-          jobHuntingProfilesRows.length > 0 ?
-            jobHuntingProfilesRows.map((item) => mergeProfileApplicationInputs(item))
-          : defaultSearch ? [mergeProfileApplicationInputs(defaultSearch)]
-          : [];
-        const resolvedDefaultSearch =
-          resolvedJobHuntingProfiles.find((profile) => profile.is_default) ??
-          mergeProfileApplicationInputs(defaultSearch) ??
-          resolvedJobHuntingProfiles[0] ??
-          emptyJobHuntingProfile;
+        const profileWithDefaults = currentProfile ?? emptyProfile;
+        const migratedProfile = migrateLegacyProfileSettings(profileWithDefaults);
+        const resolvedProfile =
+          migratedProfile.changed ?
+            await api.updateProfile(migratedProfile.profile)
+          : profileWithDefaults;
         setUser(me);
-        setProfile(currentProfile ?? emptyProfile);
-        setJobHuntingProfiles(resolvedJobHuntingProfiles);
-        setJobHuntingProfile(resolvedDefaultSearch);
-        setRuntimeSettings(runtimeConfig ?? emptyRuntime);
-        setQuestions(questionRows);
-        setApplications(sortApplications(applicationRows));
-        if (statsData) {
-          setAppStats(statsData);
+        setProfile(resolvedProfile);
+        
+        // Re-load or refresh job apply data if it was already loaded or in-progress
+        if (hasLoadedJobApplyDataRef.current) {
+          void loadJobApplyData(true);
         }
       } catch (loadError) {
         setError(
@@ -472,6 +566,21 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     loadData();
   }, []);
+
+  useEffect(() => {
+    if (!hasLoadedInitialData) return;
+
+    const path = pathname || '';
+    const isJobApplyRoute =
+      path === '/' ||
+      path.startsWith('/applications') ||
+      path.startsWith('/settings') ||
+      path.startsWith('/question-cache');
+
+    if (isJobApplyRoute) {
+      void loadJobApplyData();
+    }
+  }, [pathname, hasLoadedInitialData]);
 
   useEffect(() => {
     let sse: EventSource | null = null;
@@ -518,10 +627,33 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
         if (reconnected) void loadData();
       };
 
-      ['comment.created', 'comment.deleted', 'comment.reaction_updated'].forEach((eventName) => {
+      ['comment.created', 'comment.updated', 'comment.deleted', 'comment.reaction_updated'].forEach((eventName) => {
         connection.addEventListener(eventName, (event) => {
           try {
-            window.dispatchEvent(new CustomEvent('jobby:comment-event', { detail: JSON.parse(event.data) }));
+            window.dispatchEvent(
+              new CustomEvent('jobby:comment-event', {
+                detail: { ...JSON.parse(event.data), event_type: eventName },
+              }),
+            );
+          } catch {
+            // Ignore malformed optional realtime events.
+          }
+        });
+      });
+      [
+        'answer.reaction_updated',
+        'answer.comment_created',
+        'answer.comment_updated',
+        'answer.comment_deleted',
+        'answer.comment_reaction_updated',
+      ].forEach((eventName) => {
+        connection.addEventListener(eventName, (event) => {
+          try {
+            window.dispatchEvent(
+              new CustomEvent('jobby:answer-event', {
+                detail: { ...JSON.parse(event.data), event_type: eventName },
+              }),
+            );
           } catch {
             // Ignore malformed optional realtime events.
           }
@@ -751,10 +883,60 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
   const saveProfile = async () => {
     try {
       setError('');
-      setProfile(await api.updateProfile(profile));
+      const savedProfile = await api.updateProfile(profile);
+      setProfile(savedProfile);
+      if (savedProfile.preferred_name?.trim()) {
+        setUser({
+          ...(user ?? await api.me()),
+          display_name: savedProfile.preferred_name.trim(),
+        });
+      }
       notify('Profile saved');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save profile');
+    }
+  };
+
+  const updateProfileExtra = async (
+    nextExtra:
+      | Record<string, unknown>
+      | ((currentExtra: Record<string, unknown>) => Record<string, unknown>),
+  ) => {
+    const currentExtra = profile.extra_data ?? {};
+    const resolvedExtra =
+      typeof nextExtra === 'function' ? nextExtra(currentExtra) : nextExtra;
+    const nextProfile = {
+      ...profile,
+      extra_data: {
+        ...currentExtra,
+        ...resolvedExtra,
+      },
+    };
+    setProfile(nextProfile);
+    const savedProfile = await api.updateProfile(nextProfile);
+    setProfile(savedProfile);
+    return savedProfile;
+  };
+
+  const saveAvatar = async (file: File) => {
+    try {
+      setError('');
+      setUser(await api.uploadAvatar(file));
+      notify('Avatar updated');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to upload avatar');
+      throw err;
+    }
+  };
+
+  const removeAvatar = async () => {
+    try {
+      setError('');
+      setUser(await api.removeAvatar());
+      notify('Avatar removed');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to remove avatar');
+      throw err;
     }
   };
 
@@ -1270,6 +1452,7 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
     user,
     profile,
     setProfile,
+    updateProfileExtra,
     jobHuntingProfile,
     setJobHuntingProfile,
     jobHuntingProfiles,
@@ -1292,7 +1475,11 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
     setError,
     isPending,
     hasLoadedInitialData,
+    hasLoadedJobApplyData,
+    jobApplyLoading,
     loadData,
+    saveAvatar,
+    removeAvatar,
     saveProfile,
     saveJobHuntingProfile,
     createJobHuntingProfile,

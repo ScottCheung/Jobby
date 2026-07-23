@@ -1,44 +1,15 @@
 from datetime import datetime
 from uuid import UUID
 import asyncio
-import json
 
-from fastapi import Depends, FastAPI, HTTPException, Query, status
+from fastapi import Depends, FastAPI, File, HTTPException, Query, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
-from sqlalchemy import or_, select, text
+from sqlalchemy import or_, select, text, func, cast, Date
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-class SSEBroadcaster:
-    def __init__(self):
-        self.listeners: set[asyncio.Queue] = set()
-        self.loop: asyncio.AbstractEventLoop | None = None
-
-    def subscribe(self) -> asyncio.Queue:
-        q = asyncio.Queue()
-        self.listeners.add(q)
-        return q
-
-    def unsubscribe(self, q: asyncio.Queue):
-        self.listeners.discard(q)
-
-    async def broadcast(self, event_type: str, data: dict):
-        message = f"event: {event_type}\ndata: {json.dumps(data, default=str)}\n\n"
-        for q in list(self.listeners):
-            await q.put(message)
-
-broadcaster = SSEBroadcaster()
-
-def broadcast_sync(event_type: str, data: dict):
-    loop = broadcaster.loop
-    if loop is None or loop.is_closed():
-        return
-
-    asyncio.run_coroutine_threadsafe(
-        broadcaster.broadcast(event_type, data),
-        loop,
-    )
+from services.shared.realtime import broadcaster, broadcast_sync
 
 
 from services.api.dependencies import get_or_create_current_user
@@ -69,10 +40,16 @@ from services.shared.schemas import (
     UserRead,
 )
 from services.shared.settings import get_settings
+from services.shared.storage import StorageError, get_object_storage
 from services.shared.time_utils import parse_datetime_to_utc, utc_isoformat, utc_now
+from services.shared.media import MediaError, optimize_avatar_to_webp
 
 
-from services.api.routers.interview import router as interview_router
+from services.api.routers.interview import (
+    router as interview_router,
+    application_gamification_snapshot,
+    apply_application_gamification_events,
+)
 
 settings = get_settings()
 app = FastAPI(title="Auto Job Applier API", version="0.1.0")
@@ -89,6 +66,8 @@ app.include_router(interview_router)
 from fastapi.staticfiles import StaticFiles
 import os
 audio_dir = "/app/storage/audio"
+if not os.path.exists("/app") or not os.access("/", os.W_OK):
+    audio_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "storage", "audio"))
 os.makedirs(audio_dir, exist_ok=True)
 app.mount("/api/interview/audio", StaticFiles(directory=audio_dir), name="audio")
 
@@ -105,6 +84,12 @@ def apply_updates(model: object, values: dict) -> None:
         if key == "raw_data":
             continue
         setattr(model, key, value)
+
+
+def profile_response(profile: UserProfile, user: User) -> dict:
+    data = UserProfileRead.model_validate(profile).model_dump(mode="json")
+    data["preferred_name"] = user.display_name
+    return data
 
 
 def normalize_job_id(value: str | None) -> str | None:
@@ -687,16 +672,28 @@ async def sse_endpoint():
     q = broadcaster.subscribe()
     async def event_generator():
         try:
-            yield "event: ping\ndata: {}\n\n"
+            yield "retry: 1000\n:event stream connected\n\n"
             while True:
-                message = await q.get()
-                yield message
+                try:
+                    message = await asyncio.wait_for(q.get(), timeout=15)
+                    yield message
+                except asyncio.TimeoutError:
+                    # Comments keep browser, proxy, and load-balancer connections alive.
+                    yield ": heartbeat\n\n"
         except asyncio.CancelledError:
             pass
         finally:
             broadcaster.unsubscribe(q)
 
-    return StreamingResponse(event_generator(), media_type="text/event-stream")
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache, no-transform",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 
@@ -705,20 +702,68 @@ def read_current_user(current_user: User = Depends(get_or_create_current_user)) 
     return current_user
 
 
+@app.post("/api/me/avatar", response_model=UserRead)
+def upload_current_user_avatar(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_or_create_current_user),
+) -> User:
+    content_type = (file.content_type or "").lower()
+    if content_type not in {"image/jpeg", "image/png", "image/webp", "image/gif"}:
+        raise HTTPException(status_code=400, detail="Use a PNG, JPEG, WebP, or GIF image")
+
+    content = file.file.read()
+    if not content:
+        raise HTTPException(status_code=400, detail="Image file is empty")
+    if len(content) > settings.image_upload_max_bytes:
+        raise HTTPException(status_code=400, detail="Image must be 12 MB or smaller")
+    try:
+        optimized = optimize_avatar_to_webp(content)
+    except MediaError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    try:
+        public_url = get_object_storage().upload(
+            f"user-avatars/{current_user.id}/avatar.webp",
+            optimized,
+            "image/webp",
+        )
+    except StorageError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    # The stable storage key is overwritten, so version the public URL to avoid
+    # clients retaining the previous image under its long-lived cache policy.
+    current_user.avatar_url = f"{public_url}?v={int(utc_now().timestamp())}"
+    db.commit()
+    db.refresh(current_user)
+    return current_user
+
+
+@app.delete("/api/me/avatar", response_model=UserRead)
+def remove_current_user_avatar(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_or_create_current_user),
+) -> User:
+    current_user.avatar_url = None
+    db.commit()
+    db.refresh(current_user)
+    return current_user
+
+
 @app.get("/api/profile", response_model=UserProfileRead)
 def read_profile(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_or_create_current_user),
-) -> UserProfile:
+) -> dict:
     profile = db.scalar(select(UserProfile).where(UserProfile.user_id == current_user.id))
     if profile:
-        return profile
+        return profile_response(profile, current_user)
 
     profile = UserProfile(user_id=current_user.id, extra_data={})
     db.add(profile)
     db.commit()
     db.refresh(profile)
-    return profile
+    return profile_response(profile, current_user)
 
 
 @app.put("/api/profile", response_model=UserProfileRead)
@@ -726,16 +771,21 @@ def update_profile(
     payload: UserProfileBase,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_or_create_current_user),
-) -> UserProfile:
+) -> dict:
     profile = db.scalar(select(UserProfile).where(UserProfile.user_id == current_user.id))
     if not profile:
         profile = UserProfile(user_id=current_user.id)
         db.add(profile)
 
-    apply_updates(profile, payload.model_dump())
+    values = payload.model_dump(exclude_unset=True)
+    preferred_name = (values.pop("preferred_name", None) or "").strip()
+    if preferred_name:
+        current_user.display_name = preferred_name[:255]
+    apply_updates(profile, values)
     db.commit()
     db.refresh(profile)
-    return profile
+    db.refresh(current_user)
+    return profile_response(profile, current_user)
 
 
 @app.get("/api/job-hunting-profile", response_model=JobHuntingProfileRead)
@@ -1077,6 +1127,143 @@ def delete_question_cache_entry(
     broadcast_sync("question_cache_deleted", {"id": str(entry_id)})
 
 
+@app.get("/api/applications/stats")
+def get_applications_stats(
+    timezone: str = Query("UTC"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_or_create_current_user),
+) -> dict:
+    # 1. Total applications
+    total_stmt = select(func.count(JobApplication.id)).where(
+        JobApplication.user_id == current_user.id,
+        JobApplication.deleted_at.is_(None)
+    )
+    total_applications = db.scalar(total_stmt) or 0
+
+    # 2. Total submitted applications
+    total_submitted_stmt = select(func.count(JobApplication.id)).where(
+        JobApplication.user_id == current_user.id,
+        JobApplication.deleted_at.is_(None),
+        ~JobApplication.status.in_(["processing", "interrupted", "skipped", "cancelled"])
+    )
+    total_submitted = db.scalar(total_submitted_stmt) or 0
+
+    # 3. Today's and Yesterday's submitted and processed
+    # Coalesce display date: status_updated_at ?? date_applied ?? updated_at ?? created_at
+    display_dt = func.coalesce(
+        JobApplication.status_updated_at,
+        JobApplication.date_applied,
+        JobApplication.updated_at,
+        JobApplication.created_at
+    )
+
+    try:
+        local_date_expr = cast(func.timezone(timezone, display_dt), Date)
+        today_expr = cast(func.timezone(timezone, func.now()), Date)
+        yesterday_expr = cast(func.timezone(timezone, func.now() - text("INTERVAL '1 day'")), Date)
+
+        # today submitted
+        today_submitted_stmt = select(func.count(JobApplication.id)).where(
+            JobApplication.user_id == current_user.id,
+            JobApplication.deleted_at.is_(None),
+            ~JobApplication.status.in_(["processing", "interrupted", "skipped", "cancelled"]),
+            local_date_expr == today_expr
+        )
+        today_submitted = db.scalar(today_submitted_stmt) or 0
+
+        # yesterday submitted
+        yesterday_submitted_stmt = select(func.count(JobApplication.id)).where(
+            JobApplication.user_id == current_user.id,
+            JobApplication.deleted_at.is_(None),
+            ~JobApplication.status.in_(["processing", "interrupted", "skipped", "cancelled"]),
+            local_date_expr == yesterday_expr
+        )
+        yesterday_submitted = db.scalar(yesterday_submitted_stmt) or 0
+
+        # today processed
+        today_processed_stmt = select(func.count(JobApplication.id)).where(
+            JobApplication.user_id == current_user.id,
+            JobApplication.deleted_at.is_(None),
+            local_date_expr == today_expr
+        )
+        today_processed = db.scalar(today_processed_stmt) or 0
+
+        # yesterday processed
+        yesterday_processed_stmt = select(func.count(JobApplication.id)).where(
+            JobApplication.user_id == current_user.id,
+            JobApplication.deleted_at.is_(None),
+            local_date_expr == yesterday_expr
+        )
+        yesterday_processed = db.scalar(yesterday_processed_stmt) or 0
+
+    except Exception:
+        # Fallback to UTC
+        local_date_expr = cast(func.timezone("UTC", display_dt), Date)
+        today_expr = cast(func.timezone("UTC", func.now()), Date)
+        yesterday_expr = cast(func.timezone("UTC", func.now() - text("INTERVAL '1 day'")), Date)
+
+        # today submitted
+        today_submitted_stmt = select(func.count(JobApplication.id)).where(
+            JobApplication.user_id == current_user.id,
+            JobApplication.deleted_at.is_(None),
+            ~JobApplication.status.in_(["processing", "interrupted", "skipped", "cancelled"]),
+            local_date_expr == today_expr
+        )
+        today_submitted = db.scalar(today_submitted_stmt) or 0
+
+        # yesterday submitted
+        yesterday_submitted_stmt = select(func.count(JobApplication.id)).where(
+            JobApplication.user_id == current_user.id,
+            JobApplication.deleted_at.is_(None),
+            ~JobApplication.status.in_(["processing", "interrupted", "skipped", "cancelled"]),
+            local_date_expr == yesterday_expr
+        )
+        yesterday_submitted = db.scalar(yesterday_submitted_stmt) or 0
+
+        # today processed
+        today_processed_stmt = select(func.count(JobApplication.id)).where(
+            JobApplication.user_id == current_user.id,
+            JobApplication.deleted_at.is_(None),
+            local_date_expr == today_expr
+        )
+        today_processed = db.scalar(today_processed_stmt) or 0
+
+        # yesterday processed
+        yesterday_processed_stmt = select(func.count(JobApplication.id)).where(
+            JobApplication.user_id == current_user.id,
+            JobApplication.deleted_at.is_(None),
+            local_date_expr == yesterday_expr
+        )
+        yesterday_processed = db.scalar(yesterday_processed_stmt) or 0
+
+    # 4. Interviewing
+    interviewing_stmt = select(func.count(JobApplication.id)).where(
+        JobApplication.user_id == current_user.id,
+        JobApplication.deleted_at.is_(None),
+        JobApplication.raw_data['pipeline_stage'].as_string() == "interviewing"
+    )
+    interviewing = db.scalar(interviewing_stmt) or 0
+
+    # 5. Skipped
+    skipped_stmt = select(func.count(JobApplication.id)).where(
+        JobApplication.user_id == current_user.id,
+        JobApplication.deleted_at.is_(None),
+        JobApplication.status.ilike("%skip%")
+    )
+    skipped = db.scalar(skipped_stmt) or 0
+
+    return {
+        "total_applications": total_applications,
+        "submitted": total_submitted,
+        "today_submitted": today_submitted,
+        "yesterday_submitted": yesterday_submitted,
+        "today_processed": today_processed,
+        "yesterday_processed": yesterday_processed,
+        "interviewing": interviewing,
+        "skipped": skipped
+    }
+
+
 @app.get("/api/applications", response_model=list[JobApplicationRead])
 def list_applications(
     status_filter: str | None = Query(default=None, alias="status"),
@@ -1136,10 +1323,18 @@ def create_application(
     ensure_status_updated_at(values)
     existing_application = find_existing_application(db, current_user, values)
     if existing_application:
+        previous_snapshot = application_gamification_snapshot(existing_application)
         preserve_link_repaired_location(values, existing_application)
         ensure_status_updated_at(values, existing_application)
         apply_updates(existing_application, values)
         sync_worker_application_from_link(existing_application, values)
+        apply_application_gamification_events(
+            db,
+            current_user,
+            existing_application,
+            previous_snapshot,
+            utc_now(),
+        )
         db.commit()
         db.refresh(existing_application)
         broadcast_sync("application_updated", JobApplicationRead.model_validate(existing_application).model_dump(mode="json"))
@@ -1150,6 +1345,14 @@ def create_application(
     if application.job_link or application.external_job_link:
         async_application_from_link_record(application)
     db.add(application)
+    db.flush()
+    apply_application_gamification_events(
+        db,
+        current_user,
+        application,
+        None,
+        utc_now(),
+    )
     try:
         db.commit()
     except IntegrityError:
@@ -1157,9 +1360,17 @@ def create_application(
         existing_application = find_existing_application(db, current_user, values)
         if not existing_application:
             raise
+        previous_snapshot = application_gamification_snapshot(existing_application)
         preserve_link_repaired_location(values, existing_application)
         apply_updates(existing_application, values)
         sync_worker_application_from_link(existing_application, values)
+        apply_application_gamification_events(
+            db,
+            current_user,
+            existing_application,
+            previous_snapshot,
+            utc_now(),
+        )
         db.commit()
         db.refresh(existing_application)
         broadcast_sync("application_updated", JobApplicationRead.model_validate(existing_application).model_dump(mode="json"))
@@ -1190,8 +1401,16 @@ def update_application(
     ensure_application_date_applied(values, application)
     ensure_status_updated_at(values, application)
     preserve_link_repaired_location(values, application)
+    previous_snapshot = application_gamification_snapshot(application)
     apply_updates(application, values)
     sync_worker_application_from_link(application, values)
+    apply_application_gamification_events(
+        db,
+        current_user,
+        application,
+        previous_snapshot,
+        utc_now(),
+    )
     db.commit()
     db.refresh(application)
     broadcast_sync("application_updated", JobApplicationRead.model_validate(application).model_dump(mode="json"))

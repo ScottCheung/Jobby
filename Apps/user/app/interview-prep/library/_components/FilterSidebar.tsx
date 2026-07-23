@@ -288,6 +288,40 @@ export function FilterSidebar({
             </span>
           )}
         </button>
+
+        {(() => {
+          const isUncategorizedSelected =
+            selectedCategoryIds.includes('uncategorized');
+          const uncategorizedCount = questions.filter(
+            (q) => !q.category_id,
+          ).length;
+          return (
+            <button
+              onClick={() => handleCategoryClick('uncategorized')}
+              className={getTabButtonClass(isUncategorizedSelected, false)}
+              title={
+                isSidebarCollapsed ?
+                  `Uncategorized (${uncategorizedCount})`
+                : undefined
+              }
+            >
+              <span className='flex items-center gap-2 truncate'>
+                <span className='w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold bg-zinc-500/20 text-zinc-500 dark:text-zinc-400 shrink-0'>
+                  ?
+                </span>
+                {!isSidebarCollapsed && (
+                  <span className='truncate text-[11px]'>Uncategorized</span>
+                )}
+              </span>
+              {!isSidebarCollapsed && (
+                <span className={getCountBadgeClass(isUncategorizedSelected)}>
+                  {uncategorizedCount}
+                </span>
+              )}
+            </button>
+          );
+        })()}
+
         {categories.map((cat) => {
           const isSelected = selectedCategoryIds.includes(cat.id);
           const count = questions.filter(

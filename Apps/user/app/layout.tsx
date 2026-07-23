@@ -21,12 +21,12 @@ export default function RootLayout({
   return (
     <html lang='en' suppressHydrationWarning className='bg-background h-full'>
       <body suppressHydrationWarning className='min-h-screen'>
-        <ThemeProvider defaultTheme='system' defaultColor='green'>
-          <GeminiBackground />
-          <ConsoleProvider>
+        <ConsoleProvider>
+          <ThemeProvider defaultTheme='system' defaultColor='green'>
+            <GeminiBackground />
             <ConsoleLayout>{children}</ConsoleLayout>
-          </ConsoleProvider>
-        </ThemeProvider>
+          </ThemeProvider>
+        </ConsoleProvider>
       </body>
     </html>
   );

@@ -1,7 +1,7 @@
 /** @format */
 
 'use client';
-import React, { Suspense, useState } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   BookOpen,
@@ -12,22 +12,25 @@ import {
   MessageCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { api } from '@/lib/api';
+import { showGlobalToast } from '@/lib/toast';
 import { PracticeWorkspace } from '../_components/PracticeWorkspace';
 import { PracticeHistory } from '../_components/PracticeHistory';
 import { PracticeModeModal } from '../_components/PracticeModeModal';
 import { PracticeHeader } from '../_components/PracticeHeader';
 import { StandardAnswerCard } from '../_components/StandardAnswerCard';
-import { FrameworkCard } from '../_components/FrameworkCard';
 import { DailySummaryModal } from '../../_components/DailySummaryModal';
 import { InterviewReportModal } from '../_components/InterviewReportModal';
 import { PracticeSkeleton } from '../_components/PracticeSkeleton';
 import { usePracticeData } from '../_hook/usePracticeData';
 import { QuestionComments } from '../_components/Comments/QuestionComments';
 import { PracticeCompletionModal } from '../_components/PracticeCompletionModal';
+import { Tooltip, Kbd } from '@/components/UI/tooltip';
 
 function PracticeModeQuestionPageInner() {
   const router = useRouter();
   const [reportRefreshKey, setReportRefreshKey] = useState(0);
+  const [isCompletionScoring, setIsCompletionScoring] = useState(false);
   const {
     id,
     practiceMode,
@@ -54,8 +57,6 @@ function PracticeModeQuestionPageInner() {
     dailySummaryData,
     isEditingAnswer,
     isSavingAnswer,
-    isEditingFramework,
-    isSavingFramework,
     confidenceScore,
     setConfidenceScore,
     notes,
@@ -68,6 +69,8 @@ function PracticeModeQuestionPageInner() {
     transcriptSegments,
     interimText,
     draftAudioRef,
+    autoEvalEnabled,
+    toggleAutoEval,
     toggleShuffle,
     navigateTo,
     handleOpenQueue,
@@ -81,14 +84,28 @@ function PracticeModeQuestionPageInner() {
     handleSubmit,
     handleDeleteAttempt,
     handleUpdateAttempt,
+    handleSavePolishedAnswerAsMyAnswer,
     handleUpdateTranscriptSegment,
     handleSaveStandardAnswer,
-    handleSaveFramework,
+    handleCreateAuthorAnswer,
+    handleUpdateAuthorAnswer,
+    handleDeleteAuthorAnswer,
+    handleGenerateAiAnswer,
+    handleGenerateQuestionMetadata,
+    handleUnlockAiAnswer,
+    handleToggleFeaturedAnswer,
     shouldShowAnswer,
+    allCommunityAnswers,
+    featuredCommunityAnswers,
+    aiReferenceAnswers,
+    authorAnswers,
+    myAnswer,
+    isGeneratingAiAnswer,
+    isGeneratingQuestionMetadata,
+    isQuestionAuthor,
     currentAttempts,
     setShowThisAnswer,
     setIsEditingAnswer,
-    setIsEditingFramework,
     customSelectedIds,
     showReportModal,
     setShowReportModal,
@@ -98,6 +115,80 @@ function PracticeModeQuestionPageInner() {
     isSubmittingReport,
     handleReportSubmit,
   } = usePracticeData();
+
+  const queueRedirectTarget =
+    // A free-practice URL is also a shareable deep link. The referenced
+    // question may not be in the recipient's library until its direct fetch
+    // completes, so never replace that URL with an unrelated queued question.
+    (
+      !isLoading &&
+      practiceMode !== 'free' &&
+      effectiveQueue.length > 0 &&
+      currentQuestionIndex === -1
+    ) ?
+      `/interview-prep/practice/${effectiveQueue[0].id}?mode=${practiceMode}&shuffle=${isShuffled ? '1' : '0'}`
+    : null;
+
+  useEffect(() => {
+    if (queueRedirectTarget) router.replace(queueRedirectTarget);
+  }, [queueRedirectTarget, router]);
+
+  // Refresh community metrics after a practice submission (completion modal opens)
+  useEffect(() => {
+    if (showCompletionModal) {
+      setReportRefreshKey((v) => v + 1);
+    }
+  }, [showCompletionModal]);
+
+  const selectTab = (tab: 'workspace' | 'history' | 'comment') => {
+    setActiveTab(tab);
+    const params = new URLSearchParams(window.location.search);
+    params.set('tab', tab);
+    router.replace(`${window.location.pathname}?${params.toString()}`, {
+      scroll: false,
+    });
+  };
+
+  // Listen for global keyboard shortcut tab actions (P, H, C)
+  useEffect(() => {
+    const handleKeyboardAction = (event: Event) => {
+      const detail = (event as CustomEvent<{ action: string }>).detail;
+      if (!detail) return;
+      if (detail.action === 'tab-workspace') selectTab('workspace');
+      if (detail.action === 'tab-history') selectTab('history');
+      if (detail.action === 'tab-comment') selectTab('comment');
+    };
+    window.addEventListener('jobby:keyboard-action', handleKeyboardAction);
+    return () =>
+      window.removeEventListener('jobby:keyboard-action', handleKeyboardAction);
+  }, []);
+
+  const handleCompletionScore = async () => {
+    const latestAttempt = currentAttempts[0];
+    if (!latestAttempt) {
+      setShowCompletionModal(false);
+      selectTab('history');
+      return;
+    }
+    setIsCompletionScoring(true);
+    try {
+      const existing = await api.practiceEvaluations(latestAttempt.id);
+      if (existing.length === 0) {
+        const evaluation = await api.createPracticeEvaluation(latestAttempt.id);
+        showGlobalToast(`AI feedback ready: ${evaluation.overall_score}/100`);
+        window.dispatchEvent(new Event('playbookGamificationUpdated'));
+      }
+      setShowCompletionModal(false);
+      selectTab('history');
+    } catch (error) {
+      console.error('Failed to score latest practice answer:', error);
+      showGlobalToast(
+        error instanceof Error ? error.message : 'Could not score this answer',
+      );
+    } finally {
+      setIsCompletionScoring(false);
+    }
+  };
 
   if (isLoading) {
     return <PracticeSkeleton />;
@@ -174,12 +265,7 @@ function PracticeModeQuestionPageInner() {
     );
   }
 
-  if (effectiveQueue.length > 0 && currentQuestionIndex === -1) {
-    router.replace(
-      `/interview-prep/practice/${effectiveQueue[0].id}?mode=${practiceMode}&shuffle=${isShuffled ? '1' : '0'}`,
-    );
-    return null;
-  }
+  if (queueRedirectTarget) return <PracticeSkeleton />;
 
   if (!currentQuestion) {
     return (
@@ -193,7 +279,7 @@ function PracticeModeQuestionPageInner() {
     <>
       <div className='flex gap-4 h-full overflow-hidden'>
         {/* ── Left Column ── */}
-        <div className='flex-1 w-full transition-all panel-xl  flex flex-col gap-4 relative h-full pt-4!'>
+        <div className='flex-1 w-full transition-all panel-xl pb-0!  flex flex-col gap-4 relative h-full pt-4!'>
           <PracticeHeader
             currentQuestion={currentQuestion}
             currentIndex={currentQuestionIndex}
@@ -203,28 +289,25 @@ function PracticeModeQuestionPageInner() {
             isDrawerOpen={isDrawerOpen}
             drawerId={drawerId}
             globalShowAnswers={globalShowAnswers}
+            autoEvalEnabled={autoEvalEnabled}
             customSelectedIds={customSelectedIds}
             onShowModeModal={() => setShowModeModal(true)}
             onToggleAnswers={() => {
               const newVal = !globalShowAnswers;
               setGlobalShowAnswers(newVal);
-              try {
-                localStorage.setItem(
-                  'practiceShowAnswersPreference',
-                  newVal ? '1' : '0',
-                );
-              } catch {}
             }}
             onToggleShuffle={toggleShuffle}
+            onToggleAutoEval={toggleAutoEval}
             onOpenQueue={handleOpenQueue}
             onPrevious={handlePrevious}
             onNext={handleNext}
             onReportInterview={() => setShowReportModal(true)}
+            onOpenComments={() => selectTab('comment')}
             reportRefreshKey={reportRefreshKey}
           />
 
           {/* Scrollable body */}
-          <div className='flex-1 overflow-y-auto body flex flex-col  pr-1 custom-scrollbar-primary'>
+          <div className='flex-1 overflow-y-auto body flex flex-col  custom-scrollbar-primary'>
             <StandardAnswerCard
               currentQuestion={currentQuestion}
               shouldShowAnswer={shouldShowAnswer}
@@ -242,58 +325,79 @@ function PracticeModeQuestionPageInner() {
                 setIsEditingAnswer && setIsEditingAnswer(false)
               }
               onSaveAnswer={handleSaveStandardAnswer}
+              onCreateAuthorAnswer={handleCreateAuthorAnswer}
+              onUpdateAuthorAnswer={handleUpdateAuthorAnswer}
+              onDeleteAuthorAnswer={handleDeleteAuthorAnswer}
               isSavingAnswer={isSavingAnswer}
-            />
-
-            <FrameworkCard
-              currentQuestion={currentQuestion}
-              isEditingFramework={isEditingFramework}
-              onStartEditing={() =>
-                setIsEditingFramework && setIsEditingFramework(true)
-              }
-              onCancelEditing={() =>
-                setIsEditingFramework && setIsEditingFramework(false)
-              }
-              onSaveFramework={handleSaveFramework}
-              isSavingFramework={isSavingFramework}
+              featuredAnswers={featuredCommunityAnswers}
+              allCommunityAnswers={allCommunityAnswers}
+              aiAnswers={aiReferenceAnswers}
+              authorAnswers={authorAnswers}
+              myAnswer={myAnswer}
+              isGeneratingAiAnswer={isGeneratingAiAnswer}
+              isGeneratingQuestionMetadata={isGeneratingQuestionMetadata}
+              isQuestionAuthor={isQuestionAuthor}
+              onGenerateAiAnswer={handleGenerateAiAnswer}
+              onGenerateQuestionMetadata={handleGenerateQuestionMetadata}
+              onUnlockAiAnswer={handleUnlockAiAnswer}
+              onToggleFeaturedAnswer={handleToggleFeaturedAnswer}
             />
           </div>
         </div>
 
         {/* ── Right Column ── */}
-        <div className=' w-xl h-full  panel-xl transition-all flex flex-col overflow-hidden bg-panel p-4! pt-2!'>
-          <div className='flex shrink-0'>
-            {(['workspace', 'history', 'comment'] as const).map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={cn(
-                  'label flex-1 py-3 text-center transition-all border-b-2',
-                  activeTab === tab ?
-                    'border-primary text-primary font-bold'
-                  : 'border-transparent text-ink-secondary hover:text-ink-primary',
-                )}
-              >
-                <span className='flex items-center justify-center gap-2'>
-                  {tab === 'workspace' ?
-                    <>
-                      <Edit className='w-4 h-4' /> Practice
-                    </>
-                  : tab === 'history' ?
-                    <>
-                      <Clock className='w-4 h-4' /> History (
-                      {currentAttempts.length})
-                    </>
-                  : <>
-                      <MessageCircle className='w-4 h-4' /> Comment
-                    </>
+        <div className=' w-xl h-full  panel-xl transition-all flex flex-col overflow-hidden bg-panel p-4! pt-2! pb-0!'>
+          <div className='header'>
+            {(['workspace', 'history', 'comment'] as const).map((tab) => {
+              const keyLabel =
+                tab === 'workspace' ? 'P'
+                : tab === 'history' ? 'H'
+                : 'C';
+              const tabTitle =
+                tab === 'workspace' ? 'Practice Workspace'
+                : tab === 'history' ? 'Practice History'
+                : 'Comments & Discussion';
+              return (
+                <Tooltip
+                  key={tab}
+                  content={
+                    <span className='inline-flex items-center'>
+                      {tabTitle} <Kbd>{keyLabel}</Kbd>
+                    </span>
                   }
-                </span>
-              </button>
-            ))}
+                  side='bottom'
+                >
+                  <button
+                    onClick={() => selectTab(tab)}
+                    className={cn(
+                      'label flex-1 py-3 text-center transition-all border-b-2 cursor-pointer',
+                      activeTab === tab ?
+                        'border-primary text-primary font-bold'
+                      : 'border-transparent text-ink-secondary hover:text-ink-primary',
+                    )}
+                  >
+                    <span className='flex items-center justify-center gap-2'>
+                      {tab === 'workspace' ?
+                        <>
+                          <Edit className='w-4 h-4' /> Practice
+                        </>
+                      : tab === 'history' ?
+                        <>
+                          <Clock className='w-4 h-4' /> History (
+                          {currentAttempts.length})
+                        </>
+                      : <>
+                          <MessageCircle className='w-4 h-4' /> Comment
+                        </>
+                      }
+                    </span>
+                  </button>
+                </Tooltip>
+              );
+            })}
           </div>
 
-          <div className='flex-1 overflow-y-auto relative flex flex-col'>
+          <div className='body flex-1 overflow-y-auto relative flex flex-col'>
             {activeTab === 'workspace' ?
               <PracticeWorkspace
                 isRecording={isRecording}
@@ -321,6 +425,7 @@ function PracticeModeQuestionPageInner() {
                 apiBaseUrl={apiBaseUrl}
                 onDeleteAttempt={handleDeleteAttempt}
                 onUpdateAttempt={handleUpdateAttempt}
+                onSavePolishedAnswer={handleSavePolishedAnswerAsMyAnswer}
               />
             : <QuestionComments questionId={currentQuestion.id} />}
           </div>
@@ -364,12 +469,14 @@ function PracticeModeQuestionPageInner() {
         onRedo={() => {
           setShowCompletionModal(false);
           resetWorkspace();
-          setActiveTab('workspace');
+          selectTab('workspace');
         }}
         onReview={() => {
           setShowCompletionModal(false);
-          setActiveTab('history');
+          selectTab('history');
         }}
+        onScore={() => void handleCompletionScore()}
+        isScoring={isCompletionScoring}
         onNext={() => {
           setShowCompletionModal(false);
           handleNext();

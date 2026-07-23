@@ -12,16 +12,22 @@ import {
   EyeOff,
   LandPlot,
   Tag,
-  Star,
-  Zap,
   Building2,
+  Badge,
+  UserRound,
+  Gauge,
+  Clock,
+  Gem,
+  Sparkles,
 } from 'lucide-react';
 import type { InterviewQuestion } from '@/lib/types';
-import { cn, cleanName } from '@/lib/utils';
-import { Tooltip } from '@/components/UI/tooltip';
+import { cn, cleanName, formatInterviewDuration } from '@/lib/utils';
+import { Tooltip, Kbd } from '@/components/UI/tooltip';
 import { Button } from '@/components/UI/Button';
 import type { PracticeMode } from './PracticeModeModal';
 import { QuestionCommentActions } from './Comments/QuestionCommentActions';
+import { useLayoutStore } from '@/lib/store/layout-store';
+import { QuestionReportsDrawer } from './QuestionReportsDrawer';
 
 interface PracticeHeaderProps {
   currentQuestion: InterviewQuestion | null;
@@ -32,14 +38,17 @@ interface PracticeHeaderProps {
   isDrawerOpen: boolean;
   drawerId: string | undefined;
   globalShowAnswers: boolean;
+  autoEvalEnabled: boolean;
   customSelectedIds: string[];
   onShowModeModal: () => void;
   onToggleAnswers: () => void;
   onToggleShuffle: () => void;
+  onToggleAutoEval: () => void;
   onOpenQueue: () => void;
   onPrevious: () => void;
   onNext: () => void;
   onReportInterview: () => void;
+  onOpenComments: () => void;
   reportRefreshKey: number;
 }
 
@@ -88,48 +97,62 @@ export function PracticeHeader({
   isDrawerOpen,
   drawerId,
   globalShowAnswers,
+  autoEvalEnabled,
   customSelectedIds,
   onShowModeModal,
   onToggleAnswers,
   onToggleShuffle,
+  onToggleAutoEval,
   onOpenQueue,
   onPrevious,
   onNext,
   onReportInterview,
+  onOpenComments,
   reportRefreshKey,
 }: PracticeHeaderProps) {
   const ModeIcon = modeIcons[practiceMode] ?? Shuffle;
   const modeLabel = modeLabels[practiceMode] ?? 'Free Roam';
+  const aiDifficulty = currentQuestion?.ai_metadata?.difficulty;
+  const displayDifficulty =
+    aiDifficulty ?
+      cleanName(aiDifficulty)
+    : currentQuestion?.difficulty || 'Medium';
+  const normalizedDifficulty = displayDifficulty.toLowerCase();
+  const estimatedDurationLabel = formatInterviewDuration(
+    currentQuestion?.estimated_duration_seconds,
+  );
 
+  const openDrawer = useLayoutStore((state) => state.actions.openDrawer);
   const isQueueActive = isDrawerOpen && drawerId === 'practice-queue';
+
+  const handleOpenReportsDrawer = () => {
+    if (!currentQuestion) return;
+    openDrawer({
+      id: 'question-reports',
+      width: 400,
+      content: (
+        <QuestionReportsDrawer
+          questionId={currentQuestion.id}
+          onReport={onReportInterview}
+        />
+      ),
+    });
+  };
 
   return (
     <div className='flex flex-col gap-2.5 shrink-0 '>
       {/* Top row: toolbar aligned to the right, mode modal button inside the toolbar */}
-      <div className='flex items-baseline justify-between gap-2 opacity-60 -mr-4'>
-        {/* Progress counter */}
-        <span className='text-[10px] text-ink-secondary '>
-          Question{' '}
-          <span className='text-primary text-[12px]  font-bold'>
-            {currentIndex + 1}
-          </span>{' '}
-          of{' '}
-          <span className='text-primary text-[12px] font-bold'>
-            {totalQuestions}
-          </span>
-          <span className='ml-1 font-normal '>· {modeLabel}</span>
-          {practiceMode !== 'plan' && (
-            <span className='ml-1 font-normal '>
-              · {isShuffled ? 'shuffle' : 'sequential'}
-            </span>
-          )}
-        </span>
-
+      <div className='flex items-baseline  justify-end gap-2 opacity-60 -mr-4'>
         {/* Unified toolbar */}
         <div className='row shrink-0'>
           {/* Mode Settings Button */}
           <Tooltip content='Practice Mode Settings' side='bottom'>
-            <Button onClick={onShowModeModal} variant='toolbar' size='toolbar'>
+            <Button
+              layoutId='Practice Mode Setting'
+              onClick={onShowModeModal}
+              variant='toolbar'
+              size='toolbar'
+            >
               <LandPlot className='w-4 h-4' />
             </Button>
           </Tooltip>
@@ -174,8 +197,38 @@ export function PracticeHeader({
             </Tooltip>
           )}
 
-          {/* View Queue List Button */}
-          <Tooltip content='View Practice Queue' side='bottom'>
+          {/* Auto AI Evaluation Toggle */}
+          <Tooltip
+            content={
+              autoEvalEnabled ?
+                'Auto AI Evaluation: ON (Consumes coins)'
+              : 'Auto AI Evaluation: OFF'
+            }
+            side='bottom'
+          >
+            <Button
+              onClick={onToggleAutoEval}
+              variant={autoEvalEnabled ? 'toolbarActive' : 'toolbar'}
+              size='toolbar'
+            >
+              <Sparkles
+                className={cn(
+                  'w-4 h-4',
+                  autoEvalEnabled && 'animate-heart-pop animate-pulse',
+                )}
+              />
+            </Button>
+          </Tooltip>
+
+          {/* View Queue List / Search Button */}
+          <Tooltip
+            content={
+              <span className='inline-flex items-center'>
+                View Practice Queue <Kbd>F</Kbd>
+              </span>
+            }
+            side='bottom'
+          >
             <Button
               onClick={onOpenQueue}
               variant={isQueueActive ? 'toolbarActive' : 'toolbar'}
@@ -185,11 +238,18 @@ export function PracticeHeader({
             </Button>
           </Tooltip>
 
-          {/* Navigation Controls */}
-          <Tooltip content='Previous Question' side='bottom'>
+          {/* Navigation Controls (Infinite wrap-around) */}
+          <Tooltip
+            content={
+              <span className='inline-flex items-center'>
+                Previous Question <Kbd>←</Kbd>
+              </span>
+            }
+            side='bottom'
+          >
             <Button
               onClick={onPrevious}
-              disabled={currentIndex <= 0}
+              disabled={totalQuestions <= 1}
               variant='toolbar'
               size='toolbar'
             >
@@ -197,12 +257,17 @@ export function PracticeHeader({
             </Button>
           </Tooltip>
 
-          <Tooltip content='Next Question' side='bottom'>
+          <Tooltip
+            content={
+              <span className='inline-flex items-center'>
+                Next Question <Kbd>→</Kbd>
+              </span>
+            }
+            side='bottom'
+          >
             <Button
               onClick={onNext}
-              disabled={
-                practiceMode !== 'free' && currentIndex === totalQuestions - 1
-              }
+              disabled={totalQuestions <= 1}
               variant='toolbar'
               size='toolbar'
             >
@@ -214,97 +279,131 @@ export function PracticeHeader({
 
       {/* Title, tags, rating */}
       {currentQuestion && (
-        <div className='flex flex-col -mt-4 gap-2'>
-          <h2 className='title-card leading-snug'>{currentQuestion.title}</h2>
-          {((currentQuestion.tags && currentQuestion.tags.length > 0) ||
-            currentQuestion.frequency) && (
-            <div className='flex flex-wrap gap-1'>
-              {currentQuestion.frequency && (
-                <span
-                  className={cn(
-                    'px-2.5 py-1 flex items-center gap-1 rounded-full text-[10px] font-semibold tracking-wide ',
-                    (currentQuestion.frequency === 'Low' ||
-                      currentQuestion.frequency === 'Easy') &&
-                      'bg-green-500/10 text-green-600 dark:text-green-400',
-                    currentQuestion.frequency === 'Medium' &&
-                      'bg-amber-500/10 text-amber-600 dark:text-amber-400',
-                    (currentQuestion.frequency === 'High' ||
-                      currentQuestion.frequency === 'Hard') &&
-                      'bg-rose-500/10 text-rose-600 dark:text-rose-400',
-                  )}
-                >
-                  <Zap className='w-2.5 h-2.5 opacity-50' />
-                  {currentQuestion.frequency === 'Hard' ?
-                    'High'
-                  : currentQuestion.frequency === 'Easy' ?
-                    'Low'
-                  : currentQuestion.frequency}
-                </span>
-              )}
-              {currentQuestion.tags?.map((t) => (
-                <span
-                  key={t.id}
-                  className='text-[10px] bg-background-secondary/40 text-ink-primary px-2.5 py-1 rounded-full  flex items-center gap-1 font-semibold '
-                >
-                  <Tag className='w-2.5 h-2.5 opacity-50' />
-                  {cleanName(t.name)}
-                </span>
-              ))}
-
-              {/* Real Stacked Companies UI from DB */}
-              {currentQuestion.companies?.map((c) => (
-                <span
-                  key={c.id}
-                  className='text-[10px] bg-blue-500/10 text-blue-600 dark:text-blue-400 pl-1 pr-2.5 py-1 rounded-full flex items-center gap-1.5 font-semibold border border-blue-500/20'
-                >
-                  {c.logo_url ?
-                    <img
-                      src={c.logo_url}
-                      alt={c.name}
-                      className='w-3.5 h-3.5 rounded-full object-cover bg-white'
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none';
-                      }}
-                    />
-                  : <Building2 className='w-3 h-3 opacity-60 ml-1' />}
-                  {c.name}
-                </span>
-              ))}
-            </div>
-          )}
-          <div className='flex gap-4 mt-0.5 items-center justify-between'>
-            <div className='flex items-center gap-1.5' title='Author priority'>
-              <span className='text-[10px] font-semibold text-ink-secondary'>
-                Author priority
+        <div className='col -mt-1 lg:-mt-8 gap-x-1.5'>
+          {/* Progress counter */}
+          <span className='flex items-baseline gap-1 text-[11px] text-primary'>
+            <span className='font-sans text-[30px] font-black text-primary/40'>
+              {currentIndex + 1}
+            </span>{' '}
+            /
+            <span className='font-sans text-[16px] font-black text-primary/20'>
+              {totalQuestions}
+            </span>
+            <span className='ml-1 font-normal '>· {modeLabel}</span>
+            {practiceMode !== 'plan' && (
+              <span className='ml-1 font-normal '>
+                · {isShuffled ? 'shuffle' : 'sequential'}
               </span>
-              <div className='flex gap-0.5'>
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <Star
-                    key={i}
-                    className={cn(
-                      'w-3.5 h-3.5 transition-all duration-300',
-                      i < (currentQuestion.importance_score || 0) ?
-                        'fill-amber-500 text-amber-500 scale-110 drop-'
-                      : 'text-zinc-300 dark:text-zinc-750',
-                    )}
-                  />
-                ))}
-              </div>
-            </div>
-
-            <Button
-              layoutId='Seen in Interview'
-              onClick={onReportInterview}
-              // className='label-sm flex items-center gap-1.5 text-primary hover:text-primary/80 transition-none! px-2 py-1 rounded-md hover:bg-primary/5'
+            )}
+          </span>
+          <h2 className='title-card -mt-1 leading-snug'>
+            {currentQuestion.title}
+          </h2>
+          <div className='flex flex-wrap items-center gap-1.5'>
+            {/* Uploader / Author */}
+            <span className='inline-flex h-6 items-center gap-1 rounded-md bg-primary/10 px-1.5 text-[10px] font-semibold text-primary'>
+              <UserRound className='h-3 w-3 text-primary' />
+              {currentQuestion.contributor_name || 'Community'}
+            </span>
+            {currentQuestion.category && (
+              <span className='inline-flex h-6 items-center gap-1 rounded-md bg-primary/10 px-1.5 text-[10px] font-semibold text-primary'>
+                <Badge className='h-3 w-3' />
+                {cleanName(currentQuestion.category.name)}
+              </span>
+            )}
+            {/* Estimated Duration */}
+            <span className='inline-flex h-6 items-center gap-1 rounded-md bg-primary/10 px-1.5 text-[10px] font-semibold text-primary'>
+              <Clock className='h-3 w-3 text-ink-secondary/70' />
+              {estimatedDurationLabel}
+            </span>
+            {/* Difficulty Badge */}
+            <span
+              className={cn(
+                'inline-flex h-6 items-center gap-1 rounded-md px-1.5 text-[10px] font-semibold capitalize',
+                normalizedDifficulty === 'easy' &&
+                  'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+                normalizedDifficulty === 'medium' &&
+                  'bg-amber-500/10 text-amber-600 dark:text-amber-400',
+                normalizedDifficulty === 'hard' &&
+                  'bg-rose-500/10 text-rose-600 dark:text-rose-400',
+              )}
             >
-              <Eye className='w-3.5 h-3.5' />
-              Seen in Interview
-            </Button>
+              <Gauge className='h-3 w-3' />
+              {displayDifficulty}
+            </span>
+
+            {/* Practice Priority / Importance */}
+            <span
+              title='Practice Priority'
+              className='inline-flex h-6 items-center gap-1 rounded-md bg-amber-500/10 px-1.5 text-[10px] font-semibold text-amber-700 dark:text-amber-400'
+            >
+              <Gem className='h-3 w-3 ' />
+              Priority {currentQuestion.importance_score || 0}
+            </span>
+
+            {currentQuestion.tags?.map((t) => (
+              <span
+                key={t.id}
+                className='inline-flex h-6 items-center gap-1 rounded-md bg-background-secondary/60 px-1.5 text-[10px] font-medium text-ink-primary'
+              >
+                <Tag className='w-2.5 h-2.5 opacity-50' />
+                {cleanName(t.name)}
+              </span>
+            ))}
+
+            {/* Aggregated Company Statistics Button */}
+            {currentQuestion.companies &&
+              currentQuestion.companies.length > 0 && (
+                <Tooltip
+                  content='Click to view interview details by company'
+                  side='bottom'
+                >
+                  <button
+                    type='button'
+                    onClick={handleOpenReportsDrawer}
+                    className='inline-flex h-6 items-center gap-1.5 rounded-md border border-blue-500/20 bg-blue-500/10 py-1 pl-1.5 pr-2 text-[10px] font-medium text-blue-600 dark:text-blue-400 transition-colors hover:bg-blue-500/20 hover:border-blue-500/30 cursor-pointer active:scale-95'
+                  >
+                    <div className='flex items-center -space-x-1 overflow-hidden'>
+                      {currentQuestion.companies.slice(0, 3).map((c) =>
+                        c.logo_url ?
+                          <img
+                            key={c.id}
+                            src={c.logo_url}
+                            alt={c.name}
+                            className='w-3.5 h-3.5 rounded-full object-cover bg-white ring-1 ring-background shrink-0'
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                            }}
+                          />
+                        : <Building2
+                            key={c.id}
+                            className='w-3 h-3 opacity-60 ml-0.5'
+                          />,
+                      )}
+                    </div>
+                    <span>
+                      {currentQuestion.companies
+                        .slice(0, 2)
+                        .map((c) => c.name)
+                        .join(', ')}
+                      {currentQuestion.companies.length > 2 && (
+                        <span className='ml-0.5 font-semibold text-blue-700 dark:text-blue-300'>
+                          +{currentQuestion.companies.length - 2}
+                        </span>
+                      )}
+                    </span>
+                  </button>
+                </Tooltip>
+              )}
           </div>
           <QuestionCommentActions
             questionId={currentQuestion.id}
             reportRefreshKey={reportRefreshKey}
             onReport={onReportInterview}
+            compact
+            initialMetrics={currentQuestion.metrics}
+            onOpenComments={onOpenComments}
+            onOpenReports={handleOpenReportsDrawer}
           />
         </div>
       )}

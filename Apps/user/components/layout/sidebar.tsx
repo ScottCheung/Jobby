@@ -18,6 +18,7 @@ import {
   Sun,
   GraduationCap,
   Palette,
+  Star,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ModeToggle } from '@/components/mode-toggle';
@@ -25,6 +26,7 @@ import { ColorPicker } from '@/components/color-picker';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { ThemeColorToggle } from '@/components/theme-color-toggle';
 import { motion, AnimatePresence } from 'framer-motion';
+import { FavoritesDrawer } from '@/components/layout/FavoritesDrawer';
 
 const ChromeIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg
@@ -50,6 +52,7 @@ const ChromeIcon = (props: React.SVGProps<SVGSVGElement>) => (
 const navigation = [
   { name: 'Overview', href: '/', icon: LayoutDashboard },
   { name: 'Interview Prep', href: '/interview-prep', icon: GraduationCap },
+  { name: 'Favorites & Bookmarks', href: '#favorites', icon: Star, isAction: true },
   { name: 'Settings', href: '/settings', icon: Settings2 },
   { name: 'Question Cache', href: '/question-cache', icon: MessageSquareCode },
   { name: 'Applications History', href: '/applications', icon: Briefcase },
@@ -90,7 +93,14 @@ export function Sidebar() {
   const { fetchMe, logout: authLogout } = useAuthStore();
   const { user, profile } = useConsole();
   const isCollapsed = useLayoutStore((state) => state.isSidebarCollapsed);
-  const { toggleSidebar } = useLayoutStore((state) => state.actions);
+  const { toggleSidebar, openDrawer } = useLayoutStore((state) => state.actions);
+
+  const handleOpenFavorites = () => {
+    openDrawer({
+      width: 440,
+      content: <FavoritesDrawer />,
+    });
+  };
 
   useEffect(() => {
     if (!user) {
@@ -109,11 +119,11 @@ export function Sidebar() {
   };
 
   const displayName = (() => {
-    if (profile?.first_name || profile?.last_name) {
-      return `${profile.first_name || ''} ${profile.last_name || ''}`.trim();
-    }
     if (user?.display_name && !user.display_name.includes('@')) {
       return user.display_name;
+    }
+    if (profile?.first_name || profile?.last_name) {
+      return `${profile.first_name || ''} ${profile.last_name || ''}`.trim();
     }
     return user?.email || 'Local Admin';
   })();
@@ -157,7 +167,7 @@ export function Sidebar() {
       animate={{ width: isCollapsed ? 80 : 288 }}
       transition={springTransition}
       className={cn(
-        'app-drag sticky top-0 z-10 h-screen backdrop-blur-2xl flex-col justify-between bg-panel flex',
+        'app-drag sticky top-0 z-10 flex-1 backdrop-blur-2xl flex-col justify-between bg-panel flex',
         isCollapsed ? 'p-4' : 'p-sidebar',
       )}
     >
@@ -199,54 +209,62 @@ export function Sidebar() {
 
         {/* Navigation */}
 
-        <nav className='app-no-drag flex flex-col gap-1'>
-          {/* <Stagger className='flex flex-col gap-1'> */}{' '}
+        <nav className='app-no-drag overflow-y-auto flex flex-col gap-1 h-full'>
           {visibleNavigation.map((item) => {
-            const isActive = pathname === item.href;
+            const isAction = 'isAction' in item && item.isAction;
+            const isActive = !isAction && pathname === item.href;
+            
+            const navItemContent = (
+              <div
+                className={cn(
+                  'app-no-drag group flex items-center gap-3 transition-all cursor-pointer',
+                  isCollapsed ?
+                    'justify-center p-2.5 rounded-full '
+                  : 'px-4 py-3.5 rounded-full',
+                  isActive ?
+                    'text-primary-foreground bg-primary-gradient'
+                  : 'text-ink-secondary hover:bg-background-secondary hover:text-ink-primary',
+                )}
+              >
+                <motion.div layout className='shrink-0'>
+                  <item.icon className={cn('size-5', isAction ? 'text-amber-400 fill-amber-400/20' : '')} />
+                </motion.div>
+                <AnimatePresence mode='popLayout'>
+                  {!isCollapsed && (
+                    <motion.p
+                      className={cn(
+                        'body-md whitespace-nowrap overflow-hidden',
+                        isActive ? 'font-bold' : 'font-medium',
+                      )}
+                    >
+                      {item.name}
+                    </motion.p>
+                  )}
+                </AnimatePresence>
+              </div>
+            );
+
             return (
-              // <StaggerItem key={item.name} xOffset={5}>
               <Tooltip
                 key={item.name}
                 content={isCollapsed ? item.name : null}
                 side='right'
               >
-                <Link
-                  href={item.href}
-                  className={cn(
-                    'app-no-drag group flex items-center gap-3  transition-all',
-                    isCollapsed ?
-                      'justify-center p-2.5 rounded-full '
-                    : 'px-4 py-3.5 rounded-full',
-                    isActive ?
-                      'text-primary-foreground  bg-primary-gradient'
-                    : 'text-ink-secondary hover:bg-background-secondary',
-                  )}
-                >
-                  <motion.div layout className='shrink-0'>
-                    <item.icon className='size-5' />
-                  </motion.div>
-                  <AnimatePresence mode='popLayout'>
-                    {!isCollapsed && (
-                      <motion.p
-                        // variants={textVariants}
-                        // initial='hidden'
-                        // animate='visible'
-                        // exit='exit'
-                        className={cn(
-                          'body-md whitespace-nowrap overflow-hidden',
-                          isActive ? 'font-bold' : 'font-medium',
-                        )}
-                      >
-                        {item.name}
-                      </motion.p>
-                    )}
-                  </AnimatePresence>
-                </Link>
+                {isAction ? (
+                  <button
+                    onClick={handleOpenFavorites}
+                    className='w-full text-left font-normal focus:outline-hidden'
+                  >
+                    {navItemContent}
+                  </button>
+                ) : (
+                  <Link href={item.href}>
+                    {navItemContent}
+                  </Link>
+                )}
               </Tooltip>
-              // </StaggerItem>
             );
           })}
-          {/* </Stagger> */}
         </nav>
       </div>
 
@@ -339,11 +357,15 @@ export function Sidebar() {
             isCollapsed ? 'justify-center' : 'px-2',
           )}
         >
-          <div className='relative shrink-0'>
+          <Link
+            href='/settings/profile'
+            aria-label='Open profile settings'
+            className='relative shrink-0'
+          >
             <Tooltip
               content={
                 isCollapsed ?
-                  `${displayName} (Expand sidebar to log out)`
+                  `${displayName} (Open profile settings)`
                 : null
               }
               side='right'
@@ -358,7 +380,7 @@ export function Sidebar() {
               </motion.div>
             </Tooltip>
             <span className='absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-white dark:border-[#181C26] rounded-full'></span>
-          </div>
+          </Link>
           <AnimatePresence mode='popLayout'>
             {!isCollapsed && (
               <motion.div

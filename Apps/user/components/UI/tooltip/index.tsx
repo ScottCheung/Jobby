@@ -59,4 +59,23 @@ export function Tooltip({
   );
 }
 
+export function Kbd({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <kbd
+      className={cn(
+        'inline-flex items-center justify-center rounded border border-border/80 bg-background-secondary/80 px-1 py-0.5 font-mono text-[9px] font-bold text-ink-primary shadow-xs leading-none select-none ml-1',
+        className,
+      )}
+    >
+      {children}
+    </kbd>
+  );
+}
+
 export { TooltipRoot, TooltipTrigger, TooltipContent, TooltipProvider };

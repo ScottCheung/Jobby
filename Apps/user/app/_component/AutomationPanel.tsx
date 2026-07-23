@@ -35,6 +35,9 @@ export default function AutomationPanel() {
     botStates,
     startBot,
     stopBot,
+    profile,
+    hasLoadedInitialData,
+    updateProfileExtra,
   } = useConsole();
 
   const [isOpen, setIsOpen] = useState(false);
@@ -46,8 +49,9 @@ export default function AutomationPanel() {
   const dragControls = useDragControls();
 
   useEffect(() => {
+    if (!hasLoadedInitialData) return;
     setMounted(true);
-    const saved = localStorage.getItem('automation-panel-corner');
+    const saved = profile.extra_data?.['automation-panel-corner'];
     if (
       saved === 'top-left' ||
       saved === 'top-right' ||
@@ -56,7 +60,7 @@ export default function AutomationPanel() {
     ) {
       setCorner(saved);
     }
-  }, []);
+  }, [hasLoadedInitialData, profile.extra_data]);
 
   if (!isDesktopApp) return null;
 
@@ -84,7 +88,7 @@ export default function AutomationPanel() {
     }
 
     setCorner(newCorner);
-    localStorage.setItem('automation-panel-corner', newCorner);
+    void updateProfileExtra({ 'automation-panel-corner': newCorner });
 
     // Reset offsets back to zero so layout animation takes over positioning
     dragX.set(0);

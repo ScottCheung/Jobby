@@ -1,0 +1,134 @@
+{
+  "version": "reference-answer-v3-draft",
+  "status": "discussion-only",
+  "purpose": "Contract for an AI interview answer and first-use question analysis.",
+  "generation_policy": {
+    "question_analysis": "first_ai_answer_only",
+    "subsequent_generations": "reference_answer_only",
+    "question_analysis_overwrite": "manual_reanalysis_only"
+  },
+  "upload_input": {
+    "required": ["question", "question_type"],
+    "optional": ["author_framework", "question_language"]
+  },
+  "question_analysis": {
+    "fields": {
+      "category_id": { "type": "string", "required": true },
+      "tag_ids": {
+        "type": "array",
+        "min_items": 0,
+        "max_items": 3,
+        "required": true
+      },
+      "tag_confidence": { "enum": ["low", "medium", "high"], "required": true },
+      "frequency": { "enum": ["low", "medium", "high"], "required": true },
+      "base_priority": { "enum": ["low", "medium", "high"], "required": true },
+      "preparation_difficulty": {
+        "enum": ["easy", "medium", "hard"],
+        "required": true
+      },
+      "recommended_framework": { "type": "string", "required": true },
+      "analysis_reason": { "type": "string", "max_words": 24, "required": true }
+    },
+    "tag_rules": {
+      "source": "根据题目，自动生成tag, 主要是描述题目的",
+      "allow_new_tags": true,
+      "allow_empty_tags": true,
+      "exclude": ["question_type", "difficulty", "priority", "company_name"]
+    }
+  },
+  "reference_answer": {
+    "fields": {
+      "format_version": { "value": "reference-answer-v3" },
+      "title": { "type": "string", "max_words": 8, "required": true },
+      "summary": { "type": "string", "max_words": 28, "required": true },
+      "key_phrases": {
+        "type": "array",
+        "min_items": 3,
+        "max_items": 5,
+        "required": true
+      },
+      "sections": {
+        "type": "array",
+        "min_items": 3,
+        "max_items": 4,
+        "required": true
+      },
+      "pitfalls": {
+        "type": "array",
+        "min_items": 0,
+        "max_items": 2,
+        "required": true
+      }
+    },
+    "section_fields": {
+      "key": { "type": "string", "required": true },
+      "heading": { "type": "string", "max_words": 5, "required": true },
+      "points": {
+        "type": "array",
+        "min_items": 1,
+        "max_items": 2,
+        "required": true
+      },
+      "evidence_to_personalize": {
+        "type": "array",
+        "min_items": 0,
+        "max_items": 1,
+        "required": true
+      }
+    },
+    "content_rules": {
+      "target_word_count": { "min": 100, "max": 160 },
+      "points_must_be_speakable": true,
+      "avoid_unsourced_personal_claims": true,
+      "ui_fields_generated_by": "frontend"
+    }
+  },
+  "section_templates": {
+    "behavioral": {
+      "selection": "author_framework_then_recommended_framework",
+      "framework_templates": {
+        "STAR": ["situation", "task", "action", "result"],
+        "STARE": ["situation", "task", "action", "result", "evaluation"],
+        "PAR": ["problem", "action", "result"],
+        "CAR": ["context", "action", "result"],
+        "SOAR": ["situation", "obstacle", "action", "result"]
+      },
+      "custom_framework": "use_author_defined_section_order"
+    },
+    "knowledge": {
+      "required_sections": [
+        "direct_answer",
+        "reasoning",
+        "tradeoffs",
+        "application"
+      ],
+      "optional_sections": []
+    },
+    "situational": {
+      "required_sections": [
+        "position",
+        "action_plan",
+        "risks_and_collaboration",
+        "expected_result"
+      ],
+      "optional_sections": []
+    },
+    "general": {
+      "required_sections": [
+        "core_view",
+        "supporting_evidence",
+        "role_relevance",
+        "closing"
+      ],
+      "optional_sections": []
+    }
+  },
+  "open_decisions": [
+    "Should STARE be allowed to exceed the normal four-section limit?  是的，可以允许",
+    "Should 5W2H and XYZ remain selectable answer frameworks? ",
+    "Should title and summary remain in the candidate-facing answer?",
+    "Should evidence_to_personalize be visible by default or expandable?",
+    "What controlled category and tag vocabularies should be supplied to the model?"
+  ]
+}

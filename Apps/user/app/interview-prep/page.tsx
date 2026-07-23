@@ -49,6 +49,7 @@ import { useConfirmStore } from '@/lib/store/confirm-store';
 import { useLayoutStore } from '@/lib/store/layout-store';
 import { BatchImportModal } from './library/_components/BatchImportModal';
 import { FloatingWelcomeCard } from './_components/FloatingWelcomeCard';
+import { CollectionCard } from './collections/_components/CollectionCard';
 import { div } from 'framer-motion/client';
 
 const formatShortDate = (value?: string | null) => {
@@ -136,6 +137,7 @@ export default function InterviewPrepPage() {
   const initData = async (forceRefetch = false, silent = false) => {
     if (practiceCache.questions && !forceRefetch) {
       setQuestions(practiceCache.questions);
+      window.dispatchEvent(new CustomEvent('jobby:libraryCountUpdated', { detail: practiceCache.questions.length }));
       setPracticeRecords(practiceCache.records || []);
       setCategories(practiceCache.categories || []);
       setActivePlan(practiceCache.activePlan);
@@ -183,6 +185,7 @@ export default function InterviewPrepPage() {
       practiceCache.categories = cats;
 
       setQuestions(qs);
+      window.dispatchEvent(new CustomEvent('jobby:libraryCountUpdated', { detail: qs.length }));
       setPracticeRecords(prs);
       setCategories(cats);
       setCollections(colData);
@@ -298,6 +301,32 @@ export default function InterviewPrepPage() {
         actionError instanceof Error ?
           actionError.message
         : 'Could not add collection.',
+      );
+    } finally {
+      setActiveId(null);
+    }
+  };
+
+  const handleRemoveCollection = async (collection: InterviewCollection) => {
+    const ok = await confirm({
+      title: 'Remove Collection from Library?',
+      message: `Are you sure you want to remove "${collection.title}" from your library?`,
+      confirmLabel: 'Remove from Library',
+      cancelLabel: 'Cancel',
+    });
+    if (!ok) return;
+
+    setActiveId(collection.id);
+    try {
+      await api.removeCollectionFromLibrary(collection.id);
+      await initData(true, true);
+      showGlobalToast('Collection removed from your library');
+      window.dispatchEvent(new Event('playbookLibraryUpdated'));
+    } catch (actionError) {
+      showGlobalToast(
+        actionError instanceof Error ?
+          actionError.message
+        : 'Could not remove collection.',
       );
     } finally {
       setActiveId(null);
@@ -867,90 +896,16 @@ export default function InterviewPrepPage() {
             <div className='body-md text-center py-12 text-ink-secondary italic'>
               No recommended collections found.
             </div>
-          : <div className='flex flex-wrap gap-4'>
-              {collections.map((col) => {
-                const isFree = col.price_coins <= 0;
-
-                return (
-                  <div
-                    key={col.id}
-                    className='flex-auto  max-w-[280px] rounded-xl overflow-hidden  bg-primary/5 hover:bg-background/40 transition-all hover:shadow-sm flex flex-col justify-between gap-4'
-                  >
-                    <div className='col'>
-                      <div className='relative  aspect-[16/9]'>
-                        <div className='absolute inset-0 rounded-xl bg-gradient-to-br from-primary/10 to-emerald-500/10 flex items-center justify-center overflow-hidden'>
-                          {col.cover_url ?
-                            <img
-                              src={`${col.cover_url}?t=${col.last_updated_at ? new Date(col.last_updated_at).getTime() : ''}`}
-                              alt={col.title}
-                              className='w-full h-full object-cover'
-                            />
-                          : <div className='flex items-center justify-center h-full w-full'>
-                              <BookOpen className='w-12 h-12 text-primary' />
-                            </div>
-                          }
-                        </div>
-                      </div>
-                      <div className='p-4 flex min-w-0 col justify-between'>
-                        <div className='flex-1'>
-                          <div className='flex items-center gap-1.5 flex-wrap'>
-                            <span className='px-1.5 py-0.5 rounded bg-primary/10 text-[9px] font-bold text-primary uppercase'>
-                              {col.collection_type}
-                            </span>
-                            <span
-                              className={cn(
-                                'px-1.5 py-0.5 rounded text-[9px] font-bold uppercase',
-                                col.is_in_library ?
-                                  'bg-emerald-500/10 text-emerald-600'
-                                : 'bg-background-secondary text-ink-secondary',
-                              )}
-                            >
-                              {col.is_in_library ?
-                                'In Library'
-                              : isFree ?
-                                'Free'
-                              : `${col.price_coins} Coins`}
-                            </span>
-                          </div>
-                          <h4
-                            className='label mt-1.5 truncate'
-                            title={col.title}
-                          >
-                            {col.title}
-                          </h4>
-                          <p className='body-sm text-ink-secondary mt-1 line-clamp-2'>
-                            {col.description ||
-                              'Practice high quality standard interview questions.'}
-                          </p>
-                        </div>
-
-                        <div className='flex justify-between w-full items-end'>
-                          <div className='label-sm'>
-                            {col.question_count}{' '}
-                            <span className='text-hint'>Questions</span>
-                          </div>
-                          <button
-                            onClick={() => handleAddCollection(col)}
-                            disabled={activeId === col.id || col.is_in_library}
-                            className={cn(
-                              'px-3.5 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1.5',
-                              col.is_in_library ?
-                                'bg-emerald-500/10 text-emerald-600 cursor-default'
-                              : 'bg-primary text-white hover:opacity-90 active:scale-95 shadow-sm shadow-primary/10',
-                            )}
-                          >
-                            {activeId === col.id ?
-                              <Loader2 className='w-3 h-3 animate-spin' />
-                            : col.is_in_library ?
-                              'Already in Library'
-                            : 'Add to Library'}
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+          : <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4'>
+              {collections.map((col) => (
+                <CollectionCard
+                  key={col.id}
+                  collection={col}
+                  onAdd={handleAddCollection}
+                  onRemove={handleRemoveCollection}
+                  isLoading={activeId === col.id}
+                />
+              ))}
             </div>
           }
         </div>
@@ -1442,7 +1397,7 @@ export default function InterviewPrepPage() {
                     {recentAchievements.map((achievement) => (
                       <div
                         key={achievement.badge_id}
-                        className='rounded-xl border border-border/40 bg-background/50 p-3'
+                        className='rounded-xl border border-border/40 bg-background-primary/50 p-3'
                       >
                         <div className='flex items-center justify-between gap-3'>
                           <div className='flex items-center gap-3'>
@@ -1562,7 +1517,7 @@ function DashboardSkeleton() {
         {/* Today's Checklist */}
         <div className='lg:col-span-2 p-6 rounded-2xl bg-panel flex flex-col gap-4 min-h-[300px]'>
           <div className='flex items-center justify-between border-b border-border/40 pb-3'>
-            Practice Mode
+            Practice Mode Setting
             <div className='h-6 bg-panel rounded w-1/3'></div>
             <div className='h-6 bg-panel rounded w-1/4'></div>
           </div>

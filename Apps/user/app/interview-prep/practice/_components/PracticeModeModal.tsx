@@ -161,6 +161,7 @@ export function PracticeModeModal({
 
   return (
     <Modal
+      layoutId='Practice Mode Setting'
       isOpen={isOpen}
       onClose={onClose}
       className='w-[92vw] max-w-3xl max-h-[88vh]'
@@ -168,9 +169,7 @@ export function PracticeModeModal({
       {/* Header */}
       <div className='header'>
         <div>
-          <h3 className='title-sub'>
-            Practice Mode
-          </h3>
+          <h3 className='title-sub'>Practice Mode Setting</h3>
           <p className='body-sm text-ink-secondary mt-0.5'>
             Choose how questions are selected and sequenced
           </p>
@@ -217,11 +216,7 @@ export function PracticeModeModal({
                   <p className={cn('title-sub', 'text-ink-primary')}>
                     {m.label}
                   </p>
-                  <p
-                    className={cn(
-                      'body-sm text-ink-secondary mt-0.5',
-                    )}
-                  >
+                  <p className={cn('body-sm text-ink-secondary mt-0.5')}>
                     {m.desc}
                   </p>
                 </div>
@@ -466,9 +461,7 @@ export function PracticeModeModal({
         {localMode === 'plan' && activePlan && (
           <div className='flex flex-col gap-2 border border-border rounded-2xl p-4 bg-background-secondary/10'>
             <p className='label-overline'>Active Plan</p>
-            <p className='label'>
-              {activePlan.name}
-            </p>
+            <p className='label'>{activePlan.name}</p>
             <p className='body-sm text-ink-secondary'>
               Practice will follow today&apos;s scheduled tasks. When all
               today&apos;s tasks are submitted, the session will automatically

@@ -19,13 +19,16 @@ import type {
   PlanTask,
   InterviewCategory,
   DailySummary,
+  QuestionAnswer,
 } from '@/lib/types';
 import { showGlobalToast } from '@/lib/toast';
 import { showCelebrationEvent } from '@/lib/celebration';
+import { useConfirmStore } from '@/lib/store/confirm-store';
 import { useLayoutStore } from '@/lib/store/layout-store';
 import { practiceCache } from '../practice-cache';
 import { seededShuffle, getPlanQueue } from '../practice-utils';
 import { PracticeQueueDrawerContent } from '../_components/PracticeQueueDrawer';
+import { useConsole } from '@/components/ConsoleContext';
 import type { PracticeMode } from '../_components/PracticeModeModal';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -79,38 +82,29 @@ const SESSION_SEED_KEY = 'practiceShuffleSeed';
 const SESSION_CUSTOM_IDS_KEY = 'practiceCustomIds';
 const PREF_STORAGE_KEY = 'practiceModePreference';
 const SHOW_ANSWERS_PREF_KEY = 'practiceShowAnswersPreference';
+const AUTO_EVAL_PREF_KEY = 'practiceAutoEvalPreference';
 
-function savePref(snapshot: {
+type PracticePreferenceSnapshot = {
   mode: PracticeMode;
   shuffled: boolean;
   customIds: string[];
-}) {
-  try {
-    localStorage.setItem(PREF_STORAGE_KEY, JSON.stringify(snapshot));
-  } catch {}
-}
+};
 
-function loadPref() {
-  try {
-    const raw = localStorage.getItem(PREF_STORAGE_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch {
+function parsePracticePreference(value: unknown): PracticePreferenceSnapshot | null {
+  if (!value || typeof value !== 'object') return null;
+  const candidate = value as Partial<PracticePreferenceSnapshot>;
+  if (
+    candidate.mode !== 'free' &&
+    candidate.mode !== 'custom' &&
+    candidate.mode !== 'plan'
+  ) {
     return null;
   }
-}
-
-function saveShowAnswersPref(show: boolean) {
-  try {
-    localStorage.setItem(SHOW_ANSWERS_PREF_KEY, show ? '1' : '0');
-  } catch {}
-}
-
-function loadShowAnswersPref(): boolean {
-  try {
-    return localStorage.getItem(SHOW_ANSWERS_PREF_KEY) === '1';
-  } catch {
-    return false;
-  }
+  return {
+    mode: candidate.mode,
+    shuffled: candidate.shuffled !== false,
+    customIds: Array.isArray(candidate.customIds) ? candidate.customIds : [],
+  };
 }
 
 function getOrCreateSeed(): number {
@@ -130,6 +124,11 @@ export function usePracticeData() {
   const id = (params?.id as string) || '';
   const router = useRouter();
   const searchParams = useSearchParams();
+  const consoleContext = useConsole();
+  const user = consoleContext.user;
+  const profileExtra = consoleContext.profile.extra_data ?? {};
+  const updateProfileExtra = consoleContext.updateProfileExtra;
+  const hasLoadedProfile = consoleContext.hasLoadedInitialData;
 
   // ── Mode + shuffle ──
   const practiceMode =
@@ -140,6 +139,12 @@ export function usePracticeData() {
   const [questions, setQuestions] = useState<InterviewQuestion[]>([]);
   const [categories, setCategories] = useState<InterviewCategory[]>([]);
   const [practiceRecords, setPracticeRecords] = useState<PracticeRecord[]>([]);
+  const [questionAnswersByQuestion, setQuestionAnswersByQuestion] = useState<
+    Record<string, QuestionAnswer[]>
+  >({});
+  const [isGeneratingAiAnswer, setIsGeneratingAiAnswer] = useState(false);
+  const [isGeneratingQuestionMetadata, setIsGeneratingQuestionMetadata] =
+    useState(false);
   const [apiBaseUrl, setApiBaseUrl] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [activePlan, setActivePlan] = useState<PracticePlan | null>(null);
@@ -161,11 +166,43 @@ export function usePracticeData() {
   const [showModeModal, setShowModeModal] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [showCompletionModal, setShowCompletionModal] = useState(false);
-  const [completionReward, setCompletionReward] = useState<PracticeRecord['gamification_update']>(null);
+  const [completionReward, setCompletionReward] =
+    useState<PracticeRecord['gamification_update']>(null);
   const [isSubmittingReport, setIsSubmittingReport] = useState(false);
-  const [activeTab, setActiveTab] = useState<'workspace' | 'history' | 'comment'>(
-    (searchParams?.get('tab') as 'workspace' | 'history' | 'comment') || 'workspace',
+  const [activeTab, setActiveTab] = useState<
+    'workspace' | 'history' | 'comment'
+  >(
+    (searchParams?.get('tab') as 'workspace' | 'history' | 'comment') ||
+      'workspace',
   );
+  const confirm = useConfirmStore((state) => state.confirm);
+  const [autoEvalEnabled, setAutoEvalEnabled] = useState(false);
+
+  useEffect(() => {
+    if (!hasLoadedProfile) return;
+    setAutoEvalEnabled(profileExtra[AUTO_EVAL_PREF_KEY] === '1');
+  }, [hasLoadedProfile, profileExtra]);
+
+  const toggleAutoEval = async () => {
+    if (!autoEvalEnabled) {
+      const ok = await confirm({
+        title: 'Enable Auto AI Evaluation on Submit?',
+        message:
+          'After enabling AI Evaluation, each practice submission will trigger an AI assessment and consume 5 coins each time. The advantage is that this will provide a faster response speed. Our server will immediately trigger the AI scoring after receiving your interview response, but this may cause your coins to be comsumed faster than expected. Are you sure you want to enable this function?',
+        confirmLabel: 'Enable Auto Evaluation',
+        cancelLabel: 'Cancel',
+      });
+      if (!ok) return;
+      setAutoEvalEnabled(true);
+      void updateProfileExtra({ [AUTO_EVAL_PREF_KEY]: '1' });
+      showGlobalToast('Auto AI Evaluation enabled on submit.');
+    } else {
+      setAutoEvalEnabled(false);
+      void updateProfileExtra({ [AUTO_EVAL_PREF_KEY]: '0' });
+      showGlobalToast('Auto AI Evaluation disabled.');
+    }
+  };
+
   const [globalShowAnswers, setGlobalShowAnswers] = useState(false);
   const [showThisAnswer, setShowThisAnswer] = useState(false);
   const [showDailySummaryModal, setShowDailySummaryModal] = useState(false);
@@ -176,10 +213,6 @@ export function usePracticeData() {
   // ── Answer editing ──
   const [isEditingAnswer, setIsEditingAnswer] = useState(false);
   const [isSavingAnswer, setIsSavingAnswer] = useState(false);
-
-  // ── Framework editing ──
-  const [isEditingFramework, setIsEditingFramework] = useState(false);
-  const [isSavingFramework, setIsSavingFramework] = useState(false);
 
   // ── Workspace ──
   const [confidenceScore, setConfidenceScore] = useState<number | null>(null);
@@ -265,12 +298,13 @@ export function usePracticeData() {
   };
 
   useEffect(() => {
+    if (!hasLoadedProfile) return;
     const currentSeed = shuffleSeedRef.current;
     try {
       sessionStorage.setItem(SESSION_SEED_KEY, String(currentSeed));
     } catch {}
 
-    setGlobalShowAnswers(loadShowAnswersPref());
+    setGlobalShowAnswers(profileExtra[SHOW_ANSWERS_PREF_KEY] === '1');
 
     try {
       const saved = sessionStorage.getItem(SESSION_CUSTOM_IDS_KEY);
@@ -278,7 +312,7 @@ export function usePracticeData() {
     } catch {}
 
     if (!searchParams?.get('mode')) {
-      const pref = loadPref();
+      const pref = parsePracticePreference(profileExtra[PREF_STORAGE_KEY]);
       const mode = pref?.mode ?? 'free';
       const shuffle = pref ? pref.shuffled !== false : true;
       if (pref && pref.customIds?.length) {
@@ -290,10 +324,10 @@ export function usePracticeData() {
           );
         } catch {}
       }
-      
+
       const tabParam = searchParams?.get('tab');
       const tabString = tabParam ? `&tab=${tabParam}` : '';
-      
+
       router.replace(
         `/interview-prep/practice/${id}?mode=${mode}&shuffle=${shuffle ? '1' : '0'}${tabString}`,
       );
@@ -301,12 +335,31 @@ export function usePracticeData() {
 
     void initData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [hasLoadedProfile]);
+
+  const savePracticePreference = useCallback(
+    (snapshot: PracticePreferenceSnapshot) => {
+      void updateProfileExtra({ [PREF_STORAGE_KEY]: snapshot });
+    },
+    [updateProfileExtra],
+  );
+
+  const setGlobalShowAnswersPreference = useCallback(
+    (show: boolean) => {
+      setGlobalShowAnswers(show);
+      void updateProfileExtra({ [SHOW_ANSWERS_PREF_KEY]: show ? '1' : '0' });
+    },
+    [updateProfileExtra],
+  );
 
   // Sync tab from URL
   useEffect(() => {
     const tabParam = searchParams?.get('tab');
-    if (tabParam === 'workspace' || tabParam === 'history' || tabParam === 'comment') {
+    if (
+      tabParam === 'workspace' ||
+      tabParam === 'history' ||
+      tabParam === 'comment'
+    ) {
       setActiveTab(tabParam);
     }
   }, [searchParams]);
@@ -315,10 +368,41 @@ export function usePracticeData() {
   useEffect(() => {
     setShowThisAnswer(false);
     setIsEditingAnswer(false);
-    setIsEditingFramework(false);
     resetWorkspace();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  // Support direct URL practice for any valid question ID or display_number
+  useEffect(() => {
+    if (!id || isLoading) return;
+    const isIdInQueue = questions.some(
+      (q) =>
+        q.id === id ||
+        String(q.display_number) === id ||
+        (q.display_number && `q${q.display_number}` === id.toLowerCase()),
+    );
+    if (questions.length > 0 && !isIdInQueue) {
+      let cancelled = false;
+      void api
+        .getInterviewQuestion(id)
+        .then((fetchedQ) => {
+          if (cancelled || !fetchedQ) return;
+          setQuestions((prev) => {
+            if (prev.some((q) => q.id === fetchedQ.id)) return prev;
+            return [fetchedQ, ...prev];
+          });
+        })
+        .catch((err) => {
+          console.error(
+            'Could not load question for direct URL practice:',
+            err,
+          );
+        });
+      return () => {
+        cancelled = true;
+      };
+    }
+  }, [id, isLoading, questions]);
 
   // ─── Navigation helper ───
   const navigateTo = useCallback(
@@ -346,7 +430,7 @@ export function usePracticeData() {
         sessionStorage.setItem(SESSION_SEED_KEY, String(newSeed));
       } catch {}
     }
-    savePref({
+    savePracticePreference({
       mode: practiceMode,
       shuffled: newShuffled,
       customIds: customSelectedIds,
@@ -354,7 +438,14 @@ export function usePracticeData() {
     router.push(
       `/interview-prep/practice/${id}?mode=${practiceMode}&shuffle=${newShuffled ? '1' : '0'}`,
     );
-  }, [id, isShuffled, practiceMode, customSelectedIds, router]);
+  }, [
+    id,
+    isShuffled,
+    practiceMode,
+    customSelectedIds,
+    router,
+    savePracticePreference,
+  ]);
 
   // ─── Effective Queue ───
   const effectiveQueue = useMemo<InterviewQuestion[]>(() => {
@@ -378,9 +469,118 @@ export function usePracticeData() {
     }
   }, [practiceMode, isShuffled, questions, customSelectedIds, planTasks]);
 
-  const currentQuestionIndex = effectiveQueue.findIndex((q) => q.id === id);
-  const currentQuestion =
-    effectiveQueue[currentQuestionIndex] ?? questions.find((q) => q.id === id);
+  const currentQuestionIndex = effectiveQueue.findIndex(
+    (q) =>
+      q.id === id ||
+      String(q.display_number) === id ||
+      (q.display_number && `q${q.display_number}` === id.toLowerCase()),
+  );
+  const baseCurrentQuestion =
+    effectiveQueue[currentQuestionIndex] ??
+    questions.find(
+      (q) =>
+        q.id === id ||
+        String(q.display_number) === id ||
+        (q.display_number && `q${q.display_number}` === id.toLowerCase()),
+    );
+
+  const currentQuestionAnswers = useMemo(
+    () =>
+      baseCurrentQuestion ?
+        questionAnswersByQuestion[baseCurrentQuestion.id] || []
+      : [],
+    [baseCurrentQuestion, questionAnswersByQuestion],
+  );
+
+  // Author's official reference answer (source === 'author', type === 'reference', status === 'published')
+  const authorAnswers = useMemo(
+    () =>
+      currentQuestionAnswers.filter(
+        (a) =>
+          a.answer_type === 'reference' &&
+          a.source === 'author' &&
+          a.status === 'published',
+      ),
+    [currentQuestionAnswers],
+  );
+
+  // Current user's own private reference answer (is_author === true, type === 'reference', not an official published author answer)
+  const myAnswer = useMemo(
+    () =>
+      currentQuestionAnswers.find(
+        (a) =>
+          a.answer_type === 'reference' &&
+          a.is_author &&
+          a.status !== 'archived' &&
+          !(a.source === 'author' && a.status === 'published'),
+      ) ?? null,
+    [currentQuestionAnswers],
+  );
+
+  const allCommunityAnswers = useMemo(
+    () =>
+      currentQuestionAnswers.filter(
+        (answer) =>
+          (answer.source === 'community' || answer.answer_type === 'example') &&
+          answer.status !== 'archived',
+      ),
+    [currentQuestionAnswers],
+  );
+
+  const featuredCommunityAnswers = useMemo(
+    () =>
+      currentQuestionAnswers.filter(
+        (answer) =>
+          answer.status !== 'archived' &&
+          (answer.is_recommended ||
+            (answer.answer_type === 'example' && answer.is_recommended)),
+      ),
+    [currentQuestionAnswers],
+  );
+
+  const isQuestionAuthor = useMemo(() => {
+    if (!user || !baseCurrentQuestion) return false;
+    return (
+      user.id === baseCurrentQuestion.submitted_by_user_id ||
+      user.role === 'admin'
+    );
+  }, [user, baseCurrentQuestion]);
+
+  const aiReferenceAnswers = useMemo(
+    () =>
+      currentQuestionAnswers.filter(
+        (answer) =>
+          answer.source === 'ai' &&
+          answer.answer_type === 'reference' &&
+          answer.status !== 'archived',
+      ),
+    [currentQuestionAnswers],
+  );
+
+  const currentQuestion = useMemo(() => {
+    return baseCurrentQuestion;
+  }, [baseCurrentQuestion]);
+
+  useEffect(() => {
+    if (!baseCurrentQuestion) return;
+    if (questionAnswersByQuestion[baseCurrentQuestion.id]) return;
+    let cancelled = false;
+    void api
+      .questionAnswers(baseCurrentQuestion.id)
+      .then((answers) => {
+        if (cancelled) return;
+        setQuestionAnswersByQuestion((prev) => ({
+          ...prev,
+          [baseCurrentQuestion.id]: answers,
+        }));
+      })
+      .catch((err) => {
+        console.error('Failed to load question answers:', err);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [baseCurrentQuestion, questionAnswersByQuestion]);
 
   // ─── Queue Drawer ───
   const handleOpenQueue = useCallback(() => {
@@ -423,22 +623,24 @@ export function usePracticeData() {
     handleOpenQueue,
   ]);
 
-  // ─── Navigation ───
+  // ─── Navigation (Infinite wrap-around) ───
   const handleNext = () => {
-    if (
-      currentQuestionIndex >= 0 &&
-      currentQuestionIndex < effectiveQueue.length - 1
-    ) {
-      navigateTo(effectiveQueue[currentQuestionIndex + 1].id);
-    } else if (practiceMode === 'free' && effectiveQueue.length > 0) {
-      navigateTo(effectiveQueue[0].id);
-    }
+    if (effectiveQueue.length === 0) return;
+    const nextIdx =
+      currentQuestionIndex >= 0 ?
+        (currentQuestionIndex + 1) % effectiveQueue.length
+      : 0;
+    navigateTo(effectiveQueue[nextIdx].id);
   };
 
   const handlePrevious = () => {
-    if (currentQuestionIndex > 0) {
-      navigateTo(effectiveQueue[currentQuestionIndex - 1].id);
-    }
+    if (effectiveQueue.length === 0) return;
+    const prevIdx =
+      currentQuestionIndex >= 0 ?
+        (currentQuestionIndex - 1 + effectiveQueue.length) %
+        effectiveQueue.length
+      : 0;
+    navigateTo(effectiveQueue[prevIdx].id);
   };
 
   // ─── Mode Confirm ───
@@ -448,7 +650,7 @@ export function usePracticeData() {
       sessionStorage.setItem(SESSION_CUSTOM_IDS_KEY, JSON.stringify(customIds));
     } catch {}
 
-    savePref({ mode: newMode, shuffled: isShuffled, customIds });
+    savePracticePreference({ mode: newMode, shuffled: isShuffled, customIds });
 
     let newQueue: InterviewQuestion[];
     switch (newMode) {
@@ -508,7 +710,7 @@ export function usePracticeData() {
     const recordStartTime = Date.now();
     let currentSegmentStartTime: number | null = null;
     let segmentLastUpdateTime: number = 0;
-    
+
     rec.onresult = (event: any) => {
       let interim = '';
       const finalSegments: Array<{ text: string; start: number; end: number }> =
@@ -516,7 +718,7 @@ export function usePracticeData() {
       for (let i = event.resultIndex; i < event.results.length; ++i) {
         const transcript = event.results[i][0].transcript;
         const elapsed = (Date.now() - recordStartTime) / 1000;
-        
+
         if (currentSegmentStartTime === null) {
           // Compensate for typical API network latency on the first interim result
           currentSegmentStartTime = Math.max(0, elapsed - 0.4);
@@ -525,8 +727,9 @@ export function usePracticeData() {
         if (event.results[i].isFinal) {
           // The 'isFinal' event often arrives 1-2s after actual speech ends.
           // Using the last interim time gives a much tighter bound on the true audio end time.
-          const actualEnd = segmentLastUpdateTime > currentSegmentStartTime 
-            ? segmentLastUpdateTime 
+          const actualEnd =
+            segmentLastUpdateTime > currentSegmentStartTime ?
+              segmentLastUpdateTime
             : Math.max(currentSegmentStartTime + 0.5, elapsed - 0.4);
 
           finalSegments.push({
@@ -581,13 +784,25 @@ export function usePracticeData() {
 
   const startRecording = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          channelCount: 1,
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false,
+          sampleRate: 48_000,
+        },
+      });
       setActiveStream(stream);
       const opusMimeType = 'audio/webm;codecs=opus';
+      const mimeType =
+        MediaRecorder.isTypeSupported(opusMimeType) ? opusMimeType : (
+          'audio/webm'
+        );
       const mediaRecorder = new MediaRecorder(stream, {
-        // Speech needs little bandwidth; Opus at 24 kbps keeps practice audio inexpensive.
-        mimeType: MediaRecorder.isTypeSupported(opusMimeType) ? opusMimeType : 'audio/webm',
-        audioBitsPerSecond: 24_000,
+        // Keep the recording crisp enough for playback review without excessive file size.
+        mimeType,
+        audioBitsPerSecond: 48_000,
       });
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
@@ -595,7 +810,7 @@ export function usePracticeData() {
         if (e.data.size > 0) audioChunksRef.current.push(e.data);
       };
       mediaRecorder.onstop = () => {
-        const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const blob = new Blob(audioChunksRef.current, { type: mimeType });
         setAudioBlob(blob);
         setAudioUrl(URL.createObjectURL(blob));
         stream.getTracks().forEach((t) => t.stop());
@@ -635,6 +850,104 @@ export function usePracticeData() {
       }, 300);
     }
   };
+
+  // ─── Global Keyboard Shortcuts ───
+  useEffect(() => {
+    const isEditableElement = (target: EventTarget | null) => {
+      if (!target || !(target instanceof HTMLElement)) return false;
+      const tagName = target.tagName.toLowerCase();
+      return (
+        tagName === 'input' ||
+        tagName === 'textarea' ||
+        tagName === 'select' ||
+        target.isContentEditable ||
+        target.getAttribute('contenteditable') === 'true' ||
+        target.closest('[contenteditable="true"]') !== null ||
+        target.closest('input, textarea, select') !== null
+      );
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (isEditableElement(e.target)) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+
+      const key = e.key;
+
+      if (key === 'ArrowLeft') {
+        e.preventDefault();
+        handlePrevious();
+      } else if (key === 'ArrowRight') {
+        e.preventDefault();
+        handleNext();
+      } else if (key === 'ArrowUp') {
+        e.preventDefault();
+        window.dispatchEvent(
+          new CustomEvent('jobby:keyboard-action', {
+            detail: { action: 'upvote' },
+          }),
+        );
+      } else if (key === 'ArrowDown') {
+        e.preventDefault();
+        window.dispatchEvent(
+          new CustomEvent('jobby:keyboard-action', {
+            detail: { action: 'downvote' },
+          }),
+        );
+      } else if (key === 'r' || key === 'R') {
+        e.preventDefault();
+        setShowReportModal(true);
+      } else if (key === 's' || key === 'S') {
+        e.preventDefault();
+        window.dispatchEvent(
+          new CustomEvent('jobby:keyboard-action', {
+            detail: { action: 'favorite' },
+          }),
+        );
+      } else if (key === ' ' || key === 'Spacebar') {
+        e.preventDefault();
+        if (isRecording) {
+          stopRecording();
+        } else {
+          void startRecording();
+        }
+      } else if (key === 'c' || key === 'C') {
+        e.preventDefault();
+        window.dispatchEvent(
+          new CustomEvent('jobby:keyboard-action', {
+            detail: { action: 'tab-comment' },
+          }),
+        );
+      } else if (key === 'h' || key === 'H') {
+        e.preventDefault();
+        window.dispatchEvent(
+          new CustomEvent('jobby:keyboard-action', {
+            detail: { action: 'tab-history' },
+          }),
+        );
+      } else if (key === 'p' || key === 'P') {
+        e.preventDefault();
+        window.dispatchEvent(
+          new CustomEvent('jobby:keyboard-action', {
+            detail: { action: 'tab-workspace' },
+          }),
+        );
+      } else if (key === 'f' || key === 'F') {
+        e.preventDefault();
+        handleOpenQueue();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [
+    handlePrevious,
+    handleNext,
+    handleOpenQueue,
+    isRecording,
+    startRecording,
+    stopRecording,
+    setShowReportModal,
+  ]);
 
   const handleUpdateTranscriptSegment = (index: number, newText: string) => {
     setTranscriptSegments((prev) => {
@@ -690,6 +1003,20 @@ export function usePracticeData() {
 
       if (audioBlob && record?.id)
         await api.uploadPracticeAudio(record.id, audioBlob);
+
+      if (autoEvalEnabled && record?.id) {
+        void api
+          .createPracticeEvaluation(record.id)
+          .then((evaluation) => {
+            showGlobalToast(
+              `AI Evaluation complete: ${evaluation.overall_score}/100`,
+            );
+            window.dispatchEvent(new Event('playbookGamificationUpdated'));
+          })
+          .catch((err) => {
+            console.error('Auto evaluation error:', err);
+          });
+      }
 
       if (activePlan) {
         try {
@@ -759,7 +1086,10 @@ export function usePracticeData() {
     }
   };
 
-  const handleUpdateAttempt = async (attemptId: string, updatedRecord: Partial<PracticeRecord>) => {
+  const handleUpdateAttempt = async (
+    attemptId: string,
+    updatedRecord: Partial<PracticeRecord>,
+  ) => {
     try {
       await api.updatePracticeRecord(attemptId, updatedRecord);
       const updated = await api.practiceRecords();
@@ -770,7 +1100,40 @@ export function usePracticeData() {
     }
   };
 
-  const handleReportSubmit = async (data: { company: string; role: string; happened_at: string }) => {
+  const handleSavePolishedAnswerAsMyAnswer = async (polishedAnswer: string) => {
+    const answer = polishedAnswer.trim();
+    if (!currentQuestion || !answer) return;
+    try {
+      const updatedQuestion = await api.updateInterviewQuestion(
+        currentQuestion.id,
+        { my_answer: answer },
+      );
+      setQuestions((previous) =>
+        previous.map((question) =>
+          question.id === updatedQuestion.id ? updatedQuestion : question,
+        ),
+      );
+      if (practiceCache.questions) {
+        practiceCache.questions = practiceCache.questions.map((question) =>
+          question.id === updatedQuestion.id ? updatedQuestion : question,
+        );
+      }
+      showGlobalToast('AI polish added to My Answer');
+      window.dispatchEvent(new Event('playbookLibraryUpdated'));
+    } catch (err) {
+      console.error('Failed to save polished answer:', err);
+      showGlobalToast(
+        err instanceof Error ? err.message : 'Could not save AI polish',
+      );
+    }
+  };
+
+  const handleReportSubmit = async (data: {
+    company: string;
+    role?: string;
+    happened_at: string;
+    location?: string;
+  }) => {
     if (!currentQuestion) return;
     setIsSubmittingReport(true);
     try {
@@ -780,6 +1143,7 @@ export function usePracticeData() {
         role: data.role || undefined,
         happened_at: data.happened_at,
         seen_in_interview: true,
+        raw_data: data.location ? { location: data.location } : {},
       });
       showGlobalToast('Interview report submitted successfully!');
     } catch (err) {
@@ -794,18 +1158,28 @@ export function usePracticeData() {
     if (!currentQuestion) return;
     setIsSavingAnswer(true);
     try {
-      await api.updateInterviewQuestion(currentQuestion.id, {
-        answer_objective: newText.trim() || undefined,
-      } as any);
-      setQuestions((prev) => {
-        const updatedQuestions = prev.map((q) =>
-          q.id === currentQuestion.id ?
-            { ...q, answer_objective: newText.trim() }
-          : q,
+      const trimmed = newText.trim();
+      // myAnswer is the current user's own reference answer entry
+      if (myAnswer) {
+        await api.updateQuestionAnswer(
+          myAnswer.id,
+          trimmed ? { body: trimmed, status: 'draft' } : { status: 'archived' },
         );
-        practiceCache.questions = updatedQuestions;
-        return updatedQuestions;
-      });
+      } else if (trimmed) {
+        // My Answer is always a user's private practice draft.
+        await api.createQuestionAnswer(currentQuestion.id, {
+          source: 'community',
+          answer_type: 'reference',
+          status: 'draft',
+          title: 'My Reference Answer',
+          body: trimmed,
+        });
+      }
+      const refreshedAnswers = await api.questionAnswers(currentQuestion.id);
+      setQuestionAnswersByQuestion((prev) => ({
+        ...prev,
+        [currentQuestion.id]: refreshedAnswers,
+      }));
       setIsEditingAnswer(false);
     } catch (err) {
       console.error('Failed to update standard answer:', err);
@@ -814,28 +1188,239 @@ export function usePracticeData() {
     }
   };
 
-  const handleSaveFramework = async (type: string, customText: string) => {
-    if (!currentQuestion) return;
-    setIsSavingFramework(true);
+  const handleCreateAuthorAnswer = async (newText: string) => {
+    if (!currentQuestion || !isQuestionAuthor) return;
+    const trimmed = newText.trim();
+    if (!trimmed) return;
+    setIsSavingAnswer(true);
     try {
-      const fv = type === 'custom' ? customText.trim() : type;
-      await api.updateInterviewQuestion(currentQuestion.id, {
-        answer_framework: fv || null,
-      } as any);
-      setQuestions((prev) => {
-        const updatedQuestions = prev.map((q) =>
-          q.id === currentQuestion.id ?
-            { ...q, answer_framework: fv || null }
-          : q,
-        );
-        practiceCache.questions = updatedQuestions;
-        return updatedQuestions;
+      await api.createQuestionAnswer(currentQuestion.id, {
+        answer_type: 'reference',
+        status: 'published',
+        title: 'Author Reference Answer',
+        body: trimmed,
       });
-      setIsEditingFramework(false);
+      const refreshedAnswers = await api.questionAnswers(currentQuestion.id);
+      setQuestionAnswersByQuestion((prev) => ({
+        ...prev,
+        [currentQuestion.id]: refreshedAnswers,
+      }));
     } catch (err) {
-      console.error('Failed to update answering framework:', err);
+      console.error('Failed to create author answer:', err);
     } finally {
-      setIsSavingFramework(false);
+      setIsSavingAnswer(false);
+    }
+  };
+
+  const handleUpdateAuthorAnswer = async (
+    answerId: string,
+    newText: string,
+  ) => {
+    const trimmed = newText.trim();
+    if (!currentQuestion || !isQuestionAuthor || !trimmed) return;
+    setIsSavingAnswer(true);
+    try {
+      await api.updateQuestionAnswer(answerId, {
+        body: trimmed,
+        status: 'published',
+      });
+      const refreshedAnswers = await api.questionAnswers(currentQuestion.id);
+      setQuestionAnswersByQuestion((prev) => ({
+        ...prev,
+        [currentQuestion.id]: refreshedAnswers,
+      }));
+    } catch (err) {
+      console.error('Failed to update author answer:', err);
+    } finally {
+      setIsSavingAnswer(false);
+    }
+  };
+
+  const handleDeleteAuthorAnswer = async (answerId: string) => {
+    if (!currentQuestion || !isQuestionAuthor) return;
+    setIsSavingAnswer(true);
+    try {
+      await api.updateQuestionAnswer(answerId, { status: 'archived' });
+      const refreshedAnswers = await api.questionAnswers(currentQuestion.id);
+      setQuestionAnswersByQuestion((prev) => ({
+        ...prev,
+        [currentQuestion.id]: refreshedAnswers,
+      }));
+    } catch (err) {
+      console.error('Failed to delete author answer:', err);
+    } finally {
+      setIsSavingAnswer(false);
+    }
+  };
+
+  const handleGenerateAiAnswer = async (regenerate = false) => {
+    if (!currentQuestion) return;
+    if (regenerate) {
+      const ok = await confirm({
+        title: 'Regenerate AI Answer?',
+        message:
+          'Regenerating will call AI again and consume 5 coins. The existing AI answer will remain in history, but a new version will be created for this question.',
+        confirmLabel: 'Regenerate',
+        cancelLabel: 'Cancel',
+        type: 'warning',
+      });
+      if (!ok) return;
+    }
+    setIsGeneratingAiAnswer(true);
+    try {
+      const answer = await api.createAiReferenceAnswer(currentQuestion.id, {
+        regenerate,
+      });
+      setQuestionAnswersByQuestion((prev) => ({
+        ...prev,
+        [currentQuestion.id]:
+          (
+            (prev[currentQuestion.id] || []).some(
+              (item) => item.id === answer.id,
+            )
+          ) ?
+            (prev[currentQuestion.id] || []).map((item) =>
+              item.id === answer.id ? answer : item,
+            )
+          : [...(prev[currentQuestion.id] || []), answer],
+      }));
+      const refreshedQuestion = await api
+        .getInterviewQuestion(currentQuestion.id)
+        .catch(() => null);
+      if (refreshedQuestion) {
+        setQuestions((previous) =>
+          previous.map((question) =>
+            question.id === refreshedQuestion.id ? refreshedQuestion : question,
+          ),
+        );
+        if (practiceCache.questions) {
+          practiceCache.questions = practiceCache.questions.map((question) =>
+            question.id === refreshedQuestion.id ? refreshedQuestion : question,
+          );
+        }
+      }
+      showGlobalToast(
+        regenerate ?
+          'New AI reference answer generated'
+        : 'AI reference answer ready',
+      );
+      window.dispatchEvent(new Event('playbookGamificationUpdated'));
+      return answer;
+    } catch (err) {
+      console.error('Failed to generate AI reference answer:', err);
+      showGlobalToast(
+        err instanceof Error ? err.message : 'Could not generate AI answer',
+      );
+    } finally {
+      setIsGeneratingAiAnswer(false);
+    }
+  };
+
+  const handleGenerateQuestionMetadata = async () => {
+    if (!currentQuestion || currentQuestion.ai_metadata) return;
+    setIsGeneratingQuestionMetadata(true);
+    try {
+      const updatedQuestion = await api.generateQuestionAiMetadata(
+        currentQuestion.id,
+      );
+      const updateQuestion = (question: InterviewQuestion) =>
+        question.id === currentQuestion.id ? updatedQuestion : question;
+      setQuestions((previous) =>
+        previous.some((question) => question.id === currentQuestion.id) ?
+          previous.map(updateQuestion)
+        : [updatedQuestion, ...previous],
+      );
+      if (practiceCache.questions) {
+        practiceCache.questions =
+          (
+            practiceCache.questions.some(
+              (question) => question.id === currentQuestion.id,
+            )
+          ) ?
+            practiceCache.questions.map(updateQuestion)
+          : [updatedQuestion, ...practiceCache.questions];
+      }
+      showGlobalToast('AI has added detailed information for this question');
+      window.dispatchEvent(new Event('playbookLibraryUpdated'));
+    } catch (err) {
+      console.error('Failed to generate question metadata:', err);
+      showGlobalToast(
+        err instanceof Error ?
+          err.message
+        : 'AI has not added detailed information for this question',
+      );
+    } finally {
+      setIsGeneratingQuestionMetadata(false);
+    }
+  };
+
+  const handleUnlockAiAnswer = async (answerId: string) => {
+    if (!currentQuestion) return;
+    try {
+      const result = await api.unlockAiAnswer(answerId);
+      setQuestionAnswersByQuestion((prev) => ({
+        ...prev,
+        [currentQuestion.id]: (prev[currentQuestion.id] || []).map((answer) =>
+          answer.id === answerId ? result.answer : answer,
+        ),
+      }));
+      const refreshedQuestion = await api
+        .getInterviewQuestion(currentQuestion.id)
+        .catch(() => null);
+      if (refreshedQuestion) {
+        setQuestions((previous) =>
+          previous.map((question) =>
+            question.id === refreshedQuestion.id ? refreshedQuestion : question,
+          ),
+        );
+        if (practiceCache.questions) {
+          practiceCache.questions = practiceCache.questions.map((question) =>
+            question.id === refreshedQuestion.id ? refreshedQuestion : question,
+          );
+        }
+      }
+      showGlobalToast(
+        result.coins_spent ?
+          `AI answer unlocked for ${result.coins_spent} coins`
+        : 'AI answer unlocked',
+      );
+      window.dispatchEvent(new Event('playbookGamificationUpdated'));
+    } catch (err) {
+      console.error('Failed to unlock AI answer:', err);
+      showGlobalToast(
+        err instanceof Error ? err.message : 'Could not unlock AI answer',
+      );
+    }
+  };
+
+  const handleToggleFeaturedAnswer = async (
+    answerId: string,
+    currentIsRecommended: boolean,
+  ) => {
+    if (!baseCurrentQuestion) return;
+    try {
+      await api.updateQuestionAnswer(answerId, {
+        is_recommended: !currentIsRecommended,
+      });
+      showGlobalToast(
+        !currentIsRecommended ?
+          'Marked as featured answer'
+        : 'Removed from featured answers',
+      );
+      const refreshedAnswers = await api.questionAnswers(
+        baseCurrentQuestion.id,
+      );
+      setQuestionAnswersByQuestion((prev) => ({
+        ...prev,
+        [baseCurrentQuestion.id]: refreshedAnswers,
+      }));
+    } catch (err) {
+      console.error('Failed to toggle featured answer:', err);
+      showGlobalToast(
+        err instanceof Error ?
+          err.message
+        : 'Operation failed. Please try again.',
+      );
     }
   };
 
@@ -873,7 +1458,7 @@ export function usePracticeData() {
     activeTab,
     setActiveTab,
     globalShowAnswers,
-    setGlobalShowAnswers,
+    setGlobalShowAnswers: setGlobalShowAnswersPreference,
     showThisAnswer,
     setShowThisAnswer,
     showDailySummaryModal,
@@ -882,9 +1467,6 @@ export function usePracticeData() {
     isEditingAnswer,
     setIsEditingAnswer,
     isSavingAnswer,
-    isEditingFramework,
-    setIsEditingFramework,
-    isSavingFramework,
     confidenceScore,
     setConfidenceScore,
     notes,
@@ -898,6 +1480,9 @@ export function usePracticeData() {
     transcriptSegments,
     interimText,
     draftAudioRef,
+
+    autoEvalEnabled,
+    toggleAutoEval,
 
     // Handlers
     initData,
@@ -914,15 +1499,30 @@ export function usePracticeData() {
     handleSubmit,
     handleDeleteAttempt,
     handleUpdateAttempt,
+    handleSavePolishedAnswerAsMyAnswer,
     handleUpdateTranscriptSegment,
     handleSaveStandardAnswer,
-    handleSaveFramework,
+    handleCreateAuthorAnswer,
+    handleUpdateAuthorAnswer,
+    handleDeleteAuthorAnswer,
+    handleGenerateAiAnswer,
+    handleGenerateQuestionMetadata,
+    handleUnlockAiAnswer,
+    handleToggleFeaturedAnswer,
     handleReportSubmit,
 
     // Derived
     effectiveQueue,
     currentQuestionIndex,
     currentQuestion,
+    authorAnswers,
+    myAnswer,
+    allCommunityAnswers,
+    featuredCommunityAnswers,
+    aiReferenceAnswers,
+    isGeneratingAiAnswer,
+    isGeneratingQuestionMetadata,
+    isQuestionAuthor,
     shouldShowAnswer,
     currentAttempts,
   };

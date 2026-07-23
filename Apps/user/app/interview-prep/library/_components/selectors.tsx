@@ -4,6 +4,7 @@ import React from 'react';
 import { CheckCircle2, Folder } from 'lucide-react';
 import type { InterviewCategory } from '@/lib/types';
 import { cn, cleanName } from '@/lib/utils';
+import { Tooltip } from '@/components/UI/tooltip/index';
 
 interface CategorySelectorProps {
   importDefaultCategory: string;
@@ -46,7 +47,7 @@ export function CategorySelector({
             'mb-3 h-10 w-10 transition-all duration-300',
             importDefaultCategory === '' ?
               'text-primary fill-primary '
-            : 'text-muted fill-muted',
+            : 'text-muted fill-muted dark:text-zinc-400 dark:fill-zinc-400',
           )}
         />
 
@@ -71,44 +72,60 @@ export function CategorySelector({
             key={cat.id}
             type='button'
             onClick={() => setImportDefaultCategory(cat.id)}
-            className={cn(
-              'group relative flex h-28 flex-col items-center justify-center overflow-hidden  transition-all duration-300 cursor-pointer',
-              isSelected ?
-                'border-primary/30 rounded-xl  bg-gradient-to-br from-primary/10 via-primary/5 to-background  '
-              : ' hover:-translate-y-1 hover:scale-[1.015] ',
-            )}
           >
-            {/* Top Glow */}
-            {isSelected && (
-              <div className='absolute inset-0'>
-                <div className='absolute inset-x-0 top-0 h-12 bg-gradient-to-b from-primary/15 to-transparent' />
-              </div>
-            )}
-
-            {/* Check */}
-            {isSelected && (
-              <CheckCircle2 className='absolute right-3 top-3 h-4 w-4 text-primary' />
-            )}
-
-            <Folder
+            <Tooltip
+              content={
+                <div>
+                  {' '}
+                  Put all import questions into
+                  <span className='text-primary font-semibold '>
+                    {' '}
+                    {cleanName(cat.name)}
+                  </span>{' '}
+                  category folder
+                </div>
+              }
               className={cn(
-                'mb-3 h-10 w-10 transition-all duration-300',
+                'group overflow-hidden  transition-all duration-300 cursor-pointer',
                 isSelected ?
-                  'text-primary fill-primary '
-                : 'text-muted fill-muted',
-              )}
-            />
-
-            <span
-              className={cn(
-                'label truncate px-2 text-center',
-                isSelected ? 'text-primary' : (
-                  'text-zinc-700 dark:text-zinc-300'
-                ),
+                  'border-primary/30  bg-gradient-to-br from-primary/10 via-primary/5 to-background  '
+                : ' hover:-translate-y-1 hover:scale-[1.015] ',
               )}
             >
-              {cleanName(cat.name)}
-            </span>
+              <div className='relative flex h-28 flex-col rounded-xl  items-center justify-center overflow-hidden'>
+                {/* Top Glow */}
+                {isSelected && (
+                  <div className='absolute inset-0'>
+                    <div className='absolute inset-x-0 top-0 h-12 bg-gradient-to-b from-primary/15 to-transparent' />
+                  </div>
+                )}
+
+                {/* Check */}
+                {isSelected && (
+                  <CheckCircle2 className='absolute right-3 top-3 h-4 w-4 text-primary' />
+                )}
+
+                <Folder
+                  className={cn(
+                    'mb-3 h-10 w-10 transition-all duration-300',
+                    isSelected ?
+                      'text-primary fill-primary '
+                    : 'text-muted fill-muted dark:text-zinc-400 dark:fill-zinc-400',
+                  )}
+                />
+
+                <span
+                  className={cn(
+                    'label max-w-[120px] truncate px-2 text-center text-xs!',
+                    isSelected ? 'text-primary' : (
+                      'text-zinc-700 dark:text-zinc-300'
+                    ),
+                  )}
+                >
+                  {cleanName(cat.name)}
+                </span>
+              </div>
+            </Tooltip>
           </button>
         );
       })}

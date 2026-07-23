@@ -68,11 +68,14 @@ export function Modal({
         >
           {/* Backdrop Overlay */}
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.9 }}
-            className='absolute inset-0 z-0 bg-background/20 backdrop-blur-sm cursor-pointer'
+            initial={{ opacity: 0, backdropFilter: 'blur(0px) brightness(1)' }}
+            animate={{
+              opacity: 1,
+              backdropFilter: 'blur(20px)',
+            }}
+            exit={{ opacity: 0, backdropFilter: 'blur(0px)' }}
+            transition={{ duration: 0.2 }}
+            className='absolute inset-0 z-0 bg-background/20 cursor-pointer'
             onClick={closeOnOverlayClick ? onClose : undefined}
           />
 
@@ -85,22 +88,31 @@ export function Modal({
               opacity: 1,
             }}
             transition={{
-              layout: {
-                type: 'spring',
-                duration: 0.9,
-                bounce: 0.2,
-                ease: [0.22, 1, 0.36, 1],
-              },
+              type: 'spring',
+              duration: 0.7,
+              bounce: 0.2,
+              ease: [0.22, 1, 0.36, 1],
             }}
             layoutId={layoutId}
+            // layout
             className={cn(
-              'relative z-50 card backdrop-blur-[20px] shadow-brand w-full flex flex-col overflow-hidden bg-background dark:bg-black/10!',
+              'relative z-50 card backdrop-blur-[20px] md:shadow-brand w-full flex flex-col overflow-hidden bg-background dark:bg-black/10!',
               className,
             )}
             {...props}
           >
             {/* <motion.div className='absolute w-full h-full bg-red-500' /> */}
+            {/* <motion.div
+              transition={{
+                type: 'spring',
+                duration: 0.7,
+                bounce: 0.2,
+                ease: [0.22, 1, 0.36, 1],
+              }}
+              layoutId={layoutId}
+            > */}
             {children}
+            {/* </motion.div> */}
           </motion.div>
         </div>
       )}

@@ -1,37 +1,26 @@
-import asyncio
-from services.shared.database import SessionLocal
-from services.shared.models import User
-from services.shared.schemas import InterviewQuestionCreate, InterviewQuestionRead
-from services.api.routers.interview import create_question
+from datetime import datetime
+from uuid import uuid4
+from pydantic import BaseModel, Field
 
-def test():
-    db = SessionLocal()
-    try:
-        user = db.query(User).first()
-        if not user:
-            print("No users found.")
-            return
+class OrmModel(BaseModel):
+    class Config:
+        from_attributes = True
 
-        payload = InterviewQuestionCreate(
-            title="Test Pydantic Serialization",
-            frequency="Medium",
-            importance_score=3,
-            answer_objective="",
-            answer_framework=""
-        )
+class QuestionAnswerRead(OrmModel):
+    id: str
+    metadata: dict = Field(default_factory=dict, validation_alias="metadata_")
 
-        question = create_question(payload=payload, db=db, current_user=user)
-        print("Model created.")
-        
-        # Test serialization
-        read_model = InterviewQuestionRead.model_validate(question)
-        print("Serialization success:", read_model.model_dump_json())
-    except Exception as e:
-        print("Error during serialization:", e)
-        import traceback
-        traceback.print_exc()
-    finally:
-        db.close()
+data1 = {"id": "1", "metadata": {"key": "val1"}}
+data2 = {"id": "2", "metadata_": {"key": "val2"}}
 
-if __name__ == "__main__":
-    test()
+try:
+    obj1 = QuestionAnswerRead.model_validate(data1)
+    print("obj1 metadata:", obj1.metadata)
+except Exception as e:
+    print("obj1 error:", e)
+
+try:
+    obj2 = QuestionAnswerRead.model_validate(data2)
+    print("obj2 metadata:", obj2.metadata)
+except Exception as e:
+    print("obj2 error:", e)

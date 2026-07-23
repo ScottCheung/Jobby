@@ -34,34 +34,19 @@ export function QuestionForm({
   const [selectedTags, setSelectedTags] = useState<string[]>(
     question?.tags?.map((t) => t.id) || [],
   );
-  const [frequency, setFrequency] = useState(question?.frequency || 'Medium');
-  const [importanceScore, setImportanceScore] = useState(
-    question?.importance_score || 3,
+  const [difficulty, setDifficulty] = useState(question?.difficulty || 'Medium');
+  const [estimatedDuration, setEstimatedDuration] = useState<number>(
+    question?.estimated_duration_seconds ?
+      Math.round(question.estimated_duration_seconds / 60)
+    : 2,
+  );
+  const [frequency, setFrequency] = useState(question?.frequency || '');
+  const [importanceScore, setImportanceScore] = useState<number | ''>(
+    question?.importance_score ?? '',
   );
   const [answerObjective, setAnswerObjective] = useState(
     question?.answer_objective || '',
   );
-
-  const [frameworkType, setFrameworkType] = useState(() => {
-    if (!question?.answer_framework) return 'STAR';
-    const isDefault = [
-      'STAR',
-      'PAR',
-      'CAR',
-      '5W2H',
-      'STARE',
-      'SOAR',
-      'XYZ',
-    ].includes(question.answer_framework);
-    return isDefault ? question.answer_framework : 'custom';
-  });
-  const [customFramework, setCustomFramework] = useState(() => {
-    if (!question?.answer_framework) return '';
-    const isDefault = ['STAR', 'PAR', 'CAR', '5W2H'].includes(
-      question.answer_framework,
-    );
-    return isDefault ? '' : question.answer_framework;
-  });
 
   const [newTagName, setNewTagName] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
@@ -86,19 +71,22 @@ export function QuestionForm({
       setErrorMsg('Title is required');
       return;
     }
+    if (!categoryId) {
+      setErrorMsg('Category is required');
+      return;
+    }
     setErrorMsg('');
     setIsSubmitting(true);
     try {
-      const frameworkValue =
-        frameworkType === 'custom' ? customFramework.trim() : frameworkType;
       const payload: Partial<InterviewQuestion> = {
         title: title.trim(),
-        frequency,
-        importance_score: importanceScore,
+        difficulty: difficulty || 'Medium',
+        estimated_duration_seconds: (estimatedDuration || 2) * 60,
+        frequency: frequency || null,
+        importance_score: importanceScore !== '' ? Number(importanceScore) : null,
         category_id: categoryId || null,
         tags: selectedTags as any,
         answer_objective: answerObjective.trim() || null,
-        answer_framework: frameworkValue.trim() || null,
         my_answer: null,
         improvement_notes: null,
       };
@@ -162,13 +150,16 @@ export function QuestionForm({
 
         {/* Category */}
         <div className='flex flex-col gap-1.5'>
-          <label className='label-overline'>Category</label>
+          <label className='label-overline'>
+            Category <span className='text-red-500'>*</span>
+          </label>
           <select
+            required
             value={categoryId}
             onChange={(e) => setCategoryId(e.target.value)}
             className='body-md w-full px-4 py-2.5 rounded-xl border border-border dark:border-border bg-panel text-ink-primary focus:outline-none focus:border-primary/50'
           >
-            <option value=''>No Category</option>
+            <option value=''>Select Category</option>
             {categories.map((cat) => (
               <option key={cat.id} value={cat.id}>
                 {cleanName(cat.name)}
@@ -225,27 +216,59 @@ export function QuestionForm({
           </div>
         </div>
 
+        {/* Difficulty & Estimated Duration */}
+        <div className='flex gap-4'>
+          <div className='flex-1 flex flex-col gap-1.5'>
+            <label className='label-overline'>Difficulty</label>
+            <select
+              value={difficulty}
+              onChange={(e) => setDifficulty(e.target.value)}
+              className='body-md w-full px-4 py-2.5 rounded-xl border border-border dark:border-border bg-panel text-ink-primary focus:outline-none focus:border-primary/50'
+            >
+              <option value='Easy'>Easy</option>
+              <option value='Medium'>Medium</option>
+              <option value='Hard'>Hard</option>
+            </select>
+          </div>
+          <div className='flex-1 flex flex-col gap-1.5'>
+            <label className='label-overline'>Estimated Answer Time</label>
+            <select
+              value={estimatedDuration}
+              onChange={(e) => setEstimatedDuration(Number(e.target.value))}
+              className='body-md w-full px-4 py-2.5 rounded-xl border border-border dark:border-border bg-panel text-ink-primary focus:outline-none focus:border-primary/50'
+            >
+              <option value={1}>1 min (60s)</option>
+              <option value={2}>2 mins (120s)</option>
+              <option value={3}>3 mins (180s)</option>
+              <option value={5}>5 mins (300s)</option>
+              <option value={10}>10 mins (600s)</option>
+            </select>
+          </div>
+        </div>
+
         {/* Frequency & Importance */}
         <div className='flex gap-4'>
           <div className='flex-1 flex flex-col gap-1.5'>
-            <label className='label-overline'>Frequency</label>
+            <label className='label-overline'>Frequency (Optional)</label>
             <select
               value={frequency}
               onChange={(e) => setFrequency(e.target.value)}
               className='body-md w-full px-4 py-2.5 rounded-xl border border-border dark:border-border bg-panel text-ink-primary focus:outline-none focus:border-primary/50'
             >
+              <option value=''>Unspecified (Optional)</option>
               <option value='Low'>Low Frequency</option>
               <option value='Medium'>Medium Frequency</option>
               <option value='High'>High Frequency</option>
             </select>
           </div>
           <div className='flex-1 flex flex-col gap-1.5'>
-            <label className='label-overline'>Importance</label>
+            <label className='label-overline'>Importance (Optional)</label>
             <select
               value={importanceScore}
-              onChange={(e) => setImportanceScore(Number(e.target.value))}
+              onChange={(e) => setImportanceScore(e.target.value ? Number(e.target.value) : '')}
               className='body-md w-full px-4 py-2.5 rounded-xl border border-border dark:border-border bg-panel text-ink-primary focus:outline-none focus:border-primary/50'
             >
+              <option value=''>Unspecified (Optional)</option>
               <option value={1}>1 Star</option>
               <option value={2}>2 Stars</option>
               <option value={3}>3 Stars</option>
@@ -255,46 +278,11 @@ export function QuestionForm({
           </div>
         </div>
 
-        {/* Answering Framework */}
+        {/* Author's Answer */}
         <div className='flex flex-col gap-1.5'>
-          <label className='label-overline'>Answering Framework</label>
-          <select
-            value={frameworkType}
-            onChange={(e) => setFrameworkType(e.target.value)}
-            className='body-md w-full px-4 py-2.5 rounded-xl border border-border dark:border-border bg-panel text-ink-primary focus:outline-none focus:border-primary/50'
-          >
-            <option value='STAR'>
-              STAR Framework (Situation, Task, Action, Result)
-            </option>
-            <option value='STARE'>
-              STARE Framework (Situation, Task, Action, Result, Evaluation)
-            </option>
-            <option value='PAR'>PAR Framework (Problem, Action, Result)</option>
-            <option value='CAR'>CAR Framework (Context, Action, Result)</option>
-            <option value='SOAR'>
-              SOAR Framework (Situation, Obstacle, Action, Result)
-            </option>
-            <option value='5W2H'>5W2H Framework</option>
-            <option value='XYZ'>
-              XYZ Framework (Accomplished X, measured by Y, by Z)
-            </option>
-            <option value='custom'>Custom Framework</option>
-          </select>
-          {frameworkType === 'custom' && (
-            <textarea
-              placeholder='Define your custom answering framework details here...'
-              value={customFramework}
-              onChange={(e) => setCustomFramework(e.target.value)}
-              className='body-md w-full px-4 py-2.5 h-20 rounded-xl border border-border dark:border-border bg-panel resize-none text-ink-primary focus:outline-none focus:border-primary/50'
-            />
-          )}
-        </div>
-
-        {/* Your Answer */}
-        <div className='flex flex-col gap-1.5'>
-          <label className='label-overline'>Your Answer</label>
+          <label className='label-overline'>Author's Answer</label>
           <textarea
-            placeholder='Write your answer here...'
+            placeholder="Write author's reference answer here..."
             value={answerObjective}
             onChange={(e) => setAnswerObjective(e.target.value)}
             className='body-md w-full px-4 py-2.5 h-44 rounded-xl border border-border dark:border-border bg-panel resize-none focus:outline-none focus:border-primary/50'

@@ -9,11 +9,14 @@ import { resolveApiBaseUrl } from '@/lib/runtime';
 import { practiceCache } from './practice-cache';
 import { PracticeSkeleton } from './_components/PracticeSkeleton';
 import { getPlanQueue } from './practice-utils';
+import { useConsole } from '@/components/ConsoleContext';
 
 export default function PracticeIndexPage() {
   const router = useRouter();
+  const { profile, hasLoadedInitialData } = useConsole();
 
   useEffect(() => {
+    if (!hasLoadedInitialData) return;
     const redirectToFirstQuestion = async () => {
       try {
         const startTime = Date.now();
@@ -50,13 +53,15 @@ export default function PracticeIndexPage() {
 
         // Restore last practice mode preference or default
         let savedPrefMode = '';
-        try {
-          const raw = localStorage.getItem('practiceModePreference');
-          if (raw) {
-            const parsed = JSON.parse(raw);
-            savedPrefMode = parsed.mode || '';
-          }
-        } catch {}
+        const savedPref = profile.extra_data?.practiceModePreference;
+        if (
+          savedPref &&
+          typeof savedPref === 'object' &&
+          'mode' in savedPref &&
+          typeof savedPref.mode === 'string'
+        ) {
+          savedPrefMode = savedPref.mode;
+        }
 
         const hasPlan = plans && plans.length > 0;
         const mode = savedPrefMode || (hasPlan ? 'plan' : 'free');
@@ -83,7 +88,7 @@ export default function PracticeIndexPage() {
       }
     };
     void redirectToFirstQuestion();
-  }, [router]);
+  }, [hasLoadedInitialData, profile.extra_data, router]);
 
   return <PracticeSkeleton />;
 }

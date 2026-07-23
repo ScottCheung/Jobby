@@ -53,15 +53,19 @@ export function CardSelector<T extends string>({
         const selected = option.value === value;
         const Icon = option.icon;
 
-        const accentBorder = option.accentColor
-          ? (ACCENT_BORDER_CLASSES[option.accentColor] || `border-${option.accentColor}`)
+        const accentBorder =
+          option.accentColor ?
+            ACCENT_BORDER_CLASSES[option.accentColor] ||
+            `border-${option.accentColor}`
           : 'border-primary';
 
-        const accentBg = option.accentColor
-          ? (ACCENT_BG_CLASSES[option.accentColor] || `bg-${option.accentColor}`)
+        const accentBg =
+          option.accentColor ?
+            ACCENT_BG_CLASSES[option.accentColor] || `bg-${option.accentColor}`
           : 'bg-primary';
 
-        const accentText = option.accentColor ? 'text-white' : 'text-primary-foreground';
+        const accentText =
+          option.accentColor ? 'text-white' : 'text-primary-foreground';
 
         return (
           <button
@@ -71,10 +75,10 @@ export function CardSelector<T extends string>({
             aria-checked={selected}
             onClick={() => onChange(option.value)}
             className={cn(
-              'group relative flex min-h-36 flex-col items-start rounded-2xl border p-4 text-left transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
-              selected ?
-                accentBorder
-              : 'border-transparent bg-background/35 hover:border-primary/40 hover:bg-background-secondary/50',
+              'group relative flex min-h-36 flex-col cursor-pointer items-start rounded-2xl border p-4 text-left transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
+              selected ? accentBorder : (
+                'border-transparent bg-background-secondary/50 hover:bg-background/35 hover:border-primary/40 '
+              ),
             )}
           >
             <div className='flex w-full items-start justify-between gap-3'>

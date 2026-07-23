@@ -63,15 +63,10 @@ export function GlobalSearchModal({
   const handleAdd = async (q: InterviewQuestion) => {
     setAddingIds((prev) => new Set(prev).add(q.id));
     try {
-      await api.createInterviewQuestion({
-        title: q.title,
-        answer_objective: q.answer_objective,
-        category_id: q.category_id,
-        tags: q.tags?.map((t) => t.id) as any,
-      });
+      await api.saveInterviewQuestion(q.id);
       onAdded?.();
       window.dispatchEvent(new Event('playbookLibraryUpdated'));
-      setLocalExistingIds((prev) => [...prev, q.id]);
+      setLocalExistingIds((prev) => [...new Set([...prev, q.id])]);
     } catch (err) {
       console.error(err);
     } finally {

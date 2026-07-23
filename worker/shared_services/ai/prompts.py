@@ -94,7 +94,6 @@ Response schema for `extract_skills` function
 """
 #<
 
-##> ------ Dheeraj Deshwal : dheeraj9811 Email:dheeraj20194@iiitd.ac.in/dheerajdeshwal9811@gmail.com - Feature ------
 ##> Answer Questions
 # Structure of messages = `[{"role": "user", "content": answer_questions_prompt}]`
 

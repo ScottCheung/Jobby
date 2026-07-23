@@ -9,12 +9,11 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from services.shared.database import SessionLocal
 from services.shared.models import User, UserGamification, PracticeRecord, InterviewQuestion
 
-def seed():
+def seed(email: str):
     db = SessionLocal()
-    # Get the first user (assuming only one user for this test)
-    user = db.query(User).first()
+    user = db.query(User).filter(User.email == email).first()
     if not user:
-        print("No user found. Please login first.")
+        print(f"No user found with email: {email}")
         return
 
     # Create gamification profile if it doesn't exist
@@ -28,7 +27,7 @@ def seed():
     now = datetime.now(timezone.utc)
     
     # Generate practice records for the last 40 days
-    questions = db.query(InterviewQuestion).filter(InterviewQuestion.user_id == user.id).all()
+    questions = db.query(InterviewQuestion).filter(InterviewQuestion.submitted_by_user_id == user.id).all()
     if not questions:
         print("No questions found. Please seed questions first.")
         return
@@ -64,4 +63,7 @@ def seed():
     print(f"Data seeded! New Stats: Level {gamification.level}, XP {gamification.xp}, Coins {gamification.coins}, Streak {gamification.streak_days}")
 
 if __name__ == "__main__":
-    seed()
+    if len(sys.argv) != 2:
+        print("Usage: python seed_gamification.py <email>")
+        sys.exit(1)
+    seed(sys.argv[1])

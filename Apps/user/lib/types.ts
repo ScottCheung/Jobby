@@ -5,6 +5,7 @@ export type User = {
   email: string;
   display_name: string;
   avatar_url?: string | null;
+  community_badge?: 'Admin' | 'Author' | 'VIP' | null;
   role: string;
   status: string;
   can_use_auto_apply: boolean;
@@ -13,6 +14,7 @@ export type User = {
 export type UserProfile = {
   id?: string;
   user_id?: string;
+  preferred_name?: string | null;
   first_name?: string | null;
   middle_name?: string | null;
   last_name?: string | null;
@@ -519,19 +521,42 @@ export type Company = {
 
 export type InterviewQuestion = {
   id: string;
+  display_number?: number | null;
+  submitted_by_user_id?: string | null;
   category_id?: string | null;
   title: string;
+  normalized_title?: string | null;
+  is_favorited?: boolean;
+  can_edit?: boolean;
+  difficulty?: 'Easy' | 'Medium' | 'Hard' | string | null;
+  estimated_duration_seconds?: number | null;
+  metrics?: {
+    view_count?: number;
+    favorite_count?: number;
+    upvote_count?: number;
+    downvote_count?: number;
+    seen_in_interview_count?: number;
+    comment_count?: number;
+    practice_count?: number;
+  };
   frequency?: string | null;
   importance_score?: number | null;
+  contributor_name?: string | null;
+  author_frequency?: string | null;
+  author_importance_score?: number | null;
+  ai_metadata?: {
+    tags?: string[];
+    importance_score?: number;
+    difficulty?: 'easy' | 'medium' | 'hard';
+    estimated_duration?: number;
+    generated_at?: string;
+  } | null;
   answer_objective?: string | null;
-  answer_framework?: string | null;
   sample_answer?: string | null;
   my_answer?: string | null;
   improvement_notes?: string | null;
-  source_collection_id?: string | null;
-  source_question_id?: string | null;
-  archived_at?: string | null;
-  is_library_copy?: boolean;
+  collection_ids?: string[];
+  is_saved?: boolean;
   category?: InterviewCategory | null;
   tags?: InterviewTag[];
   companies?: Company[];
@@ -548,6 +573,7 @@ export type InterviewCollection = {
   cover_storage_key?: string | null;
   creator_user_id?: string | null;
   collection_type: string;
+  theme?: string | null;
   price_coins: number;
   status: string;
   last_updated_at?: string | null;
@@ -582,19 +608,119 @@ export type InterviewReport = {
 };
 
 export type QuestionCommunitySummary = {
+  frequency_average?: number | null;
   importance_average?: number | null;
   difficulty_average?: number | null;
   rating_count: number;
+  view_count: number;
+  unique_viewer_count: number;
+  practice_count: number;
+  unique_practicer_count: number;
+  total_practice_seconds: number;
+  average_practice_seconds?: number | null;
+  favorite_count: number;
+  is_favorited: boolean;
   upvote_count: number;
   downvote_count: number;
   seen_in_interview_count: number;
   company_count: number;
+  comment_count?: number;
+  blended_importance_score?: number | null;
+  blended_frequency_score?: number | null;
   top_companies: { name: string; count: number }[];
+  user_frequency_rating?: number | null;
   user_importance_rating?: number | null;
   user_difficulty_rating?: number | null;
   user_reaction?: 'up' | 'down' | null;
   survey_bonus_xp?: number;
   survey_bonus_coins?: number;
+};
+
+export type QuestionAnswer = {
+  id: string;
+  question_id: string;
+  author_user_id?: string | null;
+  source: string;
+  answer_type: string;
+  status: string;
+  title?: string | null;
+  body?: string | null;
+  structured_content?: Record<string, unknown> | null;
+  metadata?: Record<string, unknown>;
+  is_recommended: boolean;
+  recommended_by_user_id?: string | null;
+  recommended_at?: string | null;
+  reaction_count: number;
+  upvote_count: number;
+  downvote_count: number;
+  user_reaction?: 'up' | 'down' | null;
+  comment_count: number;
+  is_saved: boolean;
+  is_reported: boolean;
+  is_author: boolean;
+  can_manage: boolean;
+  author_name?: string | null;
+  author_avatar_url?: string | null;
+  author_badge?: 'Admin' | 'Author' | 'VIP' | null;
+  is_locked: boolean;
+  unlock_cost: number;
+  question_unlock_remaining_cost: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type PracticeEvaluation = {
+  id: string;
+  practice_record_id: string;
+  status: string;
+  provider: string;
+  model: string;
+  prompt_version: string;
+  overall_score?: number | null;
+  result: {
+    priority_issue?: string;
+    priority_fix?: string;
+    answer_plan?: string[];
+    dimensions?: {
+      name: string;
+      score: number;
+      feedback: string;
+      evidence?: string;
+      fix?: string;
+    }[];
+    score_basis?: string[];
+    strengths?: string[];
+    gaps?: string[];
+    next_steps?: string[];
+    polished_answer?: string;
+    gold_rewrite?: string;
+  };
+  coins_spent: number;
+  created_at: string;
+};
+
+export type QuestionAnswerComment = {
+  id: string;
+  answer_id: string;
+  parent_id?: string | null;
+  body: string;
+  author_name: string;
+  author_avatar_url?: string | null;
+  author_badge?: 'Admin' | 'Author' | 'VIP' | null;
+  is_author: boolean;
+  like_count: number;
+  is_liked: boolean;
+  is_reported: boolean;
+  reply_count: number;
+  created_at: string;
+  updated_at: string;
+  replies: QuestionAnswerComment[];
+};
+
+export type QuestionAnswerCommentPage = {
+  items: QuestionAnswerComment[];
+  next_cursor?: string | null;
+  answer_id: string;
 };
 
 export type QuestionComment = {
@@ -616,9 +742,9 @@ export type QuestionComment = {
   replies: QuestionComment[];
 };
 export type QuestionCommentPage = { items: QuestionComment[]; next_cursor?: string | null; question_id: string; };
-export type CommunityInterviewReport = { id: string; company?: string | null; role?: string | null; happened_at: string; };
+export type CommunityInterviewReport = { id: string; company?: string | null; role?: string | null; location?: string | null; happened_at: string; };
 export type UserNotification = { id: string; kind: string; title?: string | null; message: string; action_url?: string | null; actor_user_id?: string | null; metadata?: Record<string, unknown>; question_id?: string | null; read_at?: string | null; created_at: string; };
-export type QuestionDuplicateCandidate = { id: string; title: string; owner_name: string; created_at: string; };
+export type QuestionDuplicateCandidate = { id: string; title: string; owner_name: string; created_at: string; match_type: 'exact' | 'similar'; };
 export type QuestionDuplicateGroup = { normalized_title: string; questions: QuestionDuplicateCandidate[]; };
 export type QuestionDiscussionMerge = { target_question_id: string; merged_question_ids: string[]; comments_moved: number; };
 
@@ -643,6 +769,9 @@ export type PracticeRecord = {
   id: string;
   question_id: string;
   user_id?: string;
+  started_at?: string | null;
+  submitted_at?: string | null;
+  duration_seconds?: number | null;
   date?: string;
   my_answer?: string | null;
   confidence_score?: number | null;
@@ -658,6 +787,7 @@ export type PracticePlan = {
   name: string;
   target_days: number;
   daily_questions_count: number;
+  claimed_stage_days?: number[];
   user_id?: string;
   created_at?: string;
   updated_at?: string;
@@ -690,6 +820,17 @@ export type DailySummary = {
   total_coins: number;
   max_daily_xp_gain?: number;
   max_daily_coin_gain?: number;
+  inventory?: Record<string, number>;
+  active_boosters?: Record<string, string>;
+};
+
+export type UserInventoryResponse = {
+  coins: number;
+  xp: number;
+  level: number;
+  loot_boxes: number;
+  inventory: Record<string, number>;
+  active_boosters: Record<string, string>;
 };
 
 export type DailyQuest = {
@@ -793,4 +934,61 @@ export type GamificationTransaction = {
   reference_id?: string | null;
   created_at?: string;
   updated_at?: string;
+};
+
+export type FavoritedCommentSummary = {
+  id: string;
+  question_id: string;
+  question_title: string;
+  body: string;
+  kind?: string;
+  author_name?: string;
+  created_at?: string | null;
+  is_author?: boolean;
+};
+
+export type SavedAnswerSummary = {
+  id: string;
+  question_id: string;
+  question_title: string;
+  title?: string | null;
+  body: string;
+  answer_type: string;
+  author_name: string;
+  created_at?: string | null;
+};
+
+export type SavedCollectionSummary = {
+  id: string;
+  title: string;
+  description?: string | null;
+  cover_url?: string | null;
+  price_coins: number;
+  is_purchased: boolean;
+  added_at?: string | null;
+};
+
+export type UserFavoritesCounts = {
+  favorited_questions: number;
+  my_comments: number;
+  liked_comments: number;
+  saved_answers: number;
+  saved_collections: number;
+  total: number;
+};
+
+export type PaginatedResult<T> = {
+  items: T[];
+  total?: number;
+  has_more: boolean;
+  next_offset?: number | null;
+  next_cursor?: string | null;
+};
+
+export type UserFavoritesAll = {
+  favorited_questions: InterviewQuestion[];
+  my_comments: FavoritedCommentSummary[];
+  liked_comments: FavoritedCommentSummary[];
+  saved_answers: SavedAnswerSummary[];
+  saved_collections: SavedCollectionSummary[];
 };
