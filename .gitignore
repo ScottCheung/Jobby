@@ -1,44 +1,32 @@
-# Byte-compiled / optimized / DLL files
+# Dependency & Package Managers
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-store/
+
+# Build & Output Directories
+.next/
+out/
+build/
+dist/
+*.tsbuildinfo
+.eslintcache
+
+# Python Byte-code & Virtual Environments
 __pycache__/
 *.py[cod]
 *$py.class
-
-# IDEs
-.vscode/
-.idea/
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
-
-# Project-specific ignored folders
-all excels/
-all resumes/
-logs/
-data/
-old/
+.pytest_cache/
 .venv/
 env/
 venv/
 ENV/
+*.egg-info/
+.eggs/
 
-# Secrets & Configs
-secrets.py
-config/personals.py
-apikeys.py
-.env
-.env.local
-.env.*.local
-
-# Node / Frontend build files
-node_modules/
-.next/
-dist/
-build/
-.eslintcache
-
-# OS generated files
+# OS & Desktop System Files
 .DS_Store
 .DS_Store?
 ._*
@@ -47,11 +35,33 @@ build/
 ehthumbs.db
 Thumbs.db
 
-# AI generated files and IDEs
+# Secrets & Environment Variables
+.env
+.env.local
+.env.*.local
+*.pem
+secrets.py
+config/personals.py
+apikeys.py
+
+# Project Data & Log Folders
+logs/
+*.log
+data/
+old/
+all excels/
+all resumes/
+
+# IDEs & AI Coding Assistants
+.vscode/
+.idea/
+*.swp
+*.swo
 .cursor/
 .cursorrules
 .aider*
 .gemini*
+.antigravity*
 cline_docs/
 .cline/
-.vercel
+.vercel/
