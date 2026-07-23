@@ -4,6 +4,7 @@ import asyncio
 
 from fastapi import Depends, FastAPI, File, HTTPException, Query, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import StreamingResponse, JSONResponse
 
 try:
@@ -60,9 +61,21 @@ from services.api.routers.interview import (
 )
 
 settings = get_settings()
+
+tags_metadata = [
+    {"name": "interview", "description": "Interview Preparation, Question Bank, Practice Records & AI Evaluation APIs"},
+    {"name": "user", "description": "User Profile, Settings, & Authentication APIs"},
+    {"name": "applications", "description": "Job Applications Tracking & Auto-Apply APIs"},
+]
+
 app = FastAPI(
-    title="Auto Job Applier API",
-    version="0.1.0",
+    title="Auto Job Applier & Interview Prep API",
+    description="High-performance backend API for AI Job Application Automation, Interview Question Library, Gamification, and Practice Mode.",
+    version="1.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json",
+    openapi_tags=tags_metadata,
     default_response_class=DefaultResponseClass,
 )
 app.add_middleware(
@@ -72,6 +85,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 app.include_router(interview_router)
 
