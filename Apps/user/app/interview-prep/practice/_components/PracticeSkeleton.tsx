@@ -5,9 +5,9 @@ import React from 'react';
 
 export function PracticeSkeleton() {
   return (
-    <div className='grid grid-cols-2 gap-4 h-full overflow-hidden'>
+    <div className='flex gap-4 h-full overflow-hidden'>
       {/* ── Left Column ── */}
-      <div className='panel-xl flex flex-col gap-4 overflow-hidden relative h-full '>
+      <div className='flex-1 w-full transition-all panel-xl pb-0!  flex flex-col gap-4 relative h-full pt-4!'>
         {/* Header Skeleton */}
         <div className='flex items-center justify-between  dark:border-border/60  shrink-0'>
           <div className='h-3 skeleton rounded w-1/3 '></div>
@@ -38,7 +38,7 @@ export function PracticeSkeleton() {
       </div>
 
       {/* ── Right Column ── */}
-      <div className='panel-xl flex flex-col overflow-hidden '>
+      <div className='w-xl h-full  panel-xl transition-all flex flex-col overflow-hidden bg-panel p-4! pt-2! pb-0!'>
         {/* Tab Header Skeleton */}
         <div className='flex   shrink-0'>
           <div className='flex-1 py-3 flex justify-center'>

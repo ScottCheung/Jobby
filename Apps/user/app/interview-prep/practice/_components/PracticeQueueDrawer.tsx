@@ -96,7 +96,7 @@ export function PracticeQueueDrawerContent({
           const isCurrent = q.id === currentId;
           return (
             <button
-              key={q.id}
+              key={`${q.id}-${index}`}
               ref={isCurrent ? currentRef : null}
               type='button'
               onClick={() => {

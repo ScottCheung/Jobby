@@ -800,9 +800,9 @@ export function QuestionComments({ questionId }: { questionId: string }) {
                     </span>
                   </div>
                 )}
-                {visibleExamples.map((answer) => (
+                {visibleExamples.map((answer, idx) => (
                   <ExampleAnswerCard
-                    key={answer.id}
+                    key={`${answer.id}-${idx}`}
                     answer={answer}
                     currentUserId={user?.id || null}
                     highlightTarget={hashTarget}
@@ -888,8 +888,8 @@ export function QuestionComments({ questionId }: { questionId: string }) {
               </div>
             )}
             {kind !== 'example' &&
-              sortedComments.map((comment) => (
-                <div key={comment.id}>
+              sortedComments.map((comment, idx) => (
+                <div key={`${comment.id}-${idx}`}>
                   <CommentItem
                     comment={comment}
                     sessionPostedIds={sessionPostedIds}

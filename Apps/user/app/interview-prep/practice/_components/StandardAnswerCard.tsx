@@ -411,6 +411,15 @@ interface StandardAnswerCardProps {
   ) => Promise<void>;
 }
 
+function dedupeById<T extends { id: string }>(items: T[]): T[] {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    if (!item?.id || seen.has(item.id)) return false;
+    seen.add(item.id);
+    return true;
+  });
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export function StandardAnswerCard({
@@ -453,28 +462,45 @@ export function StandardAnswerCard({
   >(null);
   const [editingAuthorAnswerText, setEditingAuthorAnswerText] = useState('');
 
+  const safeAiAnswers = useMemo(() => dedupeById(aiAnswers), [aiAnswers]);
+  const safeAuthorAnswers = useMemo(
+    () => dedupeById(authorAnswers),
+    [authorAnswers],
+  );
+  const safeFeaturedAnswers = useMemo(
+    () => dedupeById(featuredAnswers),
+    [featuredAnswers],
+  );
+  const safeAllCommunityAnswers = useMemo(
+    () => dedupeById(allCommunityAnswers),
+    [allCommunityAnswers],
+  );
+
   // Auto-select tab
   useEffect(() => {
-    if (aiAnswers.length > 0) setActiveTab('ai');
-    else if (featuredAnswers.length > 0 || allCommunityAnswers.length > 0)
+    if (safeAiAnswers.length > 0) setActiveTab('ai');
+    else if (
+      safeFeaturedAnswers.length > 0 ||
+      safeAllCommunityAnswers.length > 0
+    )
       setActiveTab('community');
-    else if (authorAnswers.length > 0) setActiveTab('author');
+    else if (safeAuthorAnswers.length > 0) setActiveTab('author');
     else setActiveTab('ai');
   }, [
     currentQuestion?.id,
-    aiAnswers.length,
-    featuredAnswers.length,
-    allCommunityAnswers.length,
-    authorAnswers.length,
+    safeAiAnswers.length,
+    safeFeaturedAnswers.length,
+    safeAllCommunityAnswers.length,
+    safeAuthorAnswers.length,
   ]);
 
   // Selected AI answer
   const selectedAiAnswer = useMemo(
     () =>
-      aiAnswers.find((a) => a.id === selectedAiAnswerId) ??
-      aiAnswers[aiAnswers.length - 1] ??
+      safeAiAnswers.find((a) => a.id === selectedAiAnswerId) ??
+      safeAiAnswers[safeAiAnswers.length - 1] ??
       null,
-    [aiAnswers, selectedAiAnswerId],
+    [safeAiAnswers, selectedAiAnswerId],
   );
 
   // Direct 1:1 Parse DeepSeek JSON content (Zero guessing)
@@ -585,14 +611,19 @@ export function StandardAnswerCard({
 
   if (!currentQuestion) return null;
 
-  const displayCommunity =
-    showAllCommunity || (isQuestionAuthor && featuredAnswers.length === 0) ?
-      allCommunityAnswers
-    : featuredAnswers.length > 0 ? featuredAnswers
-    : allCommunityAnswers;
+  const rawCommunity =
+    showAllCommunity || (isQuestionAuthor && safeFeaturedAnswers.length === 0) ?
+      safeAllCommunityAnswers
+    : safeFeaturedAnswers.length > 0 ? safeFeaturedAnswers
+    : safeAllCommunityAnswers;
+
+  const displayCommunity = useMemo(
+    () => dedupeById(rawCommunity),
+    [rawCommunity],
+  );
 
   const questionMetadata = currentQuestion.ai_metadata;
-  const canGenerateMoreAiAnswers = aiAnswers.length < 3;
+  const canGenerateMoreAiAnswers = safeAiAnswers.length < 3;
   const questionDifficultyKey = (
     questionMetadata?.difficulty ||
     currentQuestion.difficulty ||
@@ -621,7 +652,7 @@ export function StandardAnswerCard({
       label: 'AI Reference',
       Icon: Sparkles,
       active: 'text-violet-600 dark:text-violet-300',
-      badge: aiAnswers.length > 0 ? aiAnswers.length : undefined,
+      badge: safeAiAnswers.length > 0 ? safeAiAnswers.length : undefined,
       badgeCls: 'bg-violet-500/15 text-violet-700 dark:text-violet-300',
     },
     {
@@ -629,7 +660,8 @@ export function StandardAnswerCard({
       label: 'Author',
       Icon: UserCheck,
       active: 'text-blue-600 dark:text-blue-400',
-      badge: authorAnswers.length > 0 ? authorAnswers.length : undefined,
+      badge:
+        safeAuthorAnswers.length > 0 ? safeAuthorAnswers.length : undefined,
       badgeCls: 'bg-blue-500/15 text-blue-700 dark:text-blue-300',
     },
     {
@@ -637,7 +669,8 @@ export function StandardAnswerCard({
       label: 'Community',
       Icon: Crown,
       active: 'text-amber-600 dark:text-amber-400',
-      badge: featuredAnswers.length > 0 ? featuredAnswers.length : undefined,
+      badge:
+        safeFeaturedAnswers.length > 0 ? safeFeaturedAnswers.length : undefined,
       badgeCls: 'bg-amber-500/15 text-amber-700 dark:text-amber-300',
     },
     {
@@ -651,7 +684,10 @@ export function StandardAnswerCard({
   ];
 
   return (
-    <div onClick={handleToggleClick} className='min-h-[380px] transition-all duration-200 ease-out flex flex-col justify-between'>
+    <div
+      onClick={handleToggleClick}
+      className=' transition-all duration-200 ease-out flex flex-col justify-between'
+    >
       {/* ── Tab Row ── */}
       <div
         onClick={(e) => e.stopPropagation()}
@@ -827,11 +863,11 @@ export function StandardAnswerCard({
                   </div>
                 : <>
                     {/* Version pills */}
-                    {aiAnswers.length > 1 && (
+                    {safeAiAnswers.length > 1 && (
                       <div className='flex gap-1.5 overflow-x-auto custom-scrollbar-primary'>
-                        {aiAnswers.map((a, idx) => (
+                        {safeAiAnswers.map((a, idx) => (
                           <button
-                            key={a.id}
+                            key={`${a.id}-${idx}`}
                             type='button'
                             onClick={() => setSelectedAiAnswerId(a.id)}
                             className={cn(
@@ -878,7 +914,8 @@ export function StandardAnswerCard({
                           This version is locked
                         </div>
                         <p className='text-xs text-ink-secondary'>
-                          Unlock once to view all AI reference answers for this question.
+                          Unlock once to view all AI reference answers for this
+                          question.
                         </p>
                         <button
                           type='button'
@@ -888,7 +925,9 @@ export function StandardAnswerCard({
                           }
                           className='inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-700 active:scale-95 transition-all'
                         >
-                          <LockKeyhole className='h-3.5 w-3.5' /> Unlock all AI answers for this question ({selectedAiAnswer.unlock_cost ?? 5} coins)
+                          <LockKeyhole className='h-3.5 w-3.5' /> Unlock all AI
+                          answers for this question (
+                          {selectedAiAnswer.unlock_cost ?? 5} coins)
                         </button>
                       </div>
                     : /* ─── Full AI Answer (Direct 1:1 render of DeepSeek Sections) ─── */
@@ -1038,11 +1077,11 @@ export function StandardAnswerCard({
                       <UserCheck className='h-3.5 w-3.5' /> Add author answer
                     </button>)}
 
-                {authorAnswers.length > 0 ?
+                {safeAuthorAnswers.length > 0 ?
                   <div className='space-y-3 max-h-[480px] overflow-y-auto custom-scrollbar-primary pr-0.5'>
-                    {authorAnswers.map((ans) => (
+                    {safeAuthorAnswers.map((ans, idx) => (
                       <div
-                        key={ans.id}
+                        key={`${ans.id}-${idx}`}
                         className='rounded-xl border border-blue-500/15 bg-blue-500/[0.05] p-3.5 space-y-2'
                       >
                         <div className='flex items-center gap-2 pb-2 border-b border-blue-500/10'>
@@ -1165,11 +1204,11 @@ export function StandardAnswerCard({
               <div onClick={(e) => e.stopPropagation()}>
                 {displayCommunity.length > 0 ?
                   <div className='space-y-3 max-h-[480px] overflow-y-auto custom-scrollbar-primary pr-0.5'>
-                    {displayCommunity.map((answer) => {
+                    {displayCommunity.map((answer, idx) => {
                       const isRec = Boolean(answer.is_recommended);
                       return (
                         <div
-                          key={answer.id}
+                          key={`${answer.id}-${idx}`}
                           className={cn(
                             'rounded-xl border p-3.5 space-y-2.5 transition-all',
                             isRec ?
