@@ -1409,6 +1409,20 @@ def list_categories(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_or_create_current_user),
 ):
+    # Purge legacy Leadership category if present
+    leadership_cats = db.scalars(
+        select(InterviewCategory).where(
+            InterviewCategory.user_id == current_user.id,
+            func.lower(InterviewCategory.name).like("%leadership%"),
+        )
+    ).all()
+    if leadership_cats:
+        for cat in leadership_cats:
+            db.execute(text("UPDATE user_questions SET category_id = NULL WHERE category_id = :cid").bindparams(cid=cat.id))
+            db.execute(text("UPDATE interview_questions SET category_id = NULL WHERE category_id = :cid").bindparams(cid=cat.id))
+            db.delete(cat)
+        db.commit()
+
     categories = db.scalars(select(InterviewCategory).where(InterviewCategory.user_id == current_user.id)).all()
     if not categories:
         default_categories = [
@@ -1416,7 +1430,6 @@ def list_categories(
             "Experience",
             "Behaviour",
             "Role-specific",
-            "Leadership",
             "Company",
         ]
         for name in default_categories:

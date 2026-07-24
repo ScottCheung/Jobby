@@ -5,10 +5,10 @@ seed_interview_data.py
 1. 清除历史遗留的多余分类、题目和答案，保持数据库干净。
 2. 注入 5 个最通用的全行业分类：
    - AY (About Yourself)
-   - BS (Behaviour Stories)
-   - LE (Leadership)
-   - CR (Company Research)
-   - PR (Professional)
+   - EX (Experience)
+   - BE (Behaviour)
+   - RO (Role-specific)
+   - CO (Company)
 3. 为每个分类创建 5 道通用的高频面试题。
 4. 注入作者官方解析和社区精选答案。
 
@@ -218,51 +218,6 @@ SEED_DATA = [
         ],
     },
 
-    # ── 5. Leadership (LE) ──
-    {
-        "category": "05 Leadership",
-        "collection_title": "Leadership & Influence",
-        "collection_slug": "leadership-influence-essentials",
-        "collection_desc": "Probing your ability to guide projects, influence without formal authority, manage performance, and build trust.",
-        "questions": [
-            {
-                "title": "Tell me about a time you persuaded others to adopt your proposal.",
-                "author_answer": "Focus on how you built influence: did you gather data first, seek feedback from key stakeholders individually before the meeting, or align your proposal with the team's existing goals? Show that persuasion is about listening and alignment, not just arguing.",
-                "community_answers": [
-                    "I created a small, low-risk pilot to demonstrate value. Once stakeholders saw the positive pilot metrics, adoption of the full proposal was easy.",
-                    "I presented three options with clear trade-offs instead of forcing one. Letting the team choose the best path created natural buy-in.",
-                ],
-            },
-            {
-                "title": "Describe how you motivated a colleague or team during a challenging time.",
-                "author_answer": "Demonstrate empathy and strategic alignment. Explain the challenge (e.g. high workload, pivot, or setback). Detail your actions: transparent communication, celebrating small wins, removing obstacles, and reminding everyone of the core value of their work.",
-                "community_answers": [
-                    "I focused on visibility. I made sure their hard work was recognized in front of senior leaders, which restored their sense of impact.",
-                ],
-            },
-            {
-                "title": "How do you delegate tasks and ensure accountability?",
-                "author_answer": "Explain your framework: matching tasks to individuals' strengths and growth goals, defining what 'success' looks like clearly, setting milestones, and checking in without micromanaging. Emphasise that you remain ultimately responsible.",
-                "community_answers": [
-                    "I delegate the 'what' and 'why', but let the owner decide the 'how'. We agree on weekly checkpoints to review deliverables.",
-                ],
-            },
-            {
-                "title": "Tell me about a time you mentored or helped someone grow professionally.",
-                "author_answer": "Focus on active listening and guidance: how did you identify their strengths/gaps, what actionable feedback or opportunities did you provide, and what was the positive outcome for their career (e.g. promotion, taking on new projects).",
-                "community_answers": [
-                    "I helped a junior peer improve their presentation skills. We did mock sessions together, and they successfully pitched their first project to directors.",
-                ],
-            },
-            {
-                "title": "How do you handle a team member who is underperforming?",
-                "author_answer": "Walk through a constructive, empathetic approach: (1) schedule a private discussion to understand root causes, (2) co-create clear, measurable performance goals, (3) provide support/resources, (4) monitor progress, and (5) escalate or take further action if goals aren't met.",
-                "community_answers": [
-                    "I start by checking if my instructions were clear. Often, alignment on expectations solves 80% of underperformance.",
-                ],
-            },
-        ],
-    },
 
     # ── 6. Company (CO) ──
     {
