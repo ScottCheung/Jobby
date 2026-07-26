@@ -947,44 +947,49 @@ export default function ResumePage() {
             Upload one resume to create the profile used across Jobby.
           </p>
         </div>
-        <section className='flex max-w-2xl flex-col items-center justify-center border border-dashed border-border bg-panel px-8 py-16 text-center'>
-          <div className='flex size-14 items-center justify-center rounded-full bg-primary/10 text-primary'>
-            <UploadCloud className='size-7' />
-          </div>
-          <h2 className='title-sub mt-5 text-ink-primary'>
-            Upload your resume
-          </h2>
-          <p className='body-sm mt-2 max-w-md text-ink-secondary'>
-            We will extract factual details into a structured master resume for
-            you to review.
-          </p>
-          <Button
-            className='mt-6'
-            Icon={FileUp}
-            isLoading={uploading}
+        <section className='flex col panel-xl justify-center items-center w-full h-full'>
+          <div
             onClick={() => inputRef.current?.click()}
+            className='flex gap-6 col items-center cursor-pointer border-dashed w-max-xl rounded-2xl  p-12 border-2 border-ink-secondary/30'
           >
-            Choose PDF
-          </Button>
-          <p className='body-sm mt-3 text-ink-secondary'>
-            PDF only, up to 12 MB
-          </p>
-          {error && <p className='body-sm mt-4 text-red-600'>{error}</p>}
-          <input
-            ref={inputRef}
-            className='hidden'
-            type='file'
-            accept='application/pdf,.pdf'
-            onChange={(event: ChangeEvent<HTMLInputElement>) =>
-              void upload(event.target.files?.[0])
-            }
-          />
+            <div className='flex size-14 items-center justify-center rounded-full bg-primary/10 text-primary'>
+              <UploadCloud className='size-7' />
+            </div>
+            <h2 className='title-sub mt-5 text-ink-primary'>
+              Upload your resume
+            </h2>
+            <p className='body-sm mt-2 text-ink-secondary'>
+              We will extract factual details into a structured master resume
+              for you to review.
+            </p>
+            <Button
+              className='mt-6'
+              Icon={FileUp}
+              isLoading={uploading}
+              onClick={() => inputRef.current?.click()}
+            >
+              Choose PDF
+            </Button>
+            <p className='body-sm mt-3 text-ink-secondary'>
+              PDF only, up to 12 MB
+            </p>
+            {error && <p className='body-sm mt-4 text-red-600'>{error}</p>}
+            <input
+              ref={inputRef}
+              className='hidden'
+              type='file'
+              accept='application/pdf,.pdf'
+              onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                void upload(event.target.files?.[0])
+              }
+            />
+          </div>
         </section>
-        <ResumeSourceDebugger
+        {/* <ResumeSourceDebugger
           onRunAiParse={upload}
           onRunAiRaw={runRawAi}
           parsing={uploading}
-        />
+        /> */}
       </div>
     );
   }
@@ -1116,7 +1121,7 @@ export default function ResumePage() {
             and make this your source of truth.
           </div>
         )}
-        <div className='grid gap-5 xl:grid-cols-[minmax(0,1.25fr)_minmax(260px,0.75fr)]'>
+        <div className='grid gap-5 xl:grid-cols-[minmax(0,1.4fr)_minmax(260px,0.6fr)]'>
           <section className='space-y-5'>
             {(editing || hasPersonalInfo) && (
               <SectionCard title='Personal info'>
@@ -1296,70 +1301,6 @@ export default function ResumePage() {
                     {data.summary || 'No summary listed.'}
                   </p>
                 }
-              </SectionCard>
-            )}
-
-            {(editing || (data.links ?? []).length > 0) && (
-              <SectionCard
-                title='Links'
-                action={
-                  editing ?
-                    <Button
-                      size='sm'
-                      variant='secondary'
-                      Icon={Plus}
-                      onClick={() => addItem('links')}
-                    >
-                      Add
-                    </Button>
-                  : null
-                }
-              >
-                <div className='space-y-3'>
-                  {(data.links ?? []).length ?
-                    (data.links ?? []).map((item, index) => (
-                      <div
-                        key={`${item.type ?? 'link'}-${index}`}
-                        className='grid gap-2 md:grid-cols-[160px_minmax(0,1fr)_auto]'
-                      >
-                        {editing ?
-                          <>
-                            <Input
-                              value={asValue(item.type)}
-                              placeholder='Type'
-                              onChange={(event) =>
-                                updateLinks(index, 'type', event.target.value)
-                              }
-                            />
-                            <Input
-                              value={asValue(item.link)}
-                              placeholder='Link'
-                              onChange={(event) =>
-                                updateLinks(index, 'link', event.target.value)
-                              }
-                            />
-                            <Button
-                              variant='secondary'
-                              size='sm'
-                              Icon={Trash2}
-                              onClick={() => removeItem('links', index)}
-                            >
-                              Remove
-                            </Button>
-                          </>
-                        : <>
-                            <p className='body-sm text-ink-primary'>
-                              {item.type || 'Link'}
-                            </p>
-                            <p className='body-sm text-ink-secondary md:col-span-2'>
-                              {item.link || 'Not listed'}
-                            </p>
-                          </>
-                        }
-                      </div>
-                    ))
-                  : <p className='body-sm text-ink-secondary'>Not listed</p>}
-                </div>
               </SectionCard>
             )}
 
@@ -1666,6 +1607,203 @@ export default function ResumePage() {
                           </div>
                         )}
                       </article>
+                    ))
+                  : <p className='body-sm text-ink-secondary'>Not listed</p>}
+                </div>
+              </SectionCard>
+            )}
+            {(editing || (data.links ?? []).length > 0) && (
+              <SectionCard
+                title='Links'
+                action={
+                  editing ?
+                    <Button
+                      size='sm'
+                      variant='secondary'
+                      Icon={Plus}
+                      onClick={() => addItem('links')}
+                    >
+                      Add
+                    </Button>
+                  : null
+                }
+              >
+                <div className='space-y-3'>
+                  {(data.links ?? []).length ?
+                    (data.links ?? []).map((item, index) => (
+                      <div
+                        key={`${item.type ?? 'link'}-${index}`}
+                        className='grid gap-2 md:grid-cols-[160px_minmax(0,1fr)_auto]'
+                      >
+                        {editing ?
+                          <>
+                            <Input
+                              value={asValue(item.type)}
+                              placeholder='Type'
+                              onChange={(event) =>
+                                updateLinks(index, 'type', event.target.value)
+                              }
+                            />
+                            <Input
+                              value={asValue(item.link)}
+                              placeholder='Link'
+                              onChange={(event) =>
+                                updateLinks(index, 'link', event.target.value)
+                              }
+                            />
+                            <Button
+                              variant='secondary'
+                              size='sm'
+                              Icon={Trash2}
+                              onClick={() => removeItem('links', index)}
+                            >
+                              Remove
+                            </Button>
+                          </>
+                        : <>
+                            <p className='body-sm text-ink-primary'>
+                              {item.type || 'Link'}
+                            </p>
+                            <p className='body-sm text-ink-secondary md:col-span-2'>
+                              {item.link || 'Not listed'}
+                            </p>
+                          </>
+                        }
+                      </div>
+                    ))
+                  : <p className='body-sm text-ink-secondary'>Not listed</p>}
+                </div>
+              </SectionCard>
+            )}
+            {(editing || otherItems.length > 0) && (
+              <SectionCard
+                title={otherSectionTitle}
+                action={
+                  editing ?
+                    <Button
+                      size='sm'
+                      variant='secondary'
+                      Icon={Plus}
+                      onClick={() => addItem('other')}
+                    >
+                      Add
+                    </Button>
+                  : null
+                }
+              >
+                <div className='space-y-4'>
+                  {otherItems.length ?
+                    otherItems.map((item, index) => (
+                      <div
+                        key={`${item.type ?? 'other'}-${item.title ?? index}`}
+                        className=''
+                      >
+                        {editing ?
+                          <>
+                            <div className='grid gap-2 md:grid-cols-2'>
+                              <Input
+                                value={asValue(item.type)}
+                                placeholder='Type'
+                                onChange={(event) =>
+                                  updateOther(index, 'type', event.target.value)
+                                }
+                              />
+                              <Input
+                                value={asValue(item.title)}
+                                placeholder='Role or title'
+                                onChange={(event) =>
+                                  updateOther(
+                                    index,
+                                    'title',
+                                    event.target.value,
+                                  )
+                                }
+                              />
+                              <Input
+                                value={asValue(item.organization)}
+                                placeholder='Organization'
+                                onChange={(event) =>
+                                  updateOther(
+                                    index,
+                                    'organization',
+                                    event.target.value,
+                                  )
+                                }
+                              />
+                              <Input
+                                value={asValue(item.location)}
+                                placeholder='Location'
+                                onChange={(event) =>
+                                  updateOther(
+                                    index,
+                                    'location',
+                                    event.target.value,
+                                  )
+                                }
+                              />
+                              <Input
+                                value={asValue(item.date)}
+                                placeholder='Date'
+                                onChange={(event) =>
+                                  updateOther(index, 'date', event.target.value)
+                                }
+                              />
+                            </div>
+                            <textarea
+                              className='textarea mt-3 min-h-20 w-full'
+                              value={(item.description ?? []).join('\n')}
+                              placeholder='One detail per line'
+                              onChange={(event) =>
+                                updateOther(
+                                  index,
+                                  'description',
+                                  event.target.value,
+                                )
+                              }
+                            />
+                            <div className='mt-2'>
+                              <Button
+                                variant='secondary'
+                                size='sm'
+                                Icon={Trash2}
+                                onClick={() => removeItem('other', index)}
+                              >
+                                Remove
+                              </Button>
+                            </div>
+                          </>
+                        : <>
+                            <div className='flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1'>
+                              <p className='label text-ink-primary'>
+                                {item.title || item.type || 'Other'}
+                              </p>
+                              {item.date ?
+                                <span className='body-sm text-ink-secondary'>
+                                  {item.date}
+                                </span>
+                              : null}
+                            </div>
+                            {(
+                              [item.organization, item.location]
+                                .filter(Boolean)
+                                .join(' · ')
+                            ) ?
+                              <p className='body-sm mt-1 text-ink-secondary'>
+                                {[item.organization, item.location]
+                                  .filter(Boolean)
+                                  .join(' · ')}
+                              </p>
+                            : null}
+                            {(item.description ?? []).length > 0 ?
+                              <ul className='body-sm mt-3 list-disc space-y-1 pl-4 text-ink-secondary'>
+                                {(item.description ?? []).map((line) => (
+                                  <li key={line}>{line}</li>
+                                ))}
+                              </ul>
+                            : null}
+                          </>
+                        }
+                      </div>
                     ))
                   : <p className='body-sm text-ink-secondary'>Not listed</p>}
                 </div>
@@ -2024,141 +2162,6 @@ export default function ResumePage() {
                         <p className='body-sm text-ink-secondary'>
                           {item.proficiency || 'Not listed'}
                         </p>
-                      </div>
-                    ))
-                  : <p className='body-sm text-ink-secondary'>Not listed</p>}
-                </div>
-              </SectionCard>
-            )}
-
-            {(editing || otherItems.length > 0) && (
-              <SectionCard
-                title={otherSectionTitle}
-                action={
-                  editing ?
-                    <Button
-                      size='sm'
-                      variant='secondary'
-                      Icon={Plus}
-                      onClick={() => addItem('other')}
-                    >
-                      Add
-                    </Button>
-                  : null
-                }
-              >
-                <div className='space-y-4'>
-                  {otherItems.length ?
-                    otherItems.map((item, index) => (
-                      <div
-                        key={`${item.type ?? 'other'}-${item.title ?? index}`}
-                        className=''
-                      >
-                        {editing ?
-                          <>
-                            <div className='grid gap-2 md:grid-cols-2'>
-                              <Input
-                                value={asValue(item.type)}
-                                placeholder='Type'
-                                onChange={(event) =>
-                                  updateOther(index, 'type', event.target.value)
-                                }
-                              />
-                              <Input
-                                value={asValue(item.title)}
-                                placeholder='Role or title'
-                                onChange={(event) =>
-                                  updateOther(
-                                    index,
-                                    'title',
-                                    event.target.value,
-                                  )
-                                }
-                              />
-                              <Input
-                                value={asValue(item.organization)}
-                                placeholder='Organization'
-                                onChange={(event) =>
-                                  updateOther(
-                                    index,
-                                    'organization',
-                                    event.target.value,
-                                  )
-                                }
-                              />
-                              <Input
-                                value={asValue(item.location)}
-                                placeholder='Location'
-                                onChange={(event) =>
-                                  updateOther(
-                                    index,
-                                    'location',
-                                    event.target.value,
-                                  )
-                                }
-                              />
-                              <Input
-                                value={asValue(item.date)}
-                                placeholder='Date'
-                                onChange={(event) =>
-                                  updateOther(index, 'date', event.target.value)
-                                }
-                              />
-                            </div>
-                            <textarea
-                              className='textarea mt-3 min-h-20 w-full'
-                              value={(item.description ?? []).join('\n')}
-                              placeholder='One detail per line'
-                              onChange={(event) =>
-                                updateOther(
-                                  index,
-                                  'description',
-                                  event.target.value,
-                                )
-                              }
-                            />
-                            <div className='mt-2'>
-                              <Button
-                                variant='secondary'
-                                size='sm'
-                                Icon={Trash2}
-                                onClick={() => removeItem('other', index)}
-                              >
-                                Remove
-                              </Button>
-                            </div>
-                          </>
-                        : <>
-                            <div className='flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1'>
-                              <p className='label text-ink-primary'>
-                                {item.title || item.type || 'Other'}
-                              </p>
-                              {item.date ?
-                                <span className='body-sm text-ink-secondary'>
-                                  {item.date}
-                                </span>
-                              : null}
-                            </div>
-                            {(
-                              [item.organization, item.location]
-                                .filter(Boolean)
-                                .join(' · ')
-                            ) ?
-                              <p className='body-sm mt-1 text-ink-secondary'>
-                                {[item.organization, item.location]
-                                  .filter(Boolean)
-                                  .join(' · ')}
-                              </p>
-                            : null}
-                            {(item.description ?? []).length > 0 ?
-                              <ul className='body-sm mt-3 list-disc space-y-1 pl-4 text-ink-secondary'>
-                                {(item.description ?? []).map((line) => (
-                                  <li key={line}>{line}</li>
-                                ))}
-                              </ul>
-                            : null}
-                          </>
-                        }
                       </div>
                     ))
                   : <p className='body-sm text-ink-secondary'>Not listed</p>}

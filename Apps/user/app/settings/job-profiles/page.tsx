@@ -26,9 +26,11 @@ import {
 import { SearchForm } from '@/components/forms';
 import { WaterfallLayout } from '@/components/layout/waterfallLayout';
 import { useGlobalModalStore } from '@/lib/store/global-modal-store';
+import { api } from '@/lib/api';
 import type { JobHuntingProfile } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/UI/Button';
+import { ActiveResumeModal } from '@/app/settings/resume/_component/active-resume-modal';
 
 type SearchSection =
   | 'overview'
@@ -75,7 +77,7 @@ const EDITOR_DETAILS: Record<
   eligibility: {
     title: 'Eligibility and compensation',
     description:
-      'Set work authorization, experience, and compensation details.',
+      'Set your experience cap, work authorization, and compensation details.',
     icon: CircleDollarSign,
   },
   career: {
@@ -133,6 +135,11 @@ function getSectionStatus(
   }
   if (section === 'materials') {
     return hasResume(profile) ?
+        { label: 'Ready', tone: 'ready' }
+      : { label: '1 required item', tone: 'needs_attention' };
+  }
+  if (section === 'eligibility') {
+    return profile.years_of_experience?.trim() ?
         { label: 'Ready', tone: 'ready' }
       : { label: '1 required item', tone: 'needs_attention' };
   }
@@ -274,6 +281,9 @@ function JobProfileEditorModal({
   const status = getSectionStatus(section, draft);
 
   const handleSave = async () => {
+    if (section === 'eligibility' && !draft.years_of_experience?.trim()) {
+      return;
+    }
     setIsSaving(true);
     try {
       await onSave(draft);
@@ -324,7 +334,10 @@ function JobProfileEditorModal({
         </Button>
         <Button
           onClick={() => void handleSave()}
-          disabled={isSaving}
+          disabled={
+            isSaving ||
+            (section === 'eligibility' && !draft.years_of_experience?.trim())
+          }
           Icon={Check}
         >
           {isSaving ? 'Saving...' : 'Save changes'}
@@ -341,6 +354,8 @@ export default function SearchPage() {
     saveJobHuntingProfile,
     hasLoadedInitialData,
     profile: userProfile,
+    setJobHuntingProfile,
+    loadData,
   } = useConsole();
   const openModal = useGlobalModalStore((state) => state.actions.openModal);
   const closeModal = useGlobalModalStore((state) => state.actions.closeModal);
@@ -383,6 +398,29 @@ export default function SearchPage() {
     };
   }, [selectedProfile]);
 
+  const openActiveResume = () => {
+    openModal({
+      layoutId: 'active-resume',
+      className: 'w-[94vw] max-w-2xl max-h-[86vh] rounded-lg',
+      content: (
+        <ActiveResumeModal
+          currentUrl={summary.resumePath}
+          onClose={closeModal}
+          onUpload={() => {
+            closeModal();
+            window.location.href = '/settings/resume';
+          }}
+          onSelected={async () => {
+            const nextProfile = await api.jobHuntingProfile();
+            setJobHuntingProfile(nextProfile);
+            loadData();
+          }}
+        />
+      ),
+      onClose: closeModal,
+    });
+  };
+
   const completion = useMemo(() => {
     const ready = [
       Boolean(
@@ -392,6 +430,7 @@ export default function SearchPage() {
       ),
       Boolean(selectedProfile.search_terms?.length),
       hasResume(selectedProfile),
+      Boolean(selectedProfile.years_of_experience?.trim()),
     ];
     return { complete: ready.filter(Boolean).length, total: ready.length };
   }, [selectedProfile, userProfile]);
@@ -434,9 +473,9 @@ export default function SearchPage() {
   const remaining = completion.total - completion.complete;
 
   return (
-    <div className='h-[calc(100vh-64px)] min-h-[640px] overflow-hidden'>
-      <main className='custom-scrollbar-primary min-h-0 overflow-y-auto pr-1'>
-        <header className='border-b border-border/60 pb-5'>
+    <div className='flex h-[calc(100vh-64px)] min-h-[640px] flex-col overflow-hidden'>
+      <main className='custom-scrollbar-primary min-h-0 flex-1 overflow-y-auto pr-1'>
+        <header className='flex flex-wrap items-start justify-between gap-4 border-b border-border/60 pb-5'>
           <div>
             <div className='flex flex-wrap items-center gap-2'>
               <BriefcaseBusiness className='h-5 w-5 text-primary' />
@@ -463,6 +502,15 @@ export default function SearchPage() {
               </span>.
             </p>
           </div>
+          <Button
+            variant='secondary'
+            size='md'
+            Icon={FileText}
+            layoutId='active-resume'
+            onClick={openActiveResume}
+          >
+            Active Resume
+          </Button>
         </header>
 
         <div className='pt-5'>
@@ -558,9 +606,26 @@ export default function SearchPage() {
                   muted={!selectedProfile.citizenship}
                 />
                 <DetailLine
-                  label='Experience and notice'
-                  value={`${selectedProfile.years_of_experience || 'Not set'} years · ${selectedProfile.notice_period ?? 'Not set'} day notice`}
+                  label='Experience cap'
+                  value={
+                    selectedProfile.years_of_experience ?
+                      `${selectedProfile.years_of_experience} years`
+                    : 'Required'
+                  }
                   muted={!selectedProfile.years_of_experience}
+                />
+                <p className='body-sm mt-3 text-ink-secondary'>
+                  Roles requiring more experience than this will be skipped.
+                </p>
+                <DetailLine
+                  label='Notice period'
+                  value={
+                    selectedProfile.notice_period !== null &&
+                    selectedProfile.notice_period !== undefined ?
+                      `${selectedProfile.notice_period} days`
+                    : 'Not set'
+                  }
+                  muted={selectedProfile.notice_period === null || selectedProfile.notice_period === undefined}
                 />
                 <DetailLine
                   label='Compensation'
@@ -579,10 +644,6 @@ export default function SearchPage() {
                 status={getSectionStatus('rules', selectedProfile)}
                 onEdit={openEditor}
               >
-                <DetailLine
-                  label='Experience cap'
-                  value={`${String(summary.filters.current_experience ?? 5)} years`}
-                />
                 <DetailLine
                   label='Active rules'
                   value={

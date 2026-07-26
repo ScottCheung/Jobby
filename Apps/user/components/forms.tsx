@@ -180,7 +180,6 @@ const searchSettingKeys = [
   'about_company_good_words',
   'bad_words',
   'security_clearance',
-  'did_masters',
   'current_experience',
 ];
 
@@ -968,15 +967,6 @@ export function SearchForm({
                   }
                   icon='🛡'
                 />
-                <ToggleCard
-                  label='Has masters degree'
-                  description="Expand eligibility where master's is mentioned."
-                  checked={asBoolean(searchExtra(value, 'did_masters'))}
-                  onChange={(next) =>
-                    onChange(updateSearchSetting(value, 'did_masters', next))
-                  }
-                  icon='🎓'
-                />
               </div>
             </div>
           </>
@@ -984,22 +974,6 @@ export function SearchForm({
 
         {showRules && (
           <>
-            <Field
-              label='Current experience cap'
-              value={String(searchExtra(value, 'current_experience') ?? 5)}
-              onChange={(next) =>
-                onChange(
-                  updateSearchSetting(
-                    value,
-                    'current_experience',
-                    Number(next) || 0,
-                  ),
-                )
-              }
-              type='number'
-              hint='Use -1 to stop filtering by required experience.'
-            />
-
             <TagEditor
               label='About company bad words'
               values={asStringList(
@@ -1098,7 +1072,18 @@ export function SearchForm({
             <Field
               label='Years of experience'
               value={value.years_of_experience}
-              onChange={(next) => setProfileField('years_of_experience', next)}
+              onChange={(next) =>
+                onChange(
+                  updateSearchSetting(
+                    { ...value, years_of_experience: next },
+                    'current_experience',
+                    next.trim() ? Number(next) : -1,
+                  ),
+                )
+              }
+              type='number'
+              required
+              hint='Required. Jobs asking for more experience than this will be skipped.'
             />
             <ChoiceCardGroup
               label='Visa sponsorship required'
