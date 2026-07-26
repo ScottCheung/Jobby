@@ -312,7 +312,9 @@ export function PracticeCompletionModal({
           >
             <Sparkles className='h-4 w-4' />
             {isScoring ? 'Scoring...' : 'Score This Attempt'}
-            <span className='text-[9px] font-normal'>Enter</span>
+            <span className='text-[9px] font-normal'>
+              {isScoring ? 'Please wait' : 'Up to 5 coins'}
+            </span>
           </button>
           <button
             type='button'

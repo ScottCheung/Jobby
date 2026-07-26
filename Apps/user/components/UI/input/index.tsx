@@ -46,6 +46,7 @@ export interface InputFieldProps extends React.InputHTMLAttributes<HTMLInputElem
   helpTextShort?: string;
   helpTextLong?: string;
   required?: boolean;
+  optional?: boolean;
 }
 
 const InputField = React.forwardRef<HTMLInputElement, InputFieldProps>(
@@ -62,6 +63,7 @@ const InputField = React.forwardRef<HTMLInputElement, InputFieldProps>(
       onBlur,
       helpTextShort,
       helpTextLong,
+      optional,
       value,
       defaultValue,
       ...props
@@ -118,6 +120,7 @@ const InputField = React.forwardRef<HTMLInputElement, InputFieldProps>(
             helpTextShort={helpTextShort}
             helpTextLong={helpTextLong}
             required={props.required}
+            optional={optional}
           />
           {showCharCount && maxLength && (
             <p
@@ -161,11 +164,13 @@ const InputField = React.forwardRef<HTMLInputElement, InputFieldProps>(
           />
           {hasValue && !props.disabled && (
             <Button
-              Icon={X}
               onClick={handleClear}
-              className='absolute right-1 top-1  text-ink-secondary'
-              variant='ghost'
-            />
+              size={'icon'}
+              className='absolute right-1 top-1   text-ink-secondary'
+              variant='icon'
+            >
+              <X className='size-3' />
+            </Button>
           )}
         </div>
         <div className='flex items-center justify-between mt-1'>

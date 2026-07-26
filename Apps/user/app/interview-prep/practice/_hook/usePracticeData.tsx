@@ -20,6 +20,7 @@ import type {
   InterviewCategory,
   DailySummary,
   QuestionAnswer,
+  TranscriptSegment,
 } from '@/lib/types';
 import { showGlobalToast } from '@/lib/toast';
 import { showCelebrationEvent } from '@/lib/celebration';
@@ -30,6 +31,7 @@ import { seededShuffle, getPlanQueue } from '../practice-utils';
 import { PracticeQueueDrawerContent } from '../_components/PracticeQueueDrawer';
 import { useConsole } from '@/components/ConsoleContext';
 import type { PracticeMode } from '../_components/PracticeModeModal';
+import { Star } from 'lucide-react';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const calculateSimilarityScore = (
@@ -83,6 +85,80 @@ const SESSION_CUSTOM_IDS_KEY = 'practiceCustomIds';
 const PREF_STORAGE_KEY = 'practiceModePreference';
 const SHOW_ANSWERS_PREF_KEY = 'practiceShowAnswersPreference';
 const AUTO_EVAL_PREF_KEY = 'practiceAutoEvalPreference';
+
+function getTranscriptDurationSeconds(
+  segments: Array<{ start: number; end: number }>,
+): number {
+  const latestEnd = segments.reduce(
+    (latest, segment) => Math.max(latest, segment.end || 0),
+    0,
+  );
+  return Math.max(0, Math.round(latestEnd));
+}
+
+function normalizeTranscriptSegments(
+  segments: TranscriptSegment[],
+): TranscriptSegment[] {
+  return segments
+    .map((segment) => ({
+      text: String(segment.text || '').trim(),
+      start: Math.max(0, Number(segment.start || 0)),
+      end: Math.max(0, Number(segment.end || 0)),
+      words:
+        Array.isArray(segment.words) && segment.words.length > 0 ?
+          segment.words
+            .map((word) => ({
+              text: String(word.text || '').trim(),
+              start: Math.max(0, Number(word.start || 0)),
+              end: Math.max(0, Number(word.end || 0)),
+            }))
+            .filter((word) => word.text)
+        : undefined,
+    }))
+    .filter((segment) => segment.text);
+}
+
+function buildFallbackTranscriptSegments(
+  segments: TranscriptSegment[],
+  interimText: string,
+  durationSeconds?: number | null,
+): TranscriptSegment[] {
+  const normalized = normalizeTranscriptSegments(segments);
+  const trimmedInterim = interimText.trim();
+  if (!trimmedInterim) return normalized;
+
+  const fallbackStart =
+    normalized.length > 0 ?
+      Math.max(
+        normalized[normalized.length - 1].end,
+        normalized[normalized.length - 1].start,
+      )
+    : 0;
+  const fallbackEnd = Math.max(
+    fallbackStart + 0.6,
+    Number(durationSeconds || 0) || fallbackStart + 0.6,
+  );
+
+  return [
+    ...normalized,
+    {
+      text: trimmedInterim,
+      start: Number(fallbackStart.toFixed(2)),
+      end: Number(fallbackEnd.toFixed(2)),
+    },
+  ];
+}
+
+function getAudioFilename(contentType: string | null | undefined): string {
+  switch ((contentType || '').split(';', 1)[0].trim()) {
+    case 'audio/ogg':
+      return 'audio.ogg';
+    case 'audio/mp4':
+      return 'audio.mp4';
+    default:
+      return 'audio.webm';
+  }
+}
 
 type PracticePreferenceSnapshot = {
   mode: PracticeMode;
@@ -190,9 +266,10 @@ export function usePracticeData() {
       const ok = await confirm({
         title: 'Enable Auto AI Evaluation on Submit?',
         message:
-          'After enabling AI Evaluation, each practice submission will trigger an AI assessment and consume 5 coins each time. The advantage is that this will provide a faster response speed. Our server will immediately trigger the AI scoring after receiving your interview response, but this may cause your coins to be comsumed faster than expected. Are you sure you want to enable this function?',
+          'Each submitted transcript will be scored automatically and saved in Practice History. AI feedback costs up to 5 coins per attempt (free with VIP).',
         confirmLabel: 'Enable Auto Evaluation',
         cancelLabel: 'Cancel',
+        type: 'warning',
       });
       if (!ok) return;
       setAutoEvalEnabled(true);
@@ -228,19 +305,67 @@ export function usePracticeData() {
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [activeStream, setActiveStream] = useState<MediaStream | null>(null);
   const [transcriptSegments, setTranscriptSegments] = useState<
-    Array<{ text: string; start: number; end: number }>
+    TranscriptSegment[]
   >([]);
   const [interimText, setInterimText] = useState('');
+  const [transcriptStatus, setTranscriptStatus] = useState<
+    'idle' | 'recording' | 'refining' | 'ready' | 'fallback'
+  >('idle');
+  const [transcriptStatusMessage, setTranscriptStatusMessage] = useState<
+    string | null
+  >(null);
+  const [isRecordingTransitioning, setIsRecordingTransitioning] =
+    useState(false);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const recognitionRef = useRef<any>(null);
   const draftAudioRef = useRef<HTMLAudioElement | null>(null);
+  const practiceStartedAtRef = useRef<Date | null>(null);
+  const recordingStartedAtRef = useRef<number | null>(null);
+  const recordedDurationSecondsRef = useRef(0);
+  const recordingMimeTypeRef = useRef('audio/webm');
+  const transcriptRequestIdRef = useRef(0);
+  const transcriptSegmentsRef = useRef<TranscriptSegment[]>([]);
+  const interimTextRef = useRef('');
+  const recordingTransitionLockRef = useRef(false);
+  const recordingPhaseRef = useRef<
+    'idle' | 'starting' | 'recording' | 'stopping' | 'refining'
+  >('idle');
+  const discardShortRecordingRef = useRef(false);
+
+  // Avoid sending near-empty audio blobs when a shortcut is tapped accidentally.
+  const MIN_RECORDING_DURATION_MS = 900;
+
+  useEffect(() => {
+    transcriptSegmentsRef.current = transcriptSegments;
+  }, [transcriptSegments]);
+
+  useEffect(() => {
+    interimTextRef.current = interimText;
+  }, [interimText]);
 
   // ─── Init ──────────────────────────────────────────────────────────────────
   const initData = async (forceRefetch = false) => {
-    if (practiceCache.questions && !forceRefetch) {
+    let sessionCustomIds: string[] = [];
+    if (practiceMode === 'custom') {
+      try {
+        const rawIds = sessionStorage.getItem(SESSION_CUSTOM_IDS_KEY);
+        const parsedIds = rawIds ? JSON.parse(rawIds) : [];
+        sessionCustomIds = Array.isArray(parsedIds) ? parsedIds : [];
+      } catch {}
+    }
+
+    const hasMatchingCustomCache =
+      practiceMode !== 'custom' ||
+      (sessionCustomIds.length > 0 &&
+        practiceCache.questions?.length === sessionCustomIds.length &&
+        sessionCustomIds.every((id) =>
+          practiceCache.questions?.some((question) => question.id === id),
+        ));
+
+    if (practiceCache.questions && !forceRefetch && hasMatchingCustomCache) {
       setQuestions(practiceCache.questions);
       setPracticeRecords(practiceCache.records || []);
       setCategories(practiceCache.categories || []);
@@ -254,13 +379,47 @@ export function usePracticeData() {
     setIsLoading(true);
     const startTime = Date.now();
     try {
-      const [qs, prs, cats, plans, baseUrl] = await Promise.all([
-        api.interviewQuestions(),
+      const questionsRequest =
+        sessionCustomIds.length > 0 ?
+          Promise.all(
+            Array.from(
+              { length: Math.ceil(sessionCustomIds.length / 100) },
+              (_, index) =>
+                api.interviewQuestions({
+                  limit: 100,
+                  question_ids: sessionCustomIds.slice(
+                    index * 100,
+                    (index + 1) * 100,
+                  ),
+                }),
+            ),
+          ).then((responses) => {
+            const byId = new Map(
+              responses
+                .flatMap((response) => response.items || [])
+                .map((question) => [question.id, question]),
+            );
+            const items = sessionCustomIds.flatMap((questionId) => {
+              const question = byId.get(questionId);
+              return question ? [question] : [];
+            });
+            return {
+              items,
+              total: items.length,
+              has_more: false,
+              next_offset: null,
+            };
+          })
+        : api.interviewQuestions();
+
+      const [qsRes, prs, cats, plans, baseUrl] = await Promise.all([
+        questionsRequest,
         api.practiceRecords(),
         api.interviewCategories(),
         api.practicePlans(),
         resolveApiBaseUrl(),
       ]);
+      const qs = qsRes.items || [];
 
       practiceCache.questions = qs;
       practiceCache.records = prs;
@@ -494,7 +653,7 @@ export function usePracticeData() {
     [baseCurrentQuestion, questionAnswersByQuestion],
   );
 
-  // Author's official reference answer (source === 'author', type === 'reference', status === 'published')
+  // Contributor's official reference answer (source === 'author', type === 'reference', status === 'published')
   const authorAnswers = useMemo(
     () =>
       currentQuestionAnswers.filter(
@@ -540,7 +699,7 @@ export function usePracticeData() {
     [currentQuestionAnswers],
   );
 
-  const isQuestionAuthor = useMemo(() => {
+  const isQuestionContributor = useMemo(() => {
     if (!user || !baseCurrentQuestion) return false;
     return (
       user.id === baseCurrentQuestion.submitted_by_user_id ||
@@ -728,9 +887,76 @@ export function usePracticeData() {
     resetRecording();
   };
 
+  const applyTranscriptResult = useCallback(
+    (
+      segments: TranscriptSegment[],
+      nextStatus: 'ready' | 'fallback',
+      statusMessage?: string | null,
+    ) => {
+      const normalized = normalizeTranscriptSegments(segments);
+      setTranscriptSegments(normalized);
+      setInterimText('');
+      setTranscriptStatus(nextStatus);
+      setTranscriptStatusMessage(statusMessage ?? null);
+      const fullText = normalized.map((segment) => segment.text).join(' ');
+      setConfidenceScore(
+        calculateSimilarityScore(
+          fullText,
+          currentQuestion?.answer_objective || '',
+        ),
+      );
+      return normalized;
+    },
+    [currentQuestion?.answer_objective],
+  );
+
+  const refineTranscript = useCallback(
+    async (
+      blob: Blob,
+      mimeType: string,
+      fallbackSegments: TranscriptSegment[],
+      requestId: number,
+    ) => {
+      setTranscriptStatus('refining');
+      setTranscriptStatusMessage('Refining transcript with AI...');
+      try {
+        const refined = await api.transcribePracticeAudio(
+          blob,
+          getAudioFilename(mimeType),
+        );
+        if (transcriptRequestIdRef.current !== requestId) return;
+        applyTranscriptResult(refined.segments, 'ready', `Refined with AI :)`);
+      } catch (err) {
+        if (transcriptRequestIdRef.current !== requestId) return;
+        console.error('Local transcript refinement failed:', err);
+        const fallbackMessage =
+          fallbackSegments.length > 0 ?
+            'Local refinement unavailable. Using live transcript.'
+          : 'Could not generate a transcript for this recording.';
+        applyTranscriptResult(fallbackSegments, 'fallback', fallbackMessage);
+        if (fallbackSegments.length > 0) {
+          showGlobalToast(fallbackMessage);
+        } else {
+          showGlobalToast(
+            'Transcript refinement failed. Please record again or type manually later.',
+          );
+        }
+      } finally {
+        if (transcriptRequestIdRef.current === requestId) {
+          recordingPhaseRef.current = 'idle';
+          recordingTransitionLockRef.current = false;
+          setIsRecordingTransitioning(false);
+        }
+      }
+    },
+    [applyTranscriptResult],
+  );
+
   const startSpeechRecognition = () => {
     setTranscriptSegments([]);
     setInterimText('');
+    setTranscriptStatus('recording');
+    setTranscriptStatusMessage('Live transcript');
     const SpeechRecognition =
       (window as any).SpeechRecognition ||
       (window as any).webkitSpeechRecognition;
@@ -804,18 +1030,30 @@ export function usePracticeData() {
     rec.start();
   };
 
-  const stopSpeechRecognition = () => {
+  const stopSpeechRecognition = (options?: { keepInterimText?: boolean }) => {
     if (recognitionRef.current) {
       try {
         recognitionRef.current.stop();
       } catch {}
       recognitionRef.current = null;
     }
-    setInterimText('');
+    if (!options?.keepInterimText) {
+      setInterimText('');
+    }
   };
 
   const startRecording = async () => {
+    if (recordingPhaseRef.current !== 'idle') {
+      return;
+    }
+
+    recordingPhaseRef.current = 'starting';
+    discardShortRecordingRef.current = false;
+    recordingTransitionLockRef.current = true;
+    setIsRecordingTransitioning(true);
+
     try {
+      transcriptRequestIdRef.current += 1;
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           channelCount: 1,
@@ -836,21 +1074,53 @@ export function usePracticeData() {
         mimeType,
         audioBitsPerSecond: 48_000,
       });
+      recordingMimeTypeRef.current = mimeType;
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
       mediaRecorder.ondataavailable = (e) => {
         if (e.data.size > 0) audioChunksRef.current.push(e.data);
       };
-      mediaRecorder.onstop = () => {
+      mediaRecorder.onstop = async () => {
         const blob = new Blob(audioChunksRef.current, { type: mimeType });
+        stream.getTracks().forEach((t) => t.stop());
+        mediaRecorderRef.current = null;
+
+        if (discardShortRecordingRef.current) {
+          discardShortRecordingRef.current = false;
+          setAudioBlob(null);
+          setAudioUrl(null);
+          setTranscriptSegments([]);
+          setInterimText('');
+          setTranscriptStatus('idle');
+          setTranscriptStatusMessage(
+            'Recording was too short. Hold Space and try again.',
+          );
+          recordingPhaseRef.current = 'idle';
+          recordingTransitionLockRef.current = false;
+          setIsRecordingTransitioning(false);
+          return;
+        }
+
         setAudioBlob(blob);
         setAudioUrl(URL.createObjectURL(blob));
-        stream.getTracks().forEach((t) => t.stop());
+        const requestId = transcriptRequestIdRef.current;
+        const fallbackSegments = buildFallbackTranscriptSegments(
+          transcriptSegmentsRef.current,
+          interimTextRef.current,
+          recordedDurationSecondsRef.current,
+        );
+        recordingPhaseRef.current = 'refining';
+        await refineTranscript(blob, mimeType, fallbackSegments, requestId);
       };
       mediaRecorder.start();
+      const now = new Date();
+      practiceStartedAtRef.current = now;
+      recordingStartedAtRef.current = now.getTime();
+      recordedDurationSecondsRef.current = 0;
       setIsRecording(true);
       setRecordingSeconds(0);
       startSpeechRecognition();
+      recordingPhaseRef.current = 'recording';
       timerRef.current = setInterval(
         () => setRecordingSeconds((p) => p + 1),
         1000,
@@ -858,29 +1128,54 @@ export function usePracticeData() {
     } catch (err) {
       console.error('Failed to start recording:', err);
       alert('Microphone access denied or not found.');
+    } finally {
+      if (recordingPhaseRef.current === 'starting') {
+        recordingPhaseRef.current = 'idle';
+        recordingTransitionLockRef.current = false;
+        setIsRecordingTransitioning(false);
+      } else if (recordingPhaseRef.current === 'recording') {
+        recordingTransitionLockRef.current = false;
+        setIsRecordingTransitioning(false);
+      }
     }
   };
 
   const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
-      setIsRecording(false);
-      setActiveStream(null);
-      stopSpeechRecognition();
-      if (timerRef.current) clearInterval(timerRef.current);
-      setTimeout(() => {
-        setTranscriptSegments((segs) => {
-          const fullText = segs.map((s) => s.text).join(' ');
-          setConfidenceScore(
-            calculateSimilarityScore(
-              fullText,
-              currentQuestion?.answer_objective || '',
-            ),
-          );
-          return segs;
-        });
-      }, 300);
+    if (
+      recordingPhaseRef.current !== 'recording' ||
+      !mediaRecorderRef.current ||
+      mediaRecorderRef.current.state !== 'recording'
+    ) {
+      return;
     }
+
+    const recordingDuration =
+      recordingStartedAtRef.current === null ?
+        0
+      : Date.now() - recordingStartedAtRef.current;
+    discardShortRecordingRef.current =
+      recordingDuration < MIN_RECORDING_DURATION_MS;
+    recordingPhaseRef.current = 'stopping';
+    recordingTransitionLockRef.current = true;
+    setIsRecordingTransitioning(true);
+    if (discardShortRecordingRef.current) {
+      setTranscriptStatusMessage(null);
+    } else {
+      setTranscriptStatus('refining');
+      setTranscriptStatusMessage('Refining transcript with local AI...');
+    }
+    mediaRecorderRef.current.stop();
+    if (recordingStartedAtRef.current !== null) {
+      recordedDurationSecondsRef.current = Math.max(
+        0,
+        Math.round((Date.now() - recordingStartedAtRef.current) / 1000),
+      );
+    }
+    recordingStartedAtRef.current = null;
+    setIsRecording(false);
+    setActiveStream(null);
+    stopSpeechRecognition({ keepInterimText: true });
+    if (timerRef.current) clearInterval(timerRef.current);
   };
 
   // ─── Global Keyboard Shortcuts ───
@@ -937,9 +1232,10 @@ export function usePracticeData() {
         );
       } else if (key === ' ' || key === 'Spacebar') {
         e.preventDefault();
-        if (isRecording) {
+        if (e.repeat) return;
+        if (recordingPhaseRef.current === 'recording') {
           stopRecording();
-        } else {
+        } else if (recordingPhaseRef.current === 'idle') {
           void startRecording();
         }
       } else if (key === 'c' || key === 'C') {
@@ -985,13 +1281,22 @@ export function usePracticeData() {
     setTranscriptSegments((prev) => {
       const updated = [...prev];
       if (updated[index]) {
-        updated[index].text = newText;
+        updated[index] = {
+          ...updated[index],
+          text: newText,
+          words: undefined,
+        };
       }
       return updated;
     });
   };
 
   const resetRecording = () => {
+    transcriptRequestIdRef.current += 1;
+    recordingPhaseRef.current = 'idle';
+    recordingTransitionLockRef.current = false;
+    discardShortRecordingRef.current = false;
+    setIsRecordingTransitioning(false);
     if (timerRef.current) clearInterval(timerRef.current);
     stopSpeechRecognition();
     setAudioBlob(null);
@@ -1001,23 +1306,48 @@ export function usePracticeData() {
     setIsRecording(false);
     setTranscriptSegments([]);
     setInterimText('');
+    setTranscriptStatus('idle');
+    setTranscriptStatusMessage(null);
+    practiceStartedAtRef.current = null;
+    recordingStartedAtRef.current = null;
+    recordedDurationSecondsRef.current = 0;
   };
 
   // ─── Submit ───
   const handleSubmit = async () => {
-    if (!currentQuestion || (!audioBlob && transcriptSegments.length === 0))
+    if (
+      !currentQuestion ||
+      transcriptSegments.length === 0 ||
+      transcriptStatus === 'refining'
+    )
       return;
     setIsSubmitting(true);
     try {
       const myAnswerSerialized =
         transcriptSegments.length > 0 ? JSON.stringify(transcriptSegments) : '';
+      const submittedAt = new Date();
+      const transcriptDuration =
+        getTranscriptDurationSeconds(transcriptSegments);
+      const durationSeconds =
+        recordedDurationSecondsRef.current ||
+        recordingSeconds ||
+        transcriptDuration ||
+        undefined;
+      const startedAt =
+        practiceStartedAtRef.current ||
+        (durationSeconds ?
+          new Date(submittedAt.getTime() - durationSeconds * 1000)
+        : submittedAt);
 
       const record = await api.createPracticeRecord({
         question_id: currentQuestion.id,
+        started_at: startedAt.toISOString(),
+        submitted_at: submittedAt.toISOString(),
+        duration_seconds: durationSeconds,
         my_answer: myAnswerSerialized || undefined,
         confidence_score: confidenceScore ?? undefined,
         notes: notes.trim() || undefined,
-        date: new Date().toISOString(),
+        date: submittedAt.toISOString(),
       });
 
       if (record?.gamification_update) {
@@ -1034,19 +1364,26 @@ export function usePracticeData() {
       }
 
       if (audioBlob && record?.id)
-        await api.uploadPracticeAudio(record.id, audioBlob);
+        await api.uploadPracticeAudio(
+          record.id,
+          audioBlob,
+          getAudioFilename(recordingMimeTypeRef.current),
+        );
 
       if (autoEvalEnabled && record?.id) {
         void api
           .createPracticeEvaluation(record.id)
           .then((evaluation) => {
             showGlobalToast(
-              `AI Evaluation complete: ${evaluation.overall_score}/100`,
+              `AI feedback ready: ${evaluation.overall_score}/100${evaluation.coins_spent ? ` (${evaluation.coins_spent} coins)` : ' (no coins used)'}`,
             );
             window.dispatchEvent(new Event('playbookGamificationUpdated'));
           })
           .catch((err) => {
             console.error('Auto evaluation error:', err);
+            showGlobalToast(
+              'Your practice was saved, but auto AI feedback could not be generated.',
+            );
           });
       }
 
@@ -1220,8 +1557,8 @@ export function usePracticeData() {
     }
   };
 
-  const handleCreateAuthorAnswer = async (newText: string) => {
-    if (!currentQuestion || !isQuestionAuthor) return;
+  const handleCreateContributorAnswer = async (newText: string) => {
+    if (!currentQuestion || !isQuestionContributor) return;
     const trimmed = newText.trim();
     if (!trimmed) return;
     setIsSavingAnswer(true);
@@ -1229,7 +1566,7 @@ export function usePracticeData() {
       await api.createQuestionAnswer(currentQuestion.id, {
         answer_type: 'reference',
         status: 'published',
-        title: 'Author Reference Answer',
+        title: 'Contributor Reference Answer',
         body: trimmed,
       });
       const refreshedAnswers = await api.questionAnswers(currentQuestion.id);
@@ -1244,12 +1581,12 @@ export function usePracticeData() {
     }
   };
 
-  const handleUpdateAuthorAnswer = async (
+  const handleUpdateContributorAnswer = async (
     answerId: string,
     newText: string,
   ) => {
     const trimmed = newText.trim();
-    if (!currentQuestion || !isQuestionAuthor || !trimmed) return;
+    if (!currentQuestion || !isQuestionContributor || !trimmed) return;
     setIsSavingAnswer(true);
     try {
       await api.updateQuestionAnswer(answerId, {
@@ -1268,8 +1605,8 @@ export function usePracticeData() {
     }
   };
 
-  const handleDeleteAuthorAnswer = async (answerId: string) => {
-    if (!currentQuestion || !isQuestionAuthor) return;
+  const handleDeleteContributorAnswer = async (answerId: string) => {
+    if (!currentQuestion || !isQuestionContributor) return;
     setIsSavingAnswer(true);
     try {
       await api.updateQuestionAnswer(answerId, { status: 'archived' });
@@ -1287,17 +1624,21 @@ export function usePracticeData() {
 
   const handleGenerateAiAnswer = async (regenerate = false) => {
     if (!currentQuestion) return;
-    if (regenerate) {
-      const ok = await confirm({
-        title: 'Regenerate AI Answer?',
-        message:
-          'Regenerating will call AI again and consume 5 coins. The existing AI answer will remain in history, but a new version will be created for this question.',
-        confirmLabel: 'Regenerate',
-        cancelLabel: 'Cancel',
-        type: 'warning',
-      });
-      if (!ok) return;
-    }
+    const ok = await confirm({
+      title:
+        regenerate ?
+          'Generate a New AI Version?'
+        : 'Generate AI Reference Answer?',
+      message:
+        regenerate ?
+          'This creates another reference-answer version. Existing versions remain available. Unlocking AI answers for this question costs 5 coins.'
+        : 'AI will create a structured reference answer for this question. Unlocking AI answers for this question costs 5 coins.',
+      confirmLabel: regenerate ? 'Generate New Version' : 'Generate Answer',
+      cancelLabel: 'Cancel',
+      // type: 'info',
+      // icon: Star,
+    });
+    if (!ok) return;
     setIsGeneratingAiAnswer(true);
     try {
       const answer = await api.createAiReferenceAnswer(currentQuestion.id, {
@@ -1511,6 +1852,9 @@ export function usePracticeData() {
     activeStream,
     transcriptSegments,
     interimText,
+    transcriptStatus,
+    transcriptStatusMessage,
+    isRecordingTransitioning,
     draftAudioRef,
 
     autoEvalEnabled,
@@ -1534,9 +1878,9 @@ export function usePracticeData() {
     handleSavePolishedAnswerAsMyAnswer,
     handleUpdateTranscriptSegment,
     handleSaveStandardAnswer,
-    handleCreateAuthorAnswer,
-    handleUpdateAuthorAnswer,
-    handleDeleteAuthorAnswer,
+    handleCreateContributorAnswer,
+    handleUpdateContributorAnswer,
+    handleDeleteContributorAnswer,
     handleGenerateAiAnswer,
     handleGenerateQuestionMetadata,
     handleUnlockAiAnswer,
@@ -1555,7 +1899,7 @@ export function usePracticeData() {
     isGeneratingAiAnswer,
     isAnswersLoading,
     isGeneratingQuestionMetadata,
-    isQuestionAuthor,
+    isQuestionContributor,
     shouldShowAnswer,
     currentAttempts,
   };

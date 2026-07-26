@@ -1,3 +1,5 @@
+/** @format */
+
 import React from 'react';
 import { Check, CopyPlus } from 'lucide-react';
 import type { JobHuntingProfile } from '@/lib/types';
@@ -21,22 +23,12 @@ export function ProfileSidebar({
     <aside className='rounded-2xl border border-border/60 bg-panel p-4 flex flex-col min-h-0'>
       <div className='flex items-start justify-between gap-3'>
         <div>
-          <h2 className='title-sub'>
-            Job Hunting Profiles
-          </h2>
+          <h2 className='title-sub'>Job Hunting Profiles</h2>
           <p className='body-md mt-1 text-ink-secondary'>
             Choose the profile that defines what to search for, what to skip,
             and which resume version to use next.
           </p>
         </div>
-        <button
-          type='button'
-          className='inline-flex h-9 w-9 items-center justify-center rounded-xl border border-border/60 bg-background-secondary/50 dark:bg-panel/40 text-ink-secondary hover:text-ink-primary cursor-pointer'
-          onClick={() => void onCreate()}
-          title='Create a new search profile'
-        >
-          <CopyPlus className='h-4 w-4' />
-        </button>
       </div>
 
       <div className='mt-4 flex-1 overflow-y-auto space-y-2 pr-1'>
@@ -57,7 +49,7 @@ export function ProfileSidebar({
             >
               <div className='flex items-center justify-between gap-2'>
                 <div className='min-w-0'>
-                  <div className='label truncate'>
+                  <div className='label truncate text-white!'>
                     {profile.name || 'Untitled profile'}
                   </div>
                   <div

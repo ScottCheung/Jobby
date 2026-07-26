@@ -47,6 +47,7 @@ class User(Base, TimestampMixin):
     role: Mapped[str] = mapped_column(String(50), nullable=False, default=UserRole.admin.value)
     status: Mapped[str] = mapped_column(String(50), nullable=False, default=UserStatus.active.value)
     can_use_auto_apply: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     profile: Mapped["UserProfile"] = relationship(back_populates="user", cascade="all, delete-orphan")
     platform_accounts: Mapped[list["PlatformAccount"]] = relationship(back_populates="user")
@@ -58,6 +59,8 @@ class User(Base, TimestampMixin):
     question_answer_comments: Mapped[list["QuestionAnswerComment"]] = relationship(back_populates="user", foreign_keys="QuestionAnswerComment.user_id")
     gamification_profile: Mapped["UserGamification"] = relationship(back_populates="user", cascade="all, delete-orphan")
     inventory_items: Mapped[list["UserInventoryItem"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    user_skills: Mapped[list["UserSkill"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    master_resume: Mapped["MasterResume | None"] = relationship(back_populates="user", cascade="all, delete-orphan", uselist=False)
 
 class UserProfile(Base, TimestampMixin):
     __tablename__ = "user_profiles"
@@ -81,6 +84,26 @@ class UserProfile(Base, TimestampMixin):
     extra_data: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
 
     user: Mapped[User] = relationship(back_populates="profile")
+
+
+class MasterResume(Base, TimestampMixin):
+    __tablename__ = "master_resumes"
+
+    id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid4)
+    user_id: Mapped[PyUUID] = mapped_column(
+        PgUUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        unique=True,
+        nullable=False,
+    )
+    original_filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    original_storage_key: Mapped[str] = mapped_column(String(1024), nullable=False)
+    original_url: Mapped[str] = mapped_column(String(2048), nullable=False)
+    resume_data: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    status: Mapped[str] = mapped_column(String(30), nullable=False, default="review")
+    confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    user: Mapped[User] = relationship(back_populates="master_resume")
 
 
 class UserGamification(Base, TimestampMixin):
@@ -198,7 +221,7 @@ class JobHuntingProfile(Base, TimestampMixin):
     id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid4)
     user_id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True)
     platform_account_id: Mapped[PyUUID | None] = mapped_column(PgUUID(as_uuid=True), ForeignKey("platform_accounts.id"))
-    name: Mapped[str] = mapped_column(String(255), nullable=False, default="Default LinkedIn Search")
+    name: Mapped[str] = mapped_column(String(255), nullable=False, default="Default Job Hunting Profile")
     platform: Mapped[str] = mapped_column(String(50), nullable=False, default=Platform.linkedin.value)
     search_terms: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     search_location: Mapped[str | None] = mapped_column(String(255))
@@ -436,12 +459,33 @@ class Skill(Base, TimestampMixin):
     is_alias: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
 
+class UserSkill(Base, TimestampMixin):
+    __tablename__ = "user_skills"
+    __table_args__ = (
+        UniqueConstraint("user_id", "canonical_name", name="uq_user_skills_user_canonical_name"),
+    )
+
+    id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid4)
+    user_id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    skill_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    canonical_name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    category: Mapped[str | None] = mapped_column(String(100))
+    source: Mapped[str | None] = mapped_column(String(50))
+
+    user: Mapped["User"] = relationship(back_populates="user_skills")
+
+
 class InterviewCategory(Base, TimestampMixin):
     __tablename__ = "interview_categories"
 
     id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid4)
     user_id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
+    slug: Mapped[str | None] = mapped_column(String(100), index=True)
+    display_name: Mapped[str | None] = mapped_column(String(255))
+    icon_key: Mapped[str | None] = mapped_column(String(100))
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    is_system: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     
     user: Mapped[User] = relationship(back_populates="interview_categories", foreign_keys=[user_id])
     questions: Mapped[list["InterviewQuestion"]] = relationship(back_populates="category", cascade="all, delete-orphan")
@@ -732,6 +776,7 @@ class QuestionMetrics(Base, TimestampMixin):
     frequency_average: Mapped[float | None] = mapped_column(Numeric(4, 2))
     blended_importance_score: Mapped[float | None] = mapped_column(Numeric(4, 2))
     blended_frequency_score: Mapped[float | None] = mapped_column(Numeric(4, 2))
+    hot_score: Mapped[float] = mapped_column(Numeric(12, 4), nullable=False, default=1)
     top_companies: Mapped[list[dict]] = mapped_column(JSONB, nullable=False, default=list)
     last_aggregated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 

@@ -5,7 +5,7 @@ export type User = {
   email: string;
   display_name: string;
   avatar_url?: string | null;
-  community_badge?: 'Admin' | 'Author' | 'VIP' | null;
+  community_badge?: 'Admin' | 'Contributor' | 'VIP' | null;
   role: string;
   status: string;
   can_use_auto_apply: boolean;
@@ -30,6 +30,120 @@ export type UserProfile = {
   disability_status?: string | null;
   veteran_status?: string | null;
   extra_data?: Record<string, unknown>;
+};
+
+export type ResumeLocation = {
+  city: string | null;
+  state: string | null;
+  country: string | null;
+  postal_code: string | null;
+};
+
+export type ResumeLink = {
+  type: string | null;
+  link: string | null;
+};
+
+export type ResumeSkillGroup = {
+  type: string | null;
+  skills: string[];
+};
+
+export type ResumeCertification = {
+  name: string | null;
+  issuer: string | null;
+  issue_date: string | null;
+  expiry_date: string | null;
+  credential_url: string | null;
+};
+
+export type ResumeCertificationGroup = {
+  type: string | null;
+  certifications: ResumeCertification[];
+};
+
+export type ResumeOtherItem = {
+  type?: string | null;
+  title?: string | null;
+  organization?: string | null;
+  location?: string | null;
+  date?: string | null;
+  description: string[];
+};
+
+export type MasterResumeData = {
+  basics?: {
+    first_name?: string | null;
+    middle_name?: string | null;
+    last_name?: string | null;
+    email?: string | null;
+    phone?: string | null;
+    location?: ResumeLocation;
+    linkedin_id?: string | null;
+    website?: string | null;
+    portfolio_url?: string | null;
+    headline?: string | null;
+  };
+  summary?: string | null;
+  links?: ResumeLink[];
+  experience: Array<{
+    company?: string | null;
+    title?: string | null;
+    location?: string | null;
+    start_date?: string | null;
+    end_date?: string | null;
+    description: string[];
+    technologies: string[];
+  }>;
+  education: Array<{
+    institution?: string | null;
+    degree?: string | null;
+    field_of_study?: string | null;
+    location?: string | null;
+    start_date?: string | null;
+    end_date?: string | null;
+    highlights: string[];
+  }>;
+  projects: Array<{
+    name?: string | null;
+    url?: string | null;
+    start_date?: string | null;
+    end_date?: string | null;
+    description: string[];
+    technologies: string[];
+  }>;
+  skills?: ResumeSkillGroup[];
+  certifications?: ResumeCertificationGroup[];
+  languages?: Array<{ name?: string | null; proficiency?: string | null }>;
+  search_terms?: string[];
+  other?: ResumeOtherItem[];
+};
+
+export type MasterResume = {
+  id: string;
+  original_filename: string;
+  original_url: string;
+  resume_data: MasterResumeData;
+  status: 'processing' | 'review' | 'confirmed' | 'failed';
+  confirmed_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ResumeSource = {
+  original_filename: string;
+  page_count: number;
+  character_count: number;
+  text: string;
+};
+
+export type ResumeAsset = {
+  profile_id: string;
+  filename: string;
+  url: string;
+  is_default: boolean;
+  created_at: string;
+  updated_at: string;
 };
 
 export type JobHuntingProfile = {
@@ -498,7 +612,13 @@ export function getStatusBadgeClasses(status: string): string {
 export type InterviewCategory = {
   id: string;
   name: string;
+  slug?: string | null;
+  display_name?: string | null;
+  icon_key?: string | null;
+  sort_order?: number | null;
+  is_system?: boolean;
   user_id?: string;
+  question_count?: number;
   created_at?: string;
   updated_at?: string;
 };
@@ -527,6 +647,7 @@ export type InterviewQuestion = {
   title: string;
   normalized_title?: string | null;
   is_favorited?: boolean;
+  user_reaction?: 'up' | 'down' | null;
   can_edit?: boolean;
   difficulty?: 'Easy' | 'Medium' | 'Hard' | string | null;
   estimated_duration_seconds?: number | null;
@@ -538,10 +659,14 @@ export type InterviewQuestion = {
     seen_in_interview_count?: number;
     comment_count?: number;
     practice_count?: number;
+    hot_score?: number;
+    top_companies?: { name: string; count: number }[];
   };
   frequency?: string | null;
   importance_score?: number | null;
   contributor_name?: string | null;
+  recommendation_score?: number | null;
+  recommendation_reason?: string | null;
   author_frequency?: string | null;
   author_importance_score?: number | null;
   ai_metadata?: {
@@ -577,6 +702,8 @@ export type InterviewCollection = {
   price_coins: number;
   status: string;
   last_updated_at?: string | null;
+  created_at?: string;
+  updated_at?: string;
   library_adds: number;
   question_count: number;
   user_active_question_count: number;
@@ -661,7 +788,7 @@ export type QuestionAnswer = {
   can_manage: boolean;
   author_name?: string | null;
   author_avatar_url?: string | null;
-  author_badge?: 'Admin' | 'Author' | 'VIP' | null;
+  author_badge?: 'Admin' | 'Contributor' | 'VIP' | null;
   is_locked: boolean;
   unlock_cost: number;
   question_unlock_remaining_cost: number;
@@ -699,6 +826,28 @@ export type PracticeEvaluation = {
   created_at: string;
 };
 
+export type TranscriptWord = {
+  text: string;
+  start: number;
+  end: number;
+};
+
+export type TranscriptSegment = {
+  text: string;
+  start: number;
+  end: number;
+  words?: TranscriptWord[];
+};
+
+export type PracticeTranscription = {
+  provider: string;
+  model: string;
+  language?: string | null;
+  duration_seconds?: number | null;
+  text: string;
+  segments: TranscriptSegment[];
+};
+
 export type QuestionAnswerComment = {
   id: string;
   answer_id: string;
@@ -706,7 +855,7 @@ export type QuestionAnswerComment = {
   body: string;
   author_name: string;
   author_avatar_url?: string | null;
-  author_badge?: 'Admin' | 'Author' | 'VIP' | null;
+  author_badge?: 'Admin' | 'Contributor' | 'VIP' | null;
   is_author: boolean;
   like_count: number;
   is_liked: boolean;
@@ -731,7 +880,7 @@ export type QuestionComment = {
   body: string;
   author_name: string;
   author_avatar_url?: string | null;
-  author_badge?: 'Admin' | 'Author' | 'VIP' | null;
+  author_badge?: 'Admin' | 'Contributor' | 'VIP' | null;
   is_author: boolean;
   like_count: number;
   is_liked: boolean;
@@ -741,12 +890,46 @@ export type QuestionComment = {
   updated_at: string;
   replies: QuestionComment[];
 };
-export type QuestionCommentPage = { items: QuestionComment[]; next_cursor?: string | null; question_id: string; };
-export type CommunityInterviewReport = { id: string; company?: string | null; role?: string | null; location?: string | null; happened_at: string; };
-export type UserNotification = { id: string; kind: string; title?: string | null; message: string; action_url?: string | null; actor_user_id?: string | null; metadata?: Record<string, unknown>; question_id?: string | null; read_at?: string | null; created_at: string; };
-export type QuestionDuplicateCandidate = { id: string; title: string; owner_name: string; created_at: string; match_type: 'exact' | 'similar'; };
-export type QuestionDuplicateGroup = { normalized_title: string; questions: QuestionDuplicateCandidate[]; };
-export type QuestionDiscussionMerge = { target_question_id: string; merged_question_ids: string[]; comments_moved: number; };
+export type QuestionCommentPage = {
+  items: QuestionComment[];
+  next_cursor?: string | null;
+  question_id: string;
+};
+export type CommunityInterviewReport = {
+  id: string;
+  company?: string | null;
+  role?: string | null;
+  location?: string | null;
+  happened_at: string;
+};
+export type UserNotification = {
+  id: string;
+  kind: string;
+  title?: string | null;
+  message: string;
+  action_url?: string | null;
+  actor_user_id?: string | null;
+  metadata?: Record<string, unknown>;
+  question_id?: string | null;
+  read_at?: string | null;
+  created_at: string;
+};
+export type QuestionDuplicateCandidate = {
+  id: string;
+  title: string;
+  owner_name: string;
+  created_at: string;
+  match_type: 'exact' | 'similar';
+};
+export type QuestionDuplicateGroup = {
+  normalized_title: string;
+  questions: QuestionDuplicateCandidate[];
+};
+export type QuestionDiscussionMerge = {
+  target_question_id: string;
+  merged_question_ids: string[];
+  comments_moved: number;
+};
 
 export type AudioRecord = {
   id: string;

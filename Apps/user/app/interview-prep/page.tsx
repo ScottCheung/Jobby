@@ -42,12 +42,18 @@ import { practiceCache } from './practice/practice-cache';
 import dynamic from 'next/dynamic';
 
 const CustomizePlanModal = dynamic(
-  () => import('./_components/CustomizePlanModal').then((mod) => mod.CustomizePlanModal),
+  () =>
+    import('./_components/CustomizePlanModal').then(
+      (mod) => mod.CustomizePlanModal,
+    ),
   { ssr: false },
 );
 
 const BatchImportModal = dynamic(
-  () => import('./library/_components/BatchImportModal').then((mod) => mod.BatchImportModal),
+  () =>
+    import('./library/_components/BatchImportModal').then(
+      (mod) => mod.BatchImportModal,
+    ),
   { ssr: false },
 );
 
@@ -147,7 +153,11 @@ export default function InterviewPrepPage() {
   const initData = async (forceRefetch = false, silent = false) => {
     if (practiceCache.questions && !forceRefetch) {
       setQuestions(practiceCache.questions);
-      window.dispatchEvent(new CustomEvent('jobby:libraryCountUpdated', { detail: practiceCache.questions.length }));
+      window.dispatchEvent(
+        new CustomEvent('jobby:libraryCountUpdated', {
+          detail: practiceCache.questions.length,
+        }),
+      );
       setPracticeRecords(practiceCache.records || []);
       setCategories(practiceCache.categories || []);
       setActivePlan(practiceCache.activePlan);
@@ -181,7 +191,7 @@ export default function InterviewPrepPage() {
     }
     const startTime = Date.now();
     try {
-      const [qs, prs, cats, plans, colData, tagsData] = await Promise.all([
+      const [qsRes, prs, cats, plans, colData, tagsData] = await Promise.all([
         api.interviewQuestions(),
         api.practiceRecords(),
         api.interviewCategories(),
@@ -189,13 +199,16 @@ export default function InterviewPrepPage() {
         api.interviewCollections().catch(() => []),
         api.interviewTags().catch(() => []),
       ]);
+      const qs = qsRes.items || [];
 
       practiceCache.questions = qs;
       practiceCache.records = prs;
       practiceCache.categories = cats;
 
       setQuestions(qs);
-      window.dispatchEvent(new CustomEvent('jobby:libraryCountUpdated', { detail: qs.length }));
+      window.dispatchEvent(
+        new CustomEvent('jobby:libraryCountUpdated', { detail: qs.length }),
+      );
       setPracticeRecords(prs);
       setCategories(cats);
       setCollections(colData);
@@ -371,7 +384,7 @@ export default function InterviewPrepPage() {
                 'label w-8 h-8 rounded-full flex items-center justify-center shrink-0 border-2 transition-all',
                 isStep1Done ?
                   'bg-emerald-500/10 text-emerald-500 border-emerald-500'
-                : 'bg-primary/10 text-primary border-primary animate-pulse',
+                : 'bg-primary/10 text-primary border-primary animate-text-shimmer-primary animate-text-shimmer',
               )}
             >
               {isStep1Done ? '✓' : '1'}
@@ -411,7 +424,7 @@ export default function InterviewPrepPage() {
                 isStep2Done ?
                   'bg-emerald-500/10 text-emerald-500 border-emerald-500'
                 : isStep1Done ?
-                  'bg-primary/10 text-primary border-primary animate-pulse'
+                  'bg-primary/10 text-primary border-primary animate-text-shimmer-primary animate-text-shimmer'
                 : 'bg-background-secondary text-ink-muted border-border dark:bg-background-secondary/40',
               )}
             >
@@ -1511,7 +1524,7 @@ export default function InterviewPrepPage() {
 
 function DashboardSkeleton() {
   return (
-    <div className='flex flex-col gap-6 h-full pb-8 overflow-hidden animate-pulse'>
+    <div className='flex flex-col gap-6 h-full pb-8 overflow-hidden animate-text-shimmer-primary animate-text-shimmer'>
       {/* Metrics Grid */}
       <div className='grid grid-cols-2 md:grid-cols-4 gap-4 shrink-0'>
         {Array.from({ length: 4 }).map((_, i) => (

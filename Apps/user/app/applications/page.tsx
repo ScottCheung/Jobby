@@ -266,7 +266,7 @@ export default function ApplicationsPage() {
   );
 
   return (
-    <div className='flex flex-col h-[calc(100vh-66px)] min-h-[500px] overflow-hidden'>
+    <div className='flex h-full min-h-[500px] flex-col overflow-hidden'>
       <div className='pb-4 select-none shrink-0'>
         <ScrollLayout
           key={scrollContainer ? 'scrolling' : 'static'}

@@ -17,6 +17,7 @@ import {
 import type { PracticeEvaluation, PracticeRecord } from '@/lib/types';
 import { api } from '@/lib/api';
 import { showGlobalToast } from '@/lib/toast';
+import { useConfirmStore } from '@/lib/store/confirm-store';
 import { formatRelativeDate } from '@/components/ConsoleUtils';
 import { InteractiveTranscript } from './InteractiveTranscript';
 import { motion } from 'framer-motion';
@@ -59,17 +60,29 @@ export function PracticeHistory({
   onUpdateAttempt,
   onSavePolishedAnswer,
 }: PracticeHistoryProps) {
+  const confirm = useConfirmStore((state) => state.confirm);
   const [evaluations, setEvaluations] = useState<
     Record<string, PracticeEvaluation>
   >({});
   const [evaluatingId, setEvaluatingId] = useState<string | null>(null);
 
   const requestEvaluation = async (recordId: string) => {
+    const ok = await confirm({
+      title: 'Get AI Feedback?',
+      message:
+        'AI will review this saved transcript and add a score with practical feedback. This costs up to 5 coins (free with VIP).',
+      confirmLabel: 'Get AI Feedback',
+      cancelLabel: 'Not Now',
+      type: 'warning',
+    });
+    if (!ok) return;
     setEvaluatingId(recordId);
     try {
       const evaluation = await api.createPracticeEvaluation(recordId);
       setEvaluations((current) => ({ ...current, [recordId]: evaluation }));
-      showGlobalToast(`AI feedback ready: ${evaluation.overall_score}/100`);
+      showGlobalToast(
+        `AI feedback ready: ${evaluation.overall_score}/100${evaluation.coins_spent ? ` (${evaluation.coins_spent} coins)` : ' (no coins used)'}`,
+      );
       window.dispatchEvent(new Event('playbookGamificationUpdated'));
     } catch (error) {
       console.error('Failed to score practice answer:', error);

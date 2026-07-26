@@ -147,8 +147,8 @@ def upgrade() -> None:
     )
     inserts = []
     legacy_fields = (
-        ("answer_objective", "reference", "Author Reference Answer"),
-        ("answer_framework", "framework", "Author Framework"),
+        ("answer_objective", "reference", "Contributor Reference Answer"),
+        ("answer_framework", "framework", "Contributor Framework"),
         ("sample_answer", "reference", "Legacy Sample Answer"),
     )
     for question in questions:

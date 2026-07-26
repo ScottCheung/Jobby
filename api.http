@@ -54,9 +54,9 @@ Content-Type: application/json
 Accept: application/json
 
 {
-  "name": "Default LinkedIn Search",
+  "name": "Default Job Hunting Profile",
   "platform": "linkedin",
-  "search_terms": ["React", "TypeScript", "Node.js"],
+  "search_terms": ["Data Engineer", "Python", "Spark"],
   "filters": {
     "geoId": "103644278",
     "f_TPR": "r86400"

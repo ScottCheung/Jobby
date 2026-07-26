@@ -6,12 +6,11 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   LayoutGrid,
-  LayoutDashboard,
   User as UserIcon,
   Search,
   Settings2,
-  MessageSquareCode,
   Briefcase,
+  FileText,
   ShieldCheck,
   MessagesSquare,
   LogOut,
@@ -50,12 +49,16 @@ const ChromeIcon = (props: React.SVGProps<SVGSVGElement>) => (
 );
 
 const navigation = [
-  { name: 'Overview', href: '/', icon: LayoutDashboard },
+  { name: 'Job Applications', href: '/job-application', icon: Briefcase },
+  { name: 'Resume', href: '/settings/resume', icon: FileText },
   { name: 'Interview Prep', href: '/interview-prep', icon: GraduationCap },
-  { name: 'Favorites & Bookmarks', href: '#favorites', icon: Star, isAction: true },
+  {
+    name: 'Favorites & Bookmarks',
+    href: '#favorites',
+    icon: Star,
+    isAction: true,
+  },
   { name: 'Settings', href: '/settings', icon: Settings2 },
-  { name: 'Question Cache', href: '/question-cache', icon: MessageSquareCode },
-  { name: 'Applications History', href: '/applications', icon: Briefcase },
   { name: 'Design System', href: '/design-system', icon: Palette },
 ];
 
@@ -93,7 +96,9 @@ export function Sidebar() {
   const { fetchMe, logout: authLogout } = useAuthStore();
   const { user, profile } = useConsole();
   const isCollapsed = useLayoutStore((state) => state.isSidebarCollapsed);
-  const { toggleSidebar, openDrawer } = useLayoutStore((state) => state.actions);
+  const { toggleSidebar, openDrawer } = useLayoutStore(
+    (state) => state.actions,
+  );
 
   const handleOpenFavorites = () => {
     openDrawer({
@@ -167,15 +172,15 @@ export function Sidebar() {
       animate={{ width: isCollapsed ? 80 : 288 }}
       transition={springTransition}
       className={cn(
-        'app-drag sticky top-0 z-10 flex-1 backdrop-blur-2xl flex-col justify-between bg-panel flex',
+        'app-drag h-screen shrink-0 z-20 backdrop-blur-2xl flex-col justify-between bg-panel flex overflow-hidden',
         isCollapsed ? 'p-4' : 'p-sidebar',
       )}
     >
-      <div className='flex flex-col gap-10 pt-[48px]'>
+      <div className='flex flex-col gap-6 pt-[48px] flex-1 min-h-0 overflow-hidden'>
         {/* Brand */}
         <div
           className={cn(
-            'app-no-drag flex items-center gap-4',
+            'app-no-drag flex items-center gap-4 shrink-0',
             isCollapsed ? 'justify-center px-0' : 'px-2',
           )}
         >
@@ -209,11 +214,11 @@ export function Sidebar() {
 
         {/* Navigation */}
 
-        <nav className='app-no-drag overflow-y-auto flex flex-col gap-1 h-full'>
+        <nav className='app-no-drag overflow-y-auto no-scrollbar flex-1 flex flex-col gap-1 min-h-0'>
           {visibleNavigation.map((item) => {
             const isAction = 'isAction' in item && item.isAction;
             const isActive = !isAction && pathname === item.href;
-            
+
             const navItemContent = (
               <div
                 className={cn(
@@ -222,18 +227,18 @@ export function Sidebar() {
                     'justify-center p-2.5 rounded-full '
                   : 'px-4 py-3.5 rounded-full',
                   isActive ?
-                    'text-primary-foreground bg-primary-gradient'
+                    'text-primary-foreground bg-primary-gradient '
                   : 'text-ink-secondary hover:bg-background-secondary hover:text-ink-primary',
                 )}
               >
                 <motion.div layout className='shrink-0'>
-                  <item.icon className={cn('size-5', isAction ? 'text-amber-400 fill-amber-400/20' : '')} />
+                  <item.icon className={cn('size-5')} />
                 </motion.div>
                 <AnimatePresence mode='popLayout'>
                   {!isCollapsed && (
                     <motion.p
                       className={cn(
-                        'body-md whitespace-nowrap overflow-hidden',
+                        'whitespace-nowrap overflow-hidden',
                         isActive ? 'font-bold' : 'font-medium',
                       )}
                     >
@@ -250,18 +255,14 @@ export function Sidebar() {
                 content={isCollapsed ? item.name : null}
                 side='right'
               >
-                {isAction ? (
+                {isAction ?
                   <button
                     onClick={handleOpenFavorites}
                     className='w-full text-left font-normal focus:outline-hidden'
                   >
                     {navItemContent}
                   </button>
-                ) : (
-                  <Link href={item.href}>
-                    {navItemContent}
-                  </Link>
-                )}
+                : <Link href={item.href}>{navItemContent}</Link>}
               </Tooltip>
             );
           })}
@@ -269,7 +270,7 @@ export function Sidebar() {
       </div>
 
       {/* Footer Nav */}
-      <div>
+      <div className='shrink-0 pt-4 border-t border-border/40'>
         <AnimatePresence mode='popLayout'>
           {!isCollapsed ?
             <motion.div
@@ -364,9 +365,7 @@ export function Sidebar() {
           >
             <Tooltip
               content={
-                isCollapsed ?
-                  `${displayName} (Open profile settings)`
-                : null
+                isCollapsed ? `${displayName} (Open profile settings)` : null
               }
               side='right'
             >

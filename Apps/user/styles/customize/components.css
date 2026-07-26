@@ -82,65 +82,65 @@
 
 /** Page Title: primary title for main pages */
 .title-page {
-  @apply text-2xl font-bold tracking-tight text-ink-primary;
+  @apply text-2xl font-bold tracking-tight;
 }
 
 /** Section Title: primary heading within a page section (with legacy .section-title) */
 .title-section,
 .section-title {
-  @apply text-xl font-bold text-ink-primary;
+  @apply text-xl font-bold;
 }
 
 /** Card / Panel Title: heading inside container cards (with legacy .card-title) */
 .title-card,
 .card-title {
-  @apply text-lg font-bold text-ink-primary;
+  @apply text-lg font-bold;
 }
 
 /** Sub Title: heading for inner groups or modules */
 .title-sub {
-  @apply text-base font-semibold text-ink-primary;
+  @apply text-base font-semibold;
 }
 
 /** Body Large: readable text for detail/long paragraphs */
 .body-lg {
-  @apply text-base font-normal text-ink-primary leading-relaxed;
+  @apply text-base font-normal  leading-relaxed;
 }
 
 /** Body Medium: default application text size */
 .body-md {
-  @apply text-sm font-normal text-ink-primary leading-relaxed;
+  @apply text-sm font-normal  leading-relaxed;
 }
 
 /** Body Small: secondary body text */
 .body-sm {
-  @apply text-xs font-normal text-ink-secondary leading-normal;
+  @apply text-xs font-normal  leading-normal;
 }
 
 /** Form field label / standard bold label */
 .label {
-  @apply text-sm font-semibold text-ink-primary;
+  @apply text-sm font-semibold;
 }
 
 /** Secondary / small form label */
 .label-sm {
-  @apply text-xs font-semibold text-ink-secondary;
+  @apply text-xs font-semibold;
 }
 
 /** Overline label: uppercase section header (replaces repeated inline pattern) */
 .label-overline {
-  @apply text-xs font-bold text-ink-secondary uppercase tracking-wider;
+  @apply text-xs font-bold  uppercase tracking-wider;
 }
 
 /** Small muted metadata text (with legacy .meta-text) */
 .text-meta,
 .meta-text {
-  @apply text-xs text-ink-muted;
+  @apply text-xs;
 }
 
 /** Help tip / small helper footnote */
 .text-hint {
-  @apply text-[11px] text-ink-muted leading-tight;
+  @apply text-[11px] leading-tight;
 }
 
 /* ============================================================
@@ -229,7 +229,7 @@
       black calc(100% - 24px),
       transparent
     ),
-    linear-gradient(to left, black 16px, transparent 16px);
+    linear-gradient(to left, black 0px, transparent 0px);
 
   mask-image: var(--mask-string);
   -webkit-mask-image: var(--mask-string);
@@ -249,5 +249,5 @@
 
 /** Loading skeleton */
 .skeleton {
-  @apply dark:bg-panel bg-black/10 animate-pulse;
+  @apply dark:bg-panel bg-black/10;
 }

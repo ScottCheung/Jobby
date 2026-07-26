@@ -34,11 +34,14 @@ export function QuestionForm({
   const [selectedTags, setSelectedTags] = useState<string[]>(
     question?.tags?.map((t) => t.id) || [],
   );
-  const [difficulty, setDifficulty] = useState(question?.difficulty || 'Medium');
-  const [estimatedDuration, setEstimatedDuration] = useState<number>(
-    question?.estimated_duration_seconds ?
-      Math.round(question.estimated_duration_seconds / 60)
-    : 2,
+  const [difficulty, setDifficulty] = useState(
+    question?.difficulty || 'Medium',
+  );
+  const [estimatedDurationSeconds, setEstimatedDurationSeconds] =
+    useState<number>(
+      question?.estimated_duration_seconds ?
+        Math.round(question.estimated_duration_seconds / 10) * 10
+      : 120,
   );
   const [frequency, setFrequency] = useState(question?.frequency || '');
   const [importanceScore, setImportanceScore] = useState<number | ''>(
@@ -78,12 +81,17 @@ export function QuestionForm({
     setErrorMsg('');
     setIsSubmitting(true);
     try {
+      const normalizedDurationSeconds = Math.max(
+        10,
+        Math.min(600, Math.round((estimatedDurationSeconds || 120) / 10) * 10),
+      );
       const payload: Partial<InterviewQuestion> = {
         title: title.trim(),
         difficulty: difficulty || 'Medium',
-        estimated_duration_seconds: (estimatedDuration || 2) * 60,
+        estimated_duration_seconds: normalizedDurationSeconds,
         frequency: frequency || null,
-        importance_score: importanceScore !== '' ? Number(importanceScore) : null,
+        importance_score:
+          importanceScore !== '' ? Number(importanceScore) : null,
         category_id: categoryId || null,
         tags: selectedTags as any,
         answer_objective: answerObjective.trim() || null,
@@ -232,17 +240,20 @@ export function QuestionForm({
           </div>
           <div className='flex-1 flex flex-col gap-1.5'>
             <label className='label-overline'>Estimated Answer Time</label>
-            <select
-              value={estimatedDuration}
-              onChange={(e) => setEstimatedDuration(Number(e.target.value))}
+            <input
+              type='number'
+              min={10}
+              max={600}
+              step={10}
+              value={estimatedDurationSeconds}
+              onChange={(e) =>
+                setEstimatedDurationSeconds(Number(e.target.value) || 10)
+              }
               className='body-md w-full px-4 py-2.5 rounded-xl border border-border dark:border-border bg-panel text-ink-primary focus:outline-none focus:border-primary/50'
-            >
-              <option value={1}>1 min (60s)</option>
-              <option value={2}>2 mins (120s)</option>
-              <option value={3}>3 mins (180s)</option>
-              <option value={5}>5 mins (300s)</option>
-              <option value={10}>10 mins (600s)</option>
-            </select>
+            />
+            <p className='text-xs text-ink-secondary'>
+              Use 10-second intervals, from 10s to 600s.
+            </p>
           </div>
         </div>
 
@@ -265,7 +276,9 @@ export function QuestionForm({
             <label className='label-overline'>Importance (Optional)</label>
             <select
               value={importanceScore}
-              onChange={(e) => setImportanceScore(e.target.value ? Number(e.target.value) : '')}
+              onChange={(e) =>
+                setImportanceScore(e.target.value ? Number(e.target.value) : '')
+              }
               className='body-md w-full px-4 py-2.5 rounded-xl border border-border dark:border-border bg-panel text-ink-primary focus:outline-none focus:border-primary/50'
             >
               <option value=''>Unspecified (Optional)</option>
@@ -278,9 +291,9 @@ export function QuestionForm({
           </div>
         </div>
 
-        {/* Author's Answer */}
+        {/* Contributor's Answer */}
         <div className='flex flex-col gap-1.5'>
-          <label className='label-overline'>Author's Answer</label>
+          <label className='label-overline'>Contributor's Answer</label>
           <textarea
             placeholder="Write author's reference answer here..."
             value={answerObjective}

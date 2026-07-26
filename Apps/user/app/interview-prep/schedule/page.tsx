@@ -37,15 +37,22 @@ import { motion, AnimatePresence } from 'framer-motion';
 import dynamic from 'next/dynamic';
 
 const PlanSetupSection = dynamic(
-  () => import('../_components/PlanSetupSection').then((mod) => mod.PlanSetupSection),
+  () =>
+    import('../_components/PlanSetupSection').then(
+      (mod) => mod.PlanSetupSection,
+    ),
   { ssr: false },
 );
 const CustomizePlanModal = dynamic(
-  () => import('../_components/CustomizePlanModal').then((mod) => mod.CustomizePlanModal),
+  () =>
+    import('../_components/CustomizePlanModal').then(
+      (mod) => mod.CustomizePlanModal,
+    ),
   { ssr: false },
 );
 const InventoryModal = dynamic(
-  () => import('../_components/InventoryModal').then((mod) => mod.InventoryModal),
+  () =>
+    import('../_components/InventoryModal').then((mod) => mod.InventoryModal),
   { ssr: false },
 );
 
@@ -138,11 +145,12 @@ export default function PracticeRoadmapPage() {
     setIsLoading(true);
     const startTime = Date.now();
     try {
-      const [qs, plans, cats] = await Promise.all([
+      const [qsRes, plans, cats] = await Promise.all([
         api.interviewQuestions(),
         api.practicePlans(),
         api.interviewCategories(),
       ]);
+      const qs = qsRes.items || [];
       practiceCache.questions = qs;
       practiceCache.categories = cats;
       setQuestions(qs);
@@ -1137,7 +1145,7 @@ function FlatDayCard({
               e.stopPropagation();
               onClaimStageReward(dayNum);
             }}
-            className='px-2.5 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-black text-[9px] uppercase tracking-wider shadow-md shadow-emerald-500/30 animate-pulse flex items-center gap-1 cursor-pointer shrink-0'
+            className='px-2.5 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-black text-[9px] uppercase tracking-wider shadow-md shadow-emerald-500/30 animate-text-shimmer-primary animate-text-shimmer flex items-center gap-1 cursor-pointer shrink-0'
           >
             <Gift className='w-3 h-3' />
             {claimingDayNum === dayNum ? 'Claiming...' : 'Claim'}
@@ -1377,7 +1385,7 @@ function Roadmap3DView({
           className='flex items-center gap-2 px-4 py-2.5 rounded-full bg-primary text-primary-foreground font-bold shadow-2xl shadow-primary/40 border border-white/20 backdrop-blur-xl text-xs hover:opacity-95 all'
           title='Jump to current level'
         >
-          <Navigation className='w-4 h-4 animate-pulse' />
+          <Navigation className='w-4 h-4 animate-text-shimmer-primary animate-text-shimmer' />
           <span>Jump to Today</span>
         </motion.button>
       </div>
@@ -1511,12 +1519,12 @@ function Roadmap3DView({
                 transition={{ duration: 0.2 }}
                 className={cn(
                   'absolute w-[270px] sm:w-[310px] md:w-[350px] rounded-3xl p-4 md:p-5 all duration-200 border text-white shadow-2xl z-10',
-                  'bg-zinc-900/85 dark:bg-black/90 backdrop-blur-2xl border-white/15',
+                  'bg-black/90 backdrop-blur-2xl border-white/15',
                   pos.isLeft ?
                     'right-full mr-6 sm:mr-10'
                   : 'left-full ml-6 sm:ml-10',
                   isToday &&
-                    'ring-2 ring-primary border-primary/70 bg-black/95 shadow-primary/20',
+                    'ring-2 ring-primary border-primary/70 bg-primary/95 shadow-primary/20',
                   dayCompleted &&
                     'ring-2 ring-emerald-500/80 border-emerald-500/40',
                   isDraggedOver &&
@@ -1538,7 +1546,7 @@ function Roadmap3DView({
                     </span>
                     <div className='flex items-center gap-1.5 mt-0.5'>
                       {isToday ?
-                        <span className='text-xs font-bold text-primary flex items-center gap-1'>
+                        <span className='text-xs font-bold text-primary-foreground flex items-center gap-1'>
                           <Sparkles className='w-3.5 h-3.5' /> Today's Quest
                         </span>
                       : dayCompleted ?
@@ -1612,7 +1620,7 @@ function Roadmap3DView({
                               isDraggingThis && 'opacity-30',
                               isCompleted ?
                                 'bg-white/5 border-white/5 opacity-70 hover:opacity-100'
-                              : 'bg-white/10 hover:bg-white/20 border-white/15 backdrop-blur-md',
+                              : 'bg-white/10 hover:bg-white/70 border-white/15 backdrop-blur-md',
                             )}
                           >
                             <div className='flex flex-col min-w-0 flex-1 cursor-pointer'>
@@ -1714,7 +1722,7 @@ function Roadmap3DView({
                         e.stopPropagation();
                         onClaimStageReward(dayNum);
                       }}
-                      className='px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black font-black text-[10px] uppercase tracking-wider shadow-lg shadow-emerald-500/40 animate-pulse flex items-center gap-1 cursor-pointer shrink-0 border border-emerald-300'
+                      className='px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black font-black text-[10px] uppercase tracking-wider shadow-lg shadow-emerald-500/40 animate-text-shimmer-primary animate-text-shimmer flex items-center gap-1 cursor-pointer shrink-0 border border-emerald-300'
                     >
                       <Gift className='w-3.5 h-3.5' />
                       {claimingDayNum === dayNum ?
@@ -1740,7 +1748,7 @@ function Roadmap3DView({
 // ─────────────────────────────────────────────
 function RoadmapSkeleton() {
   return (
-    <div className='flex flex-col gap-5 animate-pulse pb-8'>
+    <div className='flex flex-col gap-5 animate-text-shimmer-primary animate-text-shimmer pb-8'>
       <div className='flex justify-between items-center pb-4 -b -/60'>
         <div className='flex flex-col gap-1.5'>
           <div className='h-5 bg-panel rounded-lg w-48' />

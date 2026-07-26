@@ -389,7 +389,7 @@ export function FavoritesDrawer() {
         >
           {loading ?
             /* Skeleton Loader (Minimum 0.5s Delay for visual stability) */
-            <div className='space-y-3 animate-pulse'>
+            <div className='space-y-3 animate-text-shimmer-primary animate-text-shimmer'>
               {[1, 2, 3, 4].map((i) => (
                 <div
                   key={i}

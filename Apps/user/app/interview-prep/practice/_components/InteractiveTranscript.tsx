@@ -2,11 +2,17 @@
 
 import React, { useState } from 'react';
 import { Edit2, Check, X } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface Segment {
   text: string;
   start: number;
   end: number;
+  words?: Array<{
+    text: string;
+    start: number;
+    end: number;
+  }>;
 }
 
 interface InteractiveTranscriptProps {
@@ -15,6 +21,9 @@ interface InteractiveTranscriptProps {
   draftAudioRef?: React.RefObject<HTMLAudioElement | null>;
   interimText?: string;
   onEditSegment?: (index: number, newText: string) => void;
+  isInteractive?: boolean;
+  isDraft?: boolean;
+  showRefiningGlow?: boolean;
 }
 
 const formatTime = (totalSeconds: number) => {
@@ -29,6 +38,9 @@ export function InteractiveTranscript({
   draftAudioRef,
   interimText,
   onEditSegment,
+  isInteractive = true,
+  isDraft = false,
+  showRefiningGlow = false,
 }: InteractiveTranscriptProps) {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editValue, setEditValue] = useState<string>('');
@@ -36,7 +48,14 @@ export function InteractiveTranscript({
   if (!Array.isArray(segments)) return null;
 
   return (
-    <div className='body-md text-ink-secondary pl-6 border-l-4 border-primary p-2 my-2'>
+    <div
+      className={cn(
+        'relative overflow-hidden body-md pl-6 border-l-4 p-2 my-2 transition-colors duration-300',
+        isDraft ?
+          'text-ink-secondary/65 border-primary/35'
+        : 'text-ink-secondary border-primary',
+      )}
+    >
       {segments.map((seg, segIdx) => {
         if (!seg || typeof seg.text !== 'string') return null;
 
@@ -77,11 +96,25 @@ export function InteractiveTranscript({
           );
         }
 
-        const words = seg.text.split(/\s+/).filter(Boolean);
+        const words =
+          Array.isArray(seg.words) && seg.words.length > 0 ?
+            seg.words.map((word) => ({
+              text: word.text,
+              start: word.start,
+              end: word.end,
+            }))
+          : seg.text
+              .split(/\s+/)
+              .filter(Boolean)
+              .map((word) => ({
+                text: word,
+                start: 0,
+                end: 0,
+              }));
         const start = typeof seg.start === 'number' ? seg.start : 0;
         const end = typeof seg.end === 'number' ? seg.end : start;
         const duration = Math.max(0, end - start);
-        const totalChars = words.reduce((acc, w) => acc + w.length, 0);
+        const totalChars = words.reduce((acc, w) => acc + w.text.length, 0);
         let charOffset = 0;
 
         const prevEnd =
@@ -97,6 +130,7 @@ export function InteractiveTranscript({
             {pauseDuration >= 1.0 && (
               <span
                 onClick={() => {
+                  if (!isInteractive) return;
                   const jumpTime = Math.max(0, prevEnd - 0.2);
                   if (attemptId) {
                     const audioEl = document.getElementById(
@@ -111,20 +145,39 @@ export function InteractiveTranscript({
                     draftAudioRef.current.play().catch(() => {});
                   }
                 }}
-                className='body-sm inline-flex items-center justify-center bg-amber-500/10 text-amber-600/80 dark:text-amber-500/80 px-1.5 py-0.5 rounded mx-1.5 border border-amber-500/20 select-none cursor-pointer hover:bg-amber-500/20 transition-colors'
+                className={cn(
+                  'body-sm inline-flex items-center justify-center bg-amber-500/10 text-amber-600/80 dark:text-amber-500/80 px-1.5 py-0.5 rounded mx-1.5 border border-amber-500/20 select-none transition-colors',
+                  isInteractive ?
+                    'cursor-pointer hover:bg-amber-500/20'
+                  : 'cursor-default opacity-70',
+                )}
                 title={`Jump to pause at ${formatTime(Math.round(prevEnd))}`}
               >
                 ( Stop {pauseDuration.toFixed(1)}s )
               </span>
             )}
-            <span className='group relative mr-2 inline-flex flex-wrap items-center hover:bg-black/5 dark:hover:bg-white/5 rounded transition-colors'>
+            <span
+              className={cn(
+                'group relative mr-2 inline-flex flex-wrap items-center hover:bg-black/5 dark:hover:bg-white/5 rounded transition-colors',
+                showRefiningGlow &&
+                  (isDraft ?
+                    'transcript-shimmer-sweep transcript-shimmer-sweep-secondary'
+                  : 'transcript-shimmer-sweep transcript-shimmer-sweep-primary'),
+              )}
+            >
               {words.map((word, wordIdx) => {
                 const wordTime =
-                  start +
-                  (totalChars > 0 ? (charOffset / totalChars) * duration : 0);
-                charOffset += word.length;
+                  (
+                    typeof word.start === 'number' &&
+                    typeof word.end === 'number' &&
+                    (word.start > 0 || word.end > 0)
+                  ) ?
+                    word.start
+                  : start +
+                    (totalChars > 0 ? (charOffset / totalChars) * duration : 0);
+                charOffset += word.text.length;
 
-                const cleanWord = word.replace(/[.,!?，。！？]/g, '');
+                const cleanWord = word.text.replace(/[.,!?，。！？]/g, '');
                 const isFiller =
                   /^(um|uh|ah|hmm|like|basically|actually|so|嗯|啊|哎|呃|就是|那个|然后|这个|那个什么)$/i.test(
                     cleanWord,
@@ -134,6 +187,7 @@ export function InteractiveTranscript({
                   <span
                     key={wordIdx}
                     onClick={() => {
+                      if (!isInteractive) return;
                       const jumpTime = Math.max(0, wordTime - 0.2);
                       if (attemptId) {
                         const audioEl = document.getElementById(
@@ -150,16 +204,35 @@ export function InteractiveTranscript({
                     }}
                     className={
                       isFiller ?
-                        'hover:text-primary hover:bg-primary/10 cursor-pointer px-0.5 rounded transition-all mr-1 border-b border-dashed border-ink-secondary/30 text-ink-secondary/50 select-none'
-                      : 'hover:text-primary hover:bg-primary/10 cursor-pointer px-0.5 rounded transition-all mr-1 border-b-2 border-dashed border-ink-secondary/50 text-ink-primary select-none font-medium'
+                        cn(
+                          'px-0.5 rounded transition-all mr-1 border-b border-dashed border-ink-secondary/30 text-ink-secondary/50 select-none',
+                          showRefiningGlow && 'transcript-shimmer-word',
+                          isInteractive ?
+                            'hover:text-primary hover:bg-primary/10 cursor-pointer'
+                          : 'cursor-default opacity-80',
+                        )
+                      : cn(
+                          'px-0.5 rounded transition-all mr-1 border-b-2 border-dashed select-none',
+                          isDraft ?
+                            'border-ink-secondary/30 text-ink-secondary/75'
+                          : 'border-ink-secondary/50 text-ink-primary font-medium',
+                          showRefiningGlow && 'transcript-shimmer-word',
+                          isInteractive ?
+                            'hover:text-primary hover:bg-primary/10 cursor-pointer'
+                          : 'cursor-default',
+                        )
                     }
-                    title={`Jump to ${formatTime(Math.round(wordTime))}`}
+                    title={
+                      isInteractive ?
+                        `Jump to ${formatTime(Math.round(wordTime))}`
+                      : undefined
+                    }
                   >
-                    {word}
+                    {word.text}
                   </span>
                 );
               })}
-              {onEditSegment && (
+              {onEditSegment && isInteractive && !isDraft && (
                 <button
                   onClick={() => {
                     setEditingIndex(segIdx);
@@ -176,7 +249,7 @@ export function InteractiveTranscript({
         );
       })}
       {interimText && (
-        <span className='text-zinc-400 italic bg-amber-500/5 px-1'>
+        <span className='text-zinc-400/90 italic bg-amber-500/5 px-1 rounded-sm '>
           {interimText}
         </span>
       )}

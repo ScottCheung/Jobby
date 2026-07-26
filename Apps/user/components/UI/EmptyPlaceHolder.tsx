@@ -27,7 +27,7 @@ export function EmptyPlaceHolder({
         {Icon && (
           <Icon
             className={cn(
-              'w-20 h-20 mx-auto text-ink-secondary/10 mb-4',
+              'w-20 h-20 mx-auto text-ink-secondary/50 mb-4',
               iconClassName,
             )}
           />

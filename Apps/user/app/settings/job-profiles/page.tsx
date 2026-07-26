@@ -3,418 +3,666 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { motion } from 'framer-motion';
 import {
+  BadgeCheck,
+  BriefcaseBusiness,
   Check,
-  MapPin,
+  CircleDollarSign,
+  FileText,
+  Pencil,
   Search,
+  ShieldAlert,
   SlidersHorizontal,
   Sparkles,
+  UserRound,
+  X,
 } from 'lucide-react';
 import {
-  useConsole,
   emptyJobHuntingProfile,
+  useConsole,
 } from '@/components/ConsoleContext';
 import { SearchForm } from '@/components/forms';
-import type { JobHuntingProfile } from '@/lib/types';
 import { WaterfallLayout } from '@/components/layout/waterfallLayout';
+import { useGlobalModalStore } from '@/lib/store/global-modal-store';
+import type { JobHuntingProfile } from '@/lib/types';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/UI/Button';
 
-// Subcomponents
-import { ProfileSidebar } from './_component/profile-sidebar';
-import { ProfileHeader } from './_component/profile-header';
-import { SummaryCards } from './_component/summary-cards';
-import { ReadOnlyBlock } from './_component/read-only-block';
-import { DetailGrid } from './_component/detail-grid';
+type SearchSection =
+  | 'overview'
+  | 'filters'
+  | 'rules'
+  | 'materials'
+  | 'eligibility'
+  | 'career'
+  | 'ai';
 
-type SearchSection = 'overview' | 'filters' | 'rules' | 'application';
+type SectionStatus = {
+  label: string;
+  tone: 'ready' | 'needs_attention' | 'optional';
+};
 
-function cloneProfile(
-  profile: JobHuntingProfile,
-  nextName: string,
-): JobHuntingProfile {
-  return {
-    ...profile,
-    id: undefined,
-    is_default: false,
-    name: nextName,
-    filters: { ...(profile.filters ?? {}) },
-    blacklist_rules: { ...(profile.blacklist_rules ?? {}) },
-    whitelist_rules: { ...(profile.whitelist_rules ?? {}) },
-    search_terms: [...(profile.search_terms ?? [])],
-  };
+const EDITOR_DETAILS: Record<
+  SearchSection,
+  {
+    title: string;
+    description: string;
+    icon: React.ComponentType<{ className?: string }>;
+  }
+> = {
+  overview: {
+    title: 'Job targets',
+    description: 'Choose the roles and primary location to search.',
+    icon: Search,
+  },
+  filters: {
+    title: 'Search filters',
+    description: 'Narrow results before the automation starts applying.',
+    icon: SlidersHorizontal,
+  },
+  rules: {
+    title: 'Skip rules',
+    description: 'Exclude roles and employers that do not fit.',
+    icon: ShieldAlert,
+  },
+  materials: {
+    title: 'Resume and links',
+    description: 'Provide the document and online profiles used in forms.',
+    icon: FileText,
+  },
+  eligibility: {
+    title: 'Eligibility and compensation',
+    description:
+      'Set work authorization, experience, and compensation details.',
+    icon: CircleDollarSign,
+  },
+  career: {
+    title: 'Professional profile',
+    description: 'Keep the career details used in applications up to date.',
+    icon: UserRound,
+  },
+  ai: {
+    title: 'AI answer context',
+    description: 'Give generated answers the right facts and writing context.',
+    icon: Sparkles,
+  },
+};
+
+function valuesOf(value: unknown) {
+  return Array.isArray(value) ? value.filter(Boolean).map(String) : [];
 }
 
-function readOnlyItems(profile: JobHuntingProfile) {
-  const filters = profile.filters ?? {};
-  const blacklist = profile.blacklist_rules ?? {};
-  const whitelist = profile.whitelist_rules ?? {};
-  const salary =
-    profile.desired_salary ? `$${profile.desired_salary}` : 'No salary target';
-  const noticePeriod =
-    profile.notice_period || profile.notice_period === 0 ?
-      `${profile.notice_period} day notice`
-    : 'No notice period';
-  const resumePath =
-    profile.resume_path ||
-    (typeof profile.extra_data?.default_resume_path === 'string' ?
-      profile.extra_data.default_resume_path
-    : '') ||
-    'No resume attached';
-
-  return {
-    keywords: profile.search_terms ?? [],
-    materials: [
-      resumePath,
-      profile.linkedin_url || 'No LinkedIn URL',
-      profile.website || 'No portfolio URL',
-      profile.require_visa || 'No visa preference',
-      profile.citizenship || 'No work authorization note',
-      salary,
-      noticePeriod,
-      profile.recent_employer || 'No recent employer',
-      profile.confidence_level ?
-        `Confidence ${profile.confidence_level}`
-      : 'No confidence level',
-    ],
-    applicationDetails: [
-      { label: 'Resume path', value: resumePath },
-      {
-        label: 'Cover letter',
-        value: profile.cover_letter || 'No cover letter',
-      },
-      {
-        label: 'LinkedIn URL',
-        value: profile.linkedin_url || 'No LinkedIn URL',
-      },
-      {
-        label: 'Portfolio / website',
-        value: profile.website || 'No portfolio URL',
-      },
-      {
-        label: 'Citizenship / authorization',
-        value: profile.citizenship || 'No work authorization note',
-      },
-      {
-        label: 'Visa sponsorship',
-        value: profile.require_visa || 'No visa preference',
-      },
-      {
-        label: 'Years of experience',
-        value: profile.years_of_experience || 'No experience set',
-      },
-      { label: 'Desired salary', value: salary },
-      {
-        label: 'Current CTC',
-        value:
-          profile.current_ctc ? `$${profile.current_ctc}` : 'No current CTC',
-      },
-      { label: 'Notice period', value: noticePeriod },
-      {
-        label: 'Recent employer',
-        value: profile.recent_employer || 'No recent employer',
-      },
-      {
-        label: 'Confidence level',
-        value: profile.confidence_level || 'No confidence level',
-      },
-      {
-        label: 'LinkedIn headline',
-        value: profile.linkedin_headline || 'No headline',
-      },
-      {
-        label: 'LinkedIn summary',
-        value: profile.linkedin_summary || 'No summary',
-      },
-      {
-        label: 'AI context',
-        value: profile.user_information_all || 'No AI context',
-      },
-    ],
-    filters: [
-      profile.search_location || 'No search location',
-      String(filters.sort_by ?? 'Most recent'),
-      String(filters.date_posted ?? 'Past week'),
-      `${Number(filters.switch_number ?? 30) || 30} applications per keyword`,
-    ],
-    targeting: [
-      ...(Array.isArray(filters.on_site) ? filters.on_site : []),
-      ...(Array.isArray(filters.job_type) ? filters.job_type : []),
-      ...(Array.isArray(filters.experience_level) ?
-        filters.experience_level
-      : []),
-    ],
-    rules: [
-      ...(Array.isArray(blacklist.about_company_bad_words) ?
-        blacklist.about_company_bad_words
-      : []),
-      ...(Array.isArray(blacklist.bad_words) ? blacklist.bad_words : []),
-      ...(Array.isArray(whitelist.about_company_good_words) ?
-        whitelist.about_company_good_words
-      : []),
-    ],
-  };
+function compactPath(value: string) {
+  const pieces = value.split(/[\\/]/).filter(Boolean);
+  return pieces.at(-1) || value;
 }
 
-export default function SearchPage() {
-  const {
-    jobHuntingProfile,
-    jobHuntingProfiles,
-    createJobHuntingProfile,
-    activateJobHuntingProfile,
-    deleteJobHuntingProfile,
-    saveJobHuntingProfile,
-    hasLoadedInitialData,
-  } = useConsole();
+function normalizeSection(value: string | null | undefined): SearchSection {
+  if (value === 'application') return 'materials';
+  if (
+    value === 'overview' ||
+    value === 'filters' ||
+    value === 'rules' ||
+    value === 'materials' ||
+    value === 'eligibility' ||
+    value === 'career' ||
+    value === 'ai'
+  ) {
+    return value;
+  }
+  return 'overview';
+}
 
-  const [selectedProfileId, setSelectedProfileId] = useState('');
-  const [draftProfile, setDraftProfile] =
-    useState<JobHuntingProfile>(jobHuntingProfile);
-  const [isEditingProfile, setIsEditingProfile] = useState(false);
-  const [activeSection, setActiveSection] = useState<SearchSection>('overview');
-  const [isSavingProfile, setIsSavingProfile] = useState(false);
-
-  useEffect(() => {
-    const defaultProfile =
-      jobHuntingProfiles.find((profile) => profile.is_default) ??
-      jobHuntingProfile;
-    if (!defaultProfile?.id) return;
-    setSelectedProfileId((current) => current || defaultProfile.id || '');
-    if (!isEditingProfile) {
-      const activeSelection =
-        jobHuntingProfiles.find(
-          (profile) => profile.id === selectedProfileId,
-        ) ?? defaultProfile;
-      setDraftProfile(activeSelection);
-    }
-  }, [
-    isEditingProfile,
-    jobHuntingProfile,
-    jobHuntingProfiles,
-    selectedProfileId,
-  ]);
-
-  const selectedProfile =
-    jobHuntingProfiles.find((profile) => profile.id === selectedProfileId) ??
-    jobHuntingProfile;
-
-  const readOnly = useMemo(
-    () => readOnlyItems(selectedProfile ?? emptyJobHuntingProfile),
-    [selectedProfile],
+function hasResume(profile: JobHuntingProfile) {
+  return Boolean(
+    profile.resume_path?.trim() ||
+    String(profile.extra_data?.default_resume_path ?? '').trim(),
   );
+}
 
-  const beginEdit = () => {
-    setDraftProfile(selectedProfile ?? emptyJobHuntingProfile);
-    setIsEditingProfile(true);
-  };
+function getSectionStatus(
+  section: SearchSection,
+  profile: JobHuntingProfile,
+): SectionStatus {
+  if (section === 'overview') {
+    return profile.search_terms?.length ?
+        { label: 'Ready', tone: 'ready' }
+      : { label: '1 required item', tone: 'needs_attention' };
+  }
+  if (section === 'materials') {
+    return hasResume(profile) ?
+        { label: 'Ready', tone: 'ready' }
+      : { label: '1 required item', tone: 'needs_attention' };
+  }
+  return { label: 'Optional', tone: 'optional' };
+}
 
-  const cancelEdit = () => {
-    setDraftProfile(selectedProfile ?? emptyJobHuntingProfile);
-    setIsEditingProfile(false);
-  };
-
-  const handleSaveProfile = async () => {
-    setIsSavingProfile(true);
-    try {
-      await saveJobHuntingProfile(draftProfile);
-      setIsEditingProfile(false);
-    } finally {
-      setIsSavingProfile(false);
-    }
-  };
-
-  const handleCreateProfile = async () => {
-    const base = selectedProfile ?? jobHuntingProfile ?? emptyJobHuntingProfile;
-    const created = await createJobHuntingProfile(
-      cloneProfile(base, `${base.name || 'Search Profile'} Copy`),
-    );
-    setSelectedProfileId(created.id ?? '');
-    setDraftProfile(created);
-    setIsEditingProfile(true);
-    setActiveSection('overview');
-  };
-
-  const handleActivateProfile = async (profileId: string) => {
-    if (profileId === selectedProfileId && selectedProfile?.is_default) return;
-    await activateJobHuntingProfile(profileId);
-    setSelectedProfileId(profileId);
-    setIsEditingProfile(false);
-  };
-
-  const handleDeleteProfile = async () => {
-    if (!selectedProfile?.id) return;
-    await deleteJobHuntingProfile(selectedProfile.id);
-    setIsEditingProfile(false);
-  };
-
-  if (!hasLoadedInitialData) {
-    return (
-      <div className='grid grid-cols-1 gap-6'>
-        <section className='body-md panel p-6 text-ink-secondary'>
-          Refreshing data...
-        </section>
-      </div>
-    );
+function TagList({
+  values,
+  empty = 'Not configured',
+}: {
+  values: string[];
+  empty?: string;
+}) {
+  if (!values.length) {
+    return <p className='body-sm text-ink-secondary'>{empty}</p>;
   }
 
   return (
-    <div className='grid grid-cols-1 xl:grid-cols-[300px_minmax(0,1fr)] gap-6 h-[calc(100vh-64px)] min-h-[640px] overflow-hidden'>
-      <ProfileSidebar
-        profiles={jobHuntingProfiles}
-        selectedId={selectedProfileId}
-        onSelect={(id) => {
-          setSelectedProfileId(id);
-          setIsEditingProfile(false);
-        }}
-        onCreate={handleCreateProfile}
-      />
+    <div className='flex flex-wrap gap-1.5'>
+      {values.map((value) => (
+        <span
+          key={value}
+          className='body-sm rounded-md bg-background-secondary px-2 py-1 text-ink-secondary'
+        >
+          {value}
+        </span>
+      ))}
+    </div>
+  );
+}
 
-      <section className='min-h-0 overflow-hidden rounded-2xl border border-border/60 bg-panel flex flex-col'>
-        <ProfileHeader
-          profile={selectedProfile}
-          profilesCount={jobHuntingProfiles.length}
-          isEditing={isEditingProfile}
-          isSaving={isSavingProfile}
-          activeSection={activeSection}
-          onChangeSection={setActiveSection}
-          onActivate={() => handleActivateProfile(selectedProfile?.id ?? '')}
-          onDelete={handleDeleteProfile}
-          onEdit={beginEdit}
-          onCancel={cancelEdit}
-          onSave={handleSaveProfile}
-        />
+function DetailLine({
+  label,
+  value,
+  muted = false,
+}: {
+  label: string;
+  value: string;
+  muted?: boolean;
+}) {
+  return (
+    <div className='flex items-start justify-between gap-4 border-b border-border/40 py-2.5 last:border-b-0'>
+      <span className='body-sm shrink-0 text-ink-secondary'>{label}</span>
+      <span
+        className={cn(
+          'body-sm min-w-0 text-right font-medium text-ink-primary',
+          muted && 'text-ink-secondary',
+        )}
+      >
+        {value}
+      </span>
+    </div>
+  );
+}
 
-        <div className='custom-scrollbar-primary flex-1 overflow-y-auto px-6 py-6'>
-          {isEditingProfile ?
-            <div className='space-y-6'>
-              {activeSection === 'overview' && (
-                <SearchForm
-                  value={draftProfile}
-                  onChange={setDraftProfile}
-                  onSave={() => void handleSaveProfile()}
-                  section='overview'
-                />
-              )}
-              {activeSection === 'filters' && (
-                <SearchForm
-                  value={draftProfile}
-                  onChange={setDraftProfile}
-                  onSave={() => void handleSaveProfile()}
-                  section='filters'
-                />
-              )}
-              {activeSection === 'application' && (
-                <SearchForm
-                  value={draftProfile}
-                  onChange={setDraftProfile}
-                  onSave={() => void handleSaveProfile()}
-                  section='application'
-                />
-              )}
-              {activeSection === 'rules' && (
-                <SearchForm
-                  value={draftProfile}
-                  onChange={setDraftProfile}
-                  onSave={() => void handleSaveProfile()}
-                  section='rules'
-                />
-              )}
+function StatusBadge({ status }: { status: SectionStatus }) {
+  return (
+    <span
+      className={cn(
+        'rounded-sm px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide',
+        status.tone === 'ready' ?
+          'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+        : status.tone === 'needs_attention' ?
+          'bg-amber-500/10 text-amber-600 dark:text-amber-400'
+        : 'bg-background-secondary text-ink-secondary',
+      )}
+    >
+      {status.label}
+    </span>
+  );
+}
+
+function ConfigCard({
+  section,
+  status,
+  children,
+  onEdit,
+}: {
+  section: SearchSection;
+  status: SectionStatus;
+  children: React.ReactNode;
+  onEdit: (section: SearchSection) => void;
+}) {
+  const { title, description, icon: Icon } = EDITOR_DETAILS[section];
+
+  return (
+    <motion.section
+      layoutId={`job-profile-editor-${section}`}
+      onClick={() => onEdit(section)}
+      transition={{
+        type: 'spring',
+        duration: 0.7,
+        bounce: 0.2,
+        ease: [0.22, 1, 0.36, 1],
+      }}
+      className=' bg-panel card'
+    >
+      <div className='flex items-start justify-between gap-4'>
+        <div className='flex min-w-0 items-start gap-3 col'>
+          <div className='flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary'>
+            <Icon className='h-4 w-4' />
+          </div>
+          <div>
+            <div className='flex flex-wrap items-center gap-2'>
+              <h2 className='title-card text-ink-primary'>{title}</h2>
+              <StatusBadge status={status} />
             </div>
-          : <div className='space-y-6'>
-              <SummaryCards
-                profile={selectedProfile ?? emptyJobHuntingProfile}
-              />
-
-              {activeSection === 'overview' && (
-                <WaterfallLayout gap={24} minColumnWidth={420}>
-                  {[
-                    <ReadOnlyBlock
-                      key='overview-keywords'
-                      title='Keywords'
-                      icon={<Search className='h-4 w-4' />}
-                      items={readOnly.keywords}
-                      emptyLabel='No keywords yet.'
-                    />,
-                    <DetailGrid
-                      key='overview-application'
-                      title='Application Package'
-                      icon={<Check className='h-4 w-4' />}
-                      items={readOnly.applicationDetails}
-                    />,
-                    <ReadOnlyBlock
-                      key='overview-filters'
-                      title='Primary Filters'
-                      icon={<SlidersHorizontal className='h-4 w-4' />}
-                      items={readOnly.filters}
-                      emptyLabel='No filters configured.'
-                    />,
-                    <ReadOnlyBlock
-                      key='overview-targeting'
-                      title='Targeting'
-                      icon={<MapPin className='h-4 w-4' />}
-                      items={readOnly.targeting}
-                      emptyLabel='No targeting constraints configured.'
-                    />,
-                    <ReadOnlyBlock
-                      key='overview-rules'
-                      title='Rules'
-                      icon={<Sparkles className='h-4 w-4' />}
-                      items={readOnly.rules}
-                      emptyLabel='No skip or whitelist rules configured.'
-                    />,
-                  ]}
-                </WaterfallLayout>
-              )}
-
-              {activeSection === 'filters' && (
-                <WaterfallLayout gap={24} minColumnWidth={320}>
-                  {[
-                    <ReadOnlyBlock
-                      key='filters-primary'
-                      title='Primary Filters'
-                      icon={<SlidersHorizontal className='h-4 w-4' />}
-                      items={readOnly.filters}
-                      emptyLabel='No filters configured.'
-                    />,
-                    <ReadOnlyBlock
-                      key='filters-targeting'
-                      title='Targeting'
-                      icon={<MapPin className='h-4 w-4' />}
-                      items={readOnly.targeting}
-                      emptyLabel='No targeting constraints configured.'
-                    />,
-                  ]}
-                </WaterfallLayout>
-              )}
-
-              {activeSection === 'application' && (
-                <WaterfallLayout gap={24} minColumnWidth={420}>
-                  {[
-                    <DetailGrid
-                      key='application-detail'
-                      title='Application Package'
-                      icon={<Check className='h-4 w-4' />}
-                      items={readOnly.applicationDetails}
-                    />,
-                  ]}
-                </WaterfallLayout>
-              )}
-
-              {activeSection === 'rules' && (
-                <WaterfallLayout gap={24} minColumnWidth={320}>
-                  {[
-                    <ReadOnlyBlock
-                      key='rules-primary'
-                      title='Rules'
-                      icon={<Sparkles className='h-4 w-4' />}
-                      items={readOnly.rules}
-                      emptyLabel='No skip or whitelist rules configured.'
-                    />,
-                  ]}
-                </WaterfallLayout>
-              )}
-            </div>
-          }
+            <p className='body-sm mt-0.5 text-ink-secondary'>{description}</p>
+          </div>
         </div>
+        <motion.button
+          type='button'
+          title={`Edit ${title}`}
+          aria-label={`Edit ${title}`}
+          className='flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-ink-secondary hover:bg-background-secondary hover:text-primary'
+        >
+          <Pencil className='h-4 w-4' />
+        </motion.button>
+      </div>
+      <div className='mt-5'>{children}</div>
+    </motion.section>
+  );
+}
+
+function JobProfileEditorModal({
+  section,
+  profile,
+  onSave,
+  onClose,
+}: {
+  section: SearchSection;
+  profile: JobHuntingProfile;
+  onSave: (profile: JobHuntingProfile) => Promise<void>;
+  onClose: () => void;
+}) {
+  const [draft, setDraft] = useState(profile);
+  const [isSaving, setIsSaving] = useState(false);
+  const { title, description, icon: Icon } = EDITOR_DETAILS[section];
+  const status = getSectionStatus(section, draft);
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      await onSave(draft);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <div className='flex max-h-[88vh] min-h-[480px] flex-col'>
+      <header className='flex shrink-0 items-start justify-between gap-5 border-b border-border/60 px-6 py-5 md:px-8'>
+        <div className='flex min-w-0 items-start gap-3'>
+          <div className='flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary'>
+            <Icon className='h-5 w-5' />
+          </div>
+          <div>
+            <div className='flex flex-wrap items-center gap-2'>
+              <h2 className='title-section text-ink-primary'>{title}</h2>
+              <StatusBadge status={status} />
+            </div>
+            <p className='body-md mt-1 text-ink-secondary'>{description}</p>
+          </div>
+        </div>
+        <button
+          type='button'
+          title='Close editor'
+          aria-label='Close editor'
+          onClick={onClose}
+          className='flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-ink-secondary hover:bg-background-secondary hover:text-ink-primary'
+        >
+          <X className='h-4 w-4' />
+        </button>
+      </header>
+
+      <div className='custom-scrollbar-primary flex-1 overflow-y-auto px-6 py-6 md:px-8'>
+        <SearchForm
+          value={draft}
+          onChange={setDraft}
+          onSave={() => undefined}
+          section={section}
+          embedded
+        />
+      </div>
+
+      <footer className='footer'>
+        <Button variant='ghost' onClick={onClose}>
+          Cancel
+        </Button>
+        <Button
+          onClick={() => void handleSave()}
+          disabled={isSaving}
+          Icon={Check}
+        >
+          {isSaving ? 'Saving...' : 'Save changes'}
+        </Button>
+      </footer>
+    </div>
+  );
+}
+
+export default function SearchPage() {
+  const searchParams = useSearchParams();
+  const {
+    jobHuntingProfile,
+    saveJobHuntingProfile,
+    hasLoadedInitialData,
+    profile: userProfile,
+  } = useConsole();
+  const openModal = useGlobalModalStore((state) => state.actions.openModal);
+  const closeModal = useGlobalModalStore((state) => state.actions.closeModal);
+  const onboardingSection = searchParams?.get('section');
+  const shouldOpenEditor = searchParams?.get('edit') === '1';
+
+  const selectedProfile = jobHuntingProfile ?? emptyJobHuntingProfile;
+
+  const summary = useMemo(() => {
+    const filters = selectedProfile.filters ?? {};
+    const resumePath =
+      selectedProfile.resume_path ||
+      String(selectedProfile.extra_data?.default_resume_path ?? '');
+    const resumeFilename =
+      String(selectedProfile.extra_data?.resume_filename ?? '').trim() ||
+      (resumePath ? compactPath(resumePath) : '');
+    const ruleCount =
+      valuesOf(selectedProfile.blacklist_rules?.about_company_bad_words)
+        .length +
+      valuesOf(selectedProfile.blacklist_rules?.bad_words).length +
+      valuesOf(selectedProfile.whitelist_rules?.about_company_good_words)
+        .length;
+
+    return {
+      filters,
+      resumePath,
+      resumeFilename,
+      ruleCount,
+      targeting: [
+        ...valuesOf(filters.on_site),
+        ...valuesOf(filters.job_type),
+        ...valuesOf(filters.experience_level),
+      ],
+      locations: valuesOf(filters.location),
+      companies: valuesOf(filters.companies),
+      aboutBadWords: valuesOf(
+        selectedProfile.blacklist_rules?.about_company_bad_words,
+      ),
+      descriptionBadWords: valuesOf(selectedProfile.blacklist_rules?.bad_words),
+    };
+  }, [selectedProfile]);
+
+  const completion = useMemo(() => {
+    const ready = [
+      Boolean(
+        userProfile.first_name?.trim() &&
+        userProfile.last_name?.trim() &&
+        userProfile.phone_number?.trim(),
+      ),
+      Boolean(selectedProfile.search_terms?.length),
+      hasResume(selectedProfile),
+    ];
+    return { complete: ready.filter(Boolean).length, total: ready.length };
+  }, [selectedProfile, userProfile]);
+
+  const openEditor = (section: SearchSection, profile = selectedProfile) => {
+    openModal({
+      layoutId: `job-profile-editor-${section}`,
+      className: 'w-[94vw] max-w-6xl max-h-[88vh] rounded-lg',
+      content: (
+        <JobProfileEditorModal
+          section={section}
+          profile={profile}
+          onClose={closeModal}
+          onSave={async (nextProfile) => {
+            await saveJobHuntingProfile(nextProfile);
+            closeModal();
+          }}
+        />
+      ),
+      onClose: closeModal,
+    });
+  };
+
+  useEffect(() => {
+    if (!hasLoadedInitialData || !shouldOpenEditor) return;
+    openEditor(normalizeSection(onboardingSection));
+    // This URL is only created by the dashboard quick start; it should open once.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasLoadedInitialData, shouldOpenEditor]);
+
+  if (!hasLoadedInitialData) {
+    return (
+      <section className='panel p-6 text-ink-secondary'>
+        Refreshing data...
       </section>
+    );
+  }
+
+  const isMinimumReady = completion.complete === completion.total;
+  const remaining = completion.total - completion.complete;
+
+  return (
+    <div className='h-[calc(100vh-64px)] min-h-[640px] overflow-hidden'>
+      <main className='custom-scrollbar-primary min-h-0 overflow-y-auto pr-1'>
+        <header className='border-b border-border/60 pb-5'>
+          <div>
+            <div className='flex flex-wrap items-center gap-2'>
+              <BriefcaseBusiness className='h-5 w-5 text-primary' />
+              <h1 className='title-section text-ink-primary'>Job Search</h1>
+              <span
+                className={cn(
+                  'inline-flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-semibold',
+                  isMinimumReady ?
+                    'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                  : 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
+                )}
+              >
+                <Check className='h-3 w-3' />
+                {isMinimumReady ?
+                  'Minimum setup ready'
+                : `${remaining} required item${remaining === 1 ? '' : 's'} remaining`
+                }
+              </span>
+            </div>
+            <p className='body-md mt-1 text-ink-secondary'>
+              Targets and application settings for{' '}
+              <span className='font-medium text-ink-primary'>
+                {summary.resumeFilename || 'your active resume'}
+              </span>.
+            </p>
+          </div>
+        </header>
+
+        <div className='pt-5'>
+          <WaterfallLayout gap={16} minColumnWidth={350}>
+            {[
+              <ConfigCard
+                key='targets'
+                section='overview'
+                status={getSectionStatus('overview', selectedProfile)}
+                onEdit={openEditor}
+              >
+                <TagList
+                  values={selectedProfile.search_terms ?? []}
+                  empty='Add at least one title or keyword to start searching.'
+                />
+                <div className='mt-4'>
+                  <DetailLine
+                    label='Search location'
+                    value={selectedProfile.search_location || 'Anywhere'}
+                    muted={!selectedProfile.search_location}
+                  />
+                  <DetailLine
+                    label='Switch after'
+                    value={`${Number(summary.filters.switch_number ?? 30) || 30} applications`}
+                  />
+                </div>
+              </ConfigCard>,
+
+              <ConfigCard
+                key='materials'
+                section='materials'
+                status={getSectionStatus('materials', selectedProfile)}
+                onEdit={openEditor}
+              >
+                <DetailLine
+                  label='Resume'
+                  value={
+                    summary.resumeFilename ?
+                      summary.resumeFilename
+                    : 'Not attached'
+                  }
+                  muted={!summary.resumePath}
+                />
+                <DetailLine
+                  label='LinkedIn'
+                  value={
+                    selectedProfile.linkedin_url ? 'Connected' : 'Not added'
+                  }
+                  muted={!selectedProfile.linkedin_url}
+                />
+                <DetailLine
+                  label='Portfolio'
+                  value={selectedProfile.website ? 'Connected' : 'Not added'}
+                  muted={!selectedProfile.website}
+                />
+              </ConfigCard>,
+
+              <ConfigCard
+                key='filters'
+                section='filters'
+                status={getSectionStatus('filters', selectedProfile)}
+                onEdit={openEditor}
+              >
+                <DetailLine
+                  label='Sort and date'
+                  value={`${String(summary.filters.sort_by ?? 'Most recent')} · ${String(summary.filters.date_posted ?? 'Past week')}`}
+                />
+                <div className='mt-3'>
+                  <p className='text-[11px] font-semibold uppercase tracking-wider text-ink-secondary'>
+                    Targeting
+                  </p>
+                  <div className='mt-2'>
+                    <TagList
+                      values={summary.targeting}
+                      empty='Any workplace, job type, and level'
+                    />
+                  </div>
+                </div>
+              </ConfigCard>,
+
+              <ConfigCard
+                key='eligibility'
+                section='eligibility'
+                status={getSectionStatus('eligibility', selectedProfile)}
+                onEdit={openEditor}
+              >
+                <DetailLine
+                  label='Work authorization'
+                  value={
+                    selectedProfile.citizenship ||
+                    `Visa sponsorship: ${selectedProfile.require_visa || 'No'}`
+                  }
+                  muted={!selectedProfile.citizenship}
+                />
+                <DetailLine
+                  label='Experience and notice'
+                  value={`${selectedProfile.years_of_experience || 'Not set'} years · ${selectedProfile.notice_period ?? 'Not set'} day notice`}
+                  muted={!selectedProfile.years_of_experience}
+                />
+                <DetailLine
+                  label='Compensation'
+                  value={
+                    selectedProfile.desired_salary ?
+                      `Target $${selectedProfile.desired_salary}`
+                    : 'Not added'
+                  }
+                  muted={!selectedProfile.desired_salary}
+                />
+              </ConfigCard>,
+
+              <ConfigCard
+                key='rules'
+                section='rules'
+                status={getSectionStatus('rules', selectedProfile)}
+                onEdit={openEditor}
+              >
+                <DetailLine
+                  label='Experience cap'
+                  value={`${String(summary.filters.current_experience ?? 5)} years`}
+                />
+                <DetailLine
+                  label='Active rules'
+                  value={
+                    summary.ruleCount ? `${summary.ruleCount} phrases` : 'None'
+                  }
+                  muted={!summary.ruleCount}
+                />
+                <div className='mt-3'>
+                  <TagList
+                    values={[
+                      ...summary.aboutBadWords,
+                      ...summary.descriptionBadWords,
+                    ].slice(0, 6)}
+                    empty='No company or description exclusions'
+                  />
+                </div>
+              </ConfigCard>,
+
+              <ConfigCard
+                key='career'
+                section='career'
+                status={getSectionStatus('career', selectedProfile)}
+                onEdit={openEditor}
+              >
+                <DetailLine
+                  label='Recent employer'
+                  value={selectedProfile.recent_employer || 'Not added'}
+                  muted={!selectedProfile.recent_employer}
+                />
+                <DetailLine
+                  label='Headline'
+                  value={selectedProfile.linkedin_headline || 'Not added'}
+                  muted={!selectedProfile.linkedin_headline}
+                />
+                <DetailLine
+                  label='Summary'
+                  value={
+                    selectedProfile.linkedin_summary ? 'Written' : 'Not added'
+                  }
+                  muted={!selectedProfile.linkedin_summary}
+                />
+              </ConfigCard>,
+
+              <ConfigCard
+                key='ai'
+                section='ai'
+                status={getSectionStatus('ai', selectedProfile)}
+                onEdit={openEditor}
+              >
+                <DetailLine
+                  label='Cover letter'
+                  value={
+                    selectedProfile.cover_letter ? 'Prepared' : 'Not added'
+                  }
+                  muted={!selectedProfile.cover_letter}
+                />
+                <DetailLine
+                  label='Answer context'
+                  value={
+                    (
+                      selectedProfile.user_information_all ||
+                      selectedProfile.extra_data?.user_information_all
+                    ) ?
+                      'Prepared'
+                    : 'Not added'
+                  }
+                  muted={
+                    !selectedProfile.user_information_all &&
+                    !selectedProfile.extra_data?.user_information_all
+                  }
+                />
+                <div className='mt-3 flex items-center gap-2 body-sm text-ink-secondary'>
+                  <BadgeCheck className='h-4 w-4 text-primary' />
+                  Used when a form needs a tailored written answer.
+                </div>
+              </ConfigCard>,
+            ]}
+          </WaterfallLayout>
+        </div>
+      </main>
     </div>
   );
 }

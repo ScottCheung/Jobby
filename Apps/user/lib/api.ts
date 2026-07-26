@@ -3,6 +3,9 @@ import type {
   QuestionCacheEntry,
   RuntimeSettings,
   JobHuntingProfile,
+  MasterResume,
+  ResumeAsset,
+  ResumeSource,
   User,
   UserProfile,
   WorkerConfig,
@@ -44,6 +47,43 @@ import { resolveApiBaseUrl } from "./runtime";
 import { createClient } from "./supabase/client";
 import { dedup } from "./request-dedup";
 
+function responseErrorMessage(body: string, fallback: string): string {
+  const trimmedBody = body.trim();
+  if (!trimmedBody) return fallback;
+
+  try {
+    const parsed = JSON.parse(trimmedBody) as { detail?: unknown };
+    if (typeof parsed.detail === 'string') return parsed.detail;
+    if (Array.isArray(parsed.detail) && typeof parsed.detail[0]?.msg === 'string') {
+      return parsed.detail[0].msg;
+    }
+  } catch {
+    // Some proxies return a plain-text error body instead of JSON.
+  }
+
+  return trimmedBody;
+}
+
+async function readJsonResponse<T>(response: Response, fallback: string): Promise<T> {
+  const body = await response.text();
+
+  if (!response.ok) {
+    throw new Error(responseErrorMessage(body, fallback));
+  }
+
+  try {
+    return JSON.parse(body) as T;
+  } catch {
+    const detail = body.trim().replace(/\s+/g, ' ').slice(0, 200);
+    const status = `${response.status}${response.statusText ? ` ${response.statusText}` : ''}`;
+    throw new Error(
+      detail
+        ? `${fallback} The server returned a non-JSON response (${status}): ${detail}`
+        : `${fallback} The server returned an empty response (${status}).`,
+    );
+  }
+}
+
 async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
   const apiBaseUrl = await resolveApiBaseUrl();
   const supabase = createClient();
@@ -65,25 +105,11 @@ async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
     cache: "no-store",
   });
 
-  if (!response.ok) {
-    const detailText = await response.text();
-    try {
-      const parsed = JSON.parse(detailText);
-      if (typeof parsed?.detail === "string") {
-        throw new Error(parsed.detail);
-      }
-      if (Array.isArray(parsed?.detail) && parsed.detail[0]?.msg) {
-        throw new Error(parsed.detail[0].msg);
-      }
-    } catch {}
-    throw new Error(detailText || `API request failed: ${response.status}`);
-  }
-
   if (response.status === 204) {
     return undefined as T;
   }
 
-  return response.json() as Promise<T>;
+  return readJsonResponse<T>(response, `API request failed: ${response.status}`);
 }
 
 export const api = {
@@ -115,6 +141,68 @@ export const api = {
   },
   removeAvatar: () =>
     apiRequest<User>('/api/me/avatar', { method: 'DELETE' }),
+  masterResume: () => apiRequest<MasterResume>('/api/master-resume'),
+  resumeAssets: () => apiRequest<ResumeAsset[]>('/api/resume-assets'),
+  selectResumeAsset: (profileId: string) =>
+    apiRequest<MasterResume>(`/api/resume-assets/${profileId}/select`, {
+      method: 'POST',
+    }),
+  deleteResumeAsset: (profileId: string) =>
+    apiRequest<void>(`/api/resume-assets/${profileId}`, {
+      method: 'DELETE',
+    }),
+  extractResumeSource: async (file: File) => {
+    const apiBaseUrl = await resolveApiBaseUrl();
+    const supabase = createClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    const formData = new FormData();
+    formData.append('file', file, file.name);
+    const response = await fetch(`${apiBaseUrl}/api/master-resume/debug/source`, {
+      method: 'POST',
+      body: formData,
+      headers: session?.user?.email ? { 'X-User-Email': session.user.email } : undefined,
+      cache: 'no-store',
+    });
+    return readJsonResponse<ResumeSource>(response, 'Could not extract PDF text.');
+  },
+  debugResumeAi: async (file: File) => {
+    const apiBaseUrl = await resolveApiBaseUrl();
+    const supabase = createClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    const formData = new FormData();
+    formData.append('file', file, file.name);
+    const response = await fetch(`${apiBaseUrl}/api/master-resume/debug/ai`, {
+      method: 'POST',
+      body: formData,
+      headers: session?.user?.email ? { 'X-User-Email': session.user.email } : undefined,
+      cache: 'no-store',
+    });
+    return readJsonResponse<Record<string, unknown>>(response, 'Could not parse the resume.');
+  },
+  uploadMasterResume: async (file: File) => {
+    const apiBaseUrl = await resolveApiBaseUrl();
+    const supabase = createClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    const formData = new FormData();
+    formData.append('file', file, file.name);
+    const response = await fetch(`${apiBaseUrl}/api/master-resume/upload`, {
+      method: 'POST',
+      body: formData,
+      headers: session?.user?.email ? { 'X-User-Email': session.user.email } : undefined,
+      cache: 'no-store',
+    });
+    return readJsonResponse<MasterResume>(response, 'Could not parse the resume.');
+  },
+  updateMasterResume: (resume_data: MasterResume['resume_data']) =>
+    apiRequest<MasterResume>('/api/master-resume', {
+      method: 'PUT',
+      body: JSON.stringify({ resume_data }),
+    }),
+  confirmMasterResume: (resume_data: MasterResume['resume_data']) =>
+    apiRequest<MasterResume>('/api/master-resume/confirm', {
+      method: 'POST',
+      body: JSON.stringify({ resume_data }),
+    }),
   workerConfig: () => apiRequest<WorkerConfig>("/api/worker/config"),
   profile: () => dedup('profile', () => apiRequest<UserProfile>("/api/profile")),
   updateProfile: (payload: UserProfile) =>
@@ -222,19 +310,53 @@ export const api = {
       method: "POST",
       body: JSON.stringify(payload),
     }),
-  interviewQuestions: (options?: { limit?: number; offset?: number; search?: string; category_id?: string }) => {
+  interviewQuestions: (options?: {
+    limit?: number;
+    offset?: number;
+    search?: string;
+    category_id?: string;
+    category_ids?: string[];
+    collection_ids?: string[];
+    tag_ids?: string[];
+    importance_scores?: number[];
+    frequencies?: string[];
+    question_ids?: string[];
+  }) => {
     const params = new URLSearchParams();
     if (options?.limit !== undefined) params.append("limit", String(options.limit));
     if (options?.offset !== undefined) params.append("offset", String(options.offset));
     if (options?.search) params.append("search", options.search);
     if (options?.category_id) params.append("category_id", options.category_id);
+    options?.category_ids?.forEach((id) => params.append("category_ids", id));
+    options?.collection_ids?.forEach((id) => params.append("collection_ids", id));
+    options?.tag_ids?.forEach((id) => params.append("tag_ids", id));
+    options?.importance_scores?.forEach((score) => params.append("importance_scores", String(score)));
+    options?.frequencies?.forEach((frequency) => params.append("frequencies", frequency));
+    options?.question_ids?.forEach((id) => params.append("question_ids", id));
     const qs = params.toString();
     const url = qs ? `/api/interview/questions?${qs}` : "/api/interview/questions";
-    return dedup(`interviewQuestions:${qs}`, () => apiRequest<InterviewQuestion[]>(url));
+    return dedup(`interviewQuestions:${qs}`, () => apiRequest<PaginatedResult<InterviewQuestion>>(url));
   },
   findQuestionDuplicates: (title: string) =>
     apiRequest<QuestionDuplicateCandidate[]>(`/api/interview/questions/duplicates?q=${encodeURIComponent(title)}`),
-  searchGlobalQuestions: (q: string) => apiRequest<InterviewQuestion[]>(`/api/interview/questions/search/global?q=${encodeURIComponent(q)}`),
+  searchGlobalQuestions: (
+    q: string,
+    sort?: 'hot' | 'week' | 'month' | 'season' | 'newest',
+  ) => {
+    const params = new URLSearchParams({ q });
+    if (sort) params.set('sort', sort);
+    return apiRequest<InterviewQuestion[]>(
+      `/api/interview/questions/search/global?${params.toString()}`,
+    );
+  },
+  forYouQuestions: () =>
+    apiRequest<InterviewQuestion[]>(
+      '/api/interview/recommendations/for-you',
+    ),
+  recordExploreVisit: () =>
+    apiRequest<{ last_login_at: string | null }>('/api/interview/explore/visit', {
+      method: 'POST',
+    }),
   saveInterviewQuestion: (id: string) =>
     apiRequest<InterviewQuestion>(`/api/interview/questions/${id}/save`, {
       method: 'POST',
@@ -419,6 +541,24 @@ export const api = {
       method: "POST",
       body: JSON.stringify(payload),
     }),
+  transcribePracticeAudio: async (blob: Blob, filename = 'audio.webm') => {
+    const apiBaseUrl = await resolveApiBaseUrl();
+    const supabase = createClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    const formData = new FormData();
+    formData.append('file', blob, filename);
+    const response = await fetch(`${apiBaseUrl}/api/interview/practice-transcriptions`, {
+      method: 'POST',
+      body: formData,
+      headers: session?.user?.email ? { 'X-User-Email': session.user.email } : undefined,
+      cache: 'no-store',
+    });
+    if (!response.ok) {
+      const detail = await response.text();
+      throw new Error(detail || `API request failed: ${response.status}`);
+    }
+    return response.json() as Promise<import('./types').PracticeTranscription>;
+  },
   updatePracticeRecord: (id: string, payload: Partial<PracticeRecord>) =>
     apiRequest<PracticeRecord>(`/api/interview/practice-records/${id}`, {
       method: "PUT",
@@ -509,12 +649,12 @@ export const api = {
     apiRequest<{ message: string }>('/api/interview/gamification/reset', {
       method: 'POST',
     }),
-  uploadPracticeAudio: async (recordId: string, blob: Blob) => {
+  uploadPracticeAudio: async (recordId: string, blob: Blob, filename = 'audio.webm') => {
     const apiBaseUrl = await resolveApiBaseUrl();
     const supabase = createClient();
     const { data: { session } } = await supabase.auth.getSession();
     const formData = new FormData();
-    formData.append("file", blob, "audio.webm");
+    formData.append('file', blob, filename);
     const response = await fetch(`${apiBaseUrl}/api/interview/practice-records/${recordId}/audio`, {
       method: "POST",
       body: formData,

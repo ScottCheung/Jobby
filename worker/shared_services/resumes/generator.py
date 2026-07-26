@@ -1,5 +1,5 @@
 '''
-Author:     Scott Cheung
+Contributor:     Scott Cheung
 LinkedIn:   https://www.linkedin.com/in/scottcheung1110/
 
 Copyright (C) 2024 Scott Cheung

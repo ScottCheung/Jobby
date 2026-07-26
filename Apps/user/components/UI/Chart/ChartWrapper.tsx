@@ -36,10 +36,8 @@ const ChartWrapper = ({
         <InView>
           {isEmpty ?
             <div className='flex h-full min-h-80 w-full flex-col items-center justify-center text-center p-6 bg-background-secondary/20 dark:bg-panel/10 rounded-xl border border-dashed border-border dark:border-border/80'>
-              <BarChart3 className='w-8 h-8 text-zinc-300 dark:text-zinc-700 mb-3 animate-pulse' />
-              <p className='label dark:text-ink-primary0'>
-                {emptyMessage}
-              </p>
+              <BarChart3 className='w-8 h-8 text-zinc-300 dark:text-zinc-700 mb-3 animate-text-shimmer-primary animate-text-shimmer' />
+              <p className='label dark:text-ink-primary0'>{emptyMessage}</p>
             </div>
           : children}
         </InView>

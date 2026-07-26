@@ -9,6 +9,7 @@ import React from 'react';
 export interface StaggerProps extends HTMLMotionProps<'div'> {
   staggerDelay?: number;
   delayChildren?: number;
+  animateOnMount?: boolean;
 }
 
 const staggerVariants = (
@@ -30,14 +31,19 @@ export function Stagger({
   className,
   staggerDelay = 0.07,
   delayChildren = 0,
+  animateOnMount = false,
   variants,
   ...props
 }: StaggerProps) {
   return (
     <motion.div
       initial='hidden'
-      whileInView='visible'
-      viewport={{ once: true }}
+      {...(animateOnMount ?
+        { animate: 'visible' }
+      : {
+          whileInView: 'visible',
+          viewport: { once: true },
+        })}
       variants={variants || staggerVariants(staggerDelay, delayChildren)}
       className={cn(className)}
       {...props}

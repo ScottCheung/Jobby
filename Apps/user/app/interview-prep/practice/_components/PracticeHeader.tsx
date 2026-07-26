@@ -12,8 +12,7 @@ import {
   EyeOff,
   LandPlot,
   Tag,
-  Building2,
-  Badge,
+  BriefcaseBusiness,
   UserRound,
   Gauge,
   Clock,
@@ -27,7 +26,13 @@ import { Button } from '@/components/UI/Button';
 import type { PracticeMode } from './PracticeModeModal';
 import { QuestionCommentActions } from './Comments/QuestionCommentActions';
 import { useLayoutStore } from '@/lib/store/layout-store';
-import { QuestionReportsDrawer } from './QuestionReportsDrawer';
+import { QuestionReportsContent } from './QuestionReportsDrawer';
+import {
+  getInterviewCategoryIcon,
+  getInterviewCategoryLabel,
+} from '@/lib/interview-categories';
+import { api } from '@/lib/api';
+import type { QuestionCommunitySummary } from '@/lib/types';
 
 interface PracticeHeaderProps {
   currentQuestion: InterviewQuestion | null;
@@ -121,7 +126,38 @@ export const PracticeHeader = React.memo(function PracticeHeader({
   const estimatedDurationLabel = formatInterviewDuration(
     currentQuestion?.estimated_duration_seconds,
   );
+  const [communitySummary, setCommunitySummary] =
+    React.useState<QuestionCommunitySummary | null>(null);
 
+  React.useEffect(() => {
+    if (!currentQuestion?.id) {
+      setCommunitySummary(null);
+      return;
+    }
+    let cancelled = false;
+    void api
+      .questionCommunity(currentQuestion.id)
+      .then((summary) => {
+        if (!cancelled) setCommunitySummary(summary);
+      })
+      .catch(() => {
+        if (!cancelled) setCommunitySummary(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [currentQuestion?.id, reportRefreshKey]);
+
+  const topCompanies =
+    communitySummary?.top_companies ??
+    currentQuestion?.metrics?.top_companies ??
+    [];
+  const visibleCompanies = topCompanies.slice(0, 5);
+  const hiddenCompanyCount = Math.max(
+    0,
+    (communitySummary?.company_count ?? topCompanies.length) -
+      visibleCompanies.length,
+  );
   const openDrawer = useLayoutStore((state) => state.actions.openDrawer);
   const isQueueActive = isDrawerOpen && drawerId === 'practice-queue';
 
@@ -131,7 +167,7 @@ export const PracticeHeader = React.memo(function PracticeHeader({
       id: 'question-reports',
       width: 400,
       content: (
-        <QuestionReportsDrawer
+        <QuestionReportsContent
           questionId={currentQuestion.id}
           onReport={onReportInterview}
         />
@@ -201,7 +237,7 @@ export const PracticeHeader = React.memo(function PracticeHeader({
           <Tooltip
             content={
               autoEvalEnabled ?
-                'Auto AI Evaluation: ON (Consumes coins)'
+                'Auto AI Evaluation: ON (up to 5 coins per submitted transcript)'
               : 'Auto AI Evaluation: OFF'
             }
             side='bottom'
@@ -214,7 +250,8 @@ export const PracticeHeader = React.memo(function PracticeHeader({
               <Sparkles
                 className={cn(
                   'w-4 h-4',
-                  autoEvalEnabled && 'animate-heart-pop animate-pulse',
+                  autoEvalEnabled &&
+                    'animate-heart-pop animate-text-shimmer-primary animate-text-shimmer',
                 )}
               />
             </Button>
@@ -279,7 +316,7 @@ export const PracticeHeader = React.memo(function PracticeHeader({
 
       {/* Title, tags, rating */}
       {currentQuestion && (
-        <div className='col -mt-1 lg:-mt-8 gap-x-1.5'>
+        <div className='col -mt-1 lg:-mt-12 gap-1.75!'>
           {/* Progress counter */}
           <span className='flex items-baseline gap-1 text-[11px] text-primary'>
             <span className='font-sans text-[30px] font-black text-primary/40'>
@@ -296,19 +333,22 @@ export const PracticeHeader = React.memo(function PracticeHeader({
               </span>
             )}
           </span>
-          <h2 className='title-card -mt-1 leading-snug'>
+          <h2 className='title-card -mt-2 leading-snug'>
             {currentQuestion.title}
           </h2>
           <div className='flex flex-wrap items-center gap-1.5'>
-            {/* Uploader / Author */}
+            {/* Contributor / Contributor */}
             <span className='inline-flex h-6 items-center gap-1 rounded-md bg-primary/10 px-1.5 text-[10px] font-semibold text-primary'>
               <UserRound className='h-3 w-3 text-primary' />
               {currentQuestion.contributor_name || 'Community'}
             </span>
             {currentQuestion.category && (
               <span className='inline-flex h-6 items-center gap-1 rounded-md bg-primary/10 px-1.5 text-[10px] font-semibold text-primary'>
-                <Badge className='h-3 w-3' />
-                {cleanName(currentQuestion.category.name)}
+                {React.createElement(
+                  getInterviewCategoryIcon(currentQuestion.category),
+                  { className: 'h-3 w-3' },
+                )}
+                {getInterviewCategoryLabel(currentQuestion.category)}
               </span>
             )}
             {/* Estimated Duration */}
@@ -351,50 +391,36 @@ export const PracticeHeader = React.memo(function PracticeHeader({
               </span>
             ))}
 
-            {/* Aggregated Company Statistics Button */}
-            {currentQuestion.companies &&
-              currentQuestion.companies.length > 0 && (
-                <Tooltip
-                  content='Click to view interview details by company'
-                  side='bottom'
+            {visibleCompanies.map((company) => (
+              <Tooltip
+                key={company.name}
+                content='Click to view interview reports'
+                side='bottom'
+              >
+                <button
+                  type='button'
+                  onClick={handleOpenReportsDrawer}
+                  className='inline-flex h-6 items-center gap-1.5 rounded-md border border-blue-500/20 bg-blue-500/10 py-1 pl-1.5 pr-2 text-[10px] font-semibold text-blue-600 transition-colors hover:border-blue-500/30 hover:bg-blue-500/20 dark:text-blue-400'
                 >
-                  <button
-                    type='button'
-                    onClick={handleOpenReportsDrawer}
-                    className='inline-flex h-6 items-center gap-1.5 rounded-md border border-blue-500/20 bg-blue-500/10 py-1 pl-1.5 pr-2 text-[10px] font-medium text-blue-600 dark:text-blue-400 transition-colors hover:bg-blue-500/20 hover:border-blue-500/30 cursor-pointer active:scale-95'
-                  >
-                    <div className='flex items-center -space-x-1 overflow-hidden'>
-                      {currentQuestion.companies.slice(0, 3).map((c) =>
-                        c.logo_url ?
-                          <img
-                            key={c.id}
-                            src={c.logo_url}
-                            alt={c.name}
-                            className='w-3.5 h-3.5 rounded-full object-cover bg-white ring-1 ring-background shrink-0'
-                            onError={(e) => {
-                              e.currentTarget.style.display = 'none';
-                            }}
-                          />
-                        : <Building2
-                            key={c.id}
-                            className='w-3 h-3 opacity-60 ml-0.5'
-                          />,
-                      )}
-                    </div>
-                    <span>
-                      {currentQuestion.companies
-                        .slice(0, 2)
-                        .map((c) => c.name)
-                        .join(', ')}
-                      {currentQuestion.companies.length > 2 && (
-                        <span className='ml-0.5 font-semibold text-blue-700 dark:text-blue-300'>
-                          +{currentQuestion.companies.length - 2}
-                        </span>
-                      )}
-                    </span>
-                  </button>
-                </Tooltip>
-              )}
+                  <BriefcaseBusiness className='h-3.5 w-3.5' />
+                  {company.name} {company.count}
+                </button>
+              </Tooltip>
+            ))}
+            {hiddenCompanyCount > 0 && (
+              <Tooltip
+                content='Click to view all interview reports'
+                side='bottom'
+              >
+                <button
+                  type='button'
+                  onClick={handleOpenReportsDrawer}
+                  className='inline-flex h-6 items-center rounded-md border border-blue-500/20 bg-blue-500/10 px-2 text-[10px] font-semibold text-blue-600 transition-colors hover:border-blue-500/30 hover:bg-blue-500/20 dark:text-blue-400'
+                >
+                  More +{hiddenCompanyCount}
+                </button>
+              </Tooltip>
+            )}
           </div>
           <QuestionCommentActions
             questionId={currentQuestion.id}

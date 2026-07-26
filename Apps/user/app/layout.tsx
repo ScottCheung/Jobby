@@ -20,8 +20,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang='en' suppressHydrationWarning className='bg-background h-full'>
-      <body suppressHydrationWarning className='min-h-screen'>
+    <html lang='en' suppressHydrationWarning className='bg-background h-screen overflow-hidden'>
+      <body suppressHydrationWarning className='h-screen overflow-hidden'>
         <QueryProvider>
           <ConsoleProvider>
             <ThemeProvider defaultTheme='system' defaultColor='green'>

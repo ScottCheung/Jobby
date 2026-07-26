@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import type { QuestionComment } from '@/lib/types';
+import { Tooltip } from '@/components/UI/tooltip/index';
 import { showGlobalToast } from '@/lib/toast';
 import { Button } from '@/components/UI/Button';
 import { EmptyState } from '@/components/UI/EmptyState';
@@ -451,26 +452,28 @@ export function QuestionCommunity({ questionId }: { questionId: string }) {
         {isComposing && (
           <div className='mb-2 absolute -top-8 flex gap-1.5  -translate-x-1/2 right-1/2 '>
             {kinds.map(([value, label]) => (
-              <button
-                key={value}
-                onClick={() => setDraftKind(value)}
-                className={cn(
-                  'flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold transition-all',
-                  draftKind === value ?
-                    'bg-primary text-primary-foreground'
-                  : 'bg-background-secondary text-ink-secondary/70 hover:text-ink-primary',
-                )}
-              >
-                <span
+              <Tooltip content={`Use Ctrl + ${value} for ${label}`}>
+                <button
+                  key={value}
+                  onClick={() => setDraftKind(value)}
                   className={cn(
-                    'h-1.5 w-1.5 rounded-full',
+                    'flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold transition-all',
                     draftKind === value ?
-                      'bg-primary-foreground'
-                    : kindDot[value],
+                      'bg-primary text-primary-foreground'
+                    : 'bg-background-secondary text-ink-secondary/70 hover:text-ink-primary',
                   )}
-                />
-                {label}
-              </button>
+                >
+                  <span
+                    className={cn(
+                      'h-1.5 w-1.5 rounded-full',
+                      draftKind === value ?
+                        'bg-primary-foreground'
+                      : kindDot[value],
+                    )}
+                  />
+                  {label}
+                </button>
+              </Tooltip>
             ))}
           </div>
         )}
@@ -651,7 +654,7 @@ function Comment({
                   'rounded-full px-1.5 py-0.5 text-[8px] font-extrabold uppercase tracking-wide',
                   comment.author_badge === 'Admin' ?
                     'bg-rose-500/10 text-rose-600'
-                  : comment.author_badge === 'Author' ?
+                  : comment.author_badge === 'Contributor' ?
                     'bg-primary/10 text-primary'
                   : 'bg-amber-500/10 text-amber-600',
                 )}

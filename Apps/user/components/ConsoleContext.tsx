@@ -40,7 +40,6 @@ import {
   ArrowDownRight,
   MoveRight,
   CalendarCheck,
-  Activity,
 } from 'lucide-react';
 
 function getApplicationSortTimestamp(value?: string | null) {
@@ -573,6 +572,7 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
     const path = pathname || '';
     const isJobApplyRoute =
       path === '/' ||
+      path.startsWith('/job-application') ||
       path.startsWith('/applications') ||
       path.startsWith('/settings') ||
       path.startsWith('/question-cache');
@@ -661,6 +661,10 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
       });
       connection.addEventListener('notification.created', (event) => {
         try { window.dispatchEvent(new CustomEvent('jobby:notification-event', { detail: JSON.parse(event.data) })); }
+        catch { /* Ignore malformed optional realtime events. */ }
+      });
+      connection.addEventListener('master_resume.processed', (event) => {
+        try { window.dispatchEvent(new CustomEvent('jobby:master-resume-event', { detail: JSON.parse(event.data) })); }
         catch { /* Ignore malformed optional realtime events. */ }
       });
 
@@ -1220,23 +1224,12 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
       },
       {
         label: 'Submitted',
-        value: appStats?.today_submitted ?? 0,
+        value: appStats?.submitted ?? 0,
         icon: CheckCircle2,
         iconColor: 'text-emerald-500/50 dark:text-emerald-400',
         textColor: 'text-emerald-600 dark:text-emerald-400',
         bgColor: 'bg-emerald-500/5 dark:bg-emerald-500/20',
         borderColor: 'border-emerald-500/20',
-        ...getComparisonDetails(appStats?.today_submitted ?? 0, appStats?.yesterday_submitted ?? 0),
-      },
-      {
-        label: "Today's Processed",
-        value: appStats?.today_processed ?? 0,
-        icon: Activity,
-        iconColor: 'text-blue-500/50 dark:text-blue-400',
-        textColor: 'text-blue-600 dark:text-blue-400',
-        bgColor: 'bg-blue-500/5 dark:bg-blue-500/20',
-        borderColor: 'border-blue-500/20',
-        ...getComparisonDetails(appStats?.today_processed ?? 0, appStats?.yesterday_processed ?? 0),
       },
       {
         label: 'Interviewing',

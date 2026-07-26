@@ -1,3 +1,5 @@
+<!-- @format -->
+
 # Interview Domain Refactor
 
 ## Goal
@@ -25,6 +27,7 @@ This plan favors low long-term technical debt over preserving the current schema
 `interview_questions` should represent only the shared question artifact and author defaults.
 
 Keep here:
+
 - title
 - category / tags / companies / source linkage
 - author default frequency
@@ -32,6 +35,7 @@ Keep here:
 - archival / ownership metadata
 
 Move away from here over time:
+
 - answer bodies
 - community examples
 - user personal answers
@@ -43,6 +47,7 @@ Move away from here over time:
 `user_questions` already models the relationship between a user and a question. We will formalize that role instead of creating another join table.
 
 `user_questions` should own:
+
 - library membership
 - user-specific category override
 - user-specific frequency / importance override
@@ -53,6 +58,7 @@ Move away from here over time:
 ### 3. Answers
 
 Create `question_answers` as the canonical home for answer-like artifacts:
+
 - author reference answers
 - AI-generated reference answers
 - community-contributed answers
@@ -60,6 +66,7 @@ Create `question_answers` as the canonical home for answer-like artifacts:
 - future rubrics / scoring guides
 
 Recommended initial fields:
+
 - `question_id`
 - `author_user_id`
 - `source` (`author`, `ai`, `community`, `user`)
@@ -75,15 +82,18 @@ Recommended initial fields:
 ### 4. Community Interaction
 
 Short term:
+
 - keep `question_comments` for discussion / feedback
 - stop treating `example` as the long-term home for answer content
 
 Long term:
+
 - comments should be able to target answers as well
 
 ### 5. Cached Public Metrics
 
 Create `question_metrics` as one cached row per question for public aggregates:
+
 - view count
 - unique viewer count
 - practice count
@@ -99,7 +109,7 @@ Create `question_metrics` as one cached row per question for public aggregates:
 
 ## Scoring and Weighting Model
 
-Author defaults remain on the question.
+Contributor defaults remain on the question.
 
 Community contribution grows as ratings accumulate, capped at 80%.
 
@@ -136,10 +146,12 @@ Phase 1 should preserve current app behavior while adding the long-term structur
 ### Frontend
 
 Short term:
+
 - keep existing three tabs
 - keep existing question fields working
 
 Transition path:
+
 - reference answers tab reads `question_answers`
 - framework tab reads `question_answers` filtered by `answer_type=framework`
 - discussion tab keeps reading `question_comments`
@@ -162,6 +174,7 @@ Transition path:
 ## Why This Path
 
 This sequence gives us:
+
 - a clean final model
 - minimal disruption while refactoring
 - room to add AI answer generation and AI scoring without further schema churn

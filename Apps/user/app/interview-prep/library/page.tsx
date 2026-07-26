@@ -1,7 +1,15 @@
 /** @format */
 
 'use client';
-import React, { useEffect, useState, useCallback } from 'react';
+import React, {
+  useEffect,
+  useState,
+  useCallback,
+  useDeferredValue,
+  useMemo,
+  startTransition,
+  useRef,
+} from 'react';
 import {
   Search,
   FileText,
@@ -19,8 +27,7 @@ import {
   Link,
   Info,
 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { usePathname } from 'next/navigation';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import { useConfirmStore } from '@/lib/store/confirm-store';
 import { practiceCache } from '../practice/practice-cache';
@@ -32,24 +39,37 @@ import type {
   User,
 } from '@/lib/types';
 import { Tooltip } from '@/components/UI/tooltip';
-import { cn, cleanName, matchesCollection } from '@/lib/utils';
+import { cn, cleanName } from '@/lib/utils';
 import { useLayoutStore } from '@/lib/store/layout-store';
+import { useDebounce } from '@/lib/hooks/useDebounce';
 import dynamic from 'next/dynamic';
 
 const BatchImportModal = dynamic(
-  () => import('./_components/BatchImportModal').then((mod) => mod.BatchImportModal),
+  () =>
+    import('./_components/BatchImportModal').then(
+      (mod) => mod.BatchImportModal,
+    ),
   { ssr: false },
 );
 const AddQuestionsToCollectionModal = dynamic(
-  () => import('./_components/AddQuestionsToCollectionModal').then((mod) => mod.AddQuestionsToCollectionModal),
+  () =>
+    import('./_components/AddQuestionsToCollectionModal').then(
+      (mod) => mod.AddQuestionsToCollectionModal,
+    ),
   { ssr: false },
 );
 const BatchAssignCategoryModal = dynamic(
-  () => import('./_components/BatchAssignCategoryModal').then((mod) => mod.BatchAssignCategoryModal),
+  () =>
+    import('./_components/BatchAssignCategoryModal').then(
+      (mod) => mod.BatchAssignCategoryModal,
+    ),
   { ssr: false },
 );
 const CollectionFormModal = dynamic(
-  () => import('../collections/_components/CollectionFormModal').then((mod) => mod.CollectionFormModal),
+  () =>
+    import('../collections/_components/CollectionFormModal').then(
+      (mod) => mod.CollectionFormModal,
+    ),
   { ssr: false },
 );
 
@@ -59,14 +79,104 @@ import { QuestionRow } from './_components/QuestionRow';
 import { QuestionsFilterDrawer } from './_components/QuestionsFilterDrawer';
 import { Button } from '@/components/UI/Button';
 import { showGlobalToast } from '@/lib/toast';
-import { VirtualList } from '@/components/UI/VirtualList';
+import { List, type RowComponentProps } from 'react-window';
+import { div } from 'framer-motion/client';
+
+const QUESTION_ROW_HEIGHT = 72;
+const PRACTICE_BUTTON_SAFE_SPACE = 120;
+
+type LibraryPracticeRowProps = {
+  items: InterviewQuestion[];
+  categories: InterviewCategory[];
+  selectedIds: string[];
+  isSelectionMode: boolean;
+  gridColsClass: string;
+  isDrawerOpen: boolean;
+  drawerOpenId: string | null;
+  currentUserId?: string;
+  collections: InterviewCollection[];
+  onSelectChange: (id: string, checked: boolean) => void;
+  onInlineUpdate: (id: string, updates: Partial<InterviewQuestion>) => void;
+  onOpenEdit: (q: InterviewQuestion) => void;
+  onDeleteQuestion: (id: string) => void;
+  onArchiveQuestion: (id: string) => void;
+  isLoadingMore: boolean;
+};
+
+function LibraryPracticeRow({
+  index,
+  style,
+  items,
+  categories,
+  selectedIds,
+  isSelectionMode,
+  gridColsClass,
+  isDrawerOpen,
+  drawerOpenId,
+  currentUserId,
+  collections,
+  onSelectChange,
+  onInlineUpdate,
+  onOpenEdit,
+  onDeleteQuestion,
+  onArchiveQuestion,
+  isLoadingMore,
+}: RowComponentProps<LibraryPracticeRowProps>) {
+  if (index >= items.length) {
+    return (
+      <div style={style} className='flex items-start justify-center pt-4'>
+        {isLoadingMore && (
+          <div className='flex items-center gap-2 text-sm font-medium text-ink-secondary'>
+            <Loader2 className='h-4 w-4 animate-spin text-primary' />
+            <span>Loading more items...</span>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  const question = items[index];
+  return (
+    <div style={{ ...style, overflow: 'visible' }}>
+      <QuestionRow
+        question={question}
+        isSelectionMode={isSelectionMode}
+        isSelected={selectedIds.includes(question.id)}
+        onSelectChange={onSelectChange}
+        onInlineUpdate={onInlineUpdate}
+        onOpenEdit={onOpenEdit}
+        onDeleteQuestion={onDeleteQuestion}
+        onArchiveQuestion={onArchiveQuestion}
+        categories={categories}
+        gridColsClass={gridColsClass}
+        isDrawerSelected={isDrawerOpen && drawerOpenId === question.id}
+        currentUserId={currentUserId}
+        collections={collections}
+      />
+    </div>
+  );
+}
 
 export default function QuestionsLibraryPage() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const editQuestionId = searchParams?.get('edit');
+  const handledEditIdRef = useRef<string | null>(null);
+
   const [questions, setQuestions] = useState<InterviewQuestion[]>([]);
+  const questionsLengthRef = useRef(0);
+  useEffect(() => {
+    questionsLengthRef.current = questions.length;
+  }, [questions.length]);
   const [originalQuestions, setOriginalQuestions] = useState<
     InterviewQuestion[]
   >([]);
   const [hasMore, setHasMore] = useState(true);
+  const [totalCount, setTotalCount] = useState<number | null>(null);
+  const [libraryTotalCount, setLibraryTotalCount] = useState<number | null>(
+    null,
+  );
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isSelectionMode, setIsSelectionMode] = useState(false);
@@ -76,10 +186,14 @@ export default function QuestionsLibraryPage() {
   const [collections, setCollections] = useState<InterviewCollection[]>([]);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
-  const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
-  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>(
+    () => searchParams?.get('category')?.split(',').filter(Boolean) || [],
+  );
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>(
+    () => searchParams?.get('tag')?.split(',').filter(Boolean) || [],
+  );
   const [selectedCollectionIds, setSelectedCollectionIds] = useState<string[]>(
-    [],
+    () => searchParams?.get('collection')?.split(',').filter(Boolean) || [],
   );
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isCollectionModalOpen, setIsCollectionModalOpen] = useState(false);
@@ -99,10 +213,12 @@ export default function QuestionsLibraryPage() {
     activeCollection?.creator_user_id === currentUser?.id;
   const confirm = useConfirmStore((state) => state.confirm);
 
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState<string>(
+    () => searchParams?.get('search') || '',
+  );
+  const debouncedSearch = useDebounce(search.trim(), 300);
   const [isLoading, setIsLoading] = useState(true);
-  const router = useRouter();
-  const pathname = usePathname();
+  const [isPracticeLoading, setIsPracticeLoading] = useState(false);
 
   // Batch Import Modal visibility state
   const [isBatchImportOpen, setIsBatchImportOpen] = useState(false);
@@ -111,8 +227,40 @@ export default function QuestionsLibraryPage() {
     field: 'title' | 'category' | 'answer';
   } | null>(null);
 
-  const [selectedImportances, setSelectedImportances] = useState<number[]>([]);
-  const [selectedFrequencies, setSelectedFrequencies] = useState<string[]>([]);
+  const [selectedImportances, setSelectedImportances] = useState<number[]>(
+    () =>
+      searchParams
+        ?.get('importance')
+        ?.split(',')
+        .map(Number)
+        .filter((n) => !isNaN(n)) || [],
+  );
+  const [selectedFrequencies, setSelectedFrequencies] = useState<string[]>(
+    () => searchParams?.get('frequency')?.split(',').filter(Boolean) || [],
+  );
+
+  // Keep the click/input paint ahead of list, drawer, and network-state updates.
+  const updateSelectedCategoryIds = useCallback((ids: string[]) => {
+    startTransition(() => setSelectedCategoryIds(ids));
+  }, []);
+  const updateSelectedTagIds = useCallback((ids: string[]) => {
+    startTransition(() => setSelectedTagIds(ids));
+  }, []);
+  const updateSelectedCollectionIds = useCallback((ids: string[]) => {
+    startTransition(() => setSelectedCollectionIds(ids));
+  }, []);
+  const updateSelectedImportances = useCallback(
+    (action: React.SetStateAction<number[]>) => {
+      startTransition(() => setSelectedImportances(action));
+    },
+    [],
+  );
+  const updateSelectedFrequencies = useCallback(
+    (action: React.SetStateAction<string[]>) => {
+      startTransition(() => setSelectedFrequencies(action));
+    },
+    [],
+  );
 
   const openDrawer = useLayoutStore((state) => state.actions.openDrawer);
   const closeDrawer = useLayoutStore((state) => state.actions.closeDrawer);
@@ -131,13 +279,13 @@ export default function QuestionsLibraryPage() {
           categories={categories}
           tags={tags}
           selectedCategoryIds={selectedCategoryIds}
-          setSelectedCategoryIds={setSelectedCategoryIds}
+          setSelectedCategoryIds={updateSelectedCategoryIds}
           selectedTagIds={selectedTagIds}
-          setSelectedTagIds={setSelectedTagIds}
+          setSelectedTagIds={updateSelectedTagIds}
           selectedImportances={selectedImportances}
-          setSelectedImportances={setSelectedImportances}
+          setSelectedImportances={updateSelectedImportances}
           selectedFrequencies={selectedFrequencies}
-          setSelectedFrequencies={setSelectedFrequencies}
+          setSelectedFrequencies={updateSelectedFrequencies}
           onClose={closeDrawer}
         />
       ),
@@ -149,6 +297,10 @@ export default function QuestionsLibraryPage() {
     selectedTagIds,
     selectedImportances,
     selectedFrequencies,
+    updateSelectedCategoryIds,
+    updateSelectedTagIds,
+    updateSelectedImportances,
+    updateSelectedFrequencies,
     openDrawer,
     closeDrawer,
   ]);
@@ -168,46 +320,129 @@ export default function QuestionsLibraryPage() {
   ]);
 
   const BATCH_SIZE = 20;
+  const hasServerSideFilters =
+    selectedCategoryIds.length > 0 ||
+    selectedCollectionIds.length > 0 ||
+    selectedTagIds.length > 0 ||
+    selectedImportances.length > 0 ||
+    selectedFrequencies.length > 0 ||
+    debouncedSearch.length > 0;
+
+  const buildServerFilterParams = () => ({
+    search: debouncedSearch || undefined,
+    category_ids:
+      selectedCategoryIds.length > 0 ? selectedCategoryIds : undefined,
+    collection_ids:
+      selectedCollectionIds.length > 0 ? selectedCollectionIds : undefined,
+    tag_ids: selectedTagIds.length > 0 ? selectedTagIds : undefined,
+    importance_scores:
+      selectedImportances.length > 0 ? selectedImportances : undefined,
+    frequencies:
+      selectedFrequencies.length > 0 ? selectedFrequencies : undefined,
+  });
 
   const fetchQuestions = async (reset = true) => {
+    const startTime = Date.now();
     try {
-      if (!reset) setIsLoadingMore(true);
-      const offset = reset ? 0 : questions.length;
-      const data = await api.interviewQuestions({ limit: BATCH_SIZE, offset });
+      if (reset) {
+        setIsLoading(true);
+        setIsPracticeLoading(true);
+      } else {
+        setIsLoadingMore(true);
+      }
+      const offset = reset ? 0 : questionsLengthRef.current;
+      const syncCache = !hasServerSideFilters;
+      const res = await api.interviewQuestions({
+        limit: BATCH_SIZE,
+        offset,
+        ...buildServerFilterParams(),
+      });
+      const data = res.items || [];
+      const total = res.total ?? data.length;
 
       if (reset) {
-        practiceCache.questions = data;
+        if (syncCache) {
+          practiceCache.questions = data;
+          practiceCache.totalQuestionCount = total;
+          practiceCache.hasMoreQuestions =
+            res.has_more ?? data.length === BATCH_SIZE;
+          setLibraryTotalCount(total);
+          window.dispatchEvent(
+            new CustomEvent('jobby:libraryCountUpdated', { detail: total }),
+          );
+        }
         setQuestions(data);
         setOriginalQuestions(JSON.parse(JSON.stringify(data)));
         setSelectedIds([]);
+        setTotalCount(total);
       } else {
         setQuestions((prev) => {
-          const next = [...prev, ...data];
-          practiceCache.questions = next;
+          const existingIds = new Set(prev.map((q) => q.id));
+          const uniqueNewData = data.filter((q) => !existingIds.has(q.id));
+          const next = [...prev, ...uniqueNewData];
+          if (syncCache) {
+            practiceCache.questions = next;
+          }
           return next;
         });
-        setOriginalQuestions((prev) => [...prev, ...JSON.parse(JSON.stringify(data))]);
+        setTotalCount(total);
+        setOriginalQuestions((prev) => {
+          const existingIds = new Set(prev.map((q) => q.id));
+          const uniqueNewData = data.filter((q) => !existingIds.has(q.id));
+          return [...prev, ...JSON.parse(JSON.stringify(uniqueNewData))];
+        });
+        if (syncCache) {
+          practiceCache.totalQuestionCount = total;
+          practiceCache.hasMoreQuestions =
+            res.has_more ?? data.length === BATCH_SIZE;
+          setLibraryTotalCount(total);
+          window.dispatchEvent(
+            new CustomEvent('jobby:libraryCountUpdated', { detail: total }),
+          );
+        }
       }
 
-      setHasMore(data.length === BATCH_SIZE);
-      window.dispatchEvent(new CustomEvent('jobby:libraryCountUpdated', { detail: reset ? data.length : questions.length + data.length }));
-      window.dispatchEvent(new Event('playbookLibraryUpdated'));
+      setHasMore(res.has_more ?? data.length === BATCH_SIZE);
     } catch (err) {
       console.error('Failed to fetch questions:', err);
     } finally {
-      setIsLoadingMore(false);
+      const elapsed = Date.now() - startTime;
+      const minDuration = 500; // Enforce minimum 0.5s loading state for smooth UI transitions
+      if (elapsed < minDuration) {
+        await new Promise((resolve) =>
+          setTimeout(resolve, minDuration - elapsed),
+        );
+      }
+      if (reset) {
+        setIsLoading(false);
+        setIsPracticeLoading(false);
+      } else {
+        setIsLoadingMore(false);
+      }
     }
   };
 
   const loadNextBatch = useCallback(() => {
     if (isLoading || isLoadingMore || !hasMore) return;
     void fetchQuestions(false);
-  }, [isLoading, isLoadingMore, hasMore, questions.length]);
+  }, [isLoading, isLoadingMore, hasMore]);
 
   const initData = async (forceRefetch = false, silent = false) => {
-    if (practiceCache.questions && !forceRefetch) {
+    if (practiceCache.questions && !forceRefetch && !hasServerSideFilters) {
       setQuestions(practiceCache.questions);
-      window.dispatchEvent(new CustomEvent('jobby:libraryCountUpdated', { detail: practiceCache.questions.length }));
+      setTotalCount(
+        practiceCache.totalQuestionCount ?? practiceCache.questions.length,
+      );
+      setLibraryTotalCount(
+        practiceCache.totalQuestionCount ?? practiceCache.questions.length,
+      );
+      setHasMore(practiceCache.hasMoreQuestions ?? false);
+      window.dispatchEvent(
+        new CustomEvent('jobby:libraryCountUpdated', {
+          detail:
+            practiceCache.totalQuestionCount ?? practiceCache.questions.length,
+        }),
+      );
       setOriginalQuestions(JSON.parse(JSON.stringify(practiceCache.questions)));
       setCategories(practiceCache.categories || []);
       setIsLoading(false);
@@ -240,9 +475,13 @@ export default function QuestionsLibraryPage() {
     if (!silent) setIsLoading(true);
     const startTime = Date.now();
     try {
-      const [qs, cats, tagsData, collectionData, myCollections, user] =
+      const [qsRes, cats, tagsData, collectionData, myCollections, user] =
         await Promise.all([
-          api.interviewQuestions({ limit: BATCH_SIZE, offset: 0 }),
+          api.interviewQuestions({
+            limit: BATCH_SIZE,
+            offset: 0,
+            ...buildServerFilterParams(),
+          }),
           api.interviewCategories(),
           api.interviewTags(),
           api.interviewCollections(),
@@ -250,12 +489,24 @@ export default function QuestionsLibraryPage() {
           api.me().catch(() => null),
         ]);
 
-      practiceCache.questions = qs;
-      practiceCache.categories = cats;
+      const qs = qsRes.items || [];
+      const total = qsRes.total ?? qs.length;
+
+      if (!hasServerSideFilters) {
+        practiceCache.questions = qs;
+        practiceCache.totalQuestionCount = total;
+        practiceCache.hasMoreQuestions =
+          qsRes.has_more ?? qs.length === BATCH_SIZE;
+        practiceCache.categories = cats;
+        setLibraryTotalCount(total);
+        window.dispatchEvent(
+          new CustomEvent('jobby:libraryCountUpdated', { detail: total }),
+        );
+      }
 
       setQuestions(qs);
-      setHasMore(qs.length === BATCH_SIZE);
-      window.dispatchEvent(new CustomEvent('jobby:libraryCountUpdated', { detail: qs.length }));
+      setHasMore(qsRes.has_more ?? qs.length === BATCH_SIZE);
+      setTotalCount(total);
       setOriginalQuestions(JSON.parse(JSON.stringify(qs)));
       setCategories(cats);
       setTags(tagsData);
@@ -292,15 +543,72 @@ export default function QuestionsLibraryPage() {
   }, [pathname]);
 
   useEffect(() => {
+    if (!editQuestionId || handledEditIdRef.current === editQuestionId) return;
+    handledEditIdRef.current = editQuestionId;
+    const targetQ = questions.find((q) => q.id === editQuestionId);
+    if (targetQ) {
+      handleOpenEditQuestion(targetQ);
+    } else {
+      api
+        .getInterviewQuestion(editQuestionId)
+        .then((q) => {
+          if (q) handleOpenEditQuestion(q);
+        })
+        .catch(() => undefined);
+    }
+  }, [editQuestionId, questions]);
+
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (selectedCategoryIds.length > 0)
+      params.set('category', selectedCategoryIds.join(','));
+    if (selectedCollectionIds.length > 0)
+      params.set('collection', selectedCollectionIds.join(','));
+    if (selectedTagIds.length > 0) params.set('tag', selectedTagIds.join(','));
+    if (selectedImportances.length > 0)
+      params.set('importance', selectedImportances.join(','));
+    if (selectedFrequencies.length > 0)
+      params.set('frequency', selectedFrequencies.join(','));
+    if (debouncedSearch) params.set('search', debouncedSearch);
+    if (editQuestionId) params.set('edit', editQuestionId);
+
+    const queryString = params.toString();
+    const targetUrl = queryString ? `${pathname}?${queryString}` : pathname;
+    window.history.replaceState(null, '', targetUrl);
+  }, [
+    selectedCategoryIds,
+    selectedCollectionIds,
+    selectedTagIds,
+    selectedImportances,
+    selectedFrequencies,
+    debouncedSearch,
+    editQuestionId,
+    pathname,
+  ]);
+
+  useEffect(() => {
+    if (isLoading) return;
+    void fetchQuestions(true);
+  }, [
+    selectedCategoryIds,
+    selectedCollectionIds,
+    selectedTagIds,
+    selectedImportances,
+    selectedFrequencies,
+    debouncedSearch,
+  ]);
+
+  useEffect(() => {
     const syncLibrary = () => void initData(true, true);
     window.addEventListener('playbookLibraryUpdated', syncLibrary);
     return () =>
       window.removeEventListener('playbookLibraryUpdated', syncLibrary);
   }, []);
 
-  const getModifiedQuestions = () => {
+  const modified = useMemo(() => {
+    const originalById = new Map(originalQuestions.map((q) => [q.id, q]));
     return questions.filter((q) => {
-      const orig = originalQuestions.find((o) => o.id === q.id);
+      const orig = originalById.get(q.id);
       if (!orig) return false;
       const answerChanged =
         q.can_edit ?
@@ -314,9 +622,7 @@ export default function QuestionsLibraryPage() {
         answerChanged
       );
     });
-  };
-
-  const modified = getModifiedQuestions();
+  }, [questions, originalQuestions]);
   const hasChanges = modified.length > 0;
 
   const handleSaveAll = async () => {
@@ -777,80 +1083,113 @@ export default function QuestionsLibraryPage() {
   };
 
   // Filter logic
-  const filteredQuestions = questions.filter((q) => {
-    const matchesSearch = q.title.toLowerCase().includes(search.toLowerCase());
-    const matchesCategory =
-      selectedCategoryIds.length === 0 ||
-      selectedCategoryIds.some((catId) => {
-        if (catId === 'uncategorized') return !q.category_id;
-        return q.category_id === catId;
-      });
-    const matchesTag =
-      selectedTagIds.length === 0 ||
-      q.tags?.some((t) => selectedTagIds.includes(t.id));
-    const matchesImportance =
-      selectedImportances.length === 0 ||
-      (q.importance_score !== null &&
-        q.importance_score !== undefined &&
-        selectedImportances.includes(q.importance_score));
-    const matchesFrequency =
-      selectedFrequencies.length === 0 ||
-      (q.frequency !== null &&
-        q.frequency !== undefined &&
-        selectedFrequencies.includes(q.frequency));
-    const matchesCollectionFilter =
-      selectedCollectionIds.length === 0 ||
-      selectedCollectionIds.some((cId) => {
-        const col = collections.find((c) => c.id === cId);
-        return col ? matchesCollection(q, col) : false;
-      });
-
-    return (
-      matchesSearch &&
-      matchesCategory &&
-      matchesTag &&
-      matchesImportance &&
-      matchesFrequency &&
-      matchesCollectionFilter
-    );
-  });
-  const collectionMap = new Map(
-    collections.map((collection) => [collection.id, collection]),
+  // Every visible result now comes from the same server-side query used for practice.
+  const filteredQuestions = questions;
+  const selectedIdSet = useMemo(() => new Set(selectedIds), [selectedIds]);
+  const selectedPracticeQuestions = useMemo(
+    () => questions.filter((q) => selectedIdSet.has(q.id)),
+    [questions, selectedIdSet],
   );
-  const sourceCollections = collections.filter((collection) =>
-    questions.some((question) =>
-      question.collection_ids?.includes(collection.id),
-    ),
-  );
+  const hasActiveFilters =
+    selectedCategoryIds.length > 0 ||
+    selectedTagIds.length > 0 ||
+    selectedImportances.length > 0 ||
+    selectedFrequencies.length > 0 ||
+    selectedCollectionIds.length > 0 ||
+    debouncedSearch.length > 0;
+  const practiceQuestions =
+    selectedPracticeQuestions.length > 0 ? selectedPracticeQuestions
+    : hasActiveFilters ? filteredQuestions
+    : questions;
+  const shouldStartCustomPractice =
+    selectedPracticeQuestions.length > 0 || hasActiveFilters;
 
-  const handleStartPractice = () => {
-    if (filteredQuestions.length === 0) {
+  const fetchAllMatchingQuestions = async () => {
+    const allQuestions: InterviewQuestion[] = [];
+    let offset = 0;
+    let more = true;
+
+    while (more) {
+      const response = await api.interviewQuestions({
+        limit: 200,
+        offset,
+        ...buildServerFilterParams(),
+      });
+      const page = response.items || [];
+      allQuestions.push(...page);
+      more = response.has_more ?? page.length === 200;
+      offset += page.length;
+      if (page.length === 0) break;
+    }
+
+    return allQuestions;
+  };
+
+  const handleStartPractice = async () => {
+    if (practiceQuestions.length === 0) {
       addNotification({
         type: 'warning',
         message: 'No questions to practice.',
       });
       return;
     }
-    if (filteredQuestions.length === questions.length) {
-      router.push(`/interview-prep/practice/${questions[0].id}?mode=free`);
-    } else {
-      sessionStorage.setItem(
-        'practiceCustomIds',
-        JSON.stringify(filteredQuestions.map((q) => q.id)),
-      );
+
+    practiceCache.questions = null;
+    practiceCache.totalQuestionCount = null;
+    practiceCache.hasMoreQuestions = null;
+
+    if (shouldStartCustomPractice) {
+      let customQuestions = practiceQuestions;
+      if (selectedPracticeQuestions.length === 0) {
+        try {
+          customQuestions = await fetchAllMatchingQuestions();
+        } catch (error) {
+          console.error(
+            'Failed to load the complete filtered practice set:',
+            error,
+          );
+          addNotification({
+            type: 'error',
+            message:
+              'Could not load the full filtered practice set. Please try again.',
+          });
+          return;
+        }
+      }
+      if (customQuestions.length === 0) {
+        addNotification({
+          type: 'warning',
+          message: 'No questions to practice.',
+        });
+        return;
+      }
+      practiceCache.questions = customQuestions;
+      practiceCache.totalQuestionCount = customQuestions.length;
+      practiceCache.hasMoreQuestions = false;
+      try {
+        sessionStorage.setItem(
+          'practiceCustomIds',
+          JSON.stringify(customQuestions.map((q) => q.id)),
+        );
+      } catch {}
       router.push(
-        `/interview-prep/practice/${filteredQuestions[0].id}?mode=custom`,
+        `/interview-prep/practice/${customQuestions[0].id}?mode=custom`,
       );
+      return;
     }
+
+    router.push(`/interview-prep/practice/${questions[0].id}?mode=free`);
   };
 
   const gridColsClass =
     isSelectionMode ?
-      'grid-cols-[40px_minmax(0,2.5fr)_minmax(0,1.2fr)_minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.9fr)_120px]'
-    : 'grid-cols-[minmax(0,2.5fr)_minmax(0,1.2fr)_minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.9fr)_120px]';
+      'grid-cols-[36px_minmax(0,3.2fr)_minmax(0,0.9fr)_minmax(0,2.2fr)_minmax(0,1fr)_minmax(0,0.8fr)_88px]'
+    : 'grid-cols-[minmax(0,3.2fr)_minmax(0,0.9fr)_minmax(0,2.2fr)_minmax(0,1fr)_minmax(0,0.8fr)_88px]';
+
+  const totalFilteredCount = totalCount ?? practiceQuestions.length;
 
   return (
-    <div className='flex gap-4 h-full relative overflow-hidden'>
+    <div className='flex h-full min-h-0 gap-4 overflow-hidden relative'>
       {/* 1. Sidebar Panel */}
       <FilterSidebar
         isSidebarCollapsed={isSidebarCollapsed}
@@ -858,13 +1197,14 @@ export default function QuestionsLibraryPage() {
         categories={categories}
         tags={tags}
         selectedCategoryIds={selectedCategoryIds}
-        setSelectedCategoryIds={setSelectedCategoryIds}
+        setSelectedCategoryIds={updateSelectedCategoryIds}
         selectedTagIds={selectedTagIds}
-        setSelectedTagIds={setSelectedTagIds}
+        setSelectedTagIds={updateSelectedTagIds}
         questions={questions}
+        libraryTotalCount={libraryTotalCount ?? totalCount ?? questions.length}
         collections={collections}
         selectedCollectionIds={selectedCollectionIds}
-        setSelectedCollectionIds={setSelectedCollectionIds}
+        setSelectedCollectionIds={updateSelectedCollectionIds}
         onCreateCollection={() => setIsCollectionModalOpen(true)}
         currentUserId={currentUser?.id}
         collectionActionId={collectionActionId}
@@ -875,7 +1215,7 @@ export default function QuestionsLibraryPage() {
       />
 
       {/* 2. Questions List (Full Width) */}
-      <div className='panel-xl pb-0! flex flex-col overflow-hidden w-full relative'>
+      <div className='panel-xl pb-0! flex min-h-0 w-full flex-col overflow-hidden relative'>
         {/* Header Tools */}
         <div className='flex items-center justify-between gap-4 shrink-0'>
           <div className='flex items-center gap-2 flex-1 max-w-md'>
@@ -1091,17 +1431,16 @@ export default function QuestionsLibraryPage() {
               />
             </div>
           )}
-          <div className='px-2'>Question</div>
-          <div className='px-2'>Category</div>
-          <div className='px-2'>Collection</div>
-          <div className='px-2'>Author</div>
-          <div className='px-2'>Frequency</div>
-          <div className='px-2'>Importance</div>
-          <div className='px-2 text-right pr-4'>Actions</div>
+          <div className='pr-3'>Question</div>
+          <div className='pr-3'>Category</div>
+          <div className='pr-3'>Key Info</div>
+          <div className='pr-3'>Collection</div>
+          <div className='pr-3'>Contributor</div>
+          <div className='pr-2 text-right'>Actions</div>
         </div>
 
         {/* Table Content */}
-        <div className='flex-1 overflow-hidden fade-out-tb relative'>
+        <div className='fade-out-tb relative flex-1 min-h-0 overflow-hidden'>
           {isLoading ?
             <QuestionListSkeleton />
           : filteredQuestions.length === 0 ?
@@ -1127,38 +1466,52 @@ export default function QuestionsLibraryPage() {
                 </Button>
               )}
             </div>
-          : <VirtualList
-              items={filteredQuestions}
-              itemHeight={56}
-              buffer={5}
-              getItemKey={(q) => q.id}
-              onLoadMore={loadNextBatch}
-              hasMore={hasMore}
-              isLoadingMore={isLoadingMore}
-              className='h-full divide-y divide-border/40'
-              renderItem={(q) => (
-                <QuestionRow
-                  key={q.id}
-                  question={q}
-                  isSelectionMode={isSelectionMode}
-                  isSelected={selectedIds.includes(q.id)}
-                  onSelectChange={(id, checked) => {
+          : <div className='h-full min-h-0'>
+              {/* <QuestionListSkeleton /> */}
+              <List
+                rowComponent={LibraryPracticeRow}
+                rowCount={filteredQuestions.length + 1}
+                rowHeight={(index) =>
+                  index < filteredQuestions.length ?
+                    QUESTION_ROW_HEIGHT
+                  : PRACTICE_BUTTON_SAFE_SPACE
+                }
+                rowProps={{
+                  items: filteredQuestions,
+                  categories,
+                  selectedIds,
+                  isSelectionMode,
+                  gridColsClass,
+                  isDrawerOpen,
+                  drawerOpenId: drawerOpenId ?? null,
+                  currentUserId: currentUser?.id,
+                  collections,
+                  onSelectChange: (id, checked) => {
                     setSelectedIds((prev) =>
                       checked ? [...prev, id] : prev.filter((x) => x !== id),
                     );
-                  }}
-                  onInlineUpdate={handleInlineUpdate}
-                  onOpenEdit={handleOpenEditQuestion}
-                  onDeleteQuestion={handleDeleteQuestion}
-                  onArchiveQuestion={handleArchiveQuestion}
-                  categories={categories}
-                  gridColsClass={gridColsClass}
-                  isDrawerSelected={isDrawerOpen && drawerOpenId === q.id}
-                  currentUserId={currentUser?.id}
-                  collections={collections}
-                />
-              )}
-            />
+                  },
+                  onInlineUpdate: handleInlineUpdate,
+                  onOpenEdit: handleOpenEditQuestion,
+                  onDeleteQuestion: handleDeleteQuestion,
+                  onArchiveQuestion: handleArchiveQuestion,
+                  isLoadingMore,
+                }}
+                onRowsRendered={({ stopIndex }) => {
+                  if (
+                    stopIndex >= filteredQuestions.length - 5 &&
+                    hasMore &&
+                    !isLoadingMore
+                  ) {
+                    loadNextBatch();
+                  }
+                }}
+                overscanCount={6}
+                className='h-full min-h-0'
+                style={{ height: '100%', minHeight: 0 }}
+                defaultHeight={600}
+              />
+            </div>
           }
         </div>
       </div>
@@ -1177,36 +1530,53 @@ export default function QuestionsLibraryPage() {
       />
 
       {/* Floating Practice Button */}
-      {questions.length > 0 && !isSelectionMode && !hasChanges && (
-        <div className='absolute bottom-4 right-4 z-20 animate-in slide-in-from-bottom-8 fade-in duration-300'>
-          {filteredQuestions.length > 0 && (
-            <Tooltip
-              content={
-                filteredQuestions.length === questions.length ?
-                  'Free Roam Mode: Randomly practice all your questions'
-                : `Custom Set Mode: Practice the ${filteredQuestions.length} selected questions`
-              }
-              side='left'
-              delay={100}
-            >
+      {questions.length > 0 &&
+        !hasChanges &&
+        (!isSelectionMode || selectedPracticeQuestions.length > 0) && (
+          <div className='absolute bottom-4 right-4 z-20 animate-in slide-in-from-bottom-8 fade-in duration-300'>
+            {isPracticeLoading || isLoading ?
               <button
-                onClick={handleStartPractice}
-                className='flex items-center gap-2 pl-4 pr-6 py-4 bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-full shadow-xl shadow-primary/30 transition-transform hover:-translate-y-1 active:translate-y-0'
+                disabled
+                className='flex items-center gap-2 pl-4 pr-6 py-4 bg-primary/80 text-primary-foreground font-bold rounded-full shadow-xl shadow-primary/30 opacity-90 cursor-not-allowed'
               >
-                <PlayCircle className='w-5 h-5 mr-3' />
-                {filteredQuestions.length === questions.length ?
-                  'Start Practice (All)'
-                : `Practice (${filteredQuestions.length} Selected)`}
+                <Loader2 className='w-5 h-5 mr-3 animate-spin' />
+                Practice (Calculating...)
               </button>
-            </Tooltip>
-          )}
-        </div>
-      )}
+            : practiceQuestions.length > 0 && (
+                <Tooltip
+                  content={
+                    shouldStartCustomPractice ?
+                      selectedPracticeQuestions.length > 0 ?
+                        `Custom Set Mode: Practice the ${selectedPracticeQuestions.length} selected questions`
+                      : `Custom Set Mode: Practice the ${totalFilteredCount} filtered questions`
+
+                    : 'Free Roam Mode: Randomly practice all your questions'
+                  }
+                  side='left'
+                  delay={100}
+                >
+                  <button
+                    onClick={handleStartPractice}
+                    className='flex items-center gap-2 pl-4 pr-6 py-4 bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-full shadow-xl shadow-primary/30 transition-transform hover:-translate-y-1 active:translate-y-0'
+                  >
+                    <PlayCircle className='w-5 h-5 mr-3' />
+                    {shouldStartCustomPractice ?
+                      selectedPracticeQuestions.length > 0 ?
+                        `Practice (${selectedPracticeQuestions.length} Selected)`
+                      : `Practice (${totalFilteredCount} Filtered)`
+                    : 'Start Practice (All)'}
+                  </button>
+                </Tooltip>
+              )
+            }
+          </div>
+        )}
       {/* Custom Collection Creation & Edit Modal */}
       {isCollectionModalOpen && (
         <CollectionFormModal
           collection={collectionToEdit}
           defaultStatus='draft'
+          categories={categories}
           onSave={async (payload) => {
             try {
               if (collectionToEdit) {
@@ -1274,19 +1644,18 @@ export default function QuestionsLibraryPage() {
 
 function QuestionListSkeleton() {
   return (
-    <div className='flex flex-col gap-3 p-4 animate-pulse'>
-      {Array.from({ length: 5 }).map((_, i) => (
+    <div className='flex flex-col gap-3 p-4 animate-text-shimmer-primary animate-text-shimmer'>
+      {Array.from({ length: 25 }).map((_, i) => (
         <div
           key={i}
-          className='grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,0.8fr)_minmax(0,0.8fr)_minmax(0,0.8fr)_minmax(0,2.5fr)] items-center py-4 border-b border-border/50'
+          className='grid grid-cols-[minmax(0,3.2fr)_minmax(0,0.9fr)_minmax(0,2.2fr)_minmax(0,1fr)_minmax(0,0.8fr)_88px] items-center py-4 border-b border-border/50'
         >
-          <div className='h-4 bg-panel rounded w-2/3'></div>
-          <div className='h-4 bg-panel rounded w-1/2'></div>
-          <div className='h-4 bg-panel rounded w-1/3'></div>
-          <div className='h-4 bg-panel rounded w-1/4'></div>
-          <div className='h-4 bg-panel rounded w-1/4'></div>
-          <div className='h-4 bg-panel rounded w-1/4'></div>
-          <div className='h-4 bg-panel rounded w-3/4'></div>
+          <div className='h-4 bg-muted rounded w-3/4'></div>
+          <div className='h-4 bg-muted rounded w-1/2'></div>
+          <div className='h-4 bg-muted rounded w-2/3'></div>
+          <div className='h-4 bg-muted rounded w-1/2'></div>
+          <div className='h-4 bg-muted rounded w-1/3'></div>
+          <div className='h-4 bg-muted rounded w-full'></div>
         </div>
       ))}
     </div>

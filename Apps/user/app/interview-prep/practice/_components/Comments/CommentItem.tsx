@@ -57,9 +57,10 @@ export function CommentItem({
   idPrefix?: string;
 }) {
   const { profile, updateProfileExtra } = useConsole();
-  const savedCommentIds = Array.isArray(profile.extra_data?.['saved-comment-ids']) ?
-    (profile.extra_data['saved-comment-ids'] as string[])
-  : [];
+  const savedCommentIds =
+    Array.isArray(profile.extra_data?.['saved-comment-ids']) ?
+      (profile.extra_data['saved-comment-ids'] as string[])
+    : [];
   const relativeTime = useRelativeTime(comment.created_at);
   const [visibleRepliesCount, setVisibleRepliesCount] = useState(3);
   const [isLoadingMoreReplies, setIsLoadingMoreReplies] = useState(false);
@@ -128,7 +129,7 @@ export function CommentItem({
     >
       <div
         className={cn(
-          'group flex p-2 rounded-tl-2xl! rounded-xl',
+          'group flex p-2 rounded-tl-2xl! rounded-xl hover:bg-primary/5',
           isHighlighted && 'bg-primary/15',
         )}
       >
@@ -148,7 +149,7 @@ export function CommentItem({
                 <span
                   className={cn(
                     'rounded-full px-1.5 border-1 py-0.5 text-[6px] font-extrabold uppercase tracking-wide',
-                    comment.author_badge === 'Author' ?
+                    comment.author_badge === 'Contributor' ?
                       ' border-rose-500 text-rose-600'
                     : comment.author_badge === 'Admin' ?
                       ' border-info text-info'

@@ -4,8 +4,8 @@ import random
 import re
 from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, Response, status, UploadFile, File, BackgroundTasks, Query
-from sqlalchemy import delete, select, func, or_
-from sqlalchemy.orm import Session, joinedload, selectinload, object_session
+from sqlalchemy import delete, select, func, or_, exists, text, update
+from sqlalchemy.orm import Session, aliased, joinedload, selectinload, object_session
 from sqlalchemy.orm.attributes import flag_modified
 from pydantic import BaseModel
 
@@ -15,7 +15,13 @@ from services.shared.settings import get_settings
 from services.shared.storage import StorageError, get_object_storage
 from services.shared.media import MediaError, optimize_image_to_webp
 from services.shared.realtime import broadcast_sync
+from services.shared.time_utils import ensure_utc_datetime, parse_datetime_to_utc
 from services.shared.deepseek import DeepSeekError, evaluate_practice_answer, generate_question_metadata, generate_reference_answer, sanitize_ai_output
+from services.shared.speech_to_text import (
+    SpeechTranscriptionError,
+    SpeechTranscriptionUnavailableError,
+    transcribe_audio_bytes,
+)
 from services.shared.models import (
     User,
     UserProfile,
@@ -68,6 +74,7 @@ from services.shared.schemas import (
     InterviewQuestionCreate,
     InterviewQuestionUpdate,
     InterviewQuestionRead,
+    PaginatedInterviewQuestionsRead,
     InterviewCategoryBase,
     InterviewCategoryRead,
     InterviewTagBase,
@@ -123,6 +130,7 @@ from services.shared.schemas import (
     QuestionCommentReportCreate,
     AnswerUnlockRead,
     PracticeEvaluationRead,
+    PracticeTranscriptionRead,
 )
 
 class WelcomeBonusResponse(BaseModel):
@@ -130,6 +138,24 @@ class WelcomeBonusResponse(BaseModel):
     coins_earned: int
 
 router = APIRouter(prefix="/api/interview", tags=["Interview Practice"])
+
+SUPPORTED_AUDIO_CONTENT_TYPES = {"audio/webm", "audio/ogg", "audio/mp4"}
+
+
+def _read_uploaded_audio(file: UploadFile) -> tuple[bytes, str]:
+    raw_content_type = (file.content_type or "audio/webm").lower()
+    content_type = raw_content_type.split(";", 1)[0].strip()
+    if content_type not in SUPPORTED_AUDIO_CONTENT_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail="Use a WebM, OGG, or MP4 audio recording",
+        )
+    content = file.file.read()
+    if not content:
+        raise HTTPException(status_code=400, detail="Audio file is empty")
+    if len(content) > get_settings().audio_upload_max_bytes:
+        raise HTTPException(status_code=400, detail="Audio recording is too large")
+    return content, content_type
 
 # --- Constants & Configs ---
 QUESTION_SET_CREATOR_REVENUE_SHARE = 0.3
@@ -179,7 +205,7 @@ DEFAULT_COLLECTION_SEEDS = [
         "slug": "community-favorites",
         "description": "A small community-style collection to demonstrate the flow.",
         "collection_type": "community",
-        "theme": "Experience",
+        "theme": "Project",
         "price_coins": 25,
         "questions": [
             {
@@ -230,6 +256,35 @@ DEFAULT_GAMIFICATION_CONFIG = {
     "welcome_bonus_xp": 50,
     "welcome_bonus_loot_boxes": 1,
     "celebration_config": None,
+    "question_recommendations": {
+        "base_score": 1.0,
+        "view_weight": 0.08,
+        "practice_weight": 1.2,
+        "favorite_weight": 1.6,
+        "upvote_weight": 1.3,
+        "downvote_weight": 1.5,
+        "interview_weight": 3.0,
+        "company_weight": 1.2,
+        "comment_weight": 0.35,
+        "quality_weight": 2.0,
+        "freshness_half_life_days": 45,
+        "weekly_window_days": 7,
+        "weekly_half_life_days": 4,
+        "monthly_window_days": 30,
+        "monthly_half_life_days": 16,
+        "seasonal_window_days": 90,
+        "seasonal_half_life_days": 45,
+        "for_you_candidate_limit": 160,
+        "for_you_result_limit": 40,
+        "for_you_category_weight": 4.0,
+        "for_you_tag_weight": 2.5,
+        "for_you_company_weight": 2.0,
+        "for_you_unseen_bonus": 2.0,
+        "for_you_practiced_penalty": 1.4,
+        "for_you_hot_weight": 0.8,
+        "for_you_freshness_weight": 0.6,
+        "for_you_freshness_half_life_days": 30,
+    },
 }
 
 
@@ -383,6 +438,50 @@ def get_gamification_config(db: Session) -> GamificationConfig:
             db.commit()
             db.refresh(config_obj)
     return config_obj
+
+
+def get_question_recommendation_config(db: Session) -> dict[str, float]:
+    defaults = DEFAULT_GAMIFICATION_CONFIG["question_recommendations"]
+    configured = get_gamification_config(db).config.get(
+        "question_recommendations",
+        {},
+    )
+    return {
+        key: float(configured.get(key, value))
+        for key, value in defaults.items()
+    }
+
+
+def calculate_question_hot_score(
+    metrics: QuestionMetrics,
+    config: dict[str, float],
+) -> float:
+    quality_signals = [
+        float(value)
+        for value in (
+            metrics.blended_importance_score,
+            metrics.blended_frequency_score,
+        )
+        if value is not None
+    ]
+    quality_score = (
+        sum(quality_signals) / len(quality_signals)
+        if quality_signals
+        else 0.0
+    )
+    score = (
+        config["base_score"]
+        + math.log1p(metrics.view_count) * config["view_weight"]
+        + math.log1p(metrics.practice_count) * config["practice_weight"]
+        + math.log1p(metrics.favorite_count) * config["favorite_weight"]
+        + math.log1p(metrics.upvote_count) * config["upvote_weight"]
+        - math.log1p(metrics.downvote_count) * config["downvote_weight"]
+        + math.log1p(metrics.seen_in_interview_count) * config["interview_weight"]
+        + math.log1p(metrics.company_count) * config["company_weight"]
+        + math.log1p(metrics.comment_count) * config["comment_weight"]
+        + quality_score * config["quality_weight"]
+    )
+    return round(max(0.0, score), 4)
 
 
 def add_economy_transactions(
@@ -796,6 +895,8 @@ def to_question_read(
         "seen_in_interview_count": metrics_obj.seen_in_interview_count if metrics_obj else 0,
         "comment_count": getattr(metrics_obj, "comment_count", 0) if metrics_obj else 0,
         "practice_count": metrics_obj.practice_count if metrics_obj else 0,
+        "hot_score": float(metrics_obj.hot_score) if metrics_obj else 1.0,
+        "top_companies": metrics_obj.top_companies if metrics_obj else [],
     }
 
     return {
@@ -824,13 +925,7 @@ def to_question_read(
         "created_at": user_q.created_at,
         "updated_at": user_q.updated_at,
         "metrics": metrics_dict,
-        "category": {
-            "id": user_q.category.id,
-            "user_id": user_q.category.user_id,
-            "name": user_q.category.name,
-            "created_at": user_q.category.created_at,
-            "updated_at": user_q.category.updated_at,
-        } if user_q.category else None,
+        "category": category_to_read(user_q.category) if user_q.category else None,
         "tags": [
             {
                 "id": t.id,
@@ -850,6 +945,101 @@ def to_question_read(
             }
             for company in (q.companies or [])
         ],
+    }
+
+
+def clean_category_name(value: str | None) -> str:
+    if not value:
+        return ""
+    cleaned = re.sub(r"^\s*\d+\s*[\.\)_:-]?\s*", "", value).strip()
+    cleaned = re.sub(r"\s+", " ", cleaned)
+    return category_metadata_for_name(cleaned)["display_name"]
+
+
+SYSTEM_CATEGORY_DEFINITIONS = {
+    "about you": {
+        "slug": "about_you",
+        "display_name": "About You",
+        "icon_key": "user-round",
+        "sort_order": 10,
+    },
+    "behaviour": {
+        "slug": "behaviour",
+        "display_name": "Behaviour",
+        "icon_key": "message-circle",
+        "sort_order": 20,
+    },
+    "behavior": {
+        "slug": "behaviour",
+        "display_name": "Behaviour",
+        "icon_key": "message-circle",
+        "sort_order": 20,
+    },
+    "experience": {
+        "slug": "project",
+        "display_name": "Project",
+        "icon_key": "briefcase-business",
+        "sort_order": 30,
+    },
+    "project": {
+        "slug": "project",
+        "display_name": "Project",
+        "icon_key": "briefcase-business",
+        "sort_order": 30,
+    },
+    "role specific": {
+        "slug": "role_specific",
+        "display_name": "Role-specific",
+        "icon_key": "gem",
+        "sort_order": 40,
+    },
+    "company": {
+        "slug": "company",
+        "display_name": "Company",
+        "icon_key": "building-2",
+        "sort_order": 50,
+    },
+}
+
+
+def slugify_category(value: str) -> str:
+    slug = re.sub(r"[^a-z0-9]+", "_", value.casefold()).strip("_")
+    return slug or "custom"
+
+
+def category_metadata_for_name(value: str | None) -> dict:
+    cleaned = re.sub(r"^\s*\d+\s*[\.\)_:-]?\s*", "", value or "").strip()
+    cleaned = re.sub(r"\s+", " ", cleaned)
+    normalized = cleaned.casefold().replace("_", " ").replace("-", " ")
+    normalized = re.sub(r"\s+", " ", normalized).strip()
+    system_definition = SYSTEM_CATEGORY_DEFINITIONS.get(normalized)
+    if system_definition:
+        return {**system_definition, "is_system": True}
+    display_name = cleaned or "General"
+    return {
+        "slug": slugify_category(display_name),
+        "display_name": display_name,
+        "icon_key": "folder",
+        "sort_order": 100,
+        "is_system": False,
+    }
+
+
+def category_to_read(category: InterviewCategory | None) -> dict | None:
+    if not category:
+        return None
+    return {
+        "id": category.id,
+        "user_id": category.user_id,
+        "name": category.display_name or clean_category_name(category.name),
+        "slug": category.slug,
+        "display_name": category.display_name or clean_category_name(category.name),
+        "icon_key": category.icon_key,
+        "sort_order": category.sort_order,
+        "is_system": category.is_system,
+        "question_count": getattr(category, "question_count", 0),
+        "created_at": category.created_at,
+        "updated_at": category.updated_at,
     }
 
 
@@ -874,6 +1064,8 @@ def to_public_question_read(question: InterviewQuestion, current_user: User) -> 
         "seen_in_interview_count": metrics_obj.seen_in_interview_count if metrics_obj else 0,
         "comment_count": getattr(metrics_obj, "comment_count", 0) if metrics_obj else 0,
         "practice_count": metrics_obj.practice_count if metrics_obj else 0,
+        "hot_score": float(metrics_obj.hot_score) if metrics_obj else 1.0,
+        "top_companies": metrics_obj.top_companies if metrics_obj else [],
     }
 
     return {
@@ -902,7 +1094,7 @@ def to_public_question_read(question: InterviewQuestion, current_user: User) -> 
         "created_at": question.created_at,
         "updated_at": question.updated_at,
         "metrics": metrics_dict,
-        "category": question.category,
+        "category": category_to_read(question.category),
         "tags": question.tags,
         "companies": question.companies,
     }
@@ -983,7 +1175,7 @@ def sync_question_answers(db: Session, question: InterviewQuestion) -> None:
     desired = {
         "answer_objective": {
             "answer_type": "reference",
-            "title": "Author Reference Answer",
+            "title": "Contributor Reference Answer",
             "body": (question.answer_objective or "").strip(),
         },
         "sample_answer": {
@@ -1076,10 +1268,9 @@ def refresh_question_metrics(db: Session, question_id: UUID) -> QuestionMetrics:
     ).all()
     company_counts: dict[str, tuple[str, int]] = {}
     for report in reports:
-        if not report.company or not report.company.strip():
-            continue
-        key = report.company.strip().casefold()
-        display, count = company_counts.get(key, (report.company.strip(), 0))
+        company_name = report.company.strip() if report.company else "Anonymous Company"
+        key = company_name.casefold()
+        display, count = company_counts.get(key, (company_name, 0))
         company_counts[key] = (display, count + 1)
     top_companies = [
         {"name": display, "count": count}
@@ -1155,6 +1346,10 @@ def refresh_question_metrics(db: Session, question_id: UUID) -> QuestionMetrics:
         )
         if author_importance_score is not None and community_importance is not None
         else author_importance_score
+    )
+    metrics.hot_score = calculate_question_hot_score(
+        metrics,
+        get_question_recommendation_config(db),
     )
     metrics.last_aggregated_at = datetime.now(timezone.utc)
     return metrics
@@ -1289,6 +1484,8 @@ def question_to_collection_summary(db: Session, collection: InterviewCollection,
         "status": collection.status,
         "creator_user_id": collection.creator_user_id,
         "last_updated_at": collection.last_updated_at,
+        "created_at": collection.created_at,
+        "updated_at": collection.updated_at,
         "library_adds": library_adds,
         "question_count": question_count,
         "user_active_question_count": user_active_question_count,
@@ -1403,6 +1600,52 @@ def apply_application_gamification_events(
 
 router = APIRouter(prefix="/api/interview", tags=["Interview Practice"])
 
+
+def normalize_user_categories(db: Session, user_id: UUID) -> bool:
+    categories = db.scalars(
+        select(InterviewCategory).where(InterviewCategory.user_id == user_id)
+    ).all()
+    categories_by_name: dict[str, InterviewCategory] = {}
+    changed = False
+
+    for category in categories:
+        metadata = category_metadata_for_name(category.display_name or category.name)
+        if not metadata["display_name"]:
+            continue
+        key = metadata["slug"]
+        existing = categories_by_name.get(key)
+        if existing and existing.id != category.id:
+            db.execute(
+                update(UserQuestion)
+                .where(UserQuestion.category_id == category.id)
+                .values(category_id=existing.id)
+            )
+            db.execute(
+                update(InterviewQuestion)
+                .where(InterviewQuestion.category_id == category.id)
+                .values(category_id=existing.id)
+            )
+            db.delete(category)
+            changed = True
+            continue
+
+        categories_by_name[key] = category
+        desired_values = {
+            "name": metadata["display_name"],
+            "display_name": metadata["display_name"],
+            "slug": metadata["slug"],
+            "icon_key": metadata["icon_key"] if metadata["is_system"] else (category.icon_key or metadata["icon_key"]),
+            "sort_order": metadata["sort_order"],
+            "is_system": metadata["is_system"],
+        }
+        for field, value in desired_values.items():
+            if getattr(category, field) != value:
+                setattr(category, field, value)
+                changed = True
+
+    return changed
+
+
 # Categories
 @router.get("/categories", response_model=list[InterviewCategoryRead])
 def list_categories(
@@ -1423,21 +1666,117 @@ def list_categories(
             db.delete(cat)
         db.commit()
 
+    if normalize_user_categories(db, current_user.id):
+        db.commit()
+
+    # Rename the legacy category without losing a user's assignments. If a
+    # Project category already exists, merge Experience into that category.
+    experience_categories = db.scalars(
+        select(InterviewCategory).where(
+            InterviewCategory.user_id == current_user.id,
+            func.lower(InterviewCategory.name) == "experience",
+        )
+    ).all()
+    if experience_categories:
+        project_category = db.scalar(
+            select(InterviewCategory).where(
+                InterviewCategory.user_id == current_user.id,
+                func.lower(InterviewCategory.name) == "project",
+            )
+        )
+        if not project_category:
+            metadata = category_metadata_for_name("Project")
+            project_category = InterviewCategory(
+                user_id=current_user.id,
+                name=metadata["display_name"],
+                display_name=metadata["display_name"],
+                slug=metadata["slug"],
+                icon_key=metadata["icon_key"],
+                sort_order=metadata["sort_order"],
+                is_system=metadata["is_system"],
+            )
+            db.add(project_category)
+            db.flush()
+        for category in experience_categories:
+            db.execute(
+                update(UserQuestion)
+                .where(UserQuestion.category_id == category.id)
+                .values(category_id=project_category.id)
+            )
+            db.execute(
+                update(InterviewQuestion)
+                .where(InterviewQuestion.category_id == category.id)
+                .values(category_id=project_category.id)
+            )
+            db.delete(category)
+        db.commit()
+
     categories = db.scalars(select(InterviewCategory).where(InterviewCategory.user_id == current_user.id)).all()
     if not categories:
         default_categories = [
             "About You",
-            "Experience",
+            "Project",
             "Behaviour",
             "Role-specific",
             "Company",
         ]
         for name in default_categories:
-            cat = InterviewCategory(user_id=current_user.id, name=name)
+            metadata = category_metadata_for_name(name)
+            cat = InterviewCategory(
+                user_id=current_user.id,
+                name=metadata["display_name"],
+                display_name=metadata["display_name"],
+                slug=metadata["slug"],
+                icon_key=metadata["icon_key"],
+                sort_order=metadata["sort_order"],
+                is_system=metadata["is_system"],
+            )
             db.add(cat)
         db.commit()
         categories = db.scalars(select(InterviewCategory).where(InterviewCategory.user_id == current_user.id)).all()
-    return categories
+
+    subscribed_ids = list(db.scalars(library_question_ids_query(current_user)).all())
+    saved_ids = list(db.scalars(
+        select(UserQuestion.question_id)
+        .join(InterviewQuestion, InterviewQuestion.id == UserQuestion.question_id)
+        .where(
+            UserQuestion.user_id == current_user.id,
+            UserQuestion.is_saved.is_(True),
+            InterviewQuestion.status == "published",
+        )
+    ).all())
+    visible_ids = list(dict.fromkeys([*saved_ids, *subscribed_ids]))
+
+    counts_map = {}
+    if visible_ids:
+        rows = db.execute(
+            select(UserQuestion.category_id, func.count(UserQuestion.id))
+            .join(InterviewQuestion, InterviewQuestion.id == UserQuestion.question_id)
+            .where(
+                UserQuestion.user_id == current_user.id,
+                UserQuestion.question_id.in_(visible_ids),
+                InterviewQuestion.status == "published",
+            )
+            .group_by(UserQuestion.category_id)
+        ).all()
+        counts_map = {cat_id: count for cat_id, count in rows if cat_id is not None}
+
+    return [
+        {
+            "id": cat.id,
+            "user_id": cat.user_id,
+            "name": cat.display_name or clean_category_name(cat.name),
+            "slug": cat.slug,
+            "display_name": cat.display_name or clean_category_name(cat.name),
+            "icon_key": cat.icon_key,
+            "sort_order": cat.sort_order,
+            "is_system": cat.is_system,
+            "question_count": counts_map.get(cat.id, 0),
+            "created_at": cat.created_at,
+            "updated_at": cat.updated_at,
+        }
+        for cat in sorted(categories, key=lambda item: (item.sort_order, item.display_name or item.name))
+    ]
 
 @router.post("/categories", response_model=InterviewCategoryRead, status_code=status.HTTP_201_CREATED)
 def create_category(
@@ -1445,7 +1784,16 @@ def create_category(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_or_create_current_user),
 ):
-    category = InterviewCategory(user_id=current_user.id, name=payload.name)
+    metadata = category_metadata_for_name(payload.name)
+    category = InterviewCategory(
+        user_id=current_user.id,
+        name=metadata["display_name"],
+        display_name=metadata["display_name"],
+        slug=metadata["slug"],
+        icon_key=payload.icon_key or metadata["icon_key"],
+        sort_order=payload.sort_order if payload.sort_order is not None else metadata["sort_order"],
+        is_system=metadata["is_system"],
+    )
     db.add(category)
     db.commit()
     db.refresh(category)
@@ -1478,7 +1826,7 @@ def apply_ai_question_metadata(
     current_user: User,
     metadata: dict,
 ) -> None:
-    """Use AI analysis as the canonical question-level metadata."""
+    """Safely fill missing metadata and merge tags without overwriting existing edits."""
     metadata = metadata if isinstance(metadata, dict) else {}
     existing_metadata = question.ai_metadata if isinstance(question.ai_metadata, dict) else {}
     raw_tags = metadata.get("tags", existing_metadata.get("tags", []))
@@ -1491,6 +1839,13 @@ def apply_ai_question_metadata(
         metadata.get("difficulty", existing_metadata.get("difficulty", question.difficulty or "medium")),
     ).strip().lower()
     difficulty = raw_difficulty if raw_difficulty in {"easy", "medium", "hard"} else "medium"
+    raw_frequency = str(
+        metadata.get(
+            "frequency",
+            existing_metadata.get("frequency", question.author_frequency or question.frequency or "medium"),
+        ),
+    ).strip().lower()
+    frequency = raw_frequency.title() if raw_frequency in {"low", "medium", "high"} else "Medium"
     try:
         estimated_duration = max(
             30,
@@ -1528,14 +1883,21 @@ def apply_ai_question_metadata(
         "tags": tags[:3],
         "importance_score": importance_score,
         "difficulty": difficulty,
+        "frequency": frequency,
         "estimated_duration": estimated_duration,
         "generated_at": metadata.get("generated_at") or datetime.now(timezone.utc).isoformat(),
     }
     question.ai_metadata = metadata
-    question.difficulty = metadata["difficulty"].title()
-    question.estimated_duration_seconds = metadata["estimated_duration"]
-    question.importance_score = metadata["importance_score"]
-    question.author_importance_score = metadata["importance_score"]
+    if not question.difficulty:
+        question.difficulty = metadata["difficulty"].title()
+    if not question.estimated_duration_seconds:
+        question.estimated_duration_seconds = metadata["estimated_duration"]
+    if not question.author_frequency and not question.frequency:
+        question.author_frequency = metadata["frequency"]
+        question.frequency = metadata["frequency"]
+    if question.author_importance_score is None and question.importance_score is None:
+        question.importance_score = metadata["importance_score"]
+        question.author_importance_score = metadata["importance_score"]
 
     user_question = db.scalar(
         select(UserQuestion)
@@ -1547,7 +1909,10 @@ def apply_ai_question_metadata(
     )
     if not user_question:
         return
-    user_question.importance_score = metadata["importance_score"]
+    if not user_question.frequency:
+        user_question.frequency = metadata["frequency"]
+    if user_question.importance_score is None:
+        user_question.importance_score = metadata["importance_score"]
     if not tags:
         return
 
@@ -1586,6 +1951,8 @@ def sync_question_metadata_from_ai_answer(
     metadata: dict = {}
     if isinstance(content.get("difficulty"), str):
         metadata["difficulty"] = content["difficulty"]
+    if isinstance(content.get("frequency"), str):
+        metadata["frequency"] = content["frequency"]
     if isinstance(content.get("estimated_duration"), (int, float, str)):
         metadata["estimated_duration"] = content["estimated_duration"]
     if isinstance(content.get("tags"), list):
@@ -1596,11 +1963,17 @@ def sync_question_metadata_from_ai_answer(
         apply_ai_question_metadata(db, question, current_user, metadata)
 
 # Questions
-@router.get("/questions", response_model=list[InterviewQuestionRead])
+@router.get("/questions", response_model=PaginatedInterviewQuestionsRead)
 def list_questions(
     limit: int = Query(default=0, ge=0, le=200),
     offset: int = Query(default=0, ge=0),
     category_id: str | None = None,
+    category_ids: list[str] | None = Query(default=None),
+    collection_ids: list[str] | None = Query(default=None),
+    tag_ids: list[str] | None = Query(default=None),
+    importance_scores: list[int] | None = Query(default=None),
+    frequencies: list[str] | None = Query(default=None),
+    question_ids: list[str] | None = Query(default=None),
     search: str | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_or_create_current_user),
@@ -1619,7 +1992,7 @@ def list_questions(
     visible_question_ids = list(dict.fromkeys([*saved_question_ids, *subscribed_question_ids]))
 
     if not visible_question_ids:
-        return []
+        return {"items": [], "total": 0, "has_more": False, "next_offset": None}
 
     existing_state_ids = set(db.scalars(
         select(UserQuestion.question_id)
@@ -1655,16 +2028,71 @@ def list_questions(
         .where(InterviewQuestion.status == "published")
     )
 
-    if category_id:
-        if category_id == "uncategorized":
-            query = query.where(UserQuestion.category_id.is_(None))
-        else:
-            query = query.where(UserQuestion.category_id == category_id)
+    normalized_category_ids = [value for value in (category_ids or []) if value]
+    if category_id and category_id not in normalized_category_ids:
+        normalized_category_ids.append(category_id)
+
+    if normalized_category_ids:
+        include_uncategorized = "uncategorized" in normalized_category_ids
+        concrete_category_ids = [value for value in normalized_category_ids if value != "uncategorized"]
+        category_conditions = []
+        if concrete_category_ids:
+            category_conditions.append(UserQuestion.category_id.in_(concrete_category_ids))
+        if include_uncategorized:
+            category_conditions.append(UserQuestion.category_id.is_(None))
+        if category_conditions:
+            query = query.where(or_(*category_conditions))
+
+    normalized_collection_ids = [value for value in (collection_ids or []) if value]
+    if normalized_collection_ids:
+        query = query.where(
+            exists(
+                select(1)
+                .select_from(InterviewCollectionQuestion)
+                .join(UserCollection, UserCollection.collection_id == InterviewCollectionQuestion.collection_id)
+                .where(
+                    InterviewCollectionQuestion.question_id == UserQuestion.question_id,
+                    InterviewCollectionQuestion.collection_id.in_(normalized_collection_ids),
+                    UserCollection.user_id == current_user.id,
+                    UserCollection.removed_at.is_(None),
+                    UserCollection.is_active.is_(True),
+                )
+            )
+        )
+
+    normalized_tag_ids = [value for value in (tag_ids or []) if value]
+    if normalized_tag_ids:
+        query = query.where(
+            exists(
+                select(1).where(
+                    UserQuestionTagAssociation.user_question_id == UserQuestion.id,
+                    UserQuestionTagAssociation.tag_id.in_(normalized_tag_ids),
+                )
+            )
+        )
+
+    if importance_scores:
+        query = query.where(UserQuestion.importance_score.in_(importance_scores))
+
+    normalized_frequencies = [value for value in (frequencies or []) if value]
+    if normalized_frequencies:
+        query = query.where(UserQuestion.frequency.in_(normalized_frequencies))
+
+    normalized_question_ids = [value for value in (question_ids or []) if value]
+    if normalized_question_ids:
+        query = query.where(UserQuestion.question_id.in_(normalized_question_ids))
 
     if search and search.strip():
         query = query.where(InterviewQuestion.title.ilike(f"%{search.strip()}%"))
 
-    query = query.order_by(UserQuestion.saved_at.desc().nullslast(), UserQuestion.created_at.desc())
+    # Calculate total matching count before pagination
+    total_count = db.scalar(select(func.count()).select_from(query.order_by(None).subquery())) or 0
+
+    query = query.order_by(
+        UserQuestion.saved_at.desc().nullslast(),
+        UserQuestion.created_at.desc(),
+        UserQuestion.id.desc(),
+    )
 
     if limit > 0:
         query = query.offset(offset).limit(limit)
@@ -1675,12 +2103,22 @@ def list_questions(
         current_user.id,
         [uq.question_id for uq in user_questions],
     )
-    return [to_question_read(uq, current_user, collection_ids.get(uq.question_id, [])) for uq in user_questions]
+    items = [to_question_read(uq, current_user, collection_ids.get(uq.question_id, [])) for uq in user_questions]
+    has_more = (offset + len(items)) < total_count if limit > 0 else False
+    next_offset = (offset + len(items)) if has_more else None
+
+    return {
+        "items": items,
+        "total": total_count,
+        "has_more": has_more,
+        "next_offset": next_offset,
+    }
 
 
 @router.get("/questions/search/global", response_model=list[InterviewQuestionRead])
 def search_global_questions(
     q: str,
+    sort: str = "hot",
     db: Session = Depends(get_db),
     current_user: User = Depends(get_or_create_current_user),
 ):
@@ -1698,18 +2136,307 @@ def search_global_questions(
     )
     if clean_query:
         stmt = stmt.where(InterviewQuestion.title.ilike(f"%{clean_query}%"))
-    questions = db.scalars(
-        stmt
-        .outerjoin(QuestionMetrics, QuestionMetrics.question_id == InterviewQuestion.id)
-        .order_by(
+    query = stmt.outerjoin(
+        QuestionMetrics,
+        QuestionMetrics.question_id == InterviewQuestion.id,
+    )
+    if sort == "newest":
+        query = query.order_by(InterviewQuestion.created_at.desc())
+    elif sort in {"hot", "week", "month", "season"}:
+        config = get_question_recommendation_config(db)
+        activity_at = func.coalesce(
+            QuestionMetrics.updated_at,
+            QuestionMetrics.last_aggregated_at,
+            InterviewQuestion.created_at,
+        )
+        if sort == "week":
+            window_days = config["weekly_window_days"]
+            half_life_days = config["weekly_half_life_days"]
+            window_start = datetime.now(timezone.utc) - timedelta(
+                days=window_days,
+            )
+            query = query.where(
+                or_(
+                    InterviewQuestion.created_at >= window_start,
+                    activity_at >= window_start,
+                )
+            )
+        elif sort == "month":
+            window_days = config["monthly_window_days"]
+            half_life_days = config["monthly_half_life_days"]
+            window_start = datetime.now(timezone.utc) - timedelta(
+                days=window_days,
+            )
+            query = query.where(
+                or_(
+                    InterviewQuestion.created_at >= window_start,
+                    activity_at >= window_start,
+                )
+            )
+        elif sort == "season":
+            window_days = config["seasonal_window_days"]
+            half_life_days = config["seasonal_half_life_days"]
+            window_start = datetime.now(timezone.utc) - timedelta(
+                days=window_days,
+            )
+            query = query.where(
+                or_(
+                    InterviewQuestion.created_at >= window_start,
+                    activity_at >= window_start,
+                )
+            )
+        else:
+            half_life_days = config["freshness_half_life_days"]
+        age_days = func.extract(
+            "epoch",
+            func.now() - activity_at,
+        ) / 86400.0
+        ranking_score = (
+            func.coalesce(QuestionMetrics.hot_score, config["base_score"])
+            * func.exp(-age_days / half_life_days)
+        )
+        query = query.order_by(
+            ranking_score.desc(),
+            InterviewQuestion.created_at.desc(),
+        )
+    else:
+        query = query.order_by(
             func.coalesce(QuestionMetrics.practice_count, 0).desc(),
             func.coalesce(QuestionMetrics.favorite_count, 0).desc(),
             InterviewQuestion.created_at.desc(),
         )
-        .limit(result_limit * 4)
-    ).all()
+    questions = db.scalars(query.limit(result_limit * 4)).all()
     questions = dedupe_public_questions(questions, current_user, db, result_limit)
     return [to_public_question_read(question, current_user) for question in questions]
+
+
+def _add_affinity(
+    affinities: dict[UUID, float],
+    key: UUID | None,
+    weight: float,
+) -> None:
+    if key is not None:
+        affinities[key] = affinities.get(key, 0.0) + weight
+
+
+def _normalise_affinities(affinities: dict[UUID, float]) -> dict[UUID, float]:
+    if not affinities:
+        return {}
+    maximum = max(affinities.values())
+    if maximum <= 0:
+        return {}
+    return {key: value / maximum for key, value in affinities.items()}
+
+
+def get_user_question_affinities(
+    db: Session,
+    current_user: User,
+) -> tuple[dict[UUID, float], dict[UUID, float], dict[UUID, float]]:
+    states = db.scalars(
+        select(UserQuestion)
+        .options(
+            joinedload(UserQuestion.question)
+            .joinedload(InterviewQuestion.category),
+            joinedload(UserQuestion.question)
+            .selectinload(InterviewQuestion.tags),
+            joinedload(UserQuestion.question)
+            .selectinload(InterviewQuestion.companies),
+            selectinload(UserQuestion.tags),
+        )
+        .where(
+            UserQuestion.user_id == current_user.id,
+            or_(
+                UserQuestion.is_saved.is_(True),
+                UserQuestion.is_favorited.is_(True),
+                UserQuestion.practice_count > 0,
+            ),
+        )
+    ).all()
+
+    category_affinities: dict[UUID, float] = {}
+    tag_affinities: dict[UUID, float] = {}
+    company_affinities: dict[UUID, float] = {}
+    for state in states:
+        question = state.question
+        if not question or question.status != "published":
+            continue
+        signal = (
+            1.0
+            + math.log1p(state.practice_count) * 1.4
+            + (1.5 if state.is_favorited else 0.0)
+            + (0.5 if state.is_saved else 0.0)
+        )
+        _add_affinity(
+            category_affinities,
+            state.category_id or question.category_id,
+            signal,
+        )
+        for tag in [*state.tags, *(question.tags or [])]:
+            _add_affinity(tag_affinities, tag.id, signal)
+        for company in question.companies or []:
+            _add_affinity(company_affinities, company.id, signal)
+
+    return (
+        _normalise_affinities(category_affinities),
+        _normalise_affinities(tag_affinities),
+        _normalise_affinities(company_affinities),
+    )
+
+
+@router.get("/recommendations/for-you", response_model=list[InterviewQuestionRead])
+def list_for_you_questions(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_or_create_current_user),
+):
+    config = get_question_recommendation_config(db)
+    candidate_limit = int(config["for_you_candidate_limit"])
+    result_limit = int(config["for_you_result_limit"])
+    category_affinities, tag_affinities, company_affinities = (
+        get_user_question_affinities(db, current_user)
+    )
+
+    activity_at = func.coalesce(
+        QuestionMetrics.updated_at,
+        QuestionMetrics.last_aggregated_at,
+        InterviewQuestion.created_at,
+    )
+    age_days = func.extract(
+        "epoch",
+        func.now() - activity_at,
+    ) / 86400.0
+    global_ranking_score = (
+        func.coalesce(QuestionMetrics.hot_score, config["base_score"])
+        * func.exp(-age_days / config["freshness_half_life_days"])
+    )
+    candidates = db.scalars(
+        select(InterviewQuestion)
+        .options(
+            joinedload(InterviewQuestion.submitted_by),
+            joinedload(InterviewQuestion.category),
+            joinedload(InterviewQuestion.metrics),
+            selectinload(InterviewQuestion.tags),
+            selectinload(InterviewQuestion.companies),
+        )
+        .outerjoin(
+            QuestionMetrics,
+            QuestionMetrics.question_id == InterviewQuestion.id,
+        )
+        .where(
+            InterviewQuestion.status == "published",
+            InterviewQuestion.submitted_by_user_id != current_user.id,
+        )
+        .order_by(
+            global_ranking_score.desc(),
+            InterviewQuestion.created_at.desc(),
+        )
+        .limit(candidate_limit * 3)
+    ).all()
+    candidates = dedupe_public_questions(
+        candidates,
+        current_user,
+        db,
+        candidate_limit,
+    )
+    candidate_ids = [question.id for question in candidates]
+    user_states = {
+        state.question_id: state
+        for state in db.scalars(
+            select(UserQuestion)
+            .options(
+                joinedload(UserQuestion.question)
+                .joinedload(InterviewQuestion.submitted_by),
+                joinedload(UserQuestion.category),
+                selectinload(UserQuestion.tags),
+                joinedload(UserQuestion.question)
+                .selectinload(InterviewQuestion.companies),
+            )
+            .where(
+                UserQuestion.user_id == current_user.id,
+                UserQuestion.question_id.in_(candidate_ids),
+            )
+        ).all()
+    }
+
+    ranked: list[tuple[float, str, InterviewQuestion, UserQuestion | None]] = []
+    for question in candidates:
+        state = user_states.get(question.id)
+        category_match = category_affinities.get(question.category_id, 0.0)
+        tag_matches = [
+            tag_affinities.get(tag.id, 0.0)
+            for tag in question.tags or []
+        ]
+        company_matches = [
+            company_affinities.get(company.id, 0.0)
+            for company in question.companies or []
+        ]
+        tag_match = max(tag_matches, default=0.0)
+        company_match = max(company_matches, default=0.0)
+        practice_count = state.practice_count if state else 0
+        hot_score = float(question.metrics.hot_score) if question.metrics else config["base_score"]
+        created_age_days = max(
+            0.0,
+            (datetime.now(timezone.utc) - question.created_at).total_seconds()
+            / 86400.0,
+        )
+        freshness = math.exp(
+            -created_age_days / config["for_you_freshness_half_life_days"]
+        )
+        score = (
+            category_match * config["for_you_category_weight"]
+            + tag_match * config["for_you_tag_weight"]
+            + company_match * config["for_you_company_weight"]
+            + (config["for_you_unseen_bonus"] if practice_count == 0 else 0.0)
+            - math.log1p(practice_count) * config["for_you_practiced_penalty"]
+            + math.log1p(hot_score) * config["for_you_hot_weight"]
+            + freshness * config["for_you_freshness_weight"]
+        )
+
+        if category_match > 0:
+            category_name = (
+                question.category.display_name
+                or question.category.name
+                if question.category
+                else "this topic"
+            )
+            reason = f"Because you practise {category_name}"
+        elif tag_match > 0:
+            matched_tag = next(
+                (
+                    tag.name
+                    for tag in question.tags or []
+                    if tag_affinities.get(tag.id, 0.0) == tag_match
+                ),
+                "your saved tags",
+            )
+            reason = f"Matches your {matched_tag} focus"
+        elif company_match > 0:
+            matched_company = next(
+                (
+                    company.name
+                    for company in question.companies or []
+                    if company_affinities.get(company.id, 0.0) == company_match
+                ),
+                "target companies",
+            )
+            reason = f"Relevant to {matched_company}"
+        elif practice_count == 0:
+            reason = "A strong next question to practise"
+        else:
+            reason = "Trending in the community"
+        ranked.append((score, reason, question, state))
+
+    ranked.sort(key=lambda item: item[0], reverse=True)
+    responses = []
+    for score, reason, question, state in ranked[:result_limit]:
+        response = (
+            to_question_read(state, current_user)
+            if state
+            else to_public_question_read(question, current_user)
+        )
+        response["recommendation_score"] = round(score, 3)
+        response["recommendation_reason"] = reason
+        responses.append(response)
+    return responses
 
 
 @router.get(
@@ -1809,7 +2536,7 @@ def create_question(
         user_q.tags = list(tags)
         
     db.add(user_q)
-    
+    refresh_question_metrics(db, question.id)
     db.commit()
     db.refresh(user_q)
     return to_question_read(user_q)
@@ -1900,6 +2627,7 @@ def batch_create_questions(
         if q_payload.tags:
             user_q.tags = [tags_by_id[t_id] for t_id in q_payload.tags if t_id in tags_by_id]
         db.add(user_q)
+        refresh_question_metrics(db, question.id)
         created_user_questions.append(user_q)
         uq_question_map[user_q] = question
         
@@ -2024,7 +2752,8 @@ def update_question(
         else:
             tags = db.scalars(select(InterviewTag).where(InterviewTag.id.in_(payload.tags), InterviewTag.user_id == current_user.id)).all()
             user_q.tags = list(tags)
-            
+
+    refresh_question_metrics(db, question_id)
     db.commit()
     db.refresh(user_q)
     return to_question_read(user_q)
@@ -2138,24 +2867,36 @@ def create_practice_record(
     if not user_q:
         raise HTTPException(status_code=404, detail="Question not found")
         
-    record = PracticeRecord(user_id=current_user.id, **payload.model_dump())
-    db.add(record)
     now = datetime.now(timezone.utc)
-    user_q.practice_count += 1
-    if user_q.first_practiced_at is None:
-        user_q.first_practiced_at = payload.submitted_at or now
-    user_q.last_practiced_at = payload.submitted_at or now
+    submitted_at = ensure_utc_datetime(payload.submitted_at or payload.date or now)
+    started_at = ensure_utc_datetime(payload.started_at) if payload.started_at else None
     duration_seconds = payload.duration_seconds
-    if (
-        duration_seconds is None
-        and payload.started_at is not None
-        and payload.submitted_at is not None
-    ):
+    if duration_seconds is None and started_at is not None:
         duration_seconds = max(
             0,
-            int((payload.submitted_at - payload.started_at).total_seconds()),
+            int((submitted_at - started_at).total_seconds()),
         )
-        record.duration_seconds = duration_seconds
+    if started_at is None and duration_seconds is not None:
+        started_at = submitted_at - timedelta(seconds=duration_seconds)
+
+    record_data = payload.model_dump(exclude={"date"})
+    record_data.update(
+        {
+            "started_at": started_at,
+            "submitted_at": submitted_at,
+            "duration_seconds": duration_seconds,
+        }
+    )
+    record = PracticeRecord(
+        user_id=current_user.id,
+        date=ensure_utc_datetime(payload.date) if payload.date else submitted_at,
+        **record_data,
+    )
+    db.add(record)
+    user_q.practice_count += 1
+    if user_q.first_practiced_at is None:
+        user_q.first_practiced_at = submitted_at
+    user_q.last_practiced_at = submitted_at
     if duration_seconds:
         user_q.total_practice_seconds += duration_seconds
     
@@ -2352,7 +3093,21 @@ def update_practice_record(
     if not record:
         raise HTTPException(status_code=404, detail="Practice record not found")
 
-    for field, value in payload.model_dump(exclude_unset=True).items():
+    updates = payload.model_dump(exclude_unset=True)
+    for field in ("started_at", "submitted_at"):
+        if updates.get(field) is not None:
+            updates[field] = ensure_utc_datetime(updates[field])
+    if (
+        "duration_seconds" not in updates
+        and updates.get("started_at") is not None
+        and updates.get("submitted_at") is not None
+    ):
+        updates["duration_seconds"] = max(
+            0,
+            int((updates["submitted_at"] - updates["started_at"]).total_seconds()),
+        )
+
+    for field, value in updates.items():
         setattr(record, field, value)
 
     db.commit()
@@ -2436,6 +3191,24 @@ def create_practice_evaluation(
     db.refresh(evaluation)
     return evaluation
 
+@router.post(
+    "/practice-transcriptions",
+    response_model=PracticeTranscriptionRead,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_practice_transcription(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_or_create_current_user),
+):
+    del current_user
+    content, _content_type = _read_uploaded_audio(file)
+    try:
+        return transcribe_audio_bytes(content)
+    except SpeechTranscriptionUnavailableError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except SpeechTranscriptionError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
 @router.post("/practice-records/{record_id}/audio", status_code=status.HTTP_201_CREATED)
 def upload_practice_audio(
     record_id: UUID,
@@ -2447,15 +3220,7 @@ def upload_practice_audio(
     if not record:
         raise HTTPException(status_code=404, detail="Practice record not found")
 
-    raw_content_type = (file.content_type or "audio/webm").lower()
-    content_type = raw_content_type.split(";", 1)[0].strip()
-    if content_type not in {"audio/webm", "audio/ogg", "audio/mp4"}:
-        raise HTTPException(status_code=400, detail="Use a WebM, OGG, or MP4 audio recording")
-    content = file.file.read()
-    if not content:
-        raise HTTPException(status_code=400, detail="Audio file is empty")
-    if len(content) > get_settings().audio_upload_max_bytes:
-        raise HTTPException(status_code=400, detail="Audio recording is too large")
+    content, content_type = _read_uploaded_audio(file)
 
     extension = {
         "audio/webm": "webm",
@@ -3280,6 +4045,17 @@ def update_gamification_admin_config(
 
 
 # --- Collections Endpoints ---
+@router.post("/explore/visit")
+def record_explore_visit(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_or_create_current_user),
+):
+    previous_login_at = current_user.last_login_at
+    current_user.last_login_at = datetime.now(timezone.utc)
+    db.commit()
+    return {"last_login_at": previous_login_at}
+
+
 @router.get("/collections", response_model=list[InterviewCollectionRead])
 def list_collections(
     kind: str | None = None,
@@ -3287,6 +4063,13 @@ def list_collections(
     current_user: User = Depends(get_or_create_current_user),
 ):
     ensure_collection_seeds(db)
+    legacy_theme_update = db.execute(
+        update(InterviewCollection)
+        .where(func.lower(InterviewCollection.theme) == "experience")
+        .values(theme="Project")
+    )
+    if legacy_theme_update.rowcount:
+        db.commit()
     user_sub = select(UserCollection.collection_id).where(
         UserCollection.user_id == current_user.id,
         UserCollection.removed_at.is_(None)
@@ -5069,10 +5852,9 @@ def async_update_question_summary(question_id: UUID):
         ).all()
         company_counts: dict[str, tuple[str, int]] = {}
         for report in reports:
-            if not report.company or not report.company.strip():
-                continue
-            key = report.company.strip().casefold()
-            display, count = company_counts.get(key, (report.company.strip(), 0))
+            company_name = report.company.strip() if report.company else "Anonymous Company"
+            key = company_name.casefold()
+            display, count = company_counts.get(key, (company_name, 0))
             company_counts[key] = (display, count + 1)
         top_companies = [
             {"name": display, "count": count}
@@ -5114,7 +5896,7 @@ def create_interview_report(
     db.add(report)
     
     # Handle Company linking
-    if payload.company:
+    if payload.seen_in_interview and payload.company:
         company_name_lower = payload.company.strip().lower()
         # Ensure first letter is capitalized for visual display if creating new
         display_name = payload.company.strip()
@@ -5156,18 +5938,32 @@ def create_comment_notification(
     excerpt = " ".join(comment_body.split())[:180]
     parent_excerpt = " ".join((parent_body or "").split())[:120]
     question = db.get(InterviewQuestion, question_id)
+
+    if kind == "question_feedback":
+        title = f"{actor.display_name} submitted feedback on your question"
+        message = f"Feedback: {excerpt}"
+        action_url = f"/interview-prep/practice/{question_id}?mode=free&shuffle=0&tab=comment"
+    elif kind == "question_comment":
+        title = f"{actor.display_name} commented on your question"
+        message = f"Comment: {excerpt}"
+        action_url = f"/interview-prep/practice/{question_id}?mode=free&tab=comment"
+    elif kind == "comment_reply":
+        title = f"{actor.display_name} replied to your comment"
+        message = f"Your comment: {parent_excerpt}\nReply: {excerpt}"
+        action_url = f"/interview-prep/practice/{question_id}?mode=free&tab=comment"
+    else:
+        title = f"{actor.display_name} liked your comment"
+        message = f"Your comment: {excerpt}"
+        action_url = f"/interview-prep/practice/{question_id}?mode=free&tab=comment"
+
     notification = UserNotification(
         user_id=recipient_id,
         actor_user_id=actor.id,
         question_id=question_id,
         kind=kind,
-        action_url=f"/interview-prep/practice/{question_id}?mode=free&tab=comment",
-        title=(f"{actor.display_name} replied to your comment" if kind == "comment_reply" else f"{actor.display_name} liked your comment"),
-        message=(
-            f"Your comment: {parent_excerpt}\nReply: {excerpt}"
-            if kind == "comment_reply"
-            else f"Your comment: {excerpt}"
-        ),
+        action_url=action_url,
+        title=title,
+        message=message,
         metadata_={
             "comment_id": str(comment_id),
             "actor_name": actor.display_name,
@@ -5288,6 +6084,19 @@ def list_comments(
         .correlate(QuestionComment)
         .scalar_subquery()
     )
+    reply = aliased(QuestionComment)
+    reply_count = (
+        select(func.count(reply.id))
+        .where(
+            reply.parent_id == QuestionComment.id,
+            reply.deleted_at.is_(None),
+        )
+        .correlate(QuestionComment)
+        .scalar_subquery()
+    )
+    interaction_score = like_count * 2 + reply_count * 5
+    age_hours = func.extract("epoch", func.now() - QuestionComment.created_at) / 3600.0
+    hot_score = interaction_score / (1 + age_hours / 24.0)
     query = select(QuestionComment).where(
         QuestionComment.question_id == question_id,
         QuestionComment.parent_id.is_(None),
@@ -5299,7 +6108,11 @@ def list_comments(
         query = query.where(QuestionComment.created_at < before)
 
     rows = db.scalars(
-        query.order_by(like_count.desc(), QuestionComment.created_at.desc()).limit(limit + 1)
+        query.order_by(
+            hot_score.desc(),
+            QuestionComment.created_at.desc(),
+            QuestionComment.id.desc(),
+        ).limit(limit + 1)
     ).all()
     question = db.get(InterviewQuestion, question_id)
     has_more = len(rows) > limit
@@ -5332,6 +6145,11 @@ def create_comment(question_id: UUID, payload: QuestionCommentCreate, db: Sessio
         )
         if not parent:
             raise HTTPException(status_code=404, detail="Parent comment not found")
+
+    question = db.get(InterviewQuestion, question_id)
+    if not question:
+        raise HTTPException(status_code=404, detail="Question not found")
+
     c = QuestionComment(
         question_id=question_id,
         user_id=current_user.id,
@@ -5342,9 +6160,10 @@ def create_comment(question_id: UUID, payload: QuestionCommentCreate, db: Sessio
     )
     db.add(c)
     db.flush()
-    notification = None
+
+    notifications: list[UserNotification] = []
     if parent and parent.user_id != current_user.id:
-        notification = create_comment_notification(
+        n = create_comment_notification(
             db,
             recipient_id=parent.user_id,
             actor=current_user,
@@ -5354,19 +6173,37 @@ def create_comment(question_id: UUID, payload: QuestionCommentCreate, db: Sessio
             comment_body=c.body,
             parent_body=parent.body,
         )
+        notifications.append(n)
+
+    # Notify question author/uploader if feedback or top-level comment (and not authored by self)
+    author_id = question.submitted_by_user_id
+    if author_id and author_id != current_user.id and (not parent or parent.user_id != author_id):
+        notif_kind = "question_feedback" if payload.kind == "feedback" else "question_comment"
+        n = create_comment_notification(
+            db,
+            recipient_id=author_id,
+            actor=current_user,
+            question_id=question_id,
+            comment_id=c.id,
+            kind=notif_kind,
+            comment_body=c.body,
+        )
+        notifications.append(n)
+
     refresh_question_metrics(db, question_id)
     db.commit()
     db.refresh(c)
-    if notification:
-        db.refresh(notification)
-        broadcast_notification(notification)
+
+    for n in notifications:
+        db.refresh(n)
+        broadcast_notification(n)
+
     broadcast_comment_event("comment.created", question_id, c.id, actor_user_id=str(current_user.id))
-    question = db.get(InterviewQuestion, question_id)
     return to_comment_read(
         c,
         current_user.id,
         db,
-        question_author_id=question.submitted_by_user_id if question else None,
+        question_author_id=question.submitted_by_user_id,
     )
 
 @router.put("/questions/{question_id}/comments/{comment_id}", response_model=QuestionCommentRead)

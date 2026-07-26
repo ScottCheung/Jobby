@@ -22,13 +22,14 @@ export default function PracticeIndexPage() {
         const startTime = Date.now();
         
         // Fetch all in parallel to pre-populate the cache
-        const [qs, prs, cats, plans, baseUrl] = await Promise.all([
+        const [qsRes, prs, cats, plans, baseUrl] = await Promise.all([
           api.interviewQuestions(),
           api.practiceRecords(),
           api.interviewCategories(),
           api.practicePlans(),
           resolveApiBaseUrl(),
         ]);
+        const qs = qsRes.items || [];
 
         practiceCache.questions = qs;
         practiceCache.records = prs;

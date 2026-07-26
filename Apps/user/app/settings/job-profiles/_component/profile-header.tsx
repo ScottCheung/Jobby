@@ -1,3 +1,5 @@
+/** @format */
+
 import React from 'react';
 import { Pencil, Play, Save, Trash2, X } from 'lucide-react';
 import { SegmentedControl } from '@/components/UI/segmented-control';
@@ -72,18 +74,16 @@ export function ProfileHeader({
               </button>
             )}
 
-            {profile?.id &&
-              profilesCount > 1 &&
-              !isEditing && (
-                <button
-                  type='button'
-                  className='label inline-flex items-center gap-2 rounded-xl border border-border/60 px-3.5 py-2 hover:bg-background-secondary cursor-pointer'
-                  onClick={() => void onDelete()}
-                >
-                  <Trash2 className='h-4 w-4' />
-                  Delete
-                </button>
-              )}
+            {profile?.id && profilesCount > 1 && !isEditing && (
+              <button
+                type='button'
+                className='label inline-flex items-center gap-2 rounded-xl border border-border/60 px-3.5 py-2 hover:bg-background-secondary cursor-pointer'
+                onClick={() => void onDelete()}
+              >
+                <Trash2 className='h-4 w-4' />
+                Delete
+              </button>
+            )}
 
             {isEditing ?
               <>
@@ -97,7 +97,7 @@ export function ProfileHeader({
                 </button>
                 <button
                   type='button'
-                  className='label inline-flex items-center gap-2 rounded-xl bg-secondary px-3.5 py-2 dark:bg-background-secondary dark:text-ink-primary cursor-pointer disabled:opacity-60'
+                  className='label inline-flex items-center gap-2 rounded-xl bg-secondary px-3.5 py-2 text-white! dark:bg-background-secondary dark:text-ink-primary cursor-pointer disabled:opacity-60'
                   onClick={() => void onSave()}
                   disabled={isSaving}
                 >
@@ -107,7 +107,7 @@ export function ProfileHeader({
               </>
             : <button
                 type='button'
-                className='label inline-flex items-center gap-2 rounded-xl bg-secondary px-3.5 py-2 dark:bg-background-secondary dark:text-ink-primary cursor-pointer'
+                className='label inline-flex items-center gap-2 rounded-xl bg-secondary text-white! px-3.5 py-2 dark:bg-background-secondary dark:text-ink-primary cursor-pointer'
                 onClick={onEdit}
               >
                 <Pencil className='h-4 w-4' />

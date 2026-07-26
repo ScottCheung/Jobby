@@ -34,7 +34,7 @@ export default function HistoryPage() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [txData, prData, qData] = await Promise.all([
+        const [txData, prData, qRes] = await Promise.all([
           api.gamificationTransactions(),
           api.practiceRecords(),
           api.interviewQuestions(),
@@ -43,7 +43,7 @@ export default function HistoryPage() {
         setPracticeRecords(prData);
         
         const qMap: Record<string, InterviewQuestion> = {};
-        qData.forEach(q => {
+        (qRes.items || []).forEach(q => {
           qMap[q.id] = q;
         });
         setQuestions(qMap);

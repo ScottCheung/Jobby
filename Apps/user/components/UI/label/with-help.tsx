@@ -9,6 +9,7 @@ export interface LabelWithHelpProps {
     helpTextLong?: string
     className?: string
     required?: boolean
+    optional?: boolean
 }
 
 export const LabelWithHelp: React.FC<LabelWithHelpProps> = ({
@@ -17,6 +18,7 @@ export const LabelWithHelp: React.FC<LabelWithHelpProps> = ({
     helpTextLong,
     className,
     required = false,
+    optional = false,
 }) => {
     // 安全检查：只在有有效内容时才显示帮助文本
     const hasLongHelp = helpTextLong && helpTextLong.trim().length > 0
@@ -28,6 +30,16 @@ export const LabelWithHelp: React.FC<LabelWithHelpProps> = ({
                 {label}
                 {required && <span className="text-red-500 ml-1">*</span>}
             </label>
+            {required && (
+                <span className="rounded-sm bg-red-500/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-red-500">
+                    Required
+                </span>
+            )}
+            {!required && optional && (
+                <span className="rounded-sm bg-background-secondary px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-ink-secondary">
+                    Optional
+                </span>
+            )}
             {hasLongHelp && (
                 <TooltipProvider delayDuration={200}>
                     <TooltipRoot>

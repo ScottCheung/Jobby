@@ -19,10 +19,15 @@ import {
   MonitorCog,
   Globe,
   Activity,
+  Check,
+  ChevronRight,
+  ContactRound,
+  FileText,
+  Search,
+  Sparkles,
 } from 'lucide-react';
 import { ToggleGroup } from '@/components/UI/toggle-group';
 import { cn } from '@/lib/utils';
-import { ChevronRight } from 'lucide-react';
 import { formatDate } from '@/components/ConsoleUtils';
 import { CityVectorMap } from '@/components/UI/Map/CityVectorMap';
 
@@ -51,6 +56,126 @@ const PLATFORM_CARDS: Array<{
     actionLabel: 'Assist Current Page',
   },
 ];
+
+type QuickStartStep = {
+  title: string;
+  description: string;
+  href: string;
+  action: string;
+  icon: React.ComponentType<{ className?: string }>;
+  complete: boolean;
+};
+
+function ApplicationQuickStart() {
+  const { hasLoadedInitialData, profile, jobHuntingProfile } = useConsole();
+
+  if (!hasLoadedInitialData) return null;
+
+  const hasPersonalDetails = Boolean(
+    profile.first_name?.trim() &&
+      profile.last_name?.trim() &&
+      profile.phone_number?.trim(),
+  );
+  const hasSearchTarget = Boolean(jobHuntingProfile.search_terms?.length);
+  const hasResume = Boolean(
+    jobHuntingProfile.resume_path?.trim() ||
+      String(jobHuntingProfile.extra_data?.default_resume_path ?? '').trim(),
+  );
+
+  const steps: QuickStartStep[] = [
+    {
+      title: 'Add your contact details',
+      description:
+        'Your first name, last name, and phone number are required for application forms.',
+      href: '/settings/profile',
+      action: 'Complete profile',
+      icon: ContactRound,
+      complete: hasPersonalDetails,
+    },
+    {
+      title: 'Set your target roles',
+      description:
+        'Add at least one job title or keyword so the automation knows what to search for.',
+      href: '/settings/job-profiles?edit=1&section=overview',
+      action: 'Set search target',
+      icon: Search,
+      complete: hasSearchTarget,
+    },
+    {
+      title: 'Attach your resume',
+      description:
+        'Use the active job profile to provide the resume used for uploads and form answers.',
+      href: '/settings/resume',
+      action: 'Upload resume',
+      icon: FileText,
+      complete: hasResume,
+    },
+  ];
+
+  if (steps.every((step) => step.complete)) return null;
+
+  return (
+    <section className='col-span-12 panel-xl relative overflow-hidden'>
+      <div className='absolute inset-y-0 left-0 w-1.5 bg-primary/50' />
+      <div className='grid gap-6 lg:grid-cols-[minmax(220px,0.8fr)_minmax(0,2.2fr)]'>
+        <div className='border-b border-border/50 pb-5 lg:border-b-0 lg:border-r lg:pb-0 lg:pr-6'>
+          <Sparkles className='mb-2 h-7 w-7 text-primary' />
+          <h2 className='title-sub text-ink-primary'>2 Min Quick Start</h2>
+          <p className='body-sm mt-1 text-ink-secondary'>
+            Complete these essentials once so your application automation has
+            the information it needs to run.
+          </p>
+        </div>
+
+        <div className='grid gap-4 md:grid-cols-3'>
+          {steps.map((step, index) => {
+            const Icon = step.icon;
+            return (
+              <div key={step.title} className='flex min-w-0 gap-3'>
+                <div
+                  className={cn(
+                    'label flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2',
+                    step.complete ?
+                      'border-emerald-500 bg-emerald-500/10 text-emerald-600'
+                    : 'border-primary bg-primary/10 text-primary',
+                  )}
+                  aria-label={step.complete ? `${step.title} complete` : `Step ${index + 1}`}
+                >
+                  {step.complete ? <Check className='h-4 w-4' /> : index + 1}
+                </div>
+                <div className='min-w-0'>
+                  <div className='flex items-center gap-1.5'>
+                    <Icon className='h-4 w-4 shrink-0 text-ink-secondary' />
+                    <h3
+                      className={cn(
+                        'label text-sm',
+                        step.complete ?
+                          'text-ink-secondary line-through'
+                        : 'text-ink-primary',
+                      )}
+                    >
+                      {step.title}
+                    </h3>
+                  </div>
+                  <p className='body-sm mt-1 text-ink-secondary'>
+                    {step.description}
+                  </p>
+                  <Link
+                    href={step.href}
+                    className='label-sm mt-2 inline-flex items-center gap-1 text-primary hover:underline'
+                  >
+                    {step.complete ? 'Review details' : step.action}
+                    <ChevronRight className='h-3.5 w-3.5' />
+                  </Link>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
 
 export default function OverviewPage() {
   const {
@@ -138,6 +263,8 @@ export default function OverviewPage() {
 
   return (
     <div className='grid grid-cols-12 gap-6'>
+      <ApplicationQuickStart />
+
       {isDesktopApp && (
         <div className='col-span-12 bg-panel rounded-card p-card border border-border/50'>
           <div className='flex items-start justify-between gap-4 mb-6'>
@@ -170,8 +297,10 @@ export default function OverviewPage() {
                 state.status === 'success' ?
                   'text-emerald-500 bg-emerald-500/10'
                 : state.status === 'failed' ? 'text-red-500 bg-red-500/10'
-                : state.status === 'cancelled' ? 'text-ink-primary0 bg-zinc-500/10'
-                : isRunning ? 'text-blue-500 bg-blue-500/10 animate-pulse'
+                : state.status === 'cancelled' ?
+                  'text-ink-primary0 bg-zinc-500/10'
+                : isRunning ?
+                  'text-blue-500 bg-blue-500/10 animate-text-shimmer-primary animate-text-shimmer'
                 : 'text-zinc-400 bg-zinc-500/5';
 
               return (
@@ -232,7 +361,7 @@ export default function OverviewPage() {
 
                     {/* Current Log / Message */}
                     <div className='body-sm mb-3 flex items-center gap-1.5'>
-                      <Activity className='h-3.5 w-3.5 text-zinc-400 animate-pulse' />
+                      <Activity className='h-3.5 w-3.5 text-zinc-400 animate-text-shimmer-primary animate-text-shimmer' />
                       <span className='font-medium truncate'>
                         {state.message}
                       </span>

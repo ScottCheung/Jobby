@@ -1,4 +1,5 @@
 import json
+import re
 
 import httpx
 
@@ -19,7 +20,36 @@ def sanitize_ai_output(value):
     return value
 
 
-def _complete(messages: list[dict[str, str]]) -> dict:
+def _extract_json_payload(content: object) -> dict:
+    if isinstance(content, dict):
+        return sanitize_ai_output(content)
+    if not isinstance(content, str):
+        raise ValueError("AI returned a non-text response")
+
+    text = content.strip()
+    if not text:
+        raise ValueError("AI returned an empty response")
+
+    candidates = [text]
+    fenced_match = re.search(r"```(?:json)?\s*(\{.*\})\s*```", text, re.DOTALL)
+    if fenced_match:
+        candidates.append(fenced_match.group(1))
+
+    start = text.find("{")
+    end = text.rfind("}")
+    if start != -1 and end != -1 and end > start:
+        candidates.append(text[start : end + 1])
+
+    for candidate in candidates:
+        try:
+            return sanitize_ai_output(json.loads(candidate))
+        except (ValueError, TypeError):
+            continue
+
+    raise ValueError("AI response did not contain valid JSON")
+
+
+def _complete(messages: list[dict[str, str]], temperature: float = 0.35) -> dict:
     settings = get_settings()
     if not settings.deepseek_api_key:
         raise DeepSeekError("AI is not configured")
@@ -31,18 +61,22 @@ def _complete(messages: list[dict[str, str]]) -> dict:
                 "model": settings.deepseek_model,
                 "messages": messages,
                 "response_format": {"type": "json_object"},
-                "temperature": 0.35,
+                "temperature": temperature,
             },
             timeout=45.0,
         )
         response.raise_for_status()
         content = response.json()["choices"][0]["message"]["content"]
-        return sanitize_ai_output(json.loads(content))
+        return _extract_json_payload(content)
     except (httpx.HTTPError, KeyError, IndexError, ValueError, TypeError) as exc:
         raise DeepSeekError("AI could not produce a valid response") from exc
 
 
 def _normalize_question_metadata(raw_metadata) -> dict:
+    if isinstance(raw_metadata, dict):
+        nested = raw_metadata.get("question_metadata")
+        if isinstance(nested, dict):
+            raw_metadata = nested
     raw_metadata = raw_metadata if isinstance(raw_metadata, dict) else {}
     raw_tags = raw_metadata.get("tags", [])
     tags = (
@@ -57,6 +91,9 @@ def _normalize_question_metadata(raw_metadata) -> dict:
     difficulty = str(raw_metadata.get("difficulty", "medium")).strip().lower()
     if difficulty not in {"easy", "medium", "hard"}:
         difficulty = "medium"
+    frequency = str(raw_metadata.get("frequency", "medium")).strip().lower()
+    if frequency not in {"low", "medium", "high"}:
+        frequency = "medium"
     try:
         estimated_duration = max(30, min(300, int(raw_metadata.get("estimated_duration", 90))))
     except (TypeError, ValueError):
@@ -65,6 +102,7 @@ def _normalize_question_metadata(raw_metadata) -> dict:
         "tags": list(dict.fromkeys(tags)),
         "importance_score": importance_score,
         "difficulty": difficulty,
+        "frequency": frequency.title(),
         "estimated_duration": estimated_duration,
     }
 
@@ -75,10 +113,11 @@ def generate_question_metadata(question: str, question_type: str | None = None) 
             "role": "system",
             "content": (
                 "You classify interview questions for candidate practice. Return JSON ONLY, no prose or markdown fences. "
-                "Return exactly this schema: {\"tags\": [string], \"importance_score\": int, \"difficulty\": string, \"estimated_duration\": int}. "
+                "Return exactly this schema: {\"tags\": [string], \"importance_score\": int, \"difficulty\": string, \"frequency\": string, \"estimated_duration\": int}. "
                 "Tags: 0 to 3 short, reusable concrete topics or skills; never use question type, difficulty, priority, or company as a tag. "
                 "importance_score is 1 to 5, where 1 is niche or low-signal, 3 is normal, and 5 is core interview value. "
-                "difficulty is one of easy, medium, hard. estimated_duration is spoken seconds from 30 to 180."
+                "difficulty is one of easy, medium, hard. frequency is one of low, medium, high. estimated_duration is spoken seconds from 30 to 180. "
+                "This metadata is used to fill missing details safely, so prefer broadly useful defaults over aggressive guesses."
             ),
         },
         {

@@ -16,6 +16,7 @@ export interface LabeledTextareaProps
   showCharCount?: boolean;
   helpTextShort?: string;
   helpTextLong?: string;
+  optional?: boolean;
 }
 
 const Textarea = React.forwardRef<HTMLTextAreaElement, LabeledTextareaProps>(
@@ -32,6 +33,7 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, LabeledTextareaProps>(
       onBlur,
       helpTextShort,
       helpTextLong,
+      optional,
       ...props
     },
     ref,
@@ -74,6 +76,7 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, LabeledTextareaProps>(
             helpTextShort={helpTextShort}
             helpTextLong={helpTextLong}
             required={props.required}
+            optional={optional}
           />
           {showCharCount && maxLength && (
             <p

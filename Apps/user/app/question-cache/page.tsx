@@ -134,7 +134,7 @@ export default function QuestionsPage() {
   }, [hasMore, isLoading, items]);
 
   return (
-    <div className='flex flex-col h-[calc(100vh-66px)] min-h-[500px] overflow-hidden'>
+    <div className='flex h-full min-h-[500px] flex-col overflow-hidden'>
       <div className='pb-4 select-none shrink-0'>
         <ScrollLayout
           key={scrollContainer ? 'scrolling' : 'static'}
@@ -198,7 +198,7 @@ export default function QuestionsPage() {
                   <div
                     key={item.id}
                     style={style}
-                    className='grid grid-cols-[minmax(0,4fr)_minmax(0,1.5fr)_minmax(0,2.5fr)_minmax(0,1fr)_minmax(0,1fr)] items-center px-4 animate-pulse border-b border-border/40/50'
+                    className='grid grid-cols-[minmax(0,4fr)_minmax(0,1.5fr)_minmax(0,2.5fr)_minmax(0,1fr)_minmax(0,1fr)] items-center px-4 animate-text-shimmer-primary animate-text-shimmer border-b border-border/40/50'
                   >
                     <div className='pr-4'>
                       <div className='h-4 bg-background-secondary dark:bg-panel rounded w-3/4 mb-1'></div>

@@ -10,6 +10,8 @@ import type {
 
 export const practiceCache = {
   questions: null as InterviewQuestion[] | null,
+  totalQuestionCount: null as number | null,
+  hasMoreQuestions: null as boolean | null,
   records: null as PracticeRecord[] | null,
   categories: null as InterviewCategory[] | null,
   activePlan: null as PracticePlan | null,

@@ -8,9 +8,7 @@
   "paths": {
     "/api/interview/categories": {
       "get": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "List Categories",
         "operationId": "list_categories_api_interview_categories_get",
         "responses": {
@@ -31,9 +29,7 @@
         }
       },
       "post": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Create Category",
         "operationId": "create_category_api_interview_categories_post",
         "requestBody": {
@@ -72,9 +68,7 @@
     },
     "/api/interview/tags": {
       "get": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "List Tags",
         "operationId": "list_tags_api_interview_tags_get",
         "responses": {
@@ -95,9 +89,7 @@
         }
       },
       "post": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Create Tag",
         "operationId": "create_tag_api_interview_tags_post",
         "requestBody": {
@@ -136,9 +128,7 @@
     },
     "/api/interview/questions": {
       "get": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "List Questions",
         "operationId": "list_questions_api_interview_questions_get",
         "parameters": [
@@ -226,9 +216,7 @@
         }
       },
       "post": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Create Question",
         "operationId": "create_question_api_interview_questions_post",
         "requestBody": {
@@ -267,9 +255,7 @@
     },
     "/api/interview/questions/search/global": {
       "get": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Search Global Questions",
         "operationId": "search_global_questions_api_interview_questions_search_global_get",
         "parameters": [
@@ -313,9 +299,7 @@
     },
     "/api/interview/questions/duplicates": {
       "get": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Find Duplicate Questions",
         "description": "Return a small indexed candidate set for an upload, never a table scan.",
         "operationId": "find_duplicate_questions_api_interview_questions_duplicates_get",
@@ -362,9 +346,7 @@
     },
     "/api/interview/questions/batch": {
       "post": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Batch Create Questions",
         "operationId": "batch_create_questions_api_interview_questions_batch_post",
         "requestBody": {
@@ -411,9 +393,7 @@
     },
     "/api/interview/questions/{question_id}": {
       "get": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Get Question",
         "operationId": "get_question_api_interview_questions__question_id__get",
         "parameters": [
@@ -451,9 +431,7 @@
         }
       },
       "put": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Update Question",
         "operationId": "update_question_api_interview_questions__question_id__put",
         "parameters": [
@@ -502,9 +480,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Remove Saved Question",
         "operationId": "remove_saved_question_api_interview_questions__question_id__delete",
         "parameters": [
@@ -538,9 +514,7 @@
     },
     "/api/interview/questions/{question_id}/save": {
       "post": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Save Question To Library",
         "operationId": "save_question_to_library_api_interview_questions__question_id__save_post",
         "parameters": [
@@ -581,9 +555,7 @@
     },
     "/api/interview/questions/{question_id}/archive": {
       "post": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Archive Question",
         "operationId": "archive_question_api_interview_questions__question_id__archive_post",
         "parameters": [
@@ -617,9 +589,7 @@
     },
     "/api/interview/practice-records": {
       "get": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "List Practice Records",
         "operationId": "list_practice_records_api_interview_practice_records_get",
         "responses": {
@@ -640,9 +610,7 @@
         }
       },
       "post": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Create Practice Record",
         "operationId": "create_practice_record_api_interview_practice_records_post",
         "requestBody": {
@@ -681,9 +649,7 @@
     },
     "/api/interview/practice-records/{record_id}": {
       "put": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Update Practice Record",
         "operationId": "update_practice_record_api_interview_practice_records__record_id__put",
         "parameters": [
@@ -732,9 +698,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Delete Practice Record",
         "operationId": "delete_practice_record_api_interview_practice_records__record_id__delete",
         "parameters": [
@@ -768,9 +732,7 @@
     },
     "/api/interview/practice-records/{record_id}/evaluations": {
       "get": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "List Practice Evaluations",
         "operationId": "list_practice_evaluations_api_interview_practice_records__record_id__evaluations_get",
         "parameters": [
@@ -813,9 +775,7 @@
         }
       },
       "post": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Create Practice Evaluation",
         "operationId": "create_practice_evaluation_api_interview_practice_records__record_id__evaluations_post",
         "parameters": [
@@ -856,9 +816,7 @@
     },
     "/api/interview/practice-records/{record_id}/audio": {
       "post": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Upload Practice Audio",
         "operationId": "upload_practice_audio_api_interview_practice_records__record_id__audio_post",
         "parameters": [
@@ -907,9 +865,7 @@
     },
     "/api/interview/plans": {
       "get": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "List Practice Plans",
         "operationId": "list_practice_plans_api_interview_plans_get",
         "responses": {
@@ -930,9 +886,7 @@
         }
       },
       "post": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Create Practice Plan",
         "operationId": "create_practice_plan_api_interview_plans_post",
         "requestBody": {
@@ -971,9 +925,7 @@
     },
     "/api/interview/plans/{plan_id}/tasks": {
       "get": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "List Plan Tasks",
         "operationId": "list_plan_tasks_api_interview_plans__plan_id__tasks_get",
         "parameters": [
@@ -1016,9 +968,7 @@
         }
       },
       "post": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Create Plan Task",
         "operationId": "create_plan_task_api_interview_plans__plan_id__tasks_post",
         "parameters": [
@@ -1069,9 +1019,7 @@
     },
     "/api/interview/plans/{plan_id}": {
       "delete": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Delete Practice Plan",
         "operationId": "delete_practice_plan_api_interview_plans__plan_id__delete",
         "parameters": [
@@ -1105,9 +1053,7 @@
     },
     "/api/interview/plans/{plan_id}/tasks/{task_id}": {
       "put": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Update Plan Task",
         "operationId": "update_plan_task_api_interview_plans__plan_id__tasks__task_id__put",
         "parameters": [
@@ -1168,9 +1114,7 @@
     },
     "/api/interview/plans/{plan_id}/stages/{day_num}/claim-reward": {
       "post": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Claim Stage Reward",
         "operationId": "claim_stage_reward_api_interview_plans__plan_id__stages__day_num__claim_reward_post",
         "parameters": [
@@ -1218,9 +1162,7 @@
     },
     "/api/interview/gamification/inventory": {
       "get": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Get User Inventory",
         "operationId": "get_user_inventory_api_interview_gamification_inventory_get",
         "responses": {
@@ -1237,9 +1179,7 @@
     },
     "/api/interview/gamification/inventory/use": {
       "post": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Use Inventory Item",
         "operationId": "use_inventory_item_api_interview_gamification_inventory_use_post",
         "requestBody": {
@@ -1276,9 +1216,7 @@
     },
     "/api/interview/gamification/summary": {
       "get": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Get Daily Summary",
         "operationId": "get_daily_summary_api_interview_gamification_summary_get",
         "responses": {
@@ -1297,9 +1235,7 @@
     },
     "/api/interview/gamification/heatmap": {
       "get": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Get Gamification Heatmap",
         "operationId": "get_gamification_heatmap_api_interview_gamification_heatmap_get",
         "responses": {
@@ -1318,9 +1254,7 @@
     },
     "/api/interview/gamification/transactions": {
       "get": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Get Gamification Transactions",
         "operationId": "get_gamification_transactions_api_interview_gamification_transactions_get",
         "responses": {
@@ -1343,9 +1277,7 @@
     },
     "/api/interview/gamification/checkin": {
       "post": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Daily Checkin",
         "operationId": "daily_checkin_api_interview_gamification_checkin_post",
         "responses": {
@@ -1362,9 +1294,7 @@
     },
     "/api/interview/gamification/lootbox/open": {
       "post": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Open Lootbox",
         "operationId": "open_lootbox_api_interview_gamification_lootbox_open_post",
         "responses": {
@@ -1383,9 +1313,7 @@
     },
     "/api/interview/gamification/quests": {
       "get": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Get Daily Quests",
         "operationId": "get_daily_quests_api_interview_gamification_quests_get",
         "responses": {
@@ -1408,9 +1336,7 @@
     },
     "/api/interview/gamification/quests/{quest_id}/claim": {
       "post": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Claim Quest",
         "operationId": "claim_quest_api_interview_gamification_quests__quest_id__claim_post",
         "parameters": [
@@ -1449,9 +1375,7 @@
     },
     "/api/interview/gamification/achievements": {
       "get": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Get Achievements",
         "operationId": "get_achievements_api_interview_gamification_achievements_get",
         "responses": {
@@ -1474,9 +1398,7 @@
     },
     "/api/interview/gamification/reset": {
       "post": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Reset Account Data",
         "operationId": "reset_account_data_api_interview_gamification_reset_post",
         "responses": {
@@ -1493,9 +1415,7 @@
     },
     "/api/interview/gamification/welcome": {
       "post": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Claim Welcome Bonus",
         "operationId": "claim_welcome_bonus_api_interview_gamification_welcome_post",
         "responses": {
@@ -1512,9 +1432,7 @@
     },
     "/api/interview/gamification/admin-config": {
       "get": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Get Gamification Admin Config",
         "operationId": "get_gamification_admin_config_api_interview_gamification_admin_config_get",
         "responses": {
@@ -1531,9 +1449,7 @@
         }
       },
       "put": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Update Gamification Admin Config",
         "operationId": "update_gamification_admin_config_api_interview_gamification_admin_config_put",
         "requestBody": {
@@ -1572,9 +1488,7 @@
     },
     "/api/interview/collections": {
       "get": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "List Collections",
         "operationId": "list_collections_api_interview_collections_get",
         "parameters": [
@@ -1623,9 +1537,7 @@
         }
       },
       "post": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Create Custom Collection",
         "operationId": "create_custom_collection_api_interview_collections_post",
         "requestBody": {
@@ -1664,9 +1576,7 @@
     },
     "/api/interview/collections/me/created": {
       "get": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "List My Created Collections",
         "operationId": "list_my_created_collections_api_interview_collections_me_created_get",
         "responses": {
@@ -1689,9 +1599,7 @@
     },
     "/api/interview/collections/{collection_id}/cover": {
       "post": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Upload Collection Cover",
         "operationId": "upload_collection_cover_api_interview_collections__collection_id__cover_post",
         "parameters": [
@@ -1742,9 +1650,7 @@
     },
     "/api/interview/collections/{collection_id}": {
       "put": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Update Custom Collection",
         "operationId": "update_custom_collection_api_interview_collections__collection_id__put",
         "parameters": [
@@ -1793,9 +1699,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Delete Custom Collection",
         "operationId": "delete_custom_collection_api_interview_collections__collection_id__delete",
         "parameters": [
@@ -1832,9 +1736,7 @@
         }
       },
       "get": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Get Collection Detail",
         "operationId": "get_collection_detail_api_interview_collections__collection_id__get",
         "parameters": [
@@ -1875,9 +1777,7 @@
     },
     "/api/interview/collections/{collection_id}/add": {
       "post": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Add Collection To Library",
         "operationId": "add_collection_to_library_api_interview_collections__collection_id__add_post",
         "parameters": [
@@ -1916,9 +1816,7 @@
     },
     "/api/interview/collections/{collection_id}/remove": {
       "delete": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Remove Collection From Library",
         "operationId": "remove_collection_from_library_api_interview_collections__collection_id__remove_delete",
         "parameters": [
@@ -1957,9 +1855,7 @@
     },
     "/api/interview/questions/{question_id}/answers": {
       "get": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "List Question Answers",
         "operationId": "list_question_answers_api_interview_questions__question_id__answers_get",
         "parameters": [
@@ -2028,9 +1924,7 @@
         }
       },
       "post": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Create Question Answer",
         "operationId": "create_question_answer_api_interview_questions__question_id__answers_post",
         "parameters": [
@@ -2081,9 +1975,7 @@
     },
     "/api/interview/questions/{question_id}/ai-metadata": {
       "post": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Generate Ai Question Metadata",
         "operationId": "generate_ai_question_metadata_api_interview_questions__question_id__ai_metadata_post",
         "parameters": [
@@ -2124,9 +2016,7 @@
     },
     "/api/interview/questions/{question_id}/ai-answers": {
       "post": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Create Ai Reference Answer",
         "operationId": "create_ai_reference_answer_api_interview_questions__question_id__ai_answers_post",
         "parameters": [
@@ -2177,9 +2067,7 @@
     },
     "/api/interview/answers/{answer_id}/unlock": {
       "put": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Unlock Ai Answer",
         "operationId": "unlock_ai_answer_api_interview_answers__answer_id__unlock_put",
         "parameters": [
@@ -2220,9 +2108,7 @@
     },
     "/api/interview/answers/{answer_id}": {
       "put": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Update Question Answer",
         "operationId": "update_question_answer_api_interview_answers__answer_id__put",
         "parameters": [
@@ -2273,9 +2159,7 @@
     },
     "/api/interview/answers/{answer_id}/reaction": {
       "put": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Update Question Answer Reaction",
         "operationId": "update_question_answer_reaction_api_interview_answers__answer_id__reaction_put",
         "parameters": [
@@ -2326,9 +2210,7 @@
     },
     "/api/interview/answers/{answer_id}/save": {
       "put": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Toggle Question Answer Save",
         "operationId": "toggle_question_answer_save_api_interview_answers__answer_id__save_put",
         "parameters": [
@@ -2369,9 +2251,7 @@
     },
     "/api/interview/answers/{answer_id}/report": {
       "post": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Report Question Answer",
         "operationId": "report_question_answer_api_interview_answers__answer_id__report_post",
         "parameters": [
@@ -2420,9 +2300,7 @@
     },
     "/api/interview/answers/{answer_id}/comments": {
       "get": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "List Question Answer Comments",
         "operationId": "list_question_answer_comments_api_interview_answers__answer_id__comments_get",
         "parameters": [
@@ -2490,9 +2368,7 @@
         }
       },
       "post": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Create Question Answer Comment",
         "operationId": "create_question_answer_comment_api_interview_answers__answer_id__comments_post",
         "parameters": [
@@ -2543,9 +2419,7 @@
     },
     "/api/interview/answers/{answer_id}/comments/{comment_id}": {
       "put": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Update Question Answer Comment",
         "operationId": "update_question_answer_comment_api_interview_answers__answer_id__comments__comment_id__put",
         "parameters": [
@@ -2604,9 +2478,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Delete Question Answer Comment",
         "operationId": "delete_question_answer_comment_api_interview_answers__answer_id__comments__comment_id__delete",
         "parameters": [
@@ -2655,9 +2527,7 @@
     },
     "/api/interview/answers/{answer_id}/comments/{comment_id}/like": {
       "put": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Like Question Answer Comment",
         "operationId": "like_question_answer_comment_api_interview_answers__answer_id__comments__comment_id__like_put",
         "parameters": [
@@ -2706,9 +2576,7 @@
     },
     "/api/interview/answers/{answer_id}/comments/{comment_id}/report": {
       "post": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Report Question Answer Comment",
         "operationId": "report_question_answer_comment_api_interview_answers__answer_id__comments__comment_id__report_post",
         "parameters": [
@@ -2767,9 +2635,7 @@
     },
     "/api/interview/questions/{question_id}/community": {
       "get": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Get Question Community Summary",
         "operationId": "get_question_community_summary_api_interview_questions__question_id__community_get",
         "parameters": [
@@ -2810,9 +2676,7 @@
     },
     "/api/interview/questions/{question_id}/favorite": {
       "put": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Toggle Question Favorite",
         "operationId": "toggle_question_favorite_api_interview_questions__question_id__favorite_put",
         "parameters": [
@@ -2853,9 +2717,7 @@
     },
     "/api/interview/questions/{question_id}/community/rating": {
       "put": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Update Question Community Rating",
         "operationId": "update_question_community_rating_api_interview_questions__question_id__community_rating_put",
         "parameters": [
@@ -2906,9 +2768,7 @@
     },
     "/api/interview/questions/{question_id}/community/reaction": {
       "put": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Update Question Community Reaction",
         "operationId": "update_question_community_reaction_api_interview_questions__question_id__community_reaction_put",
         "parameters": [
@@ -2959,9 +2819,7 @@
     },
     "/api/interview/questions/{question_id}/community/reports": {
       "get": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "List Community Interview Reports",
         "operationId": "list_community_interview_reports_api_interview_questions__question_id__community_reports_get",
         "parameters": [
@@ -3006,9 +2864,7 @@
     },
     "/api/interview/community/notifications": {
       "get": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "List Community Notifications",
         "operationId": "list_community_notifications_api_interview_community_notifications_get",
         "responses": {
@@ -3031,9 +2887,7 @@
     },
     "/api/interview/community/notifications/read": {
       "post": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Mark Community Notifications Read",
         "operationId": "mark_community_notifications_read_api_interview_community_notifications_read_post",
         "responses": {
@@ -3050,9 +2904,7 @@
     },
     "/api/interview/notifications": {
       "get": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "List Notifications",
         "operationId": "list_notifications_api_interview_notifications_get",
         "parameters": [
@@ -3132,9 +2984,7 @@
     },
     "/api/interview/notifications/read": {
       "post": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Mark All Notifications Read",
         "operationId": "mark_all_notifications_read_api_interview_notifications_read_post",
         "responses": {
@@ -3151,9 +3001,7 @@
     },
     "/api/interview/notifications/{notification_id}/read": {
       "post": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Mark Notification Read",
         "operationId": "mark_notification_read_api_interview_notifications__notification_id__read_post",
         "parameters": [
@@ -3192,9 +3040,7 @@
     },
     "/api/interview/reports": {
       "get": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "List Interview Reports",
         "operationId": "list_interview_reports_api_interview_reports_get",
         "responses": {
@@ -3215,9 +3061,7 @@
         }
       },
       "post": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Create Interview Report",
         "operationId": "create_interview_report_api_interview_reports_post",
         "requestBody": {
@@ -3256,9 +3100,7 @@
     },
     "/api/interview/questions/{question_id}/comments": {
       "get": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "List Comments",
         "operationId": "list_comments_api_interview_questions__question_id__comments_get",
         "parameters": [
@@ -3342,9 +3184,7 @@
         }
       },
       "post": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Create Comment",
         "operationId": "create_comment_api_interview_questions__question_id__comments_post",
         "parameters": [
@@ -3395,9 +3235,7 @@
     },
     "/api/interview/questions/{question_id}/comments/{comment_id}": {
       "put": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Update Comment",
         "operationId": "update_comment_api_interview_questions__question_id__comments__comment_id__put",
         "parameters": [
@@ -3456,9 +3294,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Delete Comment",
         "operationId": "delete_comment_api_interview_questions__question_id__comments__comment_id__delete",
         "parameters": [
@@ -3507,9 +3343,7 @@
     },
     "/api/interview/questions/{question_id}/comments/{comment_id}/like": {
       "put": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Like Comment",
         "operationId": "like_comment_api_interview_questions__question_id__comments__comment_id__like_put",
         "parameters": [
@@ -3558,9 +3392,7 @@
     },
     "/api/interview/questions/{question_id}/comments/{comment_id}/report": {
       "post": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Report Comment",
         "operationId": "report_comment_api_interview_questions__question_id__comments__comment_id__report_post",
         "parameters": [
@@ -3619,9 +3451,7 @@
     },
     "/api/interview/questions/{question_id}/comments/{comment_id}/replies": {
       "get": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "List Replies",
         "operationId": "list_replies_api_interview_questions__question_id__comments__comment_id__replies_get",
         "parameters": [
@@ -3672,9 +3502,7 @@
     },
     "/api/interview/user/favorites/counts": {
       "get": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Get User Favorites Counts",
         "operationId": "get_user_favorites_counts_api_interview_user_favorites_counts_get",
         "responses": {
@@ -3691,9 +3519,7 @@
     },
     "/api/interview/user/favorites/questions": {
       "get": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Get User Favorited Questions",
         "operationId": "get_user_favorited_questions_api_interview_user_favorites_questions_get",
         "parameters": [
@@ -3745,9 +3571,7 @@
     },
     "/api/interview/user/favorites/comments": {
       "get": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Get User Favorited Comments",
         "operationId": "get_user_favorited_comments_api_interview_user_favorites_comments_get",
         "parameters": [
@@ -3826,9 +3650,7 @@
     },
     "/api/interview/user/favorites/answers": {
       "get": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Get User Saved Answers",
         "operationId": "get_user_saved_answers_api_interview_user_favorites_answers_get",
         "parameters": [
@@ -3880,9 +3702,7 @@
     },
     "/api/interview/user/favorites/collections": {
       "get": {
-        "tags": [
-          "Interview Practice"
-        ],
+        "tags": ["Interview Practice"],
         "summary": "Get User Saved Collections",
         "operationId": "get_user_saved_collections_api_interview_user_favorites_collections_get",
         "parameters": [
@@ -5205,12 +5025,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "id",
-          "badge_id",
-          "badge_name",
-          "description"
-        ],
+        "required": ["id", "badge_id", "badge_name", "description"],
         "title": "AchievementRead"
       },
       "AnswerUnlockRead": {
@@ -5228,11 +5043,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "answer",
-          "coins_spent",
-          "remaining_coins"
-        ],
+        "required": ["answer", "coins_spent", "remaining_coins"],
         "title": "AnswerUnlockRead"
       },
       "AudioRecordRead": {
@@ -5303,9 +5114,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "file"
-        ],
+        "required": ["file"],
         "title": "Body_upload_collection_cover_api_interview_collections__collection_id__cover_post"
       },
       "Body_upload_current_user_avatar_api_me_avatar_post": {
@@ -5317,9 +5126,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "file"
-        ],
+        "required": ["file"],
         "title": "Body_upload_current_user_avatar_api_me_avatar_post"
       },
       "Body_upload_practice_audio_api_interview_practice_records__record_id__audio_post": {
@@ -5331,9 +5138,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "file"
-        ],
+        "required": ["file"],
         "title": "Body_upload_practice_audio_api_interview_practice_records__record_id__audio_post"
       },
       "CommunityInterviewReportRead": {
@@ -5383,10 +5188,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "id",
-          "happened_at"
-        ],
+        "required": ["id", "happened_at"],
         "title": "CommunityInterviewReportRead"
       },
       "CompanyRead": {
@@ -5423,12 +5225,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "name",
-          "id",
-          "created_at",
-          "updated_at"
-        ],
+        "required": ["name", "id", "created_at", "updated_at"],
         "title": "CompanyRead"
       },
       "DailyQuestRead": {
@@ -5623,10 +5420,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "scope",
-          "config"
-        ],
+        "required": ["scope", "config"],
         "title": "GamificationConfigRead"
       },
       "GamificationConfigUpdate": {
@@ -5638,9 +5432,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "config"
-        ],
+        "required": ["config"],
         "title": "GamificationConfigUpdate"
       },
       "GamificationTransactionRead": {
@@ -5759,10 +5551,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "date",
-          "count"
-        ],
+        "required": ["date", "count"],
         "title": "HeatmapDataEntry"
       },
       "HeatmapDataSchema": {
@@ -5776,9 +5565,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "entries"
-        ],
+        "required": ["entries"],
         "title": "HeatmapDataSchema"
       },
       "InterviewCategoryBase": {
@@ -5789,9 +5576,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "name"
-        ],
+        "required": ["name"],
         "title": "InterviewCategoryBase"
       },
       "InterviewCategoryRead": {
@@ -5822,13 +5607,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "name",
-          "id",
-          "user_id",
-          "created_at",
-          "updated_at"
-        ],
+        "required": ["name", "id", "user_id", "created_at", "updated_at"],
         "title": "InterviewCategoryRead"
       },
       "InterviewCollectionCreate": {
@@ -5879,9 +5658,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "title"
-        ],
+        "required": ["title"],
         "title": "InterviewCollectionCreate"
       },
       "InterviewCollectionRead": {
@@ -6071,11 +5848,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "title",
-          "slug",
-          "id"
-        ],
+        "required": ["title", "slug", "id"],
         "title": "InterviewCollectionRead"
       },
       "InterviewCollectionUpdate": {
@@ -6237,7 +6010,7 @@
                 "type": "null"
               }
             ],
-            "title": "Author Frequency"
+            "title": "Contributor Frequency"
           },
           "author_importance_score": {
             "anyOf": [
@@ -6248,7 +6021,7 @@
                 "type": "null"
               }
             ],
-            "title": "Author Importance Score"
+            "title": "Contributor Importance Score"
           },
           "ai_metadata": {
             "anyOf": [
@@ -6336,9 +6109,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "title"
-        ],
+        "required": ["title"],
         "title": "InterviewQuestionCreate"
       },
       "InterviewQuestionRead": {
@@ -6424,7 +6195,7 @@
                 "type": "null"
               }
             ],
-            "title": "Author Frequency"
+            "title": "Contributor Frequency"
           },
           "author_importance_score": {
             "anyOf": [
@@ -6435,7 +6206,7 @@
                 "type": "null"
               }
             ],
-            "title": "Author Importance Score"
+            "title": "Contributor Importance Score"
           },
           "ai_metadata": {
             "anyOf": [
@@ -6790,9 +6561,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "question_id"
-        ],
+        "required": ["question_id"],
         "title": "InterviewReportBase"
       },
       "InterviewReportRead": {
@@ -6896,9 +6665,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "name"
-        ],
+        "required": ["name"],
         "title": "InterviewTagBase"
       },
       "InterviewTagRead": {
@@ -6929,13 +6696,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "name",
-          "id",
-          "user_id",
-          "created_at",
-          "updated_at"
-        ],
+        "required": ["name", "id", "user_id", "created_at", "updated_at"],
         "title": "InterviewTagRead"
       },
       "JobApplicationBase": {
@@ -7554,12 +7315,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "id",
-          "user_id",
-          "created_at",
-          "updated_at"
-        ],
+        "required": ["id", "user_id", "created_at", "updated_at"],
         "title": "JobApplicationRead"
       },
       "JobApplicationUpdate": {
@@ -7885,7 +7641,7 @@
           "name": {
             "type": "string",
             "title": "Name",
-            "default": "Default LinkedIn Search"
+            "default": "Default Job Hunting Profile"
           },
           "platform": {
             "type": "string",
@@ -8125,7 +7881,7 @@
           "name": {
             "type": "string",
             "title": "Name",
-            "default": "Default LinkedIn Search"
+            "default": "Default Job Hunting Profile"
           },
           "platform": {
             "type": "string",
@@ -8372,12 +8128,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "id",
-          "user_id",
-          "created_at",
-          "updated_at"
-        ],
+        "required": ["id", "user_id", "created_at", "updated_at"],
         "title": "JobHuntingProfileRead"
       },
       "LootBoxResponse": {
@@ -8392,10 +8143,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "coins_won",
-          "new_balance"
-        ],
+        "required": ["coins_won", "new_balance"],
         "title": "LootBoxResponse"
       },
       "PlanTaskBase": {
@@ -8422,11 +8170,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "plan_id",
-          "question_id",
-          "scheduled_date"
-        ],
+        "required": ["plan_id", "question_id", "scheduled_date"],
         "title": "PlanTaskBase"
       },
       "PlanTaskRead": {
@@ -8592,9 +8336,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "name"
-        ],
+        "required": ["name"],
         "title": "PracticePlanBase"
       },
       "PracticePlanRead": {
@@ -8642,13 +8384,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "name",
-          "id",
-          "user_id",
-          "created_at",
-          "updated_at"
-        ],
+        "required": ["name", "id", "user_id", "created_at", "updated_at"],
         "title": "PracticePlanRead"
       },
       "PracticeRecordCreate": {
@@ -8728,9 +8464,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "question_id"
-        ],
+        "required": ["question_id"],
         "title": "PracticeRecordCreate"
       },
       "PracticeRecordRead": {
@@ -8924,9 +8658,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "body"
-        ],
+        "required": ["body"],
         "title": "QuestionAnswerCommentCreate"
       },
       "QuestionAnswerCommentPageRead": {
@@ -8957,10 +8689,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "items",
-          "answer_id"
-        ],
+        "required": ["items", "answer_id"],
         "title": "QuestionAnswerCommentPageRead"
       },
       "QuestionAnswerCommentRead": {
@@ -8993,7 +8722,7 @@
           },
           "author_name": {
             "type": "string",
-            "title": "Author Name"
+            "title": "Contributor Name"
           },
           "author_avatar_url": {
             "anyOf": [
@@ -9004,7 +8733,7 @@
                 "type": "null"
               }
             ],
-            "title": "Author Avatar Url"
+            "title": "Contributor Avatar Url"
           },
           "author_badge": {
             "anyOf": [
@@ -9015,11 +8744,11 @@
                 "type": "null"
               }
             ],
-            "title": "Author Badge"
+            "title": "Contributor Badge"
           },
           "is_author": {
             "type": "boolean",
-            "title": "Is Author",
+            "title": "Is Contributor",
             "default": false
           },
           "like_count": {
@@ -9081,9 +8810,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "reason"
-        ],
+        "required": ["reason"],
         "title": "QuestionAnswerCommentReportCreate"
       },
       "QuestionAnswerCommentUpdate": {
@@ -9096,9 +8823,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "body"
-        ],
+        "required": ["body"],
         "title": "QuestionAnswerCommentUpdate"
       },
       "QuestionAnswerCreate": {
@@ -9146,9 +8871,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "body"
-        ],
+        "required": ["body"],
         "title": "QuestionAnswerCreate"
       },
       "QuestionAnswerReactionUpdate": {
@@ -9190,7 +8913,7 @@
                 "type": "null"
               }
             ],
-            "title": "Author User Id"
+            "title": "Contributor User Id"
           },
           "source": {
             "type": "string",
@@ -9325,7 +9048,7 @@
           },
           "is_author": {
             "type": "boolean",
-            "title": "Is Author",
+            "title": "Is Contributor",
             "default": false
           },
           "can_manage": {
@@ -9342,7 +9065,7 @@
                 "type": "null"
               }
             ],
-            "title": "Author Name"
+            "title": "Contributor Name"
           },
           "author_avatar_url": {
             "anyOf": [
@@ -9353,7 +9076,7 @@
                 "type": "null"
               }
             ],
-            "title": "Author Avatar Url"
+            "title": "Contributor Avatar Url"
           },
           "author_badge": {
             "anyOf": [
@@ -9364,7 +9087,7 @@
                 "type": "null"
               }
             ],
-            "title": "Author Badge"
+            "title": "Contributor Badge"
           },
           "is_locked": {
             "type": "boolean",
@@ -9402,9 +9125,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "saved"
-        ],
+        "required": ["saved"],
         "title": "QuestionAnswerSaveRead"
       },
       "QuestionAnswerUpdate": {
@@ -9559,11 +9280,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "original_label",
-          "normalized_label",
-          "field_type"
-        ],
+        "required": ["original_label", "normalized_label", "field_type"],
         "title": "QuestionCacheEntryBase"
       },
       "QuestionCacheEntryRead": {
@@ -9713,9 +9430,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "body"
-        ],
+        "required": ["body"],
         "title": "QuestionCommentCreate"
       },
       "QuestionCommentPageRead": {
@@ -9746,10 +9461,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "items",
-          "question_id"
-        ],
+        "required": ["items", "question_id"],
         "title": "QuestionCommentPageRead"
       },
       "QuestionCommentRead": {
@@ -9786,7 +9498,7 @@
           },
           "author_name": {
             "type": "string",
-            "title": "Author Name"
+            "title": "Contributor Name"
           },
           "author_avatar_url": {
             "anyOf": [
@@ -9797,7 +9509,7 @@
                 "type": "null"
               }
             ],
-            "title": "Author Avatar Url"
+            "title": "Contributor Avatar Url"
           },
           "author_badge": {
             "anyOf": [
@@ -9808,11 +9520,11 @@
                 "type": "null"
               }
             ],
-            "title": "Author Badge"
+            "title": "Contributor Badge"
           },
           "is_author": {
             "type": "boolean",
-            "title": "Is Author",
+            "title": "Is Contributor",
             "default": false
           },
           "like_count": {
@@ -9875,9 +9587,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "reason"
-        ],
+        "required": ["reason"],
         "title": "QuestionCommentReportCreate"
       },
       "QuestionCommentUpdate": {
@@ -9890,9 +9600,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "body"
-        ],
+        "required": ["body"],
         "title": "QuestionCommentUpdate"
       },
       "QuestionCommunitySummaryRead": {
@@ -10129,13 +9837,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "id",
-          "title",
-          "owner_name",
-          "created_at",
-          "match_type"
-        ],
+        "required": ["id", "title", "owner_name", "created_at", "match_type"],
         "title": "QuestionDuplicateCandidateRead"
       },
       "QuestionRatingUpdate": {
@@ -10361,12 +10063,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "id",
-          "user_id",
-          "created_at",
-          "updated_at"
-        ],
+        "required": ["id", "user_id", "created_at", "updated_at"],
         "title": "RuntimeSettingsRead"
       },
       "UseItemPayload": {
@@ -10377,9 +10074,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "item_type"
-        ],
+        "required": ["item_type"],
         "title": "UseItemPayload"
       },
       "UserNotificationRead": {
@@ -10467,12 +10162,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "id",
-          "kind",
-          "message",
-          "created_at"
-        ],
+        "required": ["id", "kind", "message", "created_at"],
         "title": "UserNotificationRead"
       },
       "UserProfileBase": {
@@ -10845,12 +10535,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "id",
-          "user_id",
-          "created_at",
-          "updated_at"
-        ],
+        "required": ["id", "user_id", "created_at", "updated_at"],
         "title": "UserProfileRead"
       },
       "UserRead": {
@@ -10952,11 +10637,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "loc",
-          "msg",
-          "type"
-        ],
+        "required": ["loc", "msg", "type"],
         "title": "ValidationError"
       }
     }

@@ -75,7 +75,7 @@ class SupabaseObjectStorage(ObjectStorage):
         self.settings = settings
         self.base_url = settings.supabase_url.rstrip("/")
         self.headers = {
-            "Authorization": f"Bearer {settings.supabase_service_role_key}",
+            "Contributorization": f"Bearer {settings.supabase_service_role_key}",
             "apikey": settings.supabase_service_role_key,
         }
 

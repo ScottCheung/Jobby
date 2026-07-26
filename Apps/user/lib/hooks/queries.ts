@@ -20,6 +20,7 @@ import type {
   InterviewCategory,
   InterviewTag,
   InterviewCollection,
+  PaginatedResult,
 } from '@/lib/types';
 
 // Query Key Constants
@@ -76,8 +77,19 @@ export function useAchievementsQuery() {
 }
 
 // ── Interview & Practice Queries ──────────────────────────────────────────────
-export function useInterviewQuestionsQuery(options?: { limit?: number; offset?: number; search?: string; category_id?: string }) {
-  return useQuery<InterviewQuestion[]>({
+export function useInterviewQuestionsQuery(options?: {
+  limit?: number;
+  offset?: number;
+  search?: string;
+  category_id?: string;
+  category_ids?: string[];
+  collection_ids?: string[];
+  tag_ids?: string[];
+  importance_scores?: number[];
+  frequencies?: string[];
+  question_ids?: string[];
+}) {
+  return useQuery<PaginatedResult<InterviewQuestion>>({
     queryKey: QUERY_KEYS.interviewQuestions(options),
     queryFn: () => api.interviewQuestions(options),
   });

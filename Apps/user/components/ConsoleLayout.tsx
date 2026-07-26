@@ -11,15 +11,11 @@ import { GlobalDrawer } from '@/components/layout/global-drawer';
 import { GlobalConfirm } from '@/components/layout/global-confirm';
 import { GlobalModal } from '@/components/layout/global-modal';
 import { cn } from '@/lib/utils';
-import CardWithNorth from '@/components/UI/card/CardWithNorth';
-import { H1 } from '@/components/UI/text/typography';
 import { RefreshCw } from 'lucide-react';
-import { Stagger, StaggerItem } from './animation';
-import { Number } from './UI/Number/Number';
 import AutomationPanel from '@/app/_component/AutomationPanel';
-
 import { Toaster } from '@/components/UI/toast/toaster';
 import { CelebrationLayer } from '@/components/UI/celebration/confetti';
+import { DashboardStats } from '@/components/layout/dashboard-stats';
 
 export default function ConsoleLayout({
   children,
@@ -27,15 +23,15 @@ export default function ConsoleLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const { stats, error, isPending, isDesktopApp } = useConsole();
+  const { error, isPending, isDesktopApp } = useConsole();
   return (
     <LayoutGroup id='console-layout'>
-      <div className='h-full z-10 flex transition-colors duration-300'>
+      <div className='h-screen w-screen z-10 flex overflow-hidden transition-colors duration-300'>
         {/* Sidebar */}
         <Sidebar />
 
         {/* Main Content Area */}
-        <main className='relative flex h-full w-full flex-col overflow-hidden'>
+        <main className='relative flex h-full flex-1 min-w-0 flex-col overflow-hidden'>
           {isDesktopApp && (
             <div className='app-drag fixed inset-x-0 top-0 z-50 h-[48px] ' />
           )}
@@ -44,15 +40,29 @@ export default function ConsoleLayout({
             <div
               className={cn(
                 !pathname?.startsWith('/interview-prep') &&
+                  !pathname?.startsWith('/job-application') &&
                   !pathname?.startsWith('/design-system') &&
+                  !pathname?.startsWith('/settings') &&
                   'p-page',
+                (pathname?.startsWith('/interview-prep') ||
+                  pathname?.startsWith('/job-application') ||
+                  pathname?.startsWith('/settings') ||
+                  pathname?.startsWith('/design-system')) &&
+                  'h-full flex flex-col overflow-hidden',
               )}
             >
               <div
                 className={cn(
                   !pathname?.startsWith('/interview-prep') &&
+                    !pathname?.startsWith('/job-application') &&
                     !pathname?.startsWith('/design-system') &&
+                    !pathname?.startsWith('/settings') &&
                     'mx-auto grid gap-8',
+                  (pathname?.startsWith('/interview-prep') ||
+                    pathname?.startsWith('/job-application') ||
+                    pathname?.startsWith('/settings') ||
+                    pathname?.startsWith('/design-system')) &&
+                    'h-full flex flex-col overflow-hidden',
                 )}
               >
                 {/* Hero Header */}
@@ -74,61 +84,7 @@ export default function ConsoleLayout({
 
                 {/* Stats Bar */}
                 {pathname === '/' && (
-                  <Stagger
-                    staggerDelay={0.15}
-                    className='grid grid-cols-[repeat(auto-fill,minmax(250px,1fr))]  gap-6  pt-4'
-                  >
-                    {stats.map((item) => {
-                      const Icon = item.icon;
-                      return (
-                        <StaggerItem key={item.label} yOffset={20}>
-                          <CardWithNorth title={item.label}>
-                            <div className='flex items-start justify-between relative'>
-                              <div
-                                className={cn(
-                                  'absolute -top-16 -right-2 z-50 p-6 rounded-full backdrop-blur-[10px]',
-                                  item.bgColor,
-                                  item.borderColor,
-                                )}
-                              >
-                                <Icon
-                                  className={cn('w-10 h-10', item.iconColor)}
-                                />
-                              </div>
-                              <div className='flex flex-col'>
-                                <H1
-                                  className={cn(
-                                    item.textColor,
-                                    '-mt-4 -ml-[0.13em] md:-ml-[0.23em]',
-                                  )}
-                                >
-                                  <Number
-                                    value={item.value}
-                                    duration={1}
-                                    className='font-[600]'
-                                    digitWidth='0.66em'
-                                  />
-                                </H1>
-                                {item.comparison && (
-                                  <div
-                                    className={cn(
-                                      'label-sm flex items-center gap-1 mt-2',
-                                      item.comparisonColor,
-                                    )}
-                                  >
-                                    {item.comparisonIcon && (
-                                      <item.comparisonIcon className='w-3.5 h-3.5' />
-                                    )}
-                                    <span>{item.comparison}</span>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </CardWithNorth>
-                        </StaggerItem>
-                      );
-                    })}
-                  </Stagger>
+                  <DashboardStats />
                 )}
 
                 {error && (

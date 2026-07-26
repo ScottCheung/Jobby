@@ -3,53 +3,26 @@
 'use client';
 
 import React, { useRef, useState, useEffect } from 'react';
-import { motion, Variants } from 'framer-motion';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Stagger, StaggerItem } from '@/components/animation/container/stagger';
 
 export interface ScrollableContainerProps {
   children: React.ReactNode;
   className?: string;
   itemClassName?: string;
   showButtons?: boolean;
+  staggerDelay?: number;
+  staggerDelayChildren?: number;
 }
-
-const staggerVariants = (
-  staggerDelay: number = 0.05,
-  delayChildren: number = 0,
-): Variants => ({
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: staggerDelay,
-      delayChildren: delayChildren,
-    },
-  },
-});
-
-const itemVariants = (y: number = 15, x: number = 0): Variants => ({
-  hidden: {
-    opacity: 0,
-    y,
-    x,
-  },
-  visible: {
-    opacity: 1,
-    y: 0,
-    x: 0,
-    transition: {
-      opacity: { duration: 0.9, ease: 'easeInOut' },
-      y: { duration: 0.7, ease: 'easeInOut' },
-    },
-  },
-});
 
 export function ScrollableContainer({
   children,
   className,
   itemClassName,
   showButtons = true,
+  staggerDelay = 0.18,
+  staggerDelayChildren = 0.1,
 }: ScrollableContainerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isAtStart, setIsAtStart] = useState(true);
@@ -91,27 +64,41 @@ export function ScrollableContainer({
     const container = containerRef.current;
     if (!container) return;
 
-    const child = container.firstElementChild as HTMLElement;
-    const scrollAmount = child ? child.offsetWidth + 16 : 300; // default to 16px gap
-    container.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+    container.scrollBy({
+      left: -Math.max(container.clientWidth * 0.8, 280),
+      behavior: 'smooth',
+    });
   };
 
   const handleScrollRight = () => {
     const container = containerRef.current;
     if (!container) return;
 
-    const child = container.firstElementChild as HTMLElement;
-    const scrollAmount = child ? child.offsetWidth + 16 : 300; // default to 16px gap
-    container.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    container.scrollBy({
+      left: Math.max(container.clientWidth * 0.8, 280),
+      behavior: 'smooth',
+    });
   };
 
   const buttonStyle = `group border border-border/40 bg-panel/85 text-ink-primary hover:text-primary hover:bg-primary/10 hover:border-primary/20 backdrop-blur-md w-9 h-9 flex rounded-full justify-center items-center transition-all duration-300 shadow-xs active:scale-95 cursor-pointer`;
+  const edgeMask =
+    isAtStart && isAtEnd ? undefined
+    : isAtStart ?
+      'linear-gradient(to right, black 0, black calc(100% - 36px), transparent 100%)'
+    : isAtEnd ?
+      'linear-gradient(to right, transparent 0, black 36px, black 100%)'
+    : 'linear-gradient(to right, transparent 0, black 36px, black calc(100% - 36px), transparent 100%)';
+  const animationKey = React.Children.toArray(children)
+    .map((child, index) =>
+      React.isValidElement(child) && child.key ? child.key : index,
+    )
+    .join('|');
 
   return (
-    <div className='w-full flex flex-col gap-2'>
+    <div className='flex min-w-0 max-w-full flex-col gap-2'>
       {/* Scroll controls */}
       {showButtons && (
-        <div className='hidden lg:flex items-center justify-end gap-2 w-full pr-1'>
+        <div className='flex w-full items-center justify-end gap-2 pr-1'>
           <button
             onClick={handleScrollLeft}
             disabled={isAtStart}
@@ -139,35 +126,47 @@ export function ScrollableContainer({
         </div>
       )}
 
-      {/* Main List Container */}
-      <motion.div
+      <div
         ref={containerRef}
-        initial={false}
-        animate='visible'
-        variants={staggerVariants()}
+        style={
+          edgeMask ?
+            {
+              maskImage: edgeMask,
+              WebkitMaskImage: edgeMask,
+            }
+          : undefined
+        }
         className={cn(
-          'w-full grid grid-cols-12 gap-4 py-2 z-10',
-          'lg:flex lg:flex-row lg:overflow-x-auto lg:no-scrollbar lg:py-1',
+          'min-w-0 max-w-full overflow-x-auto overscroll-x-contain scroll-smooth no-scrollbar',
           className,
         )}
       >
-        {React.Children.map(children, (child, idx) => {
-          if (!child) return null;
-          const key = React.isValidElement(child) && child.key ? child.key : idx;
-          return (
-            <motion.div
-              key={key}
-              variants={itemVariants(15, 0)}
-              className={cn(
-                'col-span-12 sm:col-span-6 lg:w-[380px] lg:shrink-0 lg:h-full',
-                itemClassName,
-              )}
-            >
-              {child}
-            </motion.div>
-          );
-        })}
-      </motion.div>
+        <Stagger
+          key={animationKey}
+          animateOnMount
+          staggerDelay={staggerDelay}
+          delayChildren={staggerDelayChildren}
+          className='flex w-max min-w-full gap-4 py-2 lg:py-1'
+        >
+          {React.Children.map(children, (child, idx) => {
+            if (!child) return null;
+            const key =
+              React.isValidElement(child) && child.key ? child.key : idx;
+            return (
+              <StaggerItem
+                key={key}
+                yOffset={12}
+                className={cn(
+                  'w-[280px] shrink-0 sm:w-[320px] lg:w-[380px]',
+                  itemClassName,
+                )}
+              >
+                {child}
+              </StaggerItem>
+            );
+          })}
+        </Stagger>
+      </div>
     </div>
   );
 }

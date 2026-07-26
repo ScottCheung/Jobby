@@ -30,6 +30,7 @@ import {
 import { cn, formatInterviewDuration } from '@/lib/utils';
 import type { InterviewQuestion, QuestionAnswer } from '@/lib/types';
 import { Tooltip } from '@/components/UI/tooltip';
+import { div } from 'framer-motion/client';
 
 export type AnswerTypeTab = 'ai' | 'author' | 'community' | 'mine';
 
@@ -387,9 +388,9 @@ interface StandardAnswerCardProps {
   onStartEditing: () => void;
   onCancelEditing: () => void;
   onSaveAnswer: (editedText: string) => Promise<void>;
-  onCreateAuthorAnswer?: (text: string) => Promise<void>;
-  onUpdateAuthorAnswer?: (answerId: string, text: string) => Promise<void>;
-  onDeleteAuthorAnswer?: (answerId: string) => Promise<void>;
+  onCreateContributorAnswer?: (text: string) => Promise<void>;
+  onUpdateContributorAnswer?: (answerId: string, text: string) => Promise<void>;
+  onDeleteContributorAnswer?: (answerId: string) => Promise<void>;
   isSavingAnswer: boolean;
   isAnswersLoading?: boolean;
   featuredAnswers?: QuestionAnswer[];
@@ -399,7 +400,7 @@ interface StandardAnswerCardProps {
   myAnswer?: QuestionAnswer | null;
   isGeneratingAiAnswer?: boolean;
   isGeneratingQuestionMetadata?: boolean;
-  isQuestionAuthor?: boolean;
+  isQuestionContributor?: boolean;
   onGenerateAiAnswer?: (
     regenerate?: boolean,
   ) => Promise<QuestionAnswer | undefined>;
@@ -430,9 +431,9 @@ export function StandardAnswerCard({
   onStartEditing,
   onCancelEditing,
   onSaveAnswer,
-  onCreateAuthorAnswer,
-  onUpdateAuthorAnswer,
-  onDeleteAuthorAnswer,
+  onCreateContributorAnswer,
+  onUpdateContributorAnswer,
+  onDeleteContributorAnswer,
   isSavingAnswer,
   isAnswersLoading = false,
   featuredAnswers = [],
@@ -442,7 +443,7 @@ export function StandardAnswerCard({
   myAnswer = null,
   isGeneratingAiAnswer = false,
   isGeneratingQuestionMetadata = false,
-  isQuestionAuthor = false,
+  isQuestionContributor = false,
   onGenerateAiAnswer,
   onGenerateQuestionMetadata,
   onUnlockAiAnswer,
@@ -455,15 +456,17 @@ export function StandardAnswerCard({
   );
   const [showAllCommunity, setShowAllCommunity] = useState(false);
   const [togglingAnswerId, setTogglingAnswerId] = useState<string | null>(null);
-  const [isCreatingAuthorAnswer, setIsCreatingAuthorAnswer] = useState(false);
-  const [authorAnswerText, setAuthorAnswerText] = useState('');
-  const [editingAuthorAnswerId, setEditingAuthorAnswerId] = useState<
+  const [isCreatingContributorAnswer, setIsCreatingContributorAnswer] =
+    useState(false);
+  const [authorAnswerText, setContributorAnswerText] = useState('');
+  const [editingContributorAnswerId, setEditingContributorAnswerId] = useState<
     string | null
   >(null);
-  const [editingAuthorAnswerText, setEditingAuthorAnswerText] = useState('');
+  const [editingContributorAnswerText, setEditingContributorAnswerText] =
+    useState('');
 
   const safeAiAnswers = useMemo(() => dedupeById(aiAnswers), [aiAnswers]);
-  const safeAuthorAnswers = useMemo(
+  const safeContributorAnswers = useMemo(
     () => dedupeById(authorAnswers),
     [authorAnswers],
   );
@@ -484,14 +487,14 @@ export function StandardAnswerCard({
       safeAllCommunityAnswers.length > 0
     )
       setActiveTab('community');
-    else if (safeAuthorAnswers.length > 0) setActiveTab('author');
+    else if (safeContributorAnswers.length > 0) setActiveTab('author');
     else setActiveTab('ai');
   }, [
     currentQuestion?.id,
     safeAiAnswers.length,
     safeFeaturedAnswers.length,
     safeAllCommunityAnswers.length,
-    safeAuthorAnswers.length,
+    safeContributorAnswers.length,
   ]);
 
   // Selected AI answer
@@ -612,7 +615,10 @@ export function StandardAnswerCard({
   if (!currentQuestion) return null;
 
   const rawCommunity =
-    showAllCommunity || (isQuestionAuthor && safeFeaturedAnswers.length === 0) ?
+    (
+      showAllCommunity ||
+      (isQuestionContributor && safeFeaturedAnswers.length === 0)
+    ) ?
       safeAllCommunityAnswers
     : safeFeaturedAnswers.length > 0 ? safeFeaturedAnswers
     : safeAllCommunityAnswers;
@@ -657,11 +663,13 @@ export function StandardAnswerCard({
     },
     {
       id: 'author' as const,
-      label: 'Author',
+      label: 'Contributor',
       Icon: UserCheck,
       active: 'text-blue-600 dark:text-blue-400',
       badge:
-        safeAuthorAnswers.length > 0 ? safeAuthorAnswers.length : undefined,
+        safeContributorAnswers.length > 0 ?
+          safeContributorAnswers.length
+        : undefined,
       badgeCls: 'bg-blue-500/15 text-blue-700 dark:text-blue-300',
     },
     {
@@ -742,24 +750,29 @@ export function StandardAnswerCard({
           {activeTab === 'ai' &&
             onGenerateAiAnswer &&
             canGenerateMoreAiAnswers && (
-              <button
-                type='button'
-                onClick={async (e) => {
-                  e.stopPropagation();
-                  const a = await onGenerateAiAnswer(true);
-                  if (a) setSelectedAiAnswerId(a.id);
-                }}
-                disabled={isGeneratingAiAnswer}
-                className='inline-flex items-center gap-1.5 rounded-lg bg-violet-600/10 px-2.5 py-1 text-xs font-semibold text-violet-700 dark:text-violet-300 hover:bg-violet-600/20 active:scale-95 disabled:opacity-50 transition-all'
-              >
-                <Sparkles
-                  className={cn(
-                    'h-3.5 w-3.5',
-                    isGeneratingAiAnswer && 'animate-spin',
-                  )}
-                />
-                {isGeneratingAiAnswer ? 'Generating...' : 'Regenerate'}
-              </button>
+              <div className='col items-center'>
+                <button
+                  type='button'
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    const a = await onGenerateAiAnswer(true);
+                    if (a) setSelectedAiAnswerId(a.id);
+                  }}
+                  disabled={isGeneratingAiAnswer}
+                  className='inline-flex items-center gap-1.5 rounded-lg bg-violet-600/10 px-2.5 py-1 text-xs font-semibold text-violet-700 dark:text-violet-300 hover:bg-violet-600/20 active:scale-95 disabled:opacity-50 transition-all'
+                >
+                  <Sparkles
+                    className={cn(
+                      'h-3.5 w-3.5',
+                      isGeneratingAiAnswer && 'animate-spin',
+                    )}
+                  />
+                  {isGeneratingAiAnswer ? 'Generating...' : 'Regenerate'}
+                </button>
+                <label className=' text-ink-secondary text-[7px]! text-center'>
+                  New version · up to 5 coins
+                </label>
+              </div>
             )}
         </div>
       </div>
@@ -802,7 +815,7 @@ export function StandardAnswerCard({
               <div className='space-y-3' onClick={(e) => e.stopPropagation()}>
                 {/* Answers Loading Skeleton (quiet placeholder during question switch) */}
                 {isAnswersLoading ?
-                  <div className='rounded-xl border border-border/40 bg-background-secondary/30 p-4 space-y-3 min-h-[300px] animate-pulse'>
+                  <div className='rounded-xl border border-border/40 bg-background-secondary/30 p-4 space-y-3 min-h-[300px] animate-text-shimmer-primary animate-text-shimmer'>
                     <div className='flex items-center gap-2'>
                       <div className='h-4 w-28 bg-muted/60 rounded-md' />
                     </div>
@@ -819,7 +832,7 @@ export function StandardAnswerCard({
                 isGeneratingAiAnswer ?
                   <div className='rounded-xl border border-violet-500/20 bg-violet-500/[0.05] p-4 space-y-3'>
                     <div className='flex items-center gap-2'>
-                      <Sparkles className='h-4 w-4 animate-pulse text-violet-500' />
+                      <Sparkles className='h-4 w-4 animate-text-shimmer-primary animate-text-shimmer text-violet-500' />
                       <span className='text-sm font-semibold text-ink-primary'>
                         AI is generating a structured answer...
                       </span>
@@ -828,7 +841,7 @@ export function StandardAnswerCard({
                       {[4, 5, 3, 3].map((w, i) => (
                         <div
                           key={i}
-                          className={`h-2 w-${w}/5 animate-pulse rounded-full bg-violet-500/20`}
+                          className={`h-2 w-${w}/5 animate-text-shimmer-primary animate-text-shimmer rounded-full bg-violet-500/20`}
                         />
                       ))}
                     </div>
@@ -845,7 +858,7 @@ export function StandardAnswerCard({
                       </p>
                       <p className='text-xs text-ink-secondary max-w-[220px]'>
                         Generate a structured reference answer when you need
-                        one.
+                        one. Unlocking it costs up to 5 coins.
                       </p>
                     </div>
                     {onGenerateAiAnswer && (
@@ -1032,13 +1045,15 @@ export function StandardAnswerCard({
             {/* ══════════════════════════════════════════ TAB: AUTHOR ══════════════════════════════════════════ */}
             {activeTab === 'author' && (
               <div className='space-y-3' onClick={(e) => e.stopPropagation()}>
-                {isQuestionAuthor &&
-                  onCreateAuthorAnswer &&
-                  (isCreatingAuthorAnswer ?
+                {isQuestionContributor &&
+                  onCreateContributorAnswer &&
+                  (isCreatingContributorAnswer ?
                     <div className='space-y-2 border-b border-blue-500/15 pb-3'>
                       <textarea
                         value={authorAnswerText}
-                        onChange={(e) => setAuthorAnswerText(e.target.value)}
+                        onChange={(e) =>
+                          setContributorAnswerText(e.target.value)
+                        }
                         placeholder='Write an official reference answer...'
                         className='textarea h-32 text-xs'
                       />
@@ -1046,8 +1061,8 @@ export function StandardAnswerCard({
                         <button
                           type='button'
                           onClick={() => {
-                            setAuthorAnswerText('');
-                            setIsCreatingAuthorAnswer(false);
+                            setContributorAnswerText('');
+                            setIsCreatingContributorAnswer(false);
                           }}
                           disabled={isSavingAnswer}
                           className='px-3 py-1.5 rounded-lg border border-border text-ink-secondary text-xs font-bold hover:bg-background-secondary transition-colors'
@@ -1057,9 +1072,9 @@ export function StandardAnswerCard({
                         <button
                           type='button'
                           onClick={async () => {
-                            await onCreateAuthorAnswer(authorAnswerText);
-                            setAuthorAnswerText('');
-                            setIsCreatingAuthorAnswer(false);
+                            await onCreateContributorAnswer(authorAnswerText);
+                            setContributorAnswerText('');
+                            setIsCreatingContributorAnswer(false);
                           }}
                           disabled={isSavingAnswer || !authorAnswerText.trim()}
                           className='inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 active:scale-95 transition-all disabled:opacity-50'
@@ -1071,15 +1086,15 @@ export function StandardAnswerCard({
                     </div>
                   : <button
                       type='button'
-                      onClick={() => setIsCreatingAuthorAnswer(true)}
+                      onClick={() => setIsCreatingContributorAnswer(true)}
                       className='inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline'
                     >
                       <UserCheck className='h-3.5 w-3.5' /> Add author answer
                     </button>)}
 
-                {safeAuthorAnswers.length > 0 ?
+                {safeContributorAnswers.length > 0 ?
                   <div className='space-y-3 max-h-[480px] overflow-y-auto custom-scrollbar-primary pr-0.5'>
-                    {safeAuthorAnswers.map((ans, idx) => (
+                    {safeContributorAnswers.map((ans, idx) => (
                       <div
                         key={`${ans.id}-${idx}`}
                         className='rounded-xl border border-blue-500/15 bg-blue-500/[0.05] p-3.5 space-y-2'
@@ -1091,17 +1106,17 @@ export function StandardAnswerCard({
                           <span className='label-overline flex-1 text-blue-600 dark:text-blue-400'>
                             Official Reference Answer
                           </span>
-                          {isQuestionAuthor &&
-                            onUpdateAuthorAnswer &&
-                            onDeleteAuthorAnswer && (
+                          {isQuestionContributor &&
+                            onUpdateContributorAnswer &&
+                            onDeleteContributorAnswer && (
                               <div className='flex items-center gap-1'>
                                 <Tooltip content='Edit author answer'>
                                   <button
                                     type='button'
                                     aria-label='Edit author answer'
                                     onClick={() => {
-                                      setEditingAuthorAnswerId(ans.id);
-                                      setEditingAuthorAnswerText(
+                                      setEditingContributorAnswerId(ans.id);
+                                      setEditingContributorAnswerText(
                                         ans.body ?? '',
                                       );
                                     }}
@@ -1120,7 +1135,7 @@ export function StandardAnswerCard({
                                           'Delete this author answer?',
                                         )
                                       ) {
-                                        await onDeleteAuthorAnswer(ans.id);
+                                        await onDeleteContributorAnswer(ans.id);
                                       }
                                     }}
                                     disabled={isSavingAnswer}
@@ -1132,12 +1147,12 @@ export function StandardAnswerCard({
                               </div>
                             )}
                         </div>
-                        {editingAuthorAnswerId === ans.id ?
+                        {editingContributorAnswerId === ans.id ?
                           <div className='space-y-2'>
                             <textarea
-                              value={editingAuthorAnswerText}
+                              value={editingContributorAnswerText}
                               onChange={(e) =>
-                                setEditingAuthorAnswerText(e.target.value)
+                                setEditingContributorAnswerText(e.target.value)
                               }
                               className='textarea h-32 text-xs'
                             />
@@ -1145,8 +1160,8 @@ export function StandardAnswerCard({
                               <button
                                 type='button'
                                 onClick={() => {
-                                  setEditingAuthorAnswerId(null);
-                                  setEditingAuthorAnswerText('');
+                                  setEditingContributorAnswerId(null);
+                                  setEditingContributorAnswerText('');
                                 }}
                                 disabled={isSavingAnswer}
                                 className='px-3 py-1.5 rounded-lg border border-border text-ink-secondary text-xs font-bold hover:bg-background-secondary transition-colors'
@@ -1156,16 +1171,16 @@ export function StandardAnswerCard({
                               <button
                                 type='button'
                                 onClick={async () => {
-                                  await onUpdateAuthorAnswer?.(
+                                  await onUpdateContributorAnswer?.(
                                     ans.id,
-                                    editingAuthorAnswerText,
+                                    editingContributorAnswerText,
                                   );
-                                  setEditingAuthorAnswerId(null);
-                                  setEditingAuthorAnswerText('');
+                                  setEditingContributorAnswerId(null);
+                                  setEditingContributorAnswerText('');
                                 }}
                                 disabled={
                                   isSavingAnswer ||
-                                  !editingAuthorAnswerText.trim()
+                                  !editingContributorAnswerText.trim()
                                 }
                                 className='px-3 py-1.5 rounded-lg bg-blue-600 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50'
                               >
@@ -1182,7 +1197,7 @@ export function StandardAnswerCard({
                       </div>
                     ))}
                   </div>
-                : !isCreatingAuthorAnswer && (
+                : !isCreatingContributorAnswer && (
                     <div className='flex flex-col items-center gap-2.5 rounded-xl border border-dashed border-border bg-background-secondary/20 px-4 py-8 text-center'>
                       <span className='flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/10'>
                         <UserCheck className='h-4.5 w-4.5 text-blue-400' />
@@ -1235,32 +1250,33 @@ export function StandardAnswerCard({
                                 </span>
                               )}
                             </div>
-                            {isQuestionAuthor && onToggleFeaturedAnswer && (
-                              <button
-                                type='button'
-                                disabled={togglingAnswerId === answer.id}
-                                onClick={(e) =>
-                                  handleToggleRecommend(answer.id, isRec, e)
-                                }
-                                className={cn(
-                                  'inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold transition-all active:scale-95',
-                                  isRec ?
-                                    'bg-rose-500/10 text-rose-600 hover:bg-rose-500/20'
-                                  : 'bg-amber-500/10 text-amber-600 hover:bg-amber-500/20',
-                                )}
-                              >
-                                {isRec ?
-                                  <>
-                                    <StarOff className='h-3 w-3' />
-                                    Remove feature
-                                  </>
-                                : <>
-                                    <Star className='h-3 w-3 fill-current' />
-                                    Feature answer
-                                  </>
-                                }
-                              </button>
-                            )}
+                            {isQuestionContributor &&
+                              onToggleFeaturedAnswer && (
+                                <button
+                                  type='button'
+                                  disabled={togglingAnswerId === answer.id}
+                                  onClick={(e) =>
+                                    handleToggleRecommend(answer.id, isRec, e)
+                                  }
+                                  className={cn(
+                                    'inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold transition-all active:scale-95',
+                                    isRec ?
+                                      'bg-rose-500/10 text-rose-600 hover:bg-rose-500/20'
+                                    : 'bg-amber-500/10 text-amber-600 hover:bg-amber-500/20',
+                                  )}
+                                >
+                                  {isRec ?
+                                    <>
+                                      <StarOff className='h-3 w-3' />
+                                      Remove feature
+                                    </>
+                                  : <>
+                                      <Star className='h-3 w-3 fill-current' />
+                                      Feature answer
+                                    </>
+                                  }
+                                </button>
+                              )}
                           </div>
                           <div className='space-y-1.5 text-xs text-ink-secondary leading-relaxed'>
                             {(answer.body ?? '').split('\n').map((p, i) => (
@@ -1279,7 +1295,7 @@ export function StandardAnswerCard({
                       No featured community answers
                     </p>
                     <p className='text-xs text-ink-secondary max-w-[220px]'>
-                      {isQuestionAuthor ?
+                      {isQuestionContributor ?
                         'As the question author, you can feature strong community answers.'
                       : 'Answers featured by the author or an admin will appear here.'
                       }

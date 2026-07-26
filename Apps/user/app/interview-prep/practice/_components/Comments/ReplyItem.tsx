@@ -39,9 +39,10 @@ export function ReplyItem({
   idPrefix?: string;
 }) {
   const { profile, updateProfileExtra } = useConsole();
-  const savedCommentIds = Array.isArray(profile.extra_data?.['saved-comment-ids']) ?
-    (profile.extra_data['saved-comment-ids'] as string[])
-  : [];
+  const savedCommentIds =
+    Array.isArray(profile.extra_data?.['saved-comment-ids']) ?
+      (profile.extra_data['saved-comment-ids'] as string[])
+    : [];
   const relativeTime = useRelativeTime(replyItem.created_at);
   const isHighlighted = highlightedCommentId === replyItem.id;
   const [menuOpen, setMenuOpen] = useState(false);
@@ -81,8 +82,9 @@ export function ReplyItem({
     <div
       id={`${idPrefix}${replyItem.id}`}
       className={cn(
-        'group reply flex gap-2 p-1.5 rounded-t-xl! rounded-lg justify-between  transition-colors duration-1000',
+        'group reply flex gap-2 p-1.5 rounded-t-xl! rounded-lg justify-between ',
         isHighlighted && 'bg-linear-to-b bg-primary/15 to-transparent',
+        'hover:bg-primary/5',
       )}
     >
       <div className='flex gap-2  w-full items-start h-full'>

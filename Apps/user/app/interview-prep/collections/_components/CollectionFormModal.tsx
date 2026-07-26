@@ -16,7 +16,7 @@ import {
   Users,
   X,
 } from 'lucide-react';
-import type { InterviewCollection } from '@/lib/types';
+import type { InterviewCategory, InterviewCollection } from '@/lib/types';
 import { Button } from '@/components/UI/Button';
 import {
   CardSelector,
@@ -29,6 +29,7 @@ import { ImageCropper } from '@/components/UI/ImageCropper';
 interface Props {
   collection?: InterviewCollection | null;
   defaultStatus?: string;
+  categories?: InterviewCategory[];
   onSave: (payload: {
     title: string;
     description?: string;

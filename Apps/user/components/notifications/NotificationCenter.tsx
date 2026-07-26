@@ -9,6 +9,9 @@ import {
   Heart,
   MessageCircle,
   PackageOpen,
+  AlertCircle,
+  MessageSquare,
+  Edit3,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
@@ -29,6 +32,7 @@ const notificationIcons = {
   answer_comment_like: Heart,
   collection_updated: PackageOpen,
   collection_archived: PackageOpen,
+  question_feedback: AlertCircle,
 } as const;
 
 export function NotificationCenter() {
@@ -136,7 +140,7 @@ function NotificationDrawer({
     setIsLoadingHistory(false);
   };
 
-  const open = async (item: UserNotification) => {
+  const openViewComment = async (item: UserNotification) => {
     if (!item.read_at) {
       await api.markNotificationRead(item.id);
       setItems((current) =>
@@ -148,42 +152,63 @@ function NotificationDrawer({
       );
       void onChanged();
     }
-    const targetUrl =
-      item.action_url ||
-      (item.question_id ?
-        `/interview-prep/practice/${item.question_id}?mode=free&tab=comment`
-      : null);
-    if (targetUrl) {
-      closeDrawer();
-      let finalUrl = targetUrl;
-      if (
-        typeof item.metadata?.answer_id === 'string' &&
-        typeof item.metadata?.comment_id === 'string' &&
-        !finalUrl.includes('#')
-      ) {
-        finalUrl += `#answer-comment-${item.metadata.comment_id}`;
-      } else if (
-        typeof item.metadata?.answer_id === 'string' &&
-        !finalUrl.includes('#')
-      ) {
-        finalUrl += `#answer-${item.metadata.answer_id}`;
-      } else if (item.metadata?.comment_id && !finalUrl.includes('#')) {
-        finalUrl += `#comment-${item.metadata.comment_id}`;
-      }
-      router.push(finalUrl);
-      setTimeout(() => {
-        window.dispatchEvent(new Event('hashchange'));
-      }, 300);
-      if (finalUrl.includes('#')) {
-        const available = await verifyNotificationTarget(finalUrl);
-        if (!available) {
-          setUnavailableIds((current) => new Set(current).add(item.id));
-        }
-      }
-    } else {
+
+    if (!item.question_id && !item.action_url) {
       setUnavailableIds((current) => new Set(current).add(item.id));
       showGlobalToast('This notification is no longer available.');
+      return;
     }
+
+    closeDrawer();
+    let targetUrl =
+      item.question_id ?
+        `/interview-prep/practice/${item.question_id}?mode=free&shuffle=0&tab=comment`
+      : item.action_url || '';
+
+    if (
+      typeof item.metadata?.answer_id === 'string' &&
+      typeof item.metadata?.comment_id === 'string' &&
+      !targetUrl.includes('#')
+    ) {
+      targetUrl += `#answer-comment-${item.metadata.comment_id}`;
+    } else if (
+      typeof item.metadata?.answer_id === 'string' &&
+      !targetUrl.includes('#')
+    ) {
+      targetUrl += `#answer-${item.metadata.answer_id}`;
+    } else if (item.metadata?.comment_id && !targetUrl.includes('#')) {
+      targetUrl += `#comment-${item.metadata.comment_id}`;
+    }
+
+    router.push(targetUrl);
+    setTimeout(() => {
+      window.dispatchEvent(new Event('hashchange'));
+    }, 300);
+
+    if (targetUrl.includes('#')) {
+      const available = await verifyNotificationTarget(targetUrl);
+      if (!available) {
+        setUnavailableIds((current) => new Set(current).add(item.id));
+      }
+    }
+  };
+
+  const openEditQuestion = async (item: UserNotification) => {
+    if (!item.read_at) {
+      await api.markNotificationRead(item.id);
+      setItems((current) =>
+        current.map((entry) =>
+          entry.id === item.id ?
+            { ...entry, read_at: new Date().toISOString() }
+          : entry,
+        ),
+      );
+      void onChanged();
+    }
+
+    if (!item.question_id) return;
+    closeDrawer();
+    router.push(`/interview-prep/library?edit=${item.question_id}`);
   };
 
   const filteredItems = items.filter((item) => {
@@ -276,7 +301,12 @@ function NotificationDrawer({
               key={item.id}
               item={item}
               isUnavailable={unavailableIds.has(item.id)}
-              onOpen={() => void open(item)}
+              onOpenViewComment={() => void openViewComment(item)}
+              onOpenEditQuestion={
+                item.question_id && item.kind === 'question_feedback' ?
+                  () => void openEditQuestion(item)
+                : undefined
+              }
             />
           ))
         }
@@ -302,11 +332,13 @@ function NotificationDrawer({
 function NotificationRow({
   item,
   isUnavailable,
-  onOpen,
+  onOpenViewComment,
+  onOpenEditQuestion,
 }: {
   item: UserNotification;
   isUnavailable: boolean;
-  onOpen: () => void;
+  onOpenViewComment: () => void;
+  onOpenEditQuestion?: () => void;
 }) {
   const relative = useRelativeTime(item.created_at);
   const metadata = item.metadata || {};
@@ -326,14 +358,14 @@ function NotificationRow({
   const questionTitle =
     typeof metadata.question_title === 'string' ? metadata.question_title : '';
   return (
-    <button
-      onClick={onOpen}
+    <div
+      onClick={onOpenViewComment}
       className={cn(
-        'flex w-full cursor-pointer gap-3 border-b rounded-tl-2xl! rounded-br-2xl!  rounded-lg  border-border/50 p-2 pr-6! pb-6! text-left transition hover:bg-background-secondary/50',
+        'group relative flex w-full cursor-pointer gap-3 border-b rounded-tl-2xl! rounded-br-2xl! rounded-lg border-border/50 p-3 pr-4 text-left transition hover:bg-background-secondary/50',
         !item.read_at && 'bg-primary/5',
       )}
     >
-      <div className='flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/10 text-primary'>
+      <div className='flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/10 text-primary '>
         {actorAvatar ?
           <img
             src={actorAvatar}
@@ -342,73 +374,94 @@ function NotificationRow({
           />
         : <Avatar src='' name={actorName} />}
       </div>
-      <div className='min-w-0 flex-1'>
-        <div className='flex items-center justify-between gap-2'>
-          <p className='flex items-center gap-1.5 text-xs font-semibold text-ink-primary'>
-            {actorName}
-            {actorBadge && (
-              <span className='rounded-full border border-primary/30 px-1.5 py-0.5 text-[8px] font-bold uppercase text-primary'>
-                {actorBadge}
-              </span>
+      <div className='min-w-0 flex-1 flex flex-col justify-between'>
+        <div>
+          <div className='flex items-center justify-between gap-2'>
+            <p className='flex items-center gap-1.5 text-xs font-semibold text-ink-primary'>
+              {actorName}
+              {actorBadge && (
+                <span className='rounded-full border border-primary/30 px-1.5 py-0.5 text-[8px] font-bold uppercase text-primary'>
+                  {actorBadge}
+                </span>
+              )}
+              {isUnavailable && (
+                <span className='rounded-full border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[8px] font-bold uppercase text-amber-700'>
+                  Deleted
+                </span>
+              )}
+            </p>
+            {!item.read_at && (
+              <span className='h-2 w-2 shrink-0 rounded-full bg-primary' />
             )}
-            {isUnavailable && (
-              <span className='rounded-full border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[8px] font-bold uppercase text-amber-700'>
-                Deleted
-              </span>
-            )}
+          </div>
+          <p className='mt-1 text-xs text-ink-secondary'>
+            {item.kind === 'question_feedback' ?
+              'submitted feedback'
+            : item.kind === 'comment_like' ?
+              'liked your comment'
+            : item.kind === 'comment_reply' ?
+              'replied to your comment'
+            : item.kind === 'answer_like' ?
+              'liked your answer'
+            : item.kind === 'answer_reply' ?
+              'replied to your answer'
+            : item.kind === 'answer_comment_like' ?
+              'liked your reply'
+            : item.kind === 'answer_comment_reply' ?
+              'replied to your reply'
+            : item.title || 'sent an update'}{' '}
+            · {relative}
           </p>
-          {!item.read_at && (
-            <span className='h-2 w-2 shrink-0 rounded-full bg-primary' />
+          {(commentBody || item.message) && (
+            <p className='mt-2 text-xs font-medium leading-relaxed text-ink-primary bg-background-secondary/40 p-2 rounded-lg border border-border/40'>
+              {commentBody || item.message}
+            </p>
+          )}
+          {parentBody && (
+            <p className='mt-2 border-l-2 border-primary/40 pl-2 text-xs leading-5 text-ink-secondary italic'>
+              {parentBody}
+            </p>
+          )}
+          {questionTitle && (
+            <p className='mt-2 truncate text-[11px] font-medium text-ink-secondary flex items-center gap-1'>
+              <span className='text-primary font-semibold'>Question ·</span>{' '}
+              {questionTitle}
+            </p>
           )}
         </div>
-        <p className='mt-1 text-xs text-ink-secondary'>
-          {item.kind === 'comment_like' ?
-            'liked your comment'
-          : item.kind === 'comment_reply' ?
-            'replied to your comment'
-          : item.kind === 'answer_like' ?
-            'liked your answer'
-          : item.kind === 'answer_reply' ?
-            'replied to your answer'
-          : item.kind === 'answer_comment_like' ?
-            'liked your reply'
-          : item.kind === 'answer_comment_reply' ?
-            'replied to your reply'
-          : item.title || 'sent an update'}{' '}
-          · {relative}
-        </p>
-        {commentBody && (
-          <p className='mt-2 text-sm font-semibold leading-5 text-ink-primary'>
-            {(
-              [
-                'comment_reply',
-                'answer_reply',
-                'answer_comment_reply',
-                'comment_like',
-                'answer_comment_like',
-              ].includes(item.kind)
-            ) ?
-              commentBody
-            : ''}
-          </p>
-        )}
-        {parentBody && (
-          <p className='mt-2 border-l-3 border-primary/40 pl-2 text-xs leading-5 text-ink-secondary'>
-            {parentBody}
-          </p>
-        )}
-        {questionTitle && (
-          <p className='mt-2 truncate text-[10px] font-medium text-ink-secondary'>
-            Question · {questionTitle}
-          </p>
-        )}
-        {!commentBody && (
-          <p className='mt-1 text-xs leading-5 text-ink-secondary whitespace-pre-line'>
-            {item.message}
-          </p>
+
+        {/* Action Buttons Row */}
+        {item.question_id && (
+          <div className='mt-3 flex items-center gap-2 pt-2 border-t border-border/30'>
+            <button
+              type='button'
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenViewComment();
+              }}
+              className='inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 text-[11px] font-semibold transition-colors cursor-pointer'
+            >
+              <MessageSquare className='w-3.5 h-3.5' />
+              <span>View Comment</span>
+            </button>
+
+            {onOpenEditQuestion && (
+              <button
+                type='button'
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpenEditQuestion();
+                }}
+                className='inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 text-[11px] font-semibold transition-colors cursor-pointer'
+              >
+                <Edit3 className='w-3.5 h-3.5' />
+                <span>Edit Question</span>
+              </button>
+            )}
+          </div>
         )}
       </div>
-    </button>
+    </div>
   );
 }
 

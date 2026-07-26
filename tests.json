@@ -1,0 +1,104 @@
+{
+  "basics": {
+    "first_name": "Scott",
+    "middle_name": null,
+    "last_name": "Zhang",
+    "email": "xianzhe.site@gmail.com",
+    "phone": "0434344292",
+    "location": {
+      "city": null,
+      "state": null,
+      "country": null,
+      "postal_code": null
+    },
+    "linkedin_url": null,
+    "website": null,
+    "portfolio_url": "https://xianzhe.site/project",
+    "headline": null
+  },
+  "summary": "Full-Stack Developer using Next.js, React, .NET, and FastAPI. Proven track record of cost optimization ($15k/year saved), load-time improvements (65% faster), and code efficiency ( 40% reduction). Experienced in owning projects end-to-end and delivering scalable, maintainable systems in cloud-native environments using Agile methodologies.",
+  "experience": [
+    {
+      "company": "Bluesky Creations",
+      "position": "Mid-level Full-Stack Developer",
+      "start_date": "June 2025",
+      "end_date": "Jan 2026",
+      "location": null,
+      "description": [
+        "Architected a loyalty platform using .NET and FastAPI, managing the full SDLC from requirements to production.",
+        "Boosted performance by migrating to Next.js, improving page load speeds by 65% (TBT < 70ms) and achieving 90+ Lighthouse scores, while cutting annual operational costs by $15k.",
+        "Engineered backend services, optimizing data access patterns and integrating AWS services (RDS, EC2, S3).",
+        "Streamlined AWS Provisioning via modular Terraform, standardizing infrastructure (ECS/Fargate, RDS, S3) through parameterization, which minimized configuration drift and reduced code redundancy by 70%.",
+        "Automated CI/CD using GitHub Actions, integrating Docker-based workflows for seamless deployments to AWS ECS, ensuring robust testing, safe rollbacks, and zero-downtime releases.",
+        "Standardized UI by building a shared component library with Tailwind CSS and Storybook, ensuring design consistency across multi-product ecosystems.",
+        "Consolidated disparate codebases into a Turbo Monorepo, sharing internal utilities and backend interfaces to cut code duplication by 40% and streamline maintenance."
+      ]
+    },
+    {
+      "company": "Wolli Software",
+      "position": "Web Developer",
+      "start_date": "Oct 2023",
+      "end_date": "Mar 2025",
+      "location": null,
+      "description": [
+        "Developed scalable web applications using React and Next.js with Zustand and Redux for state management, improving web performance by 20%.",
+        "Designed and developed RESTful APIs using .NET, FastAPI, and Node.js, following TDD principles and best practices.",
+        "Integrated diverse third-party services, including Twilio, Shopify, Mapbox, Strapi, Sanity and Stripe/Lemon Squeezy.",
+        "Implemented authentication using Firebase Auth / Supabase Auth and JWT-based security practices.",
+        "Implemented i18n solutions using react-i18next, enabling seamless multi-language support.",
+        "Developed end-to-end tests using Playwright across multiple devices to improve application reliability and stability."
+      ]
+    }
+  ],
+  "education": [
+    {
+      "institution": "University of New South Wales",
+      "degree": "Master of Information Technology",
+      "field": "Artificial Intelligence",
+      "start_date": "Sep 2022",
+      "end_date": "Jun 2024",
+      "gpa": null
+    }
+  ],
+  "projects": [],
+  "skills": {
+    "technical": [
+      "TypeScript",
+      "React",
+      "Next.js",
+      "Tailwind",
+      "Framer Motion",
+      "Storybook",
+      "Redux",
+      "Zustand",
+      "React Query / Tanstanck Query",
+      "FastAPI (Python)",
+      ".NET (C#)",
+      "Node.js",
+      "PostgreSQL",
+      "MySQL",
+      "SQLite",
+      "Firebase",
+      "Supabase",
+      "RESTful API Development"
+    ],
+    "tools": [
+      "Docker",
+      "Terraform",
+      "AWS (S3, RDS, ECR, ECS, EC2, Amplify)",
+      "Vercel",
+      "GitHub Actions",
+      "Cloudfront",
+      "Figma",
+      "Jest",
+      "Lighthouse",
+      "React Testing Library",
+      "Postman",
+      "Swagger/OpenAPI",
+      "CMS (Sanity, Strapi)"
+    ],
+    "other": []
+  },
+  "certifications": [],
+  "languages": []
+}

@@ -7,6 +7,7 @@ import {
   BadgeCheck,
   Briefcase,
   Building2,
+  FileText,
   Globe,
   MapPin,
   MonitorCog,
@@ -24,10 +25,13 @@ import type {
 } from '@/lib/types';
 import CardWithNorth from '@/components/UI/card/CardWithNorth';
 import { InputField, Input } from '@/components/UI/input';
+import { TagInput } from '@/components/UI/tag-input';
 import { Textarea } from '@/components/UI/textarea';
 import { Switch } from '@/components/UI/switch';
 import { Checkbox } from '@/components/UI/checkbox';
 import { Select } from '@/components/UI/select/select';
+import { Button } from './UI/Button';
+import { cn } from '@/lib/utils';
 
 type FieldProps = {
   label: string;
@@ -37,6 +41,7 @@ type FieldProps = {
   multiline?: boolean;
   full?: boolean;
   hint?: string;
+  required?: boolean;
 };
 
 type TagEditorProps = {
@@ -46,6 +51,7 @@ type TagEditorProps = {
   placeholder?: string;
   hint?: string;
   full?: boolean;
+  required?: boolean;
 };
 
 type ToggleCardProps = {
@@ -69,6 +75,7 @@ type ChoiceCardGroupProps = {
   }>;
   full?: boolean;
   icon?: any;
+  required?: boolean;
 };
 
 type MultiChoiceGroupProps = {
@@ -82,27 +89,36 @@ type MultiChoiceGroupProps = {
     icon?: string;
   }>;
   full?: boolean;
+  required?: boolean;
 };
 
 const statusOptions = {
   gender: ['Male', 'Female', 'Other', 'Decline'],
   yesNoDecline: ['Yes', 'No', 'Decline'],
   ethnicity: [
-    'Decline',
-    'Hispanic/Latino',
-    'American Indian or Alaska Native',
-    'Asian',
-    'Black or African American',
-    'Native Hawaiian or Other Pacific Islander',
-    'White',
+    'Decline / Prefer not to say',
+    'Aboriginal or Torres Strait Islander',
+    'Australian / Oceanian',
+    'East Asian (e.g. Chinese, Japanese, Korean)',
+    'South Asian (e.g. Indian, Pakistani, Sri Lankan)',
+    'Southeast Asian (e.g. Filipino, Vietnamese, Indonesian)',
+    'European / Caucasian',
+    'Middle Eastern / North African',
+    'Pacific Islander / Pasifika / Maori',
+    'Sub-Saharan African',
+    'Hispanic / Latino / South American',
+    'North American Indigenous / First Nations',
     'Other',
   ],
   citizenship: [
-    'U.S. Citizen/Permanent Resident',
-    'Non-citizen allowed to work for any employer',
-    'Non-citizen allowed to work for current employer',
-    'Non-citizen seeking work authorization',
-    'Canadian Citizen/Permanent Resident',
+    'Australian Citizen / Permanent Resident',
+    'New Zealand Citizen (SCV 444)',
+    'Work Visa (Full Work Rights)',
+    'Student / Graduate Visa (Limited Work Rights)',
+    'U.S. Citizen / Permanent Resident',
+    'Canadian Citizen / Permanent Resident',
+    'UK / EU Citizen / Permanent Resident',
+    'Non-citizen / Requires Visa Sponsorship',
     'Other',
   ],
   sortBy: ['Most recent', 'Most relevant'],
@@ -188,6 +204,7 @@ export function Field({
   multiline = false,
   full = false,
   hint,
+  required = false,
 }: FieldProps) {
   if (multiline) {
     return (
@@ -198,6 +215,8 @@ export function Field({
         helpTextShort={hint}
         containerClassName={full ? 'field full' : 'field'}
         showCharCount={false}
+        required={required}
+        optional={!required}
       />
     );
   }
@@ -210,6 +229,8 @@ export function Field({
       helpTextShort={hint}
       containerClassName={full ? 'field full' : 'field'}
       showCharCount={false}
+      required={required}
+      optional={!required}
     />
   );
 }
@@ -241,67 +262,27 @@ function TagEditor({
   placeholder = 'Add a value and press Enter',
   hint,
   full = false,
+  required = false,
 }: TagEditorProps) {
-  const [draft, setDraft] = useState('');
-
-  const addTag = () => {
-    const normalized = draft.trim();
-    if (!normalized) return;
-    if (values.includes(normalized)) {
-      setDraft('');
-      return;
-    }
-    onChange([...values, normalized]);
-    setDraft('');
-  };
-
-  const removeTag = (indexToRemove: number) => {
-    onChange(values.filter((_, index) => index !== indexToRemove));
-  };
-
   return (
     <div className={`field ${full ? 'full' : ''}`}>
-      <label>{label}</label>
+      <div className='flex items-center gap-2'>
+        <label>{label}</label>
+        <span
+          className={cn(
+            'rounded-sm px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide',
+            required ?
+              'bg-red-500/10 text-red-500'
+            : 'bg-background-secondary text-ink-secondary',
+          )}
+        >
+          {required ? 'Required' : 'Optional'}
+        </span>
+      </div>
       {hint ?
         <p className='field-hint'>{hint}</p>
       : null}
-      <div className='tag-editor'>
-        <div className='tag-list'>
-          {values.map((value, index) => (
-            <button
-              key={`${value}-${index}`}
-              type='button'
-              className='tag-chip'
-              onClick={() => removeTag(index)}
-              title={`Remove ${value}`}
-            >
-              <span>{value}</span>
-              <strong>×</strong>
-            </button>
-          ))}
-        </div>
-        <div className='tag-input-row flex gap-2 w-full items-center'>
-          <Input
-            value={draft}
-            placeholder={placeholder}
-            onChange={(event) => setDraft(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter' || event.key === ',') {
-                event.preventDefault();
-                addTag();
-              }
-            }}
-            className='flex-1'
-          />
-          <button
-            type='button'
-            className='ghost mini shrink-0'
-            onClick={addTag}
-          >
-            Add
-          </button>
-        </div>
-      </div>
+      <TagInput values={values} onChange={onChange} placeholder={placeholder} />
     </div>
   );
 }
@@ -348,6 +329,7 @@ function ChoiceCardGroup({
   options,
   full = false,
   icon,
+  required = false,
 }: ChoiceCardGroupProps) {
   return (
     <Select
@@ -358,6 +340,8 @@ function ChoiceCardGroup({
       containerClassName={full ? 'field full' : 'field'}
       placeholder={`Select ${label.toLowerCase()}...`}
       icon={icon}
+      required={required}
+      optional={!required}
     >
       {options.map((option) => (
         <option key={option.value} value={option.value}>
@@ -375,6 +359,7 @@ function MultiChoiceGroup({
   onChange,
   options,
   full = false,
+  required = false,
 }: MultiChoiceGroupProps) {
   const toggle = (value: string) => {
     if (values.includes(value)) {
@@ -386,7 +371,19 @@ function MultiChoiceGroup({
 
   return (
     <div className={`field ${full ? 'full' : ''}`}>
-      <label className='label block mb-1'>{label}</label>
+      <div className='flex items-center gap-2'>
+        <label className='label block'>{label}</label>
+        <span
+          className={cn(
+            'rounded-sm px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide',
+            required ?
+              'bg-red-500/10 text-red-500'
+            : 'bg-background-secondary text-ink-secondary',
+          )}
+        >
+          {required ? 'Required' : 'Optional'}
+        </span>
+      </div>
       {hint ?
         <p className='field-hint mb-2'>{hint}</p>
       : null}
@@ -451,6 +448,21 @@ function searchExtra(value: JobHuntingProfile, key: string) {
   );
 }
 
+function compactPath(value: string) {
+  const pieces = value.split(/[\\/]/).filter(Boolean);
+  return pieces.at(-1)?.split('?')[0] || value;
+}
+
+function resumeDisplay(value: JobHuntingProfile) {
+  const path =
+    value.resume_path?.trim() ||
+    String(value.extra_data?.default_resume_path ?? '').trim();
+  const filename =
+    String(value.extra_data?.resume_filename ?? '').trim() ||
+    (path ? compactPath(path) : '');
+  return { path, filename };
+}
+
 function updateSearchSetting(
   value: JobHuntingProfile,
   key: string,
@@ -508,8 +520,8 @@ export function ProfileForm({
 
   return (
     <CardWithNorth title='Personal Information'>
-      <div className='pb-6 pr-6 flex flex-col gap-6'>
-        <div className='form-grid'>
+      <div className='pb-6 pr-6 flex flex-col '>
+        <div className='grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3'>
           <Field
             label='Preferred Name'
             value={value.preferred_name}
@@ -520,11 +532,13 @@ export function ProfileForm({
             label='First name'
             value={value.first_name}
             onChange={(next) => set('first_name', next)}
+            required
           />
           <Field
             label='Last name'
             value={value.last_name}
             onChange={(next) => set('last_name', next)}
+            required
           />
           <Field
             label='Middle name'
@@ -535,6 +549,7 @@ export function ProfileForm({
             label='Phone number'
             value={value.phone_number}
             onChange={(next) => set('phone_number', next)}
+            required
           />
           <Field
             label='Current city'
@@ -627,12 +642,7 @@ export function ProfileForm({
           />
         </div>
         <div className='actions'>
-          <button
-            className='primary hover:opacity-90 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 cursor-pointer shadow-sm'
-            onClick={onSave}
-          >
-            Save profile
-          </button>
+          <Button onClick={onSave}>Save profile</Button>
         </div>
       </div>
     </CardWithNorth>
@@ -644,34 +654,51 @@ export function SearchForm({
   onChange,
   onSave,
   section = 'overview',
+  embedded = false,
 }: {
   value: JobHuntingProfile;
   onChange: (value: JobHuntingProfile) => void;
   onSave: (value: JobHuntingProfile) => void;
-  section?: 'overview' | 'filters' | 'rules' | 'application';
+  section?:
+    | 'overview'
+    | 'filters'
+    | 'rules'
+    | 'materials'
+    | 'eligibility'
+    | 'career'
+    | 'ai'
+    | 'application';
+  embedded?: boolean;
 }) {
+  const resolvedSection = section === 'application' ? 'materials' : section;
   const filters = value.filters ?? {};
-  const showOverview = section === 'overview';
-  const showFilters = section === 'filters';
-  const showRules = section === 'rules';
-  const showApplication = section === 'application';
+  const showOverview = resolvedSection === 'overview';
+  const showFilters = resolvedSection === 'filters';
+  const showRules = resolvedSection === 'rules';
+  const showMaterials = resolvedSection === 'materials';
+  const showEligibility = resolvedSection === 'eligibility';
+  const showCareer = resolvedSection === 'career';
+  const showAi = resolvedSection === 'ai';
+  const attachedResume = resumeDisplay(value);
   const setProfileField = (key: keyof JobHuntingProfile, nextValue: string) =>
     onChange({ ...value, [key]: nextValue });
 
   return (
-    <section className='panel'>
-      <SectionHeader
-        icon={<Search size={18} />}
-        title='Search Strategy'
-        description={
-          showApplication ?
-            'Bind this job hunting profile to its own resume, cover letter, work authorization, and AI answer context.'
-          : 'Define the roles you want, the filters LinkedIn should use, and the rules the worker should skip.'
-        }
-      />
+    <section className={embedded ? '' : 'panel'}>
+      {!embedded && (
+        <SectionHeader
+          icon={<Search size={18} />}
+          title='Search Strategy'
+          description={
+            showMaterials || showEligibility || showCareer || showAi ?
+              'Bind this job hunting profile to its own resume, cover letter, work authorization, and AI answer context.'
+            : 'Define the roles you want, the filters LinkedIn should use, and the rules the worker should skip.'
+          }
+        />
+      )}
       <div className='form-grid'>
         {showOverview && (
-          <>
+          <div className='grid grid-cols-2 gap-4'>
             <Field
               label='Profile name'
               value={value.name}
@@ -690,6 +717,7 @@ export function SearchForm({
               placeholder='Software Engineer'
               hint='Each tag becomes one LinkedIn search term.'
               full
+              required
             />
 
             <Field
@@ -706,10 +734,10 @@ export function SearchForm({
               }
               type='number'
             />
-          </>
+          </div>
         )}
 
-        {(showOverview || showFilters) && (
+        {showFilters && (
           <>
             <ChoiceCardGroup
               label='Sort by'
@@ -954,7 +982,7 @@ export function SearchForm({
           </>
         )}
 
-        {(showOverview || showRules) && (
+        {showRules && (
           <>
             <Field
               label='Current experience cap'
@@ -1013,15 +1041,60 @@ export function SearchForm({
           </>
         )}
 
-        {showApplication && (
+        {showMaterials && (
           <>
+            <div className='field full'>
+              <div className='flex items-center gap-2'>
+                <label>Resume</label>
+                <span className='rounded-sm bg-red-500/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-red-500'>
+                  Required
+                </span>
+              </div>
+              <div className='mt-2 flex items-center justify-between gap-3 rounded-md border border-border bg-background-secondary p-3'>
+                <div className='flex min-w-0 items-center gap-3'>
+                  <div className='flex size-10 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary'>
+                    <FileText className='size-5' />
+                  </div>
+                  <div className='min-w-0'>
+                    <p className='truncate text-sm font-medium text-ink-primary'>
+                      {attachedResume.filename || 'No resume attached'}
+                    </p>
+                    <p className='text-xs text-ink-secondary'>
+                      {attachedResume.path ?
+                        'Managed from Master Resume upload'
+                      : 'Upload a resume to attach it to this profile'}
+                    </p>
+                  </div>
+                </div>
+                {attachedResume.path ?
+                  <a
+                    href={attachedResume.path}
+                    target='_blank'
+                    rel='noreferrer'
+                    className='shrink-0 text-sm font-medium text-primary hover:underline'
+                  >
+                    Open
+                  </a>
+                : null}
+              </div>
+            </div>
             <Field
-              label='Resume path'
-              value={value.resume_path}
-              onChange={(next) => setProfileField('resume_path', next)}
+              label='Website / portfolio'
+              value={value.website}
+              onChange={(next) => setProfileField('website', next)}
               full
-              hint='Each profile can point to a different resume version.'
             />
+            <Field
+              label='LinkedIn URL'
+              value={value.linkedin_url}
+              onChange={(next) => setProfileField('linkedin_url', next)}
+              full
+            />
+          </>
+        )}
+
+        {showEligibility && (
+          <>
             <Field
               label='Years of experience'
               value={value.years_of_experience}
@@ -1042,18 +1115,6 @@ export function SearchForm({
                 },
               ]}
               icon={Globe}
-            />
-            <Field
-              label='Website / portfolio'
-              value={value.website}
-              onChange={(next) => setProfileField('website', next)}
-              full
-            />
-            <Field
-              label='LinkedIn URL'
-              value={value.linkedin_url}
-              onChange={(next) => setProfileField('linkedin_url', next)}
-              full
             />
             <ChoiceCardGroup
               label='Citizenship / work authorization'
@@ -1087,6 +1148,11 @@ export function SearchForm({
               }
               type='number'
             />
+          </>
+        )}
+
+        {showCareer && (
+          <>
             <Field
               label='Recent employer'
               value={value.recent_employer}
@@ -1110,6 +1176,11 @@ export function SearchForm({
               multiline
               full
             />
+          </>
+        )}
+
+        {showAi && (
+          <>
             <Field
               label='Cover letter'
               value={value.cover_letter}
@@ -1138,11 +1209,11 @@ export function SearchForm({
           </>
         )}
       </div>
-      <div className='actions'>
-        <button className='primary' onClick={() => onSave(value)}>
-          Save search config
-        </button>
-      </div>
+      {!embedded && (
+        <div className='actions'>
+          <Button onClick={() => onSave(value)}>Save search config</Button>
+        </div>
+      )}
     </section>
   );
 }
@@ -1166,7 +1237,7 @@ export function RuntimeForm({
         description='These toggles control how the local worker behaves while Chrome is running.'
       />
 
-      <div className='form-grid'>
+      <div className='grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3'>
         <div className='field full'>
           <label>Execution mode</label>
           <div className='toggle-grid'>

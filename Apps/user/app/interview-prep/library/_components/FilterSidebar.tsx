@@ -22,6 +22,10 @@ import type {
   InterviewCollection,
 } from '@/lib/types';
 import { cn, cleanName, matchesCollection } from '@/lib/utils';
+import {
+  getInterviewCategoryIcon,
+  getInterviewCategoryLabel,
+} from '@/lib/interview-categories';
 import { AutoScroll } from '@/components/UI/AutoScroll/AutoScroll';
 import { LibraryCollectionItem } from './LibraryCollectionItem';
 import { motion } from 'framer-motion';
@@ -36,6 +40,7 @@ interface FilterSidebarProps {
   selectedTagIds: string[];
   setSelectedTagIds: (ids: string[]) => void;
   questions: InterviewQuestion[];
+  libraryTotalCount: number;
   collections: InterviewCollection[];
   selectedCollectionIds: string[];
   setSelectedCollectionIds: (ids: string[]) => void;
@@ -48,38 +53,19 @@ interface FilterSidebarProps {
   onCollectionArchive?: (collection: InterviewCollection) => void;
 }
 
-const getCategoryAvatar = (name: string, isSelected: boolean) => {
-  const cleaned = cleanName(name).trim();
-  if (!cleaned) return <Folder className='w-4 h-4 opacity-50 shrink-0' />;
-
-  let initials = '';
-  const isChinese = /[\u4e00-\u9fa5]/.test(cleaned);
-  if (isChinese) {
-    initials = cleaned.slice(0, 2);
-  } else {
-    const parts = cleaned.split(/\s+/);
-    if (parts.length >= 2) {
-      initials = (parts[0][0] + parts[1][0]).toUpperCase();
-    } else {
-      initials = cleaned.slice(0, 2).toUpperCase();
-    }
-  }
-
-  let hash = 0;
-  for (let i = 0; i < cleaned.length; i++) {
-    hash = cleaned.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  const h = Math.abs(hash % 360);
-  const bgColor = `hsl(${h}, 60%, 45%)`;
-
+const getCategoryAvatar = (
+  category: InterviewCategory,
+  isSelected: boolean,
+) => {
+  const Icon = getInterviewCategoryIcon(category, Folder);
   return (
     <span
       className={cn(
-        'w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0 transition-transform duration-200 hover:scale-105',
+        'w-5 h-5 rounded-lg flex items-center justify-center shrink-0 transition-transform duration-200 hover:scale-105',
+        isSelected ? 'text-primary' : 'text-ink-secondary',
       )}
-      style={{ backgroundColor: bgColor }}
     >
-      {initials}
+      <Icon className='w-4 h-4' />
     </span>
   );
 };
@@ -161,6 +147,7 @@ export function FilterSidebar({
   selectedTagIds,
   setSelectedTagIds,
   questions,
+  libraryTotalCount,
   collections,
   selectedCollectionIds,
   setSelectedCollectionIds,
@@ -284,7 +271,7 @@ export function FilterSidebar({
             <span
               className={getCountBadgeClass(selectedCategoryIds.length === 0)}
             >
-              {questions.length}
+              {libraryTotalCount}
             </span>
           )}
         </button>
@@ -292,9 +279,14 @@ export function FilterSidebar({
         {(() => {
           const isUncategorizedSelected =
             selectedCategoryIds.includes('uncategorized');
-          const uncategorizedCount = questions.filter(
-            (q) => !q.category_id,
-          ).length;
+          const totalCategorizedInDB = categories.reduce(
+            (acc, c) => acc + (c.question_count ?? 0),
+            0,
+          );
+          const uncategorizedCount =
+            categories.some((c) => c.question_count !== undefined) ?
+              Math.max(0, libraryTotalCount - totalCategorizedInDB)
+            : questions.filter((q) => !q.category_id).length;
           return (
             <button
               onClick={() => handleCategoryClick('uncategorized')}
@@ -306,7 +298,7 @@ export function FilterSidebar({
               }
             >
               <span className='flex items-center gap-2 truncate'>
-                <span className='w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold bg-zinc-500/20 text-zinc-500 dark:text-zinc-400 shrink-0'>
+                <span className='w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-zinc-500 dark:text-zinc-400 shrink-0'>
                   ?
                 </span>
                 {!isSidebarCollapsed && (
@@ -324,10 +316,10 @@ export function FilterSidebar({
 
         {categories.map((cat) => {
           const isSelected = selectedCategoryIds.includes(cat.id);
-          const count = questions.filter(
-            (q) => q.category_id === cat.id,
-          ).length;
-          const cleanedName = cleanName(cat.name);
+          const count =
+            cat.question_count ??
+            questions.filter((q) => q.category_id === cat.id).length;
+          const cleanedName = getInterviewCategoryLabel(cat);
           return (
             <button
               key={cat.id}
@@ -338,7 +330,7 @@ export function FilterSidebar({
               }
             >
               <span className='flex items-center gap-2 truncate'>
-                {getCategoryAvatar(cat.name, isSelected)}
+                {getCategoryAvatar(cat, isSelected)}
                 {!isSidebarCollapsed && (
                   <span className='truncate text-[11px]'>{cleanedName}</span>
                 )}
@@ -391,51 +383,52 @@ export function FilterSidebar({
             <span
               className={getCountBadgeClass(selectedCollectionIds.length === 0)}
             >
-              {questions.length}
+              {libraryTotalCount}
             </span>
           )}
         </button>
         {collections.map((col) => {
           const isSelected = selectedCollectionIds.includes(col.id);
-          const count = questions.filter((q) =>
-            matchesCollection(q, col),
-          ).length;
+          const count =
+            col.user_active_question_count ??
+            col.question_count ??
+            questions.filter((q) => matchesCollection(q, col)).length;
           const cleanedTitle = cleanName(col.title);
-          return isSidebarCollapsed ? (
-            <button
-              key={col.id}
-              onClick={() => handleCollectionClick(col.id)}
-              className={getTabButtonClass(isSelected, false)}
-              title={
-                isSidebarCollapsed ? `${cleanedTitle} (${count})` : undefined
-              }
-            >
-              <span className='flex items-center gap-2 truncate'>
-                {getCollectionAvatar(col, currentUserId)}
+          return isSidebarCollapsed ?
+              <button
+                key={col.id}
+                onClick={() => handleCollectionClick(col.id)}
+                className={getTabButtonClass(isSelected, false)}
+                title={
+                  isSidebarCollapsed ? `${cleanedTitle} (${count})` : undefined
+                }
+              >
+                <span className='flex items-center gap-2 truncate'>
+                  {getCollectionAvatar(col, currentUserId)}
+                  {!isSidebarCollapsed && (
+                    <span className='truncate text-[11px]'>{cleanedTitle}</span>
+                  )}
+                </span>
                 {!isSidebarCollapsed && (
-                  <span className='truncate text-[11px]'>{cleanedTitle}</span>
+                  <span className={getCountBadgeClass(isSelected)}>
+                    {count}
+                  </span>
                 )}
-              </span>
-              {!isSidebarCollapsed && (
-                <span className={getCountBadgeClass(isSelected)}>{count}</span>
-              )}
-            </button>
-          ) : (
-            <LibraryCollectionItem
-              key={col.id}
-              collection={col}
-              count={count}
-              isSelected={isSelected}
-              isOwned={col.creator_user_id === currentUserId}
-              isBusy={collectionActionId === col.id}
-              avatar={getCollectionAvatar(col, currentUserId)}
-              onSelect={() => handleCollectionClick(col.id)}
-              onAddOrRestore={() => onCollectionAddOrRestore?.(col)}
-              onRemove={() => onCollectionRemove?.(col)}
-              onEdit={() => onCollectionEdit?.(col)}
-              onArchive={() => onCollectionArchive?.(col)}
-            />
-          );
+              </button>
+            : <LibraryCollectionItem
+                key={col.id}
+                collection={col}
+                count={count}
+                isSelected={isSelected}
+                isOwned={col.creator_user_id === currentUserId}
+                isBusy={collectionActionId === col.id}
+                avatar={getCollectionAvatar(col, currentUserId)}
+                onSelect={() => handleCollectionClick(col.id)}
+                onAddOrRestore={() => onCollectionAddOrRestore?.(col)}
+                onRemove={() => onCollectionRemove?.(col)}
+                onEdit={() => onCollectionEdit?.(col)}
+                onArchive={() => onCollectionArchive?.(col)}
+              />;
         })}
       </div>
 

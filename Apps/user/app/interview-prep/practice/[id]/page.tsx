@@ -15,24 +15,37 @@ import { cn } from '@/lib/utils';
 import dynamic from 'next/dynamic';
 
 const PracticeModeModal = dynamic(
-  () => import('../_components/PracticeModeModal').then((mod) => mod.PracticeModeModal),
+  () =>
+    import('../_components/PracticeModeModal').then(
+      (mod) => mod.PracticeModeModal,
+    ),
   { ssr: false },
 );
 const DailySummaryModal = dynamic(
-  () => import('../../_components/DailySummaryModal').then((mod) => mod.DailySummaryModal),
+  () =>
+    import('../../_components/DailySummaryModal').then(
+      (mod) => mod.DailySummaryModal,
+    ),
   { ssr: false },
 );
 const InterviewReportModal = dynamic(
-  () => import('../_components/InterviewReportModal').then((mod) => mod.InterviewReportModal),
+  () =>
+    import('../_components/InterviewReportModal').then(
+      (mod) => mod.InterviewReportModal,
+    ),
   { ssr: false },
 );
 const PracticeCompletionModal = dynamic(
-  () => import('../_components/PracticeCompletionModal').then((mod) => mod.PracticeCompletionModal),
+  () =>
+    import('../_components/PracticeCompletionModal').then(
+      (mod) => mod.PracticeCompletionModal,
+    ),
   { ssr: false },
 );
 
 import { api } from '@/lib/api';
 import { showGlobalToast } from '@/lib/toast';
+import { useConfirmStore } from '@/lib/store/confirm-store';
 import { PracticeWorkspace } from '../_components/PracticeWorkspace';
 import { PracticeHistory } from '../_components/PracticeHistory';
 import { PracticeHeader } from '../_components/PracticeHeader';
@@ -44,6 +57,7 @@ import { Tooltip, Kbd } from '@/components/UI/tooltip';
 
 function PracticeModeQuestionPageInner() {
   const router = useRouter();
+  const confirm = useConfirmStore((state) => state.confirm);
   const [reportRefreshKey, setReportRefreshKey] = useState(0);
   const [isCompletionScoring, setIsCompletionScoring] = useState(false);
   const {
@@ -78,11 +92,14 @@ function PracticeModeQuestionPageInner() {
     setNotes,
     isSubmitting,
     isRecording,
+    isRecordingTransitioning,
     audioBlob,
     audioUrl,
     activeStream,
     transcriptSegments,
     interimText,
+    transcriptStatus,
+    transcriptStatusMessage,
     draftAudioRef,
     autoEvalEnabled,
     toggleAutoEval,
@@ -102,9 +119,9 @@ function PracticeModeQuestionPageInner() {
     handleSavePolishedAnswerAsMyAnswer,
     handleUpdateTranscriptSegment,
     handleSaveStandardAnswer,
-    handleCreateAuthorAnswer,
-    handleUpdateAuthorAnswer,
-    handleDeleteAuthorAnswer,
+    handleCreateContributorAnswer,
+    handleUpdateContributorAnswer,
+    handleDeleteContributorAnswer,
     handleGenerateAiAnswer,
     handleGenerateQuestionMetadata,
     handleUnlockAiAnswer,
@@ -118,7 +135,7 @@ function PracticeModeQuestionPageInner() {
     isGeneratingAiAnswer,
     isAnswersLoading,
     isGeneratingQuestionMetadata,
-    isQuestionAuthor,
+    isQuestionContributor,
     currentAttempts,
     setShowThisAnswer,
     setIsEditingAnswer,
@@ -189,11 +206,34 @@ function PracticeModeQuestionPageInner() {
     setIsCompletionScoring(true);
     try {
       const existing = await api.practiceEvaluations(latestAttempt.id);
-      if (existing.length === 0) {
-        const evaluation = await api.createPracticeEvaluation(latestAttempt.id);
-        showGlobalToast(`AI feedback ready: ${evaluation.overall_score}/100`);
-        window.dispatchEvent(new Event('playbookGamificationUpdated'));
+      if (existing.length > 0) {
+        setShowCompletionModal(false);
+        selectTab('history');
+        return;
       }
+    } catch (error) {
+      console.error('Failed to check latest practice feedback:', error);
+      showGlobalToast('Could not check this attempt for existing AI feedback.');
+      return;
+    } finally {
+      setIsCompletionScoring(false);
+    }
+    const ok = await confirm({
+      title: 'Get AI Feedback?',
+      message:
+        'AI will review your saved transcript and add a score with practical feedback in Practice History. This costs up to 5 coins (free with VIP).',
+      confirmLabel: 'Get AI Feedback',
+      cancelLabel: 'Not Now',
+      type: 'warning',
+    });
+    if (!ok) return;
+    setIsCompletionScoring(true);
+    try {
+      const evaluation = await api.createPracticeEvaluation(latestAttempt.id);
+      showGlobalToast(
+        `AI feedback ready: ${evaluation.overall_score}/100${evaluation.coins_spent ? ` (${evaluation.coins_spent} coins)` : ' (no coins used)'}`,
+      );
+      window.dispatchEvent(new Event('playbookGamificationUpdated'));
       setShowCompletionModal(false);
       selectTab('history');
     } catch (error) {
@@ -295,7 +335,7 @@ function PracticeModeQuestionPageInner() {
     <>
       <div className='flex gap-4 h-full overflow-hidden'>
         {/* ── Left Column ── */}
-        <div className='flex-1 w-full transition-all panel-xl pb-0!  flex flex-col gap-4 relative h-full pt-4!'>
+        <div className='flex-1 w-full transition-all panel-xl pb-0!  flex flex-col relative h-full pt-4!'>
           <PracticeHeader
             currentQuestion={currentQuestion}
             currentIndex={currentQuestionIndex}
@@ -342,9 +382,9 @@ function PracticeModeQuestionPageInner() {
                 setIsEditingAnswer && setIsEditingAnswer(false)
               }
               onSaveAnswer={handleSaveStandardAnswer}
-              onCreateAuthorAnswer={handleCreateAuthorAnswer}
-              onUpdateAuthorAnswer={handleUpdateAuthorAnswer}
-              onDeleteAuthorAnswer={handleDeleteAuthorAnswer}
+              onCreateContributorAnswer={handleCreateContributorAnswer}
+              onUpdateContributorAnswer={handleUpdateContributorAnswer}
+              onDeleteContributorAnswer={handleDeleteContributorAnswer}
               isSavingAnswer={isSavingAnswer}
               featuredAnswers={featuredCommunityAnswers}
               allCommunityAnswers={allCommunityAnswers}
@@ -353,7 +393,7 @@ function PracticeModeQuestionPageInner() {
               myAnswer={myAnswer}
               isGeneratingAiAnswer={isGeneratingAiAnswer}
               isGeneratingQuestionMetadata={isGeneratingQuestionMetadata}
-              isQuestionAuthor={isQuestionAuthor}
+              isQuestionContributor={isQuestionContributor}
               onGenerateAiAnswer={handleGenerateAiAnswer}
               onGenerateQuestionMetadata={handleGenerateQuestionMetadata}
               onUnlockAiAnswer={handleUnlockAiAnswer}
@@ -418,11 +458,14 @@ function PracticeModeQuestionPageInner() {
             {activeTab === 'workspace' ?
               <PracticeWorkspace
                 isRecording={isRecording}
+                isRecordingTransitioning={isRecordingTransitioning}
                 activeStream={activeStream}
                 audioUrl={audioUrl}
                 draftAudioRef={draftAudioRef}
                 transcriptSegments={transcriptSegments}
                 interimText={interimText}
+                transcriptStatus={transcriptStatus}
+                transcriptStatusMessage={transcriptStatusMessage}
                 confidenceScore={confidenceScore}
                 setConfidenceScore={setConfidenceScore}
                 notes={notes}

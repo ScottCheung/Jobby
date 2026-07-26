@@ -70,13 +70,13 @@ export function QuestionComments({ questionId }: { questionId: string }) {
   const [answerReplyTarget, setAnswerReplyTarget] = useState<{
     answerId: string;
     parentCommentId?: string | null;
-    parentAuthorName?: string | null;
+    parentContributorName?: string | null;
     parentIsReply?: boolean;
   } | null>(null);
   const [answerEditTarget, setAnswerEditTarget] = useState<{
     answerId: string;
     commentId: string;
-    parentAuthorName?: string | null;
+    parentContributorName?: string | null;
     parentIsReply?: boolean;
   } | null>(null);
   const [answerDraft, setAnswerDraft] = useState('');
@@ -613,7 +613,7 @@ export function QuestionComments({ questionId }: { questionId: string }) {
       const target = answerEditTarget;
       const body =
         target.parentIsReply ?
-          `Reply ${target.parentAuthorName || 'Member'}: ${rawBody}`
+          `Reply ${target.parentContributorName || 'Member'}: ${rawBody}`
         : rawBody;
       try {
         setIsSubmitting(true);
@@ -659,7 +659,7 @@ export function QuestionComments({ questionId }: { questionId: string }) {
     const body =
       // An answer is the root of this thread, so every comment target needs a reply label.
       target.parentCommentId ?
-        `Reply ${target.parentAuthorName || 'Member'}: ${rawBody}`
+        `Reply ${target.parentContributorName || 'Member'}: ${rawBody}`
       : rawBody;
     try {
       setIsSubmitting(true);
@@ -817,7 +817,7 @@ export function QuestionComments({ questionId }: { questionId: string }) {
                       setAnswerEditTarget({
                         answerId: payload.answerId,
                         commentId: payload.commentId,
-                        parentAuthorName: payload.parentAuthorName,
+                        parentContributorName: payload.parentContributorName,
                         parentIsReply: payload.parentIsReply,
                       });
                       setAnswerReplyTarget(null);
@@ -1026,7 +1026,7 @@ export function QuestionComments({ questionId }: { questionId: string }) {
                     : replyTo ?
                       `Reply ${findComment(comments, replyTo)?.author_name || 'member'}:`
                     : answerReplyTarget ?
-                      `Reply ${answerReplyTarget.parentAuthorName || 'member'}:`
+                      `Reply ${answerReplyTarget.parentContributorName || 'member'}:`
                     : 'Add a comment...'}
                   </p>
                 </div>
@@ -1171,13 +1171,13 @@ function ExampleAnswerCard({
   onStartReply: (payload: {
     answerId: string;
     parentCommentId?: string | null;
-    parentAuthorName?: string | null;
+    parentContributorName?: string | null;
     parentIsReply?: boolean;
   }) => void;
   onStartEdit: (payload: {
     answerId: string;
     commentId: string;
-    parentAuthorName?: string | null;
+    parentContributorName?: string | null;
     parentIsReply?: boolean;
     body: string;
   }) => void;
@@ -1421,7 +1421,7 @@ function ExampleAnswerCard({
     >
       <div
         className={cn(
-          'group flex p-2 rounded-tl-2xl! rounded-xl',
+          'group flex p-2 rounded-tl-2xl! rounded-xl  hover:bg-primary/5',
           (isHighlighted || isActiveTarget) && 'bg-primary/5',
         )}
       >
@@ -1441,7 +1441,7 @@ function ExampleAnswerCard({
                   className={cn(
                     'rounded-full px-1.5 border-1 py-0.5 text-[6px] font-extrabold uppercase tracking-wide',
                     answer.author_badge === 'Admin' ? 'border-info text-info '
-                    : answer.author_badge === 'Author' ?
+                    : answer.author_badge === 'Contributor' ?
                       ' border-rose-500 text-rose-600'
                     : ' border-primary text-primary',
                   )}
@@ -1468,7 +1468,8 @@ function ExampleAnswerCard({
               onClick={() =>
                 onStartReply({
                   answerId: answer.id,
-                  parentAuthorName: answer.author_name || 'Community member',
+                  parentContributorName:
+                    answer.author_name || 'Community member',
                 })
               }
               className='mt-1 block w-full cursor-pointer whitespace-pre-wrap text-left text-sm text-ink-primary'
@@ -1485,7 +1486,8 @@ function ExampleAnswerCard({
                 onClick={() =>
                   onStartReply({
                     answerId: answer.id,
-                    parentAuthorName: answer.author_name || 'Community member',
+                    parentContributorName:
+                      answer.author_name || 'Community member',
                   })
                 }
                 className='cursor-pointer text-[11px] font-bold text-ink-secondary/50 hover:text-primary'
@@ -1631,13 +1633,13 @@ type AnswerCommentHandlers = {
   onStartReply: (payload: {
     answerId: string;
     parentCommentId?: string | null;
-    parentAuthorName?: string | null;
+    parentContributorName?: string | null;
     parentIsReply?: boolean;
   }) => void;
   onStartEdit: (payload: {
     answerId: string;
     commentId: string;
-    parentAuthorName?: string | null;
+    parentContributorName?: string | null;
     parentIsReply?: boolean;
     body: string;
   }) => void;
@@ -1664,7 +1666,7 @@ function AnswerCommentReply({
     onStartReply({
       answerId: comment.answer_id,
       parentCommentId: target.id,
-      parentAuthorName: target.author_name,
+      parentContributorName: target.author_name,
       parentIsReply: Boolean(target.parent_id),
     });
   };
@@ -1673,7 +1675,7 @@ function AnswerCommentReply({
     onStartEdit({
       answerId: comment.answer_id,
       commentId: target.id,
-      parentAuthorName: target.author_name,
+      parentContributorName: target.author_name,
       parentIsReply: Boolean(target.parent_id),
       body: replyBody(target.body),
     });

@@ -2,214 +2,156 @@
 
 'use client';
 
-import React, { Suspense, useEffect, useMemo, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import {
-  BadgeCheck,
-  BookOpen,
-  BriefcaseBusiness,
-  Building2,
-  CheckCircle2,
-  Compass,
-  Dumbbell,
-  Bookmark,
-  Gem,
-  Loader2,
-  MessageCircle,
-  Plus,
-  RefreshCw,
-  Search,
-  Sparkles,
-  UserRound,
-  Users,
-  Zap,
-} from 'lucide-react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { Loader2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import type {
+  InterviewCategory,
   InterviewCollection,
   InterviewQuestion,
   PracticeRecord,
   User,
 } from '@/lib/types';
-import { cn, formatInterviewDuration } from '@/lib/utils';
-import { Button } from '@/components/UI/Button';
+import { getInterviewCategoryLabel } from '@/lib/interview-categories';
 import { useConfirmStore } from '@/lib/store/confirm-store';
 import { showGlobalToast } from '@/lib/toast';
-import { ScrollableContainer } from '@/components/layout/ScrollableContainer';
-import { CollectionCard } from '../collections/_components/CollectionCard';
 import { CollectionFormModal } from '../collections/_components/CollectionFormModal';
+import { ExploreHeader } from './_components/ExploreHeader';
+import {
+  dedupeQuestions,
+  getQuestionActivityBadge,
+  isToday,
+  rankedWindow,
+  timestamp,
+} from './_components/explore-utils';
+import { NewForYouSection } from './_sections/NewForYouSection';
+import {
+  RecommendationSection,
+  type RecommendationFeed,
+  type RankingMode,
+} from './_sections/RecommendationSection';
+import { QuestionSetsSection } from './_sections/QuestionSetsSection';
 
-const THEMES = [
-  'Behaviour',
-  'About You',
-  'Experience',
-  'Role-specific',
-  'Company',
-] as const;
-
-const THEME_ICONS = {
-  Behaviour: MessageCircle,
-  'About You': UserRound,
-  Experience: BriefcaseBusiness,
-  'Role-specific': Gem,
-  Company: Building2,
-} satisfies Record<(typeof THEMES)[number], React.ElementType>;
-
-function shuffleItems<T>(items: T[]): T[] {
-  return [...items].sort(() => Math.random() - 0.5);
-}
-
-function isToday(value?: string | null) {
-  if (!value) return false;
-  return new Date(value).toDateString() === new Date().toDateString();
-}
-
-function cleanName(value?: string | null) {
-  if (!value) return '';
-  return value
-    .replace(/[_-]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .replace(/\b\w/g, (char) => char.toUpperCase());
-}
-
-function normalizeQuestionTitle(value: string) {
-  return value
-    .toLowerCase()
-    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-function dedupeQuestions(questions: InterviewQuestion[]) {
-  const byTitle = new Map<string, InterviewQuestion>();
-  questions.forEach((question) => {
-    const key =
-      question.normalized_title ||
-      normalizeQuestionTitle(question.title) ||
-      question.id;
-    const existing = byTitle.get(key);
-    if (!existing || (question.is_saved && !existing.is_saved)) {
-      byTitle.set(key, question);
-    }
-  });
-  return Array.from(byTitle.values());
-}
-
-function getCategoryPresentation(question: InterviewQuestion) {
-  const label = cleanName(question.category?.name) || 'General';
-  const normalized = label.toLowerCase();
-  if (normalized.includes('behav')) return { label, Icon: MessageCircle };
-  if (normalized.includes('about')) return { label, Icon: UserRound };
-  if (normalized.includes('experience'))
-    return { label, Icon: BriefcaseBusiness };
-  if (normalized.includes('role')) return { label, Icon: Users };
-  if (normalized.includes('company')) return { label, Icon: Building2 };
-  return { label, Icon: BookOpen };
-}
+const SECTION_IDS = [
+  'new',
+  'today-picks',
+  'comprehensive-trend',
+  'season-trend',
+  'month-trend',
+  'week-trend',
+  'sets',
+];
 
 function ExplorePageContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const confirm = useConfirmStore((state) => state.confirm);
-
-  const initialQuery =
-    searchParams ? searchParams.get('q') || searchParams.get('search') || '' : '';
-  const initialTheme = searchParams ? searchParams.get('theme') || 'All' : 'All';
+  const contentRef = useRef<HTMLDivElement>(null);
 
   const [collections, setCollections] = useState<InterviewCollection[]>([]);
   const [createdCollections, setCreatedCollections] = useState<
     InterviewCollection[]
   >([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [recommendedQuestions, setRecommendedQuestions] = useState<
-    InterviewQuestion[]
-  >([]);
-  const [questionPool, setQuestionPool] = useState<InterviewQuestion[]>([]);
-  const [practiceRecords, setPracticeRecords] = useState<PracticeRecord[]>([]);
-  const [questionResults, setQuestionResults] = useState<InterviewQuestion[]>(
+  const [categories, setCategories] = useState<InterviewCategory[]>([]);
+  const [lastLoginAt, setLastLoginAt] = useState<string | null>(null);
+  const [rankingQuestions, setRankingQuestions] = useState<
+    Record<RankingMode, InterviewQuestion[]>
+  >({
+    hot: [],
+    season: [],
+    week: [],
+    month: [],
+  });
+  const [forYouQuestions, setForYouQuestions] = useState<InterviewQuestion[]>(
     [],
   );
-  const [searchQuery, setSearchQuery] = useState(initialQuery);
-  const [activeTheme, setActiveTheme] = useState<string>(initialTheme);
+  const [questionPool, setQuestionPool] = useState<InterviewQuestion[]>([]);
+  const [practiceRecords, setPracticeRecords] = useState<PracticeRecord[]>([]);
+  const [activeTheme, setActiveTheme] = useState('All');
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isSearching, setIsSearching] = useState(false);
-  const [isRefreshingQuestions, setIsRefreshingQuestions] = useState(false);
+  const [isRefreshingNewForYou, setIsRefreshingNewForYou] = useState(false);
+  const [refreshingRecommendation, setRefreshingRecommendation] =
+    useState<RecommendationFeed | null>(null);
+  const [recommendationOffsets, setRecommendationOffsets] = useState<
+    Record<RecommendationFeed, number>
+  >({
+    forYou: 0,
+    hot: 0,
+    season: 0,
+    month: 0,
+    week: 0,
+  });
+  const [newForYouOffset, setNewForYouOffset] = useState(0);
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [selectedCollectionToEdit, setSelectedCollectionToEdit] =
     useState<InterviewCollection | null>(null);
 
-  // Sync searchQuery and activeTheme with URL query string seamlessly
-  useEffect(() => {
-    const q =
-      searchParams ? searchParams.get('q') || searchParams.get('search') || '' : '';
-    const theme = searchParams ? searchParams.get('theme') || 'All' : 'All';
-    if (q !== searchQuery) setSearchQuery(q);
-    if (theme !== activeTheme) setActiveTheme(theme);
-  }, [searchParams]);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const params = new URLSearchParams(window.location.search);
-    let changed = false;
-
-    const q = searchQuery.trim();
-    if (q) {
-      if (params.get('q') !== q) {
-        params.set('q', q);
-        changed = true;
-      }
-    } else {
-      if (params.has('q')) {
-        params.delete('q');
-        changed = true;
-      }
-      if (params.has('search')) {
-        params.delete('search');
-        changed = true;
-      }
-    }
-
-    if (activeTheme && activeTheme !== 'All') {
-      if (params.get('theme') !== activeTheme) {
-        params.set('theme', activeTheme);
-        changed = true;
-      }
-    } else {
-      if (params.has('theme')) {
-        params.delete('theme');
-        changed = true;
-      }
-    }
-
-    if (changed) {
-      const newSearch = params.toString();
-      const newUrl = newSearch ? `${window.location.pathname}?${newSearch}` : window.location.pathname;
-      window.history.replaceState(null, '', newUrl);
-    }
-  }, [searchQuery, activeTheme]);
-
   const load = async (showLoader = false) => {
     if (showLoader) setIsLoading(true);
     try {
-      const [sets, mine, user, questions, records] = await Promise.all([
+      const visit = await api.recordExploreVisit().catch(() => null);
+      const [
+        sets,
+        mine,
+        user,
+        personalQuestions,
+        hotQuestions,
+        seasonQuestions,
+        weeklyQuestions,
+        monthlyQuestions,
+        newestQuestions,
+        records,
+        categoryOptions,
+      ] = await Promise.all([
         api.interviewCollections(),
         api.myCreatedCollections().catch(() => []),
         api.me().catch(() => null),
-        api.searchGlobalQuestions('').catch(() => []),
+        api.forYouQuestions().catch(() => []),
+        api.searchGlobalQuestions('', 'hot').catch(() => []),
+        api.searchGlobalQuestions('', 'season').catch(() => []),
+        api.searchGlobalQuestions('', 'week').catch(() => []),
+        api.searchGlobalQuestions('', 'month').catch(() => []),
+        api.searchGlobalQuestions('', 'newest').catch(() => []),
         api.practiceRecords().catch(() => []),
+        api.interviewCategories().catch(() => []),
       ]);
-      const uniqueQuestions = dedupeQuestions(questions);
+
       setCollections(sets);
       setCreatedCollections(mine);
       setCurrentUser(user);
-      setQuestionPool(uniqueQuestions);
+      setLastLoginAt(visit?.last_login_at || null);
+      setCategories(categoryOptions);
+      setQuestionPool(
+        dedupeQuestions([
+          ...personalQuestions,
+          ...hotQuestions,
+          ...seasonQuestions,
+          ...weeklyQuestions,
+          ...monthlyQuestions,
+          ...newestQuestions,
+        ]),
+      );
       setPracticeRecords(records);
-      setRecommendedQuestions(shuffleItems(uniqueQuestions).slice(0, 8));
-    } catch (err) {
+      setForYouQuestions(personalQuestions);
+      setRankingQuestions({
+        hot: hotQuestions,
+        season: seasonQuestions,
+        week: weeklyQuestions,
+        month: monthlyQuestions,
+      });
+      setRecommendationOffsets({
+        forYou: 0,
+        hot: 0,
+        season: 0,
+        month: 0,
+        week: 0,
+      });
+      setNewForYouOffset(0);
+    } catch (error) {
       showGlobalToast(
-        err instanceof Error ? err.message : 'Could not load Explore.',
+        error instanceof Error ? error.message : 'Could not load Explore.',
       );
     } finally {
       if (showLoader) setIsLoading(false);
@@ -227,31 +169,83 @@ function ExplorePageContent() {
   }, []);
 
   useEffect(() => {
-    const query = searchQuery.trim();
-    if (query.length < 2) {
-      setQuestionResults([]);
-      return;
-    }
-    let cancelled = false;
-    setIsSearching(true);
-    const handle = window.setTimeout(() => {
-      void api
-        .searchGlobalQuestions(query)
-        .then((results) => {
-          if (!cancelled) setQuestionResults(dedupeQuestions(results));
-        })
-        .catch(() => {
-          if (!cancelled) setQuestionResults([]);
-        })
-        .finally(() => {
-          if (!cancelled) setIsSearching(false);
-        });
-    }, 250);
-    return () => {
-      cancelled = true;
-      window.clearTimeout(handle);
+    const root = contentRef.current;
+    if (!root || typeof IntersectionObserver === 'undefined') return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const current = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        if (current) {
+          window.dispatchEvent(
+            new CustomEvent('explore:section-change', {
+              detail: { sectionId: current.target.id },
+            }),
+          );
+        }
+      },
+      { root, rootMargin: '-8% 0px -60% 0px', threshold: [0.05, 0.4] },
+    );
+
+    SECTION_IDS.forEach((id) => {
+      const section = document.getElementById(id);
+      if (section) observer.observe(section);
+    });
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const root = contentRef.current;
+    if (!root) return;
+
+    const handleScrollEnd = () => {
+      const atBottom =
+        root.scrollHeight - root.scrollTop - root.clientHeight < 4; // 容差几像素
+      if (atBottom) {
+        window.dispatchEvent(
+          new CustomEvent('explore:section-change', {
+            detail: { sectionId: SECTION_IDS[SECTION_IDS.length - 1] },
+          }),
+        );
+      }
     };
-  }, [searchQuery]);
+
+    root.addEventListener('scroll', handleScrollEnd, { passive: true });
+    return () => root.removeEventListener('scroll', handleScrollEnd);
+  }, []);
+
+  useEffect(() => {
+    const handleNavigation = (event: Event) => {
+      const sectionId = (event as CustomEvent<{ sectionId?: string }>).detail
+        ?.sectionId;
+      if (!sectionId || !SECTION_IDS.includes(sectionId)) return;
+
+      document.getElementById(sectionId)?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      });
+    };
+
+    window.addEventListener('explore:navigate', handleNavigation);
+    return () =>
+      window.removeEventListener('explore:navigate', handleNavigation);
+  }, []);
+
+  useEffect(() => {
+    const handleThemeSelection = (event: Event) => {
+      const theme = (event as CustomEvent<{ theme?: string }>).detail?.theme;
+      if (!theme) return;
+      setActiveTheme(theme);
+      document.getElementById('sets')?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      });
+    };
+
+    window.addEventListener('explore:set-theme', handleThemeSelection);
+    return () =>
+      window.removeEventListener('explore:set-theme', handleThemeSelection);
+  }, []);
 
   const publishedSets = collections.filter((set) => set.status === 'published');
   const officialSets = publishedSets.filter(
@@ -268,23 +262,43 @@ function ExplorePageContent() {
   const archivedSets = createdCollections.filter(
     (set) => set.status === 'archived',
   );
-
   const allVisibleSets = useMemo(
     () => [...officialSets, ...communitySets, ...myPersonalSets],
-    [officialSets, communitySets, myPersonalSets],
+    [collections, createdCollections, currentUser?.id],
   );
-
-  const filteredSets = allVisibleSets.filter((set) => {
+  const themeCategories = useMemo(
+    () =>
+      categories
+        .filter((category) => category.is_system !== false)
+        .sort(
+          (a, b) =>
+            (a.sort_order ?? 100) - (b.sort_order ?? 100) ||
+            getInterviewCategoryLabel(a).localeCompare(
+              getInterviewCategoryLabel(b),
+            ),
+        ),
+    [categories],
+  );
+  const matchesCollectionFilters = (set: InterviewCollection) => {
     const matchesTheme = activeTheme === 'All' || set.theme === activeTheme;
-    const query = searchQuery.trim().toLowerCase();
-    const matchesSearch =
-      !query ||
-      set.title.toLowerCase().includes(query) ||
-      (set.description || '').toLowerCase().includes(query) ||
-      (set.theme || '').toLowerCase().includes(query);
-    return matchesTheme && matchesSearch;
-  });
-
+    return matchesTheme;
+  };
+  const filteredSets = allVisibleSets.filter(matchesCollectionFilters);
+  const filteredOfficialSets = officialSets.filter(matchesCollectionFilters);
+  const filteredCommunitySets = communitySets.filter(matchesCollectionFilters);
+  const filteredPersonalSets = myPersonalSets.filter(matchesCollectionFilters);
+  const filteredArchivedSets = archivedSets.filter(matchesCollectionFilters);
+  const newQuestions = useMemo(
+    () =>
+      questionPool
+        .filter((question) => getQuestionActivityBadge(question, lastLoginAt))
+        .sort((a, b) => timestamp(b.created_at) - timestamp(a.created_at)),
+    [lastLoginAt, questionPool],
+  );
+  const visibleNewQuestions = useMemo(
+    () => rankedWindow(newQuestions, newForYouOffset, 12),
+    [newForYouOffset, newQuestions],
+  );
   const practicedTodayIds = useMemo(
     () =>
       new Set(
@@ -297,12 +311,87 @@ function ExplorePageContent() {
     [practiceRecords],
   );
 
-  const refreshRecommendedQuestions = () => {
-    if (questionPool.length === 0) return;
-    setIsRefreshingQuestions(true);
+  const recommendationPanels = [
+    {
+      id: 'forYou' as const,
+      anchorId: 'today-picks',
+      title: "Today's Picks",
+      description:
+        'Tailored to your saved, practised, interaction and followed content. You use more, it will more smart.',
+      questions: rankedWindow(forYouQuestions, recommendationOffsets.forYou, 4),
+      showReason: true,
+    },
+    {
+      id: 'hot' as const,
+      anchorId: 'comprehensive-trend',
+      title: 'Comprehensive Trend',
+      description: 'High-quality questions with durable overall momentum.',
+      questions: rankedWindow(
+        rankingQuestions.hot,
+        recommendationOffsets.hot,
+        4,
+      ),
+    },
+    {
+      id: 'season' as const,
+      anchorId: 'season-trend',
+      title: 'Season Trend',
+      description: 'Questions gaining traction over the last 90 days.',
+      questions: rankedWindow(
+        rankingQuestions.season,
+        recommendationOffsets.season,
+        4,
+      ),
+    },
+    {
+      id: 'month' as const,
+      anchorId: 'month-trend',
+      title: 'Month Trend',
+      description: 'Questions with the strongest recent monthly activity.',
+      questions: rankedWindow(
+        rankingQuestions.month,
+        recommendationOffsets.month,
+        4,
+      ),
+    },
+    {
+      id: 'week' as const,
+      anchorId: 'week-trend',
+      title: 'Week Trend',
+      description: 'Fresh momentum from the past seven days.',
+      questions: rankedWindow(
+        rankingQuestions.week,
+        recommendationOffsets.week,
+        4,
+      ),
+    },
+  ];
+
+  const handlePracticeQuestion = (question: InterviewQuestion) => {
+    router.push(
+      `/interview-prep/practice/${question.display_number || question.id}`,
+    );
+  };
+
+  const refreshRecommendedQuestions = (feed: RecommendationFeed) => {
+    const items = feed === 'forYou' ? forYouQuestions : rankingQuestions[feed];
+    if (items.length <= 4) return;
+    setRefreshingRecommendation(feed);
     window.setTimeout(() => {
-      setRecommendedQuestions(shuffleItems(questionPool).slice(0, 8));
-      window.setTimeout(() => setIsRefreshingQuestions(false), 160);
+      setRecommendationOffsets((offsets) => ({
+        ...offsets,
+        [feed]: (offsets[feed] + 4) % items.length,
+      }));
+      window.setTimeout(() => setRefreshingRecommendation(null), 160);
+    }, 160);
+  };
+
+  const refreshNewForYou = () => {
+    if (newQuestions.length <= 12) return;
+    setIsRefreshingNewForYou(true);
+    window.setTimeout(() => {
+      setNewForYouOffset((offset) => (offset + 12) % newQuestions.length);
+      window.setTimeout(() => setIsRefreshingNewForYou(false), 160);
     }, 160);
   };
 
@@ -325,9 +414,9 @@ function ExplorePageContent() {
       await load(false);
       showGlobalToast('Question Set followed');
       window.dispatchEvent(new Event('playbookLibraryUpdated'));
-    } catch (err) {
+    } catch (error) {
       showGlobalToast(
-        err instanceof Error ? err.message : 'Could not follow set.',
+        error instanceof Error ? error.message : 'Could not follow set.',
       );
     } finally {
       setActiveId(null);
@@ -349,9 +438,9 @@ function ExplorePageContent() {
       await load(false);
       showGlobalToast('Question Set unfollowed');
       window.dispatchEvent(new Event('playbookLibraryUpdated'));
-    } catch (err) {
+    } catch (error) {
       showGlobalToast(
-        err instanceof Error ? err.message : 'Could not unfollow set.',
+        error instanceof Error ? error.message : 'Could not unfollow set.',
       );
     } finally {
       setActiveId(null);
@@ -362,24 +451,102 @@ function ExplorePageContent() {
     setActiveId(question.id);
     try {
       await api.saveInterviewQuestion(question.id);
-      setRecommendedQuestions((items) =>
+      setRankingQuestions(
+        (rankings) =>
+          Object.fromEntries(
+            Object.entries(rankings).map(([ranking, items]) => [
+              ranking,
+              items.map((item) =>
+                item.id === question.id ? { ...item, is_saved: true } : item,
+              ),
+            ]),
+          ) as Record<RankingMode, InterviewQuestion[]>,
+      );
+      setForYouQuestions((items) =>
         items.map((item) =>
           item.id === question.id ? { ...item, is_saved: true } : item,
         ),
       );
-      setQuestionResults((items) =>
+      setQuestionPool((items) =>
         items.map((item) =>
           item.id === question.id ? { ...item, is_saved: true } : item,
         ),
       );
       showGlobalToast('Question saved to Library');
       window.dispatchEvent(new Event('playbookLibraryUpdated'));
-    } catch (err) {
+    } catch (error) {
       showGlobalToast(
-        err instanceof Error ? err.message : 'Could not save question.',
+        error instanceof Error ? error.message : 'Could not save question.',
       );
     } finally {
       setActiveId(null);
+    }
+  };
+
+  const updateQuestionEverywhere = (
+    questionId: string,
+    update: (question: InterviewQuestion) => InterviewQuestion,
+  ) => {
+    setForYouQuestions((items) =>
+      items.map((item) => (item.id === questionId ? update(item) : item)),
+    );
+    setRankingQuestions(
+      (rankings) =>
+        Object.fromEntries(
+          Object.entries(rankings).map(([ranking, items]) => [
+            ranking,
+            items.map((item) => (item.id === questionId ? update(item) : item)),
+          ]),
+        ) as Record<RankingMode, InterviewQuestion[]>,
+    );
+    setQuestionPool((items) =>
+      items.map((item) => (item.id === questionId ? update(item) : item)),
+    );
+  };
+
+  const handleFavoriteQuestion = async (question: InterviewQuestion) => {
+    try {
+      const summary = await api.toggleQuestionFavorite(question.id);
+      updateQuestionEverywhere(question.id, (item) => ({
+        ...item,
+        is_favorited: summary.is_favorited,
+        metrics: {
+          ...item.metrics,
+          favorite_count: summary.favorite_count,
+          upvote_count: summary.upvote_count,
+          downvote_count: summary.downvote_count,
+        },
+      }));
+    } catch (error) {
+      showGlobalToast(
+        error instanceof Error ? error.message : 'Could not update favorite.',
+      );
+    }
+  };
+
+  const handleReactToQuestion = async (
+    question: InterviewQuestion,
+    value: 'up' | 'down' | null,
+  ) => {
+    try {
+      const summary = await api.updateQuestionCommunityReaction(
+        question.id,
+        value,
+      );
+      updateQuestionEverywhere(question.id, (item) => ({
+        ...item,
+        user_reaction: summary.user_reaction as 'up' | 'down' | null,
+        metrics: {
+          ...item.metrics,
+          favorite_count: summary.favorite_count,
+          upvote_count: summary.upvote_count,
+          downvote_count: summary.downvote_count,
+        },
+      }));
+    } catch (error) {
+      showGlobalToast(
+        error instanceof Error ? error.message : 'Could not update reaction.',
+      );
     }
   };
 
@@ -396,14 +563,15 @@ function ExplorePageContent() {
       cancelLabel: 'Cancel',
     });
     if (!ok) return;
+
     setActiveId(collection.id);
     try {
       await api.deleteInterviewCollection(collection.id);
       await load(false);
       showGlobalToast('Question Set removed');
-    } catch (err) {
+    } catch (error) {
       showGlobalToast(
-        err instanceof Error ? err.message : 'Could not delete set.',
+        error instanceof Error ? error.message : 'Could not delete set.',
       );
     } finally {
       setActiveId(null);
@@ -413,14 +581,12 @@ function ExplorePageContent() {
   const handleRestore = async (collection: InterviewCollection) => {
     setActiveId(collection.id);
     try {
-      await api.updateInterviewCollection(collection.id, {
-        status: 'draft',
-      });
+      await api.updateInterviewCollection(collection.id, { status: 'draft' });
       await load(false);
       showGlobalToast('Question Set restored to My Personal Sets');
-    } catch (err) {
+    } catch (error) {
       showGlobalToast(
-        err instanceof Error ? err.message : 'Could not restore set.',
+        error instanceof Error ? error.message : 'Could not restore set.',
       );
     } finally {
       setActiveId(null);
@@ -441,13 +607,15 @@ function ExplorePageContent() {
         selectedCollectionToEdit.id,
         payload,
       );
-      if (payload.cover_file)
+      if (payload.cover_file) {
         await api.uploadCollectionCover(updated.id, payload.cover_file);
+      }
       showGlobalToast('Question Set updated');
     } else {
       const created = await api.createInterviewCollection(payload);
-      if (payload.cover_file)
+      if (payload.cover_file) {
         await api.uploadCollectionCover(created.id, payload.cover_file);
+      }
       showGlobalToast(
         payload.status === 'published' ?
           'Question Set shared to Community'
@@ -459,276 +627,8 @@ function ExplorePageContent() {
     await load(false);
   };
 
-  const renderSetSection = (
-    title: string,
-    icon: React.ReactNode,
-    items: InterviewCollection[],
-    empty: string,
-  ) => (
-    <section className='grid gap-3'>
-      <div className='flex items-center justify-between gap-3'>
-        <div className='flex items-center gap-2'>
-          {icon}
-          <h2 className='title-card'>{title}</h2>
-        </div>
-      </div>
-      {isLoading ?
-        <div className='body-md panel-sm flex items-center gap-3 p-5 text-ink-secondary'>
-          <Loader2 className='h-4 w-4 animate-spin' />
-          Loading sets...
-        </div>
-      : items.length === 0 ?
-        <div className='body-md rounded-2xl border border-dashed border-border/60 bg-background/30 p-8 text-center text-ink-secondary'>
-          {empty}
-        </div>
-      : <ScrollableContainer>
-          {items.map((collection) => (
-            <CollectionCard
-              key={collection.id}
-              collection={collection}
-              onAdd={handleFollow}
-              onRemove={handleUnfollow}
-              isLoading={activeId === collection.id}
-              currentUserId={currentUser?.id}
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-              onRestore={handleRestore}
-            />
-          ))}
-        </ScrollableContainer>
-      }
-    </section>
-  );
-
-  const questionsToShow =
-    searchQuery.trim().length >= 2 ? questionResults : recommendedQuestions;
-
   return (
-    <main className='flex h-full flex-col overflow-hidden panel-xl p-0!'>
-      <div className='shrink-0 border-b border-border/40 p-5 pb-0'>
-        <div className='flex flex-col gap-4'>
-          <div className='flex flex-wrap items-center justify-between gap-3'>
-            <div>
-              <h1 className='title-page flex items-center gap-2'>
-                <Compass className='h-5 w-5 text-primary' />
-                Explore
-              </h1>
-              <p className='body-sm mt-1 text-ink-secondary'>
-                Discover public questions and Question Sets, or manage your
-                personal sets.
-              </p>
-            </div>
-            <Button
-              onClick={() => {
-                setSelectedCollectionToEdit(null);
-                setIsFormModalOpen(true);
-              }}
-              Icon={Plus}
-            >
-              Create Question Set
-            </Button>
-          </div>
-
-          <div className='relative'>
-            <Search className='absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-secondary' />
-            <input
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder='Search questions or Question Sets'
-              className='body-md w-full rounded-2xl border border-border bg-background-secondary/60 py-3 pl-10 pr-4 text-ink-primary outline-none transition-colors focus:border-primary/50 focus:bg-background-primary/60'
-            />
-            {isSearching && (
-              <Loader2 className='absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-primary' />
-            )}
-          </div>
-        </div>
-      </div>
-
-      <div className='flex-1 body p-5 '>
-        <div className='grid gap-8'>
-          <section className='grid gap-3'>
-            <div className='flex items-center justify-between gap-3'>
-              <div className='flex items-center gap-2'>
-                <Sparkles className='h-4 w-4 text-primary' />
-                <h2 className='title-card'>
-                  {searchQuery.trim().length >= 2 ?
-                    'Matching Questions'
-                  : 'Recommended Questions'}
-                </h2>
-              </div>
-              {searchQuery.trim().length < 2 && (
-                <button
-                  onClick={refreshRecommendedQuestions}
-                  className='inline-flex h-8 w-8 items-center justify-center rounded-full border border-border bg-background-secondary text-ink-secondary transition-colors hover:border-primary/50 hover:text-primary'
-                  title='Refresh recommendations'
-                >
-                  <RefreshCw
-                    className={cn(
-                      'h-4 w-4',
-                      isRefreshingQuestions && 'animate-spin',
-                    )}
-                  />
-                </button>
-              )}
-            </div>
-            {questionsToShow.length === 0 ?
-              <div className='body-md rounded-2xl border border-dashed border-border/60 bg-background/30 p-8 text-center text-ink-secondary'>
-                {searchQuery.trim().length >= 2 ?
-                  'No matching questions yet.'
-                : 'No recommended questions available.'}
-              </div>
-            : <div
-                className={cn(
-                  'grid gap-3 transition-opacity duration-300 md:grid-cols-2 xl:grid-cols-4',
-                  isRefreshingQuestions && 'opacity-20',
-                )}
-              >
-                {questionsToShow.map((question) => {
-                  const { label: categoryLabel, Icon: CategoryIcon } =
-                    getCategoryPresentation(question);
-                  const practicedToday = practicedTodayIds.has(question.id);
-                  const durationLabel = question.estimated_duration_seconds ?
-                    formatInterviewDuration(question.estimated_duration_seconds)
-                  : 'Ready';
-
-                  return (
-                    <article
-                      key={question.id}
-                      className='relative rounded-2xl rounded-br-3xl border col justify-between border-border/50 bg-panel/70 p-4 transition-colors hover:border-primary/40'
-                    >
-                      <button
-                        onClick={() => handleSaveQuestion(question)}
-                        disabled={activeId === question.id}
-                        className={cn(
-                          'absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-full border transition-colors',
-                          question.is_saved ?
-                            'border-primary/30 bg-primary/10 text-primary'
-                          : 'border-border bg-background-secondary text-ink-secondary hover:border-primary/50 hover:text-primary',
-                        )}
-                        title={question.is_saved ? 'Saved' : 'Save to Library'}
-                      >
-                        {activeId === question.id ?
-                          <Loader2 className='h-4 w-4 animate-spin' />
-                        : question.is_saved ?
-                          <CheckCircle2 className='h-4 w-4' />
-                        : <Plus className='h-4 w-4' />}
-                      </button>
-
-                      <div className='flex min-h-[70px] flex-col gap-3 pr-9'>
-                        <div className='flex flex-wrap items-center gap-2 text-[11px] font-bold uppercase tracking-wide text-primary'>
-                          <span className='inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-1'>
-                            <CategoryIcon className='h-3.5 w-3.5' />
-                            {categoryLabel}
-                          </span>
-                          {question.difficulty && (
-                            <span className='rounded-full bg-background-secondary px-2 py-1 text-ink-secondary'>
-                              {question.difficulty}
-                            </span>
-                          )}
-                        </div>
-                        <h3 className='text-sm font-bold leading-snug text-ink-primary line-clamp-3'>
-                          {question.title}
-                        </h3>
-                      </div>
-                      <div className='mt-4 flex items-end justify-between gap-2'>
-                        {practicedToday ?
-                          <span className='inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-bold text-emerald-600 dark:text-emerald-400'>
-                            <CheckCircle2 className='h-3.5 w-3.5' />
-                            Practiced today
-                          </span>
-                        : <span className='text-xs text-ink-secondary'>
-                            {durationLabel}
-                          </span>
-                        }
-                        <div className='flex justify-end col'>
-                          <Button
-                            onClick={() =>
-                              router.push(
-                                `/interview-prep/practice/${question.display_number || question.id}`,
-                              )
-                            }
-                            Icon={Dumbbell}
-                          >
-                            Practice
-                          </Button>
-                        </div>
-                      </div>
-                    </article>
-                  );
-                })}
-              </div>
-            }
-          </section>
-
-          {renderSetSection(
-            searchQuery.trim() || activeTheme !== 'All' ?
-              'Matching Question Sets'
-            : 'Recommended Question Sets',
-            <Sparkles className='h-4 w-4 text-primary' />,
-            filteredSets.slice(0, 12),
-            'No matching Question Sets yet.',
-          )}
-
-          <section className='grid gap-3'>
-            <div className='flex items-center gap-2'>
-              <Compass className='h-4 w-4 text-primary' />
-              <h2 className='title-card'>Themes</h2>
-            </div>
-            <div className='grid gap-3 md:grid-cols-5'>
-              {THEMES.map((theme) => {
-                const count = allVisibleSets.filter(
-                  (set) => set.theme === theme,
-                ).length;
-                const ThemeIcon = THEME_ICONS[theme];
-                return (
-                  <button
-                    key={theme}
-                    onClick={() => setActiveTheme(theme)}
-                    className='rounded-2xl border border-border/50 bg-background-secondary/40 p-4 text-left transition-colors hover:border-primary/40 hover:bg-primary/5'
-                  >
-                    <span className='mb-3 inline-flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary'>
-                      <ThemeIcon className='h-4.5 w-4.5' />
-                    </span>
-                    <div className='text-sm font-bold text-ink-primary'>
-                      {theme}
-                    </div>
-                    <div className='mt-1 text-xs text-ink-secondary'>
-                      {count} set{count === 1 ? '' : 's'}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-
-          {renderSetSection(
-            'Official Sets',
-            <BadgeCheck className='h-4 w-4 text-primary' />,
-            officialSets,
-            'No official Question Sets available.',
-          )}
-          {renderSetSection(
-            'Community Sets',
-            <Users className='h-4 w-4 text-primary' />,
-            communitySets,
-            'No community Question Sets available.',
-          )}
-          {renderSetSection(
-            'My Personal Sets',
-            <BookOpen className='h-4 w-4 text-primary' />,
-            myPersonalSets,
-            'Create your first personal Question Set.',
-          )}
-          {archivedSets.length > 0 &&
-            renderSetSection(
-              'Archived Personal Sets',
-              <BookOpen className='h-4 w-4 text-rose-500' />,
-              archivedSets,
-              'No archived personal sets.',
-            )}
-        </div>
-      </div>
-
+    <main className='flex h-full min-h-0 w-full flex-col overflow-hidden'>
       {isFormModalOpen && (
         <CollectionFormModal
           collection={selectedCollectionToEdit}
@@ -739,6 +639,65 @@ function ExplorePageContent() {
           }}
         />
       )}
+
+      <div
+        ref={contentRef}
+        className='min-h-0 flex-1 body overflow-y-auto overscroll-y-contain w-full custom-scrollbar-primary'
+      >
+        <ExploreHeader
+          onCreateSet={() => {
+            setSelectedCollectionToEdit(null);
+            setIsFormModalOpen(true);
+          }}
+        />
+        <div className='grid min-w-0 gap-7'>
+          <NewForYouSection
+            questions={visibleNewQuestions}
+            lastLoginAt={lastLoginAt}
+            activeId={activeId}
+            isLoading={isLoading}
+            isRefreshing={isRefreshingNewForYou}
+            canRefresh={newQuestions.length > 12}
+            onRefresh={refreshNewForYou}
+            onSaveQuestion={handleSaveQuestion}
+            onPracticeQuestion={handlePracticeQuestion}
+            onFavoriteQuestion={handleFavoriteQuestion}
+            onReactToQuestion={handleReactToQuestion}
+          />
+          <RecommendationSection
+            panels={recommendationPanels}
+            activeId={activeId}
+            isLoading={isLoading}
+            practicedTodayIds={practicedTodayIds}
+            onRefresh={refreshRecommendedQuestions}
+            refreshingFeed={refreshingRecommendation}
+            onSaveQuestion={handleSaveQuestion}
+            onPracticeQuestion={handlePracticeQuestion}
+            onFavoriteQuestion={handleFavoriteQuestion}
+            onReactToQuestion={handleReactToQuestion}
+          />
+          <QuestionSetsSection
+            searchQuery=''
+            activeTheme={activeTheme}
+            categories={themeCategories}
+            onSelectTheme={setActiveTheme}
+            matchingSets={filteredSets}
+            officialSets={filteredOfficialSets}
+            communitySets={filteredCommunitySets}
+            personalSets={filteredPersonalSets}
+            archivedSets={filteredArchivedSets}
+            isLoading={isLoading}
+            lastLoginAt={lastLoginAt}
+            activeId={activeId}
+            currentUserId={currentUser?.id}
+            onFollow={handleFollow}
+            onUnfollow={handleUnfollow}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onRestore={handleRestore}
+          />
+        </div>
+      </div>
     </main>
   );
 }
@@ -747,7 +706,7 @@ export default function ExplorePage() {
   return (
     <Suspense
       fallback={
-        <div className='body-md panel-sm flex items-center justify-center gap-3 p-8 text-ink-secondary h-full'>
+        <div className='body-md panel-sm flex h-full items-center justify-center gap-3 p-8 text-ink-secondary'>
           <Loader2 className='h-5 w-5 animate-spin text-primary' />
           Loading Explore...
         </div>

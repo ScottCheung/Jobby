@@ -79,8 +79,39 @@ class UserProfileRead(UserProfileBase, OrmModel):
     updated_at: datetime
 
 
+class MasterResumeUpdate(BaseModel):
+    resume_data: dict
+
+
+class MasterResumeRead(OrmModel):
+    id: UUID
+    original_filename: str
+    original_url: str
+    resume_data: dict
+    status: str
+    confirmed_at: datetime | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class ResumeSourceRead(BaseModel):
+    original_filename: str
+    page_count: int
+    character_count: int
+    text: str
+
+
+class ResumeAssetRead(BaseModel):
+    profile_id: UUID
+    filename: str
+    url: str
+    is_default: bool = False
+    created_at: datetime
+    updated_at: datetime
+
+
 class JobHuntingProfileBase(BaseModel):
-    name: str = "Default LinkedIn Search"
+    name: str = "Default Job Hunting Profile"
     platform: str = "linkedin"
     platform_account_id: UUID | None = None
     search_terms: list = Field(default_factory=list)
@@ -240,10 +271,16 @@ class SkillRead(SkillBase, OrmModel):
 
 class InterviewCategoryBase(BaseModel):
     name: str
+    icon_key: str | None = None
+    sort_order: int | None = None
 
 class InterviewCategoryRead(InterviewCategoryBase, OrmModel):
     id: UUID
     user_id: UUID
+    slug: str | None = None
+    display_name: str | None = None
+    is_system: bool = False
+    question_count: int = 0
     created_at: datetime
     updated_at: datetime
 
@@ -309,11 +346,20 @@ class InterviewQuestionRead(InterviewQuestionBase, OrmModel):
     can_edit: bool = False
     is_favorited: bool = False
     metrics: dict | None = None
+    recommendation_score: float | None = None
+    recommendation_reason: str | None = None
     created_at: datetime
     updated_at: datetime
     category: InterviewCategoryRead | None = None
     tags: list[InterviewTagRead] = Field(default_factory=list)
     companies: list[CompanyRead] = Field(default_factory=list)
+
+
+class PaginatedInterviewQuestionsRead(BaseModel):
+    items: list[InterviewQuestionRead]
+    total: int = 0
+    has_more: bool = False
+    next_offset: int | None = None
 
 
 class QuestionAiMetadataRead(BaseModel):
@@ -336,6 +382,8 @@ class InterviewCollectionRead(InterviewCollectionBase, OrmModel):
     id: UUID
     creator_user_id: UUID | None = None
     last_updated_at: datetime | None = None
+    created_at: datetime
+    updated_at: datetime
     library_adds: int = 0
     question_count: int = 0
     user_active_question_count: int = 0
@@ -446,6 +494,7 @@ class QuestionCommunitySummaryRead(BaseModel):
     comment_count: int = 0
     blended_importance_score: float | None = None
     blended_frequency_score: float | None = None
+    hot_score: float = 1
     top_companies: list[dict[str, int | str]] = Field(default_factory=list)
     user_frequency_rating: int | None = None
     user_importance_rating: int | None = None
@@ -652,7 +701,7 @@ class QuestionAnswerCommentPageRead(BaseModel):
     next_cursor: datetime | None = None
     answer_id: UUID
 
-class CommunityInterviewReportRead(BaseModel):
+class CommunityInterviewReportRead(OrmModel):
     id: UUID
     company: str | None = None
     role: str | None = None
@@ -684,6 +733,28 @@ class AudioRecordRead(AudioRecordBase, OrmModel):
     updated_at: datetime
 
 
+class TranscriptWordRead(BaseModel):
+    text: str
+    start: float
+    end: float
+
+
+class TranscriptSegmentRead(BaseModel):
+    text: str
+    start: float
+    end: float
+    words: list[TranscriptWordRead] = Field(default_factory=list)
+
+
+class PracticeTranscriptionRead(BaseModel):
+    provider: str
+    model: str
+    language: str | None = None
+    duration_seconds: float | None = None
+    text: str = ""
+    segments: list[TranscriptSegmentRead] = Field(default_factory=list)
+
+
 class PracticeRecordBase(BaseModel):
     question_id: UUID
     started_at: datetime | None = None
@@ -694,10 +765,13 @@ class PracticeRecordBase(BaseModel):
     notes: str | None = None
 
 class PracticeRecordCreate(PracticeRecordBase):
-    pass
+    date: datetime | None = None
 
 
 class PracticeRecordUpdate(BaseModel):
+    started_at: datetime | None = None
+    submitted_at: datetime | None = None
+    duration_seconds: int | None = None
     my_answer: str | None = None
     confidence_score: int | None = None
     notes: str | None = None

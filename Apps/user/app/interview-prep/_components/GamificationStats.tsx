@@ -177,7 +177,11 @@ export function GamificationStats() {
       if (typeof count === 'number') setLibraryCount(count);
     };
     window.addEventListener('jobby:libraryCountUpdated', handleLibraryCount);
-    return () => window.removeEventListener('jobby:libraryCountUpdated', handleLibraryCount);
+    return () =>
+      window.removeEventListener(
+        'jobby:libraryCountUpdated',
+        handleLibraryCount,
+      );
   }, []);
 
   useEffect(() => {
@@ -570,7 +574,7 @@ export function GamificationStats() {
                         {/* Inner Track Ring for 3D depth */}
                         <div
                           className={cn(
-                            'absolute bottom-1 w-11 h-4 rounded-[100%] border border-dashed transition-all duration-300 [transform:rotateX(68deg)] opacity-60',
+                            'absolute bottom-1 w-11 h-4 group-hover/stage:animate-text-shimmer-primary animate-text-shimmer rounded-[100%] border border-dashed transition-all duration-300 [transform:rotateX(98deg)] opacity-60',
                             isEmpty ? 'border-white/10' : colors.stageBorder,
                           )}
                         />
@@ -580,9 +584,9 @@ export function GamificationStats() {
                           src={def.icon}
                           alt={def.label}
                           className={cn(
-                            'relative z-10 w-20 h-20 object-contain -translate-y-1.5 drop-shadow-[0_8px_6px_rgba(0,0,0,0.65)] transition-all duration-300  scale-75',
+                            `relative z-10 w-20 h-20 object-contain -translate-y-1.5 e group-hover/stage:drop-shadow-[0_8px_6px_rgba(245,158,11,0.8)] transition-all duration-300  scale-75`,
                             isEmpty ?
-                              'grayscale group-hover/stage:grayscale-0 opacity-45 group-hover/stage:opacity-100 group-hover/stage:-translate-y-5 group-hover/stage:scale-110 '
+                              'grayscale group-hover/stage:grayscale-0 opacity-45 group-hover/stage:opacity-100 group-hover/stage:-translate-y-3 group-hover/stage:scale-110 '
                             : 'group-hover/stage:-translate-y-10 group-hover/stage:scale-110',
                           )}
                         />
@@ -590,8 +594,8 @@ export function GamificationStats() {
                         {/* 3. Front Arc of the Ellipse Ring (Creates the "emerging/passing through" clipping effect) */}
                         <div
                           className={cn(
-                            'absolute bottom-0 w-15 h-3.5 rounded-b-full border-b-2 pointer-events-none z-20 transition-all duration-300',
-                            isEmpty ? 'border-white/10' : colors.ringFront,
+                            'absolute bottom-0 w-15  h-3.5 group-hover/stage:translate-y-1 group-hover/stage:scale-110 rounded-b-full border-b-2 pointer-events-none z-20 transition-all duration-300',
+                            isEmpty ? 'border-white/10 ' : colors.ringFront,
                           )}
                         />
                       </div>

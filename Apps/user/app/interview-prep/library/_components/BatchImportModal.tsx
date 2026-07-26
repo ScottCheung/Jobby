@@ -397,7 +397,7 @@ export function BatchImportModal({
             <div className='px-2'>Category</div>
             <div className='px-2'>Frequency</div>
             <div className='px-2'>Importance</div>
-            <div className='px-2'>Author's Answer</div>
+            <div className='px-2'>Contributor's Answer</div>
             <div className='text-center'></div>
           </div>
 

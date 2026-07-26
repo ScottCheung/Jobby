@@ -65,3 +65,5 @@ all resumes/
 cline_docs/
 .cline/
 .vercel/
+.vercel
+.env*

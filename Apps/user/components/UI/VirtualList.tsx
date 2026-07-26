@@ -118,20 +118,22 @@ export function VirtualList<T>({
 
   // Compute virtual window range
   const totalCount = items.length;
-  const totalHeight = totalCount * effectiveItemHeight;
 
-  const { startIndex, endIndex, offsetY } = useMemo(() => {
+  const { startIndex, endIndex, topSpacerHeight, bottomSpacerHeight } =
+    useMemo(() => {
     const start = Math.max(0, Math.floor(scrollTop / effectiveItemHeight) - effectiveBuffer);
     const end = Math.min(
       totalCount,
       Math.ceil((scrollTop + containerHeight) / effectiveItemHeight) + effectiveBuffer,
     );
-    const topOffset = start * effectiveItemHeight;
+    const topSpacer = start * effectiveItemHeight;
+    const bottomSpacer = Math.max(0, (totalCount - end) * effectiveItemHeight);
 
     return {
       startIndex: start,
       endIndex: end,
-      offsetY: topOffset,
+      topSpacerHeight: topSpacer,
+      bottomSpacerHeight: bottomSpacer,
     };
   }, [scrollTop, effectiveItemHeight, containerHeight, totalCount, effectiveBuffer]);
 
@@ -166,30 +168,32 @@ export function VirtualList<T>({
     <div
       ref={internalRef}
       onScroll={handleScroll}
-      className={`relative overflow-y-auto ${className}`}
+      className={`relative overflow-y-auto min-h-0 ${className}`}
     >
-      <div style={{ height: totalHeight, position: 'relative' }}>
+      {topSpacerHeight > 0 && (
         <div
-          style={{
-            transform: `translateY(${offsetY}px)`,
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-          }}
-        >
-          {visibleItems.map((item, idx) => {
-            const actualIndex = startIndex + idx;
-            const key = keyExtractor(item, actualIndex);
-            const style = { height: effectiveItemHeight };
-            return (
-              <React.Fragment key={key}>
-                {drawRow(item, actualIndex, style)}
-              </React.Fragment>
-            );
-          })}
-        </div>
-      </div>
+          aria-hidden='true'
+          style={{ height: topSpacerHeight }}
+        />
+      )}
+
+      {visibleItems.map((item, idx) => {
+        const actualIndex = startIndex + idx;
+        const key = keyExtractor(item, actualIndex);
+        const style = { height: effectiveItemHeight };
+        return (
+          <React.Fragment key={key}>
+            {drawRow(item, actualIndex, style)}
+          </React.Fragment>
+        );
+      })}
+
+      {bottomSpacerHeight > 0 && (
+        <div
+          aria-hidden='true'
+          style={{ height: bottomSpacerHeight }}
+        />
+      )}
 
       {/* Sentinel for infinite scroll */}
       <div ref={sentinelRef} className="h-4 w-full" />

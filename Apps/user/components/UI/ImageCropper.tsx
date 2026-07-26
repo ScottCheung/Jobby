@@ -1,3 +1,5 @@
+/** @format */
+
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
@@ -37,7 +39,12 @@ export function ImageCropper({
   const [sourceUrl, setSourceUrl] = useState('');
   const [imageSize, setImageSize] = useState<Size | null>(null);
   const [frameSize, setFrameSize] = useState<Size>({ width: 0, height: 0 });
-  const [crop, setCrop] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
+  const [crop, setCrop] = useState<{
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  } | null>(null);
 
   useEffect(() => {
     const url = URL.createObjectURL(file);
@@ -55,7 +62,10 @@ export function ImageCropper({
     const frame = frameRef.current;
     if (!frame) return;
     const observer = new ResizeObserver(([entry]) => {
-      setFrameSize({ width: entry.contentRect.width, height: entry.contentRect.height });
+      setFrameSize({
+        width: entry.contentRect.width,
+        height: entry.contentRect.height,
+      });
     });
     observer.observe(frame);
     return () => observer.disconnect();
@@ -64,7 +74,7 @@ export function ImageCropper({
   // Calculate container dimensions matching image aspect ratio inside the frame width & max height bounds
   const maxContainerHeight = 360;
   const imageAspectRatio = imageSize ? imageSize.width / imageSize.height : 1;
-  
+
   // Fit image dimensions inside frame width with a max height limit
   let finalContainerWidth = frameSize.width;
   let finalContainerHeight = frameSize.width / imageAspectRatio;
@@ -78,7 +88,8 @@ export function ImageCropper({
   const lastFileRef = useRef<File | null>(null);
 
   useEffect(() => {
-    if (!imageSize || finalContainerWidth <= 10 || finalContainerHeight <= 10) return;
+    if (!imageSize || finalContainerWidth <= 10 || finalContainerHeight <= 10)
+      return;
 
     const isNewFile = lastFileRef.current !== file;
     if (!crop || isNewFile) {
@@ -102,10 +113,19 @@ export function ImageCropper({
         height: Math.round(cropHeight),
       });
     }
-  }, [file, imageSize, finalContainerWidth, finalContainerHeight, aspectRatio, crop]);
+  }, [
+    file,
+    imageSize,
+    finalContainerWidth,
+    finalContainerHeight,
+    aspectRatio,
+    crop,
+  ]);
 
   // Rescale crop region proportionally when window/container resizes
-  const lastContainerSize = useRef<{ width: number; height: number } | null>(null);
+  const lastContainerSize = useRef<{ width: number; height: number } | null>(
+    null,
+  );
 
   useEffect(() => {
     if (finalContainerWidth <= 10 || finalContainerHeight <= 10) return;
@@ -113,7 +133,10 @@ export function ImageCropper({
     if (crop && lastContainerSize.current) {
       const prevWidth = lastContainerSize.current.width;
       const prevHeight = lastContainerSize.current.height;
-      if (prevWidth !== finalContainerWidth || prevHeight !== finalContainerHeight) {
+      if (
+        prevWidth !== finalContainerWidth ||
+        prevHeight !== finalContainerHeight
+      ) {
         const scaleX = finalContainerWidth / prevWidth;
         const scaleY = finalContainerHeight / prevHeight;
 
@@ -125,12 +148,15 @@ export function ImageCropper({
         });
       }
     }
-    lastContainerSize.current = { width: finalContainerWidth, height: finalContainerHeight };
+    lastContainerSize.current = {
+      width: finalContainerWidth,
+      height: finalContainerHeight,
+    };
   }, [finalContainerWidth, finalContainerHeight, crop]);
 
   const handlePointerDown = (
     e: React.PointerEvent<HTMLDivElement>,
-    type: 'move' | 'nw' | 'ne' | 'sw' | 'se'
+    type: 'move' | 'nw' | 'ne' | 'sw' | 'se',
   ) => {
     e.stopPropagation();
     const container = containerRef.current;
@@ -159,7 +185,10 @@ export function ImageCropper({
       let newX = startCrop.x + dx;
       let newY = startCrop.y + dy;
       newX = Math.max(0, Math.min(finalContainerWidth - startCrop.width, newX));
-      newY = Math.max(0, Math.min(finalContainerHeight - startCrop.height, newY));
+      newY = Math.max(
+        0,
+        Math.min(finalContainerHeight - startCrop.height, newY),
+      );
       setCrop({ ...startCrop, x: Math.round(newX), y: Math.round(newY) });
     } else {
       let newWidth = startCrop.width;
@@ -172,7 +201,10 @@ export function ImageCropper({
 
       if (type === 'se') {
         newWidth = startCrop.width + dx;
-        newWidth = Math.max(minWidth, Math.min(finalContainerWidth - startCrop.x, newWidth));
+        newWidth = Math.max(
+          minWidth,
+          Math.min(finalContainerWidth - startCrop.x, newWidth),
+        );
         newHeight = newWidth / aspectRatio;
         if (startCrop.y + newHeight > finalContainerHeight) {
           newHeight = finalContainerHeight - startCrop.y;
@@ -190,7 +222,10 @@ export function ImageCropper({
         }
       } else if (type === 'ne') {
         newWidth = startCrop.width + dx;
-        newWidth = Math.max(minWidth, Math.min(finalContainerWidth - startCrop.x, newWidth));
+        newWidth = Math.max(
+          minWidth,
+          Math.min(finalContainerWidth - startCrop.x, newWidth),
+        );
         newHeight = newWidth / aspectRatio;
         newY = fixedBottom - newHeight;
         if (newY < 0) {
@@ -233,10 +268,19 @@ export function ImageCropper({
     const scale = imageSize.width / finalContainerWidth;
     const sourceX = Math.max(0, Math.min(imageSize.width, crop.x * scale));
     const sourceY = Math.max(0, Math.min(imageSize.height, crop.y * scale));
-    const sourceWidth = Math.max(1, Math.min(imageSize.width - sourceX, crop.width * scale));
-    const sourceHeight = Math.max(1, Math.min(imageSize.height - sourceY, crop.height * scale));
+    const sourceWidth = Math.max(
+      1,
+      Math.min(imageSize.width - sourceX, crop.width * scale),
+    );
+    const sourceHeight = Math.max(
+      1,
+      Math.min(imageSize.height - sourceY, crop.height * scale),
+    );
 
-    const outputWidth = Math.min(maxOutputEdge, Math.max(1, Math.round(sourceWidth)));
+    const outputWidth = Math.min(
+      maxOutputEdge,
+      Math.max(1, Math.round(sourceWidth)),
+    );
     const outputHeight = Math.max(1, Math.round(outputWidth / aspectRatio));
 
     const image = new Image();
@@ -257,22 +301,20 @@ export function ImageCropper({
           0,
           0,
           outputWidth,
-          outputHeight
+          outputHeight,
         );
       }
       canvas.toBlob(
         (blob) => {
           if (!blob) return;
           onConfirm(
-            new File(
-              [blob],
-              `${file.name.replace(/\.[^.]+$/, '')}.webp`,
-              { type: 'image/webp' }
-            )
+            new File([blob], `${file.name.replace(/\.[^.]+$/, '')}.webp`, {
+              type: 'image/webp',
+            }),
           );
         },
         'image/webp',
-        outputQuality
+        outputQuality,
       );
     };
     image.src = sourceUrl;
@@ -286,12 +328,13 @@ export function ImageCropper({
         ref={frameRef}
         className='relative w-full min-h-[220px] flex items-center justify-center rounded-xl bg-zinc-950/60 overflow-hidden select-none p-4'
       >
-        {!imageSize || !crop ? (
-          <div className='absolute inset-0 flex items-center justify-center bg-background-secondary animate-pulse rounded-xl'>
-            <div className='text-xs text-ink-secondary'>Loading image preview...</div>
+        {!imageSize || !crop ?
+          <div className='absolute inset-0 flex items-center justify-center bg-background-secondary animate-text-shimmer-primary animate-text-shimmer rounded-xl'>
+            <div className='text-xs text-ink-secondary'>
+              Loading image preview...
+            </div>
           </div>
-        ) : (
-          <div
+        : <div
             ref={containerRef}
             className='relative shadow-xl touch-none select-none'
             style={{
@@ -325,7 +368,12 @@ export function ImageCropper({
             />
             <div
               className='absolute bg-black/60 pointer-events-none'
-              style={{ left: 0, top: crop.y, width: crop.x, height: crop.height }}
+              style={{
+                left: 0,
+                top: crop.y,
+                width: crop.x,
+                height: crop.height,
+              }}
             />
             <div
               className='absolute bg-black/60 pointer-events-none'
@@ -380,7 +428,7 @@ export function ImageCropper({
               />
             </div>
           </div>
-        )}
+        }
       </div>
 
       <div className='flex items-center justify-between text-[11px] text-ink-secondary px-1'>
@@ -388,10 +436,21 @@ export function ImageCropper({
       </div>
 
       <div className='flex justify-end gap-3'>
-        <Button type='button' variant='outline' onClick={onCancel} className='rounded-xl'>
+        <Button
+          type='button'
+          variant='outline'
+          onClick={onCancel}
+          className='rounded-xl'
+        >
           Cancel
         </Button>
-        <Button type='button' Icon={Check} onClick={confirmCrop} disabled={!crop} className='rounded-xl'>
+        <Button
+          type='button'
+          Icon={Check}
+          onClick={confirmCrop}
+          disabled={!crop}
+          className='rounded-xl'
+        >
           Use crop
         </Button>
       </div>

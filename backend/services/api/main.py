@@ -1,9 +1,10 @@
 from datetime import datetime
-from uuid import UUID
+from typing import Any
+from uuid import UUID, uuid4
 import asyncio
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI, File, HTTPException, Query, UploadFile, status
+from fastapi import BackgroundTasks, Depends, FastAPI, File, HTTPException, Query, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import StreamingResponse, JSONResponse
@@ -15,7 +16,7 @@ try:
 except ImportError:
     DefaultResponseClass = JSONResponse
 
-from sqlalchemy import or_, select, text, func, cast, Date
+from sqlalchemy import delete, or_, select, text, func, cast, Date
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -23,16 +24,18 @@ from services.shared.realtime import broadcaster, broadcast_sync
 
 
 from services.api.dependencies import get_or_create_current_user
-from services.shared.database import get_db
+from services.shared.database import SessionLocal, get_db
 from services.shared.job_link_repair import JobLinkRepairError, is_linkedin_public_summary, repair_from_link
 from services.shared.models import (
     JobApplication,
     QuestionCacheEntry,
     RuntimeSettings,
     JobHuntingProfile,
+    MasterResume,
     Skill,
     User,
     UserProfile,
+    UserSkill,
 )
 from services.shared.schemas import (
     JobApplicationBase,
@@ -44,6 +47,10 @@ from services.shared.schemas import (
     RuntimeSettingsRead,
     JobHuntingProfileBase,
     JobHuntingProfileRead,
+    MasterResumeRead,
+    MasterResumeUpdate,
+    ResumeAssetRead,
+    ResumeSourceRead,
     SkillRead,
     UserProfileBase,
     UserProfileRead,
@@ -53,6 +60,7 @@ from services.shared.settings import get_settings
 from services.shared.storage import StorageError, get_object_storage
 from services.shared.time_utils import parse_datetime_to_utc, utc_isoformat, utc_now
 from services.shared.media import MediaError, optimize_avatar_to_webp
+from services.shared.resume_parser import ResumeParseError, enrich_resume_data_from_source, extract_pdf_source, extract_pdf_text, normalize_resume_data, parse_resume_text, parse_resume_text_raw
 
 
 from services.api.routers.interview import (
@@ -818,6 +826,645 @@ def update_profile(
     return profile_response(profile, current_user)
 
 
+def master_resume_response(resume: MasterResume) -> MasterResume:
+    return resume
+
+
+def read_resume_upload(file: UploadFile) -> tuple[str, bytes]:
+    filename = (file.filename or "resume.pdf").split("/")[-1].split("\\")[-1]
+    content_type = (file.content_type or "").lower()
+    if not filename.lower().endswith(".pdf") or content_type not in {"", "application/pdf", "application/x-pdf"}:
+        raise HTTPException(status_code=400, detail="Upload a PDF resume")
+    content = file.file.read()
+    if not content:
+        raise HTTPException(status_code=400, detail="Resume file is empty")
+    if len(content) > settings.resume_upload_max_bytes:
+        raise HTTPException(status_code=400, detail="Resume must be 12 MB or smaller")
+    return filename, content
+
+
+def linkedin_url_from_resume_data(resume_data: dict) -> str | None:
+    basics = resume_data.get("basics") if isinstance(resume_data.get("basics"), dict) else {}
+    value = basics.get("linkedin_id") or basics.get("linkedin_url")
+    if not isinstance(value, str):
+        return None
+    value = value.strip()
+    if not value:
+        return None
+    if value.startswith("http://") or value.startswith("https://"):
+        return value
+    value = value.replace("www.linkedin.com/in/", "").replace("linkedin.com/in/", "").strip("/ ")
+    return f"https://www.linkedin.com/in/{value}" if value else None
+
+
+def dedupe_strings(items: list[Any]) -> list[str]:
+    result: list[str] = []
+    for item in items:
+        if not isinstance(item, str):
+            continue
+        value = item.strip()
+        if value and value not in result:
+            result.append(value)
+    return result
+
+
+def resume_profile_name(filename: str, resume_data: dict) -> str:
+    basics = resume_data.get("basics") if isinstance(resume_data.get("basics"), dict) else {}
+    headline = basics.get("headline") if isinstance(basics.get("headline"), str) else ""
+    clean_filename = filename.rsplit(".", 1)[0].strip() or "Resume"
+    label = headline.strip() or clean_filename
+    return f"{label[:180]} Profile"
+
+
+def sync_job_profile_for_resume(
+    db: Session,
+    current_user: User,
+    resume_data: dict,
+    original_url: str,
+    original_filename: str,
+    upload_id: str,
+    terms: list[str],
+) -> JobHuntingProfile:
+    """Create one search profile for this uploaded resume and make it the active default."""
+    cleaned_terms = dedupe_strings(terms)[:10]
+    basics = resume_data.get("basics") if isinstance(resume_data.get("basics"), dict) else {}
+    first_experience = next(
+        (item for item in resume_data.get("experience", []) if isinstance(item, dict)),
+        {},
+    )
+    existing = db.scalar(
+        select(JobHuntingProfile).where(
+            JobHuntingProfile.user_id == current_user.id,
+            JobHuntingProfile.resume_path == original_url,
+        )
+    )
+    profile = existing or JobHuntingProfile(
+        user_id=current_user.id,
+        platform="linkedin",
+        filters={},
+        blacklist_rules={},
+        whitelist_rules={},
+    )
+    if not existing:
+        db.add(profile)
+    profile.name = resume_profile_name(original_filename, resume_data)
+    profile.search_terms = cleaned_terms
+    profile.resume_path = original_url
+    profile.linkedin_url = linkedin_url_from_resume_data(resume_data)
+    profile.website = basics.get("website") or basics.get("portfolio_url")
+    profile.linkedin_headline = basics.get("headline")
+    profile.linkedin_summary = resume_data.get("summary")
+    profile.recent_employer = first_experience.get("company")
+    profile.extra_data = {
+        **(profile.extra_data or {}),
+        "resume_upload_id": upload_id,
+        "resume_filename": original_filename,
+        "resume_url": original_url,
+        "resume_storage_key": str(profile.extra_data.get("resume_storage_key", "")) if existing and profile.extra_data else "",
+        "resume_source": "master_resume_upload",
+        "resume_data": resume_data,
+    }
+    profile.extra_data["resume_storage_key"] = profile.extra_data.get("resume_storage_key") or f"master-resumes/{current_user.id}/{upload_id}.pdf"
+    profile.is_default = True
+    ensure_single_default_job_hunting_profile(db, current_user, profile)
+    prune_resume_profiles(db, current_user, keep_profile=profile)
+    return profile
+
+
+def resume_asset_profiles(db: Session, current_user: User) -> list[JobHuntingProfile]:
+    return list(
+        db.scalars(
+            select(JobHuntingProfile)
+            .where(
+                JobHuntingProfile.user_id == current_user.id,
+                JobHuntingProfile.resume_path.is_not(None),
+            )
+            .order_by(JobHuntingProfile.updated_at.desc(), JobHuntingProfile.created_at.desc())
+        )
+    )
+
+
+def resume_asset_response(profile: JobHuntingProfile) -> dict:
+    extra = profile.extra_data or {}
+    filename = str(extra.get("resume_filename") or "").strip()
+    url = str(profile.resume_path or extra.get("resume_url") or "").strip()
+    if not filename:
+        filename = url.rsplit("/", 1)[-1].split("?", 1)[0] or "Resume.pdf"
+    return {
+        "profile_id": profile.id,
+        "filename": filename,
+        "url": url,
+        "is_default": profile.is_default,
+        "created_at": profile.created_at,
+        "updated_at": profile.updated_at,
+    }
+
+
+def resume_asset_master_response(profile: JobHuntingProfile) -> dict:
+    """Return the structured snapshot associated with a stored resume asset."""
+    extra = profile.extra_data or {}
+    resume_data = extra.get("resume_data")
+    if not isinstance(resume_data, dict) or not resume_data:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This older resume version has no saved parsed data. Re-upload it to restore an editable version.",
+        )
+    asset = resume_asset_response(profile)
+    return {
+        "id": profile.id,
+        "original_filename": asset["filename"],
+        "original_url": asset["url"],
+        "resume_data": resume_data,
+        "status": str(extra.get("resume_status") or "review"),
+        "confirmed_at": extra.get("resume_confirmed_at"),
+        "created_at": profile.created_at,
+        "updated_at": profile.updated_at,
+    }
+
+
+def delete_resume_profile_asset(db: Session, profile: JobHuntingProfile) -> None:
+    storage_key = str((profile.extra_data or {}).get("resume_storage_key") or "").strip()
+    if storage_key:
+        get_object_storage().delete(storage_key)
+    db.delete(profile)
+
+
+def prune_resume_profiles(db: Session, current_user: User, keep_profile: JobHuntingProfile | None = None, limit: int = 3) -> None:
+    profiles = resume_asset_profiles(db, current_user)
+    protected_id = keep_profile.id if keep_profile else None
+    overflow = [profile for profile in profiles if profile.id != protected_id][max(0, limit - 1):]
+    for profile in overflow:
+        delete_resume_profile_asset(db, profile)
+
+
+def apply_master_resume_profile_prefill(
+    db: Session,
+    current_user: User,
+    resume_data: dict,
+    original_url: str,
+) -> None:
+    """Fill empty profile fields only; confirmation must never overwrite user edits."""
+    basics = resume_data.get("basics") if isinstance(resume_data.get("basics"), dict) else {}
+    location = basics.get("location") if isinstance(basics.get("location"), dict) else {}
+    profile = db.scalar(select(UserProfile).where(UserProfile.user_id == current_user.id))
+    if not profile:
+        profile = UserProfile(user_id=current_user.id, extra_data={})
+        db.add(profile)
+    profile_values = {
+        "first_name": basics.get("first_name"),
+        "middle_name": basics.get("middle_name"),
+        "last_name": basics.get("last_name"),
+        "phone_number": basics.get("phone"),
+        "current_city": location.get("city"),
+        "state": location.get("state"),
+        "country": location.get("country"),
+        "zipcode": location.get("postal_code"),
+    }
+    for field, value in profile_values.items():
+        if not getattr(profile, field, None) and value:
+            setattr(profile, field, value)
+    if not current_user.display_name.strip() or "@" in current_user.display_name:
+        name = " ".join(part for part in [basics.get("first_name"), basics.get("last_name")] if part)
+        if name:
+            current_user.display_name = name[:255]
+
+    def linkedin_url_from_resume() -> str | None:
+        value = basics.get("linkedin_id") or basics.get("linkedin_url")
+        if not isinstance(value, str):
+            return None
+        value = value.strip()
+        if not value:
+            return None
+        if value.startswith("http://") or value.startswith("https://"):
+            return value
+        value = value.replace("www.linkedin.com/in/", "").replace("linkedin.com/in/", "").strip("/ ")
+        return f"https://www.linkedin.com/in/{value}" if value else None
+
+    def dedupe_strings(items: list[Any]) -> list[str]:
+        result: list[str] = []
+        for item in items:
+            if not isinstance(item, str):
+                continue
+            value = item.strip()
+            if value and value not in result:
+                result.append(value)
+        return result
+
+    search_profile = db.scalar(
+        select(JobHuntingProfile)
+        .where(JobHuntingProfile.user_id == current_user.id, JobHuntingProfile.is_default.is_(True))
+        .order_by(JobHuntingProfile.created_at.asc())
+        .limit(1)
+    )
+    if not search_profile:
+        search_profile = JobHuntingProfile(
+            user_id=current_user.id,
+            name="Default Job Hunting Profile",
+            platform="linkedin",
+            search_terms=[],
+            filters={},
+            blacklist_rules={},
+            whitelist_rules={},
+            is_default=True,
+        )
+        db.add(search_profile)
+    first_experience = next(
+        (item for item in resume_data.get("experience", []) if isinstance(item, dict)),
+        {},
+    )
+    recommended_terms = dedupe_strings(resume_data.get("search_terms", []))
+    search_values = {
+        "resume_path": original_url,
+        "linkedin_url": linkedin_url_from_resume(),
+        "website": basics.get("website") or basics.get("portfolio_url"),
+        "linkedin_headline": basics.get("headline"),
+        "linkedin_summary": resume_data.get("summary"),
+        "recent_employer": first_experience.get("company"),
+    }
+    for field, value in search_values.items():
+        if not getattr(search_profile, field, None) and value:
+            setattr(search_profile, field, value)
+    if recommended_terms and not search_profile.search_terms:
+        search_profile.search_terms = recommended_terms[:10]
+
+
+def sync_job_profile_search_terms(db: Session, current_user: User, terms: list[str]) -> None:
+    cleaned: list[str] = []
+    for term in terms:
+        if not isinstance(term, str):
+            continue
+        value = term.strip()
+        if value and value not in cleaned:
+            cleaned.append(value)
+    if not cleaned:
+        return
+    search_profile = db.scalar(
+        select(JobHuntingProfile)
+        .where(JobHuntingProfile.user_id == current_user.id, JobHuntingProfile.is_default.is_(True))
+        .order_by(JobHuntingProfile.created_at.asc())
+        .limit(1)
+    )
+    if not search_profile:
+        search_profile = JobHuntingProfile(
+            user_id=current_user.id,
+            name="Default Job Hunting Profile",
+            platform="linkedin",
+            search_terms=cleaned[:10],
+            filters={},
+            blacklist_rules={},
+            whitelist_rules={},
+            is_default=True,
+        )
+        db.add(search_profile)
+        return
+    search_profile.search_terms = cleaned[:10]
+
+
+def resume_upload_id_for_url(db: Session, current_user: User, url: str, fallback: UUID) -> str:
+    profile = db.scalar(
+        select(JobHuntingProfile).where(
+            JobHuntingProfile.user_id == current_user.id,
+            JobHuntingProfile.resume_path == url,
+        )
+    )
+    value = (profile.extra_data or {}).get("resume_upload_id") if profile else None
+    return str(value or fallback)
+
+
+def recommended_job_search_terms(raw_resume: dict, resume_data: dict) -> list[str]:
+    """Use the model's terms when available, with a resume-based fallback for older parses."""
+    raw_terms = raw_resume.get("search_terms") if isinstance(raw_resume, dict) else None
+    if isinstance(raw_terms, list):
+        model_terms = [item.strip() for item in raw_terms if isinstance(item, str) and item.strip()]
+        if model_terms:
+            return list(dict.fromkeys(model_terms))[:8]
+
+    basics = resume_data.get("basics") if isinstance(resume_data.get("basics"), dict) else {}
+    experience = resume_data.get("experience") if isinstance(resume_data.get("experience"), list) else []
+    source = " ".join(
+        str(value)
+        for value in [basics.get("headline", ""), *[item.get("title", "") for item in experience if isinstance(item, dict)]]
+    ).lower()
+    skills = " ".join(
+        skill.lower()
+        for group in resume_data.get("skills", []) if isinstance(group, dict)
+        for skill in group.get("skills", []) if isinstance(skill, str)
+    )
+    terms = [item.get("title", "").strip() for item in experience if isinstance(item, dict) and isinstance(item.get("title"), str)]
+    if "full-stack" in source or ("react" in skills and ("fastapi" in skills or ".net" in skills)):
+        terms.append("Full-Stack Developer")
+    if "react" in skills or "next.js" in skills:
+        terms.append("Frontend Developer")
+    if "fastapi" in skills or ".net" in skills or "node.js" in skills:
+        terms.append("Backend Developer")
+    terms.append("Software Engineer")
+    return list(dict.fromkeys(term for term in terms if term))[:8]
+
+
+def sync_user_skills(db: Session, current_user: User, resume_data: dict) -> None:
+    raw_skills = resume_data.get("skills")
+    extracted: list[tuple[str, str]] = []
+    if isinstance(raw_skills, list):
+        groups = raw_skills
+    elif isinstance(raw_skills, dict):
+        groups = [{"type": label.title(), "skills": values} for label, values in raw_skills.items()]
+    else:
+        groups = []
+    skill_index = {
+        skill.name.strip().lower(): skill.canonical_name
+        for skill in db.scalars(select(Skill)).all()
+    }
+    for group in groups:
+        if not isinstance(group, dict):
+            continue
+        category = str(group.get("type") or "Other").strip() or "Other"
+        values = group.get("skills")
+        if not isinstance(values, list):
+            continue
+        for raw in values:
+            if not isinstance(raw, str):
+                continue
+            name = raw.strip()
+            if not name:
+                continue
+            canonical_name = skill_index.get(name.lower(), name.lower())
+            extracted.append((category, canonical_name, name))
+
+    unique_rows: list[tuple[str, str, str]] = []
+    seen: set[str] = set()
+    for category, canonical_name, name in extracted:
+        if canonical_name in seen:
+            continue
+        seen.add(canonical_name)
+        unique_rows.append((category, canonical_name, name))
+
+    db.execute(delete(UserSkill).where(UserSkill.user_id == current_user.id))
+    for category, canonical_name, name in unique_rows:
+        db.add(UserSkill(user_id=current_user.id, category=category, canonical_name=canonical_name, skill_name=name, source="resume"))
+
+
+def process_master_resume(resume_id: UUID, content: bytes, upload_id: str) -> None:
+    """Parse after the upload response so the UI can report AI progress immediately."""
+    db = SessionLocal()
+    try:
+        resume = db.get(MasterResume, resume_id)
+        if not resume:
+            return
+        current_user = db.get(User, resume.user_id)
+        if not current_user:
+            return
+        source_text = extract_pdf_text(content)
+        parsed_resume = parse_resume_text_raw(source_text)
+        resume_data = enrich_resume_data_from_source(source_text, normalize_resume_data(parsed_resume))
+        resume.resume_data = resume_data
+        resume.status = "review"
+        resume.confirmed_at = None
+        sync_job_profile_for_resume(
+            db,
+            current_user,
+            resume_data,
+            resume.original_url,
+            resume.original_filename,
+            upload_id,
+            recommended_job_search_terms(parsed_resume, resume_data),
+        )
+        sync_user_skills(db, current_user, resume_data)
+        db.commit()
+        broadcast_sync("master_resume.processed", {"resume_id": str(resume.id), "status": "review"})
+    except ResumeParseError as exc:
+        db.rollback()
+        resume = db.get(MasterResume, resume_id)
+        if resume:
+            resume.status = "failed"
+            db.commit()
+        broadcast_sync("master_resume.processed", {"resume_id": str(resume_id), "status": "failed", "detail": str(exc)})
+    except Exception:
+        db.rollback()
+        resume = db.get(MasterResume, resume_id)
+        if resume:
+            resume.status = "failed"
+            db.commit()
+        broadcast_sync("master_resume.processed", {"resume_id": str(resume_id), "status": "failed", "detail": "AI resume analysis could not be completed."})
+    finally:
+        db.close()
+
+
+@app.get("/api/master-resume", response_model=MasterResumeRead)
+def read_master_resume(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_or_create_current_user),
+) -> MasterResume:
+    resume = db.scalar(select(MasterResume).where(MasterResume.user_id == current_user.id))
+    if not resume:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No master resume yet")
+    return master_resume_response(resume)
+
+
+@app.post("/api/master-resume/debug/source", response_model=ResumeSourceRead)
+def extract_master_resume_source(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_or_create_current_user),
+) -> dict:
+    """Development-only PDF extraction probe. It does not persist files or call AI."""
+    del current_user
+    if not settings.resume_debug_enabled:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+    filename, content = read_resume_upload(file)
+    try:
+        return {"original_filename": filename, **extract_pdf_source(content)}
+    except ResumeParseError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.post("/api/master-resume/debug/ai", response_model=dict)
+def debug_master_resume_ai(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_or_create_current_user),
+) -> dict:
+    """Development-only resume parser probe that returns the AI's raw JSON output."""
+    del current_user
+    if not settings.resume_debug_enabled:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+    _, content = read_resume_upload(file)
+    try:
+        return parse_resume_text_raw(extract_pdf_text(content))
+    except ResumeParseError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.get("/api/resume-assets", response_model=list[ResumeAssetRead])
+def list_resume_assets(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_or_create_current_user),
+) -> list[dict]:
+    return [resume_asset_response(profile) for profile in resume_asset_profiles(db, current_user)]
+
+
+@app.post("/api/resume-assets/{profile_id}/select", response_model=MasterResumeRead)
+def select_resume_asset(
+    profile_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_or_create_current_user),
+) -> dict:
+    profile = db.get(JobHuntingProfile, profile_id)
+    if not profile or profile.user_id != current_user.id or not profile.resume_path:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resume not found")
+    resume = db.scalar(select(MasterResume).where(MasterResume.user_id == current_user.id))
+    extra = dict(profile.extra_data or {})
+    if (
+        (not isinstance(extra.get("resume_data"), dict) or not extra.get("resume_data"))
+        and resume
+        and resume.original_url == profile.resume_path
+        and resume.resume_data
+    ):
+        extra["resume_data"] = resume.resume_data
+        profile.extra_data = extra
+    snapshot = resume_asset_master_response(profile)
+    if not resume:
+        resume = MasterResume(
+            user_id=current_user.id,
+            original_filename=snapshot["original_filename"],
+            original_storage_key=str((profile.extra_data or {}).get("resume_storage_key") or ""),
+            original_url=snapshot["original_url"],
+            resume_data=snapshot["resume_data"],
+            status=snapshot["status"],
+        )
+        db.add(resume)
+    else:
+        resume.original_filename = snapshot["original_filename"]
+        resume.original_storage_key = str((profile.extra_data or {}).get("resume_storage_key") or "")
+        resume.original_url = snapshot["original_url"]
+        resume.resume_data = snapshot["resume_data"]
+        resume.status = snapshot["status"]
+    profile.is_default = True
+    ensure_single_default_job_hunting_profile(db, current_user, profile)
+    sync_user_skills(db, current_user, snapshot["resume_data"])
+    db.commit()
+    db.refresh(resume)
+    return master_resume_response(resume)
+
+
+@app.delete("/api/resume-assets/{profile_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_resume_asset(
+    profile_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_or_create_current_user),
+) -> None:
+    profile = db.get(JobHuntingProfile, profile_id)
+    if not profile or profile.user_id != current_user.id or not profile.resume_path:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resume not found")
+    was_default = bool(profile.is_default)
+    deleted_url = profile.resume_path
+    try:
+        delete_resume_profile_asset(db, profile)
+    except StorageError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    if was_default:
+        replacement = next(iter(resume_asset_profiles(db, current_user)), None)
+        if replacement:
+            replacement.is_default = True
+            ensure_single_default_job_hunting_profile(db, current_user, replacement)
+    resume = db.scalar(select(MasterResume).where(MasterResume.user_id == current_user.id))
+    if resume and resume.original_url == deleted_url:
+        db.delete(resume)
+    db.commit()
+    return None
+
+
+@app.post("/api/master-resume/upload", response_model=MasterResumeRead)
+def upload_master_resume(
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_or_create_current_user),
+) -> MasterResume:
+    filename, content = read_resume_upload(file)
+    resume = db.scalar(select(MasterResume).where(MasterResume.user_id == current_user.id))
+    upload_id = str(uuid4())
+    storage_key = f"master-resumes/{current_user.id}/{upload_id}.pdf"
+    try:
+        public_url = get_object_storage().upload(storage_key, content, "application/pdf")
+    except StorageError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    versioned_url = f"{public_url}?v={int(utc_now().timestamp())}"
+    if not resume:
+        resume = MasterResume(
+            user_id=current_user.id,
+            original_filename=filename[:255],
+            original_storage_key=storage_key,
+            original_url=versioned_url,
+            resume_data={},
+            status="processing",
+        )
+        db.add(resume)
+    else:
+        resume.original_filename = filename[:255]
+        resume.original_storage_key = storage_key
+        resume.original_url = versioned_url
+        resume.resume_data = {}
+        resume.status = "processing"
+        resume.confirmed_at = None
+    db.commit()
+    db.refresh(resume)
+    background_tasks.add_task(process_master_resume, resume.id, content, upload_id)
+    return master_resume_response(resume)
+
+
+@app.put("/api/master-resume", response_model=MasterResumeRead)
+def update_master_resume(
+    payload: MasterResumeUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_or_create_current_user),
+) -> MasterResume:
+    resume = db.scalar(select(MasterResume).where(MasterResume.user_id == current_user.id))
+    if not resume:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Upload a resume before editing it")
+    resume.resume_data = normalize_resume_data(payload.resume_data)
+    resume.status = "review"
+    resume.confirmed_at = None
+    sync_job_profile_for_resume(
+        db,
+        current_user,
+        resume.resume_data,
+        resume.original_url,
+        resume.original_filename,
+        resume_upload_id_for_url(db, current_user, resume.original_url, resume.id),
+        recommended_job_search_terms({}, resume.resume_data),
+    )
+    sync_user_skills(db, current_user, resume.resume_data)
+    db.commit()
+    db.refresh(resume)
+    return master_resume_response(resume)
+
+
+@app.post("/api/master-resume/confirm", response_model=MasterResumeRead)
+def confirm_master_resume(
+    payload: MasterResumeUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_or_create_current_user),
+) -> MasterResume:
+    resume = db.scalar(select(MasterResume).where(MasterResume.user_id == current_user.id))
+    if not resume:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Upload a resume before confirming it")
+    resume.resume_data = normalize_resume_data(payload.resume_data)
+    apply_master_resume_profile_prefill(db, current_user, resume.resume_data, resume.original_url)
+    resume.status = "confirmed"
+    resume.confirmed_at = utc_now()
+    sync_user_skills(db, current_user, resume.resume_data)
+    sync_job_profile_for_resume(
+        db,
+        current_user,
+        resume.resume_data,
+        resume.original_url,
+        resume.original_filename,
+        resume_upload_id_for_url(db, current_user, resume.original_url, resume.id),
+        recommended_job_search_terms({}, resume.resume_data),
+    )
+    db.commit()
+    db.refresh(resume)
+    return master_resume_response(resume)
+
+
 @app.get("/api/job-hunting-profile", response_model=JobHuntingProfileRead)
 def read_default_job_hunting_profile(
     db: Session = Depends(get_db),
@@ -838,7 +1485,7 @@ def read_default_job_hunting_profile(
 
     job_hunting_profile = JobHuntingProfile(
         user_id=current_user.id,
-        name="Default LinkedIn Search",
+        name="Default Job Hunting Profile",
         platform="linkedin",
         search_terms=[],
         filters={},
@@ -863,7 +1510,7 @@ def read_job_hunting_profiles(
 
     job_hunting_profile = JobHuntingProfile(
         user_id=current_user.id,
-        name="Default LinkedIn Search",
+        name="Default Job Hunting Profile",
         platform="linkedin",
         search_terms=[],
         filters={},

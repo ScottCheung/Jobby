@@ -7,7 +7,7 @@ export function cn(...inputs: ClassValue[]) {
 
 export function cleanName(name: string): string {
   if (!name) return '';
-  return name.replace(/^\d+[\.\-\s]*\s+/, '');
+  return name.replace(/^\s*\d+\s*[\.)_:-]?\s*/, '').trim();
 }
 
 export function formatInterviewDuration(seconds?: number | null): string {

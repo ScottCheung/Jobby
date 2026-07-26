@@ -5,7 +5,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { User, Search, Settings2, Bell } from 'lucide-react';
+import { User, Search, Settings2, Bell, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 
@@ -31,25 +31,36 @@ const ChromeIcon = (props: React.SVGProps<SVGSVGElement>) => (
 );
 
 const settingsNavigation = [
-  { name: 'Profile', href: '/settings/profile', icon: User },
-  { name: 'Job Profiles', href: '/settings/job-profiles', icon: Search },
+  { name: 'Personal Info', href: '/settings/profile', icon: User },
+  { name: 'Resume', href: '/settings/resume', icon: FileText },
+  { name: 'Job Search', href: '/settings/job-profiles', icon: Search },
   { name: 'Agent Settings', href: '/settings/agent', icon: Settings2 },
-  { name: 'Browser Session', href: '/settings/browser-session', icon: ChromeIcon },
+  {
+    name: 'Browser Session',
+    href: '/settings/browser-session',
+    icon: ChromeIcon,
+  },
   { name: 'Notifications', href: '/settings/notifications', icon: Bell },
 ];
 
-export default function SettingsLayout({ children }: { children: React.ReactNode }) {
+export default function SettingsLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const pathname = usePathname();
 
   return (
-    <div className='flex h-full w-full'>
-      {/* Secondary Sidebar */}
-      <div className='w-64 shrink-0 border-r border-border bg-panel flex flex-col p-4'>
-        <div className='mb-6 px-2'>
-          <h2 className='text-lg font-bold tracking-tight text-ink-primary'>Settings</h2>
-          <p className='text-sm text-ink-secondary'>Manage your account preferences</p>
+    <div className='flex gap-6 h-full w-full relative overflow-hidden p-page'>
+      {/* Secondary Sidebar Panel */}
+      <div className='w-64 shrink-0 panel-xl p-lg! flex flex-col overflow-hidden relative'>
+        <div className='mb-6 px-2 shrink-0'>
+          <h2 className='title-card text-ink-primary'>Settings</h2>
+          <p className='body-sm text-ink-secondary mt-1'>
+            Manage your account preferences
+          </p>
         </div>
-        <nav className='flex flex-col gap-1'>
+        <nav className='flex flex-col gap-1 flex-1 min-h-0 overflow-y-auto no-scrollbar'>
           {settingsNavigation.map((item) => {
             const isActive = (pathname || '').startsWith(item.href);
             return (
@@ -57,30 +68,23 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
                 key={item.name}
                 href={item.href}
                 className={cn(
-                  'group flex items-center gap-3 rounded-xl px-3 py-2.5 transition-all',
-                  isActive
-                    ? 'bg-primary-gradient text-white font-medium shadow-md'
-                    : 'text-ink-secondary hover:bg-background-secondary hover:text-ink-primary'
+                  'group flex items-center gap-3 rounded-xl px-3 py-2.5 transition-all label',
+                  isActive ?
+                    'bg-primary-gradient text-white font-medium shadow-md'
+                  : 'text-ink-secondary hover:bg-background-secondary hover:text-ink-primary',
                 )}
               >
                 <item.icon className='h-5 w-5 shrink-0' />
                 <span className='text-sm'>{item.name}</span>
-                {isActive && (
-                  <motion.div
-                    layoutId="settings-active-nav"
-                    className="absolute left-0 w-1 h-5 bg-white rounded-r-md opacity-0" 
-                  />
-                )}
+                {isActive && <motion.div layoutId='settings-active-nav' />}
               </Link>
             );
           })}
         </nav>
       </div>
-      
-      {/* Main Content Area */}
-      <div className='flex-1 flex flex-col min-w-0 overflow-y-auto bg-background'>
-        {children}
-      </div>
+
+      {/* Main Content Area Panel */}
+      <div className='w-full'>{children}</div>
     </div>
   );
 }
