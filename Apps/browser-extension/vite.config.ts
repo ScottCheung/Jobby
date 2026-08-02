@@ -1,0 +1,53 @@
+import { crx } from "@crxjs/vite-plugin";
+import tailwindcss from "@tailwindcss/vite";
+import react from "@vitejs/plugin-react";
+import { defineConfig, loadEnv } from "vite";
+
+import manifest from "./manifest.config";
+
+export default defineConfig(({ mode, command }) => {
+  const extensionEnv = loadEnv(mode, ".", "");
+  const webAppEnv = loadEnv(mode, "../user", "");
+  const isDevServer = command === "serve";
+
+  return {
+    define: {
+      // Reuse the web app's public Supabase values when the extension does not
+      // have its own .env.local. A VITE_* value beside the extension wins.
+      "import.meta.env.VITE_WEB_APP_URL": JSON.stringify(
+        extensionEnv.VITE_WEB_APP_URL || "http://localhost:3000",
+      ),
+      "import.meta.env.VITE_SUPABASE_URL": JSON.stringify(
+        extensionEnv.VITE_SUPABASE_URL || webAppEnv.NEXT_PUBLIC_SUPABASE_URL || "",
+      ),
+      "import.meta.env.VITE_SUPABASE_ANON_KEY": JSON.stringify(
+        extensionEnv.VITE_SUPABASE_ANON_KEY || webAppEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
+      ),
+    },
+    server: {
+      port: 5173,
+      strictPort: true,
+      hmr: {
+        port: 5173,
+      },
+    },
+    // Never let a production build replace the unpacked Vite development
+    // extension, otherwise the HMR connection is silently lost.
+    build: {
+      outDir: isDevServer ? "dist-dev" : "dist",
+    },
+    plugins: [
+      react(),
+      tailwindcss(),
+      crx({
+        manifest,
+        contentScripts: {
+          // Content scripts are explicitly re-injected before each command.
+          // A standalone bundle avoids stale ESM module instances in a tab
+          // after a dev rebuild and keeps that reinjection deterministic.
+          standaloneFiles: ['src/content/bootstrap.ts'],
+        },
+      }),
+    ],
+  };
+});
