@@ -6,6 +6,7 @@ const jobSnapshotFields = {
   title: z.string().min(1),
   company: z.string().min(1),
   location: z.string().optional(),
+  datePosted: z.string().optional(),
   description: z.string().optional(),
   technologies: z.array(z.string().min(1)).max(30).default([]),
   easyApply: z.boolean(),

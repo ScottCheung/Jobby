@@ -142,6 +142,7 @@ export function useInspection(onJobChanged?: () => void) {
     try {
       const response = await send({ type: "content.inspect-active" });
       if (!response.ok || !response.inspection) {
+        // Communication error — don't update URL cache so we retry next tick.
         lastObservedActiveUrl.current = null;
         lastObservedActiveTabId.current = null;
         return false;
@@ -156,9 +157,12 @@ export function useInspection(onJobChanged?: () => void) {
         return response.inspection!;
       });
 
+      // Always record the current tab/URL even for non-job results.
+      // This prevents the polling loop from treating the next tick as a
+      // "new URL" and forcing another redundant inspection.
       lastObservedActiveTabId.current = tabId;
-      lastObservedActiveUrl.current = inspectionUrl(response.inspection);
-      return true;
+      lastObservedActiveUrl.current = url;
+      return response.inspection.kind === "job";
     } catch {
       lastObservedActiveUrl.current = null;
       lastObservedActiveTabId.current = null;

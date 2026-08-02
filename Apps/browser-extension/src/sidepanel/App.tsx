@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { AuthCard } from './components/AuthCard';
 import { DebugDrawer } from './components/DebugDrawer';
 import { DiagnosticsCard } from './components/DiagnosticsCard';
+import { PageClassBanner } from './components/PageClassBanner';
 import { ResultsDisplay } from './components/ResultsDisplay';
 import { ReviewModal } from './components/ReviewModal';
 import { StatusBanner } from './components/StatusBanner';
@@ -16,6 +17,11 @@ import { useInspection } from './hooks/useInspection';
 export function App() {
   const [isReviewOpen, setIsReviewOpen] = useState(false);
   const linkedInJobProbeTick = useRef(0);
+  // How many consecutive polling cycles returned a non-job result for a
+  // LinkedIn URL. Capped at MAX_LI_MISS to stop hammering the page when the
+  // job card hasn't rendered yet and avoids the visible flash loop.
+  const linkedInMissCount = useRef(0);
+  const MAX_LI_MISS = 8;
 
   const { diagnostics, errorMessage, refresh, clearLogs } = useDiagnostics();
   const { authStatus, authError, refreshAuth, signIn, disconnect } = useAuth();
@@ -85,12 +91,31 @@ export function App() {
       const isSupportedJobHost = /(?:^|\.)(?:linkedin\.com|seek\.com(?:\.au)?)(?:\/|$)/i.test(
         inspectionUrl.replace(/^https?:\/\//i, ""),
       );
+
       // Unsupported websites get their initial generic form inspection, then
       // rely on the scoped content observer. Re-reading them every second was
       // needless and caused visible flicker on some dynamic sites.
+      //
+      // For LinkedIn / Seek: retry only while we have never seen a job on
+      // this URL (null inspection or first N misses). Once we have a stable
+      // non-job result stop forcing — wait for a URL change instead.
+      const hasNeverInspected = currentInspection === null;
+      const isNonJobOnSupportedHost =
+        isSupportedJobHost && currentInspection !== null && currentInspection.kind !== "job";
+
+      if (isNonJobOnSupportedHost) {
+        linkedInMissCount.current += 1;
+      } else if (currentInspection?.kind === "job") {
+        linkedInMissCount.current = 0;
+      }
+
+      // Allow retries on supported hosts only for the first MAX_LI_MISS ticks
+      // after a URL change. After that, stop forcing and rely on URL-change
+      // detection in autoInspectActivePage (force=false path).
       const needsInitialJobRead =
-        currentInspection === null ||
-        (isSupportedJobHost && currentInspection.kind !== "job");
+        hasNeverInspected ||
+        (isNonJobOnSupportedHost && linkedInMissCount.current <= MAX_LI_MISS);
+
       const isLinkedInJobPage =
         currentInspection?.kind === "job" &&
         currentInspection.snapshot.platform === "linkedin";
@@ -99,7 +124,10 @@ export function App() {
         currentForm?.kind !== "application_form" &&
         (linkedInJobProbeTick.current = (linkedInJobProbeTick.current + 1) % 2) === 0;
       void autoInspectActivePage(needsInitialJobRead || shouldProbeLinkedInCard).then((pageChanged) => {
-        if (pageChanged) void inspectForm();
+        if (pageChanged) {
+          linkedInMissCount.current = 0;
+          void inspectForm();
+        }
       });
     }, 1000);
 
@@ -113,6 +141,12 @@ export function App() {
 
   return (
     <main className='panel hidden'>
+      {/* Page-type classifier debug banner — always shown first */}
+      <PageClassBanner
+        latestInspection={latestInspection}
+        isInspecting={isInspectingPage}
+      />
+
       {/* <Header phase={snapshot.phase} /> */}
 
       <AuthCard

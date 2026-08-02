@@ -3,13 +3,23 @@ import type { GenericJobSnapshot, PageInspection } from "../../../shared/contrac
 import { extractTechnologyKeywords } from "../../technology-keywords";
 
 const JOB_TITLE_SELECTOR = [
+  // Generic data attributes used by many ATSs
   "[data-testid*='job-title' i]",
   "[data-qa*='job-title' i]",
   "[data-test*='job-title' i]",
+  "[data-automation*='job-title' i]",
+  // Class-based patterns
   "[class*='job-title' i]",
   "[class*='jobtitle' i]",
   "[class*='job__title' i] h1",
   "[class*='job__title' i]",
+  "[class*='posting-headline'] h2",
+  "[class*='posting-headline']",
+  // Greenhouse / Lever / Workday headings
+  "#app_body h1",
+  ".posting-headline h2",
+  ".app-title",
+  // Fallbacks
   "main h1",
   "article h1",
   "[role='main'] h1",
@@ -17,13 +27,23 @@ const JOB_TITLE_SELECTOR = [
 ].join(", ");
 
 const DESCRIPTION_SELECTOR = [
+  // Generic attribute-based
   "[data-testid*='job-description' i]",
   "[data-qa*='job-description' i]",
+  "[data-automation*='job-description' i]",
+  // Class-based patterns
   "[class*='job-description' i]",
   "[class*='jobdescription' i]",
   "[class*='job__description' i]",
   "[id*='job-description' i]",
   "[id*='jobdescription' i]",
+  // Greenhouse / Lever / Workday containers
+  "#job_description",
+  "#jobDescriptionText",
+  ".posting-description",
+  "[class*='posting-description']",
+  "section[class*='description']",
+  // Fallbacks
   "main article",
   "article",
   "[role='main']",
@@ -35,7 +55,7 @@ const JOB_HEADING_PATTERN =
   /\b(job description|about (?:the )?(?:job|role)|position description|role overview|responsibilities|what you(?:'|’)ll do|qualifications|requirements)\b|职位描述|岗位职责|任职要求/i;
 const APPLY_PATTERN =
   /\b(apply(?:\s+now)?|quick apply|easy apply|submit application|express interest)\b|立即申请|申请职位|投递简历/i;
-const URL_JOB_PATTERN = /(?:^|[/_.-])(job|jobs|career|careers|position|positions|vacancy|vacancies|role|roles)(?:[/_.?-]|$)/i;
+const URL_JOB_PATTERN = /(?:^|[/_.-])(job|jobs|career|careers|position|positions|vacancy|vacancies|role|roles|jd|posting|postings|opening|openings|requisition)(?:[/_.?-]|$)/i;
 
 type QueryRoot = Document | ShadowRoot;
 
@@ -146,6 +166,7 @@ function jobPostingFromStructuredData(): {
   location?: string;
   description?: string;
   externalId?: string;
+  datePosted?: string;
 } | null {
   const scripts = Array.from(document.querySelectorAll<HTMLScriptElement>("script[type='application/ld+json']")).slice(0, 30);
   const visit = (value: unknown): Record<string, unknown> | null => {
@@ -172,6 +193,9 @@ function jobPostingFromStructuredData(): {
       const firstLocation = Array.isArray(location) ? location[0] : location;
       const address = firstLocation?.address as Record<string, unknown> | undefined;
       const identifier = posting.identifier as Record<string, unknown> | string | undefined;
+      // Many ATSs (Greenhouse, Lever, Workday, Indeed) embed raw HTML in the
+      // description field. Strip tags so we work with readable plain text.
+      const rawDesc = String(posting.description || "").replace(/<[^>]*>/g, " ");
       return {
         title: cleanText(String(posting.title || "")) || undefined,
         company: cleanText(String(organization?.name || "")) || undefined,
@@ -180,16 +204,55 @@ function jobPostingFromStructuredData(): {
             .filter((value) => typeof value === "string")
             .join(", "),
         ) || undefined,
-        description: cleanText(String(posting.description || "").replace(/<[^>]*>/g, " ")) || undefined,
+        description: cleanText(rawDesc) || undefined,
         externalId: cleanText(
           typeof identifier === "string" ? identifier : String(identifier?.value || ""),
         ) || undefined,
+        datePosted: cleanText(String(posting.datePosted || "")) || undefined,
       };
     } catch {
       // Invalid third-party structured data should not prevent DOM inspection.
     }
   }
   return null;
+}
+
+/**
+ * Generic date-posted scraper for ATS pages.
+ * Tries <time datetime> first, then looks for spans/divs containing
+ * common relative-date patterns.
+ */
+function datePostedFromDom(): string | undefined {
+  // Machine-readable <time> is the most reliable signal
+  const timeEl = document.querySelector<HTMLElement>("time[datetime]");
+  if (timeEl) {
+    const dt = timeEl.getAttribute("datetime");
+    if (dt) return cleanText(dt);
+    const text = cleanText(timeEl.textContent);
+    if (text) return text;
+  }
+
+  // Scan candidate elements for relative-date text
+  const candidates = Array.from(
+    document.querySelectorAll<HTMLElement>(
+      [
+        "[data-testid*='date' i]",
+        "[class*='posted' i]",
+        "[class*='date' i]",
+        "[class*='age' i]",
+        "[id*='date' i]",
+      ].join(", "),
+    ),
+  ).slice(0, 40);
+
+  for (const el of candidates) {
+    const text = cleanText(el.textContent);
+    if (text.length > 60) continue; // skip large containers
+    if (/\b(\d+\s*\+?\s*(?:minute|hour|day|week|month|year)s?\s+ago|today|yesterday|just\s+(?:now|posted)|reposted|posted\s+\d|\d+\s+days?)\b/i.test(text)) {
+      return text;
+    }
+  }
+  return undefined;
 }
 
 function stableId(value: string): string {
@@ -259,6 +322,7 @@ export function readGenericJobPage(): PageInspection {
     title,
     company: company || "Unknown company",
     location: location || undefined,
+    datePosted: structured?.datePosted || datePostedFromDom(),
     description: description || undefined,
     technologies: extractTechnologyKeywords(description),
     easyApply: applyAction,

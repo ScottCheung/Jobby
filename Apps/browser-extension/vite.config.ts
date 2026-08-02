@@ -2,6 +2,25 @@ import { crx } from "@crxjs/vite-plugin";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig, loadEnv } from "vite";
+import type { Plugin } from "vite";
+
+/**
+ * Chrome extensions run in isolated worlds. Vite's default HTML transform
+ * adds `crossorigin` to every <script> and <link rel="modulepreload"> it
+ * emits. That attribute causes Chrome to log:
+ *   "preload … not used because it is a cross-world extension resource mismatch"
+ * Strip it from every page the plugin generates so the console stays clean.
+ */
+function stripCrossorigin(): Plugin {
+  return {
+    name: "strip-crossorigin",
+    transformIndexHtml(html) {
+      return html
+        .replace(/<script([^>]*)\s+crossorigin(="")?/gi, "<script$1")
+        .replace(/<link([^>]*)\s+crossorigin(="")?/gi, "<link$1");
+    },
+  };
+}
 
 import manifest from "./manifest.config";
 
@@ -39,6 +58,7 @@ export default defineConfig(({ mode, command }) => {
     plugins: [
       react(),
       tailwindcss(),
+      stripCrossorigin(),
       crx({
         manifest,
         contentScripts: {

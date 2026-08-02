@@ -8,8 +8,28 @@ import { readLinkedInPage } from "./platforms/linkedin/job-reader";
 import { readLinkedInFormPage } from "./platforms/linkedin/form-reader";
 import { readGenericFormPage } from "./platforms/generic/form-reader";
 import { readGenericJobPage } from "./platforms/generic/job-reader";
+import { readIndeedJobPage } from "./platforms/indeed/job-reader";
 import { findActiveFormScope } from "./dom/form-scope";
 import { linkedinAdapter } from "./platforms/linkedin/adapter";
+import { classifyCurrentPage } from "./page-classifier";
+import type { PageClass } from "./page-classifier";
+
+/** Last classification result — consumed by the sidepanel debug banner. */
+let lastPageClass: PageClass | null = null;
+
+/** Returns the most recent page classification result (may be null before first call). */
+export function getLastPageClass(): PageClass | null {
+  return lastPageClass;
+}
+
+/**
+ * Re-run the classifier on the current page and return the result.
+ * Called explicitly by the sidepanel to get fresh debug info.
+ */
+export function classifyPage(): PageClass {
+  lastPageClass = classifyCurrentPage();
+  return lastPageClass;
+}
 
 function isLinkedInHost(hostname: string): boolean {
   return hostname === "linkedin.com" || hostname.endsWith(".linkedin.com");
@@ -24,15 +44,41 @@ function isSeekHost(hostname: string): boolean {
   );
 }
 
+/** Matches indeed.com, au.indeed.com, ca.indeed.com, etc. */
+function isIndeedHost(hostname: string): boolean {
+  return hostname === "indeed.com" || /\.indeed\.com$/.test(hostname);
+}
+
 let lastLinkedInRead: { url: string; externalId: string; title: string; company: string } | null = null;
 
 export function readCurrentPage(): PageInspection {
-  if (isSeekHost(window.location.hostname)) {
+  const url = window.location.href;
+  const hostname = window.location.hostname;
+
+  // Run the lightweight classifier first. Known platforms (LinkedIn, Seek,
+  // Indeed) are always auto-qualified by the classifier so they won't be
+  // skipped. Generic / unknown hosts that show no job signals are rejected
+  // here before any expensive parsing work begins.
+  lastPageClass = classifyCurrentPage();
+  if (!lastPageClass.isJobPage) {
+    return {
+      kind: "unsupported_page",
+      url,
+      reason: lastPageClass.skipReason,
+    };
+  }
+
+  if (isSeekHost(hostname)) {
     const inspection = readSeekPage();
     return inspection.kind === "job" ? inspection : fallbackToGenericJob(inspection);
   }
-  if (isLinkedInHost(window.location.hostname)) {
+  if (isLinkedInHost(hostname)) {
     const inspection = readLinkedInPage();
+    return inspection.kind === "job" ? inspection : fallbackToGenericJob(inspection);
+  }
+  if (isIndeedHost(hostname)) {
+    const inspection = readIndeedJobPage();
+    // Always fall back to generic if Indeed reader has low confidence.
     return inspection.kind === "job" ? inspection : fallbackToGenericJob(inspection);
   }
   return readGenericJobPage();

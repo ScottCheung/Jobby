@@ -383,6 +383,56 @@ function locationFromPage(): string | undefined {
   return metadata?.split(/\s*[·•]\s*/)[0] || undefined;
 }
 
+/**
+ * Extract the job posting date from LinkedIn's top card.
+ *
+ * LinkedIn exposes this in two ways:
+ *  1. A <time datetime="YYYY-MM-DD"> element — most reliable.
+ *  2. Plain text inside the primary-description container:
+ *     "Location · X days ago · N applicants"
+ */
+function datePostedFromPage(): string | undefined {
+  const root = getJobDetailRoot();
+
+  // Prefer a <time> element with a machine-readable datetime attribute
+  const timeEl = root.querySelector<HTMLElement>('time[datetime]') ||
+    document.querySelector<HTMLElement>(
+      '.job-details-jobs-unified-top-card__primary-description-container time[datetime], ' +
+      '.jobs-unified-top-card__primary-description time[datetime], ' +
+      'main time[datetime]',
+    );
+  if (timeEl) {
+    const dt = timeEl.getAttribute('datetime');
+    if (dt) return cleanText(dt);
+    const text = cleanText(timeEl.textContent);
+    if (text) return text;
+  }
+
+  // Fall back: parse the bullet-separated metadata line
+  // e.g. "Sydney, New South Wales · 2 days ago · 47 applicants"
+  const primaryDesc = firstText(root, [
+    '.job-details-jobs-unified-top-card__primary-description-container',
+    '.jobs-unified-top-card__primary-description-container',
+    '.job-details-jobs-unified-top-card__bullet',
+  ]) || firstText(document, [
+    '.job-details-jobs-unified-top-card__primary-description-container',
+    '.jobs-unified-top-card__primary-description-container',
+  ]);
+
+  if (primaryDesc) {
+    const segments = primaryDesc.split(/\s*[·•]\s*/)
+      .map((s) => cleanText(s))
+      .filter(Boolean);
+    for (const seg of segments) {
+      if (/\b(\d+\s*\+?\s*(?:minute|hour|day|week|month|year)s?\s+ago|today|yesterday|just\s+now|reposted)\b/i.test(seg)) {
+        return seg;
+      }
+    }
+  }
+
+  return undefined;
+}
+
 export class LinkedInAdapter {
   readonly platformName = 'linkedin' as const;
   private applicationRootCache: HTMLElement | null | undefined;
@@ -424,6 +474,7 @@ export class LinkedInAdapter {
       title,
       company,
       location: locationFromPage(),
+      datePosted: datePostedFromPage(),
       description: description || undefined,
       easyApply: Boolean(this.findEasyApplyTrigger()),
     };

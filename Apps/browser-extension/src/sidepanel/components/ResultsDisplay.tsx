@@ -97,6 +97,12 @@ export function ResultsDisplay({
               <strong>Location:</strong>{' '}
               {latestInspection.snapshot.location || '-'}
             </p>
+            {latestInspection.snapshot.datePosted && (
+              <p>
+                <strong>Date Posted:</strong>{' '}
+                {latestInspection.snapshot.datePosted}
+              </p>
+            )}
             <p>
               <strong>Tech keywords:</strong>{' '}
               {latestInspection.snapshot.technologies.join(', ') || '-'}
@@ -224,6 +230,10 @@ function FormFieldRow({ field, onFocusField, onUploadDefaultResume, onEditField 
   const [draft, setDraft] = useState(() => formValue(field));
   const [editing, setEditing] = useState(false);
   const timer = useRef<number | undefined>(undefined);
+  // Track the most recent value we've dispatched to the page so we don't
+  // overwrite the user's in-progress input when the inspection poll fires
+  // before the page has accepted the change.
+  const pendingValue = useRef<string | boolean | undefined>(undefined);
   const editable =
     !field.sensitive && !['file', 'password', 'unknown'].includes(field.type);
   const isResumeUpload =
@@ -231,7 +241,16 @@ function FormFieldRow({ field, onFocusField, onUploadDefaultResume, onEditField 
     /resume|curriculum vitae|\bcv\b/i.test(field.label);
 
   useEffect(() => {
-    if (!editing) setDraft(formValue(field));
+    // Don't reset while the user is actively typing or has a save in-flight.
+    if (editing || timer.current !== undefined) return;
+    const incoming = formValue(field);
+    // If the page value matches what we last sent, no need to reset at all —
+    // the user's draft is already consistent with the source of truth.
+    if (pendingValue.current !== undefined && incoming === String(pendingValue.current)) {
+      pendingValue.current = undefined;
+    }
+    if (pendingValue.current !== undefined) return;
+    setDraft(incoming);
   }, [field, editing]);
 
   useEffect(
@@ -242,10 +261,17 @@ function FormFieldRow({ field, onFocusField, onUploadDefaultResume, onEditField 
   );
 
   const commit = (value: string | boolean, immediate = false) => {
+    pendingValue.current = value;
     if (timer.current !== undefined) window.clearTimeout(timer.current);
-    const save = () => void onEditField(field, value);
+    const save = () => {
+      void onEditField(field, value).then(() => {
+        // Once the page has accepted the value, clear the pending marker so
+        // the next inspection poll can freely reset draft if the page diverges.
+        if (pendingValue.current === value) pendingValue.current = undefined;
+      });
+    };
     if (immediate) save();
-    else timer.current = window.setTimeout(save, 150);
+    else timer.current = window.setTimeout(() => { timer.current = undefined; save(); }, 150);
   };
 
   const updateText = (value: string) => {
@@ -259,7 +285,9 @@ function FormFieldRow({ field, onFocusField, onUploadDefaultResume, onEditField 
       window.clearTimeout(timer.current);
       timer.current = undefined;
     }
-    void onEditField(field, draft);
+    void onEditField(field, draft).then(() => {
+      if (pendingValue.current === draft) pendingValue.current = undefined;
+    });
   };
 
   return (
