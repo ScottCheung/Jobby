@@ -6,7 +6,7 @@
  * (already handled by the generic reader's `jobPostingFromStructuredData`)
  * then fall back to Indeed-specific DOM selectors.
  */
-import type { GenericJobSnapshot, PageInspection } from "../../../shared/contracts/page-inspection";
+import type { IndeedJobSnapshot, PageInspection } from "../../../shared/contracts/page-inspection";
 import { extractTechnologyKeywords } from "../../technology-keywords";
 
 function cleanText(value: string | null | undefined): string {
@@ -236,8 +236,8 @@ export function readIndeedJobPage(): PageInspection {
     };
   }
 
-  const snapshot: GenericJobSnapshot = {
-    platform: "generic",
+  const snapshot: IndeedJobSnapshot = {
+    platform: "indeed",
     externalId,
     url,
     title,

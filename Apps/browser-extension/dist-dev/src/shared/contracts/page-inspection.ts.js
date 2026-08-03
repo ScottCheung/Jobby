@@ -1,10 +1,11 @@
-import { z } from "/vendor/.vite-deps-zod.js__v--dbafbd4a.js";
+import { z } from "/vendor/.vite-deps-zod.js__v--d9a92ae8.js";
 const jobSnapshotFields = {
   externalId: z.string().min(1),
   url: z.string().url(),
   title: z.string().min(1),
   company: z.string().min(1),
   location: z.string().optional(),
+  datePosted: z.string().optional(),
   description: z.string().optional(),
   technologies: z.array(z.string().min(1)).max(30).default([]),
   easyApply: z.boolean()
@@ -17,9 +18,19 @@ export const linkedinJobSnapshotSchema = z.object({
   platform: z.literal("linkedin"),
   ...jobSnapshotFields
 });
+export const genericJobSnapshotSchema = z.object({
+  platform: z.literal("generic"),
+  ...jobSnapshotFields
+});
+export const indeedJobSnapshotSchema = z.object({
+  platform: z.literal("indeed"),
+  ...jobSnapshotFields
+});
 export const jobSnapshotSchema = z.discriminatedUnion("platform", [
   seekJobSnapshotSchema,
-  linkedinJobSnapshotSchema
+  linkedinJobSnapshotSchema,
+  genericJobSnapshotSchema,
+  indeedJobSnapshotSchema
 ]);
 export const pageInspectionSchema = z.discriminatedUnion("kind", [
   z.object({
@@ -28,7 +39,7 @@ export const pageInspectionSchema = z.discriminatedUnion("kind", [
   }),
   z.object({
     kind: z.literal("not_job_page"),
-    platform: z.enum(["seek", "linkedin"]),
+    platform: z.enum(["seek", "linkedin", "indeed"]),
     url: z.string().url(),
     reason: z.string().min(1)
   }),

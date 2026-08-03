@@ -13,13 +13,14 @@ export async function handleContentCommand(message: unknown): Promise<unknown> {
   if (isInspectCommand(message)) return { inspection: pageInspectionSchema.parse(await readCurrentPageWhenReady()) };
   if (isInspectFormCommand(message)) {
     const form = formInspectionSchema.parse(readCurrentForm());
-    watchFormScope(
-      form.kind === "application_form" || form.kind === "page_input_fields"
-        ? getCurrentFormScope()
-        : null,
-      () => readCurrentForm(),
-      form,
-    );
+    if (hasObservableFields(form)) {
+      watchFormScope(getCurrentFormScope(), () => readCurrentForm(), form);
+    } else {
+      // A generic ATS can render the application step after the job page has
+      // already been read. Watch only after an explicit form inspection, then
+      // hand off to the narrower scope watcher once fields appear.
+      startFormDiscovery(() => readCurrentForm());
+    }
     return { form };
   }
   if (isFocusFormFieldCommand(message)) {
@@ -30,7 +31,7 @@ export async function handleContentCommand(message: unknown): Promise<unknown> {
     const target = formFieldTargetSchema.parse((message as { target: unknown }).target);
     const value = (message as { value: unknown }).value;
     if (typeof value !== "string" && typeof value !== "boolean") throw new Error("Invalid form field value.");
-    return { fillResult: fillFormFieldValue(target, value, getCurrentFormScope()) };
+    return { fillResult: await fillFormFieldValue(target, value, getCurrentFormScope()) };
   }
   if (isOpenLinkedInApplicationCommand(message)) return { application: await linkedinAdapter.openApplication() };
   if (isLinkedInApplicationActionCommand(message)) {
@@ -43,17 +44,23 @@ export async function handleContentCommand(message: unknown): Promise<unknown> {
   }
   if (isFillFieldCommand(message)) {
     const instruction = fieldFillInstructionSchema.parse(message);
-    return { fillResult: fillFormField(instruction, getCurrentFormScope()) };
+    return { fillResult: await fillFormField(instruction, getCurrentFormScope()) };
   }
   if (isUploadFileCommand(message)) {
     const instruction = fileUploadInstructionSchema.parse(message);
-    return { fillResult: uploadFormFile(instruction, getCurrentFormScope()) };
+    return { fillResult: await uploadFormFile(instruction, getCurrentFormScope()) };
   }
   return undefined;
 }
 
 export function startContentFormDiscovery(): void {
   startFormDiscovery(() => readCurrentForm());
+}
+
+function hasObservableFields(
+  form: ReturnType<typeof readCurrentForm>,
+): boolean {
+  return form.kind === "application_form" || form.kind === "page_input_fields";
 }
 
 function isSeekHost(hostname: string): boolean {

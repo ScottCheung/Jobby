@@ -59,15 +59,7 @@ export default defineConfig(({ mode, command }) => {
       react(),
       tailwindcss(),
       stripCrossorigin(),
-      crx({
-        manifest,
-        contentScripts: {
-          // Content scripts are explicitly re-injected before each command.
-          // A standalone bundle avoids stale ESM module instances in a tab
-          // after a dev rebuild and keeps that reinjection deterministic.
-          standaloneFiles: ['src/content/bootstrap.ts'],
-        },
-      }),
+      crx({ manifest }),
     ],
   };
 });

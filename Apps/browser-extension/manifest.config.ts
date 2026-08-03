@@ -18,7 +18,17 @@ export default defineManifest({
         "http://*/*",
         "https://*/*",
       ],
-      js: ["src/content/bootstrap.ts?script&iife"],
+      js: ["src/content/main-world-bridge.ts"],
+      all_frames: true,
+      run_at: "document_idle",
+      world: "MAIN",
+    },
+    {
+      matches: [
+        "http://*/*",
+        "https://*/*",
+      ],
+      js: ["src/content/bootstrap.ts"],
       all_frames: true,
       run_at: "document_idle",
     },

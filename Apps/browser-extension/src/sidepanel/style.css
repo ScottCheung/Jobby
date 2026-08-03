@@ -258,14 +258,9 @@ p {
   @apply flex items-start gap-1;
 }
 .form-field-focus {
-  @apply flex-1 flex-col min-h-0 p-0 border-0 bg-transparent text-left text-[#304244] hover:bg-transparent;
+  @apply flex-1 flex min-h-0 p-0 border-0 text-left text-[#304244];
 }
-.form-field-focus:hover {
-  @apply text-[#1e5a37];
-}
-.form-field-focus > span:first-child {
-  @apply block font-semibold leading-snug;
-}
+
 .form-field-meta {
   @apply block mt-0.5 text-[10px] font-normal text-[#7b898a];
 }
@@ -300,6 +295,9 @@ textarea.form-field-input {
 .form-file-action button {
   @apply min-h-[28px] px-2 text-[11px] font-semibold text-[#20623b] border-[#91aaa4] bg-[#f7fbf8];
 }
+.form-file-action button:disabled {
+  @apply cursor-wait opacity-60;
+}
 .form-file-options {
   @apply grid gap-1;
 }
@@ -308,6 +306,40 @@ textarea.form-field-input {
 }
 .form-file-options input {
   @apply accent-[#20623b];
+}
+.form-upload-status {
+  @apply m-0 text-[11px] leading-snug;
+}
+.form-upload-status--idle {
+  @apply text-[#667677];
+}
+.form-upload-status--uploading,
+.form-upload-status--unconfirmed {
+  @apply text-[#8c5b0d];
+}
+.form-upload-status--confirmed {
+  @apply text-[#20623b];
+}
+.form-upload-status--failed {
+  @apply text-[#af3d31];
+}
+.form-upload-debug {
+  @apply text-[10px] text-[#667677];
+}
+.form-upload-debug summary {
+  @apply cursor-pointer select-none;
+}
+.form-upload-debug dl {
+  @apply grid gap-0.5 m-0 pt-1;
+}
+.form-upload-debug dl div {
+  @apply grid grid-cols-[54px_minmax(0,1fr)] gap-1;
+}
+.form-upload-debug dt {
+  @apply text-[#7b898a];
+}
+.form-upload-debug dd {
+  @apply m-0 break-words text-[#304244];
 }
 .fill-result {
   @apply grid gap-1 max-h-[220px] overflow-y-auto border-l-4 border-[#c98c27] px-2.5 py-2 bg-[#fff8e8] text-[#5f4b23] text-xs [overflow-wrap:anywhere];
@@ -332,6 +364,10 @@ textarea.form-field-input {
 /* Idle (no inspection yet) */
 .page-class-banner--idle {
   @apply bg-[#f8faf9] border-[#d7dfdc] text-[#8a9ea0];
+}
+
+.page-class-banner--error {
+  @apply bg-[#fff0ef] border-[#f2b9b3] text-[#8b3028];
 }
 
 /* Job page detected */

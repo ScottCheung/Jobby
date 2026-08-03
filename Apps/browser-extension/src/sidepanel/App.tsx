@@ -13,21 +13,20 @@ import { useApplicationPlan } from './hooks/useApplicationPlan';
 import { useAuth } from './hooks/useAuth';
 import { useDiagnostics } from './hooks/useDiagnostics';
 import { useInspection } from './hooks/useInspection';
+import { getActiveTab } from './services/messaging';
+
+const PAGE_READY_DELAY_MS = 150;
+const LINKEDIN_CARD_RECOVERY_MS = 10_000;
 
 export function App() {
   const [isReviewOpen, setIsReviewOpen] = useState(false);
-  const linkedInJobProbeTick = useRef(0);
-  // How many consecutive polling cycles returned a non-job result for a
-  // LinkedIn URL. Capped at MAX_LI_MISS to stop hammering the page when the
-  // job card hasn't rendered yet and avoids the visible flash loop.
-  const linkedInMissCount = useRef(0);
-  const MAX_LI_MISS = 8;
 
   const { diagnostics, errorMessage, refresh, clearLogs } = useDiagnostics();
   const { authStatus, authError, refreshAuth, signIn, disconnect } = useAuth();
   const {
     latestInspection,
     latestForm,
+    inspectionError,
     isInspectingPage,
     isInspectingForm,
     inspectPage,
@@ -36,6 +35,7 @@ export function App() {
     focusFormField,
     uploadDefaultResume,
     editFormField,
+    uploadStates,
   } = useInspection();
 
   const {
@@ -59,7 +59,7 @@ export function App() {
     inspectForm,
   );
 
-  // Inspection results are intentionally kept out of the polling effect's
+  // Inspection results are intentionally kept out of the event effect's
   // dependencies. Including them there created a loop: inspect → state update
   // → effect restart → forced inspect, which made the panel and some dynamic
   // pages visibly jump.
@@ -73,65 +73,63 @@ export function App() {
   useEffect(() => {
     refresh();
     refreshAuth();
-    void autoInspectActivePage(true).then(() => inspectForm());
-
-    const interval = setInterval(() => {
-      refresh();
-      // LinkedIn often paints its job content after the extension side panel
-      // has mounted. Retry only until a job is identified; afterwards this
-      // stays idle unless the tab or URL changes. Its job-list view can swap
-      // cards without updating the browser tab URL, so lightly recheck that
-      // page every two seconds while no application modal is open.
-      const currentInspection = latestInspectionRef.current;
-      const currentForm = latestFormRef.current;
-      const inspectionUrl =
-        currentInspection?.kind === "job" ?
-          currentInspection.snapshot.url
-        : currentInspection?.url || "";
-      const isSupportedJobHost = /(?:^|\.)(?:linkedin\.com|seek\.com(?:\.au)?)(?:\/|$)/i.test(
-        inspectionUrl.replace(/^https?:\/\//i, ""),
-      );
-
-      // Unsupported websites get their initial generic form inspection, then
-      // rely on the scoped content observer. Re-reading them every second was
-      // needless and caused visible flicker on some dynamic sites.
-      //
-      // For LinkedIn / Seek: retry only while we have never seen a job on
-      // this URL (null inspection or first N misses). Once we have a stable
-      // non-job result stop forcing — wait for a URL change instead.
-      const hasNeverInspected = currentInspection === null;
-      const isNonJobOnSupportedHost =
-        isSupportedJobHost && currentInspection !== null && currentInspection.kind !== "job";
-
-      if (isNonJobOnSupportedHost) {
-        linkedInMissCount.current += 1;
-      } else if (currentInspection?.kind === "job") {
-        linkedInMissCount.current = 0;
-      }
-
-      // Allow retries on supported hosts only for the first MAX_LI_MISS ticks
-      // after a URL change. After that, stop forcing and rely on URL-change
-      // detection in autoInspectActivePage (force=false path).
-      const needsInitialJobRead =
-        hasNeverInspected ||
-        (isNonJobOnSupportedHost && linkedInMissCount.current <= MAX_LI_MISS);
-
-      const isLinkedInJobPage =
-        currentInspection?.kind === "job" &&
-        currentInspection.snapshot.platform === "linkedin";
-      const shouldProbeLinkedInCard =
-        isLinkedInJobPage &&
-        currentForm?.kind !== "application_form" &&
-        (linkedInJobProbeTick.current = (linkedInJobProbeTick.current + 1) % 2) === 0;
-      void autoInspectActivePage(needsInitialJobRead || shouldProbeLinkedInCard).then((pageChanged) => {
-        if (pageChanged) {
-          linkedInMissCount.current = 0;
-          void inspectForm();
-        }
+    const inspectCurrentPage = (showLoading: boolean) => {
+      void autoInspectActivePage(true, showLoading).then((isJobPage) => {
+        if (isJobPage) void inspectForm();
       });
-    }, 1000);
+    };
+    let scheduledInspection: number | undefined;
+    const scheduleInspection = (showLoading: boolean) => {
+      if (scheduledInspection !== undefined) {
+        window.clearTimeout(scheduledInspection);
+      }
+      scheduledInspection = window.setTimeout(() => {
+        scheduledInspection = undefined;
+        inspectCurrentPage(showLoading);
+      }, PAGE_READY_DELAY_MS);
+    };
 
-    return () => clearInterval(interval);
+    inspectCurrentPage(true);
+
+    const onTabActivated = () => scheduleInspection(true);
+    const onTabUpdated = (
+      tabId: number,
+      changeInfo: chrome.tabs.TabChangeInfo,
+    ) => {
+      if (!changeInfo.url && changeInfo.status !== 'complete') return;
+      void getActiveTab().then((tab) => {
+        if (tab?.id === tabId) scheduleInspection(true);
+      });
+    };
+
+    chrome.tabs.onActivated.addListener(onTabActivated);
+    chrome.tabs.onUpdated.addListener(onTabUpdated);
+
+    // LinkedIn can replace the selected job card without changing its URL.
+    // Keep one quiet, low-frequency recovery read for that special case.
+    const linkedInRecovery = window.setInterval(() => {
+      const inspection = latestInspectionRef.current;
+      const form = latestFormRef.current;
+      if (inspection === null) {
+        inspectCurrentPage(false);
+        return;
+      }
+      if (
+        inspection.kind === 'job' &&
+        inspection.snapshot.platform === 'linkedin' &&
+        form?.kind !== 'application_form'
+      ) {
+        inspectCurrentPage(false);
+      }
+    }, LINKEDIN_CARD_RECOVERY_MS);
+
+    return () => {
+      if (scheduledInspection !== undefined)
+        window.clearTimeout(scheduledInspection);
+      chrome.tabs.onActivated.removeListener(onTabActivated);
+      chrome.tabs.onUpdated.removeListener(onTabUpdated);
+      window.clearInterval(linkedInRecovery);
+    };
   }, [refresh, refreshAuth, autoInspectActivePage, inspectForm]);
 
   const handleConfirmSubmit = async () => {
@@ -140,11 +138,12 @@ export function App() {
   };
 
   return (
-    <main className='panel hidden'>
+    <main className='flex flex-col '>
       {/* Page-type classifier debug banner — always shown first */}
       <PageClassBanner
         latestInspection={latestInspection}
         isInspecting={isInspectingPage}
+        error={inspectionError}
       />
 
       {/* <Header phase={snapshot.phase} /> */}
@@ -167,6 +166,7 @@ export function App() {
         onFocusField={focusFormField}
         onUploadDefaultResume={uploadDefaultResume}
         onEditField={editFormField}
+        uploadStates={uploadStates}
       />
 
       <section className='inspection' aria-label='Current page inspection'>

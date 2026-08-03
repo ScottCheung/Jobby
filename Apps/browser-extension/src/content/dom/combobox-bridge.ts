@@ -1,0 +1,106 @@
+export type PageComboboxState = {
+  options: Array<{ label: string; value: string }>;
+  currentValue: string;
+};
+
+type BridgeResponse = {
+  requestId?: unknown;
+  ok?: unknown;
+  options?: unknown;
+  currentValue?: unknown;
+};
+
+const REQUEST_EVENT = "jobby.combobox-request";
+const RESPONSE_EVENT = "jobby.combobox-response";
+let requestSequence = 0;
+
+function cleanText(value: unknown): string {
+  return typeof value === "string" ? value.replace(/\s+/g, " ").trim() : "";
+}
+
+function parseOptions(value: unknown): Array<{ label: string; value: string }> {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((option) => {
+      if (typeof option !== "object" || option === null) return null;
+      const candidate = option as { label?: unknown; value?: unknown };
+      const label = cleanText(candidate.label);
+      const optionValue = typeof candidate.value === "string" ? candidate.value : "";
+      return label && optionValue ? { label, value: optionValue } : null;
+    })
+    .filter((option): option is { label: string; value: string } => Boolean(option));
+}
+
+function requestBridge(
+  element: HTMLInputElement,
+  action: "inspect" | "select",
+  value?: string,
+): { ok: boolean; state: PageComboboxState } | null {
+  if (!element.id) return null;
+  const requestId = `jobby-combobox-${Date.now()}-${requestSequence += 1}`;
+  let response: BridgeResponse | null = null;
+  const onResponse = (event: Event) => {
+    if (!(event instanceof CustomEvent)) return;
+    const detail = event.detail as BridgeResponse;
+    if (detail?.requestId === requestId) response = detail;
+  };
+
+  document.addEventListener(RESPONSE_EVENT, onResponse, true);
+  document.dispatchEvent(
+    new CustomEvent(REQUEST_EVENT, {
+      detail: { requestId, action, elementId: element.id, ...(value !== undefined ? { value } : {}) },
+    }),
+  );
+  document.removeEventListener(RESPONSE_EVENT, onResponse, true);
+  const resolved = response as BridgeResponse | null;
+  if (!resolved) return null;
+
+  return {
+    ok: resolved.ok === true,
+    state: {
+      options: parseOptions(resolved.options),
+      currentValue: cleanText(resolved.currentValue),
+    },
+  };
+}
+
+export function inspectPageCombobox(element: HTMLInputElement): PageComboboxState | null {
+  return requestBridge(element, "inspect")?.state || null;
+}
+
+export function selectPageCombobox(
+  element: HTMLInputElement,
+  value: string,
+): Promise<{ ok: boolean; currentValue: string } | null> {
+  if (!element.id) return Promise.resolve(null);
+  const requestId = `jobby-combobox-${Date.now()}-${requestSequence += 1}`;
+
+  return new Promise((resolve) => {
+    let timer: number | undefined;
+    const finish = (response: BridgeResponse | null) => {
+      document.removeEventListener(RESPONSE_EVENT, onResponse, true);
+      if (timer !== undefined) window.clearTimeout(timer);
+      if (!response) {
+        resolve(null);
+        return;
+      }
+      resolve({
+        ok: response.ok === true,
+        currentValue: cleanText(response.currentValue),
+      });
+    };
+    const onResponse = (event: Event) => {
+      if (!(event instanceof CustomEvent)) return;
+      const detail = event.detail as BridgeResponse;
+      if (detail?.requestId === requestId) finish(detail);
+    };
+
+    document.addEventListener(RESPONSE_EVENT, onResponse, true);
+    document.dispatchEvent(
+      new CustomEvent(REQUEST_EVENT, {
+        detail: { requestId, action: "select", elementId: element.id, value },
+      }),
+    );
+    timer = window.setTimeout(() => finish(null), 700);
+  });
+}

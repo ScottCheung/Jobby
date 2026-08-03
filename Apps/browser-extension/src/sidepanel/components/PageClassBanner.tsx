@@ -5,6 +5,7 @@ import type { PageInspection } from '../../shared/contracts/page-inspection';
 interface PageClassBannerProps {
   latestInspection: PageInspection | null;
   isInspecting: boolean;
+  error?: string;
 }
 
 /**
@@ -15,7 +16,11 @@ interface PageClassBannerProps {
  * why. The banner is intentionally compact: a colour-coded pill for status and
  * an expandable detail row for the full reason text.
  */
-export function PageClassBanner({ latestInspection, isInspecting }: PageClassBannerProps) {
+export function PageClassBanner({
+  latestInspection,
+  isInspecting,
+  error,
+}: PageClassBannerProps) {
   if (isInspecting) {
     return (
       <div className='page-class-banner page-class-banner--checking' role='status' aria-live='polite'>
@@ -26,6 +31,17 @@ export function PageClassBanner({ latestInspection, isInspecting }: PageClassBan
   }
 
   if (!latestInspection) {
+    if (error) {
+      return (
+        <div className='page-class-banner page-class-banner--error' role='alert'>
+          <span className='page-class-banner__icon'>!</span>
+          <span className='page-class-banner__label'>
+            <strong>页面检测失败</strong>
+            <span className='page-class-banner__sub'>{error}</span>
+          </span>
+        </div>
+      );
+    }
     return (
       <div className='page-class-banner page-class-banner--idle' role='status'>
         <span className='page-class-banner__icon'>○</span>

@@ -4,6 +4,7 @@ import type { FormFieldObservation } from "../shared/contracts/form-inspection";
 
 import { inspectFormActiveTab, fillActiveTabField, clickLinkedInApplicationAction, uploadActiveTabFile } from "./content-bridge";
 import { apiClient } from "./api-client";
+import { logDiagnostic } from "./diagnostics";
 
 function defaultInstructionForUnanswered(
   field: FormFieldObservation,
@@ -49,19 +50,47 @@ export async function uploadDefaultResumeToActiveTab(target: FormFieldTarget): P
   const commandId = `default-resume-${Date.now()}-${target.key}`;
   try {
     const resume = await apiClient.downloadDefaultResume();
-    return await uploadActiveTabFile({
+    await logDiagnostic("info", "upload", "Starting default resume upload.", {
+      commandId,
+      fieldKey: target.key,
+      fieldLabel: target.label,
+      filename: resume.filename,
+      mimeType: resume.mimeType,
+    });
+    const result = await uploadActiveTabFile({
       type: "content.upload-file",
       commandId,
       target,
       ...resume,
     });
+    await logDiagnostic(
+      result.status === "filled" || result.status === "already_filled" ? "info" : "warn",
+      "upload",
+      "Default resume upload command completed.",
+      {
+        commandId,
+        fieldKey: target.key,
+        fieldLabel: target.label,
+        filename: resume.filename,
+        status: result.status,
+        message: result.message,
+      },
+    );
+    return result;
   } catch (error) {
-    return {
+    const result = {
       commandId,
       key: target.key,
       status: "rejected",
       message: error instanceof Error ? error.message : "Could not load the default Jobby resume.",
-    };
+    } as const;
+    await logDiagnostic("error", "upload", "Default resume upload failed before the webpage accepted it.", {
+      commandId,
+      fieldKey: target.key,
+      fieldLabel: target.label,
+      message: result.message,
+    });
+    return result;
   }
 }
 

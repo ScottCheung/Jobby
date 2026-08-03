@@ -26,6 +26,16 @@ export const formOptionSchema = z.object({
   value: z.string(),
 });
 
+export const fileUploadObservationSchema = z.object({
+  // "ready" means the ATS page currently exposes a non-empty document for
+  // this field. It does not claim the final application submission succeeded.
+  state: z.enum(["empty", "ready", "rejected"]),
+  filename: z.string().min(1).optional(),
+  detail: z.string().min(1).optional(),
+});
+
+export type FileUploadObservation = z.infer<typeof fileUploadObservationSchema>;
+
 export const formFieldObservationSchema = z.object({
   key: z.string().min(1),
   // The top page may embed an external ATS in an iframe. This is intentionally
@@ -40,6 +50,7 @@ export const formFieldObservationSchema = z.object({
   sensitive: z.boolean(),
   options: z.array(formOptionSchema),
   currentValue: z.string().optional(),
+  upload: fileUploadObservationSchema.optional(),
 });
 
 export type FormFieldObservation = z.infer<typeof formFieldObservationSchema>;

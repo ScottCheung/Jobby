@@ -36,8 +36,9 @@ const linkedinApplicationResponseSchema = z.discriminatedUnion("ok", [
 ]);
 
 let targetedTabId: number | undefined;
-const initializedContentTabs = new Set<number>();
 const activeFormFrameByTab = new Map<number, number>();
+const CONTENT_SCRIPT_STARTUP_RETRY_MS = 100;
+const CONTENT_SCRIPT_STARTUP_ATTEMPTS = 30;
 
 export function setTargetedTabId(tabId: number | undefined): void {
   targetedTabId = tabId;
@@ -56,7 +57,6 @@ export async function inspectFormActiveTab(): Promise<FormInspection> {
   if (!activeTab?.id) throw new Error("未检测到可用的浏览器标签页。请先打开并切换至需要填写的网页。");
   if (!isSupportedUrl(activeTab.url)) throw new Error("请先切换至支持的网页后再检测表单。");
 
-  await ensureContentScript(activeTab.id);
   const rootForm = parseFormResponse(await sendToTab(activeTab.id, { type: "content.inspect-form" }));
   const candidates: Array<{ form: FormInspection; frameId: number }> = [{ form: rootForm, frameId: 0 }];
 
@@ -107,6 +107,13 @@ export function acceptsFormChange(tabId: number, frameId: number): boolean {
 }
 
 export async function fillActiveTabField(instruction: FieldFillInstruction): Promise<FieldFillResult> {
+  const mainWorldResult = await selectGreenhouseCombobox(
+    instruction.target,
+    instruction.value,
+    instruction.commandId,
+  );
+  if (mainWorldResult) return mainWorldResult;
+
   const rawResponse = await sendToActiveTab(instruction, instruction.target.frameId);
   const parsed = fillResponseSchema.safeParse(rawResponse);
   if (!parsed.success) throw new Error("The page returned an invalid field fill response.");
@@ -115,11 +122,134 @@ export async function fillActiveTabField(instruction: FieldFillInstruction): Pro
 }
 
 export async function editActiveTabField(target: FormFieldTarget, value: string | boolean): Promise<FieldFillResult> {
+  const mainWorldResult = await selectGreenhouseCombobox(
+    target,
+    value,
+    `panel-${Date.now()}-${target.key}`,
+  );
+  if (mainWorldResult) return mainWorldResult;
+
   const rawResponse = await sendToActiveTab({ type: "content.edit-form-field", target, value }, target.frameId);
   const parsed = fillResponseSchema.safeParse(rawResponse);
   if (!parsed.success) throw new Error("The page returned an invalid form edit response.");
   if (!parsed.data.ok) throw new Error(parsed.data.error);
   return parsed.data.fillResult;
+}
+
+async function selectGreenhouseCombobox(
+  target: FormFieldTarget,
+  value: string | boolean,
+  commandId: string,
+): Promise<FieldFillResult | null> {
+  if (target.type !== "select" || typeof value !== "string" || !target.id) return null;
+
+  const activeTab = await findActiveTab();
+  if (!activeTab?.id || !isSupportedUrl(activeTab.url)) return null;
+
+  try {
+    const executions = await chrome.scripting.executeScript({
+      target: { tabId: activeTab.id, frameIds: [target.frameId ?? 0] },
+      world: "MAIN",
+      func: selectGreenhouseComboboxInPage,
+      args: [target.id, value],
+    });
+    const selection = executions[0]?.result;
+    if (!selection?.handled) return null;
+
+    if (selection.status === "filled" || selection.status === "already_filled") {
+      return {
+        commandId,
+        key: target.key,
+        status: selection.status,
+        message: selection.status === "filled" ? "Greenhouse dropdown value updated." : "Dropdown already has the requested value.",
+      };
+    }
+    return {
+      commandId,
+      key: target.key,
+      status: "rejected",
+      message: "The webpage did not confirm this dropdown selection.",
+    };
+  } catch {
+    // Only Greenhouse-style React Select controls take this path. Keep the
+    // existing content-script driver as the fallback for every other site.
+    return null;
+  }
+}
+
+function selectGreenhouseComboboxInPage(
+  elementId: string,
+  requestedValue: string,
+): Promise<{ handled: boolean; status?: "filled" | "already_filled" | "rejected" }> {
+  type Option = { label: string; value: string | number };
+  type SelectInstance = {
+    props?: { options?: unknown; value?: unknown };
+    selectOption?: (option: unknown) => void;
+  };
+  type Fiber = { return?: Fiber | null; stateNode?: unknown };
+
+  const clean = (value: unknown) => typeof value === "string" ? value.replace(/\s+/g, " ").trim() : "";
+  const normalized = (value: unknown) => clean(value).toLowerCase();
+  const element = document.getElementById(elementId);
+  if (!(element instanceof HTMLInputElement) || element.getAttribute("role") !== "combobox") {
+    return Promise.resolve({ handled: false });
+  }
+
+  const findInstance = (): SelectInstance | null => {
+    const key = Object.keys(element).find((name) => name.startsWith("__reactFiber$"));
+    let fiber = key ? (element as unknown as Record<string, unknown>)[key] as Fiber : null;
+    for (let depth = 0; fiber && depth < 32; depth += 1) {
+      const instance = fiber.stateNode as SelectInstance | undefined;
+      if (instance && typeof instance.selectOption === "function" && Array.isArray(instance.props?.options)) {
+        return instance;
+      }
+      fiber = fiber.return || null;
+    }
+    return null;
+  };
+
+  const optionsFor = (instance: SelectInstance): Option[] => {
+    if (!Array.isArray(instance.props?.options)) return [];
+    return instance.props.options
+      .map((option) => option as Partial<Option>)
+      .filter((option): option is Option => Boolean(clean(option.label)) && option.value !== undefined)
+      .map((option) => ({ label: clean(option.label), value: option.value }));
+  };
+
+  const currentValue = (instance: SelectInstance, options: Option[]): string => {
+    const selected = (Array.isArray(instance.props?.value) ? instance.props.value[0] : instance.props?.value) as Partial<Option> | undefined;
+    if (!selected || selected.value === undefined) return "";
+    return options.find((option) => String(option.value) === String(selected.value))?.label || clean(selected.label);
+  };
+
+  const instance = findInstance();
+  if (!instance) return Promise.resolve({ handled: false });
+  const options = optionsFor(instance);
+  const requested = normalized(requestedValue);
+  const option = options.find((candidate) => {
+    const label = normalized(candidate.label);
+    const value = normalized(String(candidate.value));
+    return label === requested ||
+      value === requested ||
+      (requested.length > 1 && (label.includes(requested) || requested.includes(label))) ||
+      (requested.length > 1 && (value.includes(requested) || requested.includes(value)));
+  });
+  if (!option) return Promise.resolve({ handled: true, status: "rejected" });
+  if (normalized(currentValue(instance, options)) === normalized(option.label)) {
+    return Promise.resolve({ handled: true, status: "already_filled" });
+  }
+
+  instance.selectOption?.(option);
+  return new Promise((resolve) => {
+    window.setTimeout(() => {
+      const updated = findInstance();
+      const selected = updated ? currentValue(updated, optionsFor(updated)) : "";
+      resolve({
+        handled: true,
+        status: normalized(selected) === normalized(option.label) ? "filled" : "rejected",
+      });
+    }, 0);
+  });
 }
 
 export async function focusActiveTabField(target: FormFieldTarget): Promise<FormFocusResult> {
@@ -239,44 +369,58 @@ async function sendToActiveTab(message: unknown, frameId?: number): Promise<unkn
     throw new Error("请先切换至支持的网页后再检测表单。");
   }
 
-  await ensureContentScript(activeTab.id);
   return sendToTab(activeTab.id, message, frameId);
 }
 
-async function ensureContentScript(tabId: number): Promise<void> {
-  // Initialize each tab once per service-worker lifetime. This keeps the
-  // current content-script version after an extension update without paying
-  // the injection cost for every button click.
-  if (!initializedContentTabs.has(tabId)) {
-    await injectContentScript(tabId).catch(() => undefined);
-    initializedContentTabs.add(tabId);
-  }
-}
-
 async function sendToTab(tabId: number, message: unknown, frameId?: number): Promise<unknown> {
-  // A freshly injected standalone bundle may need a short moment to register
-  // its listener. Retry quickly instead of adding a fixed delay to every call.
-  for (let attempt = 0; attempt < 10; attempt += 1) {
+  const targetFrameId = frameId ?? 0;
+  let injectedFallback = false;
+  let lastError: unknown;
+
+  // Development content scripts load Vite's HMR client before registering the
+  // message listener. Send to an existing listener first; only inject when
+  // Chrome confirms there is no receiver, then give that loader time to start.
+  for (let attempt = 0; attempt < CONTENT_SCRIPT_STARTUP_ATTEMPTS; attempt += 1) {
     try {
-      // With all_frames enabled, omitting frameId broadcasts the request and
-      // Chrome can resolve it with an auxiliary iframe's response. All
-      // top-level page actions must explicitly target frame 0.
-      return await chrome.tabs.sendMessage(tabId, message, { frameId: frameId ?? 0 });
-    } catch {
-      if (attempt === 0) {
-        await injectContentScript(tabId).catch(() => undefined);
+      return await chrome.tabs.sendMessage(tabId, message, { frameId: targetFrameId });
+    } catch (error) {
+      lastError = error;
+      if (!isRecoverableContentScriptError(error)) throw error;
+
+      if (!injectedFallback && isMissingContentScriptReceiver(error)) {
+        await injectContentScript(tabId, targetFrameId).catch((injectionError: unknown) => {
+          lastError = injectionError;
+        });
+        injectedFallback = true;
       }
-      if (attempt < 9) await new Promise((resolve) => setTimeout(resolve, 50));
+      if (attempt < CONTENT_SCRIPT_STARTUP_ATTEMPTS - 1) {
+        await new Promise((resolve) => setTimeout(resolve, CONTENT_SCRIPT_STARTUP_RETRY_MS));
+      }
     }
   }
 
-  throw new Error("与网页中插件脚本通讯中断，请手动刷新当前网页 (F5 / Cmd+R) 后再次尝试。");
+  const detail = lastError instanceof Error ? lastError.message : "";
+  throw new Error(
+    detail
+      ? `网页插件脚本未能完成加载：${detail}`
+      : "网页插件脚本未能完成加载。请稍后重试。",
+  );
 }
 
-async function injectContentScript(tabId: number): Promise<void> {
+function isMissingContentScriptReceiver(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /Receiving end does not exist|Could not establish connection/i.test(message);
+}
+
+function isRecoverableContentScriptError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return isMissingContentScriptReceiver(error) || /message port closed/i.test(message);
+}
+
+async function injectContentScript(tabId: number, frameId: number): Promise<void> {
   const files = (chrome.runtime.getManifest().content_scripts || [])
     .flatMap((entry) => entry.js || [])
     .filter((file): file is string => Boolean(file));
   if (!files.length) throw new Error("The extension content script is not configured.");
-  await chrome.scripting.executeScript({ target: { tabId, allFrames: true }, files });
+  await chrome.scripting.executeScript({ target: { tabId, frameIds: [frameId] }, files });
 }

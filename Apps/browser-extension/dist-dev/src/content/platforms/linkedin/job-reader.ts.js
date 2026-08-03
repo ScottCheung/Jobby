@@ -17,6 +17,7 @@ export function readLinkedInPage() {
     title: job.title,
     company: job.company,
     location: job.location,
+    datePosted: job.datePosted,
     description: job.description,
     technologies: extractTechnologyKeywords(job.description),
     easyApply: job.easyApply

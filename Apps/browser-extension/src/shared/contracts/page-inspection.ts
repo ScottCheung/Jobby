@@ -33,10 +33,18 @@ export const genericJobSnapshotSchema = z.object({
 
 export type GenericJobSnapshot = z.infer<typeof genericJobSnapshotSchema>;
 
+export const indeedJobSnapshotSchema = z.object({
+  platform: z.literal("indeed"),
+  ...jobSnapshotFields,
+});
+
+export type IndeedJobSnapshot = z.infer<typeof indeedJobSnapshotSchema>;
+
 export const jobSnapshotSchema = z.discriminatedUnion("platform", [
   seekJobSnapshotSchema,
   linkedinJobSnapshotSchema,
   genericJobSnapshotSchema,
+  indeedJobSnapshotSchema,
 ]);
 
 export type JobSnapshot = z.infer<typeof jobSnapshotSchema>;
@@ -48,7 +56,7 @@ export const pageInspectionSchema = z.discriminatedUnion("kind", [
   }),
   z.object({
     kind: z.literal("not_job_page"),
-    platform: z.enum(["seek", "linkedin"]),
+    platform: z.enum(["seek", "linkedin", "indeed"]),
     url: z.string().url(),
     reason: z.string().min(1),
   }),

@@ -3,7 +3,68 @@ import { formInspectionSchema } from "../../shared/contracts/form-inspection";
 import type { FormInspection } from "../../shared/contracts/form-inspection";
 import type { FormFieldObservation } from "../../shared/contracts/form-inspection";
 import type { PageInspection } from "../../shared/contracts/page-inspection";
-import { getActiveTab, send } from "../services/messaging";
+import { getActiveTab, send, wait } from "../services/messaging";
+
+export type UploadSyncState = {
+  phase: "idle" | "uploading" | "confirmed" | "unconfirmed" | "failed";
+  message: string;
+  updatedAt: number;
+};
+
+function pageUploadState(field: FormFieldObservation): UploadSyncState | null {
+  if (field.type !== "file" || !field.upload) return null;
+  if (field.upload.state === "ready") {
+    return {
+      phase: "confirmed",
+      message: field.upload.filename
+        ? `网页已确认：${field.upload.filename}`
+        : "网页已确认文件已就绪。",
+      updatedAt: Date.now(),
+    };
+  }
+  if (field.upload.state === "rejected") {
+    return {
+      phase: "failed",
+      message: field.upload.detail || "网页拒绝了该文件。",
+      updatedAt: Date.now(),
+    };
+  }
+  return {
+    phase: "idle",
+    message: "网页尚未检测到文件。",
+    updatedAt: Date.now(),
+  };
+}
+
+function reconcileUploadStates(
+  previous: Record<string, UploadSyncState>,
+  form: FormInspection,
+): Record<string, UploadSyncState> {
+  if (form.kind !== "application_form" && form.kind !== "page_input_fields") return previous;
+  let changed = false;
+  const next = { ...previous };
+  const fileKeys = new Set<string>();
+
+  for (const field of form.fields) {
+    if (field.type !== "file") continue;
+    fileKeys.add(field.key);
+    const observed = pageUploadState(field);
+    if (!observed) continue;
+    const prior = previous[field.key];
+    if (!prior || prior.phase !== observed.phase || prior.message !== observed.message) {
+      next[field.key] = observed;
+      changed = true;
+    }
+  }
+
+  for (const key of Object.keys(next)) {
+    if (!fileKeys.has(key)) {
+      delete next[key];
+      changed = true;
+    }
+  }
+  return changed ? next : previous;
+}
 
 function sameJob(left: PageInspection | null, right: PageInspection): boolean {
   return Boolean(
@@ -29,6 +90,24 @@ function targetFor(field: FormFieldObservation) {
   };
 }
 
+function isSameField(candidate: FormFieldObservation, field: FormFieldObservation): boolean {
+  return candidate.key === field.key ||
+    Boolean(field.id && candidate.id === field.id) ||
+    Boolean(field.name && candidate.name === field.name && candidate.type === field.type) ||
+    (candidate.type === field.type && candidate.label === field.label);
+}
+
+function fieldMatchesValue(field: FormFieldObservation, value: string | boolean): boolean {
+  if (typeof value === "boolean") return field.filled === value;
+  const selectedOption = field.options.find(
+    (option) => option.value === value || option.label === value,
+  );
+  const expected = selectedOption?.label || value;
+  const current = field.currentValue || "";
+  return current === expected ||
+    (expected.length > 1 && current.startsWith(`${expected} `));
+}
+
 function formSignature(form: FormInspection): string {
   if (form.kind === "application_form" || form.kind === "page_input_fields") {
     return JSON.stringify({
@@ -43,6 +122,7 @@ function formSignature(form: FormInspection): string {
         filled: field.filled,
         currentValue: field.currentValue || "",
         options: field.options,
+        upload: field.upload,
       })),
       ...(form.kind === "application_form"
         ? { action: form.action, canGoBack: form.canGoBack, submitLabel: form.submitLabel }
@@ -70,6 +150,7 @@ export function useInspection(onJobChanged?: () => void) {
   const [inspectionError, setInspectionError] = useState<string>("");
   const [isInspectingPage, setIsInspectingPage] = useState(false);
   const [isInspectingForm, setIsInspectingForm] = useState(false);
+  const [uploadStates, setUploadStates] = useState<Record<string, UploadSyncState>>({});
 
   const pageInspectionInFlight = useRef(false);
   const formInspectionInFlight = useRef(false);
@@ -90,12 +171,14 @@ export function useInspection(onJobChanged?: () => void) {
     if (nextSignature === lastFormSignature.current) return false;
     lastFormSignature.current = nextSignature;
     setLatestForm(form);
+    setUploadStates((previous) => reconcileUploadStates(previous, form));
     return true;
   }, []);
 
   const resetInspectionState = useCallback(() => {
     setLatestInspection(null);
     setLatestForm(null);
+    setUploadStates({});
     lastFormSignature.current = "";
     onJobChanged?.();
   }, [onJobChanged]);
@@ -126,28 +209,39 @@ export function useInspection(onJobChanged?: () => void) {
     }
   }, [resetInspectionState]);
 
-  const autoInspectActivePage = useCallback(async (force = false): Promise<boolean> => {
+  const autoInspectActivePage = useCallback(async (
+    force = false,
+    showLoading = false,
+  ): Promise<boolean> => {
     if (pageInspectionInFlight.current) return false;
 
     const tab = await getActiveTab();
     const url = tab?.url;
     const tabId = tab?.id ?? null;
-    if (!url) return false;
+    if (!url) {
+      setInspectionError("未检测到可用网页。请切换到需要识别的职位页面。");
+      return false;
+    }
 
     const tabOrUrlChanged = tabId !== lastObservedActiveTabId.current || url !== lastObservedActiveUrl.current;
     if (!force && !tabOrUrlChanged) return false;
 
     pageInspectionInFlight.current = true;
-    setIsInspectingPage(true);
+    if (showLoading) {
+      setIsInspectingPage(true);
+    }
     try {
       const response = await send({ type: "content.inspect-active" });
       if (!response.ok || !response.inspection) {
-        // Communication error — don't update URL cache so we retry next tick.
+        setInspectionError(response.ok ? "页面未返回检测结果。" : response.error);
+        // Communication error — don't update URL cache so the next page
+        // event or recovery check can retry.
         lastObservedActiveUrl.current = null;
         lastObservedActiveTabId.current = null;
         return false;
       }
 
+      setInspectionError("");
       setLatestInspection((prev) => {
         if (!sameJob(prev, response.inspection!)) {
           setLatestForm(null);
@@ -163,7 +257,10 @@ export function useInspection(onJobChanged?: () => void) {
       lastObservedActiveTabId.current = tabId;
       lastObservedActiveUrl.current = url;
       return response.inspection.kind === "job";
-    } catch {
+    } catch (error) {
+      setInspectionError(
+        error instanceof Error ? error.message : "无法检测当前页面。",
+      );
       lastObservedActiveUrl.current = null;
       lastObservedActiveTabId.current = null;
       return false;
@@ -173,10 +270,10 @@ export function useInspection(onJobChanged?: () => void) {
     }
   }, [onJobChanged]);
 
-  const inspectForm = useCallback(async (): Promise<FormInspection | null> => {
+  const inspectForm = useCallback(async (silent = false): Promise<FormInspection | null> => {
     if (formInspectionInFlight.current) return null;
     formInspectionInFlight.current = true;
-    setIsInspectingForm(true);
+    if (!silent) setIsInspectingForm(true);
     try {
       const response = await send({ type: "content.inspect-form-active" });
       if (!response.ok) {
@@ -191,7 +288,7 @@ export function useInspection(onJobChanged?: () => void) {
       return null;
     } finally {
       formInspectionInFlight.current = false;
-      setIsInspectingForm(false);
+      if (!silent) setIsInspectingForm(false);
     }
   }, [setFormIfChanged]);
 
@@ -204,20 +301,74 @@ export function useInspection(onJobChanged?: () => void) {
   }, []);
 
   const uploadDefaultResume = useCallback(async (field: FormFieldObservation) => {
+    setUploadStates((previous) => ({
+      ...previous,
+      [field.key]: {
+        phase: "uploading",
+        message: "正在写入默认简历，等待网页确认。",
+        updatedAt: Date.now(),
+      },
+    }));
     const response = await send({
       type: "content.upload-default-resume-active",
       target: targetFor(field),
     });
     if (!response.ok) {
+      setUploadStates((previous) => ({
+        ...previous,
+        [field.key]: {
+          phase: "failed",
+          message: response.error,
+          updatedAt: Date.now(),
+        },
+      }));
       setInspectionError(response.error);
       return;
     }
-    if (response.fillResult && !["filled", "already_filled"].includes(response.fillResult.status)) {
-      setInspectionError(response.fillResult.message);
+    const fillResult = response.fillResult;
+    if (fillResult && !["filled", "already_filled"].includes(fillResult.status)) {
+      setUploadStates((previous) => ({
+        ...previous,
+        [field.key]: {
+          phase: "failed",
+          message: fillResult.message,
+          updatedAt: Date.now(),
+        },
+      }));
+      setInspectionError(fillResult.message);
       return;
     }
     setInspectionError("");
-    void inspectForm();
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      const form = await inspectForm(true);
+      const uploadedField =
+        form?.kind === "application_form" || form?.kind === "page_input_fields"
+          ? form.fields.find((candidate) => candidate.key === field.key)
+          : undefined;
+      const upload = uploadedField?.upload;
+      if (upload?.state === "ready") {
+        setUploadStates((previous) => ({
+          ...previous,
+          [field.key]: {
+            phase: "confirmed",
+            message: upload.filename
+              ? `网页已确认：${upload.filename}`
+              : "网页已确认默认简历已就绪。",
+            updatedAt: Date.now(),
+          },
+        }));
+        return;
+      }
+      if (attempt < 3) await wait(250);
+    }
+    setUploadStates((previous) => ({
+      ...previous,
+      [field.key]: {
+        phase: "unconfirmed",
+        message: "文件命令已完成，但网页尚未确认；请检查网页中的上传状态。",
+        updatedAt: Date.now(),
+      },
+    }));
   }, [inspectForm]);
 
   const editFormField = useCallback(async (field: FormFieldObservation, value: string | boolean) => {
@@ -235,6 +386,30 @@ export function useInspection(onJobChanged?: () => void) {
       void inspectForm();
       return;
     }
+
+    // A number of ATS pages use controlled checkbox/radio widgets. Confirm
+    // the rendered form state after the message round-trip so the side panel
+    // never claims a change that the webpage immediately rejected.
+    if (typeof value === "boolean" || field.type === "radio" || field.type === "select") {
+      for (let attempt = 0; attempt < 5; attempt += 1) {
+        const form = await inspectForm(true);
+        const updatedField =
+          form &&
+          (form.kind === "application_form" || form.kind === "page_input_fields") &&
+          form.fields.find((candidate) => isSameField(candidate, field));
+        const confirmed =
+          updatedField &&
+          (field.type === "checkbox" ? typeof value === "boolean" && updatedField.filled === value : fieldMatchesValue(updatedField, value));
+        if (confirmed) {
+          setInspectionError("");
+          return;
+        }
+        if (attempt < 4) await wait(180);
+      }
+      setInspectionError("网页未确认该选项已更新，请直接在网页上操作后再继续。");
+      return;
+    }
+
     setInspectionError("");
   }, [inspectForm]);
 
@@ -304,5 +479,6 @@ export function useInspection(onJobChanged?: () => void) {
     focusFormField,
     uploadDefaultResume,
     editFormField,
+    uploadStates,
   };
 }

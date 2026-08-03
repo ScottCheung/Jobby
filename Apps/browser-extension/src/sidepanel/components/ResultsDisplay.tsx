@@ -8,6 +8,7 @@ import type {
   FormInspection,
 } from '../../shared/contracts/form-inspection';
 import type { PageInspection } from '../../shared/contracts/page-inspection';
+import type { UploadSyncState } from '../hooks/useInspection';
 
 interface ResultsDisplayProps {
   latestInspection: PageInspection | null;
@@ -23,6 +24,7 @@ interface ResultsDisplayProps {
     field: FormFieldObservation,
     value: string | boolean,
   ) => Promise<void>;
+  uploadStates: Record<string, UploadSyncState>;
 }
 
 export function ResultsDisplay({
@@ -36,49 +38,54 @@ export function ResultsDisplay({
   onFocusField,
   onUploadDefaultResume,
   onEditField,
+  uploadStates,
 }: ResultsDisplayProps) {
   const formFields =
-    latestForm?.kind === 'application_form' || latestForm?.kind === 'page_input_fields'
-      ? latestForm.fields
-      : [];
+    (
+      latestForm?.kind === 'application_form' ||
+      latestForm?.kind === 'page_input_fields'
+    ) ?
+      latestForm.fields
+    : [];
   const hasFormFields = formFields.length > 0;
   const hasJob = latestInspection?.kind === 'job';
 
   return (
     <>
-      {isInspectingForm ? (
+      {isInspectingForm && !hasFormFields ?
         <ResultSkeleton label='Inspecting form' />
-      ) : hasFormFields && latestForm ? (
-        <div className='form-result'>
-          {latestForm.kind === 'application_form' ? (
-          <>
-            <p className='form-summary'>
-              <strong>字段：</strong>
-              {latestForm.fields.length}
-              {latestForm.hasSubmitAction ?
-                ` · ${latestForm.submitLabel || '可提交'}`
-              : ''}
-            </p>
-            <FormFields
+      : hasFormFields && latestForm ?
+        <div className=''>
+          {latestForm.kind === 'application_form' ?
+            <>
+              <p className='form-summary'>
+                <strong>字段：</strong>
+                {latestForm.fields.length}
+                {latestForm.hasSubmitAction ?
+                  ` · ${latestForm.submitLabel || '可提交'}`
+                : ''}
+              </p>
+              <FormFields
+                fields={formFields}
+                onFocusField={onFocusField}
+                onUploadDefaultResume={onUploadDefaultResume}
+                onEditField={onEditField}
+                uploadStates={uploadStates}
+              />
+            </>
+          : <FormFields
               fields={formFields}
               onFocusField={onFocusField}
               onUploadDefaultResume={onUploadDefaultResume}
               onEditField={onEditField}
+              uploadStates={uploadStates}
             />
-          </>
-          ) : (
-            <FormFields
-              fields={formFields}
-              onFocusField={onFocusField}
-              onUploadDefaultResume={onUploadDefaultResume}
-              onEditField={onEditField}
-            />
-          )}
+          }
         </div>
-      ) : null}
-      {isInspectingPage ? (
+      : null}
+      {isInspectingPage ?
         <ResultSkeleton label='Inspecting job' />
-      ) : hasJob && latestInspection ? (
+      : hasJob && latestInspection ?
         <div className='inspection-result'>
           <>
             <p>
@@ -121,7 +128,7 @@ export function ResultsDisplay({
             )}
           </>
         </div>
-      ) : null}
+      : null}
 
       {latestPlan && (
         <div className='plan-result'>
@@ -182,9 +189,16 @@ interface FormFieldsProps {
     field: FormFieldObservation,
     value: string | boolean,
   ) => Promise<void>;
+  uploadStates: Record<string, UploadSyncState>;
 }
 
-function FormFields({ fields, onFocusField, onUploadDefaultResume, onEditField }: FormFieldsProps) {
+function FormFields({
+  fields,
+  onFocusField,
+  onUploadDefaultResume,
+  onEditField,
+  uploadStates,
+}: FormFieldsProps) {
   return (
     <div className='form-fields'>
       <p className='form-summary'>
@@ -198,6 +212,7 @@ function FormFields({ fields, onFocusField, onUploadDefaultResume, onEditField }
           onFocusField={onFocusField}
           onUploadDefaultResume={onUploadDefaultResume}
           onEditField={onEditField}
+          uploadState={uploadStates[field.key]}
         />
       ))}
     </div>
@@ -212,13 +227,21 @@ interface FormFieldRowProps {
     field: FormFieldObservation,
     value: string | boolean,
   ) => Promise<void>;
+  uploadState?: UploadSyncState;
 }
 
 function formValue(field: FormFieldObservation): string {
   if (field.type === 'select') {
     return (
-      field.options.find((option) => option.label === field.currentValue)
-        ?.value ||
+      field.options.find(
+        (option) =>
+          option.label === field.currentValue ||
+          Boolean(
+            field.currentValue &&
+            (field.currentValue.startsWith(`${option.label} `) ||
+              field.currentValue.startsWith(`${option.label},`)),
+          ),
+      )?.value ||
       field.currentValue ||
       ''
     );
@@ -226,7 +249,13 @@ function formValue(field: FormFieldObservation): string {
   return field.currentValue || '';
 }
 
-function FormFieldRow({ field, onFocusField, onUploadDefaultResume, onEditField }: FormFieldRowProps) {
+function FormFieldRow({
+  field,
+  onFocusField,
+  onUploadDefaultResume,
+  onEditField,
+  uploadState,
+}: FormFieldRowProps) {
   const [draft, setDraft] = useState(() => formValue(field));
   const [editing, setEditing] = useState(false);
   const timer = useRef<number | undefined>(undefined);
@@ -239,6 +268,7 @@ function FormFieldRow({ field, onFocusField, onUploadDefaultResume, onEditField 
   const isResumeUpload =
     field.type === 'file' &&
     /resume|curriculum vitae|\bcv\b/i.test(field.label);
+  const isUploadInFlight = uploadState?.phase === 'uploading';
 
   useEffect(() => {
     // Don't reset while the user is actively typing or has a save in-flight.
@@ -246,7 +276,10 @@ function FormFieldRow({ field, onFocusField, onUploadDefaultResume, onEditField 
     const incoming = formValue(field);
     // If the page value matches what we last sent, no need to reset at all —
     // the user's draft is already consistent with the source of truth.
-    if (pendingValue.current !== undefined && incoming === String(pendingValue.current)) {
+    if (
+      pendingValue.current !== undefined &&
+      incoming === String(pendingValue.current)
+    ) {
       pendingValue.current = undefined;
     }
     if (pendingValue.current !== undefined) return;
@@ -271,7 +304,11 @@ function FormFieldRow({ field, onFocusField, onUploadDefaultResume, onEditField 
       });
     };
     if (immediate) save();
-    else timer.current = window.setTimeout(() => { timer.current = undefined; save(); }, 150);
+    else
+      timer.current = window.setTimeout(() => {
+        timer.current = undefined;
+        save();
+      }, 150);
   };
 
   const updateText = (value: string) => {
@@ -291,28 +328,23 @@ function FormFieldRow({ field, onFocusField, onUploadDefaultResume, onEditField 
   };
 
   return (
-    <article className='form-field-row'>
-      <div className='form-field-heading'>
-        <button
-          type='button'
-          className='form-field-focus'
+    <article
+      onClick={() => void onFocusField(field)}
+      className='py-1 px-2 hover:bg-green-100 cursor-pointer'
+    >
+      <div className=''>
+        <div
+          className='flex-1 flex min-h-0 p-0 border-0 text-left text-[#304244] flex '
           title='定位到网页中的字段'
-          onClick={() => void onFocusField(field)}
-        >
-          <span>{field.label}</span>
-          <span className='form-field-meta'>
-            {field.required ? '必填' : '选填'} · {field.type}
-          </span>
-        </button>
-        <button
-          type='button'
-          className='form-field-locate'
-          title='滚动并高亮网页字段'
           aria-label={`定位 ${field.label}`}
           onClick={() => void onFocusField(field)}
         >
-          ↗
-        </button>
+          <span className='text-[10px]'>
+            {field.label}{' '}
+            {field.required && <span className='text-red-500'>*</span>}
+          </span>
+          {/* <span className='form-field-meta'>· {field.type}</span> */}
+        </div>
       </div>
       {editable ?
         <FieldEditor
@@ -345,27 +377,91 @@ function FormFieldRow({ field, onFocusField, onUploadDefaultResume, onEditField 
           )}
           <button
             type='button'
+            disabled={isUploadInFlight}
             onClick={() =>
               void (isResumeUpload ?
                 onUploadDefaultResume(field)
               : onFocusField(field))
             }
           >
-            {isResumeUpload ? '自动上传默认简历' : '前往网页上传'}
+            {isResumeUpload ?
+              isUploadInFlight ?
+                '正在上传默认简历'
+              : field.filled ?
+                '重新上传默认简历'
+              : '自动上传默认简历'
+            : '前往网页上传'}
           </button>
-          <span>
-            {field.currentValue ?
-              field.filled ?
-                `已选择：${field.currentValue}`
-              : `网页未接受 ${field.currentValue}；请选择非空的 DOC、DOCX 或 PDF 文件`
-
-            : isResumeUpload ?
-              '从 Jobby 简历库读取默认简历并上传'
-            : '请在网页中选择要上传的文件'}
-          </span>
+          <button type='button' onClick={() => void onFocusField(field)}>
+            前往网页管理
+          </button>
+          <UploadState
+            field={field}
+            state={uploadState}
+            isResumeUpload={isResumeUpload}
+          />
         </div>
       : <p className='form-field-manual'>请在网页中手动填写</p>}
     </article>
+  );
+}
+
+function UploadState({
+  field,
+  state,
+  isResumeUpload,
+}: {
+  field: FormFieldObservation;
+  state?: UploadSyncState;
+  isResumeUpload: boolean;
+}) {
+  const phase =
+    state?.phase ||
+    (field.upload?.state === 'ready' ? 'confirmed'
+    : field.upload?.state === 'rejected' ? 'failed'
+    : 'idle');
+  const message =
+    state?.message ||
+    (field.upload?.state === 'ready' ?
+      field.upload.filename ?
+        `网页已确认：${field.upload.filename}`
+      : '网页已确认文件已就绪。'
+    : field.upload?.state === 'rejected' ?
+      field.upload.detail || '网页拒绝了该文件。'
+    : isResumeUpload ? '从 Jobby 简历库读取默认简历并上传。'
+    : '请在网页中选择要上传的文件。');
+
+  return (
+    <>
+      <p className={`form-upload-status form-upload-status--${phase}`}>
+        {message}
+      </p>
+      <details className='form-upload-debug'>
+        <summary>上传诊断</summary>
+        <dl>
+          <div>
+            <dt>网页状态</dt>
+            <dd>{field.upload?.state || 'unknown'}</dd>
+          </div>
+          <div>
+            <dt>字段</dt>
+            <dd>{field.key}</dd>
+          </div>
+          {field.upload?.filename && (
+            <div>
+              <dt>文件</dt>
+              <dd>{field.upload.filename}</dd>
+            </div>
+          )}
+          {state && (
+            <div>
+              <dt>同步</dt>
+              <dd>{state.phase}</dd>
+            </div>
+          )}
+        </dl>
+      </details>
+    </>
   );
 }
 

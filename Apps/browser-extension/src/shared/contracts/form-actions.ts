@@ -10,7 +10,10 @@ export const fieldFillInstructionSchema = z.object({
     key: z.string().min(1).max(256),
     frameId: z.number().int().nonnegative().optional(),
     id: z.string().max(256).optional(),
-    name: z.string().max(256).optional(),
+    // Some ATSs (including Ashby consent fields) use the full question text
+    // as the native input name. Keep that stable identifier intact instead
+    // of rejecting the extension message before it reaches the webpage.
+    name: z.string().max(2_000).optional(),
     type: formFieldTypeSchema,
     label: z.string().min(1).max(500),
   }),

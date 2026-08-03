@@ -1,22 +1,42 @@
-import { z } from "/vendor/.vite-deps-zod.js__v--dbafbd4a.js";
+import { z } from "/vendor/.vite-deps-zod.js__v--d9a92ae8.js";
 import { formFieldTypeSchema } from "/src/shared/contracts/form-inspection.ts.js";
 export const fieldFillInstructionSchema = z.object({
   type: z.literal("content.fill-field"),
   commandId: z.string().min(1).max(128),
-  source: z.literal("backend"),
+  source: z.enum(["backend", "panel"]),
   target: z.object({
     key: z.string().min(1).max(256),
+    frameId: z.number().int().nonnegative().optional(),
     id: z.string().max(256).optional(),
-    name: z.string().max(256).optional(),
+    // Some ATSs (including Ashby consent fields) use the full question text
+    // as the native input name. Keep that stable identifier intact instead
+    // of rejecting the extension message before it reaches the webpage.
+    name: z.string().max(2e3).optional(),
     type: formFieldTypeSchema,
     label: z.string().min(1).max(500)
   }),
   value: z.union([z.string().max(1e4), z.boolean()])
 });
+export const formFieldTargetSchema = fieldFillInstructionSchema.shape.target;
+export const fileUploadInstructionSchema = z.object({
+  type: z.literal("content.upload-file"),
+  commandId: z.string().min(1).max(128),
+  target: formFieldTargetSchema,
+  filename: z.string().min(1).max(255),
+  mimeType: z.string().min(1).max(128),
+  // Base64 keeps the binary payload compatible with Chrome extension
+  // messaging, which serializes runtime messages as JSON.
+  contentBase64: z.string().min(1).max(14e6)
+});
 export const fieldFillResultSchema = z.object({
   commandId: z.string().min(1),
   key: z.string().min(1),
   status: z.enum(["filled", "already_filled", "not_found", "rejected", "requires_user_action"]),
+  message: z.string().min(1)
+});
+export const formFocusResultSchema = z.object({
+  key: z.string().min(1),
+  status: z.enum(["focused", "not_found"]),
   message: z.string().min(1)
 });
 export const formFillInstructionsResponseSchema = z.object({

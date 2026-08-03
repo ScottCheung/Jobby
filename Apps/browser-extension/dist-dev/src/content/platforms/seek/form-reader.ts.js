@@ -1,26 +1,16 @@
-import { readSeekForm } from "/src/content/dom/form-inspector.ts.js";
-const ACTION_SELECTORS = [
-  "button[type='submit']",
-  "input[type='submit']",
-  "button",
-  "[role='button']"
-];
+import { readPageInputFields, readSeekForm } from "/src/content/dom/form-inspector.ts.js";
+import {
+  getSeekApplicationAction,
+  getSeekApplicationActionKind,
+  getSeekApplicationActionLabel
+} from "/src/content/platforms/seek/adapter.ts.js";
 function cleanText(value) {
   return (value || "").replace(/\s+/g, " ").trim();
-}
-function submitActionLabel() {
-  for (const selector of ACTION_SELECTORS) {
-    for (const element of Array.from(document.querySelectorAll(selector))) {
-      const label = cleanText(element.textContent || element.getAttribute("aria-label"));
-      if (/submit|continue|next|review|apply/i.test(label)) return label;
-    }
-  }
-  return "";
 }
 function isApplicationPage(url) {
   if (/\/apply(?:\/|$)|\/application(?:\/|$)/i.test(url)) return true;
   const bodyText = cleanText(document.body?.textContent);
-  return /application|personal details|resume|cover letter/i.test(bodyText) && Boolean(submitActionLabel());
+  return /application|personal details|resume|cover letter/i.test(bodyText) && Boolean(getSeekApplicationActionLabel());
 }
 function isSeekJobPage(url) {
   try {
@@ -39,8 +29,17 @@ function hasQuickApplyLink() {
 }
 export function readSeekFormPage() {
   const url = window.location.href;
-  const submitLabel = submitActionLabel();
-  const inspection = readSeekForm(url, isApplicationPage(url), submitLabel || void 0);
+  const inspection = readSeekForm(
+    url,
+    isApplicationPage(url),
+    getSeekApplicationActionLabel(),
+    getSeekApplicationActionKind(),
+    Boolean(getSeekApplicationAction("previous"))
+  );
+  if (inspection.kind === "not_application_form") {
+    const pageInputs = readPageInputFields(url, "seek");
+    if (pageInputs) return pageInputs;
+  }
   if (inspection.kind === "not_application_form" && isSeekJobPage(url)) {
     return {
       ...inspection,

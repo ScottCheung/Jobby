@@ -28,8 +28,14 @@ const SELECTORS = {
   ],
   description: [
     ".jobs-description__content .jobs-box__html-content",
+    ".jobs-description__container .jobs-box__html-content",
+    ".jobs-description__container .jobs-description-content__text",
+    ".jobs-description__container",
+    ".jobs-description",
     ".jobs-description-content__text",
     ".jobs-description__content",
+    "[data-test-id='job-details-description']",
+    "[data-testid='job-details-description']",
     "[data-testid='expandable-text-box']"
   ],
   easyApply: [
@@ -156,21 +162,70 @@ function isVisible(element) {
 function isEnabled(element) {
   return !(element instanceof HTMLButtonElement && element.disabled) && element.getAttribute("aria-disabled") !== "true";
 }
+function deepElements(root) {
+  const result = [];
+  const visited = /* @__PURE__ */ new Set();
+  const visit = (scope) => {
+    if (visited.has(scope)) return;
+    visited.add(scope);
+    Array.from(scope.querySelectorAll("*")).forEach((element) => {
+      result.push(element);
+      if (element.shadowRoot) visit(element.shadowRoot);
+    });
+  };
+  visit(root);
+  return result;
+}
+function deepQueryAll(root, selector) {
+  return deepElements(root).filter((element) => element.matches(selector));
+}
+function deepFirst(root, selector) {
+  return deepQueryAll(root, selector)[0] || null;
+}
 function firstText(root, selectors) {
   for (const selector of selectors) {
-    const element = root.querySelector(selector);
+    const element = deepFirst(root, selector);
     if (!element) continue;
     const text = extractCleanElementText(element);
     if (text) return text;
   }
   return "";
 }
-function findVisible(root, selectors, predicate = () => true) {
+function descriptionText(element) {
+  const clone = element.cloneNode(true);
+  clone.querySelectorAll("button, script, style, svg, [role='img'], .visually-hidden, .sr-only").forEach((node) => node.remove());
+  return cleanText(clone.innerText || clone.textContent);
+}
+function firstDescriptionText(root, selectors) {
   for (const selector of selectors) {
-    const element = Array.from(
-      root.querySelectorAll(selector)
-    ).find(
-      (candidate) => predicate(candidate) && isVisible(candidate) && isEnabled(candidate)
+    const element = deepFirst(root, selector);
+    if (!element) continue;
+    const text = descriptionText(element);
+    if (text) return text;
+  }
+  return "";
+}
+function descriptionFromHeading(root) {
+  const heading = deepElements(root).find((element) => {
+    const text2 = cleanText(element.textContent);
+    if (text2.length > 80) return false;
+    return /^(?:about\s+the\s+job|job\s+description|job\s+details|职位描述|工作描述)$/i.test(text2);
+  });
+  if (!heading) return "";
+  const container = heading.closest(
+    "section, article, .jobs-description, .jobs-description__container, [data-test-id*='description' i], [data-testid*='description' i]"
+  ) || heading.parentElement;
+  if (!container) return "";
+  const text = descriptionText(container);
+  const headingText = cleanText(heading.textContent);
+  const body = cleanText(text.replace(headingText, ""));
+  return body.length >= 40 ? body : "";
+}
+function findVisible(root, selectors, predicate = () => true) {
+  const elements = deepElements(root);
+  for (const selector of selectors) {
+    const element = elements.find(
+      (candidate) => candidate.matches(selector) && predicate(candidate) && isVisible(candidate) && isEnabled(candidate)
     );
     if (element) return element;
   }
@@ -256,8 +311,39 @@ function locationFromPage() {
   const metadata = Array.from(root.querySelectorAll("p")).map((element) => cleanText(element.textContent)).find((text) => /\s*[·•]\s*/.test(text) && /\b(?:ago|applicants?)\b/i.test(text));
   return metadata?.split(/\s*[·•]\s*/)[0] || void 0;
 }
+function datePostedFromPage() {
+  const root = getJobDetailRoot();
+  const timeEl = root.querySelector("time[datetime]") || document.querySelector(
+    ".job-details-jobs-unified-top-card__primary-description-container time[datetime], .jobs-unified-top-card__primary-description time[datetime], main time[datetime]"
+  );
+  if (timeEl) {
+    const dt = timeEl.getAttribute("datetime");
+    if (dt) return cleanText(dt);
+    const text = cleanText(timeEl.textContent);
+    if (text) return text;
+  }
+  const primaryDesc = firstText(root, [
+    ".job-details-jobs-unified-top-card__primary-description-container",
+    ".jobs-unified-top-card__primary-description-container",
+    ".job-details-jobs-unified-top-card__bullet"
+  ]) || firstText(document, [
+    ".job-details-jobs-unified-top-card__primary-description-container",
+    ".jobs-unified-top-card__primary-description-container"
+  ]);
+  if (primaryDesc) {
+    const segments = primaryDesc.split(/\s*[·•]\s*/).map((s) => cleanText(s)).filter(Boolean);
+    for (const seg of segments) {
+      if (/\b(\d+\s*\+?\s*(?:minute|hour|day|week|month|year)s?\s+ago|today|yesterday|just\s+now|reposted)\b/i.test(seg)) {
+        return seg;
+      }
+    }
+  }
+  return void 0;
+}
 export class LinkedInAdapter {
   platformName = "linkedin";
+  applicationRootCache;
+  applicationActionCache = /* @__PURE__ */ new Map();
   jobIdFromUrl(url) {
     const match = url.match(/\/jobs\/view\/(\d+)/i);
     if (match?.[1]) return match[1];
@@ -279,27 +365,49 @@ export class LinkedInAdapter {
     const company = firstText(root, SELECTORS.company) || firstText(document, SELECTORS.company) || "Unknown company";
     const title = titleFromPage(externalId, company);
     if (!title) return null;
-    const description = firstText(root, SELECTORS.description) || firstText(document, SELECTORS.description);
+    const description = firstDescriptionText(root, SELECTORS.description) || firstDescriptionText(document, SELECTORS.description) || descriptionFromHeading(root) || descriptionFromHeading(document);
     return {
       externalId,
       title,
       company,
       location: locationFromPage(),
+      datePosted: datePostedFromPage(),
       description: description || void 0,
       easyApply: Boolean(this.findEasyApplyTrigger())
     };
   }
   getApplicationRoot() {
+    if (this.applicationRootCache && this.applicationRootCache.isConnected && isVisible(this.applicationRootCache)) {
+      return this.applicationRootCache;
+    }
+    this.applicationRootCache = void 0;
     const candidates = this.applicationRootCandidates();
     const activeRoot = candidates.find(
       (candidate) => this.isEasyApplyRoot(candidate) && this.isExplicitlyActiveModal(candidate)
     );
-    if (activeRoot) return activeRoot;
+    if (activeRoot) {
+      this.applicationRootCache = activeRoot;
+      return activeRoot;
+    }
     const modalRoot = candidates.find(
       (candidate) => this.isEasyApplyRoot(candidate) && isVisible(candidate) && isEnabled(candidate) && !this.hasHiddenModalAncestor(candidate)
     ) || null;
-    if (modalRoot) return modalRoot;
-    return this.findFullPageApplicationRoot();
+    if (modalRoot) {
+      this.applicationRootCache = modalRoot;
+      return modalRoot;
+    }
+    this.applicationRootCache = this.findApplicationRootFromHeading() || this.findFullPageApplicationRoot();
+    return this.applicationRootCache;
+  }
+  invalidateApplicationRootCache() {
+    this.applicationRootCache = void 0;
+    this.applicationActionCache.clear();
+  }
+  invalidateApplicationActionCache() {
+    this.applicationActionCache.clear();
+  }
+  getCachedApplicationRoot() {
+    return this.applicationRootCache;
   }
   hasEasyApplyAction() {
     return Boolean(this.findEasyApplyTrigger());
@@ -346,10 +454,18 @@ export class LinkedInAdapter {
     return trigger.href || void 0;
   }
   getCurrentApplicationAction(action) {
+    const cached = this.applicationActionCache.get(action);
+    if (cached && cached.isConnected && isVisible(cached) && isEnabled(cached)) {
+      return cached;
+    }
+    this.applicationActionCache.delete(action);
     const root = this.getApplicationRoot();
-    if (!root) return null;
+    if (!root) {
+      return null;
+    }
+    let result = null;
     if (action === "submit") {
-      return findVisible(root, SELECTORS.submitAction) || findVisible(
+      result = findVisible(root, SELECTORS.submitAction) || findVisible(
         root,
         [
           "button.artdeco-button--primary",
@@ -366,36 +482,49 @@ export class LinkedInAdapter {
           return /(?:submit|提交|应聘|申请)/i.test(label);
         }
       );
-    }
-    if (action === "previous") {
-      return findVisible(root, SELECTORS.previousAction) || findVisible(root, ["button", "footer button"], (candidate) => {
+    } else if (action === "previous") {
+      result = findVisible(root, SELECTORS.previousAction) || findVisible(root, ["button", "footer button"], (candidate) => {
         const label = cleanText(
           candidate.textContent || candidate.getAttribute("aria-label")
         );
         return /(?:back|previous|上一步|返回)/i.test(label);
-      });
-    }
-    const submitBtn = this.getCurrentApplicationAction("submit");
-    const nextButton = findVisible(root, SELECTORS.nextAction, (candidate) => {
-      if (candidate === submitBtn) return false;
-      const label = cleanText(
-        candidate.textContent || candidate.getAttribute("aria-label")
+      }) || findVisible(
+        document,
+        [
+          "button[aria-label*='Back to previous step']",
+          "button[aria-label*='Back']",
+          "button[aria-label*='Previous']"
+        ],
+        (candidate) => /(?:back|previous|上一步|返回)/i.test(
+          cleanText(candidate.textContent || candidate.getAttribute("aria-label"))
+        )
       );
-      if (/(?:submit|提交|应聘|申请)/i.test(label)) return false;
-      return true;
-    });
-    if (nextButton) return nextButton;
-    return findVisible(
-      root,
-      ["button", '[role="button"]'],
-      (candidate) => {
+    } else {
+      const submitBtn = this.getCurrentApplicationAction("submit");
+      result = findVisible(root, SELECTORS.nextAction, (candidate) => {
         if (candidate === submitBtn) return false;
         const label = cleanText(
           candidate.textContent || candidate.getAttribute("aria-label")
         );
-        return /(?:continue|next|review|继续|下一步|审核|检查)/i.test(label) && !/(?:submit|提交|应聘|申请)/i.test(label);
+        if (/(?:submit|提交|应聘|申请)/i.test(label)) return false;
+        return true;
+      });
+      if (!result) {
+        result = findVisible(
+          root,
+          ["button", '[role="button"]'],
+          (candidate) => {
+            if (candidate === submitBtn) return false;
+            const label = cleanText(
+              candidate.textContent || candidate.getAttribute("aria-label")
+            );
+            return /(?:continue|next|review|继续|下一步|审核|检查)/i.test(label) && !/(?:submit|提交|应聘|申请)/i.test(label);
+          }
+        );
       }
-    );
+    }
+    this.applicationActionCache.set(action, result);
+    return result;
   }
   getCurrentApplicationActionLabel() {
     const submit = this.getCurrentApplicationAction("submit");
@@ -456,14 +585,25 @@ export class LinkedInAdapter {
   async clickApplicationAction(action) {
     const currentUrl = window.location.href;
     const root = this.getApplicationRoot();
-    if (!root) {
+    const documentSubmit = action === "submit" ? findVisible(
+      document,
+      [
+        ...SELECTORS.submitAction,
+        "button[type='submit']"
+      ],
+      (candidate) => /(?:submit|提交|应聘|申请)/i.test(
+        cleanText(candidate.textContent || candidate.getAttribute("aria-label"))
+      )
+    ) : null;
+    if (!root && !documentSubmit) {
       return {
         status: "not_open",
         message: "Open the LinkedIn Easy Apply form first.",
         url: currentUrl
       };
     }
-    const button = this.getCurrentApplicationAction(action);
+    this.invalidateApplicationActionCache();
+    const button = this.getCurrentApplicationAction(action) || documentSubmit;
     if (!button) {
       return {
         status: "unavailable",
@@ -517,22 +657,19 @@ export class LinkedInAdapter {
     const className = typeof element.className === "string" ? element.className : "";
     if (/jobs-easy-apply-(?:modal|content|form)/i.test(className)) return true;
     const label = cleanText(
-      `${element.getAttribute("aria-label") || ""} ${element.querySelector('h1, h2, [role="heading"]')?.textContent || ""}`
+      `${element.getAttribute("aria-label") || ""} ${deepFirst(element, 'h1, h2, [role="heading"]')?.textContent || ""}`
     );
     if (/(?:easy\s*apply|简单申请|輕鬆應聘|轻松应聘|一键应聘|一键申请)/i.test(label)) {
       return true;
     }
-    const hasApplicationField = Boolean(
-      element.querySelector(APPLICATION_FIELD_SELECTOR)
-    );
+    const hasApplicationField = Boolean(deepFirst(element, APPLICATION_FIELD_SELECTOR));
     if (/(?:apply\s+to|申请(?:职位|工作)?|应聘)/i.test(label) && hasApplicationField) {
       return true;
     }
-    const hasApplicationAction = Boolean(
-      element.querySelector(
-        'form.jobs-easy-apply-form, [data-live-test-easy-apply-submit-button], [data-live-test-easy-apply-next-button], button[aria-label*="Continue"], button[aria-label*="Next"], button[aria-label*="Review"], button[aria-label*="Submit"]'
-      )
-    );
+    const hasApplicationAction = Boolean(deepFirst(
+      element,
+      'form.jobs-easy-apply-form, [data-live-test-easy-apply-submit-button], [data-live-test-easy-apply-next-button], button[aria-label*="Continue"], button[aria-label*="Next"], button[aria-label*="Review"], button[aria-label*="Submit"]'
+    ));
     const isModalLike = element.matches(
       '[role="dialog"], .artdeco-modal, [data-test-modal], [data-test-modal-container], .jobs-easy-apply-content, form.jobs-easy-apply-form'
     );
@@ -541,8 +678,9 @@ export class LinkedInAdapter {
   applicationRootCandidates() {
     const seen = /* @__PURE__ */ new Set();
     const candidates = [];
+    const elements = deepElements(document);
     for (const selector of APPLICATION_ROOT_SELECTOR) {
-      document.querySelectorAll(selector).forEach((candidate) => {
+      elements.filter((element) => element.matches(selector)).forEach((candidate) => {
         if (seen.has(candidate)) return;
         seen.add(candidate);
         candidates.push(candidate);
@@ -554,8 +692,9 @@ export class LinkedInAdapter {
     if (!this.isFullPageApplicationFlow()) return null;
     const seen = /* @__PURE__ */ new Set();
     const candidates = [];
+    const elements = deepElements(document);
     const addCandidates = (selector) => {
-      document.querySelectorAll(selector).forEach((candidate) => {
+      elements.filter((element) => element.matches(selector)).forEach((candidate) => {
         if (seen.has(candidate)) return;
         seen.add(candidate);
         candidates.push(candidate);
@@ -568,15 +707,29 @@ export class LinkedInAdapter {
       (candidate) => isVisible(candidate) && !this.hasHiddenModalAncestor(candidate) && (this.hasVisibleApplicationField(candidate) || this.hasApplicationAction(candidate))
     ) || null;
   }
+  findApplicationRootFromHeading() {
+    const heading = deepElements(document).find((element) => {
+      if (!isVisible(element)) return false;
+      const text = cleanText(element.textContent);
+      return /^apply\s+to\s+.+/i.test(text) || /^申请(?:职位|工作)?\s*.+/.test(text);
+    });
+    if (!heading) return null;
+    let candidate = heading;
+    for (let depth = 0; candidate && depth < 9; depth += 1) {
+      if (isVisible(candidate) && this.hasVisibleApplicationField(candidate) && this.hasApplicationAction(candidate)) {
+        return candidate;
+      }
+      const currentRoot = candidate.getRootNode();
+      const shadowHost = currentRoot instanceof ShadowRoot && currentRoot.host instanceof HTMLElement ? currentRoot.host : null;
+      candidate = candidate.parentElement || shadowHost;
+    }
+    return null;
+  }
   hasVisibleApplicationField(root) {
-    return Array.from(
-      root.querySelectorAll(APPLICATION_FIELD_SELECTOR)
-    ).some((field) => isVisible(field));
+    return deepQueryAll(root, APPLICATION_FIELD_SELECTOR).some((field) => isVisible(field));
   }
   hasApplicationAction(root) {
-    return Array.from(
-      root.querySelectorAll('button, [role="button"]')
-    ).some((button) => {
+    return deepQueryAll(root, 'button, [role="button"]').some((button) => {
       const label = cleanText(
         button.textContent || button.getAttribute("aria-label")
       );
