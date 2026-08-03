@@ -37,11 +37,11 @@ const textSizes = {
 };
 
 const colorStyles = {
-  primary: 'stroke-primary-500',
-  success: 'stroke-success-500',
-  warning: 'stroke-warning-500',
-  danger: 'stroke-danger-500',
-  info: 'stroke-blue-500',
+  primary: 'stroke-primary',
+  success: 'stroke-success',
+  warning: 'stroke-warning',
+  danger: 'stroke-danger',
+  info: 'stroke-blue',
   black: 'stroke-black',
   white: 'stroke-white',
 };
@@ -72,17 +72,12 @@ export const CircularProgress = React.memo<CircularProgressProps>(
   }) => {
     const percentage = Math.min(100, Math.max(0, (value / max) * 100));
     const radius =
-      size === 'xs'
-        ? 24
-        : size === 'sm'
-          ? 36
-          : size === 'md'
-            ? 48
-            : size === 'lg'
-              ? 64
-              : size === 'xl'
-                ? 80
-                : 96;
+      size === 'xs' ? 24
+      : size === 'sm' ? 36
+      : size === 'md' ? 48
+      : size === 'lg' ? 64
+      : size === 'xl' ? 80
+      : 96;
     const circumference = 2 * Math.PI * radius;
     const strokeDashoffset = circumference - (percentage / 100) * circumference;
     return (
@@ -110,8 +105,8 @@ export const CircularProgress = React.memo<CircularProgressProps>(
                     x2='100%'
                     y2='0%'
                   >
-                    <stop offset='0%' className='stop-color-primary-400' />
-                    <stop offset='100%' className='stop-color-primary-600' />
+                    <stop offset='0%' className='stop-color-primary' />
+                    <stop offset='100%' className='stop-color-secondary' />
                   </linearGradient>
                   <linearGradient
                     id='gradient-success'
@@ -166,9 +161,9 @@ export const CircularProgress = React.memo<CircularProgressProps>(
             />
             <motion.circle
               className={cn(
-                variant === 'solid'
-                  ? colorStyles[color]
-                  : gradientStyles[color],
+                variant === 'solid' ?
+                  colorStyles[color]
+                : gradientStyles[color],
               )}
               initial={{ strokeDashoffset: circumference }}
               whileInView={{
@@ -204,7 +199,7 @@ export const CircularProgress = React.memo<CircularProgressProps>(
               animate={{ opacity: 1 }}
               transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
             >
-              {Math.round(percentage)}%
+              {Math.round(percentage)}
             </motion.span>
           )}
         </React.Fragment>

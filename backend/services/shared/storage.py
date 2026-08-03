@@ -22,6 +22,9 @@ class ObjectStorage:
     def delete(self, key: str) -> None:
         raise NotImplementedError
 
+    def download(self, key: str) -> bytes:
+        raise NotImplementedError
+
 
 class S3ObjectStorage(ObjectStorage):
     """Works with MinIO, AWS S3, Cloudflare R2, and other S3-compatible hosts."""
@@ -59,6 +62,16 @@ class S3ObjectStorage(ObjectStorage):
         except Exception as exc:
             raise StorageError("Could not delete file from object storage") from exc
 
+    def download(self, key: str) -> bytes:
+        try:
+            response = self.client.get_object(
+                Bucket=self.settings.storage_bucket,
+                Key=key,
+            )
+            return response["Body"].read()
+        except Exception as exc:
+            raise StorageError("Could not download file from object storage") from exc
+
     def public_url(self, key: str) -> str:
         base_url = (self.settings.storage_public_base_url or self.settings.storage_s3_endpoint or "").rstrip("/")
         return f"{base_url}/{self.settings.storage_bucket}/{quote(key)}"
@@ -75,7 +88,7 @@ class SupabaseObjectStorage(ObjectStorage):
         self.settings = settings
         self.base_url = settings.supabase_url.rstrip("/")
         self.headers = {
-            "Contributorization": f"Bearer {settings.supabase_service_role_key}",
+            "Authorization": f"Bearer {settings.supabase_service_role_key}",
             "apikey": settings.supabase_service_role_key,
         }
 
@@ -102,6 +115,15 @@ class SupabaseObjectStorage(ObjectStorage):
             response.raise_for_status()
         except httpx.HTTPError as exc:
             raise StorageError("Could not delete file from Supabase Storage") from exc
+
+    def download(self, key: str) -> bytes:
+        url = f"{self.base_url}/storage/v1/object/{self.settings.storage_bucket}/{quote(key)}"
+        try:
+            response = httpx.get(url, headers=self.headers, timeout=30)
+            response.raise_for_status()
+            return response.content
+        except httpx.HTTPError as exc:
+            raise StorageError("Could not download file from Supabase Storage") from exc
 
     def public_url(self, key: str) -> str:
         return f"{self.base_url}/storage/v1/object/public/{self.settings.storage_bucket}/{quote(key)}"

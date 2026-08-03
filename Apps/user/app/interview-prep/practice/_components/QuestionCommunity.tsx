@@ -21,6 +21,7 @@ import type { QuestionComment } from '@/lib/types';
 import { Tooltip } from '@/components/UI/tooltip/index';
 import { showGlobalToast } from '@/lib/toast';
 import { Button } from '@/components/UI/Button';
+import { Textarea } from '@/components/UI/textarea';
 import { EmptyState } from '@/components/UI/EmptyState';
 import { cn } from '@/lib/utils';
 import { useRelativeTime } from '@/lib/use-relative-time';
@@ -491,7 +492,7 @@ export function QuestionCommunity({ questionId }: { questionId: string }) {
             src={user?.avatar_url || undefined}
             size='sm'
           />
-          <textarea
+          <Textarea
             ref={mainInputRef}
             value={draft}
             onFocus={() => setIsComposing(true)}
@@ -499,7 +500,9 @@ export function QuestionCommunity({ questionId }: { questionId: string }) {
             onKeyDown={submitOnEnter}
             placeholder='Add a comment...'
             rows={isComposing ? 3 : 1}
-            className='min-h-6 flex-1 resize-none w-full bg-transparent text-sm text-ink-primary outline-none placeholder:text-ink-secondary/70/70'
+            minHeight={isComposing ? 72 : 36}
+            showClearButton={false}
+            className='min-h-6 flex-1 border-0 bg-transparent text-sm text-ink-primary outline-none placeholder:text-ink-secondary/70/70 p-0 shadow-none'
           />
 
           <div className='row justify-end w-full'>
@@ -765,14 +768,15 @@ function Comment({
                 src={currentUserAvatar || undefined}
                 size='sm'
               />
-              <textarea
+              <Textarea
                 ref={replyInputRef}
                 value={reply}
                 onChange={(event) => setReply(event.target.value)}
                 onKeyDown={onEnter}
                 rows={2}
-                className='min-w-0 flex-1 resize-none bg-transparent py-1 text-xs text-ink-primary outline-none placeholder:text-ink-secondary/70/70'
+                minHeight={48}
                 placeholder={`Reply to ${comment.author_name}...`}
+                className='min-w-0 flex-1 border-0 bg-transparent py-1 text-xs text-ink-primary outline-none placeholder:text-ink-secondary/70/70 p-0 shadow-none'
               />
               <div className='flex flex-col justify-between'>
                 <button
@@ -925,13 +929,14 @@ function ReplyItem({
               src={currentUserAvatar || undefined}
               size='sm'
             />
-            <textarea
+            <Textarea
               value={reply}
               onChange={(event) => setReply(event.target.value)}
               onKeyDown={onEnter}
               rows={2}
-              className='min-w-0 flex-1 resize-none bg-transparent text-xs outline-none'
+              minHeight={48}
               placeholder={`Reply to ${replyItem.author_name}...`}
+              className='min-w-0 flex-1 border-0 bg-transparent text-xs outline-none p-0 shadow-none'
             />
             <Button
               size='sm'

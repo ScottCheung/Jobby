@@ -21,6 +21,8 @@ import type {
   DesktopConnectionConfigResult,
   DesktopRuntimeInfo,
   DesktopServiceStatus,
+  ApplicationSettings,
+  ApplicationPlanResponse,
   JobApplication,
   QuestionCacheEntry,
   RuntimeSettings,
@@ -84,6 +86,7 @@ export const emptyProfile: UserProfile = {
   first_name: '',
   middle_name: '',
   last_name: '',
+  email: '',
   phone_number: '',
   current_city: '',
   street: '',
@@ -183,6 +186,38 @@ export const emptyRuntime: RuntimeSettings = {
   settings: {},
 };
 
+export const emptyApplicationSettings: ApplicationSettings = {
+  automation: {
+    execution_mode: 'human_confirmed',
+    review_channel: 'browser',
+    max_jobs_per_run: 30,
+    max_retries: 2,
+    require_submit_confirmation: true,
+    stop_on_unknown_question: true,
+  },
+  ai: {
+    enabled: false,
+    provider: '',
+    model: '',
+    min_confidence: 0.7,
+    max_calls_per_job: 3,
+    daily_budget: 0,
+    allow_tailored_resume: true,
+  },
+  resume: {
+    master_resume_id: null,
+    tailored_match_threshold: 0.8,
+    require_tailored_review: true,
+  },
+  policy: {
+    minimum_match_threshold: 0.55,
+    only_easy_apply: false,
+    blacklisted_companies: [],
+    blacklisted_job_terms: [],
+    whitelisted_companies: [],
+  },
+};
+
 function getLinkAsyncWarning(application: JobApplication) {
   if (application.status === 'skipped') {
     return `Warning: Link async resulted in 'skipped'. Reason: ${application.skip_reason ?? 'unknown'}`;
@@ -222,6 +257,8 @@ interface ConsoleContextType {
   setJobHuntingProfiles: React.Dispatch<React.SetStateAction<JobHuntingProfile[]>>;
   runtimeSettings: RuntimeSettings;
   setRuntimeSettings: React.Dispatch<React.SetStateAction<RuntimeSettings>>;
+  applicationSettings: ApplicationSettings;
+  setApplicationSettings: React.Dispatch<React.SetStateAction<ApplicationSettings>>;
   questions: QuestionCacheEntry[];
   setQuestions: React.Dispatch<React.SetStateAction<QuestionCacheEntry[]>>;
   applications: JobApplication[];
@@ -248,18 +285,24 @@ interface ConsoleContextType {
   loadData: () => void;
   saveAvatar: (file: File) => Promise<void>;
   removeAvatar: () => Promise<void>;
-  saveProfile: () => Promise<void>;
+  saveProfile: (updatedProfile?: UserProfile) => Promise<void>;
   saveJobHuntingProfile: (value?: JobHuntingProfile) => Promise<void>;
   createJobHuntingProfile: (value: JobHuntingProfile) => Promise<JobHuntingProfile>;
   activateJobHuntingProfile: (profileId: string) => Promise<void>;
   deleteJobHuntingProfile: (profileId: string) => Promise<void>;
   saveRuntime: (value?: RuntimeSettings) => Promise<void>;
+  saveApplicationSettings: (value?: ApplicationSettings) => Promise<void>;
   saveQuestion: (entry: QuestionCacheEntry, answer: string) => Promise<void>;
   deleteQuestion: (entryId: string) => Promise<void>;
   saveApplicationPatch: (
     applicationId: string,
     payload: Partial<JobApplication>,
   ) => Promise<void>;
+  applicationPlanAction: (
+    applicationId: string,
+    action: string,
+    reason?: string,
+  ) => Promise<ApplicationPlanResponse>;
   asyncApplication: (applicationId: string) => Promise<void>;
   batchAsyncApplications: () => Promise<void>;
   deleteApplication: (applicationId: string) => Promise<void>;
@@ -306,7 +349,10 @@ interface ConsoleContextType {
   ) => Promise<DesktopConnectionConfigResult>;
   resetDesktopConnectionConfig: () => Promise<DesktopConnectionConfigResult>;
   botStates: Record<DesktopBotPlatform, DesktopBotState>;
-  startBot: (platform: DesktopBotPlatform) => Promise<void>;
+  startBot: (
+    platform: DesktopBotPlatform,
+    options?: { diagnostic?: boolean },
+  ) => Promise<void>;
   stopBot: (platform: DesktopBotPlatform) => Promise<void>;
 }
 
@@ -340,6 +386,8 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
   const [jobHuntingProfiles, setJobHuntingProfiles] = useState<JobHuntingProfile[]>([]);
   const [runtimeSettings, setRuntimeSettings] =
     useState<RuntimeSettings>(emptyRuntime);
+  const [applicationSettings, setApplicationSettings] =
+    useState<ApplicationSettings>(emptyApplicationSettings);
   const [questions, setQuestions] = useState<QuestionCacheEntry[]>([]);
   const [applications, setApplications] = useState<JobApplication[]>([]);
   const [syncingApplicationId, setSyncingApplicationId] = useState('');
@@ -362,11 +410,38 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
     third_party: createIdleBotState(),
   });
 
-  const startBot = async (platform: DesktopBotPlatform) => {
+  const startBot = async (
+    platform: DesktopBotPlatform,
+    options: { diagnostic?: boolean } = {},
+  ) => {
     if (isDesktopRuntime() && window.autoJobDesktop?.startBot) {
       setError('');
+
+      const searchTerms = jobHuntingProfile.search_terms || [];
+      if (!searchTerms.length || !searchTerms.some((t) => t.trim().length > 0)) {
+        const msg =
+          'Please add at least one Search Term in Settings > Job Search Profiles before starting auto apply.';
+        setError(msg);
+        notify(msg);
+        return;
+      }
+
+      if (
+        !options.diagnostic &&
+        !profile.first_name?.trim() &&
+        !profile.last_name?.trim()
+      ) {
+        const msg =
+          'Please enter your First Name and Last Name in Settings > Profile before starting auto apply.';
+        setError(msg);
+        notify(msg);
+        return;
+      }
+
       notify(
-        platform === 'third_party' ?
+        options.diagnostic ?
+          `Starting ${platform.replace('_', ' ')} diagnostic run...`
+        : platform === 'third_party' ?
           'Opening assisted apply mode...'
         : `Starting ${platform.replace('_', ' ')}...`,
       );
@@ -414,7 +489,11 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
         return { ok: true };
       };
 
-      let res = await window.autoJobDesktop.startBot(platform);
+      let res = await window.autoJobDesktop.startBot(
+        platform,
+        user?.email || profile?.email || undefined,
+        options,
+      );
       const needsManagedSession =
         platform === 'linkedin' &&
         (res.code === 'login_browser_required' ||
@@ -427,7 +506,11 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        res = await window.autoJobDesktop.startBot(platform);
+        res = await window.autoJobDesktop.startBot(
+          platform,
+          user?.email || profile?.email || undefined,
+          options,
+        );
       }
 
       if (!res.ok) {
@@ -486,6 +569,7 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
         questionRows,
         applicationRows,
         runtimeConfig,
+        applicationSettingsConfig,
         statsData,
       ] = await Promise.all([
         jobHuntingProfilesPromise,
@@ -493,6 +577,7 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
         api.questionCache(),
         api.applications(),
         api.runtimeSettings(),
+        api.applicationSettings(),
         api.applicationStats(Intl.DateTimeFormat().resolvedOptions().timeZone).catch(() => null),
       ]);
       const resolvedJobHuntingProfiles =
@@ -508,6 +593,7 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
       setJobHuntingProfiles(resolvedJobHuntingProfiles);
       setJobHuntingProfile(resolvedDefaultSearch);
       setRuntimeSettings(runtimeConfig ?? emptyRuntime);
+      setApplicationSettings(applicationSettingsConfig ?? emptyApplicationSettings);
       setQuestions(questionRows);
       setApplications(sortApplications(applicationRows));
       if (statsData) {
@@ -663,8 +749,8 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
         try { window.dispatchEvent(new CustomEvent('jobby:notification-event', { detail: JSON.parse(event.data) })); }
         catch { /* Ignore malformed optional realtime events. */ }
       });
-      connection.addEventListener('master_resume.processed', (event) => {
-        try { window.dispatchEvent(new CustomEvent('jobby:master-resume-event', { detail: JSON.parse(event.data) })); }
+      connection.addEventListener('career_profile.processed', (event) => {
+        try { window.dispatchEvent(new CustomEvent('jobby:career-profile-event', { detail: JSON.parse(event.data) })); }
         catch { /* Ignore malformed optional realtime events. */ }
       });
 
@@ -884,10 +970,11 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
     return result;
   };
 
-  const saveProfile = async () => {
+  const saveProfile = async (updatedProfile?: UserProfile) => {
     try {
       setError('');
-      const savedProfile = await api.updateProfile(profile);
+      const target = updatedProfile ?? profile;
+      const savedProfile = await api.updateProfile(target);
       setProfile(savedProfile);
       if (savedProfile.preferred_name?.trim()) {
         setUser({
@@ -898,6 +985,7 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
       notify('Profile saved');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save profile');
+      throw err;
     }
   };
 
@@ -1050,6 +1138,20 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const saveApplicationSettings = async (value?: ApplicationSettings) => {
+    try {
+      setError('');
+      setApplicationSettings(
+        await api.updateApplicationSettings(value ?? applicationSettings),
+      );
+      notify('Application settings saved');
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : 'Failed to save application settings',
+      );
+    }
+  };
+
   const saveQuestion = async (entry: QuestionCacheEntry, answer: string) => {
     const updated = await api.updateQuestionCache({ ...entry, answer });
     setQuestions((current) =>
@@ -1076,6 +1178,26 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
     );
     notify('Application updated');
     void loadAppStats();
+  };
+
+  const applicationPlanAction = async (
+    applicationId: string,
+    action: string,
+    reason?: string,
+  ): Promise<ApplicationPlanResponse> => {
+    const response = await api.applicationPlanAction(applicationId, action, reason);
+    const nextState = response.plan.state;
+    const nextStatus = nextState === 'submitted' ? 'submitted' :
+      nextState === 'skipped' || nextState === 'rejected' ? 'skipped' :
+      nextState === 'awaiting_user_review' ? 'interrupted' : undefined;
+    setApplications((current) => sortApplications(current.map((item) => item.id !== applicationId ? item : {
+      ...item,
+      ...(nextStatus ? { status: nextStatus } : {}),
+      skip_reason: response.plan.review_reason ?? item.skip_reason,
+      raw_data: { ...(item.raw_data || {}), application_plan: response.plan },
+    })));
+    notify(action === 'reject' ? 'Application plan rejected' : 'Application plan updated');
+    return response;
   };
 
   const asyncApplication = async (applicationId: string) => {
@@ -1178,6 +1300,13 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
           ...prev,
           [platform]: state,
         }));
+
+        if (state.status === 'failed' && state.message) {
+          const formattedPlatform = platform === 'third_party' ? 'Assisted Apply' : platform.toUpperCase();
+          const errorMsg = `${formattedPlatform} error: ${state.message}`;
+          setError(errorMsg);
+          showGlobalToast(errorMsg);
+        }
       });
     }
 
@@ -1452,6 +1581,8 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
     setJobHuntingProfiles,
     runtimeSettings,
     setRuntimeSettings,
+    applicationSettings,
+    setApplicationSettings,
     questions,
     setQuestions,
     applications,
@@ -1479,9 +1610,11 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
     activateJobHuntingProfile,
     deleteJobHuntingProfile,
     saveRuntime,
+    saveApplicationSettings,
     saveQuestion,
     deleteQuestion,
     saveApplicationPatch,
+    applicationPlanAction,
     asyncApplication,
     batchAsyncApplications,
     deleteApplication,

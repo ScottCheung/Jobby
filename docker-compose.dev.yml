@@ -1,0 +1,53 @@
+# @format
+
+services:
+  api:
+    env_file:
+      - path: ./Apps/user/.env.local
+        required: false
+    environment:
+      WATCHFILES_FORCE_POLLING: 'true'
+    command: >-
+      sh -c "python -m alembic upgrade head &&
+      uvicorn services.api.main:app
+      --host 0.0.0.0
+      --port 8000
+      --reload
+      --reload-dir /app/services
+      --timeout-graceful-shutdown 3"
+    volumes:
+      - ./backend/services:/app/services
+      - ./backend/migrations:/app/migrations
+      - ./backend/alembic.ini:/app/alembic.ini:ro
+      - ./backend/scripts:/app/scripts
+      - ./worker/linkedinBot/services/job_text_parser.py:/app/linkedinBot/services/job_text_parser.py:ro
+      - ./worker/application_core:/app/application_core:ro
+
+  # user:
+  #   build:
+  #     context: ./Apps/user
+  #     dockerfile: Dockerfile
+  #     target: development
+  #   container_name: auto-job-user
+  #   restart: unless-stopped
+  #   environment:
+  #     NODE_ENV: development
+  #     NEXT_TELEMETRY_DISABLED: "1"
+  #     NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000}
+  #     API_INTERNAL_BASE_URL: http://api:8000
+  #     NODE_OPTIONS: --max-old-space-size=1536
+  #     WATCHPACK_POLLING: "true"
+  #   command: npm run dev -- --hostname 0.0.0.0
+  #   ports:
+  #     - '${USER_APP_PORT:-3000}:3000'
+  #   volumes:
+  #     - ./Apps/user:/app
+  #     - user_node_modules:/app/node_modules
+  #     - user_next_cache:/app/.next
+  #   depends_on:
+  #     api:
+  #       condition: service_healthy
+
+volumes:
+  user_node_modules:
+  user_next_cache:

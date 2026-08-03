@@ -24,6 +24,7 @@ import { Button } from '@/components/UI/Button';
 import { Modal } from '@/components/layout/modal';
 import { useLayoutStore } from '@/lib/store/layout-store';
 import { QuestionsFilterDrawer } from './QuestionsFilterDrawer';
+import { EmptyPlaceHolder } from '@/components/UI/EmptyPlaceHolder';
 
 interface AddQuestionsToCollectionModalProps {
   isOpen: boolean;
@@ -415,16 +416,12 @@ export function AddQuestionsToCollectionModal({
       {/* Candidate Questions List */}
       <div className='flex-1 overflow-y-auto p-6 flex flex-col gap-2 min-h-[250px] max-h-[48vh]'>
         {filteredCandidates.length === 0 ?
-          <div className='flex flex-col items-center justify-center py-12 text-center text-ink-secondary'>
-            <Search className='w-10 h-10 mb-3 opacity-30' />
-            <p className='body-md font-semibold text-ink-primary mb-1'>
-              No candidate questions found
-            </p>
-            <p className='body-xs text-ink-secondary max-w-xs'>
-              Try adjusting your search criteria or clearing filters to find
-              questions.
-            </p>
-          </div>
+          <EmptyPlaceHolder
+            icon={Search}
+            title='No candidate questions found'
+            description='Try adjusting your search criteria or clearing filters to find questions.'
+            className='border-0 bg-transparent py-8'
+          />
         : filteredCandidates.map((q) => {
             const isChecked = selectedIds.includes(q.id);
             const categoryName =

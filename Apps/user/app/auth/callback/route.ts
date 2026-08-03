@@ -5,7 +5,10 @@ export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
   // if "next" is in param, use it as the redirect URL
-  const next = searchParams.get('next') ?? '/interview-prep'
+  const requestedNext = searchParams.get('next')
+  const next = requestedNext && requestedNext.startsWith('/') && !requestedNext.startsWith('//')
+    ? requestedNext
+    : '/interview-prep'
 
   if (code) {
     const supabase = await createClient()

@@ -4,6 +4,7 @@
 
 import React from 'react';
 import { cn } from '@/lib/utils';
+import { Textarea } from '@/components/UI/textarea';
 
 export function toInputDateTime(value?: string | null) {
   if (!value) return '';
@@ -137,20 +138,14 @@ export function FormTextarea({
   disabled = false,
 }: FormTextareaProps) {
   return (
-    <div className='flex flex-col gap-1.5 w-full'>
-      {label && (
-        <label className='text-[10px] font-bold text-ink-secondary uppercase tracking-wider'>
-          {label}
-        </label>
-      )}
-      <textarea
-        value={value ?? ''}
-        rows={rows}
-        placeholder={placeholder}
-        disabled={disabled}
-        onChange={(e) => onChange(e.target.value)}
-        className='body-md px-3 py-2 rounded-xl bg-glass text-ink-primary focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all placeholder-ink-secondary resize-y w-full'
-      />
-    </div>
+    <Textarea
+      label={label}
+      value={value ?? ''}
+      rows={rows}
+      placeholder={placeholder}
+      disabled={disabled}
+      onChange={(e) => onChange(e.target.value)}
+      minHeight={rows ? rows * 24 : 96}
+    />
   );
 }

@@ -1,9 +1,13 @@
+/** @format */
+
 'use client';
 
-import { useState, type DragEvent } from 'react';
+import { useState, useRef, useEffect, type DragEvent } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { GripVertical, Plus, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/UI/input';
+import { Button } from './Button';
 
 type TagInputProps = {
   values: string[];
@@ -14,92 +18,255 @@ type TagInputProps = {
   maxTags?: number;
 };
 
+type TagItemWrapper = {
+  id: string;
+  val: string;
+};
+
 function normalizeValues(values: string[]) {
   return values.reduce<string[]>((result, raw) => {
     const value = raw.trim();
-    if (value && !result.some((item) => item.toLowerCase() === value.toLowerCase())) result.push(value);
+    if (
+      value &&
+      !result.some((item) => item.toLowerCase() === value.toLowerCase())
+    )
+      result.push(value);
     return result;
   }, []);
 }
 
-export function TagInput({ values, onChange, placeholder = 'Add a tag', className, disabled = false, maxTags }: TagInputProps) {
+function computeNewOrder<T>(
+  list: T[],
+  fromIndex: number,
+  toIndex: number,
+  position: 'before' | 'after',
+): T[] {
+  const result = [...list];
+  const [item] = result.splice(fromIndex, 1);
+
+  let insertAt = toIndex;
+  if (fromIndex < toIndex) {
+    insertAt = position === 'after' ? toIndex : toIndex - 1;
+  } else {
+    insertAt = position === 'after' ? toIndex + 1 : toIndex;
+  }
+
+  insertAt = Math.max(0, Math.min(result.length, insertAt));
+  result.splice(insertAt, 0, item);
+  return result;
+}
+
+export function TagInput({
+  values,
+  onChange,
+  placeholder = 'Add a tag',
+  className,
+  disabled = false,
+  maxTags,
+}: TagInputProps) {
   const [draft, setDraft] = useState('');
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [dropPosition, setDropPosition] = useState<'before' | 'after'>('before');
   const canAdd = !disabled && (!maxTags || values.length < maxTags);
+
+  const [items, setItems] = useState<TagItemWrapper[]>(() =>
+    values.map((val) => ({
+      id: `tag-${Math.random().toString(36).substring(2, 9)}`,
+      val,
+    })),
+  );
+
+  const isDraggingRef = useRef(false);
+
+  useEffect(() => {
+    if (isDraggingRef.current) return;
+
+    const currentVals = items.map((i) => i.val);
+    if (
+      values.length !== currentVals.length ||
+      values.some((v, i) => v !== currentVals[i])
+    ) {
+      setItems(
+        values.map((val, idx) => ({
+          id:
+            items[idx]?.id ||
+            `tag-${Math.random().toString(36).substring(2, 9)}`,
+          val,
+        })),
+      );
+    }
+  }, [values]);
 
   const addTags = () => {
     if (!canAdd) return;
-    const additions = draft.split(',').map((value) => value.trim()).filter(Boolean);
+    const additions = draft
+      .split(',')
+      .map((value) => value.trim())
+      .filter(Boolean);
     if (!additions.length) return;
-    onChange(normalizeValues([...values, ...additions]).slice(0, maxTags));
+    const normalized = normalizeValues([...values, ...additions]).slice(
+      0,
+      maxTags,
+    );
+    const newItems = normalized.map(
+      (val) =>
+        items.find((i) => i.val === val) || {
+          id: `tag-${Math.random().toString(36).substring(2, 9)}`,
+          val,
+        },
+    );
+    setItems(newItems);
+    onChange(normalized);
     setDraft('');
   };
 
-  const reorderTag = (fromIndex: number, toIndex: number) => {
-    if (disabled || fromIndex === toIndex) return;
-    const nextValues = [...values];
-    const [movedValue] = nextValues.splice(fromIndex, 1);
-    nextValues.splice(toIndex, 0, movedValue);
-    onChange(nextValues);
-  };
-
-  const handleDragStart = (event: DragEvent<HTMLSpanElement>, index: number) => {
+  const handleDragStart = (e: DragEvent<HTMLSpanElement>, index: number) => {
     if (disabled) return;
+    isDraggingRef.current = true;
     setDraggedIndex(index);
-    event.dataTransfer.effectAllowed = 'move';
-    event.dataTransfer.setData('text/plain', values[index]);
+    setDragOverIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', String(index));
   };
 
-  const handleDrop = (event: DragEvent<HTMLSpanElement>, index: number) => {
-    event.preventDefault();
-    if (draggedIndex !== null) reorderTag(draggedIndex, index);
-    setDraggedIndex(null);
-    setDragOverIndex(null);
+  const handleDragOver = (e: DragEvent<HTMLSpanElement>, index: number) => {
+    if (disabled || draggedIndex === null) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const isAfter = e.clientX > rect.left + rect.width / 2;
+    const pos = isAfter ? 'after' : 'before';
+
+    if (dragOverIndex !== index || dropPosition !== pos) {
+      setDragOverIndex(index);
+      setDropPosition(pos);
+    }
   };
 
   const resetDragState = () => {
     setDraggedIndex(null);
     setDragOverIndex(null);
+    setDropPosition('before');
+    setTimeout(() => {
+      isDraggingRef.current = false;
+    }, 100);
+  };
+
+  const handleDrop = (e: DragEvent<HTMLSpanElement>) => {
+    e.preventDefault();
+    if (draggedIndex !== null && dragOverIndex !== null) {
+      const nextItems = computeNewOrder(
+        items,
+        draggedIndex,
+        dragOverIndex,
+        dropPosition,
+      );
+      setItems(nextItems);
+      onChange(nextItems.map((item) => item.val));
+    }
+    resetDragState();
+  };
+
+  const handleRemove = (index: number) => {
+    const next = items.filter((_, i) => i !== index);
+    setItems(next);
+    onChange(next.map((i) => i.val));
   };
 
   return (
-    <div className={cn('border border-border bg-background-secondary p-2', className)}>
-      {values.length > 0 && <div className='mb-2 flex flex-wrap gap-1.5'>
-        {values.map((value, index) => <span
-          key={value}
-          draggable={!disabled}
-          onDragStart={(event) => handleDragStart(event, index)}
-          onDragEnter={() => !disabled && setDragOverIndex(index)}
-          onDragOver={(event) => {
-            if (!disabled) {
+    <div
+      className={cn(
+        'border border-border bg-background-secondary p-4 rounded-lg',
+        className,
+      )}
+    >
+      {items.length > 0 && (
+        <div className='mb-3 flex flex-wrap gap-1.5 items-center'>
+          <AnimatePresence>
+            {items.map((item, index) => {
+              const isDragged = draggedIndex === index;
+              const isTarget = dragOverIndex === index && !isDragged;
+
+              return (
+                <motion.span
+                  key={item.id}
+                  layout
+                  transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                  draggable={!disabled}
+                  onDragStart={(e) => handleDragStart(e as unknown as DragEvent<HTMLSpanElement>, index)}
+                  onDragOver={(e) => handleDragOver(e as unknown as DragEvent<HTMLSpanElement>, index)}
+                  onDrop={handleDrop}
+                  onDragEnd={resetDragState}
+                  style={{ transition: 'none' }}
+                  className={cn(
+                    'inline-flex max-w-full items-center gap-1.5 rounded-md px-2 py-1 text-sm text-ink-primary relative select-none border border-border/60 bg-panel transition-all',
+                    !disabled &&
+                      'cursor-grab active:cursor-grabbing hover:border-border',
+                    isDragged && 'opacity-40 scale-95 border-dashed border-primary/50',
+                    isTarget &&
+                      dropPosition === 'before' &&
+                      'border-l-4 border-l-primary shadow-sm',
+                    isTarget &&
+                      dropPosition === 'after' &&
+                      'border-r-4 border-r-primary shadow-sm',
+                  )}
+                >
+                  <GripVertical
+                    className='size-3.5 shrink-0 opacity-70 touch-none'
+                    aria-hidden='true'
+                  />
+                  <span className='truncate'>{item.val}</span>
+                  <button
+                    type='button'
+                    title={`Remove ${item.val}`}
+                    aria-label={`Remove ${item.val}`}
+                    disabled={disabled}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onClick={() => handleRemove(index)}
+                    className='shrink-0 opacity-70 hover:opacity-100 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer'
+                  >
+                    <X className='size-3.5' />
+                  </button>
+                </motion.span>
+              );
+            })}
+          </AnimatePresence>
+        </div>
+      )}
+      <div className='flex relative items-center gap-2'>
+        <Input
+          value={draft}
+          disabled={!canAdd}
+          placeholder={
+            maxTags && values.length >= maxTags ?
+              `Maximum ${maxTags} tags`
+            : placeholder
+          }
+          onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ',') {
               event.preventDefault();
-              event.dataTransfer.dropEffect = 'move';
+              addTags();
             }
           }}
-          onDrop={(event) => handleDrop(event, index)}
-          onDragEnd={resetDragState}
+        />
+        <Button
+          variant='icon'
+          type='button'
+          title='Add tag'
+          Icon={Plus}
+          aria-label='Add tag'
+          disabled={!canAdd || !draft.trim()}
+          onClick={addTags}
           className={cn(
-            'inline-flex max-w-full items-center gap-1 rounded-md bg-panel px-2 py-1 text-sm text-ink-primary transition',
-            !disabled && 'cursor-grab active:cursor-grabbing',
-            draggedIndex === index && 'opacity-50',
-            dragOverIndex === index && draggedIndex !== index && 'ring-1 ring-primary',
+            'absolute right-1.5',
+            !(!canAdd || !draft.trim()) &&
+              'bg-primary-gradient text-primary-foreground',
           )}
-        >
-          <GripVertical className='size-3.5 shrink-0 text-ink-secondary' aria-hidden='true' />
-          <span className='truncate'>{value}</span>
-          <button type='button' title={`Remove ${value}`} aria-label={`Remove ${value}`} disabled={disabled} onClick={() => onChange(values.filter((item) => item !== value))} className='shrink-0 text-ink-secondary hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-50'>
-            <X className='size-3.5' />
-          </button>
-        </span>)}
-      </div>}
-      <div className='flex items-center gap-2'>
-        <Input value={draft} disabled={!canAdd} placeholder={maxTags && values.length >= maxTags ? `Maximum ${maxTags} tags` : placeholder} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => {
-          if (event.key === 'Enter' || event.key === ',') { event.preventDefault(); addTags(); }
-        }} />
-        <button type='button' title='Add tag' aria-label='Add tag' disabled={!canAdd || !draft.trim()} onClick={addTags} className='flex size-9 shrink-0 items-center justify-center border border-border text-ink-secondary hover:bg-panel hover:text-primary disabled:cursor-not-allowed disabled:opacity-50'>
-          <Plus className='size-4' />
-        </button>
+        ></Button>
       </div>
     </div>
   );

@@ -5,12 +5,11 @@ export type User = {
   email: string;
   display_name: string;
   avatar_url?: string | null;
-  community_badge?: 'Admin' | 'Contributor' | 'VIP' | null;
+  community_badge?: "Admin" | "Contributor" | "VIP" | null;
   role: string;
   status: string;
   can_use_auto_apply: boolean;
 };
-
 export type UserProfile = {
   id?: string;
   user_id?: string;
@@ -18,6 +17,7 @@ export type UserProfile = {
   first_name?: string | null;
   middle_name?: string | null;
   last_name?: string | null;
+  email?: string | null;
   phone_number?: string | null;
   current_city?: string | null;
   street?: string | null;
@@ -119,15 +119,65 @@ export type MasterResumeData = {
   other?: ResumeOtherItem[];
 };
 
+export type MasterResumeEvaluationDimension = {
+  type:
+    | "factual_completeness"
+    | "experience_quality"
+    | "skill_evidence"
+    | "information_density";
+  score: number;
+  overview: string;
+  suggestions: string[];
+};
+
+export type MasterResumeEvaluation = {
+  rubric_version: string;
+  overall_score: number;
+  evaluation: MasterResumeEvaluationDimension[];
+  source_hash: string;
+  coins_spent: number;
+  resume_version?: number;
+  published_version?: number | null;
+  target?: "draft" | "published";
+};
+
+export type MasterResumeEvaluationHistoryItem = {
+  id: string;
+  resume_version: number;
+  published_version?: number | null;
+  evaluation: MasterResumeEvaluation;
+  resume_data?: MasterResumeData | null;
+  created_at: string;
+};
+
 export type MasterResume = {
   id: string;
   original_filename: string;
   original_url: string;
   resume_data: MasterResumeData;
-  status: 'processing' | 'review' | 'confirmed' | 'failed';
+  content_version: number;
+  published_version: number;
+  draft_base_version: number;
+  has_draft_changes: boolean;
+  evaluation_is_current: boolean;
+  published_evaluation?: MasterResumeEvaluation | null;
+  published_at?: string | null;
+  evaluation?: MasterResumeEvaluation | null;
+  evaluation_updated_at?: string | null;
+  status: "processing" | "review" | "draft" | "confirmed" | "failed";
   confirmed_at: string | null;
   created_at: string;
   updated_at: string;
+};
+
+export type MasterResumeVersion = {
+  id: string;
+  version: number;
+  resume_data: MasterResumeData;
+  original_filename: string;
+  original_url: string;
+  evaluation?: MasterResumeEvaluation | null;
+  published_at: string;
 };
 
 export type ResumeSource = {
@@ -144,6 +194,26 @@ export type ResumeAsset = {
   is_default: boolean;
   created_at: string;
   updated_at: string;
+};
+
+export type CareerProfileScoreHistoryItem = {
+  id: string;
+  evaluation: MasterResumeEvaluation;
+  resume_data: MasterResumeData;
+  created_at: string;
+};
+
+export type CareerProfile = JobHuntingProfile & {
+  id: string;
+  created_at?: string;
+  updated_at?: string;
+  original_filename?: string | null;
+  original_url?: string | null;
+  resume_data: MasterResumeData;
+  status: 'processing' | 'ready' | 'failed';
+  latest_evaluation: MasterResumeEvaluation | Record<string, never>;
+  evaluation_is_current: boolean;
+  evaluation_updated_at?: string | null;
 };
 
 export type JobHuntingProfile = {
@@ -192,6 +262,82 @@ export type RuntimeSettings = {
   settings: Record<string, unknown>;
 };
 
+export type AutomationSettings = {
+  execution_mode: 'dry_run' | 'prepare_only' | 'human_confirmed' | 'submit';
+  review_channel: 'browser' | 'console';
+  max_jobs_per_run: number;
+  max_retries: number;
+  require_submit_confirmation: boolean;
+  stop_on_unknown_question: boolean;
+};
+
+export type AISettings = {
+  enabled: boolean;
+  provider: string;
+  model: string;
+  min_confidence: number;
+  max_calls_per_job: number;
+  daily_budget: number;
+  allow_tailored_resume: boolean;
+};
+
+export type ResumeSettings = {
+  master_resume_id?: string | null;
+  tailored_match_threshold: number;
+  require_tailored_review: boolean;
+};
+
+export type PolicySettings = {
+  minimum_match_threshold: number;
+  only_easy_apply: boolean;
+  blacklisted_companies: string[];
+  blacklisted_job_terms: string[];
+  whitelisted_companies: string[];
+};
+
+export type ApplicationSettings = {
+  automation: AutomationSettings;
+  ai: AISettings;
+  resume: ResumeSettings;
+  policy: PolicySettings;
+};
+
+export type ApplicationCandidateInput = {
+  platform?: string;
+  external_id: string;
+  title: string;
+  company: string;
+  description?: string | null;
+  match_score?: number | null;
+  easy_apply?: boolean;
+  already_applied?: boolean;
+};
+
+export type ApplicationDecisionResponse = {
+  candidate: ApplicationCandidateInput & { platform: string; title: string; company: string };
+  decision: {
+    action: 'skip' | 'review' | 'apply';
+    reason_codes: string[];
+    explanation: string;
+    score?: number | null;
+    resume_strategy?: 'master' | 'tailored' | null;
+    requires_submit_confirmation: boolean;
+  };
+  should_generate_tailored_resume: boolean;
+  matched_terms?: string[];
+};
+
+export type ApplicationPlanResponse = {
+  application_id: string;
+  plan: {
+    candidate: ApplicationCandidateInput & { platform: string; title: string; company: string };
+    decision: ApplicationDecisionResponse['decision'];
+    idempotency_key: string;
+    state: string;
+    review_reason?: string | null;
+  };
+};
+
 export type QuestionCacheEntry = {
   id: string;
   platform_account_id?: string | null;
@@ -236,6 +382,8 @@ export type JobApplication = {
   questions?: unknown;
   skip_reason?: string | null;
   screenshot_path?: string | null;
+  has_tailored_resume?: boolean;
+  tailored_resume_id?: string | null;
   raw_data?: Record<string, unknown>;
   created_at?: string;
   updated_at?: string;
@@ -246,6 +394,7 @@ export type WorkerConfig = {
   profile: UserProfile | null;
   job_hunting_profile: JobHuntingProfile | null;
   runtime_settings: RuntimeSettings | null;
+  application_settings?: ApplicationSettings;
 };
 
 export type DesktopRuntimeInfo = {
@@ -300,7 +449,7 @@ export type DesktopConnectionConfigResult = {
   error?: string;
 };
 
-export type DesktopBotPlatform = 'linkedin' | 'seek' | 'third_party';
+export type DesktopBotPlatform = "linkedin" | "seek" | "third_party";
 
 export type DesktopBotState = {
   status: string;
@@ -325,21 +474,21 @@ export type ApplicationTimelineEntry = {
 };
 
 function normalizeStatusToStage(status: string | null | undefined): string {
-  const value = String(status || '')
+  const value = String(status || "")
     .trim()
     .toLowerCase();
-  if (!value) return 'applied';
-  if (value === 'submitted') return 'applied';
+  if (!value) return "applied";
+  if (value === "submitted") return "applied";
   return value;
 }
 
 function normalizeDisplayStatus(status: string | null | undefined): string {
-  const value = String(status || '')
+  const value = String(status || "")
     .trim()
     .toLowerCase();
-  if (!value) return 'applied';
-  if (value === 'submitted') return 'applied';
-  if (value === 'interrupted') return 'needs review';
+  if (!value) return "applied";
+  if (value === "submitted") return "applied";
+  if (value === "interrupted") return "needs review";
   return value;
 }
 
@@ -353,55 +502,61 @@ export function getApplicationTimeline(
   application: JobApplication,
 ): ApplicationTimelineEntry[] {
   const rawTimeline = application.raw_data?.timeline;
-  const entries =
-    Array.isArray(rawTimeline) ?
-      rawTimeline.filter(
+  const entries = Array.isArray(rawTimeline)
+    ? rawTimeline.filter(
         (entry): entry is ApplicationTimelineEntry =>
           !!entry &&
-          typeof entry === 'object' &&
-          typeof (entry as ApplicationTimelineEntry).stage === 'string',
+          typeof entry === "object" &&
+          typeof (entry as ApplicationTimelineEntry).stage === "string",
       )
     : [];
 
   const fallback: ApplicationTimelineEntry[] = [];
-  const statusValue = String(application.status || '')
+  const statusValue = String(application.status || "")
     .trim()
     .toLowerCase();
   const currentStageFallback =
-    statusValue === 'submitted' ? 'applied'
-    : statusValue === 'interrupted' ? 'interrupted'
-    : statusValue === 'processing' ? 'processing'
-    : statusValue === 'cancelled' ? 'cancelled'
-    : statusValue === 'skipped' ? 'skipped'
-    : normalizeStatusToStage(application.pipeline_stage || application.status);
+    statusValue === "submitted"
+      ? "applied"
+      : statusValue === "interrupted"
+        ? "interrupted"
+        : statusValue === "processing"
+          ? "processing"
+          : statusValue === "cancelled"
+            ? "cancelled"
+            : statusValue === "skipped"
+              ? "skipped"
+              : normalizeStatusToStage(
+                  application.pipeline_stage || application.status,
+                );
 
   if (
-    (currentStageFallback === 'applied' &&
+    (currentStageFallback === "applied" &&
       (application.status_updated_at ||
         application.date_applied ||
         application.created_at)) ||
-    (currentStageFallback !== 'applied' &&
+    (currentStageFallback !== "applied" &&
       (application.status_updated_at ||
         application.updated_at ||
         application.created_at))
   ) {
     fallback.push({
-      stage: currentStageFallback || 'applied',
+      stage: currentStageFallback || "applied",
       timestamp:
-        (currentStageFallback === 'applied' ?
-          application.status_updated_at || application.date_applied
-        : application.status_updated_at || application.updated_at) ||
+        (currentStageFallback === "applied"
+          ? application.status_updated_at || application.date_applied
+          : application.status_updated_at || application.updated_at) ||
         application.created_at ||
         new Date().toISOString(),
       notes:
-        currentStageFallback === 'applied' ?
-          'Initial job application submitted.'
-        : `Application status is currently ${currentStageFallback}.`,
+        currentStageFallback === "applied"
+          ? "Initial job application submitted."
+          : `Application status is currently ${currentStageFallback}.`,
     });
   }
 
   const shouldAppendPipelineFallback =
-    currentStageFallback === 'applied' &&
+    currentStageFallback === "applied" &&
     !!application.pipeline_stage &&
     application.pipeline_stage !== fallback[0]?.stage &&
     !entries.some((entry) => entry.stage === application.pipeline_stage);
@@ -428,34 +583,34 @@ export function getApplicationTimeline(
 }
 
 function getLatestTimelineStage(timeline: ApplicationTimelineEntry[]): string {
-  if (!timeline.length) return 'applied';
+  if (!timeline.length) return "applied";
 
   const latestEntry = timeline[timeline.length - 1];
-  if (latestEntry.stage === 'applied') {
+  if (latestEntry.stage === "applied") {
     for (let i = timeline.length - 2; i >= 0; i -= 1) {
-      if (timeline[i].stage && timeline[i].stage !== 'applied') {
+      if (timeline[i].stage && timeline[i].stage !== "applied") {
         return timeline[i].stage;
       }
     }
   }
 
-  return latestEntry.stage || 'applied';
+  return latestEntry.stage || "applied";
 }
 
 export function getCurrentApplicationStage(
   application: JobApplication,
 ): string {
-  if (application.status === 'interrupted') {
-    return 'interrupted';
+  if (application.status === "interrupted") {
+    return "interrupted";
   }
-  if (application.status === 'skipped') {
-    return 'skipped';
+  if (application.status === "skipped") {
+    return "skipped";
   }
-  if (application.status === 'cancelled') {
-    return 'cancelled';
+  if (application.status === "cancelled") {
+    return "cancelled";
   }
-  if (application.status === 'processing') {
-    return 'processing';
+  if (application.status === "processing") {
+    return "processing";
   }
   const timeline = getApplicationTimeline(application);
   if (timeline.length) {
@@ -463,14 +618,14 @@ export function getCurrentApplicationStage(
   }
 
   return normalizeStatusToStage(
-    application.pipeline_stage || application.status || 'submitted',
+    application.pipeline_stage || application.status || "submitted",
   );
 }
 
 export function getCurrentApplicationStageTimestamp(
   application: JobApplication,
 ): string | null {
-  if (application.status === 'interrupted') {
+  if (application.status === "interrupted") {
     return (
       application.status_updated_at ??
       application.updated_at ??
@@ -508,7 +663,7 @@ export function getApplicationLastActivityTimestamp(
 }
 
 export function isProcessingApplication(application: JobApplication): boolean {
-  return application.status === 'processing';
+  return application.status === "processing";
 }
 
 export function isStaleProcessingApplication(
@@ -529,15 +684,15 @@ export function getDisplayApplicationStatus(
   application: JobApplication,
 ): string {
   if (isStaleProcessingApplication(application)) {
-    return 'needs review';
+    return "needs review";
   }
 
-  if (application.status === 'processing') {
-    return 'processing';
+  if (application.status === "processing") {
+    return "processing";
   }
 
-  if (application.status === 'interrupted') {
-    return 'needs review';
+  if (application.status === "interrupted") {
+    return "needs review";
   }
 
   return normalizeDisplayStatus(getCurrentApplicationStage(application));
@@ -547,7 +702,7 @@ export function shouldShowApplicationSkipReason(
   application: JobApplication,
 ): boolean {
   const status = getDisplayApplicationStatus(application).toLowerCase();
-  return ['skipped', 'needs review', 'cancelled'].includes(status);
+  return ["skipped", "needs review", "cancelled"].includes(status);
 }
 
 export function getApplicationDisplayDate(
@@ -568,14 +723,14 @@ export function getApplicationDisplayDate(
 export function isStatusSubmitted(status: string): boolean {
   const s = status.toLowerCase();
   return (
-    s.includes('submit') ||
+    s.includes("submit") ||
     [
-      'applied',
-      'screening',
-      'interviewing',
-      'offer',
-      'rejected',
-      'withdrawn',
+      "applied",
+      "screening",
+      "interviewing",
+      "offer",
+      "rejected",
+      "withdrawn",
     ].includes(s)
   );
 }
@@ -583,29 +738,29 @@ export function isStatusSubmitted(status: string): boolean {
 export function getStatusBadgeClasses(status: string): string {
   const s = status.toLowerCase();
   switch (s) {
-    case 'submitted':
-    case 'applied':
-      return 'bg-green-500/20 text-green-600 border-green-500/20';
-    case 'processing':
-      return 'bg-sky-500/10 text-sky-600 border-sky-500/20';
-    case 'needs review':
-      return 'bg-orange-500/10 text-orange-600 border-orange-500/20';
-    case 'skipped':
-      return 'bg-amber-500/5 text-amber-600 border-amber-500/20';
-    case 'cancelled':
-      return 'bg-rose-500/5 text-rose-600 border-rose-500/20';
-    case 'screening':
-      return 'bg-amber-500/10 text-amber-600 border-amber-500/20';
-    case 'interviewing':
-      return 'bg-purple-500/10 text-purple-600 border-purple-500/20';
-    case 'offer':
-      return 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20';
-    case 'rejected':
-      return 'bg-red-500/10 text-red-600 border-red-500/20';
-    case 'withdrawn':
-      return 'bg-zinc-500/5 text-zinc-500 border-zinc-500/20';
+    case "submitted":
+    case "applied":
+      return "bg-green-500/20 text-green-600 border-green-500/20";
+    case "processing":
+      return "bg-sky-500/10 text-sky-600 border-sky-500/20";
+    case "needs review":
+      return "bg-orange-500/10 text-orange-600 border-orange-500/20";
+    case "skipped":
+      return "bg-amber-500/5 text-amber-600 border-amber-500/20";
+    case "cancelled":
+      return "bg-rose-500/5 text-rose-600 border-rose-500/20";
+    case "screening":
+      return "bg-amber-500/10 text-amber-600 border-amber-500/20";
+    case "interviewing":
+      return "bg-purple-500/10 text-purple-600 border-purple-500/20";
+    case "offer":
+      return "bg-emerald-500/10 text-emerald-600 border-emerald-500/20";
+    case "rejected":
+      return "bg-red-500/10 text-red-600 border-red-500/20";
+    case "withdrawn":
+      return "bg-zinc-500/5 text-zinc-500 border-zinc-500/20";
     default:
-      return 'bg-glass text-ink-secondary border-border';
+      return "bg-glass text-ink-secondary border-border";
   }
 }
 
@@ -647,9 +802,9 @@ export type InterviewQuestion = {
   title: string;
   normalized_title?: string | null;
   is_favorited?: boolean;
-  user_reaction?: 'up' | 'down' | null;
+  user_reaction?: "up" | "down" | null;
   can_edit?: boolean;
-  difficulty?: 'Easy' | 'Medium' | 'Hard' | string | null;
+  difficulty?: "Easy" | "Medium" | "Hard" | string | null;
   estimated_duration_seconds?: number | null;
   metrics?: {
     view_count?: number;
@@ -672,7 +827,7 @@ export type InterviewQuestion = {
   ai_metadata?: {
     tags?: string[];
     importance_score?: number;
-    difficulty?: 'easy' | 'medium' | 'hard';
+    difficulty?: "easy" | "medium" | "hard";
     estimated_duration?: number;
     generated_at?: string;
   } | null;
@@ -708,7 +863,7 @@ export type InterviewCollection = {
   question_count: number;
   user_active_question_count: number;
   missing_question_count: number;
-  library_status: 'not_added' | 'partial' | 'complete' | 'empty';
+  library_status: "not_added" | "partial" | "complete" | "empty";
   sample_questions?: string[];
   question_ids?: string[];
   creator_name?: string | null;
@@ -758,7 +913,7 @@ export type QuestionCommunitySummary = {
   user_frequency_rating?: number | null;
   user_importance_rating?: number | null;
   user_difficulty_rating?: number | null;
-  user_reaction?: 'up' | 'down' | null;
+  user_reaction?: "up" | "down" | null;
   survey_bonus_xp?: number;
   survey_bonus_coins?: number;
 };
@@ -780,7 +935,7 @@ export type QuestionAnswer = {
   reaction_count: number;
   upvote_count: number;
   downvote_count: number;
-  user_reaction?: 'up' | 'down' | null;
+  user_reaction?: "up" | "down" | null;
   comment_count: number;
   is_saved: boolean;
   is_reported: boolean;
@@ -788,7 +943,7 @@ export type QuestionAnswer = {
   can_manage: boolean;
   author_name?: string | null;
   author_avatar_url?: string | null;
-  author_badge?: 'Admin' | 'Contributor' | 'VIP' | null;
+  author_badge?: "Admin" | "Contributor" | "VIP" | null;
   is_locked: boolean;
   unlock_cost: number;
   question_unlock_remaining_cost: number;
@@ -855,7 +1010,7 @@ export type QuestionAnswerComment = {
   body: string;
   author_name: string;
   author_avatar_url?: string | null;
-  author_badge?: 'Admin' | 'Contributor' | 'VIP' | null;
+  author_badge?: "Admin" | "Contributor" | "VIP" | null;
   is_author: boolean;
   like_count: number;
   is_liked: boolean;
@@ -876,11 +1031,11 @@ export type QuestionComment = {
   id: string;
   question_id: string;
   parent_id?: string | null;
-  kind: 'discussion' | 'feedback' | 'example';
+  kind: "discussion" | "feedback" | "example";
   body: string;
   author_name: string;
   author_avatar_url?: string | null;
-  author_badge?: 'Admin' | 'Contributor' | 'VIP' | null;
+  author_badge?: "Admin" | "Contributor" | "VIP" | null;
   is_author: boolean;
   like_count: number;
   is_liked: boolean;
@@ -919,7 +1074,7 @@ export type QuestionDuplicateCandidate = {
   title: string;
   owner_name: string;
   created_at: string;
-  match_type: 'exact' | 'similar';
+  match_type: "exact" | "similar";
 };
 export type QuestionDuplicateGroup = {
   normalized_title: string;
@@ -1080,7 +1235,7 @@ export type GamificationEventConfig = {
   coins: number;
   loot_boxes: number;
   enabled: boolean;
-  application_origin: 'any' | 'manual' | 'auto';
+  application_origin: "any" | "manual" | "auto";
 };
 
 export type GamificationAdminConfig = {
@@ -1174,4 +1329,74 @@ export type UserFavoritesAll = {
   liked_comments: FavoritedCommentSummary[];
   saved_answers: SavedAnswerSummary[];
   saved_collections: SavedCollectionSummary[];
+};
+
+export type ProspectRoleType = "recruiter" | "hiring_manager" | "engineering_manager";
+export type ProspectStatus = "recommended" | "contacted" | "replied" | "interviewing" | "archived";
+export type ProspectMatchLevel = "high" | "medium" | "low";
+
+export interface ProspectScoreBreakdown {
+  hiring_power: number;       // 1-100
+  reply_probability: number;  // 1-100
+  company_match: number;      // 1-100
+  experience_match: number;   // 1-100
+  overall: number;            // 1-100
+}
+
+export type Prospect = {
+  id: string;
+  user_id: string;
+  name: string;
+  title: string;
+  company: string;
+  linkedin_url?: string | null;
+  role_type: ProspectRoleType;
+  location?: string | null;
+  has_active_job: boolean;
+  active_job_title?: string | null;
+  active_job_url?: string | null;
+  priority_score: number;
+  score_breakdown?: ProspectScoreBreakdown | null;
+  match_level: ProspectMatchLevel;
+  recommendation_reason: string;
+  status: ProspectStatus;
+  notes?: string | null;
+  last_interacted_at?: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ProspectAgentLogEntry = {
+  timestamp: string;
+  level: "INFO" | "WARN" | "ERROR";
+  message: string;
+  details?: Record<string, unknown>;
+};
+
+export type ProspectAgentLog = {
+  id: string;
+  user_id: string;
+  status: "running" | "completed" | "failed";
+  prospects_found: number;
+  prospects_added: number;
+  summary: string;
+  logs: ProspectAgentLogEntry[];
+  created_at: string;
+  updated_at: string;
+};
+
+export type ProspectDiscoveryRequest = {
+  target_roles?: string[];
+  preferred_locations?: string[];
+  role_types?: ProspectRoleType[];
+  limit?: number;
+};
+
+export type ProspectDiscoveryResponse = {
+  status: string;
+  prospects_found: number;
+  prospects_added: number;
+  summary: string;
+  logs: ProspectAgentLogEntry[];
+  new_prospects: Prospect[];
 };

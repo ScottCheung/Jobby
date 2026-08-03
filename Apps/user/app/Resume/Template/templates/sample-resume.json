@@ -1,0 +1,100 @@
+{
+  "basics": {
+    "first_name": "Scott",
+    "last_name": "Zhang",
+    "email": "scott5443003@gmail.com",
+    "phone": "+61 400 123 456",
+    "location": {
+      "city": "Brisbane",
+      "state": "QLD",
+      "country": "Australia",
+      "postal_code": "4000"
+    },
+    "linkedin_id": "linkedin.com/in/scottzhang1110",
+    "website": "xianzhe.site",
+    "headline": "Full-stack Engineer"
+  },
+  "summary": "I am a pragmatic full-stack software engineer with 8+ years of experience. I specialize in building reliable web platforms, developer tooling, and data-intensive services. I am known for simplifying complex systems and helping teams ship measurable customer outcomes.",
+  "experience": [
+    {
+      "company": "Northstar Labs",
+      "title": "Senior Software Engineer",
+      "location": "Brisbane, Australia",
+      "start_date": "2022",
+      "end_date": "Present",
+      "description": [
+        "Led the redesign of a multi-tenant workflow platform used by 40,000 monthly active users, reducing median task completion time by 31%.",
+        "Introduced contract testing and progressive delivery across six services, cutting production regressions by 45%.",
+        "Mentored four engineers and established architecture reviews for cross-team changes."
+      ],
+      "technologies": ["TypeScript", "React", "Next.js", "PostgreSQL", "AWS"]
+    },
+    {
+      "company": "Harbour Systems",
+      "title": "Software Engineer",
+      "location": "Sydney, Australia",
+      "start_date": "2018",
+      "end_date": "2022",
+      "description": [
+        "Built event-driven billing services processing more than two million transactions per month.",
+        "Improved API p95 latency from 780 ms to 240 ms through query analysis, caching, and background processing."
+      ],
+      "technologies": ["Python", "FastAPI", "Kafka", "Redis", "Docker"]
+    }
+  ],
+  "education": [
+    {
+      "institution": "Queensland University of Technology",
+      "degree": "Bachelor of Information Technology",
+      "field_of_study": "Computer Science",
+      "location": "Brisbane, Australia",
+      "start_date": "2014",
+      "end_date": "2017",
+      "highlights": [
+        "Dean's List; capstone project awarded best industry solution."
+      ]
+    }
+  ],
+  "projects": [
+    {
+      "name": "Release Lens",
+      "url": "https://github.com/example/release-lens",
+      "start_date": "2023",
+      "end_date": "Present",
+      "description": [
+        "Open-source release health dashboard with automated deployment annotations and incident correlation."
+      ],
+      "technologies": ["TypeScript", "OpenTelemetry", "ClickHouse"]
+    }
+  ],
+  "skills": [
+    { "type": "Languages", "skills": ["TypeScript", "Python", "SQL"] },
+    {
+      "type": "Platforms",
+      "skills": ["AWS", "Docker", "Kubernetes", "PostgreSQL"]
+    },
+    {
+      "type": "Practices",
+      "skills": ["System design", "Observability", "Technical leadership"]
+    }
+  ],
+  "certifications": [
+    {
+      "type": "Cloud",
+      "certifications": [
+        {
+          "name": "AWS Certified Solutions Architect",
+          "issuer": "Amazon Web Services",
+          "issue_date": "2024",
+          "expiry_date": "2027",
+          "credential_url": "https://aws.amazon.com/verification"
+        }
+      ]
+    }
+  ],
+  "languages": [
+    { "name": "English", "proficiency": "Native" },
+    { "name": "Mandarin", "proficiency": "Professional" }
+  ],
+  "other": []
+}

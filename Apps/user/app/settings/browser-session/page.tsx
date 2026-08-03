@@ -11,6 +11,7 @@ import { OpenLoginBrowserCard } from './_component/open-login-browser-card';
 import { CheckLoginStatusCard } from './_component/check-login-status-card';
 import { ClearSavedLoginCard } from './_component/clear-saved-login-card';
 import { BrowserLoginFaq } from './_component/browser-login-faq';
+import { ExtensionConnectionCard } from './_component/extension-connection-card';
 import { showGlobalToast } from '@/lib/toast';
 
 export default function BrowserSessionPage() {
@@ -65,6 +66,7 @@ export default function BrowserSessionPage() {
             <OpenLoginBrowserCard isDesktop={isDesktop} />
             <CheckLoginStatusCard isDesktop={isDesktop} />
             <ClearSavedLoginCard isDesktop={isDesktop} />
+            <ExtensionConnectionCard />
           </div>
 
           <BrowserLoginFaq />

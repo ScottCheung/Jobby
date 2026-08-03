@@ -59,9 +59,9 @@ export function SummaryCards({ profile }: SummaryCardsProps) {
         hint='Search phrases in rotation'
       />
       <SummaryCard
-        label='Switch After'
+        label='Candidate Scan Limit'
         value={`${summary.switchNumber}`}
-        hint='Applications per keyword'
+        hint='Candidates checked under the locked keyword'
       />
       <SummaryCard
         label='Sort'

@@ -4,6 +4,15 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { headers } from 'next/headers'
+import { extensionCallbackPath, isAllowedExtensionRedirect } from '@/lib/auth/extension-redirect'
+
+function nextPathFromForm(formData: FormData): string {
+  const extensionRedirect = formData.get('extension_redirect')
+  if (typeof extensionRedirect === 'string' && isAllowedExtensionRedirect(extensionRedirect)) {
+    return extensionCallbackPath(extensionRedirect)
+  }
+  return '/interview-prep'
+}
 
 export async function login(formData: FormData) {
   const supabase = await createClient()
@@ -12,6 +21,7 @@ export async function login(formData: FormData) {
     email: formData.get('email') as string,
     password: formData.get('password') as string,
   }
+  const next = nextPathFromForm(formData)
 
   const { error } = await supabase.auth.signInWithPassword(data)
 
@@ -21,7 +31,7 @@ export async function login(formData: FormData) {
   }
 
   revalidatePath('/', 'layout')
-  redirect('/interview-prep')
+  redirect(next)
 }
 
 export async function signup(formData: FormData) {
@@ -31,6 +41,7 @@ export async function signup(formData: FormData) {
     email: formData.get('email') as string,
     password: formData.get('password') as string,
   }
+  const next = nextPathFromForm(formData)
 
   // Determine origin for email redirects (e.g. email confirmation)
   const originList = await headers()
@@ -40,7 +51,7 @@ export async function signup(formData: FormData) {
     email: data.email,
     password: data.password,
     options: {
-      emailRedirectTo: `${origin}/auth/callback`, // Make sure this route exists or update it later
+      emailRedirectTo: `${origin}/auth/callback?next=${encodeURIComponent(next)}`,
     }
   })
 
@@ -50,7 +61,7 @@ export async function signup(formData: FormData) {
 
   revalidatePath('/', 'layout')
   // Typically after signup, we ask them to check their email, or just redirect if auto-login is enabled
-  redirect('/interview-prep') 
+  redirect(next)
 }
 
 export async function logout() {
@@ -59,21 +70,25 @@ export async function logout() {
   redirect('/login')
 }
 
-export async function signInWithGoogle() {
+export async function signInWithGoogle(extensionRedirect?: string) {
   const supabase = await createClient()
   const originList = await headers()
   const origin = originList.get('origin')
+  const next = extensionRedirect && isAllowedExtensionRedirect(extensionRedirect)
+    ? extensionCallbackPath(extensionRedirect)
+    : '/interview-prep'
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: `${origin}/auth/callback`,
+      redirectTo: `${origin}/auth/callback?next=${encodeURIComponent(next)}`,
       queryParams: {
         prompt: 'select_account',
       },
     },
   })
 
+  if (error) return { error: error.message }
   if (data.url) {
     redirect(data.url) // use the redirect API for your server framework
   }

@@ -4,6 +4,7 @@
 import React, { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { Search } from 'lucide-react';
 import { ApplicationDetails } from './_components/ApplicationDetails';
+import { TailoredResumeModal } from './_components/TailoredResumeModal';
 import { useConsole } from '@/components/ConsoleContext';
 import { ScrollLayout } from '@/components/animation';
 import { api } from '@/lib/api';
@@ -83,6 +84,7 @@ export default function ApplicationsPage() {
     syncingApplicationId,
     asyncApplication,
     saveApplicationPatch,
+    applicationPlanAction,
     deleteApplication,
   } = useConsole();
 
@@ -95,6 +97,11 @@ export default function ApplicationsPage() {
   const [scrollContainer, setScrollContainer] = useState<HTMLDivElement | null>(
     null,
   );
+  const [activeResumeModal, setActiveResumeModal] = useState<{
+    id: string;
+    title: string;
+    company: string;
+  } | null>(null);
 
   const deferredSearchText = useDeferredValue(searchText);
   const scrollContainerRef = React.useRef<HTMLDivElement | null>(null);
@@ -189,6 +196,7 @@ export default function ApplicationsPage() {
           skipReason: item.skip_reason,
           shouldShowSkipReason: shouldShowApplicationSkipReason(item),
           jobLink: item.job_link,
+          hasTailoredResume: Boolean(item.has_tailored_resume || item.job_description),
         };
       }),
     [items],
@@ -208,6 +216,7 @@ export default function ApplicationsPage() {
           <ApplicationDetails
             application={application}
             onSave={saveApplicationPatch}
+            onPlanAction={applicationPlanAction}
           />
         ),
       });
@@ -251,6 +260,9 @@ export default function ApplicationsPage() {
           onOpenDetails={openApplicationDetails}
           onAsync={asyncApplication}
           onDelete={deleteApplication}
+          onOpenResume={(id, title, company) =>
+            setActiveResumeModal({ id, title, company })
+          }
         />
       );
     },
@@ -267,7 +279,7 @@ export default function ApplicationsPage() {
 
   return (
     <div className='flex h-full min-h-[500px] flex-col overflow-hidden'>
-      <div className='pb-4 select-none shrink-0'>
+      <div className='app-drag pb-4 select-none shrink-0'>
         <ScrollLayout
           key={scrollContainer ? 'scrolling' : 'static'}
           scrollContainerRef={scrollContainerRef}
@@ -347,6 +359,15 @@ export default function ApplicationsPage() {
           </div>
         </div>
       }
+
+      {activeResumeModal && (
+        <TailoredResumeModal
+          applicationId={activeResumeModal.id}
+          title={activeResumeModal.title}
+          company={activeResumeModal.company}
+          onClose={() => setActiveResumeModal(null)}
+        />
+      )}
     </div>
   );
 }

@@ -13,6 +13,7 @@ import type {
 import { cn, cleanName } from '@/lib/utils';
 import { CategorySelector } from './selectors';
 import { Button } from '@/components/UI/Button';
+import { Textarea } from '@/components/UI/textarea';
 import { Modal } from '@/components/layout/modal';
 import { H3 } from '@/components/UI/text/typography';
 import { Tooltip } from '@/components/UI/tooltip';
@@ -285,11 +286,11 @@ export function BatchImportModal({
                 </div>
               }
             >
-              <textarea
+              <Textarea
                 placeholder='Paste your questions here, one per line:'
                 value={importText}
                 onChange={(e) => setImportText(e.target.value)}
-                className='textarea resize-y custom-scrollbar-primary'
+                minHeight={160}
               />
             </Tooltip>
           </div>
@@ -526,7 +527,7 @@ export function BatchImportModal({
 
                   {/* Your Answer Textarea */}
                   <div className='px-2'>
-                    <textarea
+                    <Textarea
                       value={q.answer_objective}
                       onChange={(e) => {
                         const val = e.target.value;
@@ -540,7 +541,7 @@ export function BatchImportModal({
                       }}
                       placeholder='Your answer...'
                       rows={1}
-                      className='body-sm w-full px-2 py-1 rounded dark:border-border focus:outline-none resize-none focus:h-12 text-ink-primary'
+                      minHeight={36}
                     />
                   </div>
 

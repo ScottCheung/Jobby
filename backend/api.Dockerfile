@@ -13,7 +13,7 @@ COPY backend/migrations /app/migrations
 COPY backend/services /app/services
 COPY backend/scripts /app/scripts
 
-COPY worker/linkedinBot/services/job_text_parser.py /app/linkedinBot/services/job_text_parser.py
+COPY backend/application_core /app/application_core
 
 EXPOSE 8000
 

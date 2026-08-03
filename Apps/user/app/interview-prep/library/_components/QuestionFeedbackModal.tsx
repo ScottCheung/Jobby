@@ -6,6 +6,7 @@ import type { InterviewQuestion } from '@/lib/types';
 import { api } from '@/lib/api';
 import { showGlobalToast } from '@/lib/toast';
 import { useGlobalModalStore } from '@/lib/store/global-modal-store';
+import { Textarea } from '@/components/UI/textarea';
 
 interface QuestionFeedbackModalProps {
   isOpen?: boolean;
@@ -159,19 +160,15 @@ export function QuestionFeedbackFormContent({
         </div>
 
         {/* Feedback Textarea */}
-        <div>
-          <label className='block text-xs font-semibold text-ink-secondary mb-2'>
-            Details <span className='text-rose-500'>*</span>
-          </label>
-          <textarea
-            rows={4}
-            value={feedbackText}
-            onChange={(e) => setFeedbackText(e.target.value)}
-            placeholder='Please describe the error or suggestion in detail (e.g. incorrect answer, typo, code bug) so the author can update it...'
-            className='w-full px-3.5 py-2.5 rounded-xl border border-border bg-panel dark:bg-background-secondary text-sm text-ink-primary focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 placeholder:text-ink-secondary/40 resize-none'
-            required
-          />
-        </div>
+        <Textarea
+          label='Details'
+          required
+          rows={4}
+          minHeight={96}
+          value={feedbackText}
+          onChange={(e) => setFeedbackText(e.target.value)}
+          placeholder='Please describe the error or suggestion in detail (e.g. incorrect answer, typo, code bug) so the author can update it...'
+        />
 
         {/* Modal Footer */}
         <div className='flex items-center justify-end gap-3 pt-3 border-t border-border/40'>

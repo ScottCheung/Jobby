@@ -62,6 +62,7 @@ class User(Base, TimestampMixin):
     user_skills: Mapped[list["UserSkill"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     master_resume: Mapped["MasterResume | None"] = relationship(back_populates="user", cascade="all, delete-orphan", uselist=False)
 
+
 class UserProfile(Base, TimestampMixin):
     __tablename__ = "user_profiles"
 
@@ -70,6 +71,7 @@ class UserProfile(Base, TimestampMixin):
     first_name: Mapped[str | None] = mapped_column(String(100))
     middle_name: Mapped[str | None] = mapped_column(String(100))
     last_name: Mapped[str | None] = mapped_column(String(100))
+    email: Mapped[str | None] = mapped_column(String(255))
     phone_number: Mapped[str | None] = mapped_column(String(50))
     current_city: Mapped[str | None] = mapped_column(String(255))
     street: Mapped[str | None] = mapped_column(String(255))
@@ -100,10 +102,76 @@ class MasterResume(Base, TimestampMixin):
     original_storage_key: Mapped[str] = mapped_column(String(1024), nullable=False)
     original_url: Mapped[str] = mapped_column(String(2048), nullable=False)
     resume_data: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    content_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    published_version: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    draft_base_version: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    published_data: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    published_filename: Mapped[str | None] = mapped_column(String(255))
+    published_storage_key: Mapped[str | None] = mapped_column(String(1024))
+    published_url: Mapped[str | None] = mapped_column(String(2048))
+    published_evaluation: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    evaluation: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    evaluation_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     status: Mapped[str] = mapped_column(String(30), nullable=False, default="review")
     confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     user: Mapped[User] = relationship(back_populates="master_resume")
+
+
+class MasterResumeVersion(Base):
+    __tablename__ = "master_resume_versions"
+    __table_args__ = (
+        UniqueConstraint("master_resume_id", "version", name="uq_master_resume_version"),
+    )
+
+    id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid4)
+    master_resume_id: Mapped[PyUUID] = mapped_column(
+        PgUUID(as_uuid=True),
+        ForeignKey("master_resumes.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    version: Mapped[int] = mapped_column(Integer, nullable=False)
+    resume_data: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    original_filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    original_storage_key: Mapped[str] = mapped_column(String(1024), nullable=False)
+    original_url: Mapped[str] = mapped_column(String(2048), nullable=False)
+    evaluation: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    published_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
+class MasterResumeEvaluationSnapshot(Base):
+    __tablename__ = "master_resume_evaluation_snapshots"
+
+    id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid4)
+    master_resume_id: Mapped[PyUUID] = mapped_column(
+        PgUUID(as_uuid=True),
+        ForeignKey("master_resumes.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    resume_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    published_version: Mapped[int | None] = mapped_column(Integer)
+    evaluation: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    resume_data: Mapped[dict | None] = mapped_column(JSONB)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
+class CareerProfileScoreSnapshot(Base):
+    """Immutable score result for one Resume Profile at one point in time."""
+    __tablename__ = "career_profile_score_snapshots"
+
+    id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid4)
+    career_profile_id: Mapped[PyUUID] = mapped_column(
+        PgUUID(as_uuid=True),
+        ForeignKey("job_hunting_profiles.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    evaluation: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    resume_data: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
 
 class UserGamification(Base, TimestampMixin):
@@ -188,7 +256,6 @@ class GamificationTransaction(Base, TimestampMixin):
     reference_id: Mapped[str | None] = mapped_column(String(255))
 
     user: Mapped[User] = relationship(foreign_keys=[user_id])
-
 
 class GamificationConfig(Base, TimestampMixin):
     __tablename__ = "gamification_configs"
@@ -448,6 +515,33 @@ class JobApplication(Base, TimestampMixin):
     @resume_path.setter
     def resume_path(self, value: str | None) -> None:
         self.raw_data = {**(self.raw_data or {}), "resume_path": value}
+
+
+class TailoredResume(Base, TimestampMixin):
+    """An immutable, job-specific resume draft and its exact AI response."""
+
+    __tablename__ = "tailored_resumes"
+
+    id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid4)
+    user_id: Mapped[PyUUID] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    career_profile_id: Mapped[PyUUID | None] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("job_hunting_profiles.id", ondelete="SET NULL"), index=True
+    )
+    job_application_id: Mapped[PyUUID] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("job_applications.id", ondelete="CASCADE"), nullable=False, unique=True, index=True
+    )
+    job_title: Mapped[str | None] = mapped_column(Text)
+    company: Mapped[str | None] = mapped_column(String(255))
+    job_description: Mapped[str] = mapped_column(Text, nullable=False)
+    source_resume_data: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    resume_data: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    raw_ai_response: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    core_competencies: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    key_qualifications: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    targeted_projects: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    prompt_version: Mapped[str] = mapped_column(String(50), nullable=False, default="job-review-v3")
 
 
 class Skill(Base, TimestampMixin):
@@ -1014,3 +1108,42 @@ class PlanTask(Base, TimestampMixin):
 
     plan: Mapped[PracticePlan] = relationship(back_populates="tasks", foreign_keys=[plan_id])
     question: Mapped[InterviewQuestion] = relationship(foreign_keys=[question_id])
+
+
+class Prospect(Base, TimestampMixin):
+    __tablename__ = "prospects"
+
+    id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid4)
+    user_id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    company: Mapped[str] = mapped_column(String(255), nullable=False)
+    linkedin_url: Mapped[str | None] = mapped_column(Text)
+    role_type: Mapped[str] = mapped_column(String(50), nullable=False, default="hiring_manager")  # recruiter, hiring_manager, engineering_manager
+    location: Mapped[str | None] = mapped_column(String(255))
+    has_active_job: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    active_job_title: Mapped[str | None] = mapped_column(String(255))
+    active_job_url: Mapped[str | None] = mapped_column(Text)
+    priority_score: Mapped[int] = mapped_column(Integer, nullable=False, default=80)
+    score_breakdown: Mapped[dict | None] = mapped_column(JSONB)
+    match_level: Mapped[str] = mapped_column(String(20), nullable=False, default="high")  # high, medium, low
+    recommendation_reason: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(String(50), nullable=False, default="recommended")  # recommended, contacted, replied, interviewing, archived
+    notes: Mapped[str | None] = mapped_column(Text)
+    last_interacted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    user: Mapped[User] = relationship(foreign_keys=[user_id])
+
+
+class ProspectAgentLog(Base, TimestampMixin):
+    __tablename__ = "prospect_agent_logs"
+
+    id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid4)
+    user_id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    status: Mapped[str] = mapped_column(String(50), nullable=False, default="completed")  # running, completed, failed
+    prospects_found: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    prospects_added: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    summary: Mapped[str] = mapped_column(Text, nullable=False)
+    logs: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+
+    user: Mapped[User] = relationship(foreign_keys=[user_id])

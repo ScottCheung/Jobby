@@ -7,6 +7,7 @@ from services.shared.database import Base
 from services.shared.models import (
     JobApplication,
     JobHuntingProfile,
+    CareerProfileScoreSnapshot,
     MasterResume,
     PlatformAccount,
     QuestionCacheEntry,

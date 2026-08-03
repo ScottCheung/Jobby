@@ -12,6 +12,7 @@ import { Switch } from '@/components/UI/switch';
 import { Input } from '@/components/UI/input';
 import { Checkbox } from '@/components/UI/checkbox';
 import { showGlobalToast } from '@/lib/toast';
+import { EmptyPlaceHolder } from '@/components/UI/EmptyPlaceHolder';
 
 interface CustomizePlanModalProps {
   isOpen: boolean;
@@ -604,9 +605,10 @@ export function CustomizePlanModal({
                   );
                 })}
                 {filteredQuestions.length === 0 && (
-                  <div className='body-md flex-1 flex items-center justify-center text-ink-secondary italic p-8'>
-                    No questions found.
-                  </div>
+                  <EmptyPlaceHolder
+                    message='No questions found.'
+                    className='border-0 bg-transparent py-8'
+                  />
                 )}
               </div>
 

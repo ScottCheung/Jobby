@@ -11,6 +11,7 @@ import type {
   InterviewTag,
 } from '@/lib/types';
 import { cn, cleanName } from '@/lib/utils';
+import { Textarea } from '@/components/UI/textarea';
 
 export interface QuestionFormProps {
   question: InterviewQuestion;
@@ -292,15 +293,13 @@ export function QuestionForm({
         </div>
 
         {/* Contributor's Answer */}
-        <div className='flex flex-col gap-1.5'>
-          <label className='label-overline'>Contributor's Answer</label>
-          <textarea
-            placeholder="Write author's reference answer here..."
-            value={answerObjective}
-            onChange={(e) => setAnswerObjective(e.target.value)}
-            className='body-md w-full px-4 py-2.5 h-44 rounded-xl border border-border dark:border-border bg-panel resize-none focus:outline-none focus:border-primary/50'
-          />
-        </div>
+        <Textarea
+          label="Contributor's Answer"
+          placeholder="Write author's reference answer here..."
+          value={answerObjective}
+          onChange={(e) => setAnswerObjective(e.target.value)}
+          minHeight={176}
+        />
       </div>
 
       {/* Footer */}

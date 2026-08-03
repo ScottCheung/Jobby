@@ -9,6 +9,7 @@ import {
 } from '@/lib/types';
 import { Loader2, Coins, Trophy, Clock, PlayCircle, History, Gem, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { EmptyPlaceHolder } from '@/components/UI/EmptyPlaceHolder';
 
 type TabType = 'practice' | 'rewards';
 
@@ -103,9 +104,11 @@ export default function HistoryPage() {
       ) : activeTab === 'practice' ? (
         <div className="space-y-4">
           {practiceRecords.length === 0 ? (
-            <div className="text-center py-12 text-ink-secondary border border-dashed rounded-xl border-border">
-              No practice records found. Start practicing to see your history!
-            </div>
+            <EmptyPlaceHolder
+              icon={History}
+              message="No practice records found. Start practicing to see your history!"
+              className="border-dashed py-12"
+            />
           ) : (
             practiceRecords.map((record) => (
               <div key={record.id} className="bg-panel border border-border rounded-xl p-5 hover:border-primary/20 transition-colors">
@@ -154,9 +157,11 @@ export default function HistoryPage() {
         <div className="flex flex-col lg:flex-row gap-6 items-start">
           <div className="flex-1 w-full space-y-4">
             {transactions.length === 0 ? (
-              <div className="text-center py-12 text-ink-secondary border border-dashed rounded-xl border-border">
-                No transactions yet. Complete tasks to earn XP and Coins!
-              </div>
+              <EmptyPlaceHolder
+                icon={Gem}
+                message="No transactions yet. Complete tasks to earn XP and Coins!"
+                className="border-dashed py-12"
+              />
             ) : (
               <div className="bg-panel border border-border rounded-xl overflow-hidden">
                 <table className="w-full text-left">

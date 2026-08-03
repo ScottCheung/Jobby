@@ -1,6 +1,9 @@
+import json
+from urllib.error import HTTPError, URLError
+from urllib.request import Request as UrlRequest, urlopen
 from uuid import UUID
 
-from fastapi import Depends, Request
+from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -8,9 +11,47 @@ from services.shared.database import get_db
 from services.shared.models import User
 from services.shared.settings import get_settings
 
+
+def _bearer_token(request: Request) -> str | None:
+    value = request.headers.get("Authorization", "").strip()
+    scheme, _, token = value.partition(" ")
+    if scheme.casefold() != "bearer" or not token.strip():
+        return None
+    return token.strip()
+
+
+def _supabase_email(access_token: str) -> str | None:
+    settings = get_settings()
+    if not settings.supabase_url:
+        return None
+    api_key = settings.supabase_service_role_key or settings.supabase_anon_key
+    if not api_key:
+        return None
+
+    request = UrlRequest(
+        f"{settings.supabase_url.rstrip('/')}/auth/v1/user",
+        headers={
+            "Accept": "application/json",
+            "Authorization": f"Bearer {access_token}",
+            "apikey": api_key,
+        },
+        method="GET",
+    )
+    try:
+        with urlopen(request, timeout=5) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+    except (HTTPError, URLError, TimeoutError, json.JSONDecodeError):
+        return None
+    email = payload.get("email") if isinstance(payload, dict) else None
+    return str(email).strip().lower() if email else None
+
+
 def get_or_create_current_user(request: Request, db: Session = Depends(get_db)) -> User:
     settings = get_settings()
-    email = request.headers.get("X-User-Email")
+    token = _bearer_token(request)
+    email = _supabase_email(token) if token else None
+    if not email:
+        email = request.headers.get("X-User-Email")
     admin_emails = set(settings.admin_email_list)
 
     if email:

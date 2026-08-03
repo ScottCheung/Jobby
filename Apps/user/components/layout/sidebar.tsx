@@ -11,6 +11,7 @@ import {
   Settings2,
   Briefcase,
   FileText,
+  Target,
   ShieldCheck,
   MessagesSquare,
   LogOut,
@@ -18,6 +19,9 @@ import {
   GraduationCap,
   Palette,
   Star,
+  MessageSquareCode,
+  MonitorCog,
+  UserCheck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ModeToggle } from '@/components/mode-toggle';
@@ -49,8 +53,9 @@ const ChromeIcon = (props: React.SVGProps<SVGSVGElement>) => (
 );
 
 const navigation = [
-  { name: 'Job Applications', href: '/job-application', icon: Briefcase },
-  { name: 'Resume', href: '/settings/resume', icon: FileText },
+  { name: 'Home', href: '/', icon: LayoutGrid },
+  { name: 'AI Networking Assistant', href: '/prospects', icon: UserCheck },
+  { name: 'Applications', href: '/applications', icon: Briefcase },
   { name: 'Interview Prep', href: '/interview-prep', icon: GraduationCap },
   {
     name: 'Favorites & Bookmarks',
@@ -58,8 +63,7 @@ const navigation = [
     icon: Star,
     isAction: true,
   },
-  { name: 'Settings', href: '/settings', icon: Settings2 },
-  { name: 'Design System', href: '/design-system', icon: Palette },
+  { name: 'Settings & Profile', href: '/settings', icon: Settings2 },
 ];
 
 const adminNavigation = [
@@ -94,7 +98,7 @@ export function Sidebar() {
   const router = useRouter();
   const supabase = createClient();
   const { fetchMe, logout: authLogout } = useAuthStore();
-  const { user, profile } = useConsole();
+  const { user, profile, isDesktopApp } = useConsole();
   const isCollapsed = useLayoutStore((state) => state.isSidebarCollapsed);
   const { toggleSidebar, openDrawer } = useLayoutStore(
     (state) => state.actions,
@@ -162,8 +166,27 @@ export function Sidebar() {
     },
     exit: { opacity: 0, x: -10, width: 0, transition: { duration: 0.1 } },
   };
+
+  const desktopNavigation = [
+    { name: 'Home', href: '/', icon: LayoutGrid },
+    { name: 'AI Networking Assistant', href: '/prospects', icon: UserCheck },
+    { name: 'Automation Console', href: '/automation', icon: MonitorCog },
+    { name: 'Applications', href: '/applications', icon: Briefcase },
+    { name: 'Interview Prep', href: '/interview-prep', icon: GraduationCap },
+    {
+      name: 'Favorites & Bookmarks',
+      href: '#favorites',
+      icon: Star,
+      isAction: true,
+    },
+    { name: 'Settings & Profile', href: '/settings', icon: Settings2 },
+  ];
+
+  const activeNavigation = isDesktopApp ? desktopNavigation : navigation;
   const visibleNavigation =
-    user?.role === 'admin' ? [...navigation, ...adminNavigation] : navigation;
+    user?.role === 'admin'
+      ? [...activeNavigation, ...adminNavigation]
+      : activeNavigation;
 
   return (
     <motion.aside
@@ -217,7 +240,15 @@ export function Sidebar() {
         <nav className='app-no-drag overflow-y-auto no-scrollbar flex-1 flex flex-col gap-1 min-h-0'>
           {visibleNavigation.map((item) => {
             const isAction = 'isAction' in item && item.isAction;
-            const isActive = !isAction && pathname === item.href;
+            const isActive =
+              !isAction &&
+              (pathname === item.href ||
+                (item.href === '/settings' &&
+                  pathname?.startsWith('/settings')) ||
+                (item.href !== '/' &&
+                  item.href !== '/settings' &&
+                  !item.href.startsWith('#') &&
+                  Boolean(pathname?.startsWith(item.href))));
 
             const navItemContent = (
               <div

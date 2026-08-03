@@ -15,6 +15,7 @@ import {
 import { api } from '@/lib/api';
 import type { CommunityInterviewReport } from '@/lib/types';
 import { useLayoutStore } from '@/lib/store/layout-store';
+import { EmptyPlaceHolder } from '@/components/UI/EmptyPlaceHolder';
 
 export interface QuestionReportsDrawerProps {
   isOpen?: boolean;
@@ -191,14 +192,12 @@ export function QuestionReportsContent({
               <p className='max-w-xs text-xs opacity-70'>{loadError}</p>
             </div>
           : reports.length === 0 ?
-            <div className='flex flex-col items-center justify-center py-12 text-center text-ink-secondary gap-2'>
-              <Building2 className='h-8 w-8 opacity-40' />
-              <p className='text-sm font-medium'>No interview reports yet</p>
-              <p className='text-xs opacity-70 max-w-xs'>
-                Be the first to report seeing this question in an actual
-                interview!
-              </p>
-            </div>
+            <EmptyPlaceHolder
+              icon={Building2}
+              title="No interview reports yet"
+              description="Be the first to report seeing this question in an actual interview!"
+              className="border-0 bg-transparent py-10"
+            />
           : sortedReports.map((report) => (
               <div
                 key={report.id}

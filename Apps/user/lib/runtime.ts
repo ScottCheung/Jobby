@@ -21,6 +21,8 @@ declare global {
       onServiceStatus?: (callback: (payload: DesktopServiceStatus) => void) => () => void;
       startBot?: (
         platform: DesktopBotPlatform,
+        userEmail?: string,
+        options?: { diagnostic?: boolean },
       ) => Promise<{
         ok: boolean;
         error?: string;

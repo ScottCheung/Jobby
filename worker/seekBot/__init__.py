@@ -1,1 +1,0 @@
-"""SEEK bot package."""

@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import type { InterviewCategory, InterviewCollection } from '@/lib/types';
 import { Button } from '@/components/UI/Button';
+import { Textarea } from '@/components/UI/textarea';
 import {
   CardSelector,
   type CardSelectorOption,
@@ -56,8 +57,7 @@ const VISIBILITY_OPTIONS: readonly CardSelectorOption<
   {
     value: 'published',
     title: 'Share to Community',
-    description:
-      'Visible in Explore so other people can follow and unlock it.',
+    description: 'Visible in Explore so other people can follow and unlock it.',
     icon: Eye,
     accentColor: 'success',
   },
@@ -185,7 +185,7 @@ function CollectionFormContent({
   return (
     <form
       onSubmit={handleSubmit}
-      className='flex-1 flex flex-col h-[70vh] overflow-hidden'
+      className='flex-1 flex flex-col h-[70vh] overflow-hidden '
     >
       {/* Header */}
       <div className='header'>
@@ -275,15 +275,13 @@ function CollectionFormContent({
         </div>
 
         {/* Description */}
-        <div className='flex flex-col gap-1.5'>
-          <label className='label-overline'>Description</label>
-          <textarea
-            placeholder='Provide details about what concepts are covered in this question set...'
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            className='bg-background-secondary/50 body-md w-full h-24 px-4 py-2.5 rounded-xl border border-border focus:bg-background-primary/50 text-ink-primary resize-none focus:outline-none focus:border-primary/50'
-          />
-        </div>
+        <Textarea
+          label='Description'
+          placeholder='Provide details about what concepts are covered in this question set...'
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          minHeight={96}
+        />
 
         <div className='flex flex-col gap-3'>
           <label className='label-overline'>Theme</label>

@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import { Stagger, ScrollLayout } from '@/components/animation';
 import { Input } from '@/components/UI/input';
+import { EmptyPlaceHolder } from '@/components/UI/EmptyPlaceHolder';
 
 const springTransition = {
   duration: 1,
@@ -162,9 +163,11 @@ export default function QuestionsPage() {
       </div>
 
       {items.length === 0 && !isLoading ?
-        <div className='p-8 text-center text-ink-primary0 dark:text-zinc-400 flex-1 flex items-center justify-center'>
-          No saved answers yet.
-        </div>
+        <EmptyPlaceHolder
+          icon={MessageSquareCode}
+          message="No saved answers yet."
+          className="border-0 bg-transparent flex-1"
+        />
       : <motion.div
           layout
           transition={springTransition}

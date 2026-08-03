@@ -7,16 +7,20 @@ import {
   BadgeCheck,
   Briefcase,
   Building2,
+  Check,
   FileText,
   Globe,
+  Loader2,
   MapPin,
   MonitorCog,
   MoonStar,
+  Pencil,
   Search,
   ShieldCheck,
   Sparkles,
   TimerReset,
   UserRound,
+  X,
 } from 'lucide-react';
 import type {
   RuntimeSettings,
@@ -31,6 +35,7 @@ import { Switch } from '@/components/UI/switch';
 import { Checkbox } from '@/components/UI/checkbox';
 import { Select } from '@/components/UI/select/select';
 import { Button } from './UI/Button';
+import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
 type FieldProps = {
@@ -212,7 +217,7 @@ export function Field({
         value={value ?? ''}
         onChange={(event) => onChange(event.target.value)}
         helpTextShort={hint}
-        containerClassName={full ? 'field full' : 'field'}
+        containerClassName={full ? 'col-span-full' : ''}
         showCharCount={false}
         required={required}
         optional={!required}
@@ -226,7 +231,7 @@ export function Field({
       value={value ?? ''}
       onChange={(event) => onChange(event.target.value)}
       helpTextShort={hint}
-      containerClassName={full ? 'field full' : 'field'}
+      containerClassName={full ? 'col-span-full' : ''}
       showCharCount={false}
       required={required}
       optional={!required}
@@ -336,7 +341,7 @@ function ChoiceCardGroup({
       helpTextShort={hint}
       value={value ?? ''}
       onChange={(event) => onChange(event.target.value)}
-      containerClassName={full ? 'field full' : 'field'}
+      containerClassName={full ? 'col-span-full' : ''}
       placeholder={`Select ${label.toLowerCase()}...`}
       icon={icon}
       required={required}
@@ -505,146 +510,440 @@ function updateRuntimeSetting(
   };
 }
 
-export function ProfileForm({
+function DisplayField({
+  label,
+  value,
+  hint,
+  full = false,
+  required = false,
+}: {
+  label: string;
+  value?: string | number | null;
+  hint?: string;
+  full?: boolean;
+  required?: boolean;
+}) {
+  const displayValue =
+    value !== undefined && value !== null && String(value).trim() !== '' ?
+      String(value)
+    : null;
+  return (
+    <div
+      className={cn(
+        'flex flex-col gap-1 p-3 rounded-xl bg-background-secondary/40 border border-border/40 min-h-[64px]',
+        full ? 'col-span-full' : '',
+      )}
+    >
+      <div className='flex items-center gap-2'>
+        <span className='text-xs font-medium text-ink-secondary/70'>
+          {label}
+        </span>
+        {required && (
+          <span className='text-[6px] font-semibold uppercase tracking-wide px-1 py-0.5 rounded-sm bg-red-500/10 text-red-500'>
+            Required
+          </span>
+        )}
+      </div>
+      {displayValue ?
+        <span className='text-sm font-semibold text-ink-primary break-words'>
+          {displayValue}
+        </span>
+      : <span className='text-xs italic text-ink-secondary/50'>
+          Not provided
+        </span>
+      }
+      {hint && (
+        <span className='text-[11px] text-ink-secondary/60 mt-0.5'>{hint}</span>
+      )}
+    </div>
+  );
+}
+
+function DisplayBadgeField({
+  label,
+  value,
+  full = false,
+}: {
+  label: string;
+  value?: string | null;
+  full?: boolean;
+}) {
+  const displayValue = value?.trim() ? value : null;
+  return (
+    <div
+      className={cn(
+        'flex flex-col gap-1.5 p-3 rounded-xl bg-background-secondary/40 border border-border/40 min-h-[64px]',
+        full ? 'col-span-full' : '',
+      )}
+    >
+      <span className='text-xs font-medium text-ink-secondary'>{label}</span>
+      {displayValue ?
+        <div className='flex items-center gap-2'>
+          <span className='inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full bg-primary/10 text-primary border border-primary/20 break-words'>
+            {displayValue}
+          </span>
+        </div>
+      : <span className='text-xs italic text-ink-secondary/50'>
+          Not provided
+        </span>
+      }
+    </div>
+  );
+}
+
+/* ── View-only profile cards (for waterfall layout) ── */
+
+export type ProfileCardSection = 'identity' | 'location' | 'eeo';
+
+export function IdentityContactCard({
+  value,
+  onClick,
+}: {
+  value: UserProfile;
+  onClick?: () => void;
+}) {
+  return (
+    <motion.div
+      layoutId='profile-card-identity'
+      transition={{ type: 'spring', duration: 0.7, bounce: 0.2 }}
+      onClick={onClick}
+      className='cursor-pointer group/card relative'
+    >
+      <CardWithNorth title='Identity & Contact' size='sm'>
+        <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
+          <DisplayField
+            label='Preferred Name'
+            value={value.preferred_name}
+            hint='Display name'
+          />
+          <DisplayField label='First name' value={value.first_name} required />
+          <DisplayField label='Last name' value={value.last_name} required />
+          <DisplayField label='Middle name' value={value.middle_name} />
+          <DisplayField
+            label='Contact Email'
+            value={value.email}
+            hint='For job applications'
+          />
+          <DisplayField
+            label='Phone number'
+            value={value.phone_number}
+            required
+          />
+        </div>
+      </CardWithNorth>
+    </motion.div>
+  );
+}
+
+export function LocationAddressCard({
+  value,
+  onClick,
+}: {
+  value: UserProfile;
+  onClick?: () => void;
+}) {
+  return (
+    <motion.div
+      layoutId='profile-card-location'
+      transition={{ type: 'spring', duration: 0.7, bounce: 0.2 }}
+      onClick={onClick}
+      className='cursor-pointer group/card relative'
+    >
+      <CardWithNorth title='Location & Address' size='sm'>
+        <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
+          <DisplayField label='Current city' value={value.current_city} />
+          <DisplayField label='State / Province' value={value.state} />
+          <DisplayField label='Country' value={value.country} />
+          <DisplayField label='Zipcode / Postal code' value={value.zipcode} />
+          <DisplayField label='Street Address' value={value.street} full />
+        </div>
+      </CardWithNorth>
+    </motion.div>
+  );
+}
+
+export function EEOCard({
+  value,
+  onClick,
+}: {
+  value: UserProfile;
+  onClick?: () => void;
+}) {
+  return (
+    <motion.div
+      layoutId='profile-card-eeo'
+      transition={{ type: 'spring', duration: 0.7, bounce: 0.2 }}
+      onClick={onClick}
+      className='cursor-pointer group/card relative'
+    >
+      <CardWithNorth title='Background & Equal Opportunity' size='sm'>
+        <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
+          <DisplayBadgeField label='Ethnicity' value={value.ethnicity} full />
+          <DisplayBadgeField label='Gender' value={value.gender} />
+          <DisplayBadgeField
+            label='Gender identity'
+            value={value.gender_identity}
+          />
+          <DisplayBadgeField
+            label='Disability status'
+            value={value.disability_status}
+          />
+          <DisplayBadgeField
+            label='Veteran status'
+            value={value.veteran_status}
+          />
+        </div>
+      </CardWithNorth>
+    </motion.div>
+  );
+}
+
+/* ── Editor content for global modal ── */
+
+function IdentityEditFields({
+  draft,
+  setDraftField,
+}: {
+  draft: UserProfile;
+  setDraftField: (key: keyof UserProfile, v: string) => void;
+}) {
+  return (
+    <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
+      <Field
+        label='Preferred Name'
+        value={draft.preferred_name}
+        onChange={(next) => setDraftField('preferred_name', next)}
+        hint='Used as display name across the app.'
+      />
+      <Field
+        label='First name'
+        value={draft.first_name}
+        onChange={(next) => setDraftField('first_name', next)}
+        required
+      />
+      <Field
+        label='Last name'
+        value={draft.last_name}
+        onChange={(next) => setDraftField('last_name', next)}
+        required
+      />
+      <Field
+        label='Middle name'
+        value={draft.middle_name}
+        onChange={(next) => setDraftField('middle_name', next)}
+      />
+      <Field
+        label='Contact Email'
+        value={draft.email}
+        onChange={(next) => setDraftField('email', next)}
+        hint='Email used for job applications.'
+      />
+      <Field
+        label='Phone number'
+        value={draft.phone_number}
+        onChange={(next) => setDraftField('phone_number', next)}
+        required
+      />
+    </div>
+  );
+}
+
+function LocationEditFields({
+  draft,
+  setDraftField,
+}: {
+  draft: UserProfile;
+  setDraftField: (key: keyof UserProfile, v: string) => void;
+}) {
+  return (
+    <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
+      <Field
+        label='Current city'
+        value={draft.current_city}
+        onChange={(next) => setDraftField('current_city', next)}
+      />
+      <Field
+        label='State / Province'
+        value={draft.state}
+        onChange={(next) => setDraftField('state', next)}
+      />
+      <Field
+        label='Country'
+        value={draft.country}
+        onChange={(next) => setDraftField('country', next)}
+      />
+      <Field
+        label='Zipcode / Postal code'
+        value={draft.zipcode}
+        onChange={(next) => setDraftField('zipcode', next)}
+      />
+      <Field
+        label='Street Address'
+        value={draft.street}
+        onChange={(next) => setDraftField('street', next)}
+        full
+      />
+    </div>
+  );
+}
+
+function EEOEditFields({
+  draft,
+  setDraftField,
+}: {
+  draft: UserProfile;
+  setDraftField: (key: keyof UserProfile, v: string) => void;
+}) {
+  return (
+    <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
+      <ChoiceCardGroup
+        label='Ethnicity'
+        value={draft.ethnicity}
+        onChange={(next) => setDraftField('ethnicity', next)}
+        options={statusOptions.ethnicity.map((item) => ({
+          value: item,
+          title: item,
+          icon: '◌',
+        }))}
+        full
+        icon={UserRound}
+      />
+      <ChoiceCardGroup
+        label='Gender'
+        value={draft.gender}
+        onChange={(next) => setDraftField('gender', next)}
+        options={statusOptions.gender.map((item) => ({
+          value: item,
+          title: item,
+          icon: '◌',
+        }))}
+        icon={UserRound}
+      />
+      <ChoiceCardGroup
+        label='Gender identity'
+        value={draft.gender_identity}
+        onChange={(next) => setDraftField('gender_identity', next)}
+        options={statusOptions.gender.map((item) => ({
+          value: item,
+          title: item,
+          icon: '◌',
+        }))}
+        icon={UserRound}
+      />
+      <ChoiceCardGroup
+        label='Disability status'
+        value={draft.disability_status}
+        onChange={(next) => setDraftField('disability_status', next)}
+        options={statusOptions.yesNoDecline.map((item) => ({
+          value: item,
+          title: item,
+          icon:
+            item === 'Yes' ? '♿'
+            : item === 'No' ? '○'
+            : '—',
+        }))}
+        icon={ShieldCheck}
+      />
+      <ChoiceCardGroup
+        label='Veteran status'
+        value={draft.veteran_status}
+        onChange={(next) => setDraftField('veteran_status', next)}
+        options={statusOptions.yesNoDecline.map((item) => ({
+          value: item,
+          title: item,
+          icon:
+            item === 'Yes' ? '★'
+            : item === 'No' ? '○'
+            : '—',
+        }))}
+        icon={ShieldCheck}
+      />
+    </div>
+  );
+}
+
+const sectionTitles: Record<ProfileCardSection, string> = {
+  identity: 'Identity & Contact Information',
+  location: 'Location & Address',
+  eeo: 'Background & Equal Opportunity',
+};
+
+export function ProfileEditor({
+  section,
   value,
   onChange,
   onSave,
+  onClose,
 }: {
+  section: ProfileCardSection;
   value: UserProfile;
   onChange: (value: UserProfile) => void;
-  onSave: () => void;
+  onSave: (updated?: UserProfile) => void | Promise<void>;
+  onClose: () => void;
 }) {
-  const set = (key: keyof UserProfile, nextValue: string) =>
-    onChange({ ...value, [key]: nextValue });
+  const [draft, setDraft] = useState<UserProfile>(value);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const setDraftField = (key: keyof UserProfile, nextValue: string) => {
+    setDraft((prev) => ({ ...prev, [key]: nextValue }));
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      onChange(draft);
+      await onSave(draft);
+      onClose();
+    } catch {
+      // Handled upstream
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   return (
-    <CardWithNorth title='Personal Information'>
-      <div className='pb-6 pr-6 flex flex-col '>
-        <div className='grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3'>
-          <Field
-            label='Preferred Name'
-            value={value.preferred_name}
-            onChange={(next) => set('preferred_name', next)}
-            hint='Used as your display name across the app.'
-          />
-          <Field
-            label='First name'
-            value={value.first_name}
-            onChange={(next) => set('first_name', next)}
-            required
-          />
-          <Field
-            label='Last name'
-            value={value.last_name}
-            onChange={(next) => set('last_name', next)}
-            required
-          />
-          <Field
-            label='Middle name'
-            value={value.middle_name}
-            onChange={(next) => set('middle_name', next)}
-          />
-          <Field
-            label='Phone number'
-            value={value.phone_number}
-            onChange={(next) => set('phone_number', next)}
-            required
-          />
-          <Field
-            label='Current city'
-            value={value.current_city}
-            onChange={(next) => set('current_city', next)}
-          />
-          <Field
-            label='Country'
-            value={value.country}
-            onChange={(next) => set('country', next)}
-          />
-          <Field
-            label='Street'
-            value={value.street}
-            onChange={(next) => set('street', next)}
-            full
-          />
-          <Field
-            label='State'
-            value={value.state}
-            onChange={(next) => set('state', next)}
-          />
-          <Field
-            label='Zipcode'
-            value={value.zipcode}
-            onChange={(next) => set('zipcode', next)}
-          />
+    <div className='flex max-h-[88vh] min-h-[320px] max-w-5xl w-full flex-col '>
+      {/* Header */}
+      <header className='header '>
+        <h2 className='title-section text-ink-primary'>
+          {sectionTitles[section]}
+        </h2>
+        <button
+          type='button'
+          onClick={onClose}
+          className='flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-ink-secondary hover:bg-background-secondary hover:text-ink-primary'
+        >
+          <X className='h-4 w-4' />
+        </button>
+      </header>
 
-          <ChoiceCardGroup
-            label='Ethnicity'
-            value={value.ethnicity}
-            onChange={(next) => set('ethnicity', next)}
-            options={statusOptions.ethnicity.map((item) => ({
-              value: item,
-              title: item,
-              icon: '◌',
-            }))}
-            full
-            icon={UserRound}
-          />
-          <ChoiceCardGroup
-            label='Gender'
-            value={value.gender}
-            onChange={(next) => set('gender', next)}
-            options={statusOptions.gender.map((item) => ({
-              value: item,
-              title: item,
-              icon: '◌',
-            }))}
-            icon={UserRound}
-          />
-          <ChoiceCardGroup
-            label='Gender identity'
-            value={value.gender_identity}
-            onChange={(next) => set('gender_identity', next)}
-            options={statusOptions.gender.map((item) => ({
-              value: item,
-              title: item,
-              icon: '◌',
-            }))}
-            icon={UserRound}
-          />
-          <ChoiceCardGroup
-            label='Disability status'
-            value={value.disability_status}
-            onChange={(next) => set('disability_status', next)}
-            options={statusOptions.yesNoDecline.map((item) => ({
-              value: item,
-              title: item,
-              icon:
-                item === 'Yes' ? '♿'
-                : item === 'No' ? '○'
-                : '—',
-            }))}
-            icon={ShieldCheck}
-          />
-          <ChoiceCardGroup
-            label='Veteran status'
-            value={value.veteran_status}
-            onChange={(next) => set('veteran_status', next)}
-            options={statusOptions.yesNoDecline.map((item) => ({
-              value: item,
-              title: item,
-              icon:
-                item === 'Yes' ? '★'
-                : item === 'No' ? '○'
-                : '—',
-            }))}
-            icon={ShieldCheck}
-          />
-        </div>
-        <div className='actions'>
-          <Button onClick={onSave}>Save profile</Button>
-        </div>
+      {/* Fields */}
+      <div className='body py-6! flex-1 overflow-y-auto min-h-0 overflow-x-hidden'>
+        {section === 'identity' && (
+          <IdentityEditFields draft={draft} setDraftField={setDraftField} />
+        )}
+        {section === 'location' && (
+          <LocationEditFields draft={draft} setDraftField={setDraftField} />
+        )}
+        {section === 'eeo' && (
+          <EEOEditFields draft={draft} setDraftField={setDraftField} />
+        )}
       </div>
-    </CardWithNorth>
+
+      {/* Actions */}
+      <footer className='footer '>
+        <Button variant='ghost' onClick={onClose} disabled={isSaving}>
+          Cancel
+        </Button>
+        <Button
+          onClick={() => void handleSave()}
+          disabled={isSaving}
+          Icon={Check}
+        >
+          {isSaving ? 'Saving...' : 'Save changes'}
+        </Button>
+      </footer>
+    </div>
   );
 }
 
@@ -720,7 +1019,7 @@ export function SearchForm({
             />
 
             <Field
-              label='Applications per term before switching'
+              label='Candidate scan limit'
               value={String(searchExtra(value, 'switch_number') ?? 30)}
               onChange={(next) =>
                 onChange(

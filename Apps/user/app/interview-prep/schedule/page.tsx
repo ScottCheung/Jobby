@@ -702,7 +702,7 @@ export default function PracticeRoadmapPage() {
         {/* Progress bar */}
         <div className='w-full md:w-48 h-1.5 bg-background-secondary rounded-full overflow-hidden'>
           <motion.div
-            className='h-full bg-primary rounded-full'
+            className='h-full bg-primary rounded-full rounded-full'
             initial={{ width: 0 }}
             animate={{ width: `${progressPct}%` }}
             transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}

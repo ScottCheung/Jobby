@@ -38,6 +38,7 @@ import {
 } from 'lucide-react';
 import { cn, cleanName } from '@/lib/utils';
 import { practiceCache } from './practice/practice-cache';
+import { EmptyPlaceHolder } from '@/components/UI/EmptyPlaceHolder';
 
 import dynamic from 'next/dynamic';
 
@@ -363,7 +364,7 @@ export default function InterviewPrepPage() {
   const renderOnboardingStepper = () => {
     return (
       <div className='flex flex-col md:flex-row  justify-between gap-6 panel-xl'>
-        <div className='absolute left-0 top-0 w-1.5 h-full bg-primary/40' />
+        <div className='absolute left-0 top-0 w-1.5 h-full bg-primary rounded-full/40' />
         <div className='flex-1 flex flex-col justify-center max-w-sm shrink-0 border-r border-border/40 pr-6 gap-1'>
           <Sparkles className='w-7 h-7 text-primary mb-2' />
           <h3 className='title-sub flex items-center gap-2'>
@@ -916,9 +917,11 @@ export default function InterviewPrepPage() {
               Loading recommended collections...
             </div>
           : collections.length === 0 ?
-            <div className='body-md text-center py-12 text-ink-secondary italic'>
-              No recommended collections found.
-            </div>
+            <EmptyPlaceHolder
+              icon={Compass}
+              message="No recommended collections found."
+              className="border-dashed py-8"
+            />
           : <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4'>
               {collections.map((col) => (
                 <CollectionCard
@@ -1006,7 +1009,7 @@ export default function InterviewPrepPage() {
             </div>
             <div className='h-2 w-full bg-background-secondary rounded-full overflow-hidden'>
               <div
-                className='h-full bg-primary rounded-full transition-all duration-500 ease-out relative overflow-hidden'
+                className='h-full bg-primary rounded-full rounded-full transition-all duration-500 ease-out relative overflow-hidden'
                 style={{
                   width: `${Math.min(100, Math.max(0, ((dailySummary?.total_xp || 0) / (dailySummary?.next_level_xp || 100)) * 100))}%`,
                 }}
@@ -1412,10 +1415,11 @@ export default function InterviewPrepPage() {
                 </div>
 
                 {recentAchievements.length === 0 ?
-                  <div className='body-md text-ink-secondary'>
-                    No badges yet. Finish a quest, practice, or submit an
-                    application to start collecting them.
-                  </div>
+                  <EmptyPlaceHolder
+                    icon={Trophy}
+                    message="No badges yet. Finish a quest, practice, or submit an application to start collecting them."
+                    className="border-dashed py-6"
+                  />
                 : <div className='space-y-3'>
                     {recentAchievements.map((achievement) => (
                       <div

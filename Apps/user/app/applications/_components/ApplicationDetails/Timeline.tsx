@@ -62,9 +62,7 @@ export function Timeline({
         <div className='h-[50px] top-0 from-background to-transparent bg-linear-to-b  absolute left-0 right-0 -z-10' />
         <div className='h-[30px] top-0 from-background to-transparent bg-linear-to-b  absolute left-0 right-0 -z-10' />
         <div className='flex gap-2 items-center'>
-          <h3 className='label-overline'>
-            Timeline Stages
-          </h3>
+          <h3 className='label-overline'>Timeline Stages</h3>
           <div
             className={cn(
               'body-md flex gap-2 items-baseline capitalize text-transparent bg-clip-text',
@@ -217,9 +215,7 @@ export function Timeline({
                     ease: [0.22, 1, 0.36, 1],
                     duration: 0.3,
                   }}
-                  className={cn(
-                    'panel-lg  ml-[25px] mt-1 overflow-hidden',
-                  )}
+                  className={cn('panel-lg  ml-[25px] mt-1 overflow-hidden')}
                 >
                   {/* Card Body - View Mode or Edit Mode */}
                   <AnimatePresence initial={false} mode='wait'>
@@ -314,7 +310,7 @@ export function Timeline({
               <motion.div
                 key='stage-selector'
                 className={cn(
-                  'fixed z-40 p-4 rounded-2xl backdrop-blur-[20px] overflow-hidden border border-border bg-background/20 shadow-2xl shadow-primary/20',
+                  'fixed z-60 p-4 rounded-2xl backdrop-blur-[20px] overflow-hidden border border-border bg-background/20 shadow-2xl shadow-primary/20',
                   'lg:right-[660px] lg:top-[180px] lg:w-[200px] lg:flex-col lg:bottom-auto lg:left-auto',
                   'max-lg:bottom-6 max-lg:left-6 max-lg:right-6 max-lg:w-auto max-lg:flex-col',
                 )}
@@ -323,9 +319,7 @@ export function Timeline({
                 exit={{ opacity: 0, x: 1000, scale: 0 }}
                 transition={{ ease: [0.22, 1, 0.36, 1], duration: 0.6 }}
               >
-                <p className='label-overline mb-2.5'>
-                  Add Timeline Stage:
-                </p>
+                <p className='label-overline mb-2.5'>Add Timeline Stage:</p>
                 <div className='flex lg:flex-col max-lg:flex-row max-lg:flex-wrap gap-2 max-h-[70vh] overflow-y-auto custom-scrollbar-primary'>
                   {Object.entries(stageConfig).map(([key, cfg]) => {
                     const Icon = cfg.icon;

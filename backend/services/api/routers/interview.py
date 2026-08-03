@@ -654,7 +654,7 @@ def get_user_metric_value(db: Session, user: User, metric_key: str) -> int:
             .where(
                 JobApplication.user_id == user.id,
                 JobApplication.date_applied >= today_start,
-                JobApplication.status.not_in(["processing", "interrupted", "skipped", "cancelled"])
+                JobApplication.status.not_in(["draft", "processing", "interrupted", "skipped", "cancelled"])
             )
         ) or 0
     elif key == "applications_submitted_week":
@@ -663,7 +663,7 @@ def get_user_metric_value(db: Session, user: User, metric_key: str) -> int:
             .where(
                 JobApplication.user_id == user.id,
                 JobApplication.date_applied >= week_start,
-                JobApplication.status.not_in(["processing", "interrupted", "skipped", "cancelled"])
+                JobApplication.status.not_in(["draft", "processing", "interrupted", "skipped", "cancelled"])
             )
         ) or 0
     elif key == "applications_submitted_total":
@@ -671,7 +671,7 @@ def get_user_metric_value(db: Session, user: User, metric_key: str) -> int:
             select(func.count(JobApplication.id))
             .where(
                 JobApplication.user_id == user.id,
-                JobApplication.status.not_in(["processing", "interrupted", "skipped", "cancelled"])
+                JobApplication.status.not_in(["draft", "processing", "interrupted", "skipped", "cancelled"])
             )
         ) or 0
     elif key == "applications_manual_submitted_today":
@@ -681,7 +681,7 @@ def get_user_metric_value(db: Session, user: User, metric_key: str) -> int:
                 JobApplication.user_id == user.id,
                 JobApplication.date_applied >= today_start,
                 JobApplication.application_type == "manual",
-                JobApplication.status.not_in(["processing", "interrupted", "skipped", "cancelled"])
+                JobApplication.status.not_in(["draft", "processing", "interrupted", "skipped", "cancelled"])
             )
         ) or 0
     elif key == "applications_manual_submitted_total":
@@ -690,7 +690,7 @@ def get_user_metric_value(db: Session, user: User, metric_key: str) -> int:
             .where(
                 JobApplication.user_id == user.id,
                 JobApplication.application_type == "manual",
-                JobApplication.status.not_in(["processing", "interrupted", "skipped", "cancelled"])
+                JobApplication.status.not_in(["draft", "processing", "interrupted", "skipped", "cancelled"])
             )
         ) or 0
     elif key == "applications_auto_submitted_today":
@@ -700,7 +700,7 @@ def get_user_metric_value(db: Session, user: User, metric_key: str) -> int:
                 JobApplication.user_id == user.id,
                 JobApplication.date_applied >= today_start,
                 JobApplication.application_type == "auto",
-                JobApplication.status.not_in(["processing", "interrupted", "skipped", "cancelled"])
+                JobApplication.status.not_in(["draft", "processing", "interrupted", "skipped", "cancelled"])
             )
         ) or 0
     elif key == "applications_auto_submitted_total":
@@ -709,7 +709,7 @@ def get_user_metric_value(db: Session, user: User, metric_key: str) -> int:
             .where(
                 JobApplication.user_id == user.id,
                 JobApplication.application_type == "auto",
-                JobApplication.status.not_in(["processing", "interrupted", "skipped", "cancelled"])
+                JobApplication.status.not_in(["draft", "processing", "interrupted", "skipped", "cancelled"])
             )
         ) or 0
     elif key == "applications_auto_skipped_today":

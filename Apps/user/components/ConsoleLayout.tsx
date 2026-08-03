@@ -24,6 +24,11 @@ export default function ConsoleLayout({
 }) {
   const pathname = usePathname();
   const { error, isPending, isDesktopApp } = useConsole();
+
+  if (pathname?.startsWith('/Resume/Template/')) {
+    return <>{children}</>;
+  }
+
   return (
     <LayoutGroup id='console-layout'>
       <div className='h-screen w-screen z-10 flex overflow-hidden transition-colors duration-300'>
@@ -32,11 +37,7 @@ export default function ConsoleLayout({
 
         {/* Main Content Area */}
         <main className='relative flex h-full flex-1 min-w-0 flex-col overflow-hidden'>
-          {isDesktopApp && (
-            <div className='app-drag fixed inset-x-0 top-0 z-50 h-[48px] ' />
-          )}
-
-          <div className='custom-scrollbar-primary flex-1 overflow-y-auto'>
+          <div className='app-no-drag custom-scrollbar-primary flex-1 overflow-y-auto'>
             <div
               className={cn(
                 !pathname?.startsWith('/interview-prep') &&
@@ -69,15 +70,13 @@ export default function ConsoleLayout({
                 {pathname === '/' && (
                   <header className='hero bg-gradient-to-br from-green-800 via-emerald-900 to-zinc-950'>
                     <span className='inline-block text-[10px] font-bold uppercase tracking-wider text-emerald-300 mb-2 px-2 py-0.5 rounded-md bg-emerald-500/20'>
-                      PostgreSQL backed workspace
+                      AI-Powered Job Automation
                     </span>
                     <h1>
-                      Manage once. Let the local worker apply with clean data.
+                      Job Automation Console
                     </h1>
                     <p>
-                      This console reads and writes through the API layer, so
-                      profile changes, saved answers, and application history
-                      now live in PostgreSQL instead of scattered files.
+                      Monitor real-time automation status across platforms, access key feature panels instantly, and track applications & interviews.
                     </p>
                   </header>
                 )}

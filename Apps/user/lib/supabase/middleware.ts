@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { extensionCallbackPath, isAllowedExtensionRedirect } from '@/lib/auth/extension-redirect'
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -50,7 +51,14 @@ export async function updateSession(request: NextRequest) {
 
     if (user && isAuthRoute) {
       const url = request.nextUrl.clone()
-      url.pathname = '/interview-prep'
+      const extensionRedirect = request.nextUrl.searchParams.get('extension_redirect')
+      if (extensionRedirect && isAllowedExtensionRedirect(extensionRedirect)) {
+        url.pathname = '/auth/extension-callback'
+        url.search = extensionCallbackPath(extensionRedirect).split('?')[1] || ''
+      } else {
+        url.pathname = '/interview-prep'
+        url.search = ''
+      }
       return NextResponse.redirect(url)
     }
 

@@ -29,6 +29,7 @@ import type {
 import { useLayoutStore } from '@/lib/store/layout-store';
 import { showGlobalToast } from '@/lib/toast';
 import { cn } from '@/lib/utils';
+import { EmptyPlaceHolder } from '@/components/UI/EmptyPlaceHolder';
 import { motion, AnimatePresence } from 'framer-motion';
 
 type TabType = 'questions' | 'comments' | 'answers' | 'collections';
@@ -416,16 +417,12 @@ export function FavoritesDrawer() {
                   className='space-y-3'
                 >
                   {filteredQuestions.length === 0 ?
-                    <div className='text-center py-16 px-4 rounded-2xl border border-dashed border-border/60 bg-background/30 text-ink-secondary space-y-2'>
-                      <Star className='size-8 mx-auto text-ink-secondary/40' />
-                      <p className='text-sm font-semibold'>
-                        No favorited questions
-                      </p>
-                      <p className='text-xs text-ink-secondary/70 max-w-xs mx-auto'>
-                        Click the star icon on any question in practice or
-                        library to save it here.
-                      </p>
-                    </div>
+                    <EmptyPlaceHolder
+                      icon={Star}
+                      title='No favorited questions'
+                      description='Click the star icon on any question in practice or library to save it here.'
+                      className='border-dashed py-12'
+                    />
                   : filteredQuestions.map((q) => (
                       <div
                         key={q.id}
@@ -490,16 +487,12 @@ export function FavoritesDrawer() {
                   className='space-y-3'
                 >
                   {filteredComments.length === 0 ?
-                    <div className='text-center py-16 px-4 rounded-2xl border border-dashed border-border/60 bg-background/30 text-ink-secondary space-y-2'>
-                      <MessageSquare className='size-8 mx-auto text-ink-secondary/40' />
-                      <p className='text-sm font-semibold'>
-                        No comment activity found
-                      </p>
-                      <p className='text-xs text-ink-secondary/70 max-w-xs mx-auto'>
-                        Comments you post or like across question discussions
-                        will appear here.
-                      </p>
-                    </div>
+                    <EmptyPlaceHolder
+                      icon={MessageSquare}
+                      title='No comment activity found'
+                      description='Comments you post or like across question discussions will appear here.'
+                      className='border-dashed py-12'
+                    />
                   : filteredComments.map((c) => (
                       <div
                         key={c.id}
@@ -547,14 +540,12 @@ export function FavoritesDrawer() {
                   className='space-y-3'
                 >
                   {filteredAnswers.length === 0 ?
-                    <div className='text-center py-16 px-4 rounded-2xl border border-dashed border-border/60 bg-background/30 text-ink-secondary space-y-2'>
-                      <Bookmark className='size-8 mx-auto text-ink-secondary/40' />
-                      <p className='text-sm font-semibold'>No saved answers</p>
-                      <p className='text-xs text-ink-secondary/70 max-w-xs mx-auto'>
-                        Save reference or community answers during practice to
-                        access them here.
-                      </p>
-                    </div>
+                    <EmptyPlaceHolder
+                      icon={Bookmark}
+                      title='No saved answers'
+                      description='Save reference or community answers during practice to access them here.'
+                      className='border-dashed py-12'
+                    />
                   : filteredAnswers.map((a) => (
                       <div
                         key={a.id}
@@ -598,15 +589,12 @@ export function FavoritesDrawer() {
                   className='space-y-3'
                 >
                   {filteredCollections.length === 0 ?
-                    <div className='text-center py-16 px-4 rounded-2xl border border-dashed border-border/60 bg-background/30 text-ink-secondary space-y-2'>
-                      <Layers className='size-8 mx-auto text-ink-secondary/40' />
-                      <p className='text-sm font-semibold'>
-                        No saved collections
-                      </p>
-                      <p className='text-xs text-ink-secondary/70 max-w-xs mx-auto'>
-                        Purchased or added interview packs will be listed here.
-                      </p>
-                    </div>
+                    <EmptyPlaceHolder
+                      icon={Layers}
+                      title='No saved collections'
+                      description='Purchased or added interview packs will be listed here.'
+                      className='border-dashed py-12'
+                    />
                   : filteredCollections.map((c) => (
                       <div
                         key={c.id}

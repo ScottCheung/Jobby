@@ -29,6 +29,7 @@ import { cn } from '@/lib/utils';
 import { useConsole } from '@/components/ConsoleContext';
 import { EmptyState } from '@/components/UI/EmptyState';
 import { Avatar } from '@/components/UI/Avatar/Avatar';
+import { Textarea } from '@/components/UI/textarea';
 import { CommentItem } from './CommentItem';
 import { ReplyItem } from './ReplyItem';
 import { CommentSkeleton } from './CommentSkeleton';
@@ -1051,7 +1052,7 @@ export function QuestionComments({ questionId }: { questionId: string }) {
             )}
           </div>
           {isComposing && (
-            <textarea
+            <Textarea
               ref={mainInputRef}
               value={
                 editFor ? editBody
@@ -1084,7 +1085,9 @@ export function QuestionComments({ questionId }: { questionId: string }) {
               }}
               placeholder={'Enter to send · Shift+Enter for a new line'}
               rows={isComposing ? 3 : 1}
-              className='min-h-6 flex-1 resize-none bg-transparent w-full text-ink-primary outline-none text-xs px-2  placeholder:text-[10px] placeholder:text-ink-secondary/20'
+              minHeight={isComposing ? 72 : 36}
+              showClearButton={false}
+              className='min-h-6 flex-1 border-0 bg-transparent w-full text-ink-primary outline-none text-xs px-2 placeholder:text-[10px] placeholder:text-ink-secondary/20 p-0 shadow-none'
             />
           )}
 

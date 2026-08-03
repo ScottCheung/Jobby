@@ -21,6 +21,7 @@ import { useConfirmStore } from '@/lib/store/confirm-store';
 import { formatRelativeDate } from '@/components/ConsoleUtils';
 import { InteractiveTranscript } from './InteractiveTranscript';
 import { motion } from 'framer-motion';
+import { EmptyPlaceHolder } from '@/components/UI/EmptyPlaceHolder';
 
 const normalizePlayback = (audio: HTMLAudioElement) => {
   audio.defaultPlaybackRate = 1;
@@ -120,14 +121,12 @@ export function PracticeHistory({
   }, [attempts]);
   if (attempts.length === 0) {
     return (
-      <div className='flex-1 flex flex-col items-center justify-center text-center p-6 text-ink-secondary opacity-65 h-full min-h-[300px]'>
-        <Award className='w-10 h-10 mb-3 text-zinc-400' />
-        <p className='body-md'>No practice records for this question yet.</p>
-        <p className='body-sm mt-1'>
-          Submit your response in the Workspace tab to create your first history
-          record.
-        </p>
-      </div>
+      <EmptyPlaceHolder
+        icon={Award}
+        title='No practice records for this question yet.'
+        description='Submit your response in the Workspace tab to create your first history record.'
+        className='border-0 bg-transparent min-h-[300px]'
+      />
     );
   }
 

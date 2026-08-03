@@ -166,11 +166,10 @@ const InputField = React.forwardRef<HTMLInputElement, InputFieldProps>(
             <Button
               onClick={handleClear}
               size={'icon'}
-              className='absolute right-1 top-1   text-ink-secondary'
+              className='absolute right-1 top-1 '
               variant='icon'
-            >
-              <X className='size-3' />
-            </Button>
+              Icon={X}
+            ></Button>
           )}
         </div>
         <div className='flex items-center justify-between mt-1'>

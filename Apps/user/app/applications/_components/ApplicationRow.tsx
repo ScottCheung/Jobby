@@ -23,6 +23,7 @@ export interface ApplicationRowViewModel {
   skipReason?: string | null;
   shouldShowSkipReason: boolean;
   jobLink?: string | null;
+  hasTailoredResume?: boolean;
 }
 
 interface ApplicationRowProps {
@@ -34,6 +35,11 @@ interface ApplicationRowProps {
   onOpenDetails: (applicationId: string) => void;
   onAsync: (applicationId: string) => void;
   onDelete: (applicationId: string) => void;
+  onOpenResume?: (
+    applicationId: string,
+    title: string,
+    company: string,
+  ) => void;
 }
 
 export const ApplicationRow = React.memo(
@@ -46,6 +52,7 @@ export const ApplicationRow = React.memo(
     onOpenDetails,
     onAsync,
     onDelete,
+    onOpenResume,
   }: ApplicationRowProps) {
     const platformIcons: Record<string, React.ReactNode> = {
       linkedin: (
@@ -135,7 +142,7 @@ export const ApplicationRow = React.memo(
           onOpenDetails(entry.id);
         }}
         className={cn(
-          'body-md grid grid-cols-[minmax(0,3.5fr)_minmax(0,2fr)_minmax(0,2.5fr)_minmax(0,1.3fr)_minmax(0,1.2fr)] pl-4 items-center border-ink-secondary/10 text-ink-secondary ease-in-out cursor-pointer border-b border-l-2 border-l-transparent',
+          'body-md grid grid-cols-[minmax(0,3.5fr)_minmax(0,2fr)_minmax(0,2.5fr)_minmax(0,1.3fr)_minmax(0,1.2fr)] px-4 items-center border-ink-secondary/10 text-ink-secondary ease-in-out cursor-pointer border-b border-l-2 border-l-transparent',
           entry.isLiveProcessing ?
             'bg-amber-500/5 border-l-amber-500 border-l-4 hover:bg-amber-500/10'
           : isSelected ?
@@ -209,6 +216,14 @@ export const ApplicationRow = React.memo(
         )}
 
         <div className='inline-flex gap-1.5 justify-end w-full'>
+          {onOpenResume && (
+            <IconButton
+              label='Preview tailored resume'
+              icon='resume'
+              onClick={() => onOpenResume(entry.id, entry.title, entry.company)}
+            />
+          )}
+
           {entry.jobLink && (
             <IconButton
               label='Open link'
@@ -281,7 +296,8 @@ export const ApplicationRow = React.memo(
         prevEntry.displayStageTime !== nextEntry.displayStageTime ||
         prevEntry.statusBadgeClassName !== nextEntry.statusBadgeClassName ||
         prevEntry.shouldShowSkipReason !== nextEntry.shouldShowSkipReason ||
-        prevEntry.isLiveProcessing !== nextEntry.isLiveProcessing
+        prevEntry.isLiveProcessing !== nextEntry.isLiveProcessing ||
+        prevEntry.hasTailoredResume !== nextEntry.hasTailoredResume
       ) {
         return false;
       }

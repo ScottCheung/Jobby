@@ -39,6 +39,16 @@ strong {
   -webkit-app-region: drag;
 }
 
+.app-drag button,
+.app-drag a,
+.app-drag input,
+.app-drag select,
+.app-drag textarea,
+.app-drag [role='button'],
+.app-drag label,
+.app-drag svg,
+.app-drag [tabindex],
+.app-drag [onclick],
 .app-no-drag {
   -webkit-app-region: no-drag;
 }

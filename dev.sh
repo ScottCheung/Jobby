@@ -71,15 +71,36 @@ echo "Starting Next.js dev server in background..."
 npm run dev &
 NEXT_DEV_PID=$!
 
-# Give the Next.js server 3 seconds to spin up
-sleep 3
+# Wait for Next.js server to be ready on port 3000
+echo "Waiting for Next.js frontend (http://127.0.0.1:3000) to be ready..."
+FRONTEND_ATTEMPTS=30
+FRONTEND_ATTEMPT=1
+FRONTEND_READY=0
+
+while [ $FRONTEND_ATTEMPT -le $FRONTEND_ATTEMPTS ]; do
+    if curl -s --max-time 1 http://127.0.0.1:3000 >/dev/null 2>&1; then
+        FRONTEND_READY=1
+        break
+    fi
+    echo -n "."
+    sleep 1
+    FRONTEND_ATTEMPT=$((FRONTEND_ATTEMPT + 1))
+done
+
+if [ $FRONTEND_READY -eq 1 ]; then
+    echo ""
+    echo "Frontend is ready!"
+else
+    echo ""
+    echo "Warning: Frontend did not report ready status in time. Attempting to start Desktop client anyway..."
+fi
 
 # Check and install desktop dependencies if needed
-# cd "$SCRIPT_DIR/desktop"
-# if [ ! -d "node_modules" ]; then
-#     echo "Installing desktop app dependencies..."
-#     npm install
-# fi
+cd "$SCRIPT_DIR/desktop"
+if [ ! -d "node_modules" ]; then
+    echo "Installing desktop app dependencies..."
+    npm install
+fi
 
 # Run the Electron desktop client pointing to local dev servers
 echo "Starting Electron desktop client (Hot Reloading)..."

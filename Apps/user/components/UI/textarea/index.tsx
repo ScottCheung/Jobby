@@ -7,9 +7,8 @@ import { LabelWithHelp } from '@/components/UI/label/with-help';
 import { Button } from '../Button';
 import { Error } from '@/components/UI/text/typography';
 
-export interface LabeledTextareaProps
-  extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
-  label: string;
+export interface LabeledTextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
+  label?: string;
   icon?: LucideIcon;
   error?: string;
   containerClassName?: string;
@@ -17,6 +16,8 @@ export interface LabeledTextareaProps
   helpTextShort?: string;
   helpTextLong?: string;
   optional?: boolean;
+  minHeight?: number | string;
+  showClearButton?: boolean;
 }
 
 const Textarea = React.forwardRef<HTMLTextAreaElement, LabeledTextareaProps>(
@@ -34,16 +35,23 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, LabeledTextareaProps>(
       helpTextShort,
       helpTextLong,
       optional,
+      minHeight,
+      showClearButton = true,
+      style,
       ...props
     },
     ref,
   ) => {
-    const [currentValue, setCurrentValue] = React.useState('');
+    const [currentValue, setCurrentValue] = React.useState(
+      String(props.value ?? props.defaultValue ?? ''),
+    );
     const textareaRef = React.useRef<HTMLTextAreaElement>(null);
 
-    // Update current value when input changes
+    // Update current value when props value changes
     React.useEffect(() => {
-      if (textareaRef.current) {
+      if (props.value !== undefined) {
+        setCurrentValue(String(props.value ?? ''));
+      } else if (textareaRef.current) {
         setCurrentValue(textareaRef.current.value || '');
       }
     }, [props.value, props.defaultValue]);
@@ -57,7 +65,14 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, LabeledTextareaProps>(
       onChange?.(e);
     };
 
-    const handleClear = () => {
+    const handleClear = (e: React.MouseEvent<HTMLButtonElement>) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      if (textareaRef.current) {
+        textareaRef.current.value = '';
+      }
+
       const event = {
         target: { value: '' },
         currentTarget: { value: '' },
@@ -68,33 +83,49 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, LabeledTextareaProps>(
       textareaRef.current?.focus();
     };
 
+    const showHeader = Boolean(label || (showCharCount && maxLength));
+    const minHeightStyle =
+      minHeight !== undefined ?
+        {
+          minHeight:
+            typeof minHeight === 'number' ? `${minHeight}px` : minHeight,
+        }
+      : undefined;
+    const canClear =
+      hasValue && showClearButton && !props.disabled && !props.readOnly;
+
     return (
-      <div className={cn('group', containerClassName)}>
-        <div className='flex items-center justify-between'>
-          <LabelWithHelp
-            label={label}
-            helpTextShort={helpTextShort}
-            helpTextLong={helpTextLong}
-            required={props.required}
-            optional={optional}
-          />
-          {showCharCount && maxLength && (
-            <p
-              className={cn(
-                'body-sm transition-colors',
-                isExceeded
-                  ? 'text-red-500 dark:text-red-400 font-medium'
+      <div className={cn('group w-full', containerClassName)}>
+        {showHeader && (
+          <div className='flex items-center justify-between gap-2 mb-1.5'>
+            {label ?
+              <LabelWithHelp
+                label={label}
+                helpTextShort={helpTextShort}
+                helpTextLong={helpTextLong}
+                required={props.required}
+                optional={optional}
+              />
+            : <div />}
+            {showCharCount && maxLength && (
+              <p
+                className={cn(
+                  'body-sm transition-colors',
+                  isExceeded ?
+                    'text-red-500 dark:text-red-400 font-medium'
                   : 'text-gray-400 dark:text-ink-secondary',
-              )}
-            >
-              {currentLength}/{maxLength}
-            </p>
-          )}
-        </div>
-        <div className='relative mt-2'>
+                )}
+              >
+                {currentLength}/{maxLength}
+              </p>
+            )}
+          </div>
+        )}
+        <div className='relative w-full'>
           {Icon && (
-            <Icon className='absolute text-gray-400 left-4 top-4 size-4' />
+            <Icon className='absolute text-gray-400 left-4 top-4 size-4 pointer-events-none' />
           )}
+
           <textarea
             ref={(node) => {
               textareaRef.current = node;
@@ -104,32 +135,35 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, LabeledTextareaProps>(
                 ref.current = node;
               }
             }}
+            style={{ ...minHeightStyle, ...style }}
             className={cn(
-              'flex min-h-[80px] textarea',
+              'textarea',
               Icon && 'pl-11',
-              hasValue && 'pr-11',
+              showClearButton && 'pr-10',
               error && 'border-red-500 focus-visible:border-red-500',
               isExceeded && 'border-red-500 focus-visible:border-red-500',
               className,
             )}
+            value={props.value !== undefined ? props.value : currentValue}
             onChange={handleChange}
             onBlur={onBlur}
             {...props}
           />
-          {hasValue && (
-
+          {canClear && (
             <Button
+              type='button'
               Icon={X}
+              variant='icon'
               onClick={handleClear}
-              className="absolute right-1 top-1  text-ink-secondary"
-              variant="ghost"
-
+              className='absolute right-3 bottom-3 '
+              title='Clear'
             />
           )}
         </div>
-        <Error show={(!!error || isExceeded)}>
+        <Error show={!!error || isExceeded}>
           {error ||
-            `Exceeds maximum length by ${currentLength - (maxLength || 0)
+            `Exceeds maximum length by ${
+              currentLength - (maxLength || 0)
             } characters`}
         </Error>
       </div>

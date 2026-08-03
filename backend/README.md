@@ -13,6 +13,30 @@ This compose setup starts:
 docker compose up --build
 ```
 
+## Development With Hot Reload
+
+Build once, then run the development override:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+```
+
+After the first build, normal starts do not need `--build`:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+```
+
+Python changes under `backend/services` restart the API automatically. Changes under
+`Apps/user` are handled by Next.js Fast Refresh. Rebuild only after changing Python or
+Node dependencies, a Dockerfile, or the development Compose configuration.
+
+New database migrations still need to be applied explicitly while the stack is running:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml exec api python -m alembic upgrade head
+```
+
 Then open:
 
 ```text

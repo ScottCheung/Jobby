@@ -25,11 +25,6 @@ def get_applied_jobs():
     If the CSV file is not found, returns a 404 error with a relevant message.
     If any other exception occurs, returns a 500 error with the exception message.
     '''
-
-
-
-@app.route('/applied-jobs/<job_id>', methods=['PUT'])
-
 if __name__ == '__main__':
     app.run(debug=True)
 

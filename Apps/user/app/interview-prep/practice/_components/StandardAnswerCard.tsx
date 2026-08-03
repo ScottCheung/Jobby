@@ -15,6 +15,7 @@ import {
   Edit3,
   Layers3,
   LightbulbIcon,
+  Loader2,
   LockKeyhole,
   MessageSquareQuote,
   Sparkles,
@@ -30,6 +31,9 @@ import {
 import { cn, formatInterviewDuration } from '@/lib/utils';
 import type { InterviewQuestion, QuestionAnswer } from '@/lib/types';
 import { Tooltip } from '@/components/UI/tooltip';
+import { Button } from '@/components/UI/Button';
+import { Textarea } from '@/components/UI/textarea';
+import { EmptyPlaceHolder } from '@/components/UI/EmptyPlaceHolder';
 import { div } from 'framer-motion/client';
 
 export type AnswerTypeTab = 'ai' | 'author' | 'community' | 'mine';
@@ -785,11 +789,11 @@ export function StandardAnswerCard({
             onClick={(e) => e.stopPropagation()}
           >
             <Tooltip content='Private to you. Write your practice answer and notes here; others cannot view or comment on it.'>
-              <textarea
+              <Textarea
                 value={editedText}
                 onChange={(e) => setEditedText(e.target.value)}
                 placeholder='Write or edit your personal answer...'
-                className='textarea h-36 text-xs'
+                minHeight={144}
               />
             </Tooltip>
             <div className='flex justify-end gap-2'>
@@ -848,19 +852,12 @@ export function StandardAnswerCard({
                   </div>
                 : /* Empty state */
                 aiAnswers.length === 0 ?
-                  <div className='flex flex-col items-center gap-3 rounded-xl border border-dashed border-border bg-background-secondary/20 px-4 py-8 text-center'>
-                    <span className='flex h-10 w-10 items-center justify-center rounded-2xl bg-violet-500/10'>
-                      <Sparkles className='h-5 w-5 text-violet-500' />
-                    </span>
-                    <div className='space-y-1'>
-                      <p className='text-xs font-semibold text-ink-primary'>
-                        No AI answer yet
-                      </p>
-                      <p className='text-xs text-ink-secondary max-w-[220px]'>
-                        Generate a structured reference answer when you need
-                        one. Unlocking it costs up to 5 coins.
-                      </p>
-                    </div>
+                  <EmptyPlaceHolder
+                    icon={Sparkles}
+                    title='No AI answer yet'
+                    description='Generate a structured reference answer when you need one. Unlocking it costs up to 5 coins.'
+                    className='border-dashed py-6'
+                  >
                     {onGenerateAiAnswer && (
                       <button
                         type='button'
@@ -868,12 +865,16 @@ export function StandardAnswerCard({
                           const a = await onGenerateAiAnswer();
                           if (a) setSelectedAiAnswerId(a.id);
                         }}
-                        className='inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-700 active:scale-95 transition-all shadow-sm'
+                        disabled={isGeneratingAiAnswer}
+                        className='mt-3 inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-violet-700 active:scale-95 transition-all shadow-sm disabled:opacity-50'
                       >
-                        <Sparkles className='h-3.5 w-3.5' /> Generate AI Answer
+                        {isGeneratingAiAnswer ?
+                          <Loader2 className='h-3.5 w-3.5 animate-spin' />
+                        : <Sparkles className='h-3.5 w-3.5' />}
+                        Generate AI Reference Answer
                       </button>
                     )}
-                  </div>
+                  </EmptyPlaceHolder>
                 : <>
                     {/* Version pills */}
                     {safeAiAnswers.length > 1 && (
@@ -1049,13 +1050,13 @@ export function StandardAnswerCard({
                   onCreateContributorAnswer &&
                   (isCreatingContributorAnswer ?
                     <div className='space-y-2 border-b border-blue-500/15 pb-3'>
-                      <textarea
+                      <Textarea
                         value={authorAnswerText}
                         onChange={(e) =>
                           setContributorAnswerText(e.target.value)
                         }
                         placeholder='Write an official reference answer...'
-                        className='textarea h-32 text-xs'
+                        minHeight={128}
                       />
                       <div className='flex justify-end gap-2'>
                         <button
@@ -1149,12 +1150,12 @@ export function StandardAnswerCard({
                         </div>
                         {editingContributorAnswerId === ans.id ?
                           <div className='space-y-2'>
-                            <textarea
+                            <Textarea
                               value={editingContributorAnswerText}
                               onChange={(e) =>
                                 setEditingContributorAnswerText(e.target.value)
                               }
-                              className='textarea h-32 text-xs'
+                              minHeight={128}
                             />
                             <div className='flex justify-end gap-2'>
                               <button
@@ -1198,17 +1199,12 @@ export function StandardAnswerCard({
                     ))}
                   </div>
                 : !isCreatingContributorAnswer && (
-                    <div className='flex flex-col items-center gap-2.5 rounded-xl border border-dashed border-border bg-background-secondary/20 px-4 py-8 text-center'>
-                      <span className='flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/10'>
-                        <UserCheck className='h-4.5 w-4.5 text-blue-400' />
-                      </span>
-                      <p className='text-xs font-semibold text-ink-primary'>
-                        No author answer yet
-                      </p>
-                      <p className='text-xs text-ink-secondary max-w-[220px]'>
-                        The question author has not added a reference answer.
-                      </p>
-                    </div>
+                    <EmptyPlaceHolder
+                      icon={UserCheck}
+                      title='No author answer yet'
+                      description='The question author has not added a reference answer.'
+                      className='border-dashed py-6'
+                    />
                   )
                 }
               </div>
@@ -1332,24 +1328,20 @@ export function StandardAnswerCard({
                       ))}
                     </div>
                   </div>
-                : <div className='flex flex-col items-center gap-2.5 rounded-xl border border-dashed border-border bg-background-secondary/20 px-4 py-8 text-center'>
-                    <span className='flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10'>
-                      <Edit3 className='h-4.5 w-4.5 text-emerald-400' />
-                    </span>
-                    <p className='text-xs font-semibold text-ink-primary'>
-                      No personal answer yet
-                    </p>
-                    <p className='text-xs text-ink-secondary max-w-[220px]'>
-                      Capture your own answer points for review and practice.
-                    </p>
+                : <EmptyPlaceHolder
+                    icon={Edit3}
+                    title='No personal answer yet'
+                    description='Capture your own answer points for review and practice.'
+                    className='border-dashed py-6'
+                  >
                     <button
                       type='button'
                       onClick={handleStart}
-                      className='inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 active:scale-95 transition-all shadow-sm'
+                      className='mt-3 inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 active:scale-95 transition-all shadow-sm'
                     >
                       <Edit3 className='h-3.5 w-3.5' /> Write My Answer
                     </button>
-                  </div>
+                  </EmptyPlaceHolder>
                 }
               </div>
             )}

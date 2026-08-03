@@ -27,7 +27,13 @@ NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8000
 From the repository root:
 
 ```bash
-docker compose up --build
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+```
+
+Subsequent starts do not require a rebuild:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up
 ```
 
 Open:

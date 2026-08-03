@@ -149,15 +149,27 @@ const Select = React.forwardRef<HTMLDivElement, SelectProps>(
       });
     }, []);
 
-    // 打开时计算一次位置；打开状态下监听 scroll / resize 实时更新
+    // 打开时计算一次位置；打开状态下监听 scroll / resize 实时更新（rAF 节流）
     React.useLayoutEffect(() => {
       if (!isOpen) return;
       calculatePosition();
 
-      const handleUpdate = () => calculatePosition();
-      window.addEventListener('scroll', handleUpdate, true);
-      window.addEventListener('resize', handleUpdate);
+      let rafId: number | null = null;
+      const handleUpdate = () => {
+        if (rafId !== null) return;
+        rafId = requestAnimationFrame(() => {
+          calculatePosition();
+          rafId = null;
+        });
+      };
+
+      window.addEventListener('scroll', handleUpdate, {
+        capture: true,
+        passive: true,
+      });
+      window.addEventListener('resize', handleUpdate, { passive: true });
       return () => {
+        if (rafId !== null) cancelAnimationFrame(rafId);
         window.removeEventListener('scroll', handleUpdate, true);
         window.removeEventListener('resize', handleUpdate);
       };
@@ -289,7 +301,10 @@ const Select = React.forwardRef<HTMLDivElement, SelectProps>(
             (ref as React.MutableRefObject<HTMLDivElement | null>).current =
               node;
         }}
-        className={cn('relative w-full group', containerClassName)}
+        className={cn(
+          'relative w-full transition-none group',
+          containerClassName,
+        )}
       >
         {label && (
           <LabelWithHelp
@@ -301,7 +316,18 @@ const Select = React.forwardRef<HTMLDivElement, SelectProps>(
           />
         )}
 
-        <motion.div className={cn('relative w-full', label && 'mt-2')}>
+        <div className={cn('relative w-full transition-none', label && 'mt-2')}>
+          {/* 当未打开时挂载 layoutId 背景壳；打开后转移至 Portal 下拉框 */}
+          <AnimatePresence>
+            {!isOpen && (
+              <motion.div
+                layoutId={selectLayoutId}
+                transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+                className='absolute inset-0 bg-glass dark:bg-black/20 rounded-2xl border border-border/60 group-hover:border-primary/40 -z-10'
+              />
+            )}
+          </AnimatePresence>
+
           {Icon && (
             <Icon className='absolute left-4 top-1/2 size-4 -translate-y-1/2 text-ink-secondary group-hover:text-primary transition-colors pointer-events-none z-10' />
           )}
@@ -324,9 +350,9 @@ const Select = React.forwardRef<HTMLDivElement, SelectProps>(
             aria-haspopup='listbox'
             id={id}
             className={cn(
-              'relative flex w-full items-center justify-between h-11  p-1 text-sm select-none',
+              'relative flex w-full items-center justify-between h-11 p-1 text-sm select-none',
               'rounded-2xl border transition-all duration-200 outline-none cursor-pointer',
-              'bg-glass dark:bg-black/20 hover:bg-panel focus:bg-panel',
+              'bg-transparent hover:bg-panel/50 focus:bg-panel/50',
               'border-border/60 hover:border-primary/40 focus:border-primary focus:ring-2 focus:ring-primary/20',
               isOpen &&
                 'border-primary ring-2 ring-primary/20 bg-panel shadow-sm',
@@ -356,13 +382,7 @@ const Select = React.forwardRef<HTMLDivElement, SelectProps>(
               />
             </div>
           </button>
-
-          <motion.div
-            layoutId={selectLayoutId}
-            transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-            className='pointer-events-none absolute top-0 h-full w-full bg-glass -z-50 rounded-2xl '
-          ></motion.div>
-        </motion.div>
+        </div>
 
         {/* Portal 出去的下拉框，脱离父容器的 overflow / z-index 限制 */}
         {typeof document !== 'undefined' &&
@@ -370,9 +390,10 @@ const Select = React.forwardRef<HTMLDivElement, SelectProps>(
             <AnimatePresence>
               {isOpen && dropdownStyle && (
                 <motion.div
+                  key='select-popover'
                   data-select-popover
                   layoutId={selectLayoutId}
-                  transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+                  transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
                   style={{
                     position: 'fixed',
                     left: dropdownStyle.left,
@@ -389,87 +410,96 @@ const Select = React.forwardRef<HTMLDivElement, SelectProps>(
                     'bg-panel/95 dark:bg-panel/90 backdrop-blur-xl',
                   )}
                 >
-                  {showSearch && (
-                    <div className='relative mb-1'>
-                      <Search className='absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-ink-secondary pointer-events-none' />
-                      <input
-                        ref={searchInputRef}
-                        type='text'
-                        value={searchQuery}
-                        onChange={(e) => {
-                          setSearchQuery(e.target.value);
-                          setFocusedIndex(0);
-                        }}
-                        onKeyDown={handleListKeyDown}
-                        placeholder={searchPlaceholder}
-                        className={cn(
-                          'w-full h-9 pl-8 pr-3 text-sm rounded-xl outline-none',
-                          'bg-background-secondary/60 dark:bg-white/5',
-                          'placeholder:text-ink-secondary/60 text-ink-primary',
-                          'border border-transparent focus:border-primary/40',
-                        )}
-                      />
-                    </div>
-                  )}
-
-                  <div
-                    ref={listboxRef}
-                    role='listbox'
-                    tabIndex={showSearch ? -1 : 0}
-                    onKeyDown={showSearch ? undefined : handleListKeyDown}
-                    style={{
-                      maxHeight:
-                        showSearch ?
-                          dropdownStyle.maxHeight - 44
-                        : dropdownStyle.maxHeight,
-                    }}
-                    className='overflow-y-auto custom-scrollbar space-y-0.5'
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.15 }}
                   >
-                    {options.map((option, index) => {
-                      const isSelected =
-                        option.value === internalValue ||
-                        option.label === internalValue;
-                      const isFocused = focusedIndex === index;
-
-                      return (
-                        <div
-                          key={`option-${index}-${option.value}`}
-                          role='option'
-                          aria-selected={isSelected}
-                          title={option.label}
-                          onClick={() =>
-                            !option.disabled && handleSelect(option.value)
-                          }
-                          onMouseEnter={() => setFocusedIndex(index)}
+                    {showSearch && (
+                      <div className='relative mb-1'>
+                        <Search className='absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-ink-secondary pointer-events-none' />
+                        <input
+                          ref={searchInputRef}
+                          type='text'
+                          value={searchQuery}
+                          onChange={(e) => {
+                            setSearchQuery(e.target.value);
+                            setFocusedIndex(0);
+                          }}
+                          onKeyDown={handleListKeyDown}
+                          placeholder={searchPlaceholder}
                           className={cn(
-                            'relative flex w-full items-center justify-between py-2 px-3 text-sm cursor-pointer select-none transition-all duration-150',
-                            'rounded-xl',
-                            isSelected ?
-                              'bg-primary/10 text-primary font-semibold'
-                            : 'text-ink-primary hover:bg-background-secondary/80 dark:hover:bg-white/5',
-                            isFocused &&
-                              !isSelected &&
-                              'bg-background-secondary/80 dark:hover:bg-white/5 text-ink-primary',
-                            option.disabled &&
-                              'opacity-40 cursor-not-allowed pointer-events-none',
+                            'w-full h-9 pl-8 pr-3 text-sm rounded-xl outline-none',
+                            'bg-background-secondary/60 dark:bg-white/5',
+                            'placeholder:text-ink-secondary/60 text-ink-primary',
+                            'border border-transparent focus:border-primary/40',
                           )}
-                        >
-                          <span className='truncate pr-1'>{option.label}</span>
-                          {isSelected && (
-                            <Check className='h-4 w-4 text-primary shrink-0 ml-2' />
-                          )}
-                        </div>
-                      );
-                    })}
-
-                    {options.length === 0 && (
-                      <div className='py-6 text-center text-xs text-ink-secondary'>
-                        {searchQuery ?
-                          'No matches found'
-                        : 'No options available'}
+                        />
                       </div>
                     )}
-                  </div>
+
+                    <div
+                      ref={listboxRef}
+                      role='listbox'
+                      tabIndex={showSearch ? -1 : 0}
+                      onKeyDown={showSearch ? undefined : handleListKeyDown}
+                      style={{
+                        maxHeight:
+                          showSearch ?
+                            dropdownStyle.maxHeight - 44
+                          : dropdownStyle.maxHeight,
+                      }}
+                      className='overflow-y-auto custom-scrollbar space-y-0.5'
+                    >
+                      {options.map((option, index) => {
+                        const isSelected =
+                          option.value === internalValue ||
+                          option.label === internalValue;
+                        const isFocused = focusedIndex === index;
+
+                        return (
+                          <div
+                            key={`option-${index}-${option.value}`}
+                            role='option'
+                            aria-selected={isSelected}
+                            title={option.label}
+                            onClick={() =>
+                              !option.disabled && handleSelect(option.value)
+                            }
+                            onMouseEnter={() => setFocusedIndex(index)}
+                            className={cn(
+                              'relative flex w-full items-center justify-between py-2 px-3 text-sm cursor-pointer select-none transition-all duration-150',
+                              'rounded-xl',
+                              isSelected ?
+                                'bg-primary/10 text-primary font-semibold'
+                              : 'text-ink-primary hover:bg-background-secondary/80 dark:hover:bg-white/5',
+                              isFocused &&
+                                !isSelected &&
+                                'bg-background-secondary/80 dark:hover:bg-white/5 text-ink-primary',
+                              option.disabled &&
+                                'opacity-40 cursor-not-allowed pointer-events-none',
+                            )}
+                          >
+                            <span className='truncate pr-1'>
+                              {option.label}
+                            </span>
+                            {isSelected && (
+                              <Check className='h-4 w-4 text-primary shrink-0 ml-2' />
+                            )}
+                          </div>
+                        );
+                      })}
+
+                      {options.length === 0 && (
+                        <div className='py-6 text-center text-xs text-ink-secondary'>
+                          {searchQuery ?
+                            'No matches found'
+                          : 'No options available'}
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
                 </motion.div>
               )}
             </AnimatePresence>,

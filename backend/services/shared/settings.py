@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from urllib.parse import urlparse
 
@@ -31,7 +31,10 @@ class AppSettings(BaseSettings):
     storage_s3_access_key_id: str | None = Field(default=None, alias="STORAGE_S3_ACCESS_KEY_ID")
     storage_s3_secret_access_key: str | None = Field(default=None, alias="STORAGE_S3_SECRET_ACCESS_KEY")
     supabase_url: str | None = Field(default=None, alias="SUPABASE_URL")
+    supabase_anon_key: str | None = Field(default=None, alias="SUPABASE_ANON_KEY")
     supabase_service_role_key: str | None = Field(default=None, alias="SUPABASE_SERVICE_ROLE_KEY")
+    next_public_supabase_url: str | None = Field(default=None, alias="NEXT_PUBLIC_SUPABASE_URL")
+    next_public_supabase_anon_key: str | None = Field(default=None, alias="NEXT_PUBLIC_SUPABASE_ANON_KEY")
     image_max_edge: int = Field(default=1280, alias="IMAGE_MAX_EDGE")
     image_webp_quality: int = Field(default=70, alias="IMAGE_WEBP_QUALITY")
     image_upload_max_bytes: int = Field(default=12 * 1024 * 1024, alias="IMAGE_UPLOAD_MAX_BYTES")
@@ -48,6 +51,14 @@ class AppSettings(BaseSettings):
     deepseek_api_key: str | None = Field(default=None, alias="DEEPSEEK_API_KEY")
     deepseek_base_url: str = Field(default="https://api.deepseek.com", alias="DEEPSEEK_BASE_URL")
     deepseek_model: str = Field(default="deepseek-v4-flash", alias="DEEPSEEK_MODEL")
+
+    @model_validator(mode="after")
+    def inherit_web_supabase_config(self) -> "AppSettings":
+        if not self.supabase_url:
+            self.supabase_url = self.next_public_supabase_url
+        if not self.supabase_anon_key:
+            self.supabase_anon_key = self.next_public_supabase_anon_key
+        return self
 
     @property
     def cors_origins(self) -> list[str]:

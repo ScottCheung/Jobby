@@ -1,16 +1,23 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Mail, Lock, LogIn, UserPlus } from 'lucide-react'
 import { login, signup, signInWithGoogle } from '../auth/actions'
 
 export default function LoginPage() {
-  const router = useRouter()
   const [isLogin, setIsLogin] = useState(true)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [extensionRedirect, setExtensionRedirect] = useState<string | null>(null)
+
+  useEffect(() => {
+    const redirectTarget = new URLSearchParams(window.location.search).get('extension_redirect')
+    setExtensionRedirect(redirectTarget)
+  }, [])
+
+  const currentExtensionRedirect = () =>
+    extensionRedirect ?? new URLSearchParams(window.location.search).get('extension_redirect')
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -18,6 +25,8 @@ export default function LoginPage() {
     setError(null)
     
     const formData = new FormData(e.currentTarget)
+    const redirectTarget = currentExtensionRedirect()
+    if (redirectTarget) formData.set('extension_redirect', redirectTarget)
     
     try {
       if (isLogin) {
@@ -38,7 +47,8 @@ export default function LoginPage() {
     setIsLoading(true)
     setError(null)
     try {
-      await signInWithGoogle()
+      const result = await signInWithGoogle(currentExtensionRedirect() ?? undefined)
+      if (result?.error) setError(result.error)
     } catch (err) {
       setError('Failed to sign in with Google.')
       setIsLoading(false)
@@ -63,7 +73,11 @@ export default function LoginPage() {
             {isLogin ? 'Welcome Back' : 'Create Account'}
           </h1>
           <p className="text-slate-400 mt-2">
-            {isLogin ? 'Sign in to continue your interview prep' : 'Join us to ace your next interview'}
+            {extensionRedirect
+              ? 'Sign in to connect the Jobby browser extension'
+              : isLogin
+                ? 'Sign in to continue your interview prep'
+                : 'Join us to ace your next interview'}
           </p>
         </div>
 
@@ -74,6 +88,7 @@ export default function LoginPage() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          <input type="hidden" name="extension_redirect" value={extensionRedirect ?? ''} />
           <div>
             <label className="label block mb-1.5" htmlFor="email">
               Email Address

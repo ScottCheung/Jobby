@@ -1,6 +1,6 @@
 from datetime import datetime
 from decimal import Decimal
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -58,6 +58,7 @@ class UserProfileBase(BaseModel):
     first_name: str | None = None
     middle_name: str | None = None
     last_name: str | None = None
+    email: str | None = None
     phone_number: str | None = None
     current_city: str | None = None
     street: str | None = None
@@ -88,10 +89,38 @@ class MasterResumeRead(OrmModel):
     original_filename: str
     original_url: str
     resume_data: dict
+    content_version: int
+    published_version: int = 0
+    draft_base_version: int = 0
+    has_draft_changes: bool = False
+    evaluation_is_current: bool = False
+    published_evaluation: dict = Field(default_factory=dict)
+    published_at: datetime | None = None
+    evaluation: dict = Field(default_factory=dict)
+    evaluation_updated_at: datetime | None = None
     status: str
     confirmed_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
+
+
+class MasterResumeEvaluationHistoryRead(OrmModel):
+    id: UUID
+    resume_version: int
+    published_version: int | None = None
+    evaluation: dict
+    resume_data: dict | None = None
+    created_at: datetime
+
+
+class MasterResumeVersionRead(OrmModel):
+    id: UUID
+    version: int
+    resume_data: dict
+    original_filename: str
+    original_url: str
+    evaluation: dict = Field(default_factory=dict)
+    published_at: datetime
 
 
 class ResumeSourceRead(BaseModel):
@@ -145,6 +174,46 @@ class JobHuntingProfileRead(JobHuntingProfileBase, OrmModel):
     updated_at: datetime
 
 
+class CareerProfileUpdate(JobHuntingProfileBase):
+    resume_data: dict | None = None
+
+
+class CareerProfileRead(JobHuntingProfileRead):
+    original_filename: str | None = None
+    original_url: str | None = None
+    resume_data: dict = Field(default_factory=dict)
+    status: str = "ready"
+    latest_evaluation: dict = Field(default_factory=dict)
+    evaluation_is_current: bool = False
+    evaluation_updated_at: datetime | None = None
+
+
+class CareerProfileScoreHistoryRead(OrmModel):
+    id: UUID
+    evaluation: dict
+    resume_data: dict
+    created_at: datetime
+
+
+class TailoredResumeRead(OrmModel):
+    id: UUID
+    user_id: UUID
+    career_profile_id: UUID | None = None
+    job_application_id: UUID
+    job_title: str | None = None
+    company: str | None = None
+    job_description: str
+    source_resume_data: dict
+    resume_data: dict
+    raw_ai_response: dict = Field(default_factory=dict)
+    core_competencies: list[str] = Field(default_factory=list)
+    key_qualifications: list[str] = Field(default_factory=list)
+    targeted_projects: list[dict] = Field(default_factory=list)
+    prompt_version: str
+    created_at: datetime
+    updated_at: datetime
+
+
 class RuntimeSettingsBase(BaseModel):
     platform_account_id: UUID | None = None
     run_in_background: bool = False
@@ -164,6 +233,66 @@ class RuntimeSettingsRead(RuntimeSettingsBase, OrmModel):
     user_id: UUID
     created_at: datetime
     updated_at: datetime
+
+
+class ApplicationCandidateInput(BaseModel):
+    platform: str = "linkedin"
+    external_id: str
+    title: str
+    company: str
+    description: str | None = None
+    match_score: float | None = None
+    easy_apply: bool = False
+    already_applied: bool = False
+
+
+class ApplicationDecisionRequest(BaseModel):
+    candidate: ApplicationCandidateInput
+
+
+class ApplicationPlanCreateRequest(ApplicationDecisionRequest):
+    job_description: str | None = None
+    job_link: str | None = None
+    work_location: str | None = None
+
+
+class ApplicationPlanActionRequest(BaseModel):
+    action: str
+    reason: str | None = None
+
+
+class ApplicationFormFieldInput(BaseModel):
+    key: str = Field(min_length=1, max_length=256)
+    id: str | None = Field(default=None, max_length=256)
+    name: str | None = Field(default=None, max_length=256)
+    type: str = Field(min_length=1, max_length=50)
+    label: str = Field(min_length=1, max_length=500)
+    required: bool = False
+    options: list[dict[str, str]] = Field(default_factory=list, max_length=500)
+
+
+class ApplicationFormInstructionsRequest(BaseModel):
+    fields: list[ApplicationFormFieldInput] = Field(max_length=500)
+
+
+class ApplicationFieldInstruction(BaseModel):
+    type: Literal["content.fill-field"] = "content.fill-field"
+    commandId: str
+    source: Literal["backend"] = "backend"
+    target: ApplicationFormFieldInput
+    value: str | bool
+
+
+class ApplicationFormUnansweredField(BaseModel):
+    key: str
+    label: str
+    reason: str
+
+
+class ApplicationFormInstructionsResponse(BaseModel):
+    application_id: UUID
+    instructions: list[ApplicationFieldInstruction]
+    unanswered_fields: list[ApplicationFormUnansweredField]
 
 
 class QuestionCacheEntryBase(BaseModel):
@@ -222,6 +351,8 @@ class JobApplicationBase(BaseModel):
 class JobApplicationRead(JobApplicationBase, OrmModel):
     id: UUID
     user_id: UUID
+    has_tailored_resume: bool = False
+    tailored_resume_id: UUID | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -908,3 +1039,83 @@ class GamificationConfigRead(BaseModel):
 
 class GamificationConfigUpdate(BaseModel):
     config: dict
+
+
+class ProspectScoreBreakdownSchema(BaseModel):
+    hiring_power: int = Field(default=90, ge=1, le=100)
+    reply_probability: int = Field(default=85, ge=1, le=100)
+    company_match: int = Field(default=92, ge=1, le=100)
+    experience_match: int = Field(default=88, ge=1, le=100)
+    overall: int = Field(default=90, ge=1, le=100)
+
+
+class ProspectBase(BaseModel):
+    name: str = Field(default="Unknown")
+    title: str = Field(default="Unknown")
+    company: str = Field(default="Unknown")
+    linkedin_url: str | None = None
+    role_type: str = Field(default="hiring_manager")  # recruiter, hiring_manager, engineering_manager
+    location: str | None = None
+    has_active_job: bool = False
+    active_job_title: str | None = None
+    active_job_url: str | None = None
+    priority_score: int = Field(default=80)
+    score_breakdown: ProspectScoreBreakdownSchema | dict | None = None
+    match_level: str = Field(default="high")  # high, medium, low
+    recommendation_reason: str = Field(default="")
+    status: str = Field(default="recommended")  # recommended, contacted, replied, interviewing, archived
+    notes: str | None = None
+
+
+class ProspectCreate(ProspectBase):
+    pass
+
+
+class ProspectBatchCreate(BaseModel):
+    prospects: list[ProspectCreate] = Field(default_factory=list)
+
+
+class ProspectUpdate(BaseModel):
+    name: str | None = None
+    title: str | None = None
+    company: str | None = None
+    linkedin_url: str | None = None
+    role_type: str | None = None
+    location: str | None = None
+    has_active_job: bool | None = None
+    active_job_title: str | None = None
+    active_job_url: str | None = None
+    priority_score: int | None = Field(default=None, ge=1, le=100)
+    score_breakdown: ProspectScoreBreakdownSchema | None = None
+    match_level: str | None = None
+    recommendation_reason: str | None = None
+    status: str | None = None
+    notes: str | None = None
+    last_interacted_at: datetime | None = None
+
+
+class ProspectRead(ProspectBase, OrmModel):
+    id: UUID
+    user_id: UUID
+    last_interacted_at: datetime | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class ProspectAgentLogRead(OrmModel):
+    id: UUID
+    user_id: UUID
+    status: str
+    prospects_found: int
+    prospects_added: int
+    summary: str
+    logs: list[dict] = Field(default_factory=list)
+    created_at: datetime
+    updated_at: datetime
+
+
+class ProspectDiscoveryRequest(BaseModel):
+    target_roles: list[str] = Field(default_factory=list)
+    preferred_locations: list[str] = Field(default_factory=list)
+    role_types: list[str] = Field(default_factory=list)
+    limit: int = Field(default=6, ge=1, le=20)

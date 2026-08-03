@@ -12,7 +12,13 @@ WORKER_ROOT = WORKSPACE_ROOT / "worker"
 if str(WORKER_ROOT) not in sys.path:
     sys.path.insert(0, str(WORKER_ROOT))
 
-from linkedinBot.services.job_text_parser import normalize_work_style, parse_public_title
+try:
+    from linkedinBot.services.job_text_parser import normalize_work_style, parse_public_title
+except ImportError:
+    def normalize_work_style(value: str) -> str:
+        return "on-site"
+    def parse_public_title(title: str | None) -> tuple[str | None, str | None, str | None]:
+        return title, None, None
 
 
 class JobLinkRepairError(RuntimeError):
@@ -113,6 +119,7 @@ def _merge_json_ld(target: dict[str, Any], posting: dict) -> None:
 
     target["work_location"] = _location_from_json_ld(posting.get("jobLocation"))
     target["job_description"] = _clean_html(posting.get("description"))
+    target["date_posted"] = _clean_text(posting.get("datePosted"))
 
     workplace_type = posting.get("jobLocationType")
     if isinstance(workplace_type, str) and workplace_type.upper() == "TELECOMMUTE":

@@ -8,6 +8,7 @@ import CardWithNorth from '@/components/UI/card/CardWithNorth';
 import { cn } from '@/lib/utils';
 import { QuestionRecommendationCard } from '../_components/QuestionRecommendationCard';
 import { QuestionCardSkeleton } from '../_components/ExploreSkeletons';
+import { EmptyPlaceHolder } from '@/components/UI/EmptyPlaceHolder';
 
 export type RankingMode = 'hot' | 'season' | 'month' | 'week';
 export type RecommendationFeed = 'forYou' | RankingMode;
@@ -89,9 +90,10 @@ function RecommendationPanel({
           ))}
         </div>
       ) : panel.questions.length === 0 ? (
-        <div className='rounded-xl border border-dashed border-border/60 bg-background/30 px-4 py-6 text-sm text-ink-secondary'>
-          No questions available yet.
-        </div>
+        <EmptyPlaceHolder
+          message='No questions available yet.'
+          className='border-dashed py-6'
+        />
       ) : (
         <div
           className={cn(

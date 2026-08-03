@@ -62,7 +62,7 @@ export function Modal({
       {isOpen && (
         <div
           className={cn(
-            'fixed inset-0 z-50 flex items-center justify-center p-4 md:p-6',
+            'fixed inset-0 z-50 flex items-center justify-center ',
             containerClassName,
           )}
         >
@@ -96,7 +96,7 @@ export function Modal({
             layoutId={layoutId}
             // layout
             className={cn(
-              'relative z-50 card backdrop-blur-[20px] md:shadow-brand w-full flex flex-col overflow-hidden bg-background dark:bg-black/10!',
+              'relative z-50 card backdrop-blur-[20px] md:shadow-brand  w-full flex flex-col overflow-hidden bg-background dark:bg-black/10!',
               className,
             )}
             {...props}

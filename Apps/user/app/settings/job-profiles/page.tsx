@@ -294,7 +294,7 @@ function JobProfileEditorModal({
 
   return (
     <div className='flex max-h-[88vh] min-h-[480px] flex-col'>
-      <header className='flex shrink-0 items-start justify-between gap-5 border-b border-border/60 px-6 py-5 md:px-8'>
+      <header className='header'>
         <div className='flex min-w-0 items-start gap-3'>
           <div className='flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary'>
             <Icon className='h-5 w-5' />
@@ -318,7 +318,7 @@ function JobProfileEditorModal({
         </button>
       </header>
 
-      <div className='custom-scrollbar-primary flex-1 overflow-y-auto px-6 py-6 md:px-8'>
+      <div className='body'>
         <SearchForm
           value={draft}
           onChange={setDraft}
@@ -344,6 +344,260 @@ function JobProfileEditorModal({
         </Button>
       </footer>
     </div>
+  );
+}
+
+/** The full application-settings surface shared by the Resume Profile tab. */
+function ApplicationSettingsCards({
+  profile,
+  onSave,
+}: {
+  profile: JobHuntingProfile;
+  onSave: (profile: JobHuntingProfile) => Promise<void>;
+}) {
+  const openModal = useGlobalModalStore((state) => state.actions.openModal);
+  const closeModal = useGlobalModalStore((state) => state.actions.closeModal);
+  const summary = useMemo(() => {
+    const filters = profile.filters ?? {};
+    const resumePath =
+      profile.resume_path ||
+      String(profile.extra_data?.default_resume_path ?? '');
+    const resumeFilename =
+      String(profile.extra_data?.resume_filename ?? '').trim() ||
+      (resumePath ? compactPath(resumePath) : '');
+    const ruleCount =
+      valuesOf(profile.blacklist_rules?.about_company_bad_words).length +
+      valuesOf(profile.blacklist_rules?.bad_words).length +
+      valuesOf(profile.whitelist_rules?.about_company_good_words).length;
+    return {
+      filters,
+      resumePath,
+      resumeFilename,
+      ruleCount,
+      targeting: [
+        ...valuesOf(filters.on_site),
+        ...valuesOf(filters.job_type),
+        ...valuesOf(filters.experience_level),
+      ],
+      aboutBadWords: valuesOf(profile.blacklist_rules?.about_company_bad_words),
+      descriptionBadWords: valuesOf(profile.blacklist_rules?.bad_words),
+    };
+  }, [profile]);
+  const openEditor = (section: SearchSection) => {
+    openModal({
+      layoutId: `job-profile-editor-${section}`,
+      className: 'w-[94vw] max-w-6xl max-h-[88vh] rounded-lg',
+      content: (
+        <JobProfileEditorModal
+          section={section}
+          profile={profile}
+          onClose={closeModal}
+          onSave={async (nextProfile) => {
+            await onSave(nextProfile);
+            closeModal();
+          }}
+        />
+      ),
+      onClose: closeModal,
+    });
+  };
+
+  return (
+    <WaterfallLayout gap={16} minColumnWidth={350}>
+      {[
+        <ConfigCard
+          key='targets'
+          section='overview'
+          status={getSectionStatus('overview', profile)}
+          onEdit={openEditor}
+        >
+          <TagList
+            values={profile.search_terms ?? []}
+            empty='Add at least one title or keyword to start searching.'
+          />
+          <div className='mt-4'>
+            <DetailLine
+              label='Search location'
+              value={profile.search_location || 'Anywhere'}
+              muted={!profile.search_location}
+            />
+            <DetailLine
+              label='Candidate scan limit'
+              value={`${Number(summary.filters.switch_number ?? 30) || 30} candidates`}
+            />
+          </div>
+        </ConfigCard>,
+        <ConfigCard
+          key='materials'
+          section='materials'
+          status={getSectionStatus('materials', profile)}
+          onEdit={openEditor}
+        >
+          <DetailLine
+            label='Resume'
+            value={summary.resumeFilename || 'Not attached'}
+            muted={!summary.resumePath}
+          />
+          <DetailLine
+            label='LinkedIn'
+            value={profile.linkedin_url ? 'Connected' : 'Not added'}
+            muted={!profile.linkedin_url}
+          />
+          <DetailLine
+            label='Portfolio'
+            value={profile.website ? 'Connected' : 'Not added'}
+            muted={!profile.website}
+          />
+        </ConfigCard>,
+        <ConfigCard
+          key='filters'
+          section='filters'
+          status={getSectionStatus('filters', profile)}
+          onEdit={openEditor}
+        >
+          <DetailLine
+            label='Sort and date'
+            value={`${String(summary.filters.sort_by ?? 'Most recent')} · ${String(summary.filters.date_posted ?? 'Past week')}`}
+          />
+          <div className='mt-3'>
+            <p className='text-[11px] font-semibold uppercase tracking-wider text-ink-secondary'>
+              Targeting
+            </p>
+            <div className='mt-2'>
+              <TagList
+                values={summary.targeting}
+                empty='Any workplace, job type, and level'
+              />
+            </div>
+          </div>
+        </ConfigCard>,
+        <ConfigCard
+          key='eligibility'
+          section='eligibility'
+          status={getSectionStatus('eligibility', profile)}
+          onEdit={openEditor}
+        >
+          <DetailLine
+            label='Work authorization'
+            value={
+              profile.citizenship ||
+              `Visa sponsorship: ${profile.require_visa || 'No'}`
+            }
+            muted={!profile.citizenship}
+          />
+          <DetailLine
+            label='Experience cap'
+            value={
+              profile.years_of_experience ?
+                `${profile.years_of_experience} years`
+              : 'Required'
+            }
+            muted={!profile.years_of_experience}
+          />
+          <p className='body-sm mt-3 text-ink-secondary'>
+            Roles requiring more experience than this will be skipped.
+          </p>
+          <DetailLine
+            label='Notice period'
+            value={
+              (
+                profile.notice_period !== null &&
+                profile.notice_period !== undefined
+              ) ?
+                `${profile.notice_period} days`
+              : 'Not set'
+            }
+            muted={
+              profile.notice_period === null ||
+              profile.notice_period === undefined
+            }
+          />
+          <DetailLine
+            label='Compensation'
+            value={
+              profile.desired_salary ?
+                `Target $${profile.desired_salary}`
+              : 'Not added'
+            }
+            muted={!profile.desired_salary}
+          />
+        </ConfigCard>,
+        <ConfigCard
+          key='rules'
+          section='rules'
+          status={getSectionStatus('rules', profile)}
+          onEdit={openEditor}
+        >
+          <DetailLine
+            label='Active rules'
+            value={summary.ruleCount ? `${summary.ruleCount} phrases` : 'None'}
+            muted={!summary.ruleCount}
+          />
+          <div className='mt-3'>
+            <TagList
+              values={[
+                ...summary.aboutBadWords,
+                ...summary.descriptionBadWords,
+              ].slice(0, 6)}
+              empty='No company or description exclusions'
+            />
+          </div>
+        </ConfigCard>,
+        <ConfigCard
+          key='career'
+          section='career'
+          status={getSectionStatus('career', profile)}
+          onEdit={openEditor}
+        >
+          <DetailLine
+            label='Recent employer'
+            value={profile.recent_employer || 'Not added'}
+            muted={!profile.recent_employer}
+          />
+          <DetailLine
+            label='Headline'
+            value={profile.linkedin_headline || 'Not added'}
+            muted={!profile.linkedin_headline}
+          />
+          <DetailLine
+            label='Summary'
+            value={profile.linkedin_summary ? 'Written' : 'Not added'}
+            muted={!profile.linkedin_summary}
+          />
+        </ConfigCard>,
+        <ConfigCard
+          key='ai'
+          section='ai'
+          status={getSectionStatus('ai', profile)}
+          onEdit={openEditor}
+        >
+          <DetailLine
+            label='Cover letter'
+            value={profile.cover_letter ? 'Prepared' : 'Not added'}
+            muted={!profile.cover_letter}
+          />
+          <DetailLine
+            label='Answer context'
+            value={
+              (
+                profile.user_information_all ||
+                profile.extra_data?.user_information_all
+              ) ?
+                'Prepared'
+              : 'Not added'
+            }
+            muted={
+              !profile.user_information_all &&
+              !profile.extra_data?.user_information_all
+            }
+          />
+          <div className='mt-3 flex items-center gap-2 body-sm text-ink-secondary'>
+            <BadgeCheck className='h-4 w-4 text-primary' />
+            Used when a form needs a tailored written answer.
+          </div>
+        </ConfigCard>,
+      ]}
+    </WaterfallLayout>
   );
 }
 
@@ -399,26 +653,7 @@ export default function SearchPage() {
   }, [selectedProfile]);
 
   const openActiveResume = () => {
-    openModal({
-      layoutId: 'active-resume',
-      className: 'w-[94vw] max-w-2xl max-h-[86vh] rounded-lg',
-      content: (
-        <ActiveResumeModal
-          currentUrl={summary.resumePath}
-          onClose={closeModal}
-          onUpload={() => {
-            closeModal();
-            window.location.href = '/settings/resume';
-          }}
-          onSelected={async () => {
-            const nextProfile = await api.jobHuntingProfile();
-            setJobHuntingProfile(nextProfile);
-            loadData();
-          }}
-        />
-      ),
-      onClose: closeModal,
-    });
+    window.location.href = '/settings/career-profiles';
   };
 
   const completion = useMemo(() => {
@@ -479,7 +714,9 @@ export default function SearchPage() {
           <div>
             <div className='flex flex-wrap items-center gap-2'>
               <BriefcaseBusiness className='h-5 w-5 text-primary' />
-              <h1 className='title-section text-ink-primary'>Job Search</h1>
+              <h1 className='title-section text-ink-primary'>
+                Application settings
+              </h1>
               <span
                 className={cn(
                   'inline-flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-semibold',
@@ -496,10 +733,11 @@ export default function SearchPage() {
               </span>
             </div>
             <p className='body-md mt-1 text-ink-secondary'>
-              Targets and application settings for{' '}
+              Job targeting and application settings for{' '}
               <span className='font-medium text-ink-primary'>
                 {summary.resumeFilename || 'your active resume'}
-              </span>.
+              </span>
+              .
             </p>
           </div>
           <Button
@@ -509,7 +747,7 @@ export default function SearchPage() {
             layoutId='active-resume'
             onClick={openActiveResume}
           >
-            Active Resume
+            Resume Profile
           </Button>
         </header>
 
@@ -533,8 +771,8 @@ export default function SearchPage() {
                     muted={!selectedProfile.search_location}
                   />
                   <DetailLine
-                    label='Switch after'
-                    value={`${Number(summary.filters.switch_number ?? 30) || 30} applications`}
+                    label='Candidate scan limit'
+                    value={`${Number(summary.filters.switch_number ?? 30) || 30} candidates`}
                   />
                 </div>
               </ConfigCard>,
@@ -620,12 +858,17 @@ export default function SearchPage() {
                 <DetailLine
                   label='Notice period'
                   value={
-                    selectedProfile.notice_period !== null &&
-                    selectedProfile.notice_period !== undefined ?
+                    (
+                      selectedProfile.notice_period !== null &&
+                      selectedProfile.notice_period !== undefined
+                    ) ?
                       `${selectedProfile.notice_period} days`
                     : 'Not set'
                   }
-                  muted={selectedProfile.notice_period === null || selectedProfile.notice_period === undefined}
+                  muted={
+                    selectedProfile.notice_period === null ||
+                    selectedProfile.notice_period === undefined
+                  }
                 />
                 <DetailLine
                   label='Compensation'

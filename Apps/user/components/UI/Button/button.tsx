@@ -12,7 +12,7 @@ import { ref } from 'process';
 const MIN_LOADING_MS = 200;
 
 const buttonVariants = cva(
-  'inline-flex items-center gap-3 p-1 justify-center whitespace-nowrap rounded-full transition-all focus-visible:outline-none duration-400 focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50 active:scale-95 cursor-pointer',
+  'inline-flex items-center gap-3 p-1 justify-center whitespace-nowrap rounded-full transition-all focus-visible:outline-none duration-200 focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50 active:scale-95 cursor-pointer',
   {
     variants: {
       variant: {
@@ -25,14 +25,16 @@ const buttonVariants = cva(
           'bg-destructive  hover:bg-destructive/80 text-destructive-foreground',
         outline:
           'border border-primary  text-primary hover:bg-primary  hover:text-primary-foreground',
-        icon: 'bg-glass text-ink-secondary hover:bg-primary/90 hover:text-primary-foreground rounded-full ',
+        icon: 'bg-glass text-ink-secondary hover:bg-primary-gradient hover:text-primary-foreground rounded-full ',
+        iconActive:
+          'hover:bg-glass text-ink-secondary bg-primary-gradient hover:text-primary-foreground rounded-full ',
         ghost:
-          'text-ink-primary bg-ink-secondary/20 hover:bg-primary/50 hover:text-primary-foreground',
+          'text-ink-primary bg-[#dad9de] dark:bg-[#2f2e32] hover:bg-primary-gradient hover:text-primary-foreground',
         link: 'text-primary underline-offset-4 hover:underline',
         toolbar:
-          'text-ink-secondary hover:text-ink-primary hover:bg-primary/10  rounded-full  transition-all duration-200 active:scale-95 disabled:opacity-40 disabled:scale-100 disabled:cursor-not-allowed',
+          'text-ink-secondary hover:text-ink-primary hover:bg-primary/10  rounded-full   active:scale-95 disabled:opacity-40 disabled:scale-100 disabled:cursor-not-allowed',
         toolbarActive:
-          'text-primary hover:bg-primary/20 rounded-full text-primary transition-all duration-200 active:scale-95 disabled:opacity-40 disabled:scale-100 disabled:cursor-not-allowed',
+          'text-primary hover:bg-primary/20 rounded-full text-primary  active:scale-95 disabled:opacity-40 disabled:scale-100 disabled:cursor-not-allowed',
       },
       size: {
         link: 'p-0',
@@ -128,7 +130,9 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         {...(props as any)}
       >
         {Icon && <Icon className={cn('size-4')} />}
-        <div className={displayLoading ? 'opacity-0' : ''}>{children}</div>
+        {variant !== 'icon' && 'iconActive' && (
+          <div className={displayLoading ? 'opacity-0' : ''}>{children}</div>
+        )}
         {displayLoading && <Loader2 className='size-6 animate-spin absolute' />}
       </motion.button>
     );

@@ -22,6 +22,7 @@ import { useRelativeTime } from '@/lib/use-relative-time';
 import { cn } from '@/lib/utils';
 import { useConsole } from '@/components/ConsoleContext';
 import { Avatar } from '../UI/Avatar/Avatar';
+import { EmptyPlaceHolder } from '../UI/EmptyPlaceHolder';
 
 const notificationIcons = {
   comment_reply: MessageCircle,
@@ -293,9 +294,11 @@ function NotificationDrawer({
         }}
       >
         {filteredItems.length === 0 ?
-          <div className='py-16 text-center text-sm text-ink-secondary'>
-            No notifications yet.
-          </div>
+          <EmptyPlaceHolder
+            icon={Bell}
+            message='No notifications yet.'
+            className='border-0 bg-transparent py-10'
+          />
         : filteredItems.map((item) => (
             <NotificationRow
               key={item.id}

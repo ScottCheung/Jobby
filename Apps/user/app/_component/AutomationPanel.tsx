@@ -115,10 +115,11 @@ export default function AutomationPanel() {
     const state = botStates?.[platform];
     const status = state?.status || 'idle';
     const isRunning = status === 'running';
+    const isWaiting = status === 'waiting';
 
     if (status === 'starting' || status === 'stopping') return;
 
-    if (isRunning) {
+    if (isRunning || isWaiting) {
       await stopBot(platform);
     } else {
       if (!user?.can_use_auto_apply) return;
@@ -128,7 +129,7 @@ export default function AutomationPanel() {
 
   // Determine if any bot is active to trigger glowing state on floating icon
   const isAnyBotActive = Object.values(botStates || {}).some((s: any) =>
-    ['starting', 'running', 'stopping'].includes(s?.status),
+    ['starting', 'running', 'waiting', 'stopping'].includes(s?.status),
   );
 
   const PLATFORMS: Array<{
@@ -242,8 +243,9 @@ export default function AutomationPanel() {
               const status = state.status || 'idle';
               const isRunning = status === 'running';
               const isStarting = status === 'starting';
+              const isWaiting = status === 'waiting';
               const isStopping = status === 'stopping';
-              const isActive = isRunning || isStarting || isStopping;
+              const isActive = isRunning || isStarting || isWaiting || isStopping;
               const stats = state.stats || {
                 submitted: 0,
                 skipped: 0,
@@ -266,6 +268,8 @@ export default function AutomationPanel() {
                       'bg-emerald-500/5 dark:bg-emerald-500/10 border-emerald-500/30 dark:border-emerald-500/20 shadow-emerald-500/5 cursor-pointer hover:border-emerald-500/50 hover:bg-emerald-500/10'
                     : isStarting || isStopping ?
                       'bg-sky-500/5 dark:bg-sky-500/10 border-sky-500/30 dark:border-sky-500/20 shadow-sky-500/5 cursor-wait'
+                    : isWaiting ?
+                      'bg-amber-500/5 dark:bg-amber-500/10 border-amber-500/30 dark:border-amber-500/20 shadow-amber-500/5 cursor-pointer hover:border-amber-500/50 hover:bg-amber-500/10'
                     : cn(
                         'bg-white/90 dark:bg-[#0f1219]/90 border-border/60 cursor-pointer',
                         platform.brandHoverClass,
@@ -303,6 +307,18 @@ export default function AutomationPanel() {
                             Stopping...
                           </span>
                         )}
+                        {isWaiting && (
+                          <>
+                            <span className='text-[11px] font-bold text-amber-500 group-hover/btn:hidden flex items-center gap-1'>
+                              <RefreshCw className='w-3 h-3 animate-spin' />{' '}
+                              Waiting...
+                            </span>
+                            <span className='text-[11px] font-bold text-red-500 hidden group-hover/btn:flex items-center gap-1'>
+                              <Square className='w-3 h-3 fill-current' /> Stop
+                              Bot
+                            </span>
+                          </>
+                        )}
                         {isLocked && (
                           <span className='text-[11px] font-bold text-red-500 dark:text-red-400 flex items-center gap-1'>
                             <svg
@@ -318,7 +334,7 @@ export default function AutomationPanel() {
                           <>
                             <span className='text-[11px] font-bold text-zinc-400 dark:text-ink-primary0 group-hover/btn:hidden flex items-center gap-1'>
                               <span className='w-1.5 h-1.5 rounded-full bg-zinc-300 dark:bg-zinc-700' />{' '}
-                              Inactive
+                              Ready
                             </span>
                             <span className='text-[11px] font-bold text-emerald-600 dark:text-emerald-400 hidden group-hover/btn:flex items-center gap-1 animate-text-shimmer-primary animate-text-shimmer'>
                               <Play className='w-3 h-3 fill-current' /> Start

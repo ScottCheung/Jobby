@@ -1,3 +1,0 @@
-macOS detected. Using standard Selenium startup for stability; undetected_chromedriver is being skipped because it can hang before LinkedIn opens.
-Using persistent dedicated bot profile: /Users/xianzhezhang/.auto-job-apply-profile
-Starting Chrome with Selenium anti-detection options...

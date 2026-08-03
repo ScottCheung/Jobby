@@ -159,8 +159,8 @@
 
 /** Multi-line textarea — aligned to token system */
 .textarea {
-  @apply flex min-h-[100px] w-full rounded-xl border border-border
-    bg-background-secondary/50 px-3.5 py-2.5 text-sm text-ink-primary
+  @apply flex min-h-[300px] w-full  rounded-xl rounded-br-3xl! border border-border
+    bg-background-secondary/50 p-6 text-sm text-ink-primary
     placeholder:text-ink-secondary/60
     focus:bg-panel focus:border-primary/50
     focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/10
@@ -200,7 +200,7 @@
    ============================================================ */
 
 .header {
-  @apply flex items-center justify-between;
+  @apply flex items-start justify-between;
 }
 
 .fade-out-tb {

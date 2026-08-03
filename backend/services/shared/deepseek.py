@@ -1,9 +1,13 @@
 import json
+import logging
 import re
 
 import httpx
 
 from services.shared.settings import get_settings
+
+
+logger = logging.getLogger(__name__)
 
 
 class DeepSeekError(Exception):
@@ -49,7 +53,12 @@ def _extract_json_payload(content: object) -> dict:
     raise ValueError("AI response did not contain valid JSON")
 
 
-def _complete(messages: list[dict[str, str]], temperature: float = 0.35) -> dict:
+def _complete(
+    messages: list[dict[str, str]],
+    temperature: float = 0.35,
+    operation: str = "generic",
+    timeout: float = 45.0,
+) -> dict:
     settings = get_settings()
     if not settings.deepseek_api_key:
         raise DeepSeekError("AI is not configured")
@@ -63,10 +72,25 @@ def _complete(messages: list[dict[str, str]], temperature: float = 0.35) -> dict
                 "response_format": {"type": "json_object"},
                 "temperature": temperature,
             },
-            timeout=45.0,
+            timeout=timeout,
         )
         response.raise_for_status()
-        content = response.json()["choices"][0]["message"]["content"]
+        payload = response.json()
+        if not isinstance(payload, dict):
+            raise ValueError("AI returned a non-object response")
+        usage = payload.get("usage")
+        if isinstance(usage, dict):
+            logger.info(
+                "AI token usage operation=%s model=%s prompt=%s completion=%s total=%s cache_hit=%s cache_miss=%s",
+                operation,
+                settings.deepseek_model,
+                usage.get("prompt_tokens"),
+                usage.get("completion_tokens"),
+                usage.get("total_tokens"),
+                usage.get("prompt_cache_hit_tokens"),
+                usage.get("prompt_cache_miss_tokens"),
+            )
+        content = payload["choices"][0]["message"]["content"]
         return _extract_json_payload(content)
     except (httpx.HTTPError, KeyError, IndexError, ValueError, TypeError) as exc:
         raise DeepSeekError("AI could not produce a valid response") from exc
