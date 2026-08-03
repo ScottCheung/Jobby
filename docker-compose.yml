@@ -29,6 +29,11 @@ services:
       dockerfile: backend/api.Dockerfile
     container_name: auto-job-api
     restart: unless-stopped
+    # Keep API token verification aligned with the public Supabase project used
+    # by the Jobby web app and browser extension during local development.
+    env_file:
+      - path: ./Apps/user/.env.local
+        required: false
     environment:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-auto_job}:${POSTGRES_PASSWORD:-auto_job_password}@postgres:5432/${POSTGRES_DB:-auto_job_applier}
       API_HOST: 0.0.0.0

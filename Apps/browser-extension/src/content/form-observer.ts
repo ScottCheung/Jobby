@@ -41,6 +41,8 @@ const FORM_RELEVANT_SELECTOR = [
 ].join(", ");
 
 const FORM_OBSERVER_DEBOUNCE_MS = 150;
+const FORM_SETTLE_MS = 300;
+const FORM_STABILITY_RECHECK_MS = 120;
 
 function hasObservableFields(form: FormInspection): boolean {
   return form.kind === "application_form" || form.kind === "page_input_fields";
@@ -129,20 +131,44 @@ export function watchFormScope(
   if (!scope) return;
 
   let timer: number | undefined;
+  let stabilityTimer: number | undefined;
+  let revision = 0;
   let lastSignature = signature(initialForm || readForm());
   const observedRoots = new WeakSet<ShadowRoot>();
   const eventRoots: Array<Document | HTMLElement | ShadowRoot> = [];
   const scopeParent = scope instanceof HTMLElement ? scope.parentNode : null;
-  let schedule: () => void;
+  let schedule: (waitForStableDom?: boolean) => void;
   const observer = new MutationObserver((records) => {
     records.forEach((record) => {
       record.addedNodes.forEach((node) => observeShadowRootsIn(node, observeRoot));
     });
-    if (hasRelevantFormMutation(records)) schedule();
+    if (hasRelevantFormMutation(records)) schedule(true);
   });
 
-  schedule = () => {
+  const publishForm = (form: FormInspection) => {
+    // Native file pickers return focus to the page without emitting an
+    // input/change event when the user cancels. LinkedIn may replace the
+    // uploader subtree at that point, so reattach the narrow form observer
+    // to the current root instead of requiring a Next/Back navigation.
+    const currentScope = getCurrentFormScope();
+    if (currentScope && currentScope !== scope) {
+      watchFormScope(currentScope, readForm, form);
+      return;
+    }
+    const nextSignature = signature(form);
+    if (nextSignature === lastSignature) return;
+    lastSignature = nextSignature;
+    void chrome.runtime.sendMessage({ type: "content.form-changed", form }).catch(() => undefined);
+    if (!hasObservableFields(form)) {
+      window.__jobbyFormObserverCleanup?.();
+      startFormDiscovery(readForm);
+    }
+  };
+
+  schedule = (waitForStableDom = false) => {
+    const scheduledRevision = ++revision;
     if (timer !== undefined) window.clearTimeout(timer);
+    if (stabilityTimer !== undefined) window.clearTimeout(stabilityTimer);
     timer = window.setTimeout(() => {
       if (!scope.isConnected) {
         linkedinAdapter.invalidateApplicationRootCache();
@@ -150,29 +176,33 @@ export function watchFormScope(
         linkedinAdapter.invalidateApplicationActionCache();
       }
       const form = readForm();
-      // Native file pickers return focus to the page without emitting an
-      // input/change event when the user cancels. LinkedIn may replace the
-      // uploader subtree at that point, so reattach the narrow form observer
-      // to the current root instead of requiring a Next/Back navigation.
-      const currentScope = getCurrentFormScope();
-      if (currentScope && currentScope !== scope) {
-        watchFormScope(currentScope, readForm, form);
+      if (!waitForStableDom) {
+        publishForm(form);
         return;
       }
-      const nextSignature = signature(form);
-      if (nextSignature === lastSignature) return;
-      lastSignature = nextSignature;
-      void chrome.runtime.sendMessage({ type: "content.form-changed", form }).catch(() => undefined);
-      if (!hasObservableFields(form)) {
-        window.__jobbyFormObserverCleanup?.();
-        startFormDiscovery(readForm);
-      }
-    }, FORM_OBSERVER_DEBOUNCE_MS);
+
+      // Application frameworks often insert the dialog shell and controls in
+      // separate commits. Publish only after the relevant DOM has stayed
+      // quiet and two reads agree, rather than briefly showing a partial form.
+      const firstSignature = signature(form);
+      stabilityTimer = window.setTimeout(() => {
+        if (revision !== scheduledRevision) return;
+        const verifiedForm = readForm();
+        if (signature(verifiedForm) !== firstSignature) {
+          schedule(true);
+          return;
+        }
+        publishForm(verifiedForm);
+      }, FORM_STABILITY_RECHECK_MS);
+    }, waitForStableDom ? FORM_SETTLE_MS : FORM_OBSERVER_DEBOUNCE_MS);
   };
 
+  const scheduleValueChange = () => schedule();
+  const scheduleAfterFocus = () => schedule(true);
+
   const listenForValueChanges = (root: Document | HTMLElement | ShadowRoot): void => {
-    root.addEventListener("input", schedule, true);
-    root.addEventListener("change", schedule, true);
+    root.addEventListener("input", scheduleValueChange, true);
+    root.addEventListener("change", scheduleValueChange, true);
     eventRoots.push(root);
   };
 
@@ -219,17 +249,18 @@ export function watchFormScope(
   // Closing a native file chooser normally produces no form event. The
   // browser window regaining focus is the low-cost signal we need to refresh
   // the uploader without observing the whole page.
-  window.addEventListener("focus", schedule, true);
+  window.addEventListener("focus", scheduleAfterFocus, true);
 
   window.__jobbyFormObserverCleanup = () => {
     observer.disconnect();
     parentObserver?.disconnect();
     eventRoots.forEach((root) => {
-      root.removeEventListener("input", schedule, true);
-      root.removeEventListener("change", schedule, true);
+      root.removeEventListener("input", scheduleValueChange, true);
+      root.removeEventListener("change", scheduleValueChange, true);
     });
-    window.removeEventListener("focus", schedule, true);
+    window.removeEventListener("focus", scheduleAfterFocus, true);
     if (timer !== undefined) window.clearTimeout(timer);
+    if (stabilityTimer !== undefined) window.clearTimeout(stabilityTimer);
   };
 }
 
@@ -237,19 +268,36 @@ export function startFormDiscovery(readForm: () => FormInspection): void {
   window.__jobbyFormDiscoveryCleanup?.();
   const observedRoots = new WeakSet<ShadowRoot>();
   let timer: number | undefined;
+  let stabilityTimer: number | undefined;
+  let revision = 0;
+
+  const scheduleDiscovery = () => {
+    const scheduledRevision = ++revision;
+    if (timer !== undefined) window.clearTimeout(timer);
+    if (stabilityTimer !== undefined) window.clearTimeout(stabilityTimer);
+    timer = window.setTimeout(() => {
+      const form = readForm();
+      if (!hasObservableFields(form)) return;
+      const firstSignature = signature(form);
+      stabilityTimer = window.setTimeout(() => {
+        if (revision !== scheduledRevision) return;
+        const verifiedForm = readForm();
+        if (!hasObservableFields(verifiedForm) || signature(verifiedForm) !== firstSignature) {
+          scheduleDiscovery();
+          return;
+        }
+        const scope = getCurrentFormScope();
+        if (!scope) return;
+        void chrome.runtime.sendMessage({ type: "content.form-changed", form: verifiedForm }).catch(() => undefined);
+        watchFormScope(scope, readForm, verifiedForm);
+      }, FORM_STABILITY_RECHECK_MS);
+    }, FORM_SETTLE_MS);
+  };
 
   const discovery = new MutationObserver((records) => {
     records.forEach((record) => record.addedNodes.forEach((node) => observeShadowRootsIn(node, observeRoot)));
     if (!records.some(hasDiscoveryMutation)) return;
-    if (timer !== undefined) window.clearTimeout(timer);
-    timer = window.setTimeout(() => {
-      const form = readForm();
-      if (!hasObservableFields(form)) return;
-      const scope = getCurrentFormScope();
-      if (!scope) return;
-      void chrome.runtime.sendMessage({ type: "content.form-changed", form }).catch(() => undefined);
-      watchFormScope(scope, readForm, form);
-    }, FORM_OBSERVER_DEBOUNCE_MS);
+    scheduleDiscovery();
   });
 
   function observeRoot(root: ShadowRoot): void {
@@ -275,13 +323,7 @@ export function startFormDiscovery(readForm: () => FormInspection): void {
   const onFocus = (event: FocusEvent) => {
     const target = event.target;
     if (!(target instanceof HTMLElement) || !target.matches("input, select, textarea, [contenteditable='true']")) return;
-    if (timer !== undefined) window.clearTimeout(timer);
-    timer = window.setTimeout(() => {
-      const form = readForm();
-      if (!hasObservableFields(form)) return;
-      const scope = getCurrentFormScope();
-      if (scope) watchFormScope(scope, readForm, form);
-    }, 50);
+    scheduleDiscovery();
   };
   document.addEventListener("focusin", onFocus, true);
 
@@ -289,6 +331,7 @@ export function startFormDiscovery(readForm: () => FormInspection): void {
     discovery.disconnect();
     document.removeEventListener("focusin", onFocus, true);
     if (timer !== undefined) window.clearTimeout(timer);
+    if (stabilityTimer !== undefined) window.clearTimeout(stabilityTimer);
   };
 }
 

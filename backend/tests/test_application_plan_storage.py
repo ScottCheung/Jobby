@@ -20,7 +20,13 @@ from services.shared.application_plans import (
     plan_requires_tailored_resume,
     plan_to_dict,
 )
-from services.shared.schemas import ApplicationPlanActionRequest, ApplicationPlanCreateRequest
+from services.shared.schemas import (
+    ApplicationFieldInstruction,
+    ApplicationFormFieldInput,
+    ApplicationFormInstructionsResponse,
+    ApplicationPlanActionRequest,
+    ApplicationPlanCreateRequest,
+)
 
 
 def make_plan():
@@ -75,6 +81,30 @@ def test_plan_api_contract_separates_creation_from_state_actions() -> None:
 
     assert create.candidate.external_id == "job-42"
     assert action.action == "approve"
+
+
+def test_form_instructions_omit_unavailable_optional_field_identifiers() -> None:
+    target = ApplicationFormFieldInput(
+        key="email",
+        type="email",
+        label="Email address",
+    )
+    response = ApplicationFormInstructionsResponse(
+        application_id="018f8b31-66a8-7d42-8c01-9b423f15df91",
+        instructions=[
+            ApplicationFieldInstruction(
+                commandId="instruction-1",
+                target=target,
+                value="candidate@example.com",
+            )
+        ],
+        unanswered_fields=[],
+    )
+
+    target_payload = response.model_dump(exclude_none=True)["instructions"][0]["target"]
+
+    assert "id" not in target_payload
+    assert "name" not in target_payload
 
 
 def test_plan_events_are_append_only_and_do_not_mutate_existing_raw_data() -> None:

@@ -64,7 +64,7 @@ async function saveSession(payload: SessionPayload, previousUser?: AuthSession["
   return session;
 }
 
-export async function openLogin(): Promise<AuthStatus> {
+export async function openLogin(interactive = true): Promise<AuthStatus> {
   supabaseConfig();
   const state = crypto.randomUUID();
   const callback = new URL(chrome.identity.getRedirectURL("jobby-auth"));
@@ -77,7 +77,7 @@ export async function openLogin(): Promise<AuthStatus> {
   loginUrl.searchParams.set("extension_redirect", callback.toString());
   const responseUrl = await chrome.identity.launchWebAuthFlow({
     url: loginUrl.toString(),
-    interactive: true,
+    interactive,
   });
   if (!responseUrl) throw new Error("The Jobby login window did not return a session.");
 
@@ -108,6 +108,16 @@ export async function openLogin(): Promise<AuthStatus> {
   return getAuthStatus();
 }
 
+export async function restoreWebSession(): Promise<AuthStatus | null> {
+  try {
+    return await openLogin(false);
+  } catch {
+    // A non-interactive flow normally fails when the Jobby web session is not
+    // present. That is expected; the panel can then offer the regular login.
+    return null;
+  }
+}
+
 export async function refreshAuthSession(): Promise<AuthSession | null> {
   const current = await getAuthSession();
   if (!current) return null;
@@ -124,8 +134,14 @@ export async function refreshAuthSession(): Promise<AuthSession | null> {
   });
   const payload = await response.json().catch(() => null) as unknown;
   if (!response.ok) {
-    await clearAuthSession();
-    throw new Error(errorMessage(payload, "Your Jobby session expired. Please sign in again."));
+    // Only a definitive token rejection should disconnect the extension.
+    // Network outages and backend/Supabase 5xx responses are recoverable and
+    // must not force the user through the browser login flow again.
+    if ([400, 401, 403].includes(response.status)) {
+      await clearAuthSession();
+      throw new Error(errorMessage(payload, "Your Jobby session expired. Please sign in again."));
+    }
+    throw new Error(errorMessage(payload, "Could not refresh the Jobby session. Please try again shortly."));
   }
 
   return saveSession(payload as SessionPayload, current.user);
@@ -148,7 +164,7 @@ export async function getAuthStatus(): Promise<AuthStatus> {
     try {
       await refreshAuthSession();
     } catch {
-      await clearAuthSession();
+      // Keep the persisted refresh token for a later silent retry.
     }
   }
   return readAuthStatus();

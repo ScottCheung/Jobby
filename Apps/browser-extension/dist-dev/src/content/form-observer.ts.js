@@ -28,6 +28,8 @@ const FORM_RELEVANT_SELECTOR = [
   "[aria-modal='true']"
 ].join(", ");
 const FORM_OBSERVER_DEBOUNCE_MS = 150;
+const FORM_SETTLE_MS = 300;
+const FORM_STABILITY_RECHECK_MS = 120;
 function hasObservableFields(form) {
   return form.kind === "application_form" || form.kind === "page_input_fields";
 }
@@ -100,6 +102,8 @@ export function watchFormScope(scope, readForm, initialForm) {
   window.__jobbyFormDiscoveryCleanup?.();
   if (!scope) return;
   let timer;
+  let stabilityTimer;
+  let revision = 0;
   let lastSignature = signature(initialForm || readForm());
   const observedRoots = /* @__PURE__ */ new WeakSet();
   const eventRoots = [];
@@ -109,10 +113,27 @@ export function watchFormScope(scope, readForm, initialForm) {
     records.forEach((record) => {
       record.addedNodes.forEach((node) => observeShadowRootsIn(node, observeRoot));
     });
-    if (hasRelevantFormMutation(records)) schedule();
+    if (hasRelevantFormMutation(records)) schedule(true);
   });
-  schedule = () => {
+  const publishForm = (form) => {
+    const currentScope = getCurrentFormScope();
+    if (currentScope && currentScope !== scope) {
+      watchFormScope(currentScope, readForm, form);
+      return;
+    }
+    const nextSignature = signature(form);
+    if (nextSignature === lastSignature) return;
+    lastSignature = nextSignature;
+    void chrome.runtime.sendMessage({ type: "content.form-changed", form }).catch(() => void 0);
+    if (!hasObservableFields(form)) {
+      window.__jobbyFormObserverCleanup?.();
+      startFormDiscovery(readForm);
+    }
+  };
+  schedule = (waitForStableDom = false) => {
+    const scheduledRevision = ++revision;
     if (timer !== void 0) window.clearTimeout(timer);
+    if (stabilityTimer !== void 0) window.clearTimeout(stabilityTimer);
     timer = window.setTimeout(() => {
       if (!scope.isConnected) {
         linkedinAdapter.invalidateApplicationRootCache();
@@ -120,24 +141,27 @@ export function watchFormScope(scope, readForm, initialForm) {
         linkedinAdapter.invalidateApplicationActionCache();
       }
       const form = readForm();
-      const currentScope = getCurrentFormScope();
-      if (currentScope && currentScope !== scope) {
-        watchFormScope(currentScope, readForm, form);
+      if (!waitForStableDom) {
+        publishForm(form);
         return;
       }
-      const nextSignature = signature(form);
-      if (nextSignature === lastSignature) return;
-      lastSignature = nextSignature;
-      void chrome.runtime.sendMessage({ type: "content.form-changed", form }).catch(() => void 0);
-      if (!hasObservableFields(form)) {
-        window.__jobbyFormObserverCleanup?.();
-        startFormDiscovery(readForm);
-      }
-    }, FORM_OBSERVER_DEBOUNCE_MS);
+      const firstSignature = signature(form);
+      stabilityTimer = window.setTimeout(() => {
+        if (revision !== scheduledRevision) return;
+        const verifiedForm = readForm();
+        if (signature(verifiedForm) !== firstSignature) {
+          schedule(true);
+          return;
+        }
+        publishForm(verifiedForm);
+      }, FORM_STABILITY_RECHECK_MS);
+    }, waitForStableDom ? FORM_SETTLE_MS : FORM_OBSERVER_DEBOUNCE_MS);
   };
+  const scheduleValueChange = () => schedule();
+  const scheduleAfterFocus = () => schedule(true);
   const listenForValueChanges = (root) => {
-    root.addEventListener("input", schedule, true);
-    root.addEventListener("change", schedule, true);
+    root.addEventListener("input", scheduleValueChange, true);
+    root.addEventListener("change", scheduleValueChange, true);
     eventRoots.push(root);
   };
   function observeRoot(root) {
@@ -170,34 +194,51 @@ export function watchFormScope(scope, readForm, initialForm) {
   }
   listenForValueChanges(scope);
   observeShadowRootsIn(scope, observeRoot);
-  window.addEventListener("focus", schedule, true);
+  window.addEventListener("focus", scheduleAfterFocus, true);
   window.__jobbyFormObserverCleanup = () => {
     observer.disconnect();
     parentObserver?.disconnect();
     eventRoots.forEach((root) => {
-      root.removeEventListener("input", schedule, true);
-      root.removeEventListener("change", schedule, true);
+      root.removeEventListener("input", scheduleValueChange, true);
+      root.removeEventListener("change", scheduleValueChange, true);
     });
-    window.removeEventListener("focus", schedule, true);
+    window.removeEventListener("focus", scheduleAfterFocus, true);
     if (timer !== void 0) window.clearTimeout(timer);
+    if (stabilityTimer !== void 0) window.clearTimeout(stabilityTimer);
   };
 }
 export function startFormDiscovery(readForm) {
   window.__jobbyFormDiscoveryCleanup?.();
   const observedRoots = /* @__PURE__ */ new WeakSet();
   let timer;
-  const discovery = new MutationObserver((records) => {
-    records.forEach((record) => record.addedNodes.forEach((node) => observeShadowRootsIn(node, observeRoot)));
-    if (!records.some(hasDiscoveryMutation)) return;
+  let stabilityTimer;
+  let revision = 0;
+  const scheduleDiscovery = () => {
+    const scheduledRevision = ++revision;
     if (timer !== void 0) window.clearTimeout(timer);
+    if (stabilityTimer !== void 0) window.clearTimeout(stabilityTimer);
     timer = window.setTimeout(() => {
       const form = readForm();
       if (!hasObservableFields(form)) return;
-      const scope = getCurrentFormScope();
-      if (!scope) return;
-      void chrome.runtime.sendMessage({ type: "content.form-changed", form }).catch(() => void 0);
-      watchFormScope(scope, readForm, form);
-    }, FORM_OBSERVER_DEBOUNCE_MS);
+      const firstSignature = signature(form);
+      stabilityTimer = window.setTimeout(() => {
+        if (revision !== scheduledRevision) return;
+        const verifiedForm = readForm();
+        if (!hasObservableFields(verifiedForm) || signature(verifiedForm) !== firstSignature) {
+          scheduleDiscovery();
+          return;
+        }
+        const scope = getCurrentFormScope();
+        if (!scope) return;
+        void chrome.runtime.sendMessage({ type: "content.form-changed", form: verifiedForm }).catch(() => void 0);
+        watchFormScope(scope, readForm, verifiedForm);
+      }, FORM_STABILITY_RECHECK_MS);
+    }, FORM_SETTLE_MS);
+  };
+  const discovery = new MutationObserver((records) => {
+    records.forEach((record) => record.addedNodes.forEach((node) => observeShadowRootsIn(node, observeRoot)));
+    if (!records.some(hasDiscoveryMutation)) return;
+    scheduleDiscovery();
   });
   function observeRoot(root) {
     if (observedRoots.has(root)) return;
@@ -220,19 +261,14 @@ export function startFormDiscovery(readForm) {
   const onFocus = (event) => {
     const target = event.target;
     if (!(target instanceof HTMLElement) || !target.matches("input, select, textarea, [contenteditable='true']")) return;
-    if (timer !== void 0) window.clearTimeout(timer);
-    timer = window.setTimeout(() => {
-      const form = readForm();
-      if (!hasObservableFields(form)) return;
-      const scope = getCurrentFormScope();
-      if (scope) watchFormScope(scope, readForm, form);
-    }, 50);
+    scheduleDiscovery();
   };
   document.addEventListener("focusin", onFocus, true);
   window.__jobbyFormDiscoveryCleanup = () => {
     discovery.disconnect();
     document.removeEventListener("focusin", onFocus, true);
     if (timer !== void 0) window.clearTimeout(timer);
+    if (stabilityTimer !== void 0) window.clearTimeout(stabilityTimer);
   };
 }
 function hasDiscoverySignal(node) {

@@ -788,14 +788,14 @@ if (customElements && !customElements.get(overlayId)) {
 
 console.debug("[vite] connecting...");
 const importMetaUrl = new URL(import.meta.url);
-const serverHost = "127.0.0.1:5173/";
+const serverHost = "localhost:5173/";
 const socketProtocol = null || (importMetaUrl.protocol === "https:" ? "wss" : "ws");
 const hmrPort = 5173;
 const socketHost = `${"localhost" || importMetaUrl.hostname}:${hmrPort || importMetaUrl.port}${"/"}`;
 const directSocketHost = "localhost:5173/";
 const base = "/" || "/";
 const hmrTimeout = 30000;
-const wsToken = "5tRpF9KjJdN2";
+const wsToken = "oIr3WRyUPRRB";
 const transport = normalizeModuleRunnerTransport(
   (() => {
     let wsTransport = createWebSocketModuleRunnerTransport({

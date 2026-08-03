@@ -50,3 +50,7 @@ export const formFillInstructionsResponseSchema = z.object({
     })
   )
 });
+export const formAutofillInstructionsResponseSchema = z.object({
+  instructions: z.array(fieldFillInstructionSchema),
+  unanswered_fields: formFillInstructionsResponseSchema.shape.unanswered_fields
+});

@@ -1,5 +1,4 @@
-import { clearAuthSession } from "./session-store";
-import { getValidAuthSession } from "./auth-service";
+import { getValidAuthSession, restoreWebSession } from "./auth-service";
 import {
   applicationPlanResponseSchema,
   type ApplicationPlanAction,
@@ -8,6 +7,8 @@ import {
 } from "../shared/contracts/backend";
 import {
   formFillInstructionsResponseSchema,
+  formAutofillInstructionsResponseSchema,
+  type FormAutofillInstructionsResponse,
   type FormFillInstructionsResponse,
 } from "../shared/contracts/form-actions";
 import type { FormFieldObservation } from "../shared/contracts/form-inspection";
@@ -73,14 +74,18 @@ export class ApiClient {
       let session = null;
       try {
         session = await getValidAuthSession();
-      } catch {
-        session = null;
+        if (!session) {
+          await restoreWebSession();
+          session = await getValidAuthSession();
+        }
+      } catch (error) {
+        throw new ApiClientError(
+          error instanceof Error ? error.message : "Your Jobby session expired. Please sign in again.",
+          401,
+        );
       }
-      if (session) {
-        headers.set("Authorization", `Bearer ${session.accessToken}`);
-      } else {
-        headers.set("X-User-Email", "scott5443003@gmail.com");
-      }
+      if (!session) throw new ApiClientError("Please sign in to Jobby before using autofill.", 401);
+      headers.set("Authorization", `Bearer ${session.accessToken}`);
     }
 
     const controller = new AbortController();
@@ -104,7 +109,6 @@ export class ApiClient {
 
     const body = await response.text();
     if (!response.ok) {
-      if (response.status === 401) await clearAuthSession();
       throw new ApiClientError(responseMessage(body, `API request failed with ${response.status}.`), response.status);
     }
     if (!body.trim()) return undefined as T;
@@ -168,6 +172,31 @@ export class ApiClient {
       },
     );
     return formFillInstructionsResponseSchema.parse(response);
+  }
+
+  async getFormAutofillInstructions(
+    platform: string,
+    fields: FormFieldObservation[],
+  ): Promise<FormAutofillInstructionsResponse> {
+    const response = await this.request<unknown>(
+      "/api/form-autofill-instructions",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          platform,
+          fields: fields.map(({ key, id, name, type, label, required, options }) => ({
+            key,
+            id,
+            name,
+            type,
+            label,
+            required,
+            options,
+          })),
+        }),
+      },
+    );
+    return formAutofillInstructionsResponseSchema.parse(response);
   }
 
   async downloadDefaultResume(): Promise<DownloadedResume> {

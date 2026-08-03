@@ -1,23 +1,15 @@
 /** @format */
 
-import type { ValidatedApplicationPlanResponse } from '../../shared/contracts/backend';
-import type { FieldFillResult } from '../../shared/contracts/form-actions';
 import { useEffect, useRef, useState } from 'react';
 import type {
   FormFieldObservation,
   FormInspection,
 } from '../../shared/contracts/form-inspection';
-import type { PageInspection } from '../../shared/contracts/page-inspection';
 import type { UploadSyncState } from '../hooks/useInspection';
 
 interface ResultsDisplayProps {
-  latestInspection: PageInspection | null;
-  latestPlan: ValidatedApplicationPlanResponse | null;
   latestForm: FormInspection | null;
-  isInspectingPage: boolean;
   isInspectingForm: boolean;
-  fillResults: FieldFillResult[];
-  unansweredFields: Array<{ key: string; label: string; reason: string }>;
   onFocusField: (field: FormFieldObservation) => Promise<void>;
   onUploadDefaultResume: (field: FormFieldObservation) => Promise<void>;
   onEditField: (
@@ -28,13 +20,8 @@ interface ResultsDisplayProps {
 }
 
 export function ResultsDisplay({
-  latestInspection,
-  latestPlan,
   latestForm,
-  isInspectingPage,
   isInspectingForm,
-  fillResults,
-  unansweredFields,
   onFocusField,
   onUploadDefaultResume,
   onEditField,
@@ -48,7 +35,6 @@ export function ResultsDisplay({
       latestForm.fields
     : [];
   const hasFormFields = formFields.length > 0;
-  const hasJob = latestInspection?.kind === 'job';
 
   return (
     <>
@@ -83,90 +69,6 @@ export function ResultsDisplay({
           }
         </div>
       : null}
-      {isInspectingPage ?
-        <ResultSkeleton label='Inspecting job' />
-      : hasJob && latestInspection ?
-        <div className='inspection-result'>
-          <>
-            <p>
-              <strong>Platform:</strong> {latestInspection.snapshot.platform}
-            </p>
-            <p>
-              <strong>Job ID:</strong> {latestInspection.snapshot.externalId}
-            </p>
-            <p>
-              <strong>Job Title:</strong> {latestInspection.snapshot.title}
-            </p>
-            <p>
-              <strong>Company:</strong> {latestInspection.snapshot.company}
-            </p>
-            <p>
-              <strong>Location:</strong>{' '}
-              {latestInspection.snapshot.location || '-'}
-            </p>
-            {latestInspection.snapshot.datePosted && (
-              <p>
-                <strong>Date Posted:</strong>{' '}
-                {latestInspection.snapshot.datePosted}
-              </p>
-            )}
-            <p>
-              <strong>Tech keywords:</strong>{' '}
-              {latestInspection.snapshot.technologies.join(', ') || '-'}
-            </p>
-            <p>
-              <strong>Quick apply:</strong>{' '}
-              {latestInspection.snapshot.easyApply ?
-                'Detected'
-              : 'Not detected'}
-            </p>
-            {latestInspection.snapshot.description && (
-              <details className='job-description'>
-                <summary>Job description</summary>
-                <p>{latestInspection.snapshot.description}</p>
-              </details>
-            )}
-          </>
-        </div>
-      : null}
-
-      {latestPlan && (
-        <div className='plan-result'>
-          <>
-            <p>
-              <strong>Plan:</strong> {latestPlan.application_id}
-            </p>
-            <p>
-              <strong>State:</strong> {latestPlan.plan.state}
-            </p>
-            <p>
-              <strong>Decision:</strong> {latestPlan.plan.decision.action}
-            </p>
-            <p>
-              <strong>Reason:</strong> {latestPlan.plan.decision.explanation}
-            </p>
-          </>
-        </div>
-      )}
-
-      {fillResults.length > 0 && (
-        <div className='fill-result'>
-          <p>
-            <strong>Processed:</strong> {fillResults.length}
-          </p>
-          {fillResults.slice(0, 32).map((item, idx) => (
-            <p key={idx}>
-              <strong>{item.key}:</strong> {item.status}
-            </p>
-          ))}
-          {unansweredFields.length > 0 && (
-            <p>
-              <strong>Unanswered:</strong>{' '}
-              {`${unansweredFields.length} fields remain for review.`}
-            </p>
-          )}
-        </div>
-      )}
     </>
   );
 }
@@ -249,6 +151,13 @@ function formValue(field: FormFieldObservation): string {
   return field.currentValue || '';
 }
 
+function displayValue(field: FormFieldObservation): string {
+  if (field.type === 'checkbox') return field.filled ? '已勾选' : '未勾选';
+  if (field.type === 'file') return field.upload?.filename || (field.filled ? '已上传' : '未上传');
+  const value = field.currentValue || '';
+  return field.options.find((option) => option.value === value)?.label || value || '未填写';
+}
+
 function FormFieldRow({
   field,
   onFocusField,
@@ -269,6 +178,7 @@ function FormFieldRow({
     field.type === 'file' &&
     /resume|curriculum vitae|\bcv\b/i.test(field.label);
   const isUploadInFlight = uploadState?.phase === 'uploading';
+  const currentValue = displayValue(field);
 
   useEffect(() => {
     // Don't reset while the user is actively typing or has a save in-flight.
@@ -327,26 +237,51 @@ function FormFieldRow({
     });
   };
 
+  const finishEditing = () => {
+    setEditing(false);
+    if (timer.current !== undefined) {
+      window.clearTimeout(timer.current);
+      timer.current = undefined;
+    }
+    void onEditField(field, draft).then(() => {
+      if (pendingValue.current === draft) pendingValue.current = undefined;
+    });
+  };
+
   return (
-    <article
-      onClick={() => void onFocusField(field)}
-      className='py-1 px-2 hover:bg-green-100 cursor-pointer'
-    >
-      <div className=''>
-        <div
-          className='flex-1 flex min-h-0 p-0 border-0 text-left text-[#304244] flex '
+    <article className='form-field-row'>
+      <div className='form-field-heading'>
+        <button
+          type='button'
+          className='form-field-focus'
           title='定位到网页中的字段'
           aria-label={`定位 ${field.label}`}
           onClick={() => void onFocusField(field)}
         >
-          <span className='text-[10px]'>
-            {field.label}{' '}
-            {field.required && <span className='text-red-500'>*</span>}
+          <span className='form-field-label'>
+            {field.label}
+            {field.required && <span className='text-red-500'> *</span>}
           </span>
-          {/* <span className='form-field-meta'>· {field.type}</span> */}
-        </div>
+          <span className={`form-field-value ${field.filled ? '' : 'is-empty'}`}>
+            {currentValue}
+          </span>
+        </button>
+        <span
+          className={`form-field-status ${field.filled ? 'is-filled' : ''}`}
+          aria-label={field.filled ? '已填写' : '未填写'}
+          title={field.filled ? '已填写' : '未填写'}
+        />
+        {editable && (
+          <button
+            type='button'
+            className='form-field-edit'
+            onClick={editing ? finishEditing : () => setEditing(true)}
+          >
+            {editing ? '完成' : '编辑'}
+          </button>
+        )}
       </div>
-      {editable ?
+      {editable && editing ?
         <FieldEditor
           field={field}
           draft={draft}
@@ -401,7 +336,7 @@ function FormFieldRow({
             isResumeUpload={isResumeUpload}
           />
         </div>
-      : <p className='form-field-manual'>请在网页中手动填写</p>}
+      : null}
     </article>
   );
 }
@@ -457,6 +392,12 @@ function UploadState({
             <div>
               <dt>同步</dt>
               <dd>{state.phase}</dd>
+            </div>
+          )}
+          {state && (
+            <div>
+              <dt>更新</dt>
+              <dd>{new Date(state.updatedAt).toLocaleTimeString()}</dd>
             </div>
           )}
         </dl>

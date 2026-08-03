@@ -7,6 +7,7 @@ interface WorkflowSectionProps {
   latestForm: FormInspection | null;
   latestPlan: ValidatedApplicationPlanResponse | null;
   loadingButton: string | null;
+  onAutofill: () => void;
   onAutoApply: () => void;
   onOpenLinkedIn: () => void;
   onMovePrevious: () => void;
@@ -20,6 +21,7 @@ export function WorkflowSection({
   latestForm,
   latestPlan,
   loadingButton,
+  onAutofill,
   onAutoApply,
   onOpenLinkedIn,
   onMovePrevious,
@@ -34,6 +36,8 @@ export function WorkflowSection({
   const isLinkedInForm =
     latestForm?.kind === "application_form" && latestForm.platform === "linkedin";
   const isActionableForm = latestForm?.kind === "application_form";
+  const isFillableForm =
+    latestForm?.kind === "application_form" || latestForm?.kind === "page_input_fields";
   const isSubmitStep = latestForm?.kind === "application_form" && latestForm.action === "submit";
   const planIsTerminal = Boolean(
     latestPlan && ["submitting", "submitted", "failed", "rejected", "skipped"].includes(latestPlan.plan.state),
@@ -55,46 +59,63 @@ export function WorkflowSection({
   // page can submit. A manually-debugged flow may not have advanced Jobby's
   // application-plan state yet; the confirmation flow reconciles it.
   const disableSubmit = planIsTerminal || !isLinkedInForm || !isSubmitStep;
+  const disableAutofill = !isFillableForm;
   const disableAutoApply = planIsTerminal || (!isJobPage && !isLinkedInForm);
 
   return (
     <div className="workflow-controls">
-      <button
-        type="button"
-        className={`hero-button ${loadingButton === "autoRun" ? "is-loading" : ""}`}
-        disabled={disableAutoApply || loadingButton !== null}
-        onClick={onAutoApply}
-      >
-        {loadingButton === "autoRun" ? "⏳ 自动投递中..." : "⚡ 一键自动投递 (Auto Apply)"}
-      </button>
-
-      <div className="step-debug-controls" aria-label="Application step debugging controls">
+      <div className="action-group">
+        <p className="action-group-label">表单</p>
         <button
           type="button"
-          className={`step-debug-button previous ${loadingButton === "previous" ? "is-loading" : ""}`}
-          disabled={disablePrevious || loadingButton !== null}
-          onClick={onMovePrevious}
+          className={`autofill-button ${loadingButton === "autofill" ? "is-loading" : ""}`}
+          disabled={disableAutofill || loadingButton !== null}
+          onClick={onAutofill}
         >
-          {loadingButton === "previous" ? "⏳ 返回中..." : "⬅️ 上一步 (Back)"}
-        </button>
-        <button
-          type="button"
-          className={`step-debug-button next ${loadingButton === "next" ? "is-loading" : ""}`}
-          disabled={disableNext || loadingButton !== null}
-          onClick={onMoveNext}
-        >
-          {loadingButton === "next" ? "⏳ 前进中..." : "➡️ 下一步 (Next)"}
+          {loadingButton === "autofill" ? "正在自动填充..." : "自动填充表格"}
         </button>
       </div>
 
-      <div className="action-grid">
+      <div className="action-group">
+        <p className="action-group-label">投递流程</p>
+        <button
+          type="button"
+          className={`hero-button ${loadingButton === "autoRun" ? "is-loading" : ""}`}
+          disabled={disableAutoApply || loadingButton !== null}
+          onClick={onAutoApply}
+        >
+          {loadingButton === "autoRun" ? "自动投递中..." : "一键自动投递"}
+        </button>
+        <div className="step-debug-controls" aria-label="Application step controls">
+          <button
+            type="button"
+            className={`step-debug-button previous ${loadingButton === "previous" ? "is-loading" : ""}`}
+            disabled={disablePrevious || loadingButton !== null}
+            onClick={onMovePrevious}
+          >
+            {loadingButton === "previous" ? "返回中..." : "上一步"}
+          </button>
+          <button
+            type="button"
+            className={`step-debug-button next ${loadingButton === "next" ? "is-loading" : ""}`}
+            disabled={disableNext || loadingButton !== null}
+            onClick={onMoveNext}
+          >
+            {loadingButton === "next" ? "前进中..." : "下一步"}
+          </button>
+        </div>
+      </div>
+
+      <div className="action-group action-group--secondary">
+        <p className="action-group-label">当前申请</p>
+        <div className="action-grid">
         <button
           type="button"
           className={loadingButton === "open" ? "is-loading" : ""}
           disabled={disableOpen || loadingButton !== null}
           onClick={onOpenLinkedIn}
         >
-          {loadingButton === "open" ? "⏳ 打开中..." : "📖 打开申请 (Open)"}
+          {loadingButton === "open" ? "打开中..." : "打开申请"}
         </button>
 
         <button
@@ -103,7 +124,7 @@ export function WorkflowSection({
           disabled={disableFillAndNext || loadingButton !== null}
           onClick={onFillAndNext}
         >
-          {loadingButton === "fillAndNext" ? "⏳ 填表中..." : "➡️ 填表并下一步"}
+          {loadingButton === "fillAndNext" ? "填表中..." : "填表并下一步"}
         </button>
 
         <button
@@ -112,8 +133,9 @@ export function WorkflowSection({
           disabled={disableSubmit || loadingButton !== null}
           onClick={onOpenReviewModal}
         >
-          📤 提交申请 (Submit)
+          提交申请
         </button>
+        </div>
       </div>
     </div>
   );

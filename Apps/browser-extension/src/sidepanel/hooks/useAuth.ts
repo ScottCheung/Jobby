@@ -15,7 +15,14 @@ export function useAuth() {
       return;
     }
     setAuthError("");
-    setAuthStatus(response.auth ?? DEFAULT_AUTH);
+    const status = response.auth ?? DEFAULT_AUTH;
+    if (status.connected) {
+      setAuthStatus(status);
+      return;
+    }
+
+    const restored = await send({ type: "auth.restore-web-session" });
+    setAuthStatus(restored.ok ? restored.auth ?? DEFAULT_AUTH : DEFAULT_AUTH);
   }, []);
 
   const signIn = useCallback(async () => {

@@ -1,7 +1,7 @@
 import type { RuntimeMessageResponse } from "../shared/contracts/messages";
 import { runtimeMessageSchema } from "../shared/contracts/messages";
 
-import { disconnect, getAuthStatus, openLogin } from "./auth-service";
+import { disconnect, getAuthStatus, openLogin, restoreWebSession } from "./auth-service";
 import {
   clickLinkedInApplicationAction,
   editActiveTabField,
@@ -14,7 +14,7 @@ import {
 import { logDiagnostic } from "./diagnostics";
 import { createApplicationPlanFromActiveTab } from "./plan-service";
 import { applyApplicationPlanAction } from "./plan-action-service";
-import { fillAndNextForActiveTab, fillKnownFieldsForActiveTab, uploadDefaultResumeToActiveTab } from "./field-fill-service";
+import { autofillDetectedFormForActiveTab, fillAndNextForActiveTab, fillKnownFieldsForActiveTab, uploadDefaultResumeToActiveTab } from "./field-fill-service";
 import { submitLinkedInApplication } from "./linkedin-application-service";
 import { runLinkedInAutoApplication } from "./linkedin-automation-service";
 import {
@@ -54,6 +54,13 @@ export async function handleRuntimeMessage(
         return { ok: true, snapshot: await getRuntimeSnapshot(), diagnostics: [] };
       case "auth.status":
         return { ok: true, snapshot: await getRuntimeSnapshot(), auth: await getAuthStatus() };
+      case "auth.restore-web-session":
+        if (!isExtensionUiSender(sender)) return { ok: false, error: "Only the extension UI can restore a session." };
+        return {
+          ok: true,
+          snapshot: await getRuntimeSnapshot(),
+          auth: (await restoreWebSession()) ?? { connected: false },
+        };
       case "auth.disconnect":
         if (!isExtensionUiSender(sender)) return { ok: false, error: "Only the extension UI can disconnect." };
         await disconnect();
@@ -80,6 +87,17 @@ export async function handleRuntimeMessage(
           snapshot: await getRuntimeSnapshot(),
           form: await inspectFormActiveTab(),
         };
+      case "form.autofill-active":
+        if (!isExtensionUiSender(sender)) return { ok: false, error: "Only the extension UI can autofill forms." };
+        {
+          const result = await autofillDetectedFormForActiveTab();
+          return {
+            ok: true,
+            snapshot: await getRuntimeSnapshot(),
+            fillResults: result.results,
+            unansweredFields: result.unansweredFields,
+          };
+        }
       case "content.focus-form-field-active":
         if (!isExtensionUiSender(sender)) return { ok: false, error: "Only the extension UI can focus form fields." };
         return {
@@ -118,7 +136,7 @@ export async function handleRuntimeMessage(
       case "application.create-plan-active":
         if (!isExtensionUiSender(sender)) return { ok: false, error: "Only the extension UI can create an application plan." };
         {
-          const result = await createApplicationPlanFromActiveTab();
+          const result = await createApplicationPlanFromActiveTab(parsed.data.inspection);
           await logDiagnostic("info", "application-plan", "Application plan created.", {
             applicationId: result.plan.application_id,
             state: result.plan.plan.state,

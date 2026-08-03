@@ -58,6 +58,58 @@ button.is-loading {
   @apply relative opacity-80 cursor-wait;
 }
 
+/* Side panel shell: mirrors the application design system's page → panel → module hierarchy. */
+.sidepanel-shell {
+  @apply min-h-screen bg-[#f7f8f5];
+}
+.sidepanel-header {
+  @apply sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-[#d7dfdc] bg-white/95 px-4 py-3 backdrop-blur;
+}
+.sidepanel-eyebrow,
+.menu-label,
+.action-group-label {
+  @apply text-[10px] font-bold uppercase tracking-wider text-[#738080];
+}
+.sidepanel-header h1 {
+  @apply text-base font-bold text-[#152022];
+}
+.account-control {
+  @apply flex max-w-[155px] flex-col items-end gap-1;
+}
+.account-state {
+  @apply inline-flex min-h-[28px] max-w-full items-center gap-1.5 rounded-full border border-[#c8d4d1] bg-white px-2.5 py-1 text-[10px] font-semibold text-[#556668] truncate;
+}
+.account-state.is-connected {
+  @apply border-[#b1e6bd] bg-[#edfaef] text-[#17542d];
+}
+.account-dot {
+  @apply h-1.5 w-1.5 shrink-0 rounded-full bg-[#209b6b];
+}
+.account-state span:last-child {
+  @apply truncate;
+}
+.account-error {
+  @apply text-right text-[10px] leading-tight text-[#a4291c];
+}
+.sidepanel-content {
+  @apply grid gap-4 p-3;
+}
+.sidebar-menu {
+  @apply grid gap-2;
+}
+.sidebar-menu--fields {
+  @apply gap-1;
+}
+.sidebar-menu--tools {
+  @apply gap-2 border-t border-[#d7dfdc] pt-3;
+}
+.menu-heading {
+  @apply flex items-center justify-between;
+}
+.menu-count {
+  @apply inline-flex min-w-5 items-center justify-center rounded-full bg-[#e8f2ec] px-1.5 py-0.5 text-[10px] font-bold text-[#20623b];
+}
+
 /* Panel Layout & Headers */
 .panel {
   @apply grid gap-5 p-4.5;
@@ -156,19 +208,26 @@ p {
 }
 
 /* Workflow Controls */
-.inspection {
-  @apply grid gap-2.5 border-t border-[#d7dfdc] pt-4;
-}
 .workflow-controls {
-  @apply grid gap-2.5;
+  @apply grid gap-3;
+}
+.action-group {
+  @apply grid gap-1.5 rounded-lg border border-[#d7dfdc] bg-white p-2.5;
+}
+.action-group--secondary {
+  @apply bg-[#fbfcfb];
 }
 .hero-button {
-  @apply w-full min-h-[40px] text-white border border-[#16482a] rounded-md text-xs font-bold shadow transition-all duration-150 cursor-pointer;
-  background: linear-gradient(135deg, #1e5a37 0%, #20623b 100%);
+  @apply w-full min-h-[38px] rounded-md border border-[#1b5332] bg-[#20623b] text-xs font-bold text-white shadow-sm transition-colors duration-150;
+}
+.autofill-button {
+  @apply w-full min-h-[38px] rounded-md border border-[#91aaa4] bg-[#f7fbf8] text-xs font-bold text-[#20623b] transition-colors duration-150;
+}
+.autofill-button:hover:not(:disabled) {
+  @apply bg-[#e8f2ec];
 }
 .hero-button:hover:not(:disabled) {
-  @apply shadow-md -translate-y-0.5;
-  background: linear-gradient(135deg, #184c2e 0%, #1c5634 100%);
+  @apply bg-[#184c2e];
 }
 .action-grid {
   @apply grid grid-cols-2 gap-2;
@@ -180,26 +239,26 @@ p {
   @apply grid grid-cols-2 gap-2;
 }
 .step-debug-button {
-  @apply min-h-[44px] text-sm font-bold border-2;
+  @apply min-h-[34px] border text-xs font-semibold;
 }
 .step-debug-button.previous {
-  @apply text-[#7a4a08] border-[#dba634] bg-[#fff8e8];
+  @apply border-[#d7dfdc] bg-white text-[#556668];
 }
 .step-debug-button.previous:hover:not(:disabled) {
-  @apply bg-[#ffefc9];
+  @apply bg-[#f1f5f3];
 }
 .step-debug-button.next {
-  @apply text-white border-[#1b5332] bg-[#20623b];
+  @apply border-[#91aaa4] bg-[#f7fbf8] text-[#20623b];
 }
 .step-debug-button.next:hover:not(:disabled) {
-  @apply bg-[#184c2e];
+  @apply bg-[#e8f2ec];
 }
 
 .debug-drawer {
-  @apply mt-1 border border-[#d7dfdc] rounded-md bg-[#fcfdfe] p-2.5;
+  @apply rounded-md border border-[#d7dfdc] bg-white p-2.5;
 }
 .debug-drawer summary {
-  @apply text-[11px] font-semibold text-[#667677] cursor-pointer select-none hover:text-[#304244];
+  @apply cursor-pointer select-none text-[11px] font-semibold text-[#556668];
 }
 .debug-actions {
   @apply flex flex-wrap gap-1.5 mt-2 pt-2 border-t border-dashed border-[#d7dfdc];
@@ -221,14 +280,11 @@ p {
 .job-description p {
   @apply mt-1.5 whitespace-pre-wrap leading-relaxed text-[#556668];
 }
-.plan-result {
-  @apply grid gap-1 border-l-4 border-[#91aaa4] px-2.5 py-2 bg-[#edf3f1] text-[#304244] text-xs [overflow-wrap:anywhere];
-}
 .form-result {
   @apply grid gap-2 max-h-[520px] overflow-y-auto border border-[#d7dfdc] p-2.5 bg-white text-[#667677] text-xs [overflow-wrap:anywhere];
 }
 .form-summary {
-  @apply text-[#556668];
+  @apply px-3 pb-2 text-[11px] font-semibold text-[#556668];
 }
 .result-skeleton {
   @apply grid gap-2 border border-[#d7dfdc] p-2.5 bg-white;
@@ -249,16 +305,44 @@ p {
   }
 }
 .form-fields {
-  @apply grid gap-2;
+  @apply grid gap-0 overflow-hidden rounded-lg border border-[#d7dfdc] bg-white;
 }
 .form-field-row {
-  @apply grid gap-1.5 p-2 border border-[#e1e7e5] rounded bg-[#fcfdfd];
+  @apply grid gap-2 border-b border-[#d7dfdc] px-3 py-3 last:border-b-0;
 }
 .form-field-heading {
-  @apply flex items-start gap-1;
+  @apply flex items-center gap-2;
 }
 .form-field-focus {
-  @apply flex-1 flex min-h-0 p-0 border-0 text-left text-[#304244];
+  @apply flex-1 grid gap-0.5 min-h-0 p-0 border-0 bg-transparent text-left text-[#152022];
+}
+.form-field-focus:hover:not(:disabled) {
+  @apply bg-transparent text-[#20623b];
+}
+.form-field-label {
+  @apply text-[10px] font-medium leading-tight text-[#8a96a8];
+}
+.form-field-value {
+  @apply text-sm font-semibold leading-snug text-[#1f2937] [overflow-wrap:anywhere];
+}
+.form-field-value.is-empty {
+  @apply text-[#98a2b3];
+}
+.form-field-status {
+  @apply shrink-0 w-5 h-5 rounded-full border-2 border-[#cbd5e1];
+}
+.form-field-status.is-filled {
+  @apply border-[#209b6b] bg-[#209b6b] relative;
+}
+.form-field-status.is-filled::after {
+  content: '';
+  @apply absolute left-[5px] top-[2px] h-2 w-1 border-r-2 border-b-2 border-white rotate-45;
+}
+.form-field-edit {
+  @apply shrink-0 min-h-[28px] border-0 bg-transparent px-1.5 py-0 text-[11px] font-semibold text-[#20623b];
+}
+.form-field-edit:hover:not(:disabled) {
+  @apply bg-[#edf7f1];
 }
 
 .form-field-meta {
@@ -341,13 +425,9 @@ textarea.form-field-input {
 .form-upload-debug dd {
   @apply m-0 break-words text-[#304244];
 }
-.fill-result {
-  @apply grid gap-1 max-h-[220px] overflow-y-auto border-l-4 border-[#c98c27] px-2.5 py-2 bg-[#fff8e8] text-[#5f4b23] text-xs [overflow-wrap:anywhere];
-}
-
 /* ── Page Classifier Debug Banner ─────────────────────────────────────── */
 .page-class-banner {
-  @apply flex items-start gap-2 px-3 py-2.5 rounded-md text-xs leading-snug border transition-all duration-200;
+  @apply flex items-start gap-2 rounded-lg border px-3 py-2.5 text-xs leading-snug transition-all duration-200;
   /* default / idle */
   @apply bg-[#f8faf9] border-[#d7dfdc] text-[#556668];
 }

@@ -51,8 +51,10 @@ export function useApplicationPlan(
   }, []);
 
   const createPlan = useCallback(async () => {
-    if (latestInspection?.kind !== "job") return null;
-    const response = await send({ type: "application.create-plan-active" });
+    const response = await send({
+      type: "application.create-plan-active",
+      ...(latestInspection ? { inspection: latestInspection } : {}),
+    });
     if (!response.ok) {
       setActionStatus("error", response.error);
       return null;
@@ -91,6 +93,45 @@ export function useApplicationPlan(
     }
     return true;
   }, [latestPlan, latestInspection, inspectPage, createPlan, applyPlanAction]);
+
+  const autofillForm = useCallback(async () => {
+    setLoadingButton("autofill");
+    setActionStatus("running", "正在根据你的资料匹配并填写当前表单...");
+    try {
+      const form =
+        latestForm?.kind === "application_form" || latestForm?.kind === "page_input_fields"
+          ? latestForm
+          : await inspectForm();
+      if (!form || (form.kind !== "application_form" && form.kind !== "page_input_fields")) {
+        setActionStatus("error", "未检测到可填写的申请表单。请先打开申请表后重试。");
+        return;
+      }
+
+      const response = await send({ type: "form.autofill-active" });
+      if (!response.ok) {
+        setActionStatus("error", `自动填充失败: ${response.error}`);
+        return;
+      }
+
+      const results = response.fillResults || [];
+      const unanswered = response.unansweredFields || [];
+      setFillResults(results);
+      setUnansweredFields(unanswered);
+      await inspectForm();
+
+      const filledCount = results.filter(
+        (item) => item.status === "filled" || item.status === "already_filled",
+      ).length;
+      setActionStatus(
+        unanswered.length > 0 ? "warning" : "success",
+        unanswered.length > 0
+          ? `已自动填充 ${filledCount} 项，另有 ${unanswered.length} 项需要你确认。`
+          : `已自动填充 ${filledCount} 项，请检查后继续下一步。`,
+      );
+    } finally {
+      setLoadingButton(null);
+    }
+  }, [latestForm, inspectForm, setActionStatus]);
 
   const fillAndNext = useCallback(async () => {
     setLoadingButton("fillAndNext");
@@ -190,6 +231,7 @@ export function useApplicationPlan(
     loadingButton,
     createPlan,
     applyPlanAction,
+    autofillForm,
     fillAndNext,
     openLinkedIn,
     moveNext,

@@ -41,11 +41,10 @@ export function App() {
   const {
     latestPlan,
     status,
-    fillResults,
-    unansweredFields,
     loadingButton,
     createPlan,
     applyPlanAction,
+    autofillForm,
     fillAndNext,
     openLinkedIn,
     moveNext,
@@ -138,76 +137,80 @@ export function App() {
   };
 
   return (
-    <main className='flex flex-col '>
-      {/* Page-type classifier debug banner — always shown first */}
-      <PageClassBanner
-        latestInspection={latestInspection}
-        isInspecting={isInspectingPage}
-        error={inspectionError}
-      />
-
-      {/* <Header phase={snapshot.phase} /> */}
-
-      <AuthCard
-        authStatus={authStatus}
-        authError={authError}
-        onSignIn={signIn}
-        onDisconnect={disconnect}
-      />
-
-      <ResultsDisplay
-        latestInspection={latestInspection}
-        latestPlan={latestPlan}
-        latestForm={latestForm}
-        isInspectingPage={isInspectingPage}
-        isInspectingForm={isInspectingForm}
-        fillResults={fillResults}
-        unansweredFields={unansweredFields}
-        onFocusField={focusFormField}
-        onUploadDefaultResume={uploadDefaultResume}
-        onEditField={editFormField}
-        uploadStates={uploadStates}
-      />
-
-      <section className='inspection' aria-label='Current page inspection'>
-        <div className='section-heading'>
-          <h2>Application Workflow (投递控制)</h2>
+    <main className='sidepanel-shell'>
+      <header className='sidepanel-header'>
+        <div>
+          <p className='sidepanel-eyebrow'>JOBBY</p>
+          <h1>Application assistant</h1>
         </div>
-
-        <StatusBanner status={status} />
-
-        <WorkflowSection
-          latestInspection={latestInspection}
-          latestForm={latestForm}
-          latestPlan={latestPlan}
-          loadingButton={loadingButton}
-          onAutoApply={autoRunLinkedIn}
-          onOpenLinkedIn={openLinkedIn}
-          onMovePrevious={movePrevious}
-          onMoveNext={moveNext}
-          onFillAndNext={fillAndNext}
-          onOpenReviewModal={() => setIsReviewOpen(true)}
+        <AuthCard
+          authStatus={authStatus}
+          authError={authError}
+          onSignIn={signIn}
+          onDisconnect={disconnect}
         />
+      </header>
 
-        <DebugDrawer
-          latestInspection={latestInspection}
-          latestForm={latestForm}
-          latestPlan={latestPlan}
-          loadingButton={loadingButton}
-          onInspectPage={inspectPage}
-          onInspectForm={inspectForm}
-          onCreatePlan={createPlan}
-          onApplyPlanAction={applyPlanAction}
-          onMoveNext={moveNext}
-          onMovePrevious={movePrevious}
-        />
-      </section>
+      <div className='sidepanel-content'>
+        <section className='sidebar-menu' aria-label='Current page'>
+          <p className='menu-label'>当前页面</p>
+          <PageClassBanner
+            latestInspection={latestInspection}
+            isInspecting={isInspectingPage}
+            error={inspectionError}
+          />
+        </section>
 
-      <DiagnosticsCard
-        diagnostics={diagnostics}
-        errorMessage={errorMessage}
-        onClearLogs={clearLogs}
-      />
+        <section className='sidebar-menu sidebar-menu--fields' aria-label='Detected form fields'>
+          <p className='menu-label'>表单字段</p>
+          <ResultsDisplay
+            latestForm={latestForm}
+            isInspectingForm={isInspectingForm}
+            onFocusField={focusFormField}
+            onUploadDefaultResume={uploadDefaultResume}
+            onEditField={editFormField}
+            uploadStates={uploadStates}
+          />
+        </section>
+
+        <section className='sidebar-menu' aria-label='Application actions'>
+          <p className='menu-label'>操作</p>
+          <StatusBanner status={status} />
+          <WorkflowSection
+            latestInspection={latestInspection}
+            latestForm={latestForm}
+            latestPlan={latestPlan}
+            loadingButton={loadingButton}
+            onAutofill={autofillForm}
+            onAutoApply={autoRunLinkedIn}
+            onOpenLinkedIn={openLinkedIn}
+            onMovePrevious={movePrevious}
+            onMoveNext={moveNext}
+            onFillAndNext={fillAndNext}
+            onOpenReviewModal={() => setIsReviewOpen(true)}
+          />
+        </section>
+
+        <section className='sidebar-menu sidebar-menu--tools' aria-label='Advanced tools'>
+          <DebugDrawer
+            latestInspection={latestInspection}
+            latestForm={latestForm}
+            latestPlan={latestPlan}
+            loadingButton={loadingButton}
+            onInspectPage={inspectPage}
+            onInspectForm={inspectForm}
+            onCreatePlan={createPlan}
+            onApplyPlanAction={applyPlanAction}
+            onMoveNext={moveNext}
+            onMovePrevious={movePrevious}
+          />
+          <DiagnosticsCard
+            diagnostics={diagnostics}
+            errorMessage={errorMessage}
+            onClearLogs={clearLogs}
+          />
+        </section>
+      </div>
 
       <ReviewModal
         isOpen={isReviewOpen}

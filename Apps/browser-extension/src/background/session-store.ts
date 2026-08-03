@@ -76,22 +76,7 @@ export async function clearAuthSession(): Promise<void> {
 
 export async function getAuthStatus(): Promise<AuthStatus> {
   const session = await getAuthSession();
-  const fallbackExpiresAt = new Date(Date.now() + 365 * 86400 * 1000).toISOString();
-  if (!session) {
-    return {
-      connected: true,
-      expiresAt: fallbackExpiresAt,
-      user: { id: "local-admin", email: "scott5443003@gmail.com" },
-    };
-  }
-  if (Date.parse(session.expiresAt) <= Date.now()) {
-    await clearAuthSession();
-    return {
-      connected: true,
-      expiresAt: fallbackExpiresAt,
-      user: { id: "local-admin", email: "scott5443003@gmail.com" },
-    };
-  }
+  if (!session) return { connected: false };
   return {
     connected: true,
     expiresAt: session.expiresAt,

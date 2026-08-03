@@ -1,5 +1,7 @@
 from types import SimpleNamespace
 
+import pytest
+
 import services.api.dependencies as dependencies
 
 
@@ -38,3 +40,16 @@ def test_supabase_email_uses_urllib_request_and_returns_user_email(monkeypatch) 
     assert request.full_url == "https://project.supabase.co/auth/v1/user"
     assert request.get_header("Authorization") == "Bearer supabase-access-token"
     assert seen["timeout"] == 5
+
+
+def test_current_user_requires_an_authenticated_identity(monkeypatch) -> None:
+    monkeypatch.setattr(
+        dependencies,
+        "get_settings",
+        lambda: SimpleNamespace(supabase_url=None, admin_email_list=[]),
+    )
+
+    with pytest.raises(dependencies.HTTPException) as exc_info:
+        dependencies.get_or_create_current_user(SimpleNamespace(headers={}), None)
+
+    assert exc_info.value.status_code == 401

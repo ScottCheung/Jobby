@@ -94,6 +94,45 @@ export async function uploadDefaultResumeToActiveTab(target: FormFieldTarget): P
   }
 }
 
+export async function autofillDetectedFormForActiveTab(): Promise<{
+  results: FieldFillResult[];
+  unansweredFields: Array<{ key: string; label: string; reason: string }>;
+}> {
+  const form = await inspectFormActiveTab();
+  if (form.kind !== "application_form" && form.kind !== "page_input_fields") {
+    throw new Error("Inspect a supported application form before autofilling.");
+  }
+  const instructions = await apiClient.getFormAutofillInstructions(
+    form.platform,
+    form.fields.map(({ frameId: _frameId, ...field }) => field),
+  );
+  const results: FieldFillResult[] = [];
+  for (const instruction of instructions.instructions) {
+    const field = form.fields.find((candidate) => candidate.key === instruction.target.key);
+    results.push(await fillActiveTabField({
+      ...instruction,
+      target: {
+        ...instruction.target,
+        ...(field?.frameId !== undefined ? { frameId: field.frameId } : {}),
+      },
+    }));
+  }
+  const resumeFile = form.fields.find(
+    (field) => field.type === "file" && /resume|curriculum vitae|\bcv\b/i.test(field.label),
+  );
+  if (resumeFile && !resumeFile.filled) {
+    results.push(await uploadDefaultResumeToActiveTab({
+      key: resumeFile.key,
+      frameId: resumeFile.frameId,
+      id: resumeFile.id,
+      name: resumeFile.name,
+      label: resumeFile.label,
+      type: resumeFile.type,
+    }));
+  }
+  return { results, unansweredFields: instructions.unanswered_fields };
+}
+
 export async function fillKnownFieldsForActiveTab(applicationId: string): Promise<{
   instructions: FormFillInstructionsResponse;
   results: FieldFillResult[];

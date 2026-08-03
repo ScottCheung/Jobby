@@ -51,6 +51,10 @@ function reconcileUploadStates(
     const observed = pageUploadState(field);
     if (!observed) continue;
     const prior = previous[field.key];
+    // The first scan after an upload command can arrive before an ATS has
+    // rendered the selected filename. Keep the pending state until the page
+    // explicitly confirms, rejects, or the command's retry window expires.
+    if (observed.phase === "idle" && prior?.phase === "uploading") continue;
     if (!prior || prior.phase !== observed.phase || prior.message !== observed.message) {
       next[field.key] = observed;
       changed = true;

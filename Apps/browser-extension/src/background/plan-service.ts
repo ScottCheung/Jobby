@@ -4,12 +4,20 @@ import type { ValidatedApplicationPlanResponse } from "../shared/contracts/backe
 import { apiClient } from "./api-client";
 import { inspectActiveTab } from "./content-bridge";
 
-export async function createApplicationPlanFromActiveTab(): Promise<{
+export async function createApplicationPlanFromActiveTab(fallbackInspection?: PageInspection): Promise<{
   inspection: PageInspection;
   plan: ValidatedApplicationPlanResponse;
 }> {
-  const inspection = await inspectActiveTab();
-  if (inspection.kind !== "job") {
+  const activeInspection = await inspectActiveTab().catch(() => null);
+  // LinkedIn can replace the visible job card with an Easy Apply form before
+  // the side panel acts. The inspected job snapshot belongs to that same
+  // user-initiated flow and lets form filling retain its application context.
+  const inspection = activeInspection?.kind === "job"
+    ? activeInspection
+    : fallbackInspection?.kind === "job"
+      ? fallbackInspection
+      : activeInspection;
+  if (!inspection || inspection.kind !== "job") {
     throw new Error("Inspect a job page before creating an application plan.");
   }
 

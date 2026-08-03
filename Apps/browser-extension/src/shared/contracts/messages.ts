@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import type { AuthStatus } from "./auth";
 import { extensionPlanActionSchema, type ValidatedApplicationPlanResponse } from "./backend";
-import type { PageInspection } from "./page-inspection";
+import { pageInspectionSchema, type PageInspection } from "./page-inspection";
 import type { FormInspection } from "./form-inspection";
 import { formFieldTargetSchema } from "./form-actions";
 import type { FieldFillResult, FormFocusResult } from "./form-actions";
@@ -17,10 +17,12 @@ export const runtimeMessageSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("diagnostics.list") }),
   z.object({ type: z.literal("diagnostics.clear") }),
   z.object({ type: z.literal("auth.status") }),
+  z.object({ type: z.literal("auth.restore-web-session") }),
   z.object({ type: z.literal("auth.disconnect") }),
   z.object({ type: z.literal("auth.open-login") }),
   z.object({ type: z.literal("content.inspect-active") }),
   z.object({ type: z.literal("content.inspect-form-active") }),
+  z.object({ type: z.literal("form.autofill-active") }),
   z.object({ type: z.literal("content.focus-form-field-active"), target: formFieldTargetSchema }),
   z.object({ type: z.literal("content.upload-default-resume-active"), target: formFieldTargetSchema }),
   z.object({
@@ -33,7 +35,10 @@ export const runtimeMessageSchema = z.discriminatedUnion("type", [
     type: z.literal("application.linkedin-action-active"),
     action: linkedinApplicationActionSchema,
   }),
-  z.object({ type: z.literal("application.create-plan-active") }),
+  z.object({
+    type: z.literal("application.create-plan-active"),
+    inspection: pageInspectionSchema.optional(),
+  }),
   z.object({
     type: z.literal("application.plan-action-active"),
     applicationId: z.string().min(1).max(128),

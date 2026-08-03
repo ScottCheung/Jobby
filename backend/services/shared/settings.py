@@ -1,12 +1,26 @@
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from urllib.parse import urlparse
 
 
+REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
+
+
 class AppSettings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=[".env", "../.env"], env_file_encoding="utf-8", extra="ignore")
+    # The extension receives the web app's public Supabase configuration at
+    # build time. Load that same local development source here so the API can
+    # verify its Bearer tokens; deployment environment variables still win.
+    model_config = SettingsConfigDict(
+        env_file=[
+            REPOSITORY_ROOT / ".env",
+            REPOSITORY_ROOT / "Apps" / "user" / ".env.local",
+        ],
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
     database_url: str = Field(
         default="postgresql+psycopg://auto_job:auto_job_password@localhost:55432/auto_job_applier",

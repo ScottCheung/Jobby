@@ -77,22 +77,10 @@ def get_or_create_current_user(request: Request, db: Session = Depends(get_db)) 
         db.refresh(new_user)
         return new_user
 
-    # Fallback to default user if no email header
-    user = db.scalar(select(User).where(User.email == settings.default_admin_email))
-    if user:
-        return user
-
-    user = User(
-        email=settings.default_admin_email,
-        display_name=settings.default_admin_name,
-        role="admin",
-        status="active",
-        can_use_auto_apply=True,
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Authentication required. Sign in before accessing user data.",
     )
-    db.add(user)
-    db.commit()
-    db.refresh(user)
-    return user
 
 
 CurrentUser = Depends(get_or_create_current_user)

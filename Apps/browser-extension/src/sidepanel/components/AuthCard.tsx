@@ -16,33 +16,18 @@ export function AuthCard({
   onDisconnect,
 }: AuthCardProps) {
   return (
-    <section className=' hidden' aria-label='Backend connection'>
-      <div className='section-heading'>
-        <h2>Jobby account</h2>
-        <span
-          className='connection-status'
-          data-connected={authStatus.connected ? 'true' : 'false'}
-        >
-          {authStatus.connected ? authStatus.user?.email : 'Disconnected'}
-        </span>
-      </div>
-
-      {!authStatus.connected && (
-        <div className='auth-sign-in'>
-          <p>Sign in through the same Jobby page used by the web app.</p>
-          <button type='button' onClick={onSignIn}>
-            Sign in with Jobby
-          </button>
-        </div>
-      )}
-
-      {authStatus.connected && (
-        <button type='button' className='quiet' onClick={onDisconnect}>
-          Disconnect
+    <div className='account-control' aria-label='Jobby account'>
+      {authStatus.connected ? (
+        <button type='button' className='account-state is-connected' onClick={onDisconnect} title='Disconnect Jobby account'>
+          <span className='account-dot' />
+          <span>{authStatus.user?.email}</span>
+        </button>
+      ) : (
+        <button type='button' className='account-state' onClick={onSignIn}>
+          Connect account
         </button>
       )}
-
-      {authError && <p className='message'>{authError}</p>}
-    </section>
+      {authError && <p className='account-error'>{authError}</p>}
+    </div>
   );
 }

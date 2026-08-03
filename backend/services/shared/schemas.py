@@ -275,6 +275,10 @@ class ApplicationFormInstructionsRequest(BaseModel):
     fields: list[ApplicationFormFieldInput] = Field(max_length=500)
 
 
+class FormAutofillInstructionsRequest(ApplicationFormInstructionsRequest):
+    platform: str = Field(default="generic", min_length=1, max_length=50)
+
+
 class ApplicationFieldInstruction(BaseModel):
     type: Literal["content.fill-field"] = "content.fill-field"
     commandId: str
@@ -291,6 +295,11 @@ class ApplicationFormUnansweredField(BaseModel):
 
 class ApplicationFormInstructionsResponse(BaseModel):
     application_id: UUID
+    instructions: list[ApplicationFieldInstruction]
+    unanswered_fields: list[ApplicationFormUnansweredField]
+
+
+class FormAutofillInstructionsResponse(BaseModel):
     instructions: list[ApplicationFieldInstruction]
     unanswered_fields: list[ApplicationFormUnansweredField]
 

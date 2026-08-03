@@ -67,3 +67,10 @@ export const formFillInstructionsResponseSchema = z.object({
 });
 
 export type FormFillInstructionsResponse = z.infer<typeof formFillInstructionsResponseSchema>;
+
+export const formAutofillInstructionsResponseSchema = z.object({
+  instructions: z.array(fieldFillInstructionSchema),
+  unanswered_fields: formFillInstructionsResponseSchema.shape.unanswered_fields,
+});
+
+export type FormAutofillInstructionsResponse = z.infer<typeof formAutofillInstructionsResponseSchema>;

@@ -56,6 +56,8 @@ from services.shared.schemas import (
     ApplicationDecisionRequest,
     ApplicationFormInstructionsRequest,
     ApplicationFormInstructionsResponse,
+    FormAutofillInstructionsRequest,
+    FormAutofillInstructionsResponse,
     ApplicationPlanActionRequest,
     ApplicationPlanCreateRequest,
     JobHuntingProfileBase,
@@ -3165,8 +3167,93 @@ def _resolve_field_answer_from_user_data(
 
 
 @app.post(
+    "/api/form-autofill-instructions",
+    response_model=FormAutofillInstructionsResponse,
+    response_model_exclude_none=True,
+)
+def create_form_autofill_instructions(
+    payload: FormAutofillInstructionsRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_or_create_current_user),
+) -> dict[str, Any]:
+    """Match an inspected form directly against the user's saved data.
+
+    This deliberately has no application-plan dependency: it is safe to use
+    on an open form before a job has been inspected or an apply flow begins.
+    """
+    platform = payload.platform.strip().lower() or "generic"
+    user_profile = db.scalar(select(UserProfile).where(UserProfile.user_id == current_user.id))
+    job_profile = db.scalar(
+        select(JobHuntingProfile)
+        .where(JobHuntingProfile.user_id == current_user.id, JobHuntingProfile.is_default.is_(True))
+        .order_by(JobHuntingProfile.updated_at.desc())
+        .limit(1)
+    )
+    normalized_labels = {_normalize_form_label(field.label) for field in payload.fields}
+    entries = db.scalars(
+        select(QuestionCacheEntry).where(
+            QuestionCacheEntry.user_id == current_user.id,
+            QuestionCacheEntry.platform == platform,
+            QuestionCacheEntry.normalized_label.in_(normalized_labels),
+        )
+    )
+    cached_answers = {
+        (entry.normalized_label, entry.field_type): str(entry.answer).strip()
+        for entry in entries
+        if str(entry.answer or "").strip()
+    }
+    instructions: list[dict[str, Any]] = []
+    unanswered: list[dict[str, str]] = []
+    for field in payload.fields:
+        if field.type in {"password", "file", "unknown"}:
+            unanswered.append({"key": field.key, "label": field.label, "reason": "This field requires explicit user handling."})
+            continue
+        normalized_label = _normalize_form_label(field.label)
+        raw_answer = cached_answers.get((normalized_label, field.type)) or _resolve_field_answer_from_user_data(
+            field.label, field.type, current_user, user_profile, job_profile
+        )
+        if not raw_answer:
+            unanswered.append({"key": field.key, "label": field.label, "reason": "No saved answer is available."})
+            continue
+        value: str | bool = raw_answer
+        if field.type == "checkbox":
+            if raw_answer.casefold() not in {"true", "false"}:
+                unanswered.append({"key": field.key, "label": field.label, "reason": "Checkbox answer is not boolean."})
+                continue
+            value = raw_answer.casefold() == "true"
+        if field.type in {"select", "radio"}:
+            options = {
+                _normalize_form_label(option.get("value", "")) for option in field.options
+            } | {
+                _normalize_form_label(option.get("label", "")) for option in field.options
+            }
+            if options and _normalize_form_label(raw_answer) not in options:
+                matched = next(
+                    (
+                        option.get("value") or option.get("label")
+                        for option in field.options
+                        if _normalize_form_label(raw_answer) in _normalize_form_label(option.get("label", ""))
+                        or _normalize_form_label(option.get("label", "")) in _normalize_form_label(raw_answer)
+                    ),
+                    None,
+                )
+                if not matched:
+                    unanswered.append({"key": field.key, "label": field.label, "reason": "Answer is not one of the available options."})
+                    continue
+                value = matched
+        instructions.append({
+            "commandId": str(uuid4()),
+            "source": "backend",
+            "target": field.model_dump(exclude_none=True),
+            "value": value,
+        })
+    return {"instructions": instructions, "unanswered_fields": unanswered}
+
+
+@app.post(
     "/api/application-plans/{application_id}/form-instructions",
     response_model=ApplicationFormInstructionsResponse,
+    response_model_exclude_none=True,
 )
 def create_application_form_instructions(
     application_id: UUID,
@@ -3289,7 +3376,7 @@ def create_application_form_instructions(
             {
                 "commandId": str(uuid4()),
                 "source": "backend",
-                "target": field.model_dump(),
+                "target": field.model_dump(exclude_none=True),
                 "value": value,
             }
         )
