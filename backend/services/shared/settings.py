@@ -1,7 +1,7 @@
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import Field, model_validator
+from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from urllib.parse import urlparse
 
@@ -65,6 +65,10 @@ class AppSettings(BaseSettings):
     deepseek_api_key: str | None = Field(default=None, alias="DEEPSEEK_API_KEY")
     deepseek_base_url: str = Field(default="https://api.deepseek.com", alias="DEEPSEEK_BASE_URL")
     deepseek_model: str = Field(default="deepseek-v4-flash", alias="DEEPSEEK_MODEL")
+    autofill_encryption_key: SecretStr = Field(
+        default=SecretStr("jobby-local-autofill-key-change-before-production"),
+        alias="AUTOFILL_ENCRYPTION_KEY",
+    )
 
     @model_validator(mode="after")
     def inherit_web_supabase_config(self) -> "AppSettings":

@@ -3,25 +3,171 @@
 'use client';
 
 import React, { useId, useRef, useState } from 'react';
-import { Check, ImagePlus, Trash2, X } from 'lucide-react';
+import { BriefcaseBusiness, Check, ContactRound, Database, ImagePlus, LockKeyhole, MapPin, Plus, Trash2, UserRound, X } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useConsole } from '@/components/ConsoleContext';
-import {
-  IdentityContactCard,
-  LocationAddressCard,
-  EEOCard,
-  DisplayField,
-  Field,
-  ProfileEditor,
-  type ProfileCardSection,
-} from '@/components/forms';
+import { DisplayField, Field } from '@/components/forms';
 import CardWithNorth from '@/components/UI/card/CardWithNorth';
 import { Avatar } from '@/components/UI/Avatar/Avatar';
 import { ImageCropper } from '@/components/UI/ImageCropper';
 import { Button } from '@/components/UI/Button';
 import { WaterfallLayout } from '@/components/layout/waterfallLayout';
 import { useGlobalModalStore } from '@/lib/store/global-modal-store';
-import type { JobHuntingProfile } from '@/lib/types';
+import { Checkbox } from '@/components/UI/checkbox';
+import type { CoreProfileField, JobHuntingProfile, UserProfile } from '@/lib/types';
+import { coreFieldCategories, coreFieldCategoryForKey, coreFieldLabel } from '@/lib/core-field-categories';
+import type { CoreFieldCategoryId } from '@/lib/core-field-categories';
+
+type EditableCoreProfileField = CoreProfileField & { editorCategory?: CoreFieldCategoryId };
+
+function CoreProfileEditor({
+  value,
+  categoryId,
+  onSave,
+  onClose,
+}: {
+  value: UserProfile;
+  categoryId: CoreFieldCategoryId;
+  onSave: (value: UserProfile) => Promise<void>;
+  onClose: () => void;
+}) {
+  const [draft, setDraft] = useState<EditableCoreProfileField[]>(value.fields || []);
+  const [removedKeys, setRemovedKeys] = useState<Set<string>>(new Set());
+  const [saving, setSaving] = useState(false);
+  const category = coreFieldCategories.find((item) => item.id === categoryId) || coreFieldCategories[0];
+  const categoryFields = draft
+    .map((field, index) => ({ field, index }))
+    .filter(({ field }) => field.editorCategory === categoryId || coreFieldCategoryForKey(field.core_field_key) === categoryId);
+
+  const addField = () => setDraft((current) => [
+    ...current,
+    { core_field_key: '', value: '', value_type: 'text', is_sensitive: true, editorCategory: categoryId },
+  ]);
+  const updateField = (index: number, changes: Partial<CoreProfileField>) =>
+    setDraft((current) => current.map((field, fieldIndex) => fieldIndex === index ? { ...field, ...changes } : field));
+  const removeField = (index: number) => {
+    const field = draft[index];
+    if (field?.id && field.core_field_key) {
+      setRemovedKeys((current) => new Set(current).add(field.core_field_key));
+    }
+    setDraft((current) => current.filter((_, fieldIndex) => fieldIndex !== index));
+  };
+  const handleSave = async () => {
+    const fields = draft
+      .filter((field) => field.core_field_key.trim())
+      .map((field) => {
+        const { editorCategory: _editorCategory, ...persisted } = field;
+        return {
+          ...persisted,
+          core_field_key: field.core_field_key.trim().toLowerCase(),
+          value: field.value || null,
+        };
+      });
+    const removed = (value.fields || [])
+      .filter((field) => removedKeys.has(field.core_field_key))
+      .map((field) => ({ ...field, value: null }));
+    setSaving(true);
+    try {
+      await onSave({ ...value, fields: [...fields, ...removed] });
+      onClose();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className='flex max-h-[88vh] min-h-[420px] w-full flex-col'>
+      <header className='header'>
+        <div>
+          <h2 className='title-section text-ink-primary'>{category.label} fields</h2>
+          <p className='mt-1 text-sm text-ink-secondary'>{category.description}. One canonical value per field key.</p>
+        </div>
+        <Button variant='toolbar' size='icon' Icon={X} onClick={onClose} aria-label='Close' />
+      </header>
+      <div className='body flex-1 min-h-0 overflow-y-auto py-6!'>
+        <div className='grid grid-cols-1 gap-5 sm:grid-cols-2'>
+          {categoryFields.map(({ field, index }) => (
+            <div key={field.id || `new-${index}`} className='min-w-0 border-b border-border/60 pb-4'>
+              {field.id ?
+                <Field
+                  label={coreFieldLabel(field)}
+                  value={field.value}
+                  hint={`Core key: ${field.core_field_key}`}
+                  onChange={(next) => updateField(index, { value: next })}
+                />
+              : <div className='grid gap-3'>
+                  <Field
+                    label='Core field key'
+                    value={field.core_field_key}
+                    hint='Use a stable key such as identity.first_name.'
+                    onChange={(next) => updateField(index, { core_field_key: next })}
+                  />
+                  <Field
+                    label='Value'
+                    value={field.value}
+                    onChange={(next) => updateField(index, { value: next })}
+                  />
+                </div>}
+              <div className='mt-3 flex items-center justify-between gap-3'>
+                <label className='flex items-center gap-2 text-xs text-ink-secondary'>
+                  <Checkbox checked={field.is_sensitive} onCheckedChange={(checked) => updateField(index, { is_sensitive: checked === true })} />
+                  Sensitive
+                </label>
+                <Button variant='toolbar' size='icon' Icon={Trash2} onClick={() => removeField(index)} aria-label='Remove core field' />
+              </div>
+            </div>
+          ))}
+        </div>
+        {categoryFields.length === 0 && <p className='py-8 text-center text-sm text-ink-secondary'>No {category.label.toLowerCase()} values saved yet.</p>}
+        <Button variant='secondary' size='sm' Icon={Plus} onClick={addField} className='mt-5'>Add {category.label.toLowerCase()} field</Button>
+      </div>
+      <footer className='footer'>
+        <Button variant='ghost' onClick={onClose} disabled={saving}>Cancel</Button>
+        <Button Icon={Check} onClick={() => void handleSave()} isLoading={saving}>Save {category.label.toLowerCase()}</Button>
+      </footer>
+    </div>
+  );
+}
+
+const coreCategoryIcons = {
+  identity: UserRound,
+  contact: ContactRound,
+  location: MapPin,
+  work: BriefcaseBusiness,
+  other: Database,
+};
+
+function CoreProfileCategoryCard({
+  value,
+  category,
+  onClick,
+}: {
+  value: UserProfile;
+  category: (typeof coreFieldCategories)[number];
+  onClick: (categoryId: CoreFieldCategoryId) => void;
+}) {
+  const categoryFields = (value.fields || []).filter((field) => coreFieldCategoryForKey(field.core_field_key) === category.id);
+  const Icon = coreCategoryIcons[category.id];
+  return (
+    <motion.div layoutId={`profile-card-core-${category.id}`} onClick={() => onClick(category.id)} className='cursor-pointer'>
+      <CardWithNorth title={category.label} size='sm'>
+        <div className='mb-3 flex items-center gap-2 text-xs text-ink-secondary'>
+          <Icon className='h-4 w-4' />
+          <span>{category.description}</span>
+          <LockKeyhole className='ml-auto h-4 w-4' />
+          <span>{categoryFields.length}</span>
+        </div>
+        <div className='grid grid-cols-1 gap-3 sm:grid-cols-2'>
+          {categoryFields.slice(0, 6).map((field) => (
+            <DisplayField key={field.core_field_key} label={coreFieldLabel(field)} value={field.value} />
+          ))}
+          {categoryFields.length > 6 && <p className='text-xs text-ink-secondary'>+{categoryFields.length - 6} more in Edit</p>}
+          {categoryFields.length === 0 && <p className='text-sm text-ink-secondary'>No values saved yet.</p>}
+        </div>
+      </CardWithNorth>
+    </motion.div>
+  );
+}
 
 function ApplicationPreferencesEditor({
   value,
@@ -191,7 +337,7 @@ function AutofillPreferencesCard({
 }
 
 export default function ProfilePage() {
-  const { profile, setProfile, saveProfile, user, saveAvatar, removeAvatar, jobHuntingProfile, saveJobHuntingProfile } =
+  const { profile, saveProfile, user, saveAvatar, removeAvatar, jobHuntingProfile, saveJobHuntingProfile } =
     useConsole();
   const avatarInputId = useId();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -201,15 +347,14 @@ export default function ProfilePage() {
   const openModal = useGlobalModalStore((state) => state.actions.openModal);
   const closeModal = useGlobalModalStore((state) => state.actions.closeModal);
 
-  const edit = (section: ProfileCardSection) =>
+  const editCoreProfile = (categoryId: CoreFieldCategoryId) =>
     openModal({
-      layoutId: `profile-card-${section}`,
+      layoutId: `profile-card-core-${categoryId}`,
       className: 'w-[94vw] max-w-3xl flex max-h-[88vh] rounded-lg',
       content: (
-        <ProfileEditor
-          section={section}
+        <CoreProfileEditor
           value={profile}
-          onChange={setProfile}
+          categoryId={categoryId}
           onSave={async (updated) => {
             await saveProfile(updated);
             closeModal();
@@ -248,10 +393,10 @@ export default function ProfilePage() {
       {/* Header */}
       <div className='mb-6 shrink-0'>
         <h1 className='title-card text-ink-primary'>
-          Autofill Profile
+          Profile
         </h1>
         <p className='body-sm text-ink-secondary mt-1'>
-          Your identity, contact details, and application preferences. These facts always override remembered answers.
+          Manage the personal data and preferences used for autofill.
         </p>
       </div>
 
@@ -340,17 +485,14 @@ export default function ProfilePage() {
             </div>
           </CardWithNorth>
 
-          {/* Card 2: Identity & Contact Information */}
-          <IdentityContactCard
-            value={profile}
-            onClick={() => edit('identity')}
-          />
-
-          {/* Card 3: Location & Address */}
-          <LocationAddressCard
-            value={profile}
-            onClick={() => edit('location')}
-          />
+          {coreFieldCategories.map((category) => (
+            <CoreProfileCategoryCard
+              key={category.id}
+              value={profile}
+              category={category}
+              onClick={editCoreProfile}
+            />
+          ))}
 
           <AutofillPreferencesCard
             value={jobHuntingProfile}
@@ -362,8 +504,6 @@ export default function ProfilePage() {
             })}
           />
 
-          {/* Card 4: Background & Equal Opportunity */}
-          <EEOCard value={profile} onClick={() => edit('eeo')} />
         </WaterfallLayout>
       </div>
     </div>

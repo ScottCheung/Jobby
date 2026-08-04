@@ -2,7 +2,7 @@ import { logDiagnostic } from "./diagnostics";
 import { handleRuntimeMessage } from "./message-router";
 import { getRuntimeSnapshot } from "./session-store";
 import { acceptsFormChange } from "./content-bridge";
-import { recordManualFormObservations } from "./observation-service";
+import { finalizeManualFormAction, prepareManualFormAction, recordManualFormObservations } from "./observation-service";
 import { formFieldObservationSchema, formInspectionSchema } from "../shared/contracts/form-inspection";
 
 type FormChurnState = {
@@ -33,6 +33,38 @@ chrome.runtime.onMessage.addListener((message: unknown, sender, sendResponse) =>
   if (
     typeof message === "object" &&
     message !== null &&
+    (message as { type?: unknown }).type === "content.form-action-prepare"
+  ) {
+    const candidate = message as { form?: unknown; fields?: unknown };
+    const form = formInspectionSchema.safeParse(candidate.form);
+    const fields = formFieldObservationSchema.array().safeParse(candidate.fields);
+    if (sender.tab?.id === undefined || !form.success || !fields.success) {
+      sendResponse({ ok: false, error: "Could not prepare the form changes." });
+      return false;
+    }
+    void prepareManualFormAction(form.data, fields.data, sender.tab.id)
+      .then((pendingCount) => sendResponse({ ok: true, pendingCount }))
+      .catch((error: unknown) => sendResponse({ ok: false, error: error instanceof Error ? error.message : "Could not store form changes." }));
+    return true;
+  }
+  if (
+    typeof message === "object" &&
+    message !== null &&
+    (message as { type?: unknown }).type === "content.form-action-finalize"
+  ) {
+    const save = (message as { save?: unknown }).save;
+    if (sender.tab?.id === undefined || typeof save !== "boolean") {
+      sendResponse({ ok: false, error: "Could not finalize the form changes." });
+      return false;
+    }
+    void finalizeManualFormAction(sender.tab.id, save)
+      .then(() => sendResponse({ ok: true }))
+      .catch((error: unknown) => sendResponse({ ok: false, error: error instanceof Error ? error.message : "Could not finalize form changes." }));
+    return true;
+  }
+  if (
+    typeof message === "object" &&
+    message !== null &&
     (message as { type?: unknown }).type === "content.form-observed"
   ) {
     const candidate = message as { form?: unknown; fields?: unknown };
@@ -44,7 +76,7 @@ chrome.runtime.onMessage.addListener((message: unknown, sender, sendResponse) =>
       form.success &&
       fields.success
     ) {
-      void recordManualFormObservations(form.data, fields.data);
+      void recordManualFormObservations(form.data, fields.data, sender.tab.id);
     }
     sendResponse({ ok: true });
     return false;

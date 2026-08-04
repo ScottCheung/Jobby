@@ -1,4 +1,4 @@
-import type { FormInspection } from "../shared/contracts/form-inspection";
+import type { FormFieldObservation, FormInspection } from "../shared/contracts/form-inspection";
 import type { FormScope } from "./dom/form-inspector";
 
 import { linkedinAdapter } from "./platforms/linkedin/adapter";
@@ -160,10 +160,12 @@ export function watchFormScope(
   let timer: number | undefined;
   let stabilityTimer: number | undefined;
   let revision = 0;
-  const initialForm = initialForm || readForm();
-  let lastSignature = signature(initialForm);
+  const startingForm = initialForm || readForm();
+  let lastSignature = signature(startingForm);
   const pendingManualFields = new Set<string>();
   const committedManualFields = new Set<string>();
+  const changedManualFields = new Set<string>();
+  let replayingAction = false;
   const observedRoots = new WeakSet<ShadowRoot>();
   const eventRoots: Array<Document | HTMLElement | ShadowRoot> = [];
   const scopeParent = scope instanceof HTMLElement ? scope.parentNode : null;
@@ -188,7 +190,7 @@ export function watchFormScope(
     const nextSignature = signature(form);
     const manuallyCompleted = hasObservableFields(form)
       ? form.fields.filter((field) => {
-          if (field.sensitive || !field.filled || !field.currentValue?.trim()) return false;
+          if (!field.filled || !field.currentValue?.trim()) return false;
           return fieldObservationAliases(field).some((alias) => committedManualFields.has(alias));
         })
       : [];
@@ -198,6 +200,7 @@ export function watchFormScope(
       void chrome.runtime.sendMessage({ type: "content.form-changed", form }).catch(() => undefined);
     }
     if (manuallyCompleted.length > 0) {
+      manuallyCompleted.forEach((field) => fieldObservationAliases(field).forEach((alias) => changedManualFields.add(alias)));
       void chrome.runtime.sendMessage({ type: "content.form-observed", form, fields: manuallyCompleted }).catch(() => undefined);
       manuallyCompleted.forEach((field) => {
         fieldObservationAliases(field).forEach((alias) => {
@@ -278,7 +281,7 @@ export function watchFormScope(
     if (pendingAliases.length === 0) return;
     const inputType = target instanceof HTMLInputElement ? target.type.toLowerCase() : "";
     const hasValue = inputType === "checkbox" || inputType === "radio"
-      ? target.checked
+      ? target instanceof HTMLInputElement && target.checked
       : Boolean(target.value.trim());
     pendingAliases.forEach((alias) => {
       pendingManualFields.delete(alias);
@@ -289,10 +292,53 @@ export function watchFormScope(
   };
   const scheduleAfterFocus = () => schedule(true);
 
+  const interceptFormAction = (event: Event) => {
+    if (replayingAction || !(event.target instanceof Element)) return;
+    const action = event.target.closest<HTMLElement>("button, input[type='submit'], input[type='button'], [role='button']");
+    if (!action) return;
+    const label = `${action.textContent || ""} ${action.getAttribute("aria-label") || ""} ${action instanceof HTMLInputElement ? action.value : ""}`.trim();
+    if (!/(?:next|continue|review|submit|apply|send|finish|下一步|继续|审核|提交|申请|发送|完成)/i.test(label)) return;
+    const form = readForm();
+    if (!hasObservableFields(form)) return;
+    const changedFields = form.fields.filter((field) =>
+      fieldObservationAliases(field).some((alias) => changedManualFields.has(alias) || pendingManualFields.has(alias)),
+    );
+    if (changedFields.length === 0) return;
+
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    void (async () => {
+      const prepared = await chrome.runtime.sendMessage({
+        type: "content.form-action-prepare",
+        form,
+        fields: changedFields,
+      }).catch((error: unknown) => ({ ok: false, error: error instanceof Error ? error.message : "临时修改保存失败。" }));
+      if (!prepared?.ok) {
+        window.alert(prepared?.error || "无法暂存本次修改，请稍后重试。");
+        return;
+      }
+      const pendingCount = typeof prepared.pendingCount === "number" ? prepared.pendingCount : changedFields.length;
+      const save = window.confirm(`本次修改了 ${pendingCount} 个字段，是否保存到个人资料？\n\n选择“取消”将继续填写，但不会更新个人资料。`);
+      const finalized = await chrome.runtime.sendMessage({ type: "content.form-action-finalize", save })
+        .catch((error: unknown) => ({ ok: false, error: error instanceof Error ? error.message : "修改确认失败。" }));
+      if (!finalized?.ok) {
+        window.alert(finalized?.error || "无法确认本次修改，请稍后重试。");
+        return;
+      }
+      changedManualFields.clear();
+      pendingManualFields.clear();
+      committedManualFields.clear();
+      replayingAction = true;
+      action.click();
+      replayingAction = false;
+    })();
+  };
+
   const listenForValueChanges = (root: Document | HTMLElement | ShadowRoot): void => {
     root.addEventListener("input", scheduleValueChange, true);
     root.addEventListener("change", scheduleValueChange, true);
     root.addEventListener("focusout", scheduleManualBlur, true);
+    root.addEventListener("click", interceptFormAction, true);
     eventRoots.push(root);
   };
 
@@ -348,6 +394,7 @@ export function watchFormScope(
       root.removeEventListener("input", scheduleValueChange, true);
       root.removeEventListener("change", scheduleValueChange, true);
       root.removeEventListener("focusout", scheduleManualBlur, true);
+      root.removeEventListener("click", interceptFormAction, true);
     });
     window.removeEventListener("focus", scheduleAfterFocus, true);
     if (timer !== undefined) window.clearTimeout(timer);

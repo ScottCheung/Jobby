@@ -19,6 +19,7 @@ import type {
   ResumeSource,
   User,
   UserProfile,
+  FieldMappingRule,
   WorkerConfig,
   InterviewCategory,
   InterviewTag,
@@ -384,6 +385,28 @@ export const api = {
       method: "PUT",
       body: JSON.stringify(payload),
     }),
+  fieldMappingRules: (includeSystem = true) =>
+    apiRequest<FieldMappingRule[]>(`/api/field-mapping-rules?include_system=${includeSystem}`),
+  createFieldMappingRule: (payload: Omit<FieldMappingRule, "id" | "user_id" | "normalized_alias" | "is_user_defined" | "times_used" | "last_used_at" | "created_at" | "updated_at">) =>
+    apiRequest<FieldMappingRule>("/api/field-mapping-rules", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  updateFieldMappingRule: (rule: FieldMappingRule) =>
+    apiRequest<FieldMappingRule>(`/api/field-mapping-rules/${rule.id}`, {
+      method: "PUT",
+      body: JSON.stringify({
+        core_field_key: rule.core_field_key,
+        alias: rule.alias,
+        scene: rule.scene,
+        semantic_features: rule.semantic_features,
+        field_type: rule.field_type,
+        value_transform: rule.value_transform,
+        confidence: rule.confidence,
+      }),
+    }),
+  deleteFieldMappingRule: (ruleId: string) =>
+    apiRequest<void>(`/api/field-mapping-rules/${ruleId}`, { method: "DELETE" }),
   jobHuntingProfiles: () =>
     dedup("jobHuntingProfiles", () =>
       apiRequest<JobHuntingProfile[]>("/api/job-hunting-profiles"),

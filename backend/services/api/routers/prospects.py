@@ -14,7 +14,6 @@ from services.shared.models import (
     Prospect,
     ProspectAgentLog,
     User,
-    UserProfile,
 )
 from services.shared.schemas import (
     ProspectAgentLogRead,
@@ -226,9 +225,6 @@ def discover_prospects(
             JobHuntingProfile.user_id == current_user.id,
             JobHuntingProfile.is_default == True,
         )
-    )
-    user_profile = db.scalar(
-        select(UserProfile).where(UserProfile.user_id == current_user.id)
     )
 
     target_titles = request.target_roles or (

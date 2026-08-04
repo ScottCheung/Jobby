@@ -126,7 +126,7 @@ function TestControl({
 }
 
 function sourceLabel(source: string): string {
-  return { profile: 'Autofill Profile', answer_library: 'AI Memory', observation: 'Observed answer', none: 'No saved answer' }[source] || source;
+  return { profile: 'Profile', answer_library: 'AI Memory', observation: 'Observed answer', none: 'No saved answer' }[source] || source;
 }
 
 function traceStatus(trace: FormAutofillTrace | undefined): string {

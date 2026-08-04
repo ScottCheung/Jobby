@@ -1,3 +1,7 @@
 /** @format */
 
-export { default } from '@/app/question-cache/page';
+import { redirect } from 'next/navigation';
+
+export default function LegacySettingsAiMemoryPage() {
+  redirect('/settings/ai-memory');
+}

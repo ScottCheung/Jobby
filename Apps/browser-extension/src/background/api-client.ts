@@ -64,6 +64,21 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
   return btoa(chunks.join(""));
 }
 
+function semanticFeatures(field: FormFieldObservation): string[] {
+  if (field.semanticFeatures?.length) return field.semanticFeatures;
+  const stopWords = new Set(["a", "an", "and", "are", "do", "enter", "for", "is", "of", "please", "the", "to", "what", "your"]);
+  return [...new Set(`${field.label} ${field.name || ""} ${field.id || ""}`
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .split(/\s+/)
+    .filter((word) => word.length > 1 && !stopWords.has(word)))].slice(0, 50);
+}
+
+function semanticFeaturesForPayload(label: string, name?: string, id?: string): string[] {
+  return semanticFeatures({ label, name, id, key: label, type: "text", required: false, filled: false, sensitive: false, options: [] });
+}
+
 export class ApiClient {
   async request<T>(path: string, init: RequestInit = {}, authenticated = true): Promise<T> {
     const headers = new Headers(init.headers);
@@ -178,6 +193,8 @@ export class ApiClient {
     platform: string,
     fields: FormFieldObservation[],
     company?: string,
+    scene = "generic",
+    sessionId?: string,
   ): Promise<FormAutofillInstructionsResponse> {
     const response = await this.request<unknown>(
       "/api/form-autofill-instructions",
@@ -186,7 +203,9 @@ export class ApiClient {
         body: JSON.stringify({
           platform,
           ...(company ? { company } : {}),
-          fields: fields.map(({ key, id, name, type, label, required, options }) => ({
+          scene,
+          ...(sessionId ? { session_id: sessionId } : {}),
+          fields: fields.map(({ key, id, name, type, label, required, options, semanticFeatures }) => ({
             key,
             id,
             name,
@@ -194,6 +213,7 @@ export class ApiClient {
             label,
             required,
             options,
+            semantic_features: semanticFeatures?.length ? semanticFeatures : semanticFeaturesForPayload(label, name, id),
           })),
         }),
       },
@@ -201,17 +221,20 @@ export class ApiClient {
     return formAutofillInstructionsResponseSchema.parse(response);
   }
 
-  async recordFormObservation(
+  async recordFormTempChange(
     platform: string,
     company: string | undefined,
+    scene: string,
+    sessionId: string,
     field: FormFieldObservation,
   ): Promise<void> {
-    if (!field.currentValue?.trim()) return;
-    await this.request("/api/form-autofill-observations", {
+    await this.request("/api/form-temp-changes", {
       method: "POST",
       body: JSON.stringify({
         platform,
         ...(company ? { company } : {}),
+        scene,
+        session_id: sessionId,
         field: {
           key: field.key,
           id: field.id,
@@ -220,10 +243,43 @@ export class ApiClient {
           label: field.label,
           required: field.required,
           options: field.options,
+          semantic_features: semanticFeatures(field),
         },
-        answer: field.currentValue,
+        temp_value: field.currentValue || "",
       }),
     });
+  }
+
+  async finalizeFormTempChanges(
+    sessionId: string,
+    save: boolean,
+    changes: Array<{ platform: string; company?: string; scene: string; field: FormFieldObservation }>,
+  ): Promise<{ status: "saved" | "discarded" | "empty"; saved_count: number; discarded_count: number }> {
+    const response = await this.request<unknown>("/api/form-temp-changes/finalize", {
+      method: "POST",
+      body: JSON.stringify({
+        session_id: sessionId,
+        save,
+        changes: changes.map(({ platform, company, scene, field }) => ({
+          platform,
+          ...(company ? { company } : {}),
+          scene,
+          session_id: sessionId,
+          field: {
+            key: field.key,
+            id: field.id,
+            name: field.name,
+            type: field.type,
+            label: field.label,
+            required: field.required,
+            options: field.options,
+            semantic_features: semanticFeatures(field),
+          },
+          temp_value: field.currentValue || "",
+        })),
+      }),
+    });
+    return response as { status: "saved" | "discarded" | "empty"; saved_count: number; discarded_count: number };
   }
 
   async downloadDefaultResume(): Promise<DownloadedResume> {

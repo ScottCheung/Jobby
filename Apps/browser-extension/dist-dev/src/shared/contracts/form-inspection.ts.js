@@ -39,6 +39,7 @@ export const formFieldObservationSchema = z.object({
   filled: z.boolean(),
   sensitive: z.boolean(),
   options: z.array(formOptionSchema),
+  semanticFeatures: z.array(z.string().max(80)).max(50).optional(),
   currentValue: z.string().optional(),
   upload: fileUploadObservationSchema.optional()
 });

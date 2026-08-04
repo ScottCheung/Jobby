@@ -10,10 +10,10 @@ import {
 
 const settingsNavigation: ModuleNavigationItem[] = [
   {
-    name: 'Personal Info',
+    name: 'Profile',
     href: '/settings/profile',
     icon: User,
-    description: 'Manage personal details, contact info, and address.',
+    description: 'Manage the personal data and preferences used for autofill.',
   },
   {
     name: 'Resume Profile',
@@ -29,9 +29,9 @@ const settingsNavigation: ModuleNavigationItem[] = [
   },
   {
     name: 'AI Memory',
-    href: '/settings/question-cache',
+    href: '/settings/ai-memory',
     icon: MessageSquareCode,
-    description: 'Manage the answers AI can safely reuse in job applications.',
+    description: 'Manage reusable answers and field mapping rules.',
   },
   {
     name: 'Browser Session',

@@ -52,5 +52,17 @@ export const formFillInstructionsResponseSchema = z.object({
 });
 export const formAutofillInstructionsResponseSchema = z.object({
   instructions: z.array(fieldFillInstructionSchema),
-  unanswered_fields: formFillInstructionsResponseSchema.shape.unanswered_fields
+  unanswered_fields: formFillInstructionsResponseSchema.shape.unanswered_fields,
+  traces: z.array(z.object({
+    key: z.string(),
+    label: z.string(),
+    intent_key: z.string().nullable().optional(),
+    core_field_key: z.string().nullable().optional(),
+    scene: z.string().nullable().optional(),
+    semantic_features: z.array(z.string()).default([]),
+    source: z.string(),
+    status: z.enum(["filled", "unanswered"]),
+    value: z.union([z.string(), z.boolean()]).nullable().optional(),
+    reason: z.string().nullable().optional()
+  })).default([])
 });

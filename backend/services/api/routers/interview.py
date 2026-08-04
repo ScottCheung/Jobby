@@ -24,7 +24,6 @@ from services.shared.speech_to_text import (
 )
 from services.shared.models import (
     User,
-    UserProfile,
     PlatformAccount,
     JobHuntingProfile,
     RuntimeSettings,

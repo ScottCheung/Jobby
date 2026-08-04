@@ -76,6 +76,37 @@ export type UserProfile = {
   disability_status?: string | null;
   veteran_status?: string | null;
   extra_data?: Record<string, unknown>;
+  fields?: CoreProfileField[];
+};
+
+export type CoreProfileField = {
+  id?: string;
+  core_field_key: string;
+  label?: string;
+  value?: string | null;
+  value_type: string;
+  is_sensitive: boolean;
+  version?: number;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type FieldMappingRule = {
+  id: string;
+  user_id?: string | null;
+  core_field_key: string;
+  alias: string;
+  normalized_alias: string;
+  scene: string;
+  semantic_features: string[];
+  field_type?: string | null;
+  value_transform: Record<string, unknown>;
+  is_user_defined: boolean;
+  confidence: number;
+  times_used: number;
+  last_used_at?: string | null;
+  created_at: string;
+  updated_at: string;
 };
 
 export type ResumeLocation = {

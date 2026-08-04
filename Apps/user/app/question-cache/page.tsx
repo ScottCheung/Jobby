@@ -4,6 +4,7 @@
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import {
+  ArrowUpRight,
   BriefcaseBusiness,
   Check,
   CircleAlert,
@@ -18,6 +19,8 @@ import {
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import type { AutofillAnswer, FormAnswerObservation } from '@/lib/types';
+import { FieldMappingRulesPanel } from '@/components/autofill/FieldMappingRules';
+import Link from 'next/link';
 
 type MemoryCategory = 'all' | 'work' | 'eligibility' | 'compensation';
 
@@ -43,7 +46,7 @@ const memoryDefinitions = {
   },
   'compensation.desired_base_salary': {
     label: 'Desired base salary',
-    description: 'Usually managed in your Autofill Profile.',
+      description: 'Usually managed in Profile.',
     category: 'compensation' as const,
     icon: CircleDollarSign,
   },
@@ -205,14 +208,24 @@ export default function AiMemoryPage() {
   return (
     <main className='mx-auto flex w-full max-w-6xl flex-col gap-6 pb-10'>
       <header className='border-b border-border/60 pb-5'>
-        <div className='flex items-center gap-2 text-ink-primary'>
-          <LibraryBig className='size-5 text-primary' />
-          <h1 className='title-section'>AI Memory</h1>
+        <div className='flex items-start justify-between gap-4'>
+          <div>
+            <div className='flex items-center gap-2 text-ink-primary'>
+              <LibraryBig className='size-5 text-primary' />
+              <h1 className='title-section'>AI Memory</h1>
+            </div>
+            <p className='mt-1 max-w-2xl text-sm text-ink-secondary'>
+              Save the answers that need your judgement. Profile remains the trusted source for personal details and preferences.
+            </p>
+          </div>
+          <Link
+            href='#field-mappings'
+            className='inline-flex shrink-0 items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80'
+          >
+            Manage field mappings
+            <ArrowUpRight className='size-3.5' />
+          </Link>
         </div>
-        <p className='mt-1 max-w-2xl text-sm text-ink-secondary'>
-          Save the answers that need your judgement. Your name, contact details,
-          location, and salary stay in your Autofill Profile and always win.
-        </p>
       </header>
 
       <section className='grid gap-2 sm:grid-cols-2 lg:grid-cols-5'>
@@ -384,6 +397,8 @@ export default function AiMemoryPage() {
           </div>
         )}
       </section>
+
+      <FieldMappingRulesPanel />
 
       <section id='needs-review' className='scroll-mt-5 border-t border-border/60 pt-6'>
         <div className='mb-3 flex items-start justify-between gap-4'>

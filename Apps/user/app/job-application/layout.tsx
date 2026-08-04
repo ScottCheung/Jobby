@@ -31,7 +31,7 @@ const tabs: ModuleNavigationItem[] = [
   },
   {
     name: 'AI Memory',
-    href: '/job-application/question-cache',
+    href: '/settings/ai-memory',
     icon: MessageSquareCode,
     description: 'Manage reusable answers for application forms',
   },

@@ -49,7 +49,7 @@ class User(Base, TimestampMixin):
     can_use_auto_apply: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
-    profile: Mapped["UserProfile"] = relationship(back_populates="user", cascade="all, delete-orphan")
+    core_profile: Mapped[list["UserCoreProfile"]] = relationship(cascade="all, delete-orphan")
     platform_accounts: Mapped[list["PlatformAccount"]] = relationship(back_populates="user")
     
     interview_categories: Mapped[list["InterviewCategory"]] = relationship(back_populates="user")
@@ -63,29 +63,22 @@ class User(Base, TimestampMixin):
     master_resume: Mapped["MasterResume | None"] = relationship(back_populates="user", cascade="all, delete-orphan", uselist=False)
 
 
-class UserProfile(Base, TimestampMixin):
-    __tablename__ = "user_profiles"
+class UserCoreProfile(Base, TimestampMixin):
+    """Encrypted canonical user facts used by every autofill path."""
+    __tablename__ = "user_core_profile"
+    __table_args__ = (
+        UniqueConstraint("user_id", "core_field_key", name="uq_user_core_profile_user_key"),
+    )
 
     id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid4)
-    user_id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), unique=True)
-    first_name: Mapped[str | None] = mapped_column(String(100))
-    middle_name: Mapped[str | None] = mapped_column(String(100))
-    last_name: Mapped[str | None] = mapped_column(String(100))
-    email: Mapped[str | None] = mapped_column(String(255))
-    phone_number: Mapped[str | None] = mapped_column(String(50))
-    current_city: Mapped[str | None] = mapped_column(String(255))
-    street: Mapped[str | None] = mapped_column(String(255))
-    state: Mapped[str | None] = mapped_column(String(100))
-    zipcode: Mapped[str | None] = mapped_column(String(50))
-    country: Mapped[str | None] = mapped_column(String(100))
-    ethnicity: Mapped[str | None] = mapped_column(String(100))
-    gender: Mapped[str | None] = mapped_column(String(100))
-    gender_identity: Mapped[str | None] = mapped_column(String(100))
-    disability_status: Mapped[str | None] = mapped_column(String(100))
-    veteran_status: Mapped[str | None] = mapped_column(String(100))
-    extra_data: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
-
-    user: Mapped[User] = relationship(back_populates="profile")
+    user_id: Mapped[PyUUID] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    core_field_key: Mapped[str] = mapped_column(String(150), nullable=False)
+    field_value: Mapped[str] = mapped_column(Text, nullable=False)
+    value_type: Mapped[str] = mapped_column(String(50), nullable=False, default="text")
+    is_sensitive: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
 
 
 class MasterResume(Base, TimestampMixin):
@@ -353,95 +346,56 @@ class QuestionCacheEntry(Base, TimestampMixin):
     companies: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
 
 
-class AutofillAnswer(Base, TimestampMixin):
-    """A user-managed canonical answer, independent from any ATS wording."""
-    __tablename__ = "autofill_answers"
+class FieldMappingRule(Base, TimestampMixin):
+    """Maps a form alias and its context to one canonical profile key."""
+    __tablename__ = "field_mapping_rule"
     __table_args__ = (
-        UniqueConstraint("user_id", "intent_key", name="uq_autofill_answers_user_intent"),
+        Index("ix_field_mapping_rule_lookup", "normalized_alias", "scene", "is_user_defined", "confidence"),
+        Index("ix_field_mapping_rule_user", "user_id", "is_user_defined", "confidence"),
     )
 
     id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid4)
-    user_id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True)
-    intent_key: Mapped[str] = mapped_column(String(150), nullable=False)
-    value: Mapped[str] = mapped_column(Text, nullable=False)
-    value_type: Mapped[str] = mapped_column(String(50), nullable=False, default="text")
-    authority: Mapped[str] = mapped_column(String(30), nullable=False, default="user")
-    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
-    last_confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    user_id: Mapped[PyUUID | None] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    core_field_key: Mapped[str] = mapped_column(String(150), nullable=False)
+    alias: Mapped[str] = mapped_column(String(500), nullable=False)
+    normalized_alias: Mapped[str] = mapped_column(String(500), nullable=False)
+    scene: Mapped[str] = mapped_column(String(100), nullable=False, default="generic")
+    semantic_features: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    field_type: Mapped[str | None] = mapped_column(String(50))
+    value_transform: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    is_user_defined: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    confidence: Mapped[int] = mapped_column(Integer, nullable=False, default=80)
     times_used: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
 
-class FormQuestionMapping(Base, TimestampMixin):
-    """Maps one observed form question to a canonical Autofill answer intent."""
-    __tablename__ = "form_question_mappings"
+class FormTempChange(Base, TimestampMixin):
+    """Session-scoped manual edits; never promoted without explicit consent."""
+    __tablename__ = "form_temp_change"
     __table_args__ = (
         UniqueConstraint(
-            "user_id", "platform", "company_scope", "normalized_label", "field_type", "control_fingerprint",
-            name="uq_form_question_mapping_scope",
+            "user_id", "session_id", "control_fingerprint",
+            name="uq_form_temp_change_session_control",
         ),
-        Index("ix_form_question_mappings_lookup", "user_id", "platform", "company_scope", "normalized_label"),
-        Index("ix_form_question_mappings_intent", "user_id", "intent_key"),
+        Index("ix_form_temp_change_session", "user_id", "session_id", "updated_at"),
     )
 
     id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid4)
-    user_id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True)
-    answer_id: Mapped[PyUUID | None] = mapped_column(PgUUID(as_uuid=True), ForeignKey("autofill_answers.id", ondelete="SET NULL"))
-    intent_key: Mapped[str] = mapped_column(String(150), nullable=False)
-    platform: Mapped[str] = mapped_column(String(50), nullable=False, default="generic")
-    company_scope: Mapped[str] = mapped_column(String(255), nullable=False, default="")
-    original_label: Mapped[str] = mapped_column(Text, nullable=False)
-    normalized_label: Mapped[str] = mapped_column(Text, nullable=False)
-    field_type: Mapped[str] = mapped_column(String(50), nullable=False)
-    control_fingerprint: Mapped[str] = mapped_column(String(128), nullable=False)
-    options_fingerprint: Mapped[str] = mapped_column(String(128), nullable=False)
-    confidence: Mapped[float] = mapped_column(Numeric(4, 3), nullable=False, default=1)
-    times_used: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    last_confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-
-
-class AutofillAnswerEvent(Base):
-    """Append-only audit history for answer changes and successful use."""
-    __tablename__ = "autofill_answer_events"
-
-    id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid4)
-    user_id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True)
-    answer_id: Mapped[PyUUID | None] = mapped_column(PgUUID(as_uuid=True), ForeignKey("autofill_answers.id", ondelete="SET NULL"), index=True)
-    mapping_id: Mapped[PyUUID | None] = mapped_column(PgUUID(as_uuid=True), ForeignKey("form_question_mappings.id", ondelete="SET NULL"), index=True)
-    event_type: Mapped[str] = mapped_column(String(50), nullable=False)
-    source: Mapped[str] = mapped_column(String(50), nullable=False, default="system")
-    payload: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
-
-
-class FormAnswerObservation(Base, TimestampMixin):
-    """A deduplicated manual form answer, retained before it becomes memory."""
-    __tablename__ = "form_answer_observations"
-    __table_args__ = (
-        UniqueConstraint(
-            "user_id", "platform", "company_scope", "normalized_label", "field_type", "control_fingerprint",
-            name="uq_form_answer_observation_scope",
-        ),
-        Index("ix_form_answer_observations_intent", "user_id", "intent_key", "answer_hash"),
+    user_id: Mapped[PyUUID] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
-
-    id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid4)
-    user_id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True)
-    platform: Mapped[str] = mapped_column(String(50), nullable=False, default="generic")
-    company_scope: Mapped[str] = mapped_column(String(255), nullable=False, default="")
-    original_label: Mapped[str] = mapped_column(Text, nullable=False)
-    normalized_label: Mapped[str] = mapped_column(Text, nullable=False)
+    session_id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), nullable=False)
+    alias: Mapped[str] = mapped_column(String(500), nullable=False)
+    normalized_alias: Mapped[str] = mapped_column(String(500), nullable=False)
+    temp_value: Mapped[str] = mapped_column(Text, nullable=False)
+    core_field_key: Mapped[str | None] = mapped_column(String(150))
+    scene: Mapped[str] = mapped_column(String(100), nullable=False, default="generic")
+    semantic_features: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     field_type: Mapped[str] = mapped_column(String(50), nullable=False)
     control_fingerprint: Mapped[str] = mapped_column(String(128), nullable=False)
-    options_fingerprint: Mapped[str] = mapped_column(String(128), nullable=False)
-    answer: Mapped[str] = mapped_column(Text, nullable=False)
-    answer_hash: Mapped[str] = mapped_column(String(128), nullable=False)
-    intent_key: Mapped[str | None] = mapped_column(String(150))
-    times_seen: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
-    status: Mapped[str] = mapped_column(String(30), nullable=False, default="observed")
-    last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    is_sensitive: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
 
 class JobApplication(Base, TimestampMixin):

@@ -1,7 +1,7 @@
 from datetime import datetime
 from decimal import Decimal
 from typing import Any, Literal
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -53,7 +53,24 @@ class GamificationTransactionRead(GamificationTransactionBase, OrmModel):
     updated_at: datetime
 
 
+class CoreProfileFieldWrite(BaseModel):
+    core_field_key: str = Field(min_length=1, max_length=150)
+    value: str | None = Field(default=None, max_length=10000)
+    value_type: str = Field(default="text", max_length=50)
+    is_sensitive: bool = True
+
+
+class CoreProfileFieldRead(CoreProfileFieldWrite, OrmModel):
+    id: UUID
+    label: str
+    version: int
+    created_at: datetime
+    updated_at: datetime
+
+
 class UserProfileBase(BaseModel):
+    """Compatibility envelope backed by user_core_profile KV rows."""
+    fields: list[CoreProfileFieldWrite] = Field(default_factory=list, max_length=500)
     preferred_name: str | None = None
     first_name: str | None = None
     middle_name: str | None = None
@@ -76,6 +93,7 @@ class UserProfileBase(BaseModel):
 class UserProfileRead(UserProfileBase, OrmModel):
     id: UUID
     user_id: UUID
+    fields: list[CoreProfileFieldRead] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
 
@@ -269,6 +287,7 @@ class ApplicationFormFieldInput(BaseModel):
     label: str = Field(min_length=1, max_length=500)
     required: bool = False
     options: list[dict[str, str]] = Field(default_factory=list, max_length=500)
+    semantic_features: list[str] = Field(default_factory=list, max_length=50)
 
 
 class ApplicationFormInstructionsRequest(BaseModel):
@@ -278,6 +297,8 @@ class ApplicationFormInstructionsRequest(BaseModel):
 class FormAutofillInstructionsRequest(ApplicationFormInstructionsRequest):
     platform: str = Field(default="generic", min_length=1, max_length=50)
     company: str | None = Field(default=None, max_length=255)
+    scene: str = Field(default="generic", min_length=1, max_length=100)
+    session_id: UUID | None = None
     dry_run: bool = False
 
 
@@ -311,17 +332,58 @@ class FormAutofillFieldTrace(BaseModel):
     key: str
     label: str
     intent_key: str | None = None
+    core_field_key: str | None = None
+    scene: str | None = None
+    semantic_features: list[str] = Field(default_factory=list)
     source: str
     status: Literal["filled", "unanswered"]
     value: str | bool | None = None
     reason: str | None = None
 
 
+class FormTempChangeRequest(BaseModel):
+    platform: str = Field(default="generic", min_length=1, max_length=50)
+    company: str | None = Field(default=None, max_length=255)
+    scene: str = Field(default="generic", min_length=1, max_length=100)
+    session_id: UUID
+    field: ApplicationFormFieldInput
+    temp_value: str = Field(max_length=10_000)
+
+
+class FormTempChangeRead(OrmModel):
+    id: UUID
+    session_id: UUID
+    alias: str
+    temp_value: str
+    core_field_key: str | None = None
+    scene: str
+    semantic_features: list[str] = Field(default_factory=list)
+    field_type: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class FormTempFinalizeRequest(BaseModel):
+    session_id: UUID
+    save: bool
+    changes: list[FormTempChangeRequest] = Field(default_factory=list, max_length=500)
+
+
+class FormTempFinalizeResponse(BaseModel):
+    status: Literal["saved", "discarded", "empty"]
+    saved_count: int = 0
+    discarded_count: int = 0
+
+
+# Kept as aliases for clients released before the KV migration. The endpoint
+# now reads/writes user_core_profile instead of an answer table.
 class FormAnswerObservationRequest(BaseModel):
     platform: str = Field(default="generic", min_length=1, max_length=50)
     company: str | None = Field(default=None, max_length=255)
+    scene: str = Field(default="generic", min_length=1, max_length=100)
+    session_id: UUID = Field(default_factory=uuid4)
     field: ApplicationFormFieldInput
-    answer: str = Field(min_length=1, max_length=10_000)
+    answer: str = Field(default="", max_length=10_000)
 
 
 class FormAnswerObservationResponse(BaseModel):
@@ -329,19 +391,15 @@ class FormAnswerObservationResponse(BaseModel):
     intent_key: str | None = None
 
 
-class FormAnswerObservationRead(OrmModel):
-    id: UUID
-    platform: str
-    company_scope: str
-    original_label: str
-    field_type: str
-    answer: str
+class FormAnswerObservationRead(FormTempChangeRead):
+    platform: str = "generic"
+    company_scope: str = ""
+    original_label: str = ""
+    answer: str = ""
     intent_key: str | None = None
-    times_seen: int
-    status: Literal["observed", "promoted", "conflict"]
-    last_seen_at: datetime
-    created_at: datetime
-    updated_at: datetime
+    times_seen: int = 1
+    status: Literal["observed", "promoted", "conflict"] = "observed"
+    last_seen_at: datetime | None = None
 
 
 class AutofillAnswerBase(BaseModel):
@@ -357,6 +415,27 @@ class AutofillAnswerRead(AutofillAnswerBase, OrmModel):
     authority: str
     version: int
     last_confirmed_at: datetime | None = None
+    times_used: int
+    last_used_at: datetime | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class FieldMappingRuleBase(BaseModel):
+    core_field_key: str = Field(min_length=1, max_length=150)
+    alias: str = Field(min_length=1, max_length=500)
+    scene: str = Field(default="generic", min_length=1, max_length=100)
+    semantic_features: list[str] = Field(default_factory=list, max_length=50)
+    field_type: str | None = Field(default=None, max_length=50)
+    value_transform: dict = Field(default_factory=dict)
+    confidence: int = Field(default=100, ge=0, le=100)
+
+
+class FieldMappingRuleRead(FieldMappingRuleBase, OrmModel):
+    id: UUID
+    user_id: UUID | None = None
+    normalized_alias: str
+    is_user_defined: bool
     times_used: int
     last_used_at: datetime | None = None
     created_at: datetime

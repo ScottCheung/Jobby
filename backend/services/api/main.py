@@ -2,7 +2,6 @@ from datetime import datetime, timedelta
 from typing import Any
 from uuid import UUID, uuid4
 import asyncio
-import hashlib
 import json
 import logging
 from urllib.parse import unquote, urlsplit
@@ -32,10 +31,9 @@ from services.shared.database import SessionLocal, get_db
 from services.shared.job_link_repair import JobLinkRepairError, is_linkedin_public_summary, repair_from_link
 from services.shared.models import (
     JobApplication,
-    AutofillAnswer,
-    AutofillAnswerEvent,
-    FormAnswerObservation,
-    FormQuestionMapping,
+    UserCoreProfile,
+    FieldMappingRule,
+    FormTempChange,
     QuestionCacheEntry,
     RuntimeSettings,
     JobHuntingProfile,
@@ -48,7 +46,6 @@ from services.shared.models import (
     Skill,
     User,
     UserGamification,
-    UserProfile,
     UserSkill,
 )
 from services.shared.schemas import (
@@ -66,6 +63,12 @@ from services.shared.schemas import (
     AutofillAnswerRead,
     FormAutofillInstructionsRequest,
     FormAutofillInstructionsResponse,
+    FormTempChangeRequest,
+    FormTempChangeRead,
+    FormTempFinalizeRequest,
+    FormTempFinalizeResponse,
+    FieldMappingRuleBase,
+    FieldMappingRuleRead,
     FormAnswerObservationRequest,
     FormAnswerObservationResponse,
     FormAnswerObservationRead,
@@ -89,6 +92,25 @@ from services.shared.schemas import (
     UserRead,
 )
 from services.shared.settings import get_settings
+from services.shared.autofill_profile import (
+    CORE_FIELD_LABELS,
+    LEGACY_PROFILE_KEYS,
+    PROFILE_PREFERENCES_KEY,
+    core_profile_rows,
+    core_profile_values,
+    decrypt_profile_value,
+    delete_core_profile_value,
+    ensure_identity_core_values,
+    extract_semantic_features,
+    form_control_fingerprint,
+    match_mapping_rule,
+    normalize_alias,
+    normalize_scene,
+    profile_api_payload,
+    suggested_custom_core_key,
+    transformed_core_value,
+    upsert_core_profile_value,
+)
 from services.shared.storage import StorageError, get_object_storage
 from services.shared.application_settings import (
     application_settings_from_storage,
@@ -193,12 +215,10 @@ def apply_updates(model: object, values: dict) -> None:
         setattr(model, key, value)
 
 
-def profile_response(profile: UserProfile, user: User) -> dict:
-    data = UserProfileRead.model_validate(profile).model_dump(mode="json")
-    data["preferred_name"] = user.display_name
-    if not data.get("email"):
-        data["email"] = user.email
-    return data
+def profile_response(_profile: object | None, user: User, db: Session) -> dict:
+    """Return a compatibility envelope assembled from encrypted KV rows."""
+    ensure_identity_core_values(db, user)
+    return profile_api_payload(db, user)
 
 
 def normalize_job_id(value: str | None) -> str | None:
@@ -868,15 +888,9 @@ def read_profile(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_or_create_current_user),
 ) -> dict:
-    profile = db.scalar(select(UserProfile).where(UserProfile.user_id == current_user.id))
-    if profile:
-        return profile_response(profile, current_user)
-
-    profile = UserProfile(user_id=current_user.id, extra_data={})
-    db.add(profile)
+    ensure_identity_core_values(db, current_user)
     db.commit()
-    db.refresh(profile)
-    return profile_response(profile, current_user)
+    return profile_response(None, current_user, db)
 
 
 @app.put("/api/profile", response_model=UserProfileRead)
@@ -885,25 +899,61 @@ def update_profile(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_or_create_current_user),
 ) -> dict:
-    profile = db.scalar(select(UserProfile).where(UserProfile.user_id == current_user.id))
-    if not profile:
-        profile = UserProfile(user_id=current_user.id)
-        db.add(profile)
-
     values = payload.model_dump(exclude_unset=True)
     preferred_name = (values.pop("preferred_name", None) or "").strip()
     if preferred_name:
         current_user.display_name = preferred_name[:255]
-        if not values.get("first_name") and not getattr(profile, "first_name", None):
+        upsert_core_profile_value(
+            db, user_id=current_user.id, core_field_key="identity.preferred_name", value=preferred_name
+        )
+        if not values.get("first_name") and not core_profile_values(db, current_user.id).get("identity.first_name"):
             parts = preferred_name.split()
             values["first_name"] = parts[0]
-            if not values.get("last_name") and not getattr(profile, "last_name", None) and len(parts) > 1:
+            if not values.get("last_name") and not core_profile_values(db, current_user.id).get("identity.last_name") and len(parts) > 1:
                 values["last_name"] = " ".join(parts[1:])
-    apply_updates(profile, values)
+    fields = values.pop("fields", []) or []
+    provided_core_keys = {field.get("core_field_key", "").strip().casefold() for field in fields}
+    for field in fields:
+        field_key = field.get("core_field_key", "").strip()
+        field_value = field.get("value")
+        if not field_key:
+            continue
+        if field_value is None or not str(field_value).strip():
+            delete_core_profile_value(db, user_id=current_user.id, core_field_key=field_key)
+        else:
+            upsert_core_profile_value(
+                db,
+                user_id=current_user.id,
+                core_field_key=field_key,
+                value=str(field_value),
+                value_type=field.get("value_type", "text"),
+                is_sensitive=bool(field.get("is_sensitive", True)),
+            )
+    for legacy_name, field_value in values.items():
+        if legacy_name == "extra_data":
+            if isinstance(field_value, dict):
+                upsert_core_profile_value(
+                    db,
+                    user_id=current_user.id,
+                    core_field_key=PROFILE_PREFERENCES_KEY,
+                    value=json.dumps(field_value),
+                    value_type="json",
+                    is_sensitive=False,
+                )
+            continue
+        core_key = LEGACY_PROFILE_KEYS.get(legacy_name)
+        if not core_key:
+            continue
+        if core_key in provided_core_keys:
+            continue
+        if field_value is None or not str(field_value).strip():
+            delete_core_profile_value(db, user_id=current_user.id, core_field_key=core_key)
+        else:
+            upsert_core_profile_value(db, user_id=current_user.id, core_field_key=core_key, value=str(field_value))
+    ensure_identity_core_values(db, current_user)
     db.commit()
-    db.refresh(profile)
     db.refresh(current_user)
-    return profile_response(profile, current_user)
+    return profile_response(None, current_user, db)
 
 
 def master_resume_response(resume: MasterResume) -> dict:
@@ -1193,23 +1243,20 @@ def apply_master_resume_profile_prefill(
     """Fill empty profile fields only; confirmation must never overwrite user edits."""
     basics = resume_data.get("basics") if isinstance(resume_data.get("basics"), dict) else {}
     location = basics.get("location") if isinstance(basics.get("location"), dict) else {}
-    profile = db.scalar(select(UserProfile).where(UserProfile.user_id == current_user.id))
-    if not profile:
-        profile = UserProfile(user_id=current_user.id, extra_data={})
-        db.add(profile)
     profile_values = {
-        "first_name": basics.get("first_name"),
-        "middle_name": basics.get("middle_name"),
-        "last_name": basics.get("last_name"),
-        "phone_number": basics.get("phone"),
-        "current_city": location.get("city"),
-        "state": location.get("state"),
-        "country": location.get("country"),
-        "zipcode": location.get("postal_code"),
+        "identity.first_name": basics.get("first_name"),
+        "identity.middle_name": basics.get("middle_name"),
+        "identity.last_name": basics.get("last_name"),
+        "identity.phone": basics.get("phone"),
+        "address.city": location.get("city"),
+        "address.state": location.get("state"),
+        "address.country": location.get("country"),
+        "address.postal_code": location.get("postal_code"),
     }
+    existing_values = core_profile_values(db, current_user.id)
     for field, value in profile_values.items():
-        if not getattr(profile, field, None) and value:
-            setattr(profile, field, value)
+        if not existing_values.get(field) and value:
+            upsert_core_profile_value(db, user_id=current_user.id, core_field_key=field, value=str(value))
     if not current_user.display_name.strip() or "@" in current_user.display_name:
         name = " ".join(part for part in [basics.get("first_name"), basics.get("last_name")] if part)
         if name:
@@ -2702,6 +2749,8 @@ def read_default_job_hunting_profile(
         is_default=True,
     )
     db.add(job_hunting_profile)
+    if should_be_default:
+        _sync_job_profile_core_values(db, current_user, job_hunting_profile, overwrite=True)
     db.commit()
     db.refresh(job_hunting_profile)
     return job_hunting_profile
@@ -2772,6 +2821,8 @@ def update_job_hunting_profile(
 
     values = normalize_job_hunting_profile_values(payload.model_dump(), job_hunting_profile)
     apply_updates(job_hunting_profile, values)
+    if job_hunting_profile.is_default:
+        _sync_job_profile_core_values(db, current_user, job_hunting_profile, overwrite=True)
     db.commit()
     db.refresh(job_hunting_profile)
     if job_hunting_profile.is_default:
@@ -2793,6 +2844,7 @@ def activate_job_hunting_profile(
 
     job_hunting_profile.is_default = True
     ensure_single_default_job_hunting_profile(db, current_user, job_hunting_profile)
+    _sync_job_profile_core_values(db, current_user, job_hunting_profile, overwrite=True)
     db.commit()
     db.refresh(job_hunting_profile)
     return job_hunting_profile
@@ -2852,6 +2904,7 @@ def update_default_job_hunting_profile(
             },
         )
         db.add(job_hunting_profile)
+        _sync_job_profile_core_values(db, current_user, job_hunting_profile, overwrite=True)
         db.commit()
         db.refresh(job_hunting_profile)
         return job_hunting_profile
@@ -3170,37 +3223,8 @@ def _autofill_intent_key(label: str) -> str | None:
     }.get(category)
 
 
-def _form_options_fingerprint(options: list[dict[str, str]]) -> str:
-    canonical = sorted(
-        (str(option.get("value", "")).strip(), str(option.get("label", "")).strip())
-        for option in options
-    )
-    return hashlib.sha256(json.dumps(canonical, separators=(",", ":")).encode()).hexdigest()
-
-
-def _form_control_fingerprint(field: Any) -> str:
-    identity = "|".join([field.type, _normalize_form_label(field.name or ""), _normalize_form_label(field.id or "")])
-    return hashlib.sha256(identity.encode()).hexdigest()
-
-
-def _form_answer_hash(value: str) -> str:
-    return hashlib.sha256(_normalize_form_label(value).encode()).hexdigest()
-
-
-def _is_authoritative_autofill_intent(intent_key: str | None) -> bool:
-    return intent_key in {
-        "identity.first_name",
-        "identity.last_name",
-        "identity.full_name",
-        "identity.email",
-        "identity.phone",
-        "employment.current_location",
-        "compensation.desired_base_salary",
-    }
-
-
 def _compatible_form_field_types(left: str, right: str) -> bool:
-    """Return whether a cached answer can safely move between field controls."""
+    """Allow safe reuse between equivalent text and choice controls."""
     if left == right:
         return True
     text_like = {"text", "textarea", "number"}
@@ -3208,243 +3232,164 @@ def _compatible_form_field_types(left: str, right: str) -> bool:
     return (left in text_like and right in text_like) or (left in choice_like and right in choice_like)
 
 
-def _save_form_question_mapping(
+def _field_semantic_features(field: Any) -> list[str]:
+    explicit = list(getattr(field, "semantic_features", None) or [])
+    return explicit or extract_semantic_features(field.label, getattr(field, "name", None) or "", getattr(field, "id", None) or "")
+
+
+def _form_scene(payload_scene: str | None, fields: list[Any]) -> str:
+    scene = normalize_scene(payload_scene)
+    if scene != "generic":
+        return scene
+    text = " ".join(str(field.label) for field in fields).casefold()
+    if any(term in text for term in ("visa", "immigration", "passport", "residency")):
+        return "visa_application"
+    if any(term in text for term in ("register", "sign up", "create account")):
+        return "registration"
+    return "generic"
+
+
+def _sync_job_profile_core_values(
     db: Session,
-    *,
-    user_id: UUID,
-    field: Any,
-    platform: str,
-    company_scope: str,
-    intent_key: str,
-    answer_id: UUID | None,
-    source: str,
-) -> None:
-    normalized_label = _normalize_form_label(field.label)
-    control_fingerprint = _form_control_fingerprint(field)
-    mapping = db.scalar(
-        select(FormQuestionMapping).where(
-            FormQuestionMapping.user_id == user_id,
-            FormQuestionMapping.platform == platform,
-            FormQuestionMapping.company_scope == company_scope,
-            FormQuestionMapping.normalized_label == normalized_label,
-            FormQuestionMapping.field_type == field.type,
-            FormQuestionMapping.control_fingerprint == control_fingerprint,
-        )
-    )
-    if not mapping:
-        mapping = FormQuestionMapping(
-            user_id=user_id,
-            platform=platform,
-            company_scope=company_scope,
-            normalized_label=normalized_label,
-            field_type=field.type,
-            control_fingerprint=control_fingerprint,
-            original_label=field.label,
-            intent_key=intent_key,
-            answer_id=answer_id,
-            options_fingerprint=_form_options_fingerprint(field.options),
-        )
-        db.add(mapping)
-        db.flush()
-        db.add(AutofillAnswerEvent(
-            user_id=user_id,
-            answer_id=answer_id,
-            mapping_id=mapping.id,
-            event_type="mapping_created",
-            source=source,
-            payload={"intent_key": intent_key, "platform": platform, "company_scope": company_scope},
-        ))
-    else:
-        mapping.original_label = field.label
-        mapping.options_fingerprint = _form_options_fingerprint(field.options)
-        mapping.intent_key = intent_key
-        mapping.answer_id = answer_id
-    mapping.times_used += 1
-    mapping.last_used_at = datetime.utcnow()
-
-
-def _answer_from_library(
-    db: Session,
-    *,
-    user_id: UUID,
-    field: Any,
-    platform: str,
-    company_scope: str,
-) -> tuple[str | None, str | None, UUID | None]:
-    """Resolve a non-authoritative answer from scoped mappings or the library."""
-    normalized_label = _normalize_form_label(field.label)
-    mappings = list(db.scalars(
-        select(FormQuestionMapping).where(
-            FormQuestionMapping.user_id == user_id,
-            FormQuestionMapping.normalized_label == normalized_label,
-            FormQuestionMapping.platform.in_([platform, "generic"]),
-            FormQuestionMapping.company_scope.in_([company_scope, ""]),
-        )
-    ))
-    mappings = [mapping for mapping in mappings if _compatible_form_field_types(mapping.field_type, field.type)]
-    mappings.sort(
-        key=lambda mapping: (
-            mapping.platform == platform,
-            bool(company_scope) and mapping.company_scope == company_scope,
-            mapping.control_fingerprint == _form_control_fingerprint(field),
-            mapping.updated_at,
-        ),
-        reverse=True,
-    )
-    answer_ids = [mapping.answer_id for mapping in mappings if mapping.answer_id]
-    answers = {
-        answer.id: answer
-        for answer in db.scalars(
-            select(AutofillAnswer).where(
-                AutofillAnswer.user_id == user_id,
-                AutofillAnswer.active.is_(True),
-                AutofillAnswer.id.in_(answer_ids),
-            )
-        )
-    } if answer_ids else {}
-    for mapping in mappings:
-        answer = answers.get(mapping.answer_id)
-        if answer:
-            return answer.value, mapping.intent_key, answer.id
-    intent_key = _autofill_intent_key(field.label)
-    if intent_key:
-        answer = db.scalar(
-            select(AutofillAnswer).where(
-                AutofillAnswer.user_id == user_id,
-                AutofillAnswer.intent_key == intent_key,
-                AutofillAnswer.active.is_(True),
-            )
-        )
-        if answer:
-            return answer.value, intent_key, answer.id
-    return None, intent_key, None
-
-
-def _answer_from_observation(
-    db: Session,
-    *,
-    user_id: UUID,
-    field: Any,
-    platform: str,
-    company_scope: str,
-) -> tuple[str | None, str | None]:
-    """Reuse only the same observed question; unknown answers never go global."""
-    observations = list(db.scalars(
-        select(FormAnswerObservation).where(
-            FormAnswerObservation.user_id == user_id,
-            FormAnswerObservation.normalized_label == _normalize_form_label(field.label),
-            FormAnswerObservation.platform.in_([platform, "generic"]),
-            FormAnswerObservation.company_scope.in_([company_scope, ""]),
-            FormAnswerObservation.status != "conflict",
-        )
-    ))
-    observations = [item for item in observations if _compatible_form_field_types(item.field_type, field.type)]
-    observations.sort(
-        key=lambda item: (
-            item.platform == platform,
-            bool(company_scope) and item.company_scope == company_scope,
-            item.control_fingerprint == _form_control_fingerprint(field),
-            item.last_seen_at,
-        ),
-        reverse=True,
-    )
-    if not observations:
-        return None, None
-    return observations[0].answer, observations[0].intent_key
-
-
-def _record_autofill_answer_use(
-    db: Session,
-    *,
-    user_id: UUID,
-    answer_id: UUID | None,
-    intent_key: str | None,
-    field: Any,
-) -> None:
-    if not answer_id:
-        return
-    answer = db.get(AutofillAnswer, answer_id)
-    if not answer:
-        return
-    answer.times_used += 1
-    answer.last_used_at = datetime.utcnow()
-    db.add(AutofillAnswerEvent(
-        user_id=user_id,
-        answer_id=answer_id,
-        event_type="answer_used",
-        source="autofill",
-        payload={"intent_key": intent_key, "label": field.label},
-    ))
-
-
-def _resolve_field_answer_from_user_data(
-    label: str,
-    field_type: str,
     user: User,
-    profile: UserProfile | None,
     job_profile: JobHuntingProfile | None,
-) -> str | None:
-    norm = _normalize_form_label(label)
-    if not norm:
-        return None
+    *,
+    overwrite: bool = False,
+) -> None:
+    if not job_profile:
+        return
+    values = {
+        "employment.current_location": job_profile.search_location,
+        "employment.visa_sponsorship": job_profile.require_visa,
+        "employment.work_authorization": job_profile.citizenship,
+        "employment.recent_employer": job_profile.recent_employer,
+        "experience.years": job_profile.years_of_experience,
+        "compensation.desired_base_salary": job_profile.desired_salary,
+        "employment.linkedin_url": job_profile.linkedin_url,
+        "employment.website": job_profile.website,
+    }
+    existing = core_profile_values(db, user.id)
+    for key, value in values.items():
+        if value is not None and str(value).strip() and (overwrite or not existing.get(key)):
+            upsert_core_profile_value(db, user_id=user.id, core_field_key=key, value=str(value))
+        elif overwrite and (value is None or not str(value).strip()):
+            delete_core_profile_value(db, user_id=user.id, core_field_key=key)
 
-    # Name matching
-    if "preferred name" in norm or "preferred first name" in norm:
-        # preferred_name is exposed by the profile API schema, but is stored on
-        # User.display_name rather than as a UserProfile database column.
-        return user.display_name or None
-    if any(k in norm for k in ["first name", "given name", "forename"]):
-        return profile.first_name if profile and profile.first_name else None
-    if any(k in norm for k in ["last name", "family name", "surname"]):
-        return profile.last_name if profile and profile.last_name else None
-    if norm in ["name", "full name"]:
-        if profile and profile.first_name and profile.last_name:
-            return f"{profile.first_name} {profile.last_name}"
-        return user.display_name or None
 
-    # Contact matching
-    if any(k in norm for k in ["email", "e-mail"]):
-        return (profile.email if profile and profile.email else user.email) or None
-    if any(k in norm for k in ["phone", "mobile", "contact number", "telephone"]):
-        return profile.phone_number if profile and profile.phone_number else None
+def _match_form_field(
+    db: Session,
+    *,
+    user_id: UUID,
+    field: Any,
+    scene: str,
+) -> tuple[str | None, str | None, Any | None]:
+    features = _field_semantic_features(field)
+    match = match_mapping_rule(
+        db,
+        user_id=user_id,
+        alias=field.label,
+        scene=scene,
+        semantic_features=features,
+        field_type=field.type,
+    )
+    if not match:
+        return None, None, None
+    values = core_profile_values(db, user_id)
+    return transformed_core_value(match.rule, values), match.rule.core_field_key, match.rule
 
-    # Location matching
-    if norm in ["city", "current city", "location"]:
-        return (
-            job_profile.search_location if job_profile and job_profile.search_location
-            else profile.current_city if profile and profile.current_city
-            else None
+
+def _coerce_form_value(raw_answer: str, field: Any) -> tuple[str | bool | None, str | None]:
+    if field.type == "checkbox":
+        if raw_answer.casefold() not in {"true", "false"}:
+            return None, "Checkbox value is not boolean."
+        return raw_answer.casefold() == "true", None
+    if field.type in {"select", "radio"}:
+        options = {
+            normalize_alias(option.get("value", "")) for option in field.options
+        } | {normalize_alias(option.get("label", "")) for option in field.options}
+        if options and normalize_alias(raw_answer) not in options:
+            matched = next(
+                (
+                    option.get("value") or option.get("label")
+                    for option in field.options
+                    if normalize_alias(raw_answer) in normalize_alias(option.get("label", ""))
+                    or normalize_alias(option.get("label", "")) in normalize_alias(raw_answer)
+                ),
+                None,
+            )
+            if matched is None:
+                return None, "Value is not one of the available options."
+            return matched, None
+    return raw_answer, None
+
+
+def _build_form_autofill_instructions(
+    db: Session,
+    *,
+    payload: FormAutofillInstructionsRequest | ApplicationFormInstructionsRequest,
+    current_user: User,
+    platform: str,
+    scene: str,
+    dry_run: bool = False,
+) -> dict[str, Any]:
+    instructions: list[dict[str, Any]] = []
+    unanswered: list[dict[str, str]] = []
+    traces: list[dict[str, Any]] = []
+    if not dry_run:
+        ensure_identity_core_values(db, current_user)
+        job_profile = db.scalar(
+            select(JobHuntingProfile)
+            .where(JobHuntingProfile.user_id == current_user.id, JobHuntingProfile.is_default.is_(True))
+            .order_by(JobHuntingProfile.updated_at.desc())
+            .limit(1)
         )
-    if any(k in norm for k in ["where are you based", "currently based", "where do you live", "based?"]):
-        return (
-            job_profile.search_location if job_profile and job_profile.search_location
-            else profile.current_city if profile and profile.current_city
-            else None
+        _sync_job_profile_core_values(db, current_user, job_profile)
+        db.flush()
+    values = core_profile_values(db, current_user.id)
+    for field in payload.fields:
+        features = _field_semantic_features(field)
+        if field.type in {"password", "file", "unknown"}:
+            reason = "This field requires explicit user handling."
+            unanswered.append({"key": field.key, "label": field.label, "reason": reason})
+            traces.append({"key": field.key, "label": field.label, "intent_key": None, "core_field_key": None, "scene": scene, "semantic_features": features, "source": "none", "status": "unanswered", "reason": reason})
+            continue
+        match = match_mapping_rule(
+            db,
+            user_id=current_user.id,
+            alias=field.label,
+            scene=scene,
+            semantic_features=features,
+            field_type=field.type,
         )
-    if norm in ["state", "province"]:
-        return profile.state if profile and profile.state else None
-    if any(k in norm for k in ["zip", "postal code", "postcode", "zipcode"]):
-        return profile.zipcode if profile and profile.zipcode else None
-    if norm in ["country"]:
-        return profile.country if profile and profile.country else None
-
-    # Job / profile matching
-    if any(k in norm for k in ["linkedin", "linkedin profile", "linkedin url"]):
-        return job_profile.linkedin_url if job_profile and job_profile.linkedin_url else None
-    if any(k in norm for k in ["website", "portfolio", "personal website", "url"]):
-        return job_profile.website if job_profile and job_profile.website else None
-    if any(k in norm for k in ["years of experience", "experience years", "work experience"]):
-        return job_profile.years_of_experience if job_profile and job_profile.years_of_experience else None
-    if any(k in norm for k in ["visa", "sponsorship", "require visa", "work authorization"]):
-        return job_profile.require_visa if job_profile and job_profile.require_visa else None
-    if any(k in norm for k in ["citizenship", "work rights"]):
-        return job_profile.citizenship if job_profile and job_profile.citizenship else None
-    if any(k in norm for k in ["employer", "current company", "recent company", "most recent employer"]):
-        return job_profile.recent_employer if job_profile and job_profile.recent_employer else None
-    if any(k in norm for k in ["salary", "compensation", "remuneration", "pay expectation"]):
-        return str(job_profile.desired_salary) if job_profile and job_profile.desired_salary is not None else None
-
-    return None
+        if not match:
+            reason = "No mapping rule matched this alias and form scene."
+            unanswered.append({"key": field.key, "label": field.label, "reason": reason})
+            traces.append({"key": field.key, "label": field.label, "intent_key": None, "core_field_key": None, "scene": scene, "semantic_features": features, "source": "none", "status": "unanswered", "reason": reason})
+            continue
+        raw_answer = transformed_core_value(match.rule, values)
+        if not raw_answer:
+            reason = "The mapped core field has no saved value."
+            unanswered.append({"key": field.key, "label": field.label, "reason": reason})
+            traces.append({"key": field.key, "label": field.label, "intent_key": match.rule.core_field_key, "core_field_key": match.rule.core_field_key, "scene": scene, "semantic_features": features, "source": "core_profile", "status": "unanswered", "reason": reason})
+            continue
+        value, reason = _coerce_form_value(str(raw_answer), field)
+        if reason or value is None:
+            unanswered.append({"key": field.key, "label": field.label, "reason": reason or "Value could not be used in this control."})
+            traces.append({"key": field.key, "label": field.label, "intent_key": match.rule.core_field_key, "core_field_key": match.rule.core_field_key, "scene": scene, "semantic_features": features, "source": "core_profile", "status": "unanswered", "reason": reason})
+            continue
+        instructions.append({
+            "commandId": str(uuid4()),
+            "source": "backend",
+            "target": field.model_dump(exclude_none=True),
+            "value": value,
+        })
+        traces.append({"key": field.key, "label": field.label, "intent_key": match.rule.core_field_key, "core_field_key": match.rule.core_field_key, "scene": scene, "semantic_features": features, "source": "user_rule" if match.rule.is_user_defined else "system_rule", "status": "filled", "value": value})
+        if not dry_run:
+            match.rule.times_used += 1
+            match.rule.last_used_at = datetime.utcnow()
+    if not dry_run:
+        db.commit()
+    return {"instructions": instructions, "unanswered_fields": unanswered, "traces": traces}
 
 
 @app.post(
@@ -3463,151 +3408,253 @@ def create_form_autofill_instructions(
     on an open form before a job has been inspected or an apply flow begins.
     """
     platform = payload.platform.strip().lower() or "generic"
-    company_scope = _normalize_form_label(payload.company or "")
-    user_profile = db.scalar(select(UserProfile).where(UserProfile.user_id == current_user.id))
-    job_profile = db.scalar(
-        select(JobHuntingProfile)
-        .where(JobHuntingProfile.user_id == current_user.id, JobHuntingProfile.is_default.is_(True))
-        .order_by(JobHuntingProfile.updated_at.desc())
-        .limit(1)
+    scene = _form_scene(payload.scene, payload.fields)
+    return _build_form_autofill_instructions(
+        db,
+        payload=payload,
+        current_user=current_user,
+        platform=platform,
+        scene=scene,
+        dry_run=payload.dry_run,
     )
-    instructions: list[dict[str, Any]] = []
-    unanswered: list[dict[str, str]] = []
-    traces: list[dict[str, Any]] = []
-    for field in payload.fields:
-        if field.type in {"password", "file", "unknown"}:
-            reason = "This field requires explicit user handling."
-            unanswered.append({"key": field.key, "label": field.label, "reason": reason})
-            traces.append({
-                "key": field.key,
-                "label": field.label,
-                "intent_key": _autofill_intent_key(field.label),
-                "source": "none",
-                "status": "unanswered",
-                "reason": reason,
-            })
-            continue
-        intent_key = _autofill_intent_key(field.label)
-        profile_answer = _resolve_field_answer_from_user_data(
-            field.label, field.type, current_user, user_profile, job_profile
+
+
+def _temp_change_response(change: FormTempChange) -> dict[str, Any]:
+    return {
+        "id": change.id,
+        "session_id": change.session_id,
+        "alias": change.alias,
+        "temp_value": decrypt_profile_value(change.temp_value),
+        "core_field_key": change.core_field_key,
+        "scene": change.scene,
+        "semantic_features": list(change.semantic_features or []),
+        "field_type": change.field_type,
+        "created_at": change.created_at,
+        "updated_at": change.updated_at,
+    }
+
+
+def _upsert_form_temp_change(
+    db: Session,
+    *,
+    payload: FormTempChangeRequest,
+    current_user: User,
+) -> FormTempChange | None:
+    field = payload.field
+    fingerprint = form_control_fingerprint(field)
+    existing = db.scalar(
+        select(FormTempChange).where(
+            FormTempChange.user_id == current_user.id,
+            FormTempChange.session_id == payload.session_id,
+            FormTempChange.control_fingerprint == fingerprint,
         )
-        # Profile and Job Profile are facts, not suggestions. A question
-        # mapping or a historical answer may never override them.
-        raw_answer = profile_answer
-        answer_id: UUID | None = None
-        source = "profile"
-        if not raw_answer:
-            raw_answer, mapped_intent, answer_id = _answer_from_library(
-                db,
-                user_id=current_user.id,
-                field=field,
-                platform=platform,
-                company_scope=company_scope,
+    )
+    if not payload.temp_value.strip():
+        if existing:
+            db.delete(existing)
+        return None
+    scene = normalize_scene(payload.scene)
+    features = _field_semantic_features(field)
+    match = match_mapping_rule(
+        db,
+        user_id=current_user.id,
+        alias=field.label,
+        scene=scene,
+        semantic_features=features,
+        field_type=field.type,
+    )
+    if existing is None:
+        existing = FormTempChange(
+            user_id=current_user.id,
+            session_id=payload.session_id,
+            alias=field.label,
+            normalized_alias=normalize_alias(field.label),
+            temp_value="",
+            core_field_key=match.rule.core_field_key if match else None,
+            scene=scene,
+            semantic_features=features,
+            field_type=field.type,
+            control_fingerprint=fingerprint,
+            is_sensitive=True,
+        )
+        db.add(existing)
+    from services.shared.autofill_profile import encrypt_profile_value
+    existing.alias = field.label
+    existing.normalized_alias = normalize_alias(field.label)
+    existing.temp_value = encrypt_profile_value(payload.temp_value)
+    existing.core_field_key = match.rule.core_field_key if match else existing.core_field_key
+    existing.scene = scene
+    existing.semantic_features = features
+    existing.field_type = field.type
+    return existing
+
+
+@app.post("/api/form-temp-changes", response_model=FormTempChangeRead | None)
+def save_form_temp_change(
+    payload: FormTempChangeRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_or_create_current_user),
+) -> dict[str, Any] | None:
+    change = _upsert_form_temp_change(db, payload=payload, current_user=current_user)
+    db.commit()
+    if change is None:
+        return None
+    db.refresh(change)
+    return _temp_change_response(change)
+
+
+@app.get("/api/form-temp-changes", response_model=list[FormTempChangeRead])
+def list_form_temp_changes(
+    session_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_or_create_current_user),
+) -> list[dict[str, Any]]:
+    changes = list(db.scalars(
+        select(FormTempChange)
+        .where(FormTempChange.user_id == current_user.id, FormTempChange.session_id == session_id)
+        .order_by(FormTempChange.updated_at.asc())
+    ))
+    return [_temp_change_response(change) for change in changes]
+
+
+@app.post("/api/form-temp-changes/finalize", response_model=FormTempFinalizeResponse)
+def finalize_form_temp_changes(
+    payload: FormTempFinalizeRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_or_create_current_user),
+) -> dict[str, Any]:
+    try:
+        for change in payload.changes:
+            normalized = change.model_copy(update={"session_id": payload.session_id})
+            _upsert_form_temp_change(db, payload=normalized, current_user=current_user)
+        changes = list(db.scalars(
+            select(FormTempChange).where(
+                FormTempChange.user_id == current_user.id,
+                FormTempChange.session_id == payload.session_id,
             )
-            intent_key = intent_key or mapped_intent
-            source = "answer_library"
-        if not raw_answer:
-            raw_answer, observed_intent = _answer_from_observation(
-                db,
-                user_id=current_user.id,
-                field=field,
-                platform=platform,
-                company_scope=company_scope,
+        ))
+        if not changes:
+            db.commit()
+            return {"status": "empty", "saved_count": 0, "discarded_count": 0}
+        if not payload.save:
+            discarded_count = len(changes)
+            for change in changes:
+                db.delete(change)
+            db.commit()
+            return {"status": "discarded", "saved_count": 0, "discarded_count": discarded_count}
+        for change in changes:
+            value = decrypt_profile_value(change.temp_value)
+            core_key = change.core_field_key or suggested_custom_core_key(change.alias)
+            upsert_core_profile_value(
+                db, user_id=current_user.id, core_field_key=core_key, value=value,
+                value_type="boolean" if change.field_type == "checkbox" else "text",
+                is_sensitive=change.is_sensitive,
             )
-            intent_key = intent_key or observed_intent
-            source = "observation"
-        if not raw_answer:
-            reason = "No saved answer is available."
-            unanswered.append({"key": field.key, "label": field.label, "reason": reason})
-            traces.append({
-                "key": field.key,
-                "label": field.label,
-                "intent_key": intent_key,
-                "source": "none",
-                "status": "unanswered",
-                "reason": reason,
-            })
-            continue
-        value: str | bool = raw_answer
-        if field.type == "checkbox":
-            if raw_answer.casefold() not in {"true", "false"}:
-                reason = "Checkbox answer is not boolean."
-                unanswered.append({"key": field.key, "label": field.label, "reason": reason})
-                traces.append({
-                    "key": field.key,
-                    "label": field.label,
-                    "intent_key": intent_key,
-                    "source": source,
-                    "status": "unanswered",
-                    "reason": reason,
-                })
-                continue
-            value = raw_answer.casefold() == "true"
-        if field.type in {"select", "radio"}:
-            options = {
-                _normalize_form_label(option.get("value", "")) for option in field.options
-            } | {
-                _normalize_form_label(option.get("label", "")) for option in field.options
-            }
-            if options and _normalize_form_label(raw_answer) not in options:
-                matched = next(
-                    (
-                        option.get("value") or option.get("label")
-                        for option in field.options
-                        if _normalize_form_label(raw_answer) in _normalize_form_label(option.get("label", ""))
-                        or _normalize_form_label(option.get("label", "")) in _normalize_form_label(raw_answer)
-                    ),
-                    None,
+            rule = db.scalar(
+                select(FieldMappingRule).where(
+                    FieldMappingRule.user_id == current_user.id,
+                    FieldMappingRule.is_user_defined.is_(True),
+                    FieldMappingRule.normalized_alias == change.normalized_alias,
+                    FieldMappingRule.scene == change.scene,
                 )
-                if not matched:
-                    reason = "Answer is not one of the available options."
-                    unanswered.append({"key": field.key, "label": field.label, "reason": reason})
-                    traces.append({
-                        "key": field.key,
-                        "label": field.label,
-                        "intent_key": intent_key,
-                        "source": source,
-                        "status": "unanswered",
-                        "reason": reason,
-                    })
-                    continue
-                value = matched
-        instructions.append({
-            "commandId": str(uuid4()),
-            "source": "backend",
-            "target": field.model_dump(exclude_none=True),
-            "value": value,
-        })
-        traces.append({
-            "key": field.key,
-            "label": field.label,
-            "intent_key": intent_key,
-            "source": source,
-            "status": "filled",
-            "value": value,
-        })
-        if not payload.dry_run and intent_key and source != "observation":
-            _save_form_question_mapping(
-                db,
-                user_id=current_user.id,
-                field=field,
-                platform=platform,
-                company_scope=company_scope,
-                intent_key=intent_key,
-                answer_id=answer_id,
-                source=source,
             )
-        if not payload.dry_run:
-            _record_autofill_answer_use(
-                db,
-                user_id=current_user.id,
-                answer_id=answer_id,
-                intent_key=intent_key,
-                field=field,
-            )
-    if not payload.dry_run:
+            if rule is None:
+                db.add(FieldMappingRule(
+                    user_id=current_user.id,
+                    core_field_key=core_key,
+                    alias=change.alias,
+                    normalized_alias=change.normalized_alias,
+                    scene=change.scene,
+                    semantic_features=change.semantic_features or [],
+                    field_type=change.field_type,
+                    value_transform={},
+                    is_user_defined=True,
+                    confidence=100,
+                ))
+            else:
+                rule.core_field_key = core_key
+                rule.alias = change.alias
+                rule.semantic_features = change.semantic_features or []
+                rule.field_type = change.field_type
+                rule.confidence = 100
+        saved_count = len(changes)
+        for change in changes:
+            db.delete(change)
         db.commit()
-    return {"instructions": instructions, "unanswered_fields": unanswered, "traces": traces}
+        return {"status": "saved", "saved_count": saved_count, "discarded_count": 0}
+    except Exception:
+        db.rollback()
+        raise
+
+
+@app.get("/api/field-mapping-rules", response_model=list[FieldMappingRuleRead])
+def list_field_mapping_rules(
+    include_system: bool = True,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_or_create_current_user),
+) -> list[FieldMappingRule]:
+    condition = or_(FieldMappingRule.user_id == current_user.id, FieldMappingRule.user_id.is_(None)) if include_system else FieldMappingRule.user_id == current_user.id
+    return list(db.scalars(select(FieldMappingRule).where(condition).order_by(FieldMappingRule.is_user_defined.desc(), FieldMappingRule.confidence.desc(), FieldMappingRule.alias)))
+
+
+@app.post("/api/field-mapping-rules", response_model=FieldMappingRuleRead, status_code=status.HTTP_201_CREATED)
+def create_field_mapping_rule(
+    payload: FieldMappingRuleBase,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_or_create_current_user),
+) -> FieldMappingRule:
+    rule = FieldMappingRule(
+        user_id=current_user.id,
+        core_field_key=payload.core_field_key.strip(),
+        alias=payload.alias.strip(),
+        normalized_alias=normalize_alias(payload.alias),
+        scene=normalize_scene(payload.scene),
+        semantic_features=payload.semantic_features,
+        field_type=payload.field_type,
+        value_transform=payload.value_transform,
+        is_user_defined=True,
+        confidence=payload.confidence,
+    )
+    db.add(rule)
+    db.commit()
+    db.refresh(rule)
+    return rule
+
+
+@app.put("/api/field-mapping-rules/{rule_id}", response_model=FieldMappingRuleRead)
+def update_field_mapping_rule(
+    rule_id: UUID,
+    payload: FieldMappingRuleBase,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_or_create_current_user),
+) -> FieldMappingRule:
+    rule = db.get(FieldMappingRule, rule_id)
+    if not rule or rule.user_id != current_user.id or not rule.is_user_defined:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User mapping rule not found")
+    rule.core_field_key = payload.core_field_key.strip()
+    rule.alias = payload.alias.strip()
+    rule.normalized_alias = normalize_alias(payload.alias)
+    rule.scene = normalize_scene(payload.scene)
+    rule.semantic_features = payload.semantic_features
+    rule.field_type = payload.field_type
+    rule.value_transform = payload.value_transform
+    rule.confidence = payload.confidence
+    db.commit()
+    db.refresh(rule)
+    return rule
+
+
+@app.delete("/api/field-mapping-rules/{rule_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_field_mapping_rule(
+    rule_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_or_create_current_user),
+) -> None:
+    rule = db.get(FieldMappingRule, rule_id)
+    if not rule or rule.user_id != current_user.id or not rule.is_user_defined:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User mapping rule not found")
+    db.delete(rule)
+    db.commit()
 
 
 @app.post("/api/form-autofill-observations", response_model=FormAnswerObservationResponse)
@@ -3617,137 +3664,40 @@ def observe_manual_form_answer(
     current_user: User = Depends(get_or_create_current_user),
 ) -> dict[str, str | None]:
     """Record a manual answer without immediately promoting it to AI Memory."""
-    field = payload.field
-    answer = payload.answer.strip()
-    if not answer or field.type in {"password", "file", "unknown"}:
+    answer = (payload.answer or getattr(payload, "temp_value", "")).strip()
+    if not answer or payload.field.type in {"password", "file", "unknown"}:
         return {"status": "ignored", "intent_key": None}
-
-    platform = payload.platform.strip().lower() or "generic"
-    company_scope = _normalize_form_label(payload.company or "")
-    intent_key = _autofill_intent_key(field.label)
-    if _is_authoritative_autofill_intent(intent_key):
-        # These values belong in Profile/Career Profile. Learning them from a
-        # one-off form would create a competing source of truth.
-        return {"status": "ignored", "intent_key": intent_key}
-
-    normalized_label = _normalize_form_label(field.label)
-    control_fingerprint = _form_control_fingerprint(field)
-    answer_hash = _form_answer_hash(answer)
-    observation = db.scalar(
-        select(FormAnswerObservation).where(
-            FormAnswerObservation.user_id == current_user.id,
-            FormAnswerObservation.platform == platform,
-            FormAnswerObservation.company_scope == company_scope,
-            FormAnswerObservation.normalized_label == normalized_label,
-            FormAnswerObservation.field_type == field.type,
-            FormAnswerObservation.control_fingerprint == control_fingerprint,
-        )
-    )
-    if not observation:
-        observation = FormAnswerObservation(
-            user_id=current_user.id,
-            platform=platform,
-            company_scope=company_scope,
-            original_label=field.label,
-            normalized_label=normalized_label,
-            field_type=field.type,
-            control_fingerprint=control_fingerprint,
-            options_fingerprint=_form_options_fingerprint(field.options),
-            answer=answer,
-            answer_hash=answer_hash,
-            intent_key=intent_key,
-            last_seen_at=datetime.utcnow(),
-        )
-        db.add(observation)
-    elif observation.answer_hash == answer_hash:
-        observation.times_seen += 1
-        observation.last_seen_at = datetime.utcnow()
-        observation.options_fingerprint = _form_options_fingerprint(field.options)
-    else:
-        # One field changing answer is still one observation, never a new
-        # row. Reset its stability count until the answer proves consistent.
-        observation.answer = answer
-        observation.answer_hash = answer_hash
-        observation.intent_key = intent_key
-        observation.times_seen = 1
-        observation.status = "observed"
-        observation.last_seen_at = datetime.utcnow()
-
-    result_status = "observed"
-    if intent_key:
-        existing_answer = db.scalar(
-            select(AutofillAnswer).where(
-                AutofillAnswer.user_id == current_user.id,
-                AutofillAnswer.intent_key == intent_key,
-                AutofillAnswer.active.is_(True),
-            )
-        )
-        if existing_answer and _form_answer_hash(existing_answer.value) != answer_hash:
-            observation.status = "conflict"
-            result_status = "conflict"
-        else:
-            matching = list(db.scalars(
-                select(FormAnswerObservation).where(
-                    FormAnswerObservation.user_id == current_user.id,
-                    FormAnswerObservation.intent_key == intent_key,
-                    FormAnswerObservation.answer_hash == answer_hash,
-                    FormAnswerObservation.status != "conflict",
-                )
-            ))
-            distinct_questions = {item.normalized_label for item in matching} | {normalized_label}
-            # Two independently worded questions with the same deterministic
-            # intent and answer are enough to promote a stable preference.
-            if existing_answer or len(distinct_questions) >= 2:
-                answer_record = existing_answer or AutofillAnswer(
-                    user_id=current_user.id,
-                    intent_key=intent_key,
-                    value=answer,
-                    authority="learned",
-                    last_confirmed_at=datetime.utcnow(),
-                )
-                if not existing_answer:
-                    db.add(answer_record)
-                    db.flush()
-                    db.add(AutofillAnswerEvent(
-                        user_id=current_user.id,
-                        answer_id=answer_record.id,
-                        event_type="answer_promoted_from_observation",
-                        source="learning",
-                        payload={"intent_key": intent_key},
-                    ))
-                observation.status = "promoted"
-                for matching_observation in matching:
-                    matching_observation.status = "promoted"
-                _save_form_question_mapping(
-                    db,
-                    user_id=current_user.id,
-                    field=field,
-                    platform=platform,
-                    company_scope=company_scope,
-                    intent_key=intent_key,
-                    answer_id=answer_record.id,
-                    source="learning",
-                )
-                result_status = "promoted"
-
-    db.commit()
-    return {"status": result_status, "intent_key": intent_key}
+    # Older extension builds do not carry a stable form session or an explicit
+    # save/cancel action, so accepting their observations would create orphaned
+    # temporary data. They must upgrade before learning can be enabled.
+    return {"status": "ignored", "intent_key": _autofill_intent_key(payload.field.label)}
 
 
 @app.get("/api/form-autofill-observations", response_model=list[FormAnswerObservationRead])
 def list_form_answer_observations(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_or_create_current_user),
-) -> list[FormAnswerObservation]:
-    """Expose pending and conflicting observations for the AI Memory review UI."""
-    return list(db.scalars(
-        select(FormAnswerObservation)
-        .where(
-            FormAnswerObservation.user_id == current_user.id,
-            FormAnswerObservation.status.in_(["observed", "conflict"]),
-        )
-        .order_by(FormAnswerObservation.last_seen_at.desc())
+) -> list[dict[str, Any]]:
+    """Compatibility view over unconfirmed session changes."""
+    changes = list(db.scalars(
+        select(FormTempChange)
+        .where(FormTempChange.user_id == current_user.id)
+        .order_by(FormTempChange.updated_at.desc())
     ))
+    return [
+        {
+            **_temp_change_response(change),
+            "platform": "generic",
+            "company_scope": "",
+            "original_label": change.alias,
+            "answer": decrypt_profile_value(change.temp_value),
+            "intent_key": change.core_field_key,
+            "times_seen": 1,
+            "status": "observed",
+            "last_seen_at": change.updated_at,
+        }
+        for change in changes
+    ]
 
 
 @app.delete("/api/form-autofill-observations/{observation_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -3756,7 +3706,7 @@ def delete_form_answer_observation(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_or_create_current_user),
 ) -> None:
-    observation = db.get(FormAnswerObservation, observation_id)
+    observation = db.get(FormTempChange, observation_id)
     if not observation or observation.user_id != current_user.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Form answer observation not found")
     db.delete(observation)
@@ -3786,117 +3736,15 @@ def create_application_form_instructions(
     if plan.state in {ApplicationState.SKIPPED, ApplicationState.REJECTED, ApplicationState.SUBMITTED, ApplicationState.FAILED}:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="This application plan cannot fill fields in its current state.")
 
-    user_profile = db.scalar(select(UserProfile).where(UserProfile.user_id == current_user.id))
-    job_profile = db.scalar(
-        select(JobHuntingProfile)
-        .where(JobHuntingProfile.user_id == current_user.id, JobHuntingProfile.is_default.is_(True))
-        .order_by(JobHuntingProfile.updated_at.desc())
-        .limit(1)
-    )
-
-    instructions: list[dict[str, Any]] = []
-    unanswered: list[dict[str, str]] = []
-    platform = plan.candidate.platform.strip().lower() or "generic"
-    company_scope = _normalize_form_label(plan.candidate.company)
-    for field in payload.fields:
-        if field.type in {"password", "file", "unknown"}:
-            unanswered.append({"key": field.key, "label": field.label, "reason": "This field requires explicit user handling."})
-            continue
-
-        intent_key = _autofill_intent_key(field.label)
-        raw_answer = _resolve_field_answer_from_user_data(
-            field.label, field.type, current_user, user_profile, job_profile
-        )
-        answer_id: UUID | None = None
-        source = "profile"
-        if not raw_answer:
-            raw_answer, mapped_intent, answer_id = _answer_from_library(
-                db,
-                user_id=current_user.id,
-                field=field,
-                platform=platform,
-                company_scope=company_scope,
-            )
-            intent_key = intent_key or mapped_intent
-            source = "answer_library"
-        if not raw_answer:
-            raw_answer, observed_intent = _answer_from_observation(
-                db,
-                user_id=current_user.id,
-                field=field,
-                platform=platform,
-                company_scope=company_scope,
-            )
-            intent_key = intent_key or observed_intent
-            source = "observation"
-
-        if not raw_answer:
-            unanswered.append({"key": field.key, "label": field.label, "reason": "No authoritative or saved library answer is available."})
-            continue
-
-        value: str | bool = raw_answer
-        if field.type == "checkbox":
-            if raw_answer.casefold() not in {"true", "false"}:
-                unanswered.append({"key": field.key, "label": field.label, "reason": "Checkbox answer is not boolean."})
-                continue
-            value = raw_answer.casefold() == "true"
-        if field.type in {"select", "radio"}:
-            normalized_options = {
-                _normalize_form_label(option.get("value", ""))
-                for option in field.options
-            } | {
-                _normalize_form_label(option.get("label", ""))
-                for option in field.options
-            }
-            if normalized_options and _normalize_form_label(raw_answer) not in normalized_options:
-                # Try partial option matching if exact option label miss
-                matched_option = next(
-                    (
-                        option.get("value") or option.get("label")
-                        for option in field.options
-                        if _normalize_form_label(raw_answer) in _normalize_form_label(option.get("label", ""))
-                        or _normalize_form_label(option.get("label", "")) in _normalize_form_label(raw_answer)
-                    ),
-                    None,
-                )
-                if matched_option:
-                    value = matched_option
-                else:
-                    unanswered.append({"key": field.key, "label": field.label, "reason": "Answer is not one of the available options."})
-                    continue
-
-        instructions.append(
-            {
-                "commandId": str(uuid4()),
-                "source": "backend",
-                "target": field.model_dump(exclude_none=True),
-                "value": value,
-            }
-        )
-        if intent_key and source != "observation":
-            _save_form_question_mapping(
-                db,
-                user_id=current_user.id,
-                field=field,
-                platform=platform,
-                company_scope=company_scope,
-                intent_key=intent_key,
-                answer_id=answer_id,
-                source=source,
-            )
-        _record_autofill_answer_use(
-            db,
-            user_id=current_user.id,
-            answer_id=answer_id,
-            intent_key=intent_key,
-            field=field,
-        )
-
-    db.commit()
     return {
         "application_id": application_id,
-        "instructions": instructions,
-        "unanswered_fields": unanswered,
+        **_build_form_autofill_instructions(
+            db,
+            payload=payload,
+            current_user=current_user,
+            platform=plan.candidate.platform.strip().lower() or "generic",
+            scene="job_application",
+        ),
     }
 
 
@@ -4033,7 +3881,7 @@ def read_worker_config(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_or_create_current_user),
 ) -> dict:
-    profile = db.scalar(select(UserProfile).where(UserProfile.user_id == current_user.id))
+    ensure_identity_core_values(db, current_user)
     job_hunting_profile = db.scalar(
         select(JobHuntingProfile)
         .where(JobHuntingProfile.user_id == current_user.id, JobHuntingProfile.is_default.is_(True))
@@ -4063,7 +3911,7 @@ def read_worker_config(
 
     return {
         "user": UserRead.model_validate(current_user).model_dump(mode="json"),
-        "profile": UserProfileRead.model_validate(profile).model_dump(mode="json") if profile else None,
+        "profile": profile_api_payload(db, current_user),
         "job_hunting_profile": JobHuntingProfileRead.model_validate(job_hunting_profile).model_dump(mode="json") if job_hunting_profile else None,
         "runtime_settings": RuntimeSettingsRead.model_validate(runtime_settings).model_dump(mode="json") if runtime_settings else None,
         "application_settings": application_settings_to_storage(application_settings),
@@ -4093,12 +3941,32 @@ def list_autofill_answers(
     search: str | None = Query(default=None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_or_create_current_user),
-) -> list[AutofillAnswer]:
-    query = select(AutofillAnswer).where(AutofillAnswer.user_id == current_user.id)
-    if search and search.strip():
-        value = f"%{search.strip().lower()}%"
-        query = query.where(AutofillAnswer.intent_key.ilike(value) | AutofillAnswer.value.ilike(value))
-    return list(db.scalars(query.order_by(AutofillAnswer.updated_at.desc())))
+) -> list[dict[str, Any]]:
+    rows = core_profile_rows(db, current_user.id)
+    result: list[dict[str, Any]] = []
+    needle = search.strip().casefold() if search and search.strip() else ""
+    for row in rows:
+        if row.core_field_key == PROFILE_PREFERENCES_KEY:
+            continue
+        value = decrypt_profile_value(row.field_value)
+        if needle and needle not in row.core_field_key.casefold() and needle not in value.casefold():
+            continue
+        result.append({
+            "id": row.id,
+            "user_id": row.user_id,
+            "intent_key": row.core_field_key,
+            "value": value,
+            "value_type": row.value_type,
+            "authority": "user",
+            "version": row.version,
+            "last_confirmed_at": row.updated_at,
+            "times_used": 0,
+            "last_used_at": None,
+            "active": True,
+            "created_at": row.created_at,
+            "updated_at": row.updated_at,
+        })
+    return result
 
 
 @app.post("/api/autofill-answers", response_model=AutofillAnswerRead, status_code=status.HTTP_201_CREATED)
@@ -4106,24 +3974,22 @@ def create_autofill_answer(
     payload: AutofillAnswerBase,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_or_create_current_user),
-) -> AutofillAnswer:
-    answer = AutofillAnswer(user_id=current_user.id, **payload.model_dump(), authority="user", last_confirmed_at=datetime.utcnow())
-    db.add(answer)
-    try:
-        db.flush()
-    except IntegrityError as exc:
-        db.rollback()
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="An answer already exists for this intent key.") from exc
-    db.add(AutofillAnswerEvent(
+) -> dict[str, Any]:
+    answer = upsert_core_profile_value(
+        db,
         user_id=current_user.id,
-        answer_id=answer.id,
-        event_type="answer_created",
-        source="user",
-        payload={"intent_key": answer.intent_key, "version": answer.version},
-    ))
+        core_field_key=payload.intent_key,
+        value=payload.value,
+        value_type=payload.value_type,
+    )
     db.commit()
     db.refresh(answer)
-    return answer
+    return {
+        "id": answer.id, "user_id": answer.user_id, "intent_key": answer.core_field_key,
+        "value": payload.value, "value_type": answer.value_type, "authority": "user", "version": answer.version,
+        "last_confirmed_at": answer.updated_at, "times_used": 0, "last_used_at": None, "active": True,
+        "created_at": answer.created_at, "updated_at": answer.updated_at,
+    }
 
 
 @app.put("/api/autofill-answers/{answer_id}", response_model=AutofillAnswerRead)
@@ -4132,28 +3998,23 @@ def update_autofill_answer(
     payload: AutofillAnswerBase,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_or_create_current_user),
-) -> AutofillAnswer:
-    answer = db.get(AutofillAnswer, answer_id)
+) -> dict[str, Any]:
+    answer = db.get(UserCoreProfile, answer_id)
     if not answer or answer.user_id != current_user.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Autofill answer not found")
-    changed = answer.value != payload.value or answer.value_type != payload.value_type
-    answer.value = payload.value
-    answer.value_type = payload.value_type
-    answer.active = payload.active
-    answer.authority = "user"
-    answer.last_confirmed_at = datetime.utcnow()
-    if changed:
-        answer.version += 1
-    db.add(AutofillAnswerEvent(
-        user_id=current_user.id,
-        answer_id=answer.id,
-        event_type="answer_updated",
-        source="user",
-        payload={"intent_key": answer.intent_key, "version": answer.version, "changed": changed},
-    ))
+    if answer.core_field_key != payload.intent_key:
+        delete_core_profile_value(db, user_id=current_user.id, core_field_key=answer.core_field_key)
+        answer = upsert_core_profile_value(db, user_id=current_user.id, core_field_key=payload.intent_key, value=payload.value, value_type=payload.value_type)
+    else:
+        upsert_core_profile_value(db, user_id=current_user.id, core_field_key=payload.intent_key, value=payload.value, value_type=payload.value_type)
     db.commit()
     db.refresh(answer)
-    return answer
+    return {
+        "id": answer.id, "user_id": answer.user_id, "intent_key": answer.core_field_key,
+        "value": payload.value, "value_type": answer.value_type, "authority": "user", "version": answer.version,
+        "last_confirmed_at": answer.updated_at, "times_used": 0, "last_used_at": None, "active": payload.active,
+        "created_at": answer.created_at, "updated_at": answer.updated_at,
+    }
 
 
 @app.delete("/api/autofill-answers/{answer_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -4162,16 +4023,9 @@ def delete_autofill_answer(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_or_create_current_user),
 ) -> None:
-    answer = db.get(AutofillAnswer, answer_id)
+    answer = db.get(UserCoreProfile, answer_id)
     if not answer or answer.user_id != current_user.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Autofill answer not found")
-    db.add(AutofillAnswerEvent(
-        user_id=current_user.id,
-        answer_id=answer.id,
-        event_type="answer_deleted",
-        source="user",
-        payload={"intent_key": answer.intent_key, "version": answer.version},
-    ))
     db.delete(answer)
     db.commit()
 

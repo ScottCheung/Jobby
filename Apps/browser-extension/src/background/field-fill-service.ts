@@ -4,6 +4,14 @@ import type { ValidatedApplicationPlanResponse } from "../shared/contracts/backe
 import { inspectActiveTab, inspectFormActiveTab, fillActiveTabField, clickLinkedInApplicationAction, uploadActiveTabFile } from "./content-bridge";
 import { apiClient } from "./api-client";
 import { logDiagnostic } from "./diagnostics";
+import { getAutofillSessionId } from "./session-store";
+
+function inferFormScene(form: { url: string; fields: Array<{ label: string }> }): string {
+  const text = `${form.url} ${form.fields.map((field) => field.label).join(" ")}`.toLowerCase();
+  if (/(visa|immigration|passport|residency)/i.test(text)) return "visa_application";
+  if (/(sign.?up|register|create account)/i.test(text)) return "registration";
+  return "job_application";
+}
 
 export async function uploadDefaultResumeToActiveTab(target: FormFieldTarget): Promise<FieldFillResult> {
   if (target.type !== "file") {
@@ -71,10 +79,15 @@ export async function autofillDetectedFormForActiveTab(): Promise<{
   }
   const page = await inspectActiveTab().catch(() => null);
   const company = page?.kind === "job" ? page.snapshot.company : undefined;
+  const activeTab = (await chrome.tabs.query({ active: true, lastFocusedWindow: true }))[0];
+  const sessionId = activeTab?.id === undefined ? undefined : await getAutofillSessionId(activeTab.id);
+  const scene = inferFormScene(form);
   const instructions = await apiClient.getFormAutofillInstructions(
     form.platform,
     form.fields.map(({ frameId: _frameId, ...field }) => field),
     company,
+    scene,
+    sessionId,
   );
   const results: FieldFillResult[] = [];
   for (const instruction of instructions.instructions) {

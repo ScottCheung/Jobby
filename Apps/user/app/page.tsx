@@ -215,7 +215,7 @@ function QuickJumpTiles() {
     {
       title: 'AI Memory',
       subtitle: 'Manage reusable answers for job applications',
-      href: '/settings/question-cache',
+      href: '/settings/ai-memory',
       icon: MessageSquareCode,
       badge: 'Memory',
       color:
