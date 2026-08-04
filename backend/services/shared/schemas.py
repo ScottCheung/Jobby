@@ -277,6 +277,8 @@ class ApplicationFormInstructionsRequest(BaseModel):
 
 class FormAutofillInstructionsRequest(ApplicationFormInstructionsRequest):
     platform: str = Field(default="generic", min_length=1, max_length=50)
+    company: str | None = Field(default=None, max_length=255)
+    dry_run: bool = False
 
 
 class ApplicationFieldInstruction(BaseModel):
@@ -302,6 +304,63 @@ class ApplicationFormInstructionsResponse(BaseModel):
 class FormAutofillInstructionsResponse(BaseModel):
     instructions: list[ApplicationFieldInstruction]
     unanswered_fields: list[ApplicationFormUnansweredField]
+    traces: list["FormAutofillFieldTrace"] = Field(default_factory=list)
+
+
+class FormAutofillFieldTrace(BaseModel):
+    key: str
+    label: str
+    intent_key: str | None = None
+    source: str
+    status: Literal["filled", "unanswered"]
+    value: str | bool | None = None
+    reason: str | None = None
+
+
+class FormAnswerObservationRequest(BaseModel):
+    platform: str = Field(default="generic", min_length=1, max_length=50)
+    company: str | None = Field(default=None, max_length=255)
+    field: ApplicationFormFieldInput
+    answer: str = Field(min_length=1, max_length=10_000)
+
+
+class FormAnswerObservationResponse(BaseModel):
+    status: Literal["ignored", "observed", "promoted", "conflict"]
+    intent_key: str | None = None
+
+
+class FormAnswerObservationRead(OrmModel):
+    id: UUID
+    platform: str
+    company_scope: str
+    original_label: str
+    field_type: str
+    answer: str
+    intent_key: str | None = None
+    times_seen: int
+    status: Literal["observed", "promoted", "conflict"]
+    last_seen_at: datetime
+    created_at: datetime
+    updated_at: datetime
+
+
+class AutofillAnswerBase(BaseModel):
+    intent_key: str = Field(min_length=3, max_length=150)
+    value: str = Field(min_length=1, max_length=10_000)
+    value_type: str = Field(default="text", max_length=50)
+    active: bool = True
+
+
+class AutofillAnswerRead(AutofillAnswerBase, OrmModel):
+    id: UUID
+    user_id: UUID
+    authority: str
+    version: int
+    last_confirmed_at: datetime | None = None
+    times_used: int
+    last_used_at: datetime | None = None
+    created_at: datetime
+    updated_at: datetime
 
 
 class QuestionCacheEntryBase(BaseModel):

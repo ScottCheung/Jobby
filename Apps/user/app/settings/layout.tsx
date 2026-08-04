@@ -28,10 +28,10 @@ const settingsNavigation: ModuleNavigationItem[] = [
     description: 'Configure job search keywords, filters, blacklist, and automation behavior.',
   },
   {
-    name: 'Question Cache',
+    name: 'AI Memory',
     href: '/settings/question-cache',
     icon: MessageSquareCode,
-    description: 'View and manage cached form answers used by automation bot.',
+    description: 'Manage the answers AI can safely reuse in job applications.',
   },
   {
     name: 'Browser Session',

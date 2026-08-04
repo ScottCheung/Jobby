@@ -394,6 +394,13 @@ function labelFor(element, scope) {
     const legend2 = cleanText(fieldset2?.querySelector("legend")?.textContent);
     if (legend2) return cleanLabel(legend2);
   }
+  const labelledByIds = cleanText(element.getAttribute("aria-labelledby")).split(/\s+/).filter(Boolean);
+  if (labelledByIds.length > 0) {
+    const labelledByText2 = cleanText(
+      labelledByIds.map((id2) => scope.querySelector(`#${CSS.escape(id2)}`)?.textContent || "").join(" ")
+    );
+    if (labelledByText2) return cleanLabel(labelledByText2);
+  }
   const labelledBy = cleanText(element.getAttribute("aria-label"));
   if (labelledBy) return cleanLabel(labelledBy);
   const id = cleanText(element.id);

@@ -3,12 +3,15 @@
 'use client';
 
 import React, { useId, useRef, useState } from 'react';
-import { ImagePlus, Trash2 } from 'lucide-react';
+import { Check, ImagePlus, Trash2, X } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { useConsole } from '@/components/ConsoleContext';
 import {
   IdentityContactCard,
   LocationAddressCard,
   EEOCard,
+  DisplayField,
+  Field,
   ProfileEditor,
   type ProfileCardSection,
 } from '@/components/forms';
@@ -18,9 +21,177 @@ import { ImageCropper } from '@/components/UI/ImageCropper';
 import { Button } from '@/components/UI/Button';
 import { WaterfallLayout } from '@/components/layout/waterfallLayout';
 import { useGlobalModalStore } from '@/lib/store/global-modal-store';
+import type { JobHuntingProfile } from '@/lib/types';
+
+function ApplicationPreferencesEditor({
+  value,
+  onSave,
+  onClose,
+}: {
+  value: JobHuntingProfile;
+  onSave: (value: JobHuntingProfile) => Promise<void>;
+  onClose: () => void;
+}) {
+  const [draft, setDraft] = useState(value);
+  const [saving, setSaving] = useState(false);
+
+  const setField = (key: keyof JobHuntingProfile, val: any) => {
+    setDraft((prev) => ({ ...prev, [key]: val }));
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await onSave(draft);
+      onClose();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className='flex max-h-[88vh] min-h-[320px] max-w-5xl w-full flex-col'>
+      {/* Header */}
+      <header className='header'>
+        <div>
+          <h2 className='title-section text-ink-primary'>
+            Application Preferences
+          </h2>
+          <p className='mt-1 text-sm text-ink-secondary'>
+            Used as the authoritative source for job application forms.
+          </p>
+        </div>
+        <button
+          type='button'
+          onClick={onClose}
+          className='flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-ink-secondary hover:bg-background-secondary hover:text-ink-primary'
+        >
+          <X className='h-4 w-4' />
+        </button>
+      </header>
+
+      {/* Fields */}
+      <div className='body py-6! flex-1 overflow-y-auto min-h-0 overflow-x-hidden'>
+        <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
+          <Field
+            label='Current / target location'
+            value={draft.search_location}
+            onChange={(val) => setField('search_location', val)}
+          />
+          <Field
+            label='Desired annual base salary'
+            type='number'
+            value={draft.desired_salary}
+            onChange={(val) => setField('desired_salary', val)}
+          />
+          <Field
+            label='Current annual compensation'
+            type='number'
+            value={draft.current_ctc}
+            onChange={(val) => setField('current_ctc', val)}
+          />
+          <Field
+            label='Years of experience'
+            value={draft.years_of_experience}
+            onChange={(val) => setField('years_of_experience', val)}
+          />
+          <Field
+            label='Citizenship / work rights'
+            value={draft.citizenship}
+            onChange={(val) => setField('citizenship', val)}
+          />
+          <Field
+            label='Visa sponsorship requirement'
+            value={draft.require_visa}
+            onChange={(val) => setField('require_visa', val)}
+          />
+          <Field
+            label='Notice period (days)'
+            type='number'
+            value={draft.notice_period}
+            onChange={(val) => setField('notice_period', val ? Number(val) : null)}
+          />
+          <Field
+            label='Most recent employer'
+            value={draft.recent_employer}
+            onChange={(val) => setField('recent_employer', val)}
+          />
+        </div>
+      </div>
+
+      {/* Footer */}
+      <footer className='footer'>
+        <Button variant='ghost' onClick={onClose} disabled={saving}>
+          Cancel
+        </Button>
+        <Button
+          onClick={() => void handleSave()}
+          disabled={saving}
+          Icon={Check}
+        >
+          {saving ? 'Saving...' : 'Save preferences'}
+        </Button>
+      </footer>
+    </div>
+  );
+}
+
+function AutofillPreferencesCard({
+  value,
+  onClick,
+}: {
+  value: JobHuntingProfile;
+  onClick?: () => void;
+}) {
+  return (
+    <motion.div
+      layoutId='profile-card-application-preferences'
+      transition={{ type: 'spring', duration: 0.7, bounce: 0.2 }}
+      onClick={onClick}
+      className='cursor-pointer group/card relative'
+    >
+      <CardWithNorth title='Application Preferences' size='sm'>
+        <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
+          <DisplayField
+            label='Current / target location'
+            value={value.search_location}
+          />
+          <DisplayField
+            label='Desired annual base salary'
+            value={value.desired_salary ? `$${value.desired_salary}` : null}
+          />
+          <DisplayField
+            label='Current annual compensation'
+            value={value.current_ctc ? `$${value.current_ctc}` : null}
+          />
+          <DisplayField
+            label='Years of experience'
+            value={value.years_of_experience}
+          />
+          <DisplayField
+            label='Citizenship / work rights'
+            value={value.citizenship}
+          />
+          <DisplayField
+            label='Visa sponsorship requirement'
+            value={value.require_visa}
+          />
+          <DisplayField
+            label='Notice period (days)'
+            value={value.notice_period !== undefined && value.notice_period !== null ? String(value.notice_period) : null}
+          />
+          <DisplayField
+            label='Most recent employer'
+            value={value.recent_employer}
+          />
+        </div>
+      </CardWithNorth>
+    </motion.div>
+  );
+}
 
 export default function ProfilePage() {
-  const { profile, setProfile, saveProfile, user, saveAvatar, removeAvatar } =
+  const { profile, setProfile, saveProfile, user, saveAvatar, removeAvatar, jobHuntingProfile, saveJobHuntingProfile } =
     useConsole();
   const avatarInputId = useId();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -77,11 +248,10 @@ export default function ProfilePage() {
       {/* Header */}
       <div className='mb-6 shrink-0'>
         <h1 className='title-card text-ink-primary'>
-          Profile & Community Identity
+          Autofill Profile
         </h1>
         <p className='body-sm text-ink-secondary mt-1'>
-          Update your public display avatar, contact information, and personal
-          preferences
+          Your identity, contact details, and application preferences. These facts always override remembered answers.
         </p>
       </div>
 
@@ -180,6 +350,16 @@ export default function ProfilePage() {
           <LocationAddressCard
             value={profile}
             onClick={() => edit('location')}
+          />
+
+          <AutofillPreferencesCard
+            value={jobHuntingProfile}
+            onClick={() => openModal({
+              layoutId: 'profile-card-application-preferences',
+              className: 'w-[94vw] max-w-3xl flex max-h-[88vh] rounded-lg',
+              content: <ApplicationPreferencesEditor value={jobHuntingProfile} onSave={saveJobHuntingProfile} onClose={closeModal} />,
+              onClose: closeModal,
+            })}
           />
 
           {/* Card 4: Background & Equal Opportunity */}

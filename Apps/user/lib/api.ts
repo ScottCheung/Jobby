@@ -1,5 +1,9 @@
 import type {
   JobApplication,
+  AutofillAnswer,
+  FormAnswerObservation,
+  FormAutofillTestField,
+  FormAutofillTestResponse,
   QuestionCacheEntry,
   RuntimeSettings,
   ApplicationSettings,
@@ -470,6 +474,40 @@ export const api = {
   deleteQuestionCache: (entryId: string) =>
     apiRequest<void>(`/api/question-cache/${entryId}`, {
       method: "DELETE",
+    }),
+  autofillAnswers: (search?: string) => {
+    const qs = search?.trim() ? `?search=${encodeURIComponent(search.trim())}` : "";
+    return apiRequest<AutofillAnswer[]>(`/api/autofill-answers${qs}`);
+  },
+  createAutofillAnswer: (payload: Pick<AutofillAnswer, "intent_key" | "value" | "value_type" | "active">) =>
+    apiRequest<AutofillAnswer>("/api/autofill-answers", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  updateAutofillAnswer: (answer: AutofillAnswer) =>
+    apiRequest<AutofillAnswer>(`/api/autofill-answers/${answer.id}`, {
+      method: "PUT",
+      body: JSON.stringify({
+        intent_key: answer.intent_key,
+        value: answer.value,
+        value_type: answer.value_type,
+        active: answer.active,
+      }),
+    }),
+  deleteAutofillAnswer: (answerId: string) =>
+    apiRequest<void>(`/api/autofill-answers/${answerId}`, { method: "DELETE" }),
+  formAutofillObservations: () =>
+    apiRequest<FormAnswerObservation[]>("/api/form-autofill-observations"),
+  deleteFormAutofillObservation: (observationId: string) =>
+    apiRequest<void>(`/api/form-autofill-observations/${observationId}`, { method: "DELETE" }),
+  testFormAutofill: (payload: {
+    platform: string;
+    company?: string;
+    fields: FormAutofillTestField[];
+  }) =>
+    apiRequest<FormAutofillTestResponse>("/api/form-autofill-instructions", {
+      method: "POST",
+      body: JSON.stringify({ ...payload, dry_run: true }),
     }),
   applications: (
     status?: string,

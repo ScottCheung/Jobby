@@ -177,6 +177,7 @@ export class ApiClient {
   async getFormAutofillInstructions(
     platform: string,
     fields: FormFieldObservation[],
+    company?: string,
   ): Promise<FormAutofillInstructionsResponse> {
     const response = await this.request<unknown>(
       "/api/form-autofill-instructions",
@@ -184,6 +185,7 @@ export class ApiClient {
         method: "POST",
         body: JSON.stringify({
           platform,
+          ...(company ? { company } : {}),
           fields: fields.map(({ key, id, name, type, label, required, options }) => ({
             key,
             id,
@@ -197,6 +199,31 @@ export class ApiClient {
       },
     );
     return formAutofillInstructionsResponseSchema.parse(response);
+  }
+
+  async recordFormObservation(
+    platform: string,
+    company: string | undefined,
+    field: FormFieldObservation,
+  ): Promise<void> {
+    if (!field.currentValue?.trim()) return;
+    await this.request("/api/form-autofill-observations", {
+      method: "POST",
+      body: JSON.stringify({
+        platform,
+        ...(company ? { company } : {}),
+        field: {
+          key: field.key,
+          id: field.id,
+          name: field.name,
+          type: field.type,
+          label: field.label,
+          required: field.required,
+          options: field.options,
+        },
+        answer: field.currentValue,
+      }),
+    });
   }
 
   async downloadDefaultResume(): Promise<DownloadedResume> {

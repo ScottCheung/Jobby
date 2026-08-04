@@ -44,8 +44,35 @@ const FORM_OBSERVER_DEBOUNCE_MS = 150;
 const FORM_SETTLE_MS = 300;
 const FORM_STABILITY_RECHECK_MS = 120;
 
-function hasObservableFields(form: FormInspection): boolean {
+type ObservableFormInspection = Extract<
+  FormInspection,
+  { kind: "application_form" | "page_input_fields" }
+>;
+
+function hasObservableFields(form: FormInspection): form is ObservableFormInspection {
   return form.kind === "application_form" || form.kind === "page_input_fields";
+}
+
+function fieldElementType(element: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement): string {
+  if (element instanceof HTMLSelectElement) return "select";
+  if (element instanceof HTMLTextAreaElement) return "textarea";
+  const type = element.type.toLowerCase();
+  return type === "search" ? "text" : type || "unknown";
+}
+
+function fieldElementAliases(element: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement): string[] {
+  const type = fieldElementType(element);
+  const aliases: string[] = [];
+  if (element.id) aliases.push(`${type}|id:${element.id}`);
+  if (element.name) aliases.push(`${type}|name:${element.name}`);
+  return aliases;
+}
+
+function fieldObservationAliases(field: FormFieldObservation): string[] {
+  const aliases: string[] = [];
+  if (field.id) aliases.push(`${field.type}|id:${field.id}`);
+  if (field.name) aliases.push(`${field.type}|name:${field.name}`);
+  return aliases;
 }
 
 function signature(form: FormInspection): string {
@@ -133,7 +160,10 @@ export function watchFormScope(
   let timer: number | undefined;
   let stabilityTimer: number | undefined;
   let revision = 0;
-  let lastSignature = signature(initialForm || readForm());
+  const initialForm = initialForm || readForm();
+  let lastSignature = signature(initialForm);
+  const pendingManualFields = new Set<string>();
+  const committedManualFields = new Set<string>();
   const observedRoots = new WeakSet<ShadowRoot>();
   const eventRoots: Array<Document | HTMLElement | ShadowRoot> = [];
   const scopeParent = scope instanceof HTMLElement ? scope.parentNode : null;
@@ -156,9 +186,27 @@ export function watchFormScope(
       return;
     }
     const nextSignature = signature(form);
-    if (nextSignature === lastSignature) return;
-    lastSignature = nextSignature;
-    void chrome.runtime.sendMessage({ type: "content.form-changed", form }).catch(() => undefined);
+    const manuallyCompleted = hasObservableFields(form)
+      ? form.fields.filter((field) => {
+          if (field.sensitive || !field.filled || !field.currentValue?.trim()) return false;
+          return fieldObservationAliases(field).some((alias) => committedManualFields.has(alias));
+        })
+      : [];
+    const formChanged = nextSignature !== lastSignature;
+    if (formChanged) {
+      lastSignature = nextSignature;
+      void chrome.runtime.sendMessage({ type: "content.form-changed", form }).catch(() => undefined);
+    }
+    if (manuallyCompleted.length > 0) {
+      void chrome.runtime.sendMessage({ type: "content.form-observed", form, fields: manuallyCompleted }).catch(() => undefined);
+      manuallyCompleted.forEach((field) => {
+        fieldObservationAliases(field).forEach((alias) => {
+          pendingManualFields.delete(alias);
+          committedManualFields.delete(alias);
+        });
+      });
+    }
+    if (!formChanged && manuallyCompleted.length === 0) return;
     if (!hasObservableFields(form)) {
       window.__jobbyFormObserverCleanup?.();
       startFormDiscovery(readForm);
@@ -197,12 +245,54 @@ export function watchFormScope(
     }, waitForStableDom ? FORM_SETTLE_MS : FORM_OBSERVER_DEBOUNCE_MS);
   };
 
-  const scheduleValueChange = () => schedule();
+  const scheduleValueChange = (event: Event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement || target instanceof HTMLTextAreaElement)) {
+      schedule();
+      return;
+    }
+    // Only trusted browser events represent a user's edit. Autofill writes and
+    // framework replays dispatch synthetic events, which must never become
+    // observations.
+    if (!event.isTrusted) {
+      schedule();
+      return;
+    }
+    const aliases = fieldElementAliases(target);
+    if (aliases.length === 0) return;
+    aliases.forEach((alias) => pendingManualFields.add(alias));
+    if (event.type === "change") {
+      aliases.forEach((alias) => committedManualFields.add(alias));
+      schedule(true);
+      return;
+    }
+    schedule();
+  };
+  const scheduleManualBlur = (event: Event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement || target instanceof HTMLTextAreaElement)) return;
+    if (!event.isTrusted) return;
+    const aliases = fieldElementAliases(target);
+    if (aliases.length === 0) return;
+    const pendingAliases = aliases.filter((alias) => pendingManualFields.has(alias));
+    if (pendingAliases.length === 0) return;
+    const inputType = target instanceof HTMLInputElement ? target.type.toLowerCase() : "";
+    const hasValue = inputType === "checkbox" || inputType === "radio"
+      ? target.checked
+      : Boolean(target.value.trim());
+    pendingAliases.forEach((alias) => {
+      pendingManualFields.delete(alias);
+      if (hasValue) committedManualFields.add(alias);
+      else committedManualFields.delete(alias);
+    });
+    schedule(true);
+  };
   const scheduleAfterFocus = () => schedule(true);
 
   const listenForValueChanges = (root: Document | HTMLElement | ShadowRoot): void => {
     root.addEventListener("input", scheduleValueChange, true);
     root.addEventListener("change", scheduleValueChange, true);
+    root.addEventListener("focusout", scheduleManualBlur, true);
     eventRoots.push(root);
   };
 
@@ -257,6 +347,7 @@ export function watchFormScope(
     eventRoots.forEach((root) => {
       root.removeEventListener("input", scheduleValueChange, true);
       root.removeEventListener("change", scheduleValueChange, true);
+      root.removeEventListener("focusout", scheduleManualBlur, true);
     });
     window.removeEventListener("focus", scheduleAfterFocus, true);
     if (timer !== undefined) window.clearTimeout(timer);

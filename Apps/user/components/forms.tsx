@@ -510,7 +510,7 @@ function updateRuntimeSetting(
   };
 }
 
-function DisplayField({
+export function DisplayField({
   label,
   value,
   hint,

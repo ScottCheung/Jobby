@@ -213,11 +213,11 @@ function QuickJumpTiles() {
         'from-purple-500/10 to-pink-500/5 text-purple-600 dark:text-purple-400 border-purple-500/20',
     },
     {
-      title: 'Question Cache',
-      subtitle: 'Manage cached form answers used by bot',
+      title: 'AI Memory',
+      subtitle: 'Manage reusable answers for job applications',
       href: '/settings/question-cache',
       icon: MessageSquareCode,
-      badge: 'Cache',
+      badge: 'Memory',
       color:
         'from-amber-500/10 to-orange-500/5 text-amber-600 dark:text-amber-400 border-amber-500/20',
     },

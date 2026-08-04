@@ -2,6 +2,8 @@ import { logDiagnostic } from "./diagnostics";
 import { handleRuntimeMessage } from "./message-router";
 import { getRuntimeSnapshot } from "./session-store";
 import { acceptsFormChange } from "./content-bridge";
+import { recordManualFormObservations } from "./observation-service";
+import { formFieldObservationSchema, formInspectionSchema } from "../shared/contracts/form-inspection";
 
 type FormChurnState = {
   windowStartedAt: number;
@@ -28,6 +30,25 @@ chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch((error
 });
 
 chrome.runtime.onMessage.addListener((message: unknown, sender, sendResponse) => {
+  if (
+    typeof message === "object" &&
+    message !== null &&
+    (message as { type?: unknown }).type === "content.form-observed"
+  ) {
+    const candidate = message as { form?: unknown; fields?: unknown };
+    const form = formInspectionSchema.safeParse(candidate.form);
+    const fields = formFieldObservationSchema.array().safeParse(candidate.fields);
+    if (
+      sender.tab?.id !== undefined &&
+      acceptsFormChange(sender.tab.id, sender.frameId || 0) &&
+      form.success &&
+      fields.success
+    ) {
+      void recordManualFormObservations(form.data, fields.data);
+    }
+    sendResponse({ ok: true });
+    return false;
+  }
   if (
     typeof message === "object" &&
     message !== null &&

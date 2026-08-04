@@ -25,6 +25,12 @@ import { selectPageCombobox } from './combobox-bridge';
 
 type FormControl = HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
 
+function markAutofillWrite(element: FormControl, source: FieldFillInstruction['source']): void {
+  if (source !== 'backend') return;
+  element.dataset.jobbyAutofillUntil = String(Date.now() + 2_000);
+  window.setTimeout(() => delete element.dataset.jobbyAutofillUntil, 2_100);
+}
+
 function cleanText(value: string | null | undefined): string {
   return (value || '').replace(/\s+/g, ' ').trim();
 }
@@ -1013,6 +1019,7 @@ export async function fillFormField(
   }
 
   const type = fieldType(element);
+  markAutofillWrite(element, instruction.source);
   if (
     instruction.target.type === 'radio' &&
     element instanceof HTMLInputElement &&

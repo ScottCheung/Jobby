@@ -284,6 +284,18 @@ function labelFor(element: HTMLElement, scope: QueryScope): string {
     if (legend) return cleanLabel(legend);
   }
 
+  const labelledByIds = cleanText(element.getAttribute("aria-labelledby"))
+    .split(/\s+/)
+    .filter(Boolean);
+  if (labelledByIds.length > 0) {
+    const labelledByText = cleanText(
+      labelledByIds
+        .map((id) => scope.querySelector(`#${CSS.escape(id)}`)?.textContent || "")
+        .join(" "),
+    );
+    if (labelledByText) return cleanLabel(labelledByText);
+  }
+
   const labelledBy = cleanText(element.getAttribute("aria-label"));
   if (labelledBy) return cleanLabel(labelledBy);
 

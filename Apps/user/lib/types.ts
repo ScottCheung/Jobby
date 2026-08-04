@@ -10,6 +10,52 @@ export type User = {
   status: string;
   can_use_auto_apply: boolean;
 };
+
+export type FormAnswerObservation = {
+  id: string;
+  platform: string;
+  company_scope: string;
+  original_label: string;
+  field_type: string;
+  answer: string;
+  intent_key?: string | null;
+  times_seen: number;
+  status: 'observed' | 'promoted' | 'conflict';
+  last_seen_at: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type FormAutofillTestField = {
+  key: string;
+  id?: string;
+  name?: string;
+  type: string;
+  label: string;
+  required: boolean;
+  options: Array<{ label: string; value: string }>;
+};
+
+export type FormAutofillTrace = {
+  key: string;
+  label: string;
+  intent_key?: string | null;
+  source: string;
+  status: 'filled' | 'unanswered';
+  value?: string | boolean | null;
+  reason?: string | null;
+};
+
+export type FormAutofillTestResponse = {
+  instructions: Array<{
+    commandId: string;
+    source: 'backend';
+    target: FormAutofillTestField;
+    value: string | boolean;
+  }>;
+  unanswered_fields: Array<{ key: string; label: string; reason: string }>;
+  traces: FormAutofillTrace[];
+};
 export type UserProfile = {
   id?: string;
   user_id?: string;
@@ -351,6 +397,22 @@ export type QuestionCacheEntry = {
   times_used: number;
   last_used_at?: string | null;
   companies: string[];
+};
+
+export type AutofillAnswer = {
+  id: string;
+  user_id: string;
+  intent_key: string;
+  value: string;
+  value_type: string;
+  authority: string;
+  version: number;
+  last_confirmed_at?: string | null;
+  times_used: number;
+  last_used_at?: string | null;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
 };
 
 export type JobApplication = {

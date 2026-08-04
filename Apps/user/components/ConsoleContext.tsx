@@ -574,7 +574,7 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
       ] = await Promise.all([
         jobHuntingProfilesPromise,
         api.jobHuntingProfile(),
-        api.questionCache(),
+        Promise.resolve([] as QuestionCacheEntry[]),
         api.applications(),
         api.runtimeSettings(),
         api.applicationSettings(),

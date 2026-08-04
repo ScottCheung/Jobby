@@ -30,10 +30,10 @@ const tabs: ModuleNavigationItem[] = [
     description: 'Review submitted, skipped, and in-progress applications',
   },
   {
-    name: 'Question Cache',
+    name: 'AI Memory',
     href: '/job-application/question-cache',
     icon: MessageSquareCode,
-    description: 'Manage saved answers for application forms',
+    description: 'Manage reusable answers for application forms',
   },
 ];
 

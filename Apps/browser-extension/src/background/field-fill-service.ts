@@ -1,42 +1,9 @@
-import type { FormFillInstructionsResponse, FieldFillResult, FieldFillInstruction, FormFieldTarget } from "../shared/contracts/form-actions";
+import type { FormFillInstructionsResponse, FieldFillResult, FormFieldTarget } from "../shared/contracts/form-actions";
 import type { ValidatedApplicationPlanResponse } from "../shared/contracts/backend";
-import type { FormFieldObservation } from "../shared/contracts/form-inspection";
 
-import { inspectFormActiveTab, fillActiveTabField, clickLinkedInApplicationAction, uploadActiveTabFile } from "./content-bridge";
+import { inspectActiveTab, inspectFormActiveTab, fillActiveTabField, clickLinkedInApplicationAction, uploadActiveTabFile } from "./content-bridge";
 import { apiClient } from "./api-client";
 import { logDiagnostic } from "./diagnostics";
-
-function defaultInstructionForUnanswered(
-  field: FormFieldObservation,
-): FieldFillInstruction | null {
-  if (field.type !== "radio" || !field.required || field.filled) return null;
-  const labelNorm = field.label.toLowerCase();
-  let value = "";
-  if (/eligible|authorized|work\s+rights|right\s+to\s+work|permit|citizen|pr|residency|legally/i.test(labelNorm)) {
-    if (!/sponsorship|require\s+visa|visa\s+sponsorship/i.test(labelNorm)) value = "Yes";
-  } else if (/sponsorship|require\s+visa|visa\s+sponsorship/i.test(labelNorm)) {
-    value = "No";
-  } else if (/agree|consent|terms|privacy|background|certify|truthful/i.test(labelNorm)) {
-    value = "Yes";
-  } else if (/veteran|disability/i.test(labelNorm)) {
-    value = "No";
-  }
-  if (!value) return null;
-  return {
-    type: "content.fill-field",
-    commandId: `default-radio-${field.key}`,
-    source: "backend",
-    target: {
-      key: field.key,
-      frameId: field.frameId,
-      id: field.id,
-      name: field.name,
-      label: field.label,
-      type: field.type,
-    },
-    value,
-  };
-}
 
 export async function uploadDefaultResumeToActiveTab(target: FormFieldTarget): Promise<FieldFillResult> {
   if (target.type !== "file") {
@@ -102,9 +69,12 @@ export async function autofillDetectedFormForActiveTab(): Promise<{
   if (form.kind !== "application_form" && form.kind !== "page_input_fields") {
     throw new Error("Inspect a supported application form before autofilling.");
   }
+  const page = await inspectActiveTab().catch(() => null);
+  const company = page?.kind === "job" ? page.snapshot.company : undefined;
   const instructions = await apiClient.getFormAutofillInstructions(
     form.platform,
     form.fields.map(({ frameId: _frameId, ...field }) => field),
+    company,
   );
   const results: FieldFillResult[] = [];
   for (const instruction of instructions.instructions) {
@@ -179,19 +149,6 @@ export async function fillKnownFieldsForActiveTab(applicationId: string): Promis
       label: resumeFile.label,
       type: resumeFile.type,
     }));
-  }
-
-  for (const field of form.fields) {
-    const isAlreadyFilled = results.some((r) => r.key === field.key && (r.status === "filled" || r.status === "already_filled"));
-    if (field.required && field.type === "radio" && !isAlreadyFilled) {
-      const defaultInst = defaultInstructionForUnanswered(field);
-      if (defaultInst) {
-        const defaultRes = await fillActiveTabField(defaultInst);
-        if (defaultRes.status === "filled" || defaultRes.status === "already_filled") {
-          results.push(defaultRes);
-        }
-      }
-    }
   }
 
   const unresolvedInstructions = instructions.unanswered_fields.filter(

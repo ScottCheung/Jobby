@@ -11,6 +11,11 @@ import {
   visibleControlsInScope
 } from "/src/content/dom/form-inspector.ts.js";
 import { selectPageCombobox } from "/src/content/dom/combobox-bridge.ts.js";
+function markAutofillWrite(element, source) {
+  if (source !== "backend") return;
+  element.dataset.jobbyAutofillUntil = String(Date.now() + 2e3);
+  window.setTimeout(() => delete element.dataset.jobbyAutofillUntil, 2100);
+}
 function cleanText(value) {
   return (value || "").replace(/\s+/g, " ").trim();
 }
@@ -634,6 +639,7 @@ export async function fillFormField(instruction, scope = document) {
     );
   }
   const type = fieldType(element);
+  markAutofillWrite(element, instruction.source);
   if (instruction.target.type === "radio" && element instanceof HTMLInputElement && checkboxChoiceGroupFor(element, scope)) {
     if (typeof instruction.value !== "string")
       return result(instruction, "rejected", "Choice values must be strings.");

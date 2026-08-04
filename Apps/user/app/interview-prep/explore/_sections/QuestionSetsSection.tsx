@@ -135,10 +135,7 @@ export function QuestionSetsSection({
                   type='button'
                   onClick={() => onSelectTheme(isActive ? 'All' : theme)}
                   className={cn(
-                    'min-h-[112px] rounded-xl border p-4 text-left transition-colors',
-                    isActive ?
-                      'border-primary bg-primary/10 text-primary'
-                    : 'border-border/60 bg-background-secondary/35 text-ink-secondary hover:border-primary/40 hover:text-ink-primary',
+                    isActive ? 'select-card-active' : 'select-card',
                   )}
                 >
                   <span

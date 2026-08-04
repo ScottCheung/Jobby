@@ -104,7 +104,9 @@ export function watchFormScope(scope, readForm, initialForm) {
   let timer;
   let stabilityTimer;
   let revision = 0;
-  let lastSignature = signature(initialForm || readForm());
+  let lastForm = initialForm || readForm();
+  let lastSignature = signature(lastForm);
+  const committedManualFields = /* @__PURE__ */ new Set();
   const observedRoots = /* @__PURE__ */ new WeakSet();
   const eventRoots = [];
   const scopeParent = scope instanceof HTMLElement ? scope.parentNode : null;
@@ -122,9 +124,23 @@ export function watchFormScope(scope, readForm, initialForm) {
       return;
     }
     const nextSignature = signature(form);
-    if (nextSignature === lastSignature) return;
-    lastSignature = nextSignature;
-    void chrome.runtime.sendMessage({ type: "content.form-changed", form }).catch(() => void 0);
+    const manuallyCompleted = hasObservableFields(form) ? form.fields.filter((field) => {
+      if (field.sensitive || !field.filled || !field.currentValue?.trim()) return false;
+      return fieldObservationAliases(field).some((alias) => committedManualFields.has(alias));
+    }) : [];
+    const formChanged = nextSignature !== lastSignature;
+    if (formChanged) {
+      lastSignature = nextSignature;
+      lastForm = form;
+      void chrome.runtime.sendMessage({ type: "content.form-changed", form }).catch(() => void 0);
+    }
+    if (manuallyCompleted.length > 0) {
+      void chrome.runtime.sendMessage({ type: "content.form-observed", form, fields: manuallyCompleted }).catch(() => void 0);
+      manuallyCompleted.forEach((field) => {
+        fieldObservationAliases(field).forEach((alias) => committedManualFields.delete(alias));
+      });
+    }
+    if (!formChanged && manuallyCompleted.length === 0) return;
     if (!hasObservableFields(form)) {
       window.__jobbyFormObserverCleanup?.();
       startFormDiscovery(readForm);
@@ -157,11 +173,34 @@ export function watchFormScope(scope, readForm, initialForm) {
       }, FORM_STABILITY_RECHECK_MS);
     }, waitForStableDom ? FORM_SETTLE_MS : FORM_OBSERVER_DEBOUNCE_MS);
   };
-  const scheduleValueChange = () => schedule();
+  const scheduleValueChange = (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement || target instanceof HTMLTextAreaElement)) {
+      schedule();
+      return;
+    }
+    if (!event.isTrusted) {
+      schedule();
+      return;
+    }
+    const aliases = fieldElementAliases(target);
+    if (aliases.length > 0) aliases.forEach((alias) => committedManualFields.add(alias));
+    schedule(true);
+  };
+  const scheduleManualBlur = (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement || target instanceof HTMLTextAreaElement)) return;
+    if (!event.isTrusted) return;
+    const aliases = fieldElementAliases(target);
+    if (aliases.length === 0) return;
+    aliases.forEach((alias) => committedManualFields.add(alias));
+    schedule(true);
+  };
   const scheduleAfterFocus = () => schedule(true);
   const listenForValueChanges = (root) => {
     root.addEventListener("input", scheduleValueChange, true);
     root.addEventListener("change", scheduleValueChange, true);
+    root.addEventListener("focusout", scheduleManualBlur, true);
     eventRoots.push(root);
   };
   function observeRoot(root) {
@@ -201,6 +240,7 @@ export function watchFormScope(scope, readForm, initialForm) {
     eventRoots.forEach((root) => {
       root.removeEventListener("input", scheduleValueChange, true);
       root.removeEventListener("change", scheduleValueChange, true);
+      root.removeEventListener("focusout", scheduleManualBlur, true);
     });
     window.removeEventListener("focus", scheduleAfterFocus, true);
     if (timer !== void 0) window.clearTimeout(timer);
