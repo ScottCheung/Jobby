@@ -1,4 +1,5 @@
 import { extractTechnologyKeywords } from "/src/content/technology-keywords.ts.js";
+import { extractStructuredText } from "/src/content/text-utils.ts.js";
 import { SEEK_SELECTORS } from "/src/content/platforms/seek/selectors.ts.js";
 function cleanText(value) {
   return (value || "").replace(/\s+/g, " ").trim();
@@ -7,6 +8,14 @@ function firstText(selectors) {
   for (const selector of selectors) {
     const element = document.querySelector(selector);
     const text = cleanText(element?.textContent);
+    if (text) return text;
+  }
+  return "";
+}
+function firstDescriptionText(selectors) {
+  for (const selector of selectors) {
+    const element = document.querySelector(selector);
+    const text = extractStructuredText(element);
     if (text) return text;
   }
   return "";
@@ -34,7 +43,7 @@ export function readSeekPage() {
   if (!title) {
     return { kind: "not_job_page", platform: "seek", url, reason: "The job title is not available yet." };
   }
-  const description = firstText(SEEK_SELECTORS.description);
+  const description = firstDescriptionText(SEEK_SELECTORS.description);
   const snapshot = {
     platform: "seek",
     externalId: jobId,

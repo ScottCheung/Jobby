@@ -1,6 +1,8 @@
+import { bindTabJobInspection, getTabJobInspection } from "./job-binding-service";
 import { z } from "zod";
 
 import { pageInspectionSchema, type PageInspection } from "../shared/contracts/page-inspection";
+import type { ValidatedApplicationPlanResponse } from "../shared/contracts/backend";
 import { formInspectionSchema, type FormInspection } from "../shared/contracts/form-inspection";
 import { fieldFillResultSchema, formFocusResultSchema, type FieldFillInstruction, type FieldFillResult, type FileUploadInstruction, type FormFieldTarget, type FormFocusResult } from "../shared/contracts/form-actions";
 import {
@@ -45,17 +47,43 @@ export function setTargetedTabId(tabId: number | undefined): void {
 }
 
 export async function inspectActiveTab(): Promise<PageInspection> {
+  const activeTab = await findActiveTab().catch(() => undefined);
+  if (activeTab?.id && !isLinkedInUrl(activeTab.url)) {
+    const inherited = getTabJobInspection(activeTab.id, activeTab.url);
+    if (inherited) {
+      return inherited;
+    }
+  }
+
   const rawResponse = await sendToActiveTab({ type: "content.inspect" });
   const parsed = contentResponseSchema.safeParse(rawResponse);
   if (!parsed.success) throw new Error("The page returned an invalid inspection response.");
   if (!parsed.data.ok) throw new Error(parsed.data.error);
-  return parsed.data.inspection;
+
+  const inspection = parsed.data.inspection;
+  if (activeTab?.id && inspection.kind === "job") {
+    bindTabJobInspection(activeTab.id, inspection);
+  }
+  return inspection;
+}
+
+export async function renderScoreCardActiveTab(
+  inspection?: PageInspection,
+  plan?: ValidatedApplicationPlanResponse
+): Promise<void> {
+  const activeTab = await findActiveTab().catch(() => undefined);
+  if (!activeTab?.id) return;
+  await sendToTab(activeTab.id, {
+    type: "content.render-score-card",
+    inspection,
+    plan,
+  }).catch(() => null);
 }
 
 export async function inspectFormActiveTab(): Promise<FormInspection> {
   const activeTab = await findActiveTab();
-  if (!activeTab?.id) throw new Error("未检测到可用的浏览器标签页。请先打开并切换至需要填写的网页。");
-  if (!isSupportedUrl(activeTab.url)) throw new Error("请先切换至支持的网页后再检测表单。");
+  if (!activeTab?.id) throw new Error("No active browser tab detected. Please switch to the web page you want to fill.");
+  if (!isSupportedUrl(activeTab.url)) throw new Error("Please switch to a supported web page before inspecting the form.");
 
   const rootForm = parseFormResponse(await sendToTab(activeTab.id, { type: "content.inspect-form" }));
   const candidates: Array<{ form: FormInspection; frameId: number }> = [{ form: rootForm, frameId: 0 }];
@@ -164,12 +192,11 @@ async function selectGreenhouseCombobox(
         message: selection.status === "filled" ? "Greenhouse dropdown value updated." : "Dropdown already has the requested value.",
       };
     }
-    return {
-      commandId,
-      key: target.key,
-      status: "rejected",
-      message: "The webpage did not confirm this dropdown selection.",
-    };
+    // The page-owned instance may expose an internal country code (AU/+61)
+    // while the profile supplies the visible country name (Australia). Let
+    // the content-world ARIA driver resolve that alias from the rendered
+    // option instead of failing before it gets a chance to run.
+    return null;
   } catch {
     // Only Greenhouse-style React Select controls take this path. Keep the
     // existing content-script driver as the fallback for every other site.
@@ -190,6 +217,18 @@ function selectGreenhouseComboboxInPage(
 
   const clean = (value: unknown) => typeof value === "string" ? value.replace(/\s+/g, " ").trim() : "";
   const normalized = (value: unknown) => clean(value).toLowerCase();
+  const countryDialAliases: Record<string, string> = {
+    australia: "+61", au: "+61", "+61": "+61", "61": "+61",
+    "new zealand": "+64", nz: "+64", "+64": "+64", "64": "+64",
+    "united kingdom": "+44", uk: "+44", gb: "+44", "+44": "+44", "44": "+44",
+    "united states": "+1", usa: "+1", us: "+1", "+1": "+1", "1": "+1",
+    canada: "+1", china: "+86", cn: "+86", "+86": "+86", india: "+91", in: "+91", "+91": "+91",
+    singapore: "+65", sg: "+65", "+65": "+65", "hong kong": "+852", hk: "+852", "+852": "+852",
+  };
+  const countryAlias = (value: unknown): string => {
+    const text = normalized(value).replace(/[()\-]/g, "").replace(/\s+/g, " ");
+    return countryDialAliases[text] || text;
+  };
   const element = document.getElementById(elementId);
   if (!(element instanceof HTMLInputElement) || element.getAttribute("role") !== "combobox") {
     return Promise.resolve({ handled: false });
@@ -222,19 +261,120 @@ function selectGreenhouseComboboxInPage(
     return options.find((option) => String(option.value) === String(selected.value))?.label || clean(selected.label);
   };
 
+  const renderedCurrentValue = (): string => {
+    const container = element.closest<HTMLElement>(".select-shell, [class*='select' i]");
+    if (element.id === "country") {
+      const flag = Array.from(container?.querySelector<HTMLElement>("[class*='iti__flag']")?.classList || [])
+        .find((name) => /^iti__[a-z]{2}$/i.test(name));
+      const code = flag?.slice("iti__".length).toUpperCase();
+      if (code && typeof Intl.DisplayNames === "function") {
+        return new Intl.DisplayNames(["en"], { type: "region" }).of(code) || "";
+      }
+    }
+    return clean(container?.querySelector<HTMLElement>(
+      ".select__single-value, [class*='single-value' i], [class*='singleValue' i]",
+    )?.textContent);
+  };
+
+  const matches = (actual: string, expected: string): boolean => {
+    const left = normalized(actual);
+    const right = normalized(expected);
+    const leftAlias = countryAlias(actual);
+    const rightAlias = countryAlias(expected);
+    return Boolean(left && (left === right || leftAlias === rightAlias || (right.length > 1 && (left.includes(right) || right.includes(left)))));
+  };
+
+  const visible = (candidate: HTMLElement): boolean => {
+    const style = window.getComputedStyle(candidate);
+    const rect = candidate.getBoundingClientRect();
+    return style.display !== "none" && style.visibility !== "hidden" && rect.width > 0 && rect.height > 0;
+  };
+
+  const renderedOption = (expected: string): HTMLElement | null => {
+    const target = normalized(expected);
+    return Array.from(document.querySelectorAll<HTMLElement>(
+      "[role='option'], [role='listbox'] button, [role='listbox'] li, [data-value], [data-option-value]",
+    )).find((candidate) => {
+      if (!visible(candidate) || candidate.getAttribute("aria-disabled") === "true") return false;
+      const candidateValue = normalized(
+        candidate.getAttribute("data-value") ||
+        candidate.getAttribute("data-option-value") ||
+        candidate.getAttribute("aria-label") ||
+        candidate.textContent,
+      );
+      return candidateValue === target || countryAlias(candidateValue) === countryAlias(expected) || (target.length > 1 && (candidateValue.includes(target) || target.includes(candidateValue)));
+    }) || null;
+  };
+
+  const waitForRenderedOption = (expected: string): Promise<HTMLElement | null> => new Promise((resolve) => {
+    const startedAt = Date.now();
+    const find = () => {
+      const option = renderedOption(expected);
+      if (option || Date.now() - startedAt >= 900) {
+        resolve(option);
+        return;
+      }
+      window.setTimeout(find, 40);
+    };
+    find();
+  });
+
+  const selectRenderedCombobox = async (): Promise<{ handled: boolean; status?: "filled" | "already_filled" | "rejected" }> => {
+    if (matches(renderedCurrentValue(), requestedValue)) {
+      return { handled: true, status: "already_filled" };
+    }
+    element.focus({ preventScroll: true });
+    element.click();
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+    if (setter) setter.call(element, requestedValue);
+    else element.value = requestedValue;
+    try {
+      element.dispatchEvent(new InputEvent("input", { bubbles: true, composed: true, inputType: "insertText" }));
+    } catch {
+      element.dispatchEvent(new Event("input", { bubbles: true, composed: true }));
+    }
+    const option = await waitForRenderedOption(requestedValue);
+    if (!option) return { handled: false };
+    option.click();
+    const startedAt = Date.now();
+    let enterSent = false;
+    return new Promise((resolve) => {
+      const verify = () => {
+        if (matches(renderedCurrentValue(), requestedValue)) {
+          resolve({ handled: true, status: "filled" });
+          return;
+        }
+        if (!enterSent && Date.now() - startedAt >= 120) {
+          enterSent = true;
+          const keyOptions = { key: "Enter", code: "Enter", bubbles: true, cancelable: true };
+          element.dispatchEvent(new KeyboardEvent("keydown", keyOptions));
+          element.dispatchEvent(new KeyboardEvent("keyup", keyOptions));
+        }
+        if (Date.now() - startedAt >= 900) {
+          resolve({ handled: false });
+          return;
+        }
+        window.setTimeout(verify, 40);
+      };
+      verify();
+    });
+  };
+
   const instance = findInstance();
-  if (!instance) return Promise.resolve({ handled: false });
+  if (!instance) return selectRenderedCombobox();
   const options = optionsFor(instance);
   const requested = normalized(requestedValue);
   const option = options.find((candidate) => {
     const label = normalized(candidate.label);
     const value = normalized(String(candidate.value));
     return label === requested ||
+      countryAlias(label) === countryAlias(requestedValue) ||
+      countryAlias(value) === countryAlias(requestedValue) ||
       value === requested ||
       (requested.length > 1 && (label.includes(requested) || requested.includes(label))) ||
       (requested.length > 1 && (value.includes(requested) || requested.includes(value)));
   });
-  if (!option) return Promise.resolve({ handled: true, status: "rejected" });
+  if (!option) return selectRenderedCombobox();
   if (normalized(currentValue(instance, options)) === normalized(option.label)) {
     return Promise.resolve({ handled: true, status: "already_filled" });
   }
@@ -245,8 +385,8 @@ function selectGreenhouseComboboxInPage(
       const updated = findInstance();
       const selected = updated ? currentValue(updated, optionsFor(updated)) : "";
       resolve({
-        handled: true,
-        status: normalized(selected) === normalized(option.label) ? "filled" : "rejected",
+        handled: normalized(selected) === normalized(option.label),
+        status: normalized(selected) === normalized(option.label) ? "filled" : undefined,
       });
     }, 0);
   });
@@ -363,10 +503,10 @@ function formWithFrameId(form: FormInspection, frameId: number): FormInspection 
 
 async function sendToActiveTab(message: unknown, frameId?: number): Promise<unknown> {
   const activeTab = await findActiveTab();
-  if (!activeTab?.id) throw new Error("未检测到可用的浏览器标签页。请先打开并切换至需要填写的网页。");
+  if (!activeTab?.id) throw new Error("No active browser tab detected. Please switch to the web page you want to fill.");
 
   if (!isSupportedUrl(activeTab.url)) {
-    throw new Error("请先切换至支持的网页后再检测表单。");
+    throw new Error("Please switch to a supported web page before inspecting the form.");
   }
 
   return sendToTab(activeTab.id, message, frameId);
@@ -402,8 +542,8 @@ async function sendToTab(tabId: number, message: unknown, frameId?: number): Pro
   const detail = lastError instanceof Error ? lastError.message : "";
   throw new Error(
     detail
-      ? `网页插件脚本未能完成加载：${detail}`
-      : "网页插件脚本未能完成加载。请稍后重试。",
+      ? `Content script failed to finish loading: ${detail}`
+      : "Content script failed to finish loading. Please try again later.",
   );
 }
 

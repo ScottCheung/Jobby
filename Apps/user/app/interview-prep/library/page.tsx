@@ -77,7 +77,7 @@ import { QuestionForm } from './_components/QuestionForm';
 import { FilterSidebar } from './_components/FilterSidebar';
 import { QuestionRow } from './_components/QuestionRow';
 import { QuestionsFilterDrawer } from './_components/QuestionsFilterDrawer';
-import { Button } from '@/components/UI/Button';
+import { Button } from '@jobby/ui';
 import { showGlobalToast } from '@/lib/toast';
 import { List, type RowComponentProps } from 'react-window';
 import { div } from 'framer-motion/client';

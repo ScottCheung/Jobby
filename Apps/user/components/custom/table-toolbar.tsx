@@ -6,7 +6,7 @@ import * as React from 'react';
 import { Search, Settings2, X, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-import { Button } from '@/components/UI/Button';
+import { Button } from '@jobby/ui';
 import { Input } from '@/components/UI/input';
 import {
   Popover,

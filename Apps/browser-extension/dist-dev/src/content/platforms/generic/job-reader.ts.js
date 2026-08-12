@@ -1,4 +1,5 @@
 import { extractTechnologyKeywords } from "/src/content/technology-keywords.ts.js";
+import { extractStructuredText } from "/src/content/text-utils.ts.js";
 const JOB_TITLE_SELECTOR = [
   // Generic data attributes used by many ATSs
   "[data-testid*='job-title' i]",
@@ -118,10 +119,10 @@ function locationFromPage(roots) {
   return semanticLocation || labelledValue(["location", "work location", "location type"], roots);
 }
 function descriptionFromPage(roots) {
-  const candidate = elements(DESCRIPTION_SELECTOR, roots).map((element) => cleanText(element.textContent)).filter((text) => text.length >= 120).sort((left, right) => right.length - left.length)[0];
+  const candidate = elements(DESCRIPTION_SELECTOR, roots).map((element) => extractStructuredText(element)).filter((text) => text.length >= 120).sort((left, right) => right.length - left.length)[0];
   if (candidate) return truncate(candidate, 18e3);
   const heading = elements("h2, h3, h4", roots).find((element) => JOB_HEADING_PATTERN.test(cleanText(element.textContent)));
-  const parentText = cleanText(heading?.parentElement?.textContent);
+  const parentText = extractStructuredText(heading?.parentElement);
   return parentText.length >= 120 ? truncate(parentText, 18e3) : "";
 }
 function hasApplyAction(roots) {
@@ -157,14 +158,16 @@ function jobPostingFromStructuredData() {
       const firstLocation = Array.isArray(location) ? location[0] : location;
       const address = firstLocation?.address;
       const identifier = posting.identifier;
-      const rawDesc = String(posting.description || "").replace(/<[^>]*>/g, " ");
+      const tmpDiv = document.createElement("div");
+      tmpDiv.innerHTML = String(posting.description || "");
+      const rawDesc = extractStructuredText(tmpDiv);
       return {
         title: cleanText(String(posting.title || "")) || void 0,
         company: cleanText(String(organization?.name || "")) || void 0,
         location: cleanText(
           [address?.addressLocality, address?.addressRegion, address?.addressCountry].filter((value) => typeof value === "string").join(", ")
         ) || void 0,
-        description: cleanText(rawDesc) || void 0,
+        description: rawDesc || void 0,
         externalId: cleanText(
           typeof identifier === "string" ? identifier : String(identifier?.value || "")
         ) || void 0,

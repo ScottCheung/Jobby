@@ -1,4 +1,6 @@
 import { handleContentCommand, startContentFormDiscovery } from "./command-handler";
+import { readCurrentPageWhenReady } from "./page-reader";
+import { injectInPageScoreCard } from "./dom/score-card-injector";
 
 type ContentMessageListener = Parameters<typeof chrome.runtime.onMessage.addListener>[0];
 
@@ -31,6 +33,24 @@ const listener: ContentMessageListener = (message, _sender, sendResponse) => {
 window.__jobbyContentMessageListener = listener;
 chrome.runtime.onMessage.addListener(listener);
 
+// Listen for theme changes from the Jobby web app and update chrome.storage.local
+window.addEventListener("message", (event) => {
+  if (
+    event.source === window &&
+    event.data &&
+    event.data.source === "jobby-web-app" &&
+    event.data.type === "JOBBY_THEME_CHANGE"
+  ) {
+    const { theme, themeColor } = event.data;
+    const updatePayload: Record<string, string> = {};
+    if (theme) updatePayload["auto-job-ui-theme"] = theme;
+    if (themeColor) updatePayload["auto-job-ui-theme-color"] = themeColor;
+    if (Object.keys(updatePayload).length > 0 && typeof chrome !== "undefined" && chrome.storage?.local) {
+      void chrome.storage.local.set(updatePayload);
+    }
+  }
+});
+
 // LinkedIn and SEEK are the only sites where Jobby continuously drives an
 // application flow. Other pages still support on-demand generic inspection,
 // but must not receive a whole-document observer merely because the extension
@@ -44,7 +64,14 @@ const isAutoObservedHost =
   hostname.endsWith(".seek.com") ||
   hostname === "seek.com.au" ||
   hostname.endsWith(".seek.com.au");
-// LinkedIn includes auxiliary same-origin frames. They do not host the Easy
-// Apply modal, but starting discovery inside them can create noisy updates and
-// surface page-owned errors in the extension's bootstrap stack.
-if (isTopLevelFrame && isAutoObservedHost) startContentFormDiscovery();
+
+if (isTopLevelFrame) {
+  if (isAutoObservedHost) startContentFormDiscovery();
+  void readCurrentPageWhenReady()
+    .then((inspection) => {
+      if (inspection.kind === "job") {
+        injectInPageScoreCard(inspection);
+      }
+    })
+    .catch(() => undefined);
+}

@@ -2,7 +2,7 @@ import type { PageInspection } from "../shared/contracts/page-inspection";
 import type { ValidatedApplicationPlanResponse } from "../shared/contracts/backend";
 
 import { apiClient } from "./api-client";
-import { inspectActiveTab } from "./content-bridge";
+import { inspectActiveTab, renderScoreCardActiveTab } from "./content-bridge";
 
 export async function createApplicationPlanFromActiveTab(fallbackInspection?: PageInspection): Promise<{
   inspection: PageInspection;
@@ -30,11 +30,16 @@ export async function createApplicationPlanFromActiveTab(fallbackInspection?: Pa
       company: snapshot.company,
       description: snapshot.description || null,
       easy_apply: snapshot.easyApply,
+      posted_at: snapshot.datePosted || null,
+      date_posted: snapshot.datePosted || null,
+      technologies: snapshot.technologies || [],
     },
     job_description: snapshot.description || null,
     job_link: snapshot.url,
     work_location: snapshot.location || null,
   });
+
+  void renderScoreCardActiveTab(inspection, plan);
 
   return { inspection, plan };
 }

@@ -60,7 +60,7 @@ const BatchImportModal = dynamic(
 
 import { PlanSetupSection } from './_components/PlanSetupSection';
 import { ActivityHeatmap } from './_components/ActivityHeatmap';
-import { Button } from '@/components/UI/Button';
+import { Button } from '@jobby/ui';
 import { showGlobalToast } from '@/lib/toast';
 import { showCelebrationEvent } from '@/lib/celebration';
 import { useConfirmStore } from '@/lib/store/confirm-store';

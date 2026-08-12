@@ -80,6 +80,7 @@ def plan_to_dict(plan: ApplicationPlan) -> dict[str, Any]:
             "score": decision.score,
             "resume_strategy": decision.resume_strategy.value if decision.resume_strategy else None,
             "requires_submit_confirmation": decision.requires_submit_confirmation,
+            "matched_terms": list(decision.matched_terms),
         },
         "idempotency_key": plan.idempotency_key,
         "state": plan.state.value,
@@ -111,6 +112,7 @@ def plan_from_dict(payload: Mapping[str, Any]) -> ApplicationPlan:
         score=decision_payload.get("score"),
         resume_strategy=ResumeStrategy(resume_strategy) if resume_strategy else None,
         requires_submit_confirmation=bool(decision_payload.get("requires_submit_confirmation", False)),
+        matched_terms=tuple(str(item) for item in decision_payload.get("matched_terms", ())),
     )
     idempotency_key = str(payload.get("idempotency_key") or "").strip()
     if not idempotency_key:

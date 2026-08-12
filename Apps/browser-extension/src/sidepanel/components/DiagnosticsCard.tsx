@@ -9,12 +9,12 @@ interface DiagnosticsCardProps {
 export function DiagnosticsCard({ diagnostics, errorMessage, onClearLogs }: DiagnosticsCardProps) {
   return (
     <details className="diagnostics" aria-label="Diagnostics">
-      <summary>诊断日志</summary>
+      <summary>Diagnostic Logs</summary>
       <div className="diagnostics-content">
         <div className="section-heading">
-          <p>最近事件</p>
+          <p>Recent Events</p>
           <button type="button" className="quiet" onClick={onClearLogs}>
-            清除
+            Clear
           </button>
         </div>
         {errorMessage && <p className="message" aria-live="polite">{errorMessage}</p>}

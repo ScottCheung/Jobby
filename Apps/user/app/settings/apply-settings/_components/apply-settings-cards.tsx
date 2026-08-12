@@ -6,7 +6,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Check, X } from 'lucide-react';
 import CardWithNorth from '@/components/UI/card/CardWithNorth';
-import { Button } from '@/components/UI/Button';
+import { Button } from '@jobby/ui';
 import { SearchForm } from '@/components/forms';
 import { cn } from '@/lib/utils';
 import type { JobHuntingProfile, ApplicationSettings } from '@/lib/types';

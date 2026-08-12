@@ -1,6 +1,7 @@
 import type { PageInspection, SeekJobSnapshot } from "../../../shared/contracts/page-inspection";
 
 import { extractTechnologyKeywords } from "../../technology-keywords";
+import { extractStructuredText } from "../../text-utils";
 import { SEEK_SELECTORS } from "./selectors";
 
 function cleanText(value: string | null | undefined): string {
@@ -11,6 +12,15 @@ function firstText(selectors: readonly string[]): string {
   for (const selector of selectors) {
     const element = document.querySelector(selector);
     const text = cleanText(element?.textContent);
+    if (text) return text;
+  }
+  return "";
+}
+
+function firstDescriptionText(selectors: readonly string[]): string {
+  for (const selector of selectors) {
+    const element = document.querySelector<HTMLElement>(selector);
+    const text = extractStructuredText(element);
     if (text) return text;
   }
   return "";
@@ -44,7 +54,7 @@ export function readSeekPage(): PageInspection {
     return { kind: "not_job_page", platform: "seek", url, reason: "The job title is not available yet." };
   }
 
-  const description = firstText(SEEK_SELECTORS.description);
+  const description = firstDescriptionText(SEEK_SELECTORS.description);
   const snapshot: SeekJobSnapshot = {
     platform: "seek",
     externalId: jobId,

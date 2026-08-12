@@ -17,7 +17,7 @@ import { GamificationStats } from './_components/GamificationStats';
 import { useConsole } from '@/components/ConsoleContext';
 import { GlobalSearchModal } from './library/_components/GlobalSearchModal';
 import { useGlobalModalStore } from '@/lib/store/global-modal-store';
-import { Button } from '@/components/UI/Button';
+import { Button } from '@jobby/ui';
 import {
   ModuleTopNav,
   type ModuleNavigationItem,

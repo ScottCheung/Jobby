@@ -1,6 +1,7 @@
 import type { GenericJobSnapshot, PageInspection } from "../../../shared/contracts/page-inspection";
 
 import { extractTechnologyKeywords } from "../../technology-keywords";
+import { extractStructuredText } from "../../text-utils";
 
 const JOB_TITLE_SELECTOR = [
   // Generic data attributes used by many ATSs
@@ -139,13 +140,13 @@ function locationFromPage(roots: readonly QueryRoot[]): string {
 
 function descriptionFromPage(roots: readonly QueryRoot[]): string {
   const candidate = elements(DESCRIPTION_SELECTOR, roots)
-    .map((element) => cleanText(element.textContent))
+    .map((element) => extractStructuredText(element))
     .filter((text) => text.length >= 120)
     .sort((left, right) => right.length - left.length)[0];
   if (candidate) return truncate(candidate, 18_000);
 
   const heading = elements("h2, h3, h4", roots).find((element) => JOB_HEADING_PATTERN.test(cleanText(element.textContent)));
-  const parentText = cleanText(heading?.parentElement?.textContent);
+  const parentText = extractStructuredText(heading?.parentElement);
   return parentText.length >= 120 ? truncate(parentText, 18_000) : "";
 }
 
@@ -195,7 +196,9 @@ function jobPostingFromStructuredData(): {
       const identifier = posting.identifier as Record<string, unknown> | string | undefined;
       // Many ATSs (Greenhouse, Lever, Workday, Indeed) embed raw HTML in the
       // description field. Strip tags so we work with readable plain text.
-      const rawDesc = String(posting.description || "").replace(/<[^>]*>/g, " ");
+      const tmpDiv = document.createElement('div');
+      tmpDiv.innerHTML = String(posting.description || "");
+      const rawDesc = extractStructuredText(tmpDiv);
       return {
         title: cleanText(String(posting.title || "")) || undefined,
         company: cleanText(String(organization?.name || "")) || undefined,
@@ -204,7 +207,7 @@ function jobPostingFromStructuredData(): {
             .filter((value) => typeof value === "string")
             .join(", "),
         ) || undefined,
-        description: cleanText(rawDesc) || undefined,
+        description: rawDesc || undefined,
         externalId: cleanText(
           typeof identifier === "string" ? identifier : String(identifier?.value || ""),
         ) || undefined,

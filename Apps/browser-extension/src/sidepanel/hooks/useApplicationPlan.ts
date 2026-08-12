@@ -22,12 +22,13 @@ export function useApplicationPlan(
   const [latestPlan, setLatestPlan] = useState<ValidatedApplicationPlanResponse | null>(null);
   const [status, setStatus] = useState<StatusBannerState>({
     state: "idle",
-    message: "就绪：打开职位或 Easy Apply 弹窗后即可开始操作。",
+    message: "Ready: Open job details or Easy Apply popup to get started.",
   });
   const [fillResults, setFillResults] = useState<FieldFillResult[]>([]);
   const [unansweredFields, setUnansweredFields] = useState<Array<{ key: string; label: string; reason: string }>>([]);
   const [loadingButton, setLoadingButton] = useState<string | null>(null);
   const lastJobKey = useRef<string | null>(null);
+  const autoPlanCreatedRef = useRef<string | null>(null);
 
   useEffect(() => {
     const currentJobKey =
@@ -40,11 +41,46 @@ export function useApplicationPlan(
       setUnansweredFields([]);
       setStatus({
         state: "idle",
-        message: "已检测到新的职位，准备打开新的申请表。",
+        message: "New job detected, ready for application.",
       });
     }
     lastJobKey.current = currentJobKey;
   }, [latestInspection]);
+
+  // Automatically create application plan and derive match score upon job identification
+  useEffect(() => {
+    if (latestInspection?.kind !== "job") {
+      autoPlanCreatedRef.current = null;
+      return;
+    }
+    const currentJobKey = `${latestInspection.snapshot.platform}:${latestInspection.snapshot.externalId}`;
+    if (autoPlanCreatedRef.current !== currentJobKey && !latestPlan) {
+      autoPlanCreatedRef.current = currentJobKey;
+      void send({
+        type: "application.create-plan-active",
+        inspection: latestInspection,
+      }).then((response) => {
+        if (response?.ok && response?.plan) {
+          setLatestPlan(response.plan);
+          void send({
+            type: "content.render-score-card",
+            inspection: latestInspection,
+            plan: response.plan,
+          }).catch(() => undefined);
+        }
+      }).catch(() => undefined);
+    }
+  }, [latestInspection, latestPlan]);
+
+  useEffect(() => {
+    if (latestInspection?.kind === "job" && latestPlan) {
+      void send({
+        type: "content.render-score-card",
+        inspection: latestInspection,
+        plan: latestPlan,
+      }).catch(() => undefined);
+    }
+  }, [latestInspection, latestPlan]);
 
   const setActionStatus = useCallback((state: StatusState, message: string) => {
     setStatus({ state, message });
@@ -96,20 +132,24 @@ export function useApplicationPlan(
 
   const autofillForm = useCallback(async () => {
     setLoadingButton("autofill");
-    setActionStatus("running", "正在根据你的资料匹配并填写当前表单...");
+    setActionStatus("running", "Matching your profile and filling out the form...");
     try {
-      const form =
+      let form =
         latestForm?.kind === "application_form" || latestForm?.kind === "page_input_fields"
           ? latestForm
           : await inspectForm();
       if (!form || (form.kind !== "application_form" && form.kind !== "page_input_fields")) {
-        setActionStatus("error", "未检测到可填写的申请表单。请先打开申请表后重试。");
+        await wait(150);
+        form = await inspectForm();
+      }
+      if (!form || (form.kind !== "application_form" && form.kind !== "page_input_fields")) {
+        setActionStatus("error", "No fillable form detected. Please open the application form and try again.");
         return;
       }
 
       const response = await send({ type: "form.autofill-active" });
       if (!response.ok) {
-        setActionStatus("error", `自动填充失败: ${response.error}`);
+        setActionStatus("error", `Autofill failed: ${response.error}`);
         return;
       }
 
@@ -125,8 +165,8 @@ export function useApplicationPlan(
       setActionStatus(
         unanswered.length > 0 ? "warning" : "success",
         unanswered.length > 0
-          ? `已自动填充 ${filledCount} 项，另有 ${unanswered.length} 项需要你确认。`
-          : `已自动填充 ${filledCount} 项，请检查后继续下一步。`,
+          ? `Autofilled ${filledCount} field(s). ${unanswered.length} field(s) need your review.`
+          : `Autofilled ${filledCount} field(s). Please inspect and proceed to next step.`,
       );
     } finally {
       setLoadingButton(null);
@@ -135,7 +175,7 @@ export function useApplicationPlan(
 
   const fillAndNext = useCallback(async () => {
     setLoadingButton("fillAndNext");
-    setActionStatus("running", "🔄 正在准备申请计划并提取表单字段...");
+    setActionStatus("running", "🔄 Preparing application plan and extracting form fields...");
     try {
       let form = latestForm?.kind === "application_form" ? latestForm : await inspectForm();
       if (!form || form.kind !== "application_form") {
@@ -146,11 +186,11 @@ export function useApplicationPlan(
         }
       }
       if (!form || form.kind !== "application_form") {
-        setActionStatus("error", "❌ 未检测到可用的申请表单弹窗，请先打开 Easy Apply。");
+        setActionStatus("error", "❌ No application form popup detected. Please open Easy Apply first.");
         return;
       }
       if (await ensurePlanPrepared() && latestPlan) {
-        setActionStatus("running", "🔄 正在匹配答案、自动填写并点击下一步...");
+        setActionStatus("running", "🔄 Matching answers, autofilling, and proceeding...");
         const response = await send({ type: "application.fill-and-next-active", applicationId: latestPlan.application_id });
         if (response.ok) {
           setFillResults(response.fillResults || []);
@@ -158,13 +198,13 @@ export function useApplicationPlan(
           if (response.plan) setLatestPlan(response.plan);
           await inspectForm();
           if (response.stepAdvanced) {
-            setActionStatus("success", `✅ 已自动填表并跳至下一步 (${response.actionLabel || "Next"})！`);
+            setActionStatus("success", `✅ Form filled and moved to next step (${response.actionLabel || "Next"})!`);
             return;
           }
         }
       }
       const res = await executeMoveNext(inspectForm);
-      setActionStatus(res.success ? "success" : "error", res.success ? res.message || "已跳转" : res.error || "失败");
+      setActionStatus(res.success ? "success" : "error", res.success ? res.message || "Moved to next step" : res.error || "Failed");
     } finally {
       setLoadingButton(null);
     }
@@ -184,20 +224,20 @@ export function useApplicationPlan(
     [setActionStatus],
   );
 
-  const openLinkedIn = () => runAction("open", "🔄 正在尝试打开 Easy Apply 弹窗...", () => executeOpenLinkedIn(inspectForm));
-  const moveNext = () => runAction("next", "🔄 正在请求点击下一步...", () => executeMoveNext(inspectForm));
-  const movePrevious = () => runAction("previous", "🔄 正在请求返回上一步...", () => executeMovePrevious(inspectForm));
+  const openLinkedIn = () => runAction("open", "🔄 Attempting to open Easy Apply modal...", () => executeOpenLinkedIn(inspectForm));
+  const moveNext = () => runAction("next", "🔄 Requesting Next step...", () => executeMoveNext(inspectForm));
+  const movePrevious = () => runAction("previous", "🔄 Requesting Previous step...", () => executeMovePrevious(inspectForm));
 
   const submitApplication = useCallback(async () => {
     setLoadingButton("submit");
-    setActionStatus("running", "🔄 正在自动完成 Plan 确认并提交 LinkedIn 申请...");
+    setActionStatus("running", "🔄 Confirming Plan and submitting LinkedIn application...");
     try {
       let plan = latestPlan ?? (latestInspection?.kind === "job" ? await createPlan() : null);
-      if (!plan) return setActionStatus("error", "❌ 提交失败: 尚未创建申请计划。");
+      if (!plan) return setActionStatus("error", "❌ Submission failed: Application plan not created.");
 
       const response = await send({ type: "application.submit-linkedin-active", applicationId: plan.application_id });
-      if (!response.ok) return setActionStatus("error", `❌ 提交申请失败: ${response.error}`);
-      setActionStatus("success", `🎉 ${response.linkedinApplication?.message || "LinkedIn 申请已成功提交！"}`);
+      if (!response.ok) return setActionStatus("error", `❌ Application submission failed: ${response.error}`);
+      setActionStatus("success", `🎉 ${response.linkedinApplication?.message || "LinkedIn application successfully submitted!"}`);
       if (response.plan) setLatestPlan(response.plan);
     } finally {
       setLoadingButton(null);
@@ -206,21 +246,86 @@ export function useApplicationPlan(
 
   const autoRunLinkedIn = useCallback(async () => {
     setLoadingButton("autoRun");
-    setActionStatus("running", "⚡ 自动投递启动中，正在连续分析与填表...");
+    setActionStatus("running", "⚡ Starting auto-apply workflow, analyzing & filling form...");
     try {
       const res = await executeAutoRun(latestPlan?.application_id);
-      if (!res.success) return setActionStatus("error", res.error || "失败");
+      if (!res.success) return setActionStatus("error", res.error || "Failed");
       if (res.plan) setLatestPlan(res.plan);
       if (res.fillResults) setFillResults(res.fillResults);
       if (res.unansweredFields) setUnansweredFields(res.unansweredFields);
       setActionStatus(
         res.autoStatus === "paused_for_user" ? "warning" : "success",
-        res.autoStatus === "paused_for_user" ? `⏸️ 自动投递暂停: ${res.autoMessage || "请在页面完成字段填写。"}` : `✅ ${res.autoMessage || "自动投递阶段已完成！"}`,
+        res.autoStatus === "paused_for_user" ? `⏸️ Auto-apply paused: ${res.autoMessage || "Please complete remaining fields on page."}` : `✅ ${res.autoMessage || "Auto-apply phase completed!"}`,
       );
     } finally {
       setLoadingButton(null);
     }
   }, [latestPlan, setActionStatus]);
+
+  const recordApplication = useCallback(async () => {
+    setLoadingButton("record");
+    setActionStatus("running", "📝 Recording application info...");
+    try {
+      let plan = latestPlan;
+      if (!plan && latestInspection?.kind === "job") {
+        plan = await createPlan();
+      }
+      if (!plan) {
+        setActionStatus("error", "❌ Record failed: Unable to extract job info from current page.");
+        return;
+      }
+
+      const applicationId = plan.application_id;
+
+      // Reconcile plan state transitions so backend accepts mark_submitted
+      if (["planned", "awaiting_user_review"].includes(plan.plan.state)) {
+        const prepRes = await send({
+          type: "application.plan-action-active",
+          applicationId,
+          action: "prepare",
+        }).catch(() => null);
+        if (prepRes?.ok && prepRes.plan) plan = prepRes.plan;
+      }
+
+      if (plan.plan.state === "preparing") {
+        const markPrepRes = await send({
+          type: "application.plan-action-active",
+          applicationId,
+          action: "mark_prepared",
+        }).catch(() => null);
+        if (markPrepRes?.ok && markPrepRes.plan) plan = markPrepRes.plan;
+      }
+
+      if (plan.plan.state === "awaiting_user_review") {
+        const appRes = await send({
+          type: "application.plan-action-active",
+          applicationId,
+          action: "approve",
+        }).catch(() => null);
+        if (appRes?.ok && appRes.plan) plan = appRes.plan;
+      }
+
+      const response = await send({
+        type: "application.plan-action-active",
+        applicationId,
+        action: "mark_submitted",
+        reason: "Manually recorded via browser extension",
+      });
+
+      if (response.ok && response.plan) {
+        setLatestPlan(response.plan);
+        setActionStatus("success", "🎉 Application record successfully saved! View on /applications page.");
+      } else {
+        const errMsg = !response.ok ? response.error : "Error saving application record.";
+        setActionStatus("error", `❌ Record failed: ${errMsg}`);
+      }
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "An exception occurred while recording.";
+      setActionStatus("error", `❌ Record failed: ${msg}`);
+    } finally {
+      setLoadingButton(null);
+    }
+  }, [latestPlan, latestInspection, createPlan, setActionStatus]);
 
   return {
     latestPlan,
@@ -237,6 +342,7 @@ export function useApplicationPlan(
     moveNext,
     movePrevious,
     submitApplication,
+    recordApplication,
     autoRunLinkedIn,
   };
 }

@@ -12,7 +12,7 @@ import type {
 } from '@/lib/types';
 import { cn, cleanName } from '@/lib/utils';
 import { CategorySelector } from './selectors';
-import { Button } from '@/components/UI/Button';
+import { Button } from '@jobby/ui';
 import { Textarea } from '@/components/UI/textarea';
 import { Modal } from '@/components/layout/modal';
 import { H3 } from '@/components/UI/text/typography';

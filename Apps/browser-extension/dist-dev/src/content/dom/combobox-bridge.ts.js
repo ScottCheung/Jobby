@@ -74,3 +74,22 @@ export function selectPageCombobox(element, value) {
     timer = window.setTimeout(() => finish(null), 700);
   });
 }
+const CASCADE_EVENT = "jobby.network-cascade-complete";
+export function waitForNetworkCascadeOrSettle(maxWaitMs = 350) {
+  return new Promise((resolve) => {
+    let resolved = false;
+    let timer;
+    const finish = () => {
+      if (resolved) return;
+      resolved = true;
+      document.removeEventListener(CASCADE_EVENT, onCascade, true);
+      if (timer !== void 0) window.clearTimeout(timer);
+      resolve();
+    };
+    const onCascade = () => {
+      window.setTimeout(finish, 40);
+    };
+    document.addEventListener(CASCADE_EVENT, onCascade, true);
+    timer = window.setTimeout(finish, maxWaitMs);
+  });
+}

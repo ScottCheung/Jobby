@@ -38,12 +38,10 @@ export function readCurrentPage() {
     };
   }
   if (isSeekHost(hostname)) {
-    const inspection = readSeekPage();
-    return inspection.kind === "job" ? inspection : fallbackToGenericJob(inspection);
+    return readSeekPage();
   }
   if (isLinkedInHost(hostname)) {
-    const inspection = readLinkedInPage();
-    return inspection.kind === "job" ? inspection : fallbackToGenericJob(inspection);
+    return readLinkedInPage();
   }
   if (isIndeedHost(hostname)) {
     const inspection = readIndeedJobPage();
@@ -63,6 +61,9 @@ export async function readCurrentPageWhenReady() {
   return inspection;
 }
 function fallbackToGenericJob(preferredInspection) {
+  if (lastPageClass && !lastPageClass.isJobPage) {
+    return preferredInspection;
+  }
   const genericInspection = readGenericJobPage();
   if (genericInspection.kind === "job") return genericInspection;
   if (preferredInspection.kind === "not_job_page" && preferredInspection.reason.includes("URL does not identify")) {

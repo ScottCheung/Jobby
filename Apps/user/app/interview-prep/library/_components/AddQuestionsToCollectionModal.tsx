@@ -20,7 +20,7 @@ import type {
   InterviewCollection,
 } from '@/lib/types';
 import { cleanName, cn } from '@/lib/utils';
-import { Button } from '@/components/UI/Button';
+import { Button } from '@jobby/ui';
 import { Modal } from '@/components/layout/modal';
 import { useLayoutStore } from '@/lib/store/layout-store';
 import { QuestionsFilterDrawer } from './QuestionsFilterDrawer';

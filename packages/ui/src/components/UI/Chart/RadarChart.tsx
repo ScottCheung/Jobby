@@ -1,0 +1,217 @@
+/** @format */
+
+import {
+  PolarAngleAxis,
+  PolarGrid,
+  PolarRadiusAxis,
+  Radar,
+  RadarChart as RechartsRadarChart,
+  ResponsiveContainer,
+  Tooltip,
+  Legend,
+  type RadarProps as RechartsRadarProps,
+} from 'recharts';
+import { ChartTooltip } from './Tooltip';
+
+interface RadarChartProps {
+  data: any[];
+  xKey: string;
+  yKey?: string;
+  yKeys?: string[];
+  title?: string;
+  color?: string; // Fallback color for single series if not using yKeys
+  showAxes?: boolean; // 是否显示轴
+  showValues?: boolean; // This prop is still defined but not actively used to render values on chart
+  showGrid?: boolean; // 是否显示网格线
+  gridType?: 'polygon' | 'circle';
+  showLegend?: boolean;
+  customTooltip?: React.ReactElement | ((props: any) => React.ReactElement);
+  showDots?: boolean | RechartsRadarProps<any, any>['dot'];
+  activeDot?: RechartsRadarProps<any, any>['activeDot'];
+  ValueProps?: any;
+  margin?: { top?: number; right?: number; bottom?: number; left?: number };
+}
+
+// Modern color palette with bright, accessible colors
+const COLORS = [
+  '#3b82f6', // Blue
+  '#10b981', // Green
+  '#f59e0b', // Amber
+  '#ec4899', // Pink
+  '#8b5cf6', // Purple
+  '#06b6d4', // Cyan
+  '#f43f5e', // Rose
+  '#84cc16', // Lime
+  '#fb7185', // Light Rose
+  '#60a5fa', // Light Blue
+  '#a78bfa', // Light Purple
+  '#34d399', // Light Green
+];
+
+const RadarChart = ({
+  data,
+  xKey,
+  yKey,
+  yKeys,
+  title,
+  color = '#3b82f6', // Used if seriesKeys results in a single key and no specific color in data
+  showAxes = true,
+  showValues = true, // Prop remains, functionality for displaying values directly on chart not implemented
+  showGrid = true,
+  gridType = 'polygon',
+  showLegend = false,
+  customTooltip,
+  showDots = true,
+  activeDot = { r: 6 },
+  ValueProps,
+  margin = { top: 0, right: 0, bottom: 0, left: 0 },
+}: RadarChartProps) => {
+  const seriesKeys =
+    yKeys ||
+    (yKey ? [yKey]
+    : data && data.length > 0 ?
+      Object.keys(data[0] || {}).filter(
+        (k) => k !== xKey && typeof data[0][k] === 'number',
+      )
+    : []);
+
+  if (!data || data.length === 0 || !xKey || seriesKeys.length === 0) {
+    return null;
+  }
+
+  const renderRadars = () => {
+    return seriesKeys.map((key, index) => {
+      // Use the passed 'color' prop for single series, COLORS palette for multiple
+      const seriesColor =
+        seriesKeys.length === 1 && !yKeys ?
+          color
+        : COLORS[index % COLORS.length];
+
+      let dotConfig: RechartsRadarProps<any, any>['dot'] = false;
+      if (showDots === true) {
+        dotConfig = { stroke: seriesColor, fill: seriesColor, r: 3 };
+      } else if (typeof showDots === 'object') {
+        dotConfig = showDots;
+      }
+
+      let activeDotConfig: RechartsRadarProps<any, any>['activeDot'] = false;
+      if (activeDot === true) {
+        activeDotConfig = { r: 6, stroke: seriesColor };
+      } else if (typeof activeDot === 'object') {
+        activeDotConfig = activeDot;
+      }
+
+      return (
+        <Radar
+          key={key}
+          name={key}
+          dataKey={key}
+          stroke={seriesColor}
+          fill={seriesColor}
+          fillOpacity={0.3}
+          dot={dotConfig}
+          activeDot={activeDotConfig}
+          animationDuration={1000}
+          animationBegin={index * 150}
+          isAnimationActive={true}
+        />
+      );
+    });
+  };
+
+  return (
+    <ResponsiveContainer width='100%' height='100%'>
+      <RechartsRadarChart cx='50%' cy='50%' outerRadius='80%' data={data} margin={margin}>
+        {showGrid && (
+          <PolarGrid
+            gridType={gridType}
+            strokeDasharray='3 3'
+            stroke='var(--color-ink-secondary)'
+            strokeOpacity={0.3}
+          />
+        )}
+        {showAxes && (
+          <>
+            <PolarAngleAxis
+              dataKey={xKey}
+              tick={{ fill: 'var(--color-ink-secondary)', fontSize: 12 }}
+              stroke='var(--color-ink-secondary)'
+              strokeOpacity={0.3}
+            />
+            <PolarRadiusAxis
+              tick={{ fill: 'var(--color-ink-secondary)', fontSize: 10 }}
+              axisLine={false}
+              tickCount={5}
+              stroke='var(--color-ink-secondary)'
+              strokeOpacity={0.3}
+            />
+          </>
+        )}
+        {renderRadars()}
+        <Tooltip
+          content={({ active, payload, label }) => {
+            if (customTooltip) {
+              if (typeof customTooltip === 'function') {
+                return customTooltip({ active, payload, label });
+              }
+              return customTooltip;
+            }
+            if (active && payload && payload.length) {
+              const originalData = payload[0].payload;
+              // 转换 payload 以适应 ChartTooltip 的数据结构
+              const transformedPayload = payload.map((entry) => ({
+                name: typeof entry.dataKey === 'function' ? undefined : entry.dataKey, // 使用 dataKey 作为系列名称 (studentA, studentB, etc.)
+                value: entry.value as number, // 确保 value 是 number 类型
+                color: entry.color || entry.stroke,
+                payload: entry.payload,
+                fill: entry.fill,
+                stroke: entry.stroke,
+              }));
+
+              return (
+                <ChartTooltip
+                  active={active}
+                  ValueProps={ValueProps}
+                  payload={transformedPayload}
+                  label={originalData[xKey]} // 使用 subject 值作为 label
+                />
+              );
+            }
+            return null;
+          }}
+          cursor={{ fill: 'var(--color-ink-secondary)', fillOpacity: 0.05 }}
+        />
+        {showLegend && (
+          <Legend verticalAlign='top' height={44} content={<CustomLegend />} />
+        )}
+      </RechartsRadarChart>
+    </ResponsiveContainer>
+  );
+};
+
+const CustomLegend = (props: any) => {
+  const { payload } = props;
+  if (!payload) return null;
+
+  return (
+    <div className='label-sm flex flex-wrap items-center gap-3 justify-start mb-5'>
+      {payload.map((entry: any, index: number) => {
+        const { value, color } = entry;
+        return (
+          <div
+            key={`legend-item-${index}`}
+            className='flex items-center gap-2 px-2 py-1 rounded-full transition-all cursor-default bg-linear-to-r from-background to-transparent'
+          >
+            <span
+              className='w-3 h-3 rounded-full '
+              style={{ backgroundColor: color }}
+            />
+            <span className='capitalize tracking-wide'>{value}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+export default RadarChart;

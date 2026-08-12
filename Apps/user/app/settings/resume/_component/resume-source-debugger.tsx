@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { FileSearch, FileUp } from "lucide-react";
 import { api } from "@/lib/api";
 import type { ResumeSource } from "@/lib/types";
-import { Button } from "@/components/UI/Button";
+import { Button } from "@jobby/ui";
 import { Textarea } from "@/components/UI/textarea";
 
 type ResumeSourceDebuggerProps = {

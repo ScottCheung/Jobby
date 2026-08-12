@@ -1,19 +1,30 @@
-import type { ValidatedApplicationPlanResponse } from "../../shared/contracts/backend";
-import type { FormInspection } from "../../shared/contracts/form-inspection";
-import type { PageInspection } from "../../shared/contracts/page-inspection";
+/** @format */
+
+import type { ValidatedApplicationPlanResponse } from '../../shared/contracts/backend';
+import type { FormInspection } from '../../shared/contracts/form-inspection';
+import type { PageInspection } from '../../shared/contracts/page-inspection';
+// Import the component directly. In Vite dev mode, importing the UI package's
+// barrel file evaluates every re-export, including web-app-only modules that
+// are not available to the extension.
+import { Button } from '@jobby/ui/components/UI/Button';
 
 interface WorkflowSectionProps {
   latestInspection: PageInspection | null;
   latestForm: FormInspection | null;
   latestPlan: ValidatedApplicationPlanResponse | null;
   loadingButton: string | null;
+  isClearingForm: boolean;
   onAutofill: () => void;
+  onClearAll: () => void;
   onAutoApply: () => void;
   onOpenLinkedIn: () => void;
   onMovePrevious: () => void;
   onMoveNext: () => void;
   onFillAndNext: () => void;
   onOpenReviewModal: () => void;
+  onRecordApplication?: () => void;
+  hideAutofill?: boolean;
+  autofillOnly?: boolean;
 }
 
 export function WorkflowSection({
@@ -21,120 +32,193 @@ export function WorkflowSection({
   latestForm,
   latestPlan,
   loadingButton,
+  isClearingForm,
   onAutofill,
+  onClearAll,
   onAutoApply,
   onOpenLinkedIn,
   onMovePrevious,
   onMoveNext,
   onFillAndNext,
   onOpenReviewModal,
+  onRecordApplication,
+  hideAutofill = false,
+  autofillOnly = false,
 }: WorkflowSectionProps) {
-  const linkedInJob =
-    latestInspection?.kind === "job" && latestInspection.snapshot.platform === "linkedin"
-      ? latestInspection.snapshot
-      : null;
+  const isLinkedInJob =
+    latestInspection?.kind === 'job' &&
+    latestInspection.snapshot.platform === 'linkedin';
   const isLinkedInForm =
-    latestForm?.kind === "application_form" && latestForm.platform === "linkedin";
-  const isActionableForm = latestForm?.kind === "application_form";
-  const isFillableForm =
-    latestForm?.kind === "application_form" || latestForm?.kind === "page_input_fields";
-  const isSubmitStep = latestForm?.kind === "application_form" && latestForm.action === "submit";
+    latestForm?.kind === 'application_form' &&
+    latestForm.platform === 'linkedin';
+  const appForm =
+    latestForm?.kind === 'application_form' ? latestForm : null;
+  const isActionableForm =
+    latestForm?.kind === 'application_form' ||
+    latestForm?.kind === 'page_input_fields';
+  const isFillableForm = isActionableForm;
+  const isSubmitStep =
+    isActionableForm &&
+    (appForm?.action === 'submit' ||
+      Boolean(appForm?.hasSubmitAction) ||
+      appForm?.action === undefined);
+  const isSubmitting = latestPlan?.plan.state === 'submitting';
+  const isAlreadyRecorded = latestPlan?.plan.state === 'submitted';
   const planIsTerminal = Boolean(
-    latestPlan && ["submitting", "submitted", "failed", "rejected", "skipped"].includes(latestPlan.plan.state),
+    latestPlan &&
+    ['submitted', 'failed', 'rejected', 'skipped'].includes(
+      latestPlan.plan.state,
+    ),
   );
-  const isJobPage = latestInspection?.kind === "job";
+  const isJobPage = latestInspection?.kind === 'job';
 
   // The displayed form state can briefly be stale after LinkedIn removes a
   // modal. Let the content script resolve the live state when Open is clicked;
   // it safely returns "already open" when the modal is actually present.
-  const disableOpen = planIsTerminal || !linkedInJob || !linkedInJob.easyApply;
+  const disableOpen =
+    (!isJobPage && !isActionableForm) ||
+    (isLinkedInJob &&
+      !latestInspection.snapshot.easyApply &&
+      !isActionableForm);
   // Keep LinkedIn Back available while its step transition settles; the
   // content script performs the final live availability check on click.
-  const disablePrevious = !isActionableForm || (
-    !latestForm.canGoBack && latestForm.platform !== "linkedin"
+  const disablePrevious =
+    !isActionableForm ||
+    (!appForm?.canGoBack && latestForm?.platform !== 'linkedin');
+  const disableNext =
+    !isActionableForm ||
+    (appForm?.action === 'submit' || Boolean(appForm?.hasSubmitAction));
+  const disableFillAndNext = !(
+    latestPlan?.plan.state === 'preparing' &&
+    isActionableForm
   );
-  const disableNext = !isActionableForm || isSubmitStep;
-  const disableFillAndNext = !(latestPlan?.plan.state === "preparing" && latestForm?.kind === "application_form");
-  // Reaching LinkedIn's final step is the source of truth for whether the
+  // Reaching the final submit step is the source of truth for whether the
   // page can submit. A manually-debugged flow may not have advanced Jobby's
   // application-plan state yet; the confirmation flow reconciles it.
-  const disableSubmit = planIsTerminal || !isLinkedInForm || !isSubmitStep;
-  const disableAutofill = !isFillableForm;
+  const disableSubmit = !isActionableForm || !isSubmitStep || isSubmitting;
+  const disableRecord = isAlreadyRecorded || (!isJobPage && !isActionableForm);
+  const disableAutofill = loadingButton !== null || isClearingForm;
   const disableAutoApply = planIsTerminal || (!isJobPage && !isLinkedInForm);
+  const autofillFields = isFillableForm ? latestForm?.fields || [] : [];
+  const autofillTotal = autofillFields.length;
+  const autofillCompleted = autofillFields.filter(
+    (field) => field.filled,
+  ).length;
+  const autofillPercentage =
+    autofillTotal ? Math.round((autofillCompleted / autofillTotal) * 100) : 0;
+
+  const autofillAction = (
+    <div className='autofill-actions'>
+      <Button
+        type='button'
+        variant={'secondary'}
+        className='autofill-btn-fill'
+        disabled={disableAutofill}
+        onClick={onAutofill}
+      >
+        {loadingButton === 'autofill' ?
+          isFillableForm && autofillTotal > 0 ?
+            `Autofilling... ${autofillCompleted}/${autofillTotal} (${autofillPercentage}%)`
+          : 'Autofilling...'
+        : isFillableForm && autofillTotal > 0 ?
+          `Autofill Form ${autofillCompleted}/${autofillTotal} (${autofillPercentage}%)`
+        : 'Autofill Form'
+        }
+      </Button>
+      <Button
+        type='button'
+        variant={'outline'}
+        className='clear-all-btn-compact'
+        disabled={!isFillableForm || disableAutofill}
+        onClick={onClearAll}
+        isLoading={isClearingForm}
+      >
+        {isClearingForm ? 'Clearing...' : 'Clear All'}
+      </Button>
+    </div>
+  );
+
+  if (autofillOnly) return autofillAction;
 
   return (
-    <div className="workflow-controls">
-      <div className="action-group">
-        <p className="action-group-label">表单</p>
-        <button
-          type="button"
-          className={`autofill-button ${loadingButton === "autofill" ? "is-loading" : ""}`}
-          disabled={disableAutofill || loadingButton !== null}
-          onClick={onAutofill}
-        >
-          {loadingButton === "autofill" ? "正在自动填充..." : "自动填充表格"}
-        </button>
-      </div>
+    <div className='workflow-controls'>
+      {!hideAutofill && autofillAction}
 
-      <div className="action-group">
-        <p className="action-group-label">投递流程</p>
+      <div className='action-group'>
+        <p className='action-group-label'>Application Flow</p>
         <button
-          type="button"
-          className={`hero-button ${loadingButton === "autoRun" ? "is-loading" : ""}`}
+          type='button'
+          className={`hero-button ${loadingButton === 'autoRun' ? 'is-loading' : ''}`}
           disabled={disableAutoApply || loadingButton !== null}
           onClick={onAutoApply}
         >
-          {loadingButton === "autoRun" ? "自动投递中..." : "一键自动投递"}
+          {loadingButton === 'autoRun' ? 'Applying...' : 'One-Click Auto Apply'}
         </button>
-        <div className="step-debug-controls" aria-label="Application step controls">
+        <div
+          className='step-debug-controls'
+          aria-label='Application step controls'
+        >
           <button
-            type="button"
-            className={`step-debug-button previous ${loadingButton === "previous" ? "is-loading" : ""}`}
+            type='button'
+            className={`step-debug-button previous ${loadingButton === 'previous' ? 'is-loading' : ''}`}
             disabled={disablePrevious || loadingButton !== null}
             onClick={onMovePrevious}
           >
-            {loadingButton === "previous" ? "返回中..." : "上一步"}
+            {loadingButton === 'previous' ? 'Backing...' : 'Previous'}
           </button>
           <button
-            type="button"
-            className={`step-debug-button next ${loadingButton === "next" ? "is-loading" : ""}`}
+            type='button'
+            className={`step-debug-button next ${loadingButton === 'next' ? 'is-loading' : ''}`}
             disabled={disableNext || loadingButton !== null}
             onClick={onMoveNext}
           >
-            {loadingButton === "next" ? "前进中..." : "下一步"}
+            {loadingButton === 'next' ? 'Loading...' : 'Next'}
           </button>
         </div>
       </div>
 
-      <div className="action-group action-group--secondary">
-        <p className="action-group-label">当前申请</p>
-        <div className="action-grid">
-        <button
-          type="button"
-          className={loadingButton === "open" ? "is-loading" : ""}
-          disabled={disableOpen || loadingButton !== null}
-          onClick={onOpenLinkedIn}
-        >
-          {loadingButton === "open" ? "打开中..." : "打开申请"}
-        </button>
+      <div className='action-group action-group--secondary'>
+        <p className='action-group-label'>Current Application</p>
+        <div className='action-grid'>
+          <button
+            type='button'
+            className={loadingButton === 'open' ? 'is-loading' : ''}
+            disabled={disableOpen || loadingButton !== null}
+            onClick={onOpenLinkedIn}
+          >
+            {loadingButton === 'open' ? 'Opening...' : 'Open Application'}
+          </button>
 
-        <button
-          type="button"
-          className={`primary ${loadingButton === "fillAndNext" ? "is-loading" : ""}`}
-          disabled={disableFillAndNext || loadingButton !== null}
-          onClick={onFillAndNext}
-        >
-          {loadingButton === "fillAndNext" ? "填表中..." : "填表并下一步"}
-        </button>
+          <button
+            type='button'
+            className={`primary ${loadingButton === 'fillAndNext' ? 'is-loading' : ''}`}
+            disabled={disableFillAndNext || loadingButton !== null}
+            onClick={onFillAndNext}
+          >
+            {loadingButton === 'fillAndNext' ? 'Filling...' : 'Fill & Next'}
+          </button>
 
-        <button
-          type="button"
-          className={`primary danger-btn ${loadingButton === "submit" ? "is-loading" : ""}`}
-          disabled={disableSubmit || loadingButton !== null}
-          onClick={onOpenReviewModal}
-        >
-          提交申请
-        </button>
+          <button
+            type='button'
+            className={`primary danger-btn ${loadingButton === 'submit' ? 'is-loading' : ''}`}
+            disabled={disableSubmit || loadingButton !== null}
+            onClick={onOpenReviewModal}
+          >
+            Submit Application
+          </button>
+
+          <button
+            type='button'
+            className={loadingButton === 'record' ? 'is-loading' : ''}
+            disabled={disableRecord || loadingButton !== null}
+            onClick={onRecordApplication}
+          >
+            {loadingButton === 'record'
+              ? 'Recording...'
+              : isAlreadyRecorded
+                ? 'Recorded'
+                : 'Record Application'}
+          </button>
         </div>
       </div>
     </div>

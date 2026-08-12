@@ -1,0 +1,4 @@
+/* Badge Component Styles */
+.badge-spacing {
+    @apply px-4 py-2;
+}

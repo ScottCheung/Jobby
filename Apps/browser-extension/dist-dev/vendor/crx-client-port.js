@@ -1,4 +1,4 @@
-const crxClientPortName = `@crx/client:${"OnujSAOAzVsZ"}`;
+const crxClientPortName = `@crx/client:${"I8Yzpkm6Kl-m"}`;
 function hasOwnExtensionRuntime(runtime2, extensionId2) {
   try {
     return new URL(runtime2.getURL("")).host === extensionId2;
@@ -55,7 +55,7 @@ class HMRPort {
     const payload = JSON.parse(message.data);
     if (isCrxHMRPayload(payload)) {
       if (payload.event === "crx:runtime-reload") {
-        if (true) {
+        if (false) {
           console.log("[crx] runtime reload");
           setTimeout(() => location.reload(), 500);
         } else {

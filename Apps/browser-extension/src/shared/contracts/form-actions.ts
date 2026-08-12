@@ -4,7 +4,7 @@ import { formFieldTypeSchema } from "./form-inspection";
 
 export const fieldFillInstructionSchema = z.object({
   type: z.literal("content.fill-field"),
-  commandId: z.string().min(1).max(128),
+  commandId: z.string().min(1).max(256),
   source: z.enum(["backend", "panel"]),
   target: z.object({
     key: z.string().min(1).max(256),
@@ -27,7 +27,7 @@ export type FieldFillInstruction = z.infer<typeof fieldFillInstructionSchema>;
 
 export const fileUploadInstructionSchema = z.object({
   type: z.literal("content.upload-file"),
-  commandId: z.string().min(1).max(128),
+  commandId: z.string().min(1).max(256),
   target: formFieldTargetSchema,
   filename: z.string().min(1).max(255),
   mimeType: z.string().min(1).max(128),

@@ -44,6 +44,8 @@ export function VirtualList<T>({
   onEndReached,
   hasMore = false,
   isLoadingMore = false,
+  endReachedMargin = 160,
+  loadOnScrollOnly = false,
   className = '',
   emptyState,
   outerRef,
@@ -103,7 +105,7 @@ export function VirtualList<T>({
       },
       {
         root: internalRef.current,
-        rootMargin: '200px',
+        rootMargin: '600px',
         threshold: 0.1,
       },
     );

@@ -17,7 +17,7 @@ import {
   X,
 } from 'lucide-react';
 import type { InterviewCategory, InterviewCollection } from '@/lib/types';
-import { Button } from '@/components/UI/Button';
+import { Button } from '@jobby/ui';
 import { Textarea } from '@/components/UI/textarea';
 import {
   CardSelector,

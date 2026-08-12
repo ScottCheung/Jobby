@@ -7,7 +7,7 @@ import { Calendar, Sliders, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import AnimatedIcon from '@/components/UI/SVGanimation/StatusSVG';
 import type { InterviewQuestion } from '@/lib/types';
-import { Button } from '@/components/UI/Button';
+import { Button } from '@jobby/ui';
 import { motion } from 'framer-motion';
 
 type PresetType = 'sprint' | 'tactical' | 'master';

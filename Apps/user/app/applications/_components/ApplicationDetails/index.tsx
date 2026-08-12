@@ -13,7 +13,7 @@ import {
 } from '@/lib/types';
 import { useLayoutStore } from '@/lib/store/layout-store';
 import { formatRelativeDate } from '@/components/ConsoleUtils';
-import { Button } from '@/components/UI/Button';
+import { Button } from '@jobby/ui';
 
 import { Header } from './Header';
 import { Tabs } from './Tabs';

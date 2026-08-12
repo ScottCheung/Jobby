@@ -11,7 +11,7 @@ import type {
   MasterResumeEvaluation,
   MasterResumeEvaluationHistoryItem,
 } from '@/lib/types';
-import { Button } from '@/components/UI/Button';
+import { Button } from '@jobby/ui';
 import { useGlobalModalStore } from '@/lib/store/global-modal-store';
 import { ResumePdfPreview } from './resume-pdf-preview';
 import { Tooltip } from '@/components/UI/tooltip';

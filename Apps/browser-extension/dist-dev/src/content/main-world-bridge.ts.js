@@ -84,3 +84,52 @@ document.addEventListener(REQUEST_EVENT, (event) => {
     });
   }, 0);
 });
+const CASCADE_EVENT = "jobby.network-cascade-complete";
+(function setupNetworkCascadeInterception() {
+  try {
+    const rawFetch = window.fetch;
+    if (typeof rawFetch === "function") {
+      window.fetch = async function(...args) {
+        const response = await rawFetch.apply(this, args);
+        try {
+          if (response && (response.ok || response.status >= 200 && response.status < 300)) {
+            const url = typeof args[0] === "string" ? args[0] : args[0] instanceof Request ? args[0].url : "";
+            document.dispatchEvent(
+              new CustomEvent(CASCADE_EVENT, {
+                detail: { url, status: response.status, timestamp: Date.now() }
+              })
+            );
+          }
+        } catch {
+        }
+        return response;
+      };
+    }
+    const RawXHR = window.XMLHttpRequest;
+    if (RawXHR && RawXHR.prototype) {
+      const rawOpen = RawXHR.prototype.open;
+      const rawSend = RawXHR.prototype.send;
+      RawXHR.prototype.open = function(method, url, ...rest) {
+        this._jobbyUrl = String(url);
+        return rawOpen.apply(this, [method, url, ...rest]);
+      };
+      RawXHR.prototype.send = function(...args) {
+        this.addEventListener("load", () => {
+          try {
+            if (this.status >= 200 && this.status < 300) {
+              const url = this._jobbyUrl || "";
+              document.dispatchEvent(
+                new CustomEvent(CASCADE_EVENT, {
+                  detail: { url, status: this.status, timestamp: Date.now() }
+                })
+              );
+            }
+          } catch {
+          }
+        });
+        return rawSend.apply(this, args);
+      };
+    }
+  } catch {
+  }
+})();

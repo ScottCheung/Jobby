@@ -8,9 +8,26 @@ import { startFormDiscovery, watchFormScope } from "./form-observer";
 import { fillFormField, fillFormFieldValue, focusFormField, uploadFormFile } from "./dom/form-driver";
 import { linkedinAdapter } from "./platforms/linkedin/adapter";
 import { clickSeekApplicationAction } from "./platforms/seek/adapter";
+import { clickGenericApplicationAction, openGenericApplication } from "./platforms/generic/adapter";
+import { applicationPlanResponseSchema } from "../shared/contracts/backend";
+import { injectInPageScoreCard } from "./dom/score-card-injector";
 
 export async function handleContentCommand(message: unknown): Promise<unknown> {
-  if (isInspectCommand(message)) return { inspection: pageInspectionSchema.parse(await readCurrentPageWhenReady()) };
+  if (isInspectCommand(message)) {
+    const inspection = pageInspectionSchema.parse(await readCurrentPageWhenReady());
+    injectInPageScoreCard(inspection);
+    return { inspection };
+  }
+  if (isRenderScoreCardCommand(message)) {
+    const inspection = (message as { inspection?: unknown }).inspection
+      ? pageInspectionSchema.parse((message as { inspection: unknown }).inspection)
+      : undefined;
+    const plan = (message as { plan?: unknown }).plan
+      ? applicationPlanResponseSchema.parse((message as { plan: unknown }).plan)
+      : undefined;
+    injectInPageScoreCard(inspection, plan);
+    return { ok: true };
+  }
   if (isInspectFormCommand(message)) {
     const form = formInspectionSchema.parse(readCurrentForm());
     if (hasObservableFields(form)) {
@@ -33,14 +50,22 @@ export async function handleContentCommand(message: unknown): Promise<unknown> {
     if (typeof value !== "string" && typeof value !== "boolean") throw new Error("Invalid form field value.");
     return { fillResult: await fillFormFieldValue(target, value, getCurrentFormScope()) };
   }
-  if (isOpenLinkedInApplicationCommand(message)) return { application: await linkedinAdapter.openApplication() };
+  if (isOpenLinkedInApplicationCommand(message)) {
+    const hostname = window.location.hostname;
+    const application = isLinkedInHost(hostname)
+      ? await linkedinAdapter.openApplication()
+      : await openGenericApplication();
+    return { application };
+  }
   if (isLinkedInApplicationActionCommand(message)) {
     const action = linkedinApplicationActionSchema.parse((message as { action: unknown }).action);
-    return {
-      application: isSeekHost(window.location.hostname)
-        ? await clickSeekApplicationAction(action)
-        : await linkedinAdapter.clickApplicationAction(action),
-    };
+    const hostname = window.location.hostname;
+    const application = isSeekHost(hostname)
+      ? await clickSeekApplicationAction(action)
+      : isLinkedInHost(hostname)
+        ? await linkedinAdapter.clickApplicationAction(action)
+        : await clickGenericApplicationAction(action);
+    return { application };
   }
   if (isFillFieldCommand(message)) {
     const instruction = fieldFillInstructionSchema.parse(message);
@@ -61,6 +86,10 @@ function hasObservableFields(
   form: ReturnType<typeof readCurrentForm>,
 ): boolean {
   return form.kind === "application_form" || form.kind === "page_input_fields";
+}
+
+function isLinkedInHost(hostname: string): boolean {
+  return hostname === "linkedin.com" || hostname.endsWith(".linkedin.com");
 }
 
 function isSeekHost(hostname: string): boolean {
@@ -104,5 +133,13 @@ function isLinkedInApplicationActionCommand(message: unknown): boolean {
     typeof message === "object" &&
     message !== null &&
     (message as { type?: unknown }).type === "content.linkedin.application-action"
+  );
+}
+
+function isRenderScoreCardCommand(message: unknown): boolean {
+  return (
+    typeof message === "object" &&
+    message !== null &&
+    (message as { type?: unknown }).type === "content.render-score-card"
   );
 }

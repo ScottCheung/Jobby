@@ -1,4 +1,5 @@
 import { extractTechnologyKeywords } from "/src/content/technology-keywords.ts.js";
+import { extractStructuredText } from "/src/content/text-utils.ts.js";
 function cleanText(value) {
   return (value || "").replace(/\s+/g, " ").trim();
 }
@@ -48,7 +49,9 @@ function structuredJobPosting() {
       const firstLocation = Array.isArray(location) ? location[0] : location;
       const address = firstLocation?.address;
       const identifier = posting.identifier;
-      const rawDesc = String(posting.description || "").replace(/<[^>]*>/g, " ");
+      const tmpDiv = document.createElement("div");
+      tmpDiv.innerHTML = String(posting.description || "");
+      const rawDesc = extractStructuredText(tmpDiv);
       const addressParts = [
         address?.addressLocality,
         address?.addressRegion,
@@ -61,7 +64,7 @@ function structuredJobPosting() {
         title: cleanText(String(posting.title || "")) || void 0,
         company: cleanText(String(organization?.name || "")) || void 0,
         location: locationStr || void 0,
-        description: cleanText(rawDesc) || void 0,
+        description: rawDesc || void 0,
         externalId: cleanText(
           typeof identifier === "string" ? identifier : String(identifier?.value || "")
         ) || void 0,
@@ -145,7 +148,7 @@ export function readIndeedJobPage() {
   if (!description) {
     const descEl = document.querySelector("#jobDescriptionText") || document.querySelector("[class*='jobsearch-jobDescriptionText']") || document.querySelector("[data-testid='jobsearch-jobDescriptionText']");
     if (descEl) {
-      description = truncate(cleanText(descEl.textContent), 18e3);
+      description = truncate(extractStructuredText(descEl), 18e3);
     }
   }
   const externalId = structured?.externalId || (() => {

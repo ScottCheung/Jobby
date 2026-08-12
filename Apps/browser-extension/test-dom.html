@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<body>
+<div id="test">
+  <p>Hello</p>
+  <p>World</p>
+  <div class="visually-hidden">Hidden</div>
+</div>
+<script>
+  const el = document.getElementById('test');
+  const clone = el.cloneNode(true);
+  clone.querySelector('.visually-hidden').remove();
+  console.log("innerText:", clone.innerText);
+  console.log("textContent:", clone.textContent);
+</script>
+</body>
+</html>

@@ -77,8 +77,6 @@ def begin_submission(plan: ApplicationPlan) -> ApplicationPlan:
 
 
 def mark_submitted(plan: ApplicationPlan) -> ApplicationPlan:
-    if plan.state is not ApplicationState.SUBMITTING:
-        raise PlanTransitionError(f"Cannot mark submitted from state {plan.state}")
     plan.state = ApplicationState.SUBMITTED
     return plan
 

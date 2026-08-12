@@ -22,7 +22,7 @@ import {
 import type { InterviewQuestion } from '@/lib/types';
 import { cn, cleanName, formatInterviewDuration } from '@/lib/utils';
 import { Tooltip, Kbd } from '@/components/UI/tooltip';
-import { Button } from '@/components/UI/Button';
+import { Button } from '@jobby/ui';
 import type { PracticeMode } from './PracticeModeModal';
 import { QuestionCommentActions } from './Comments/QuestionCommentActions';
 import { useLayoutStore } from '@/lib/store/layout-store';

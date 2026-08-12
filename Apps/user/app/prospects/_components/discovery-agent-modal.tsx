@@ -33,7 +33,7 @@ import type {
   ProspectAgentLogEntry,
 } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/UI/Button';
+import { Button } from '@jobby/ui';
 
 interface DiscoveryAgentModalProps {
   isOpen: boolean;

@@ -7,6 +7,7 @@ const nextConfig: NextConfig = {
     optimizePackageImports: ["lucide-react", "framer-motion", "recharts"],
     proxyTimeout: 120_000,
   },
+  transpilePackages: ["@jobby/ui"],
   images: {
     formats: ["image/avif", "image/webp"],
   },

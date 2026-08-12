@@ -19,7 +19,9 @@
       }
     ],
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      "@jobby/ui": ["../../packages/ui/src/index.ts"],
+      "@jobby/ui/*": ["../../packages/ui/src/*"]
     }
   },
   "include": [

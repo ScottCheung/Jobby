@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { AuthCard } from './components/AuthCard';
 import { DebugDrawer } from './components/DebugDrawer';
 import { DiagnosticsCard } from './components/DiagnosticsCard';
+import { JobScoreCard } from './components/JobScoreCard';
 import { PageClassBanner } from './components/PageClassBanner';
 import { ResultsDisplay } from './components/ResultsDisplay';
 import { ReviewModal } from './components/ReviewModal';
@@ -13,6 +14,7 @@ import { useApplicationPlan } from './hooks/useApplicationPlan';
 import { useAuth } from './hooks/useAuth';
 import { useDiagnostics } from './hooks/useDiagnostics';
 import { useInspection } from './hooks/useInspection';
+import { useThemeSync } from './hooks/useThemeSync';
 import { getActiveTab } from './services/messaging';
 
 const PAGE_READY_DELAY_MS = 150;
@@ -23,18 +25,22 @@ export function App() {
 
   const { diagnostics, errorMessage, refresh, clearLogs } = useDiagnostics();
   const { authStatus, authError, refreshAuth, signIn, disconnect } = useAuth();
+  useThemeSync(authStatus);
   const {
     latestInspection,
     latestForm,
     inspectionError,
     isInspectingPage,
     isInspectingForm,
+    isClearingForm,
     inspectPage,
     autoInspectActivePage,
     inspectForm,
     focusFormField,
+    autofillSingleField,
     uploadDefaultResume,
     editFormField,
+    clearAllFormFields,
     uploadStates,
   } = useInspection();
 
@@ -50,6 +56,7 @@ export function App() {
     moveNext,
     movePrevious,
     submitApplication,
+    recordApplication,
     autoRunLinkedIn,
   } = useApplicationPlan(
     latestInspection,
@@ -73,8 +80,8 @@ export function App() {
     refresh();
     refreshAuth();
     const inspectCurrentPage = (showLoading: boolean) => {
-      void autoInspectActivePage(true, showLoading).then((isJobPage) => {
-        if (isJobPage) void inspectForm();
+      void autoInspectActivePage(true, showLoading).then(() => {
+        void inspectForm(true);
       });
     };
     let scheduledInspection: number | undefined;
@@ -101,8 +108,14 @@ export function App() {
       });
     };
 
-    chrome.tabs.onActivated.addListener(onTabActivated);
-    chrome.tabs.onUpdated.addListener(onTabUpdated);
+    if (
+      typeof chrome !== 'undefined' &&
+      chrome.tabs?.onActivated &&
+      chrome.tabs?.onUpdated
+    ) {
+      chrome.tabs.onActivated.addListener(onTabActivated);
+      chrome.tabs.onUpdated.addListener(onTabUpdated);
+    }
 
     // LinkedIn can replace the selected job card without changing its URL.
     // Keep one quiet, low-frequency recovery read for that special case.
@@ -125,8 +138,14 @@ export function App() {
     return () => {
       if (scheduledInspection !== undefined)
         window.clearTimeout(scheduledInspection);
-      chrome.tabs.onActivated.removeListener(onTabActivated);
-      chrome.tabs.onUpdated.removeListener(onTabUpdated);
+      if (
+        typeof chrome !== 'undefined' &&
+        chrome.tabs?.onActivated &&
+        chrome.tabs?.onUpdated
+      ) {
+        chrome.tabs.onActivated.removeListener(onTabActivated);
+        chrome.tabs.onUpdated.removeListener(onTabUpdated);
+      }
       window.clearInterval(linkedInRecovery);
     };
   }, [refresh, refreshAuth, autoInspectActivePage, inspectForm]);
@@ -139,9 +158,13 @@ export function App() {
   return (
     <main className='sidepanel-shell'>
       <header className='sidepanel-header'>
-        <div>
-          <p className='sidepanel-eyebrow'>JOBBY</p>
-          <h1>Application assistant</h1>
+        <div className='sidepanel-brand'>
+          <img
+            src='./favicon.svg'
+            className='sidepanel-logo'
+            alt='Jobby logo'
+          />
+          <span className='sidepanel-title'>Jobby</span>
         </div>
         <AuthCard
           authStatus={authStatus}
@@ -151,47 +174,136 @@ export function App() {
         />
       </header>
 
+      <nav className='panel-nav' aria-label='Side panel sections'>
+        <button
+          type='button'
+          onClick={() =>
+            document
+              .getElementById('panel-page')
+              ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          }
+        >
+          Recognize
+        </button>
+        <button
+          type='button'
+          onClick={() =>
+            document
+              .getElementById('panel-actions')
+              ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          }
+        >
+          Autofill
+        </button>
+        <button
+          type='button'
+          onClick={() =>
+            document
+              .getElementById('panel-fields')
+              ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          }
+        >
+          Form
+        </button>
+        <button
+          type='button'
+          onClick={() =>
+            document
+              .getElementById('panel-tools')
+              ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          }
+        >
+          Tools
+        </button>
+      </nav>
+
       <div className='sidepanel-content'>
-        <section className='sidebar-menu' aria-label='Current page'>
-          <p className='menu-label'>当前页面</p>
+        <section
+          id='panel-page'
+          className='sidebar-menu panel-section'
+          aria-label='Current page'
+        >
+          <p className='menu-label'>Current Page</p>
+          <JobScoreCard
+            latestInspection={latestInspection}
+            latestPlan={latestPlan}
+          />
           <PageClassBanner
             latestInspection={latestInspection}
+            latestPlan={latestPlan}
             isInspecting={isInspectingPage}
             error={inspectionError}
           />
         </section>
 
-        <section className='sidebar-menu sidebar-menu--fields' aria-label='Detected form fields'>
-          <p className='menu-label'>表单字段</p>
-          <ResultsDisplay
-            latestForm={latestForm}
-            isInspectingForm={isInspectingForm}
-            onFocusField={focusFormField}
-            onUploadDefaultResume={uploadDefaultResume}
-            onEditField={editFormField}
-            uploadStates={uploadStates}
-          />
-        </section>
-
-        <section className='sidebar-menu' aria-label='Application actions'>
-          <p className='menu-label'>操作</p>
+        <section
+          id='panel-actions'
+          className='sidebar-menu sidebar-menu--actions panel-section'
+          aria-label='Application actions'
+        >
+          <p className='menu-label'>Actions</p>
           <StatusBanner status={status} />
           <WorkflowSection
             latestInspection={latestInspection}
             latestForm={latestForm}
             latestPlan={latestPlan}
             loadingButton={loadingButton}
+            isClearingForm={isClearingForm}
             onAutofill={autofillForm}
+            onClearAll={clearAllFormFields}
             onAutoApply={autoRunLinkedIn}
             onOpenLinkedIn={openLinkedIn}
             onMovePrevious={movePrevious}
             onMoveNext={moveNext}
             onFillAndNext={fillAndNext}
             onOpenReviewModal={() => setIsReviewOpen(true)}
+            onRecordApplication={recordApplication}
+            hideAutofill
           />
         </section>
+        <div className='panel-form-area'>
+          <div className='sticky-autofill' aria-label='Form autofill'>
+            <WorkflowSection
+              latestInspection={latestInspection}
+              latestForm={latestForm}
+              latestPlan={latestPlan}
+              loadingButton={loadingButton}
+              isClearingForm={isClearingForm}
+              onAutofill={autofillForm}
+              onClearAll={clearAllFormFields}
+              onAutoApply={autoRunLinkedIn}
+              onOpenLinkedIn={openLinkedIn}
+              onMovePrevious={movePrevious}
+              onMoveNext={moveNext}
+              onFillAndNext={fillAndNext}
+              onOpenReviewModal={() => setIsReviewOpen(true)}
+              autofillOnly
+            />
+          </div>
 
-        <section className='sidebar-menu sidebar-menu--tools' aria-label='Advanced tools'>
+          <section
+            id='panel-fields'
+            className='sidebar-menu sidebar-menu--fields panel-section'
+            aria-label='Detected form fields'
+          >
+            <ResultsDisplay
+              latestForm={latestForm}
+              isInspectingForm={isInspectingForm}
+              onFocusField={focusFormField}
+              onFillSingleField={autofillSingleField}
+              onUploadDefaultResume={uploadDefaultResume}
+              onEditField={editFormField}
+              uploadStates={uploadStates}
+              isAutofilling={loadingButton === 'autofill'}
+            />
+          </section>
+        </div>
+
+        <section
+          id='panel-tools'
+          className='sidebar-menu sidebar-menu--tools'
+          aria-label='Advanced tools'
+        >
           <DebugDrawer
             latestInspection={latestInspection}
             latestForm={latestForm}

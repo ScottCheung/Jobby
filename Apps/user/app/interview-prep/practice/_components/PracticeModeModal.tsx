@@ -18,7 +18,7 @@ import type {
   PracticePlan,
 } from '@/lib/types';
 import { cn, cleanName } from '@/lib/utils';
-import { Button } from '@/components/UI/Button';
+import { Button } from '@jobby/ui';
 import { Checkbox } from '@/components/UI/checkbox';
 import { Modal } from '@/components/layout/modal';
 

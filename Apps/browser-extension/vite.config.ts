@@ -3,14 +3,8 @@ import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig, loadEnv } from "vite";
 import type { Plugin } from "vite";
+import { resolve } from "node:path";
 
-/**
- * Chrome extensions run in isolated worlds. Vite's default HTML transform
- * adds `crossorigin` to every <script> and <link rel="modulepreload"> it
- * emits. That attribute causes Chrome to log:
- *   "preload … not used because it is a cross-world extension resource mismatch"
- * Strip it from every page the plugin generates so the console stays clean.
- */
 function stripCrossorigin(): Plugin {
   return {
     name: "strip-crossorigin",
@@ -31,8 +25,6 @@ export default defineConfig(({ mode, command }) => {
 
   return {
     define: {
-      // Reuse the web app's public Supabase values when the extension does not
-      // have its own .env.local. A VITE_* value beside the extension wins.
       "import.meta.env.VITE_WEB_APP_URL": JSON.stringify(
         extensionEnv.VITE_WEB_APP_URL || "http://localhost:3000",
       ),
@@ -43,15 +35,27 @@ export default defineConfig(({ mode, command }) => {
         extensionEnv.VITE_SUPABASE_ANON_KEY || webAppEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
       ),
     },
+    resolve: {
+      alias: {
+        "@jobby/ui": resolve(__dirname, "../../packages/ui/src"),
+        "@jobby/ui/*": resolve(__dirname, "../../packages/ui/src/*"),
+        "@": resolve(__dirname, "../../packages/ui/src"),
+      },
+    },
     server: {
       port: 5173,
       strictPort: true,
+      cors: true,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+      },
       hmr: {
         port: 5173,
       },
+      fs: {
+        allow: [resolve(__dirname, "../..")],
+      },
     },
-    // Never let a production build replace the unpacked Vite development
-    // extension, otherwise the HMR connection is silently lost.
     build: {
       outDir: isDevServer ? "dist-dev" : "dist",
     },
@@ -59,7 +63,10 @@ export default defineConfig(({ mode, command }) => {
       react(),
       tailwindcss(),
       stripCrossorigin(),
-      crx({ manifest }),
+      crx({
+        manifest,
+        liveReload: process.env.CRX_LIVE_RELOAD === "true",
+      }),
     ],
   };
 });

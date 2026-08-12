@@ -116,15 +116,31 @@ export function ThemeProvider({
     root.setAttribute('data-theme-color', themeColor);
   }, [themeColor]);
 
+  const broadcastThemeChange = (newTheme: Theme, newColor: ThemeColor) => {
+    if (typeof window !== 'undefined') {
+      window.postMessage(
+        {
+          source: 'jobby-web-app',
+          type: 'JOBBY_THEME_CHANGE',
+          theme: newTheme,
+          themeColor: newColor,
+        },
+        '*',
+      );
+    }
+  };
+
   const value = {
     theme,
-    setTheme: (theme: Theme) => {
-      setTheme(theme);
-      void updateProfileExtra({ [storageKey]: theme });
+    setTheme: (newTheme: Theme) => {
+      setTheme(newTheme);
+      broadcastThemeChange(newTheme, themeColor);
+      void updateProfileExtra({ [storageKey]: newTheme });
     },
     themeColor,
     setThemeColor: (color: ThemeColor) => {
       setThemeColor(color);
+      broadcastThemeChange(theme, color);
       void updateProfileExtra({ [colorStorageKey]: color });
     },
   };

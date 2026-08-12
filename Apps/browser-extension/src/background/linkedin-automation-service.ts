@@ -62,7 +62,7 @@ export async function runLinkedInAutoApplication(
     const pageSummary = describeLinkedInPage(pageCheck);
     const formSummary = initialFormCheck?.kind === "not_application_form"
       ? initialFormCheck.reason
-      : "无法读取页面中的申请表。";
+      : "Unable to inspect application form on page.";
     await logDiagnostic("warn", "linkedin-automation", "Easy Apply form was not detected after opening.", {
       applicationId,
       openMessage: openRes?.message,
@@ -71,7 +71,7 @@ export async function runLinkedInAutoApplication(
       formSummary,
     });
     throw new Error(
-      `LinkedIn 申请表在等待后仍未检测到：${openRes?.message || "未能向页面发送打开申请的指令。"} 当前页面：${pageSummary} 表单检查：${formSummary}`,
+      `LinkedIn application form was not detected after waiting: ${openRes?.message || "Failed to send open command to page."} Page: ${pageSummary} Form: ${formSummary}`,
     );
   }
 
@@ -139,7 +139,7 @@ export async function runLinkedInAutoApplication(
         return {
           step,
           status: "paused_for_user",
-          message: `${requiredUnfilled.length} 个必填字段需要补充或人工检查，请在页面完成后再次点击 一键自动投递。`,
+          message: `${requiredUnfilled.length} required field(s) require manual input or review. Please complete on page and click One-Click Auto Apply again.`,
           inspection,
           form: updatedActiveForm,
           plan,
@@ -179,7 +179,7 @@ export async function runLinkedInAutoApplication(
           step,
           status: "paused_for_user",
           message:
-            "点击「下一步」后页面未改变（可能存在格式校验不通过或有额外必输选项），请在页面检查红字报错并补全后，再次点击 一键自动投递。",
+            "Page did not change after clicking Next (validation errors or missing inputs may exist). Please check for page errors and click One-Click Auto Apply again.",
           inspection,
           form: currentForm,
           plan,
@@ -216,14 +216,14 @@ async function waitForLinkedInForm(): Promise<FormInspection | null> {
 }
 
 function describeLinkedInPage(inspection: PageInspection | null): string {
-  if (!inspection) return "无法读取 LinkedIn 页面状态。";
+  if (!inspection) return "Unable to inspect LinkedIn page state.";
   if (inspection.kind === "job" && inspection.snapshot.platform === "linkedin") {
-    return `${inspection.snapshot.title} @ ${inspection.snapshot.company}；Easy Apply 按钮${
-      inspection.snapshot.easyApply ? "已检测到" : "未检测到"
-    }；${inspection.snapshot.url}`;
+    return `${inspection.snapshot.title} @ ${inspection.snapshot.company}; Easy Apply button ${
+      inspection.snapshot.easyApply ? "Detected" : "Not Detected"
+    }; ${inspection.snapshot.url}`;
   }
   if (inspection.kind === "job") {
-    return `当前检测到的是 ${inspection.snapshot.platform} 职位页；${inspection.snapshot.url}`;
+    return `Detected ${inspection.snapshot.platform} job page; ${inspection.snapshot.url}`;
   }
   return `${inspection.reason}；${inspection.url}`;
 }

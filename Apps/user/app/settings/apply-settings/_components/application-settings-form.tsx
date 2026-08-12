@@ -18,7 +18,7 @@ import { InputField } from '@/components/UI/input';
 import { Select } from '@/components/UI/select/select';
 import { TagInput } from '@/components/UI/tag-input';
 import { Switch } from '@/components/UI/switch';
-import { Button } from '@/components/UI/Button';
+import { Button } from '@jobby/ui';
 import { cn } from '@/lib/utils';
 
 type SettingsSection = 'policy' | 'automation' | 'ai_resume';

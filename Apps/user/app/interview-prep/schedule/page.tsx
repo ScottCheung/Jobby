@@ -58,7 +58,7 @@ const InventoryModal = dynamic(
 
 import { showCelebrationEvent } from '@/lib/celebration';
 import { Modal } from '@/components/layout/modal';
-import { Button } from '@/components/UI/Button';
+import { Button } from '@jobby/ui';
 import { div } from 'framer-motion/client';
 import { useConsole } from '@/components/ConsoleContext';
 

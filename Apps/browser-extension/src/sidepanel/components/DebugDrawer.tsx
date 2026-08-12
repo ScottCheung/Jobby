@@ -37,14 +37,14 @@ export function DebugDrawer({
 
   return (
     <details className="debug-drawer">
-      <summary>🛠️ 高级与调试工具</summary>
+      <summary>🛠️ Advanced & Debug Tools</summary>
       <div className="debug-actions">
         <button type="button" onClick={onInspectPage}>
-          检测页面 (Inspect)
+          Inspect Page
         </button>
 
         <button type="button" onClick={onInspectForm}>
-          检测表单 (Inspect Form)
+          Inspect Form
         </button>
 
         <button
@@ -84,7 +84,7 @@ export function DebugDrawer({
           disabled={!canMovePrevious || loadingButton !== null}
           onClick={onMovePrevious}
         >
-          仅点击 Back
+          Click Back Only
         </button>
 
         <button
@@ -92,7 +92,7 @@ export function DebugDrawer({
           disabled={!canMoveNext || isSubmitStep || loadingButton !== null}
           onClick={onMoveNext}
         >
-          仅点击 Next
+          Click Next Only
         </button>
       </div>
     </details>

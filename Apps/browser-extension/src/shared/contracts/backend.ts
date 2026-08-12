@@ -9,6 +9,9 @@ export type ApplicationCandidateInput = {
   match_score?: number | null;
   easy_apply?: boolean;
   already_applied?: boolean;
+  posted_at?: string | null;
+  date_posted?: string | null;
+  technologies?: string[];
 };
 
 export type ApplicationPlanCreatePayload = {
@@ -27,6 +30,9 @@ const applicationCandidateSchema = z.object({
   match_score: z.number().nullable().optional(),
   easy_apply: z.boolean().optional(),
   already_applied: z.boolean().optional(),
+  posted_at: z.string().nullable().optional(),
+  date_posted: z.string().nullable().optional(),
+  technologies: z.array(z.string()).optional(),
 });
 
 const applicationDecisionSchema = z.object({
@@ -36,6 +42,7 @@ const applicationDecisionSchema = z.object({
   score: z.number().nullable().optional(),
   resume_strategy: z.enum(["master", "tailored"]).nullable().optional(),
   requires_submit_confirmation: z.boolean(),
+  matched_terms: z.array(z.string()).optional(),
 });
 
 export const applicationPlanResponseSchema = z.object({
@@ -88,6 +95,7 @@ export const extensionPlanActionSchema = applicationPlanActionSchema.extract([
   "request_review",
   "mark_prepared",
   "approve",
+  "mark_submitted",
 ]);
 
 export type ExtensionPlanAction = z.infer<typeof extensionPlanActionSchema>;

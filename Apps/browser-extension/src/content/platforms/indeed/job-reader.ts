@@ -8,6 +8,7 @@
  */
 import type { IndeedJobSnapshot, PageInspection } from "../../../shared/contracts/page-inspection";
 import { extractTechnologyKeywords } from "../../technology-keywords";
+import { extractStructuredText } from "../../text-utils";
 
 function cleanText(value: string | null | undefined): string {
   return (value || "").replace(/\s+/g, " ").trim();
@@ -69,8 +70,10 @@ function structuredJobPosting(): {
       const firstLocation = Array.isArray(location) ? location[0] : location;
       const address = firstLocation?.address as Record<string, unknown> | undefined;
       const identifier = posting.identifier as Record<string, unknown> | string | undefined;
-      // Indeed embeds the full HTML description; strip tags.
-      const rawDesc = String(posting.description || "").replace(/<[^>]*>/g, " ");
+      // Indeed embeds the full HTML description. Parse it structurally to preserve newlines.
+      const tmpDiv = document.createElement('div');
+      tmpDiv.innerHTML = String(posting.description || "");
+      const rawDesc = extractStructuredText(tmpDiv);
 
       // Build location string from address parts
       const addressParts = [
@@ -94,7 +97,7 @@ function structuredJobPosting(): {
         title: cleanText(String(posting.title || "")) || undefined,
         company: cleanText(String(organization?.name || "")) || undefined,
         location: locationStr || undefined,
-        description: cleanText(rawDesc) || undefined,
+        description: rawDesc || undefined,
         externalId:
           cleanText(
             typeof identifier === "string" ? identifier : String(identifier?.value || ""),
@@ -212,7 +215,7 @@ export function readIndeedJobPage(): PageInspection {
       document.querySelector<HTMLElement>("[class*='jobsearch-jobDescriptionText']") ||
       document.querySelector<HTMLElement>("[data-testid='jobsearch-jobDescriptionText']");
     if (descEl) {
-      description = truncate(cleanText(descEl.textContent), 18_000);
+      description = truncate(extractStructuredText(descEl), 18_000);
     }
   }
 

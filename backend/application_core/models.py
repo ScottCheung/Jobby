@@ -54,6 +54,7 @@ class ApplicationDecision(BaseModel):
     score: float | None = None
     resume_strategy: ResumeStrategy | None = None
     requires_submit_confirmation: bool = True
+    matched_terms: tuple[str, ...] = Field(default_factory=tuple)
 
     @field_validator("reason_codes", mode="before")
     @classmethod

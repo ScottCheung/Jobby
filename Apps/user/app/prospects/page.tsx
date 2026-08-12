@@ -21,7 +21,7 @@ import { ProspectCard } from './_components/prospect-card';
 import { DiscoveryAgentModal } from './_components/discovery-agent-modal';
 import { ProspectDetailDrawer } from './_components/prospect-detail-drawer';
 import { AddProspectModal } from './_components/add-prospect-modal';
-import { Button } from '@/components/UI/Button';
+import { Button } from '@jobby/ui';
 import { WaterfallLayout } from '@/components/layout/waterfallLayout';
 import { useGlobalModalStore } from '@/lib/store/global-modal-store';
 import { useLayoutStore } from '@/lib/store/layout-store';

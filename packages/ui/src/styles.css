@@ -1,0 +1,22 @@
+:root {
+  --jobby-color-primary: #20623b;
+  --jobby-color-surface: #f7f8f5;
+  --jobby-color-border: #d7dfdc;
+}
+
+.animate-text-shimmer {
+  color: transparent;
+  background-clip: text;
+  -webkit-background-clip: text;
+  background-size: 300% 100%;
+  animation: jobby-text-shimmer 5s linear infinite;
+}
+
+.animate-text-shimmer-primary {
+  background-image: linear-gradient(105deg, #666 0%, #666 45%, white 50%, #666 55%, #666 100%);
+}
+
+@keyframes jobby-text-shimmer {
+  from { background-position: 220% 0; }
+  to { background-position: -220% 0; }
+}

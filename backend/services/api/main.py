@@ -4,6 +4,7 @@ from uuid import UUID, uuid4
 import asyncio
 import json
 import logging
+import re
 from urllib.parse import unquote, urlsplit
 from contextlib import asynccontextmanager
 
@@ -98,6 +99,7 @@ from services.shared.autofill_profile import (
     PROFILE_PREFERENCES_KEY,
     core_profile_rows,
     core_profile_values,
+    default_core_value_transform,
     decrypt_profile_value,
     delete_core_profile_value,
     ensure_identity_core_values,
@@ -126,6 +128,7 @@ from services.shared.application_plans import (
 )
 from application_core.models import ApplicationState
 from application_core.workflow import (
+    PlanTransitionError,
     approve_review,
     begin_preparation,
     begin_submission,
@@ -927,7 +930,7 @@ def update_profile(
                 core_field_key=field_key,
                 value=str(field_value),
                 value_type=field.get("value_type", "text"),
-                is_sensitive=bool(field.get("is_sensitive", True)),
+                is_sensitive=True,
             )
     for legacy_name, field_value in values.items():
         if legacy_name == "extra_data":
@@ -1247,6 +1250,7 @@ def apply_master_resume_profile_prefill(
         "identity.first_name": basics.get("first_name"),
         "identity.middle_name": basics.get("middle_name"),
         "identity.last_name": basics.get("last_name"),
+        "identity.title": basics.get("title") or basics.get("salutation") or basics.get("prefix"),
         "identity.phone": basics.get("phone"),
         "address.city": location.get("city"),
         "address.state": location.get("state"),
@@ -3004,6 +3008,36 @@ def update_application_settings(
     return application_settings_to_storage(settings)
 
 
+def _get_user_active_resume_data(db: Session, current_user: User) -> dict[str, Any] | None:
+    job_profile = db.scalar(
+        select(JobHuntingProfile)
+        .where(JobHuntingProfile.user_id == current_user.id, JobHuntingProfile.is_default.is_(True))
+        .order_by(JobHuntingProfile.updated_at.desc())
+        .limit(1)
+    )
+    if job_profile and isinstance(job_profile.extra_data, dict):
+        resume_data = job_profile.extra_data.get("resume_data")
+        if isinstance(resume_data, dict) and resume_data:
+            return resume_data
+
+    any_profile = db.scalar(
+        select(JobHuntingProfile)
+        .where(JobHuntingProfile.user_id == current_user.id)
+        .order_by(JobHuntingProfile.updated_at.desc())
+        .limit(1)
+    )
+    if any_profile and isinstance(any_profile.extra_data, dict):
+        resume_data = any_profile.extra_data.get("resume_data")
+        if isinstance(resume_data, dict) and resume_data:
+            return resume_data
+
+    master_resume = db.scalar(select(MasterResume).where(MasterResume.user_id == current_user.id))
+    if master_resume and isinstance(master_resume.resume_data, dict) and master_resume.resume_data:
+        return master_resume.resume_data
+
+    return None
+
+
 @app.post("/api/application-decisions")
 def evaluate_application_decision(
     payload: ApplicationDecisionRequest,
@@ -3038,11 +3072,11 @@ def evaluate_application_decision(
     if existing:
         candidate_payload["already_applied"] = True
 
-    master_resume = db.scalar(select(MasterResume).where(MasterResume.user_id == current_user.id))
+    resume_data = _get_user_active_resume_data(db, current_user)
     result = evaluate_candidate(
         candidate_payload,
         settings=settings,
-        resume_data=master_resume.resume_data if master_resume else None,
+        resume_data=resume_data,
     )
     return evaluation_to_dict(result)
 
@@ -3077,6 +3111,7 @@ def create_application_plan_endpoint(
     candidate_payload = payload.candidate.model_dump()
     if payload.job_description and not candidate_payload.get("description"):
         candidate_payload["description"] = payload.job_description
+    date_posted = candidate_payload.get("date_posted") or candidate_payload.get("posted_at")
     existing = db.scalar(
         select(JobApplication).where(
             JobApplication.user_id == current_user.id,
@@ -3090,16 +3125,16 @@ def create_application_plan_endpoint(
         stored_plan = (existing.raw_data or {}).get("application_plan")
         if stored_plan:
             previous_plan = plan_from_dict(stored_plan)
-            if not plan_can_be_reevaluated(previous_plan):
+            if previous_plan.decision.matched_terms and not plan_can_be_reevaluated(previous_plan):
                 return _application_plan_response(existing, previous_plan)
         else:
             candidate_payload["already_applied"] = True
 
-    master_resume = db.scalar(select(MasterResume).where(MasterResume.user_id == current_user.id))
+    resume_data = _get_user_active_resume_data(db, current_user)
     result = evaluate_candidate(
         candidate_payload,
         settings=settings,
-        resume_data=master_resume.resume_data if master_resume else None,
+        resume_data=resume_data,
     )
     from application_core.workflow import create_application_plan
 
@@ -3119,6 +3154,8 @@ def create_application_plan_endpoint(
         existing.job_description = payload.job_description
         existing.job_link = payload.job_link
         existing.work_location = payload.work_location
+        if date_posted:
+            existing.date_posted = date_posted
         existing.status = "skipped" if plan.state is ApplicationState.SKIPPED else (
             "interrupted" if plan.state is ApplicationState.AWAITING_USER_REVIEW else "draft"
         )
@@ -3147,6 +3184,7 @@ def create_application_plan_endpoint(
         job_description=payload.job_description,
         job_link=payload.job_link,
         work_location=payload.work_location,
+        date_posted=date_posted,
         status=initial_status,
         skip_reason=result.decision.explanation if plan.state is ApplicationState.SKIPPED else None,
         raw_data=plan_raw_data,
@@ -3178,13 +3216,37 @@ def _normalize_form_label(value: str) -> str:
 
 def _autofill_answer_category(label: str) -> str | None:
     norm = _normalize_form_label(label)
-    if any(term in norm for term in ["salary", "compensation", "remuneration", "pay expectation"]):
+    if any(term in norm for term in ["notice period", "notice", "availability or notice", "notice period or availability"]):
+        return "notice_period"
+    if any(term in norm for term in ["date available", "available date", "availability date", "earliest start date", "start date", "when can you start"]):
+        return "date_available"
+    if "current" in norm and any(term in norm for term in ["salary", "compensation", "remuneration"]):
+        return "current_salary"
+    if any(term in norm for term in ["day rate", "daily rate", "per day", "aud/day"]):
+        return "day_rate"
+    if any(term in norm for term in ["salary", "compensation", "remuneration", "pay expectation", "aud/year", "per year"]):
         return "salary"
-    if any(term in norm for term in ["visa sponsorship", "visa sponsor", "require sponsorship", "need sponsorship"]):
+    if any(term in norm for term in ["visa sponsorship", "visa sponsor", "require sponsorship", "need sponsorship", "require visa"]):
         return "visa_sponsorship"
-    if any(term in norm for term in ["work authorization", "authorized to work", "right to work", "work rights", "citizenship"]):
+    if any(term in norm for term in ["citizenship", "nationality"]):
+        return "citizenship"
+    if any(term in norm for term in ["details of your visa", "visa details", "details of visa", "visa type", "type of visa", "visa category"]):
+        return "visa_type"
+    if any(term in norm for term in ["on a work visa", "on a visa", "work visa", "working visa", "visa status", "current visa", "hold a visa", "visa holder"]):
+        return "visa_status"
+    if any(term in norm for term in ["work authorization", "authorized to work", "right to work", "work rights", "working rights", "full working rights", "eligible to work", "entitled to work", "legally authorized", "permission to work"]):
         return "work_authorization"
-    if any(term in norm for term in ["years of experience", "experience years", "professional experience"]):
+    if any(term in norm for term in ["security clearance", "clearance status", "nv1", "nv2", "baseline clearance"]):
+        return "security_clearance"
+    if any(term in norm for term in ["police check", "background check", "criminal history"]):
+        return "police_check_consent"
+    if any(term in norm for term in ["working with children", "wwcc", "wwc"]):
+        return "wwcc_status"
+    if any(term in norm for term in ["driver license", "driver's license", "driving license", "valid license"]):
+        return "drivers_license"
+    if any(term in norm for term in ["work restriction", "restriction on work", "limitation on hours"]):
+        return "work_restrictions"
+    if any(term in norm for term in ["years of experience", "years experience", "experience years", "professional experience"]):
         return "experience"
     if any(term in norm for term in ["relocate", "relocation", "move for this role"]):
         return "relocation"
@@ -3192,13 +3254,19 @@ def _autofill_answer_category(label: str) -> str | None:
         return "office_attendance"
     if any(term in norm for term in ["based", "where are you", "location", "city", "relocate"]):
         return "location"
+    if any(term in norm for term in ["text message", "sms", "text updates", "receive text"]):
+        return "sms_opt_in"
     return None
 
 
 def _autofill_intent_key(label: str) -> str | None:
     norm = _normalize_form_label(label)
+    if norm in {"title", "salutation", "prefix", "honorific", "name prefix"}:
+        return "identity.title"
     if "preferred name" in norm or "preferred first name" in norm:
         return "identity.preferred_name"
+    if "pronoun" in norm:
+        return "identity.pronouns"
     if "legal name" in norm:
         return "identity.legal_name"
     if any(term in norm for term in ["first name", "given name", "forename"]):
@@ -3211,16 +3279,51 @@ def _autofill_intent_key(label: str) -> str | None:
         return "identity.email"
     if any(term in norm for term in ["phone", "mobile", "contact number", "telephone"]):
         return "identity.phone"
+    if any(term in norm for term in ["day rate", "daily rate", "per day", "aud/day"]):
+        return "compensation.desired_day_rate"
     category = _autofill_answer_category(label)
     return {
         "location": "employment.current_location",
         "office_attendance": "employment.office_attendance",
         "salary": "compensation.desired_base_salary",
+        "day_rate": "compensation.desired_day_rate",
+        "current_salary": "compensation.current_salary",
+        "citizenship": "employment.citizenship",
+        "visa_status": "employment.visa_status",
+        "visa_type": "employment.visa_type",
         "visa_sponsorship": "employment.visa_sponsorship",
         "work_authorization": "employment.work_authorization",
+        "security_clearance": "employment.security_clearance",
+        "police_check_consent": "employment.police_check_consent",
+        "wwcc_status": "employment.wwcc_status",
+        "drivers_license": "employment.drivers_license",
+        "work_restrictions": "employment.work_restrictions",
         "experience": "experience.years",
         "relocation": "employment.relocation",
+        "date_available": "employment.date_available",
+        "notice_period": "employment.notice_period",
+        "sms_opt_in": "consent.sms",
     }.get(category)
+
+
+def _canonical_autofill_intent_key(value: str) -> str:
+    raw = str(value or "").strip()
+    normalized = normalize_alias(raw)
+    if normalized in {
+        "title",
+        "salutation",
+        "prefix",
+        "honorific",
+        "name prefix",
+        "identity title",
+        "identity salutation",
+        "identity prefix",
+        "learned title",
+        "learned salutation",
+        "custom title",
+    }:
+        return "identity.title"
+    return raw
 
 
 def _compatible_form_field_types(left: str, right: str) -> bool:
@@ -3235,6 +3338,157 @@ def _compatible_form_field_types(left: str, right: str) -> bool:
 def _field_semantic_features(field: Any) -> list[str]:
     explicit = list(getattr(field, "semantic_features", None) or [])
     return explicit or extract_semantic_features(field.label, getattr(field, "name", None) or "", getattr(field, "id", None) or "")
+
+
+def _is_single_consent_checkbox(field: Any) -> bool:
+    """A required, single checkbox that records acceptance of site terms."""
+    if str(getattr(field, "type", "")).casefold() != "checkbox":
+        return False
+    label = normalize_alias(
+        " ".join(
+            str(value or "")
+            for value in (
+                getattr(field, "label", ""),
+                getattr(field, "name", ""),
+                getattr(field, "id", ""),
+            )
+        )
+    )
+    return bool(
+        getattr(field, "required", False)
+        and re.search(r"(?:privacy|consent|terms|conditions|have read|agree|acknowledge|accept)", label)
+    )
+
+
+def _is_privacy_or_terms_checkbox(field: Any) -> bool:
+    label = normalize_alias(
+        " ".join(
+            str(val) for val in (
+                getattr(field, "label", ""),
+                getattr(field, "name", ""),
+                getattr(field, "id", ""),
+            ) if val
+        )
+    )
+    return bool(
+        str(getattr(field, "type", "")).casefold() == "checkbox"
+        and re.search(r"(?:privacy|consent|terms|conditions|have read|agree|acknowledge|accept)", label)
+    )
+
+
+def _is_phone_country_field(field: Any) -> bool:
+    """Identify controls that represent phone country dialing codes across ATS forms."""
+    field_id = str(getattr(field, "id", None) or "").strip().casefold()
+    field_name = str(getattr(field, "name", None) or "").strip().casefold()
+    field_key = str(getattr(field, "key", None) or "").strip().casefold()
+    field_label = normalize_alias(str(getattr(field, "label", None) or ""))
+
+    if field_id == "country" and str(getattr(field, "type", None) or "").strip().casefold() == "select":
+        return True
+
+    exact_labels = {
+        "phone country",
+        "phone country code",
+        "country code",
+        "phone code",
+        "dial code",
+        "phone dial code",
+        "calling code",
+        "country region code",
+        "dialing code",
+    }
+    if field_label in exact_labels or any(term in field_label for term in ("phone country", "country code", "phone dial code")):
+        return True
+
+    keywords = ("phone_country", "country_code", "phone_code", "dial_code", "calling_code", "country_dial", "phonecountry", "countrycode")
+    for identifier in (field_id, field_name, field_key):
+        if identifier and any(kw in identifier for kw in keywords):
+            return True
+
+    return False
+
+
+# Keep this deliberately small and explicit. The form country selector only
+# needs a stable answer; the phone itself remains the user's source value.
+_PHONE_COUNTRY_CODES: dict[str, tuple[str, str]] = {
+    "AU": ("Australia", "+61"),
+    "NZ": ("New Zealand", "+64"),
+    "GB": ("United Kingdom", "+44"),
+    "US": ("United States", "+1"),
+    "CA": ("Canada", "+1"),
+    "CN": ("China", "+86"),
+    "IN": ("India", "+91"),
+    "SG": ("Singapore", "+65"),
+    "HK": ("Hong Kong", "+852"),
+    "MY": ("Malaysia", "+60"),
+    "PH": ("Philippines", "+63"),
+    "ZA": ("South Africa", "+27"),
+    "DE": ("Germany", "+49"),
+    "FR": ("France", "+33"),
+}
+
+
+def _phone_country_code(phone: str | None, fallback_country: str | None = None) -> str | None:
+    """Infer an ISO country from an international or common local number."""
+    raw = str(phone or "").strip()
+    digits = re.sub(r"\D", "", raw)
+    if raw.startswith("+"):
+        international = f"+{digits}"
+        for code, (_, dial) in sorted(_PHONE_COUNTRY_CODES.items(), key=lambda item: -len(item[1][1])):
+            if international.startswith(dial):
+                return code
+    if digits.startswith("00"):
+        return _phone_country_code(f"+{digits[2:]}", fallback_country)
+    fallback = normalize_alias(fallback_country or "")
+    for code, (name, dial) in _PHONE_COUNTRY_CODES.items():
+        if fallback in {normalize_alias(name), normalize_alias(code), normalize_alias(dial)}:
+            return code
+    # Australian mobile/geographic national numbers are unambiguous enough
+    # for a useful default and cover the most common Jobby profile format.
+    if re.fullmatch(r"0[23478]\d{8}", digits) or re.fullmatch(r"04\d{8}", digits):
+        return "AU"
+    return None
+
+
+def _phone_country_value(field: Any, phone: str | None, fallback_country: str | None = None) -> str | None:
+    code = _phone_country_code(phone, fallback_country)
+    if not code:
+        return None
+    name, dial = _PHONE_COUNTRY_CODES[code]
+    dial_no_plus = dial.removeprefix("+")
+    candidates = {
+        normalize_alias(name),
+        normalize_alias(code),
+        normalize_alias(dial),
+        normalize_alias(dial_no_plus),
+        normalize_alias(f"{name} ({dial})"),
+        normalize_alias(f"{code} ({dial})"),
+        normalize_alias(f"{dial} ({name})"),
+        normalize_alias(f"{dial} {name}"),
+        normalize_alias(f"{name} {dial}"),
+    }
+    for option in getattr(field, "options", None) or []:
+        label = str(option.get("label") or "").strip()
+        value = str(option.get("value") or "").strip()
+        norm_label = normalize_alias(label)
+        norm_value = normalize_alias(value)
+        if not norm_label and not norm_value:
+            continue
+
+        if candidates & {norm_label, norm_value}:
+            return value or label
+
+        if any(
+            candidate and (candidate in norm_label or candidate in norm_value)
+            for candidate in (normalize_alias(dial), normalize_alias(name), normalize_alias(code))
+            if len(candidate) >= 2
+        ):
+            return value or label
+
+    # React Select implementations often use the country name as the value,
+    # while native selects expose the ISO code. Prefer the visible name when
+    # no options were supplied so the content driver can resolve it.
+    return name
 
 
 def _form_scene(payload_scene: str | None, fields: list[Any]) -> str:
@@ -3258,15 +3512,27 @@ def _sync_job_profile_core_values(
 ) -> None:
     if not job_profile:
         return
+    extra_data = job_profile.extra_data if isinstance(job_profile.extra_data, dict) else {}
+    title_value = next(
+        (
+            str(extra_data.get(key) or "").strip()
+            for key in ("title", "salutation", "prefix", "honorific")
+            if str(extra_data.get(key) or "").strip()
+        ),
+        None,
+    )
     values = {
+        "identity.title": title_value,
         "employment.current_location": job_profile.search_location,
+        "employment.citizenship": job_profile.citizenship,
         "employment.visa_sponsorship": job_profile.require_visa,
-        "employment.work_authorization": job_profile.citizenship,
         "employment.recent_employer": job_profile.recent_employer,
         "experience.years": job_profile.years_of_experience,
         "compensation.desired_base_salary": job_profile.desired_salary,
+        "compensation.current_salary": job_profile.current_ctc,
         "employment.linkedin_url": job_profile.linkedin_url,
         "employment.website": job_profile.website,
+        "employment.notice_period": job_profile.notice_period,
     }
     existing = core_profile_values(db, user.id)
     for key, value in values.items():
@@ -3284,7 +3550,7 @@ def _match_form_field(
     scene: str,
 ) -> tuple[str | None, str | None, Any | None]:
     features = _field_semantic_features(field)
-    match = match_mapping_rule(
+    match = None if _is_phone_country_field(field) else match_mapping_rule(
         db,
         user_id=user_id,
         alias=field.label,
@@ -3298,28 +3564,128 @@ def _match_form_field(
     return transformed_core_value(match.rule, values), match.rule.core_field_key, match.rule
 
 
-def _coerce_form_value(raw_answer: str, field: Any) -> tuple[str | bool | None, str | None]:
+def _notice_period_candidates(raw_answer: str) -> list[str]:
+    cleaned = str(raw_answer or "").strip()
+    if not cleaned:
+        return []
+    try:
+        days = int(cleaned)
+    except (ValueError, TypeError):
+        return [cleaned]
+
+    candidates = [str(days), f"{days} days", f"{days} day", f"{days}d"]
+    if days == 0:
+        candidates.extend(["0", "immediate", "immediately", "no notice", "none", "0 days", "0 weeks", "available immediately"])
+    else:
+        weeks = round(days / 7)
+        if weeks > 0:
+            candidates.extend([f"{weeks} week", f"{weeks} weeks", f"{weeks} wks", f"{weeks} wk", f"{weeks}w"])
+        months = round(days / 30)
+        if months > 0:
+            candidates.extend([f"{months} month", f"{months} months", f"{months} mon", f"{months}m"])
+    return candidates
+
+
+def _coerce_form_value(
+    raw_answer: str,
+    field: Any,
+    core_field_key: str | None = None,
+) -> tuple[str | bool | None, str | None]:
     if field.type == "checkbox":
         if raw_answer.casefold() not in {"true", "false"}:
             return None, "Checkbox value is not boolean."
         return raw_answer.casefold() == "true", None
     if field.type in {"select", "radio"}:
-        options = {
-            normalize_alias(option.get("value", "")) for option in field.options
-        } | {normalize_alias(option.get("label", "")) for option in field.options}
-        if options and normalize_alias(raw_answer) not in options:
-            matched = next(
-                (
-                    option.get("value") or option.get("label")
-                    for option in field.options
-                    if normalize_alias(raw_answer) in normalize_alias(option.get("label", ""))
-                    or normalize_alias(option.get("label", "")) in normalize_alias(raw_answer)
-                ),
-                None,
-            )
-            if matched is None:
-                return None, "Value is not one of the available options."
+        field_label = str(getattr(field, "label", "") or "")
+        target_answers = [raw_answer]
+        if core_field_key == "employment.notice_period" or "notice" in field_label.lower():
+            target_answers.extend(_notice_period_candidates(raw_answer))
+        elif core_field_key == "employment.work_authorization":
+            if any(term in raw_answer.lower() for term in ["yes", "true", "full", "authorized", "citizen", "pr", "permanent", "permit", "work rights"]):
+                target_answers.extend(["yes", "y", "true", "1", "authorized", "eligible"])
+                if "citizen" in raw_answer.lower():
+                    target_answers.extend(["citizen", "australian/new zealand citizen"])
+                elif any(term in raw_answer.lower() for term in ["pr", "permanent"]):
+                    target_answers.extend(["permanent resident", "permanent"])
+                elif any(term in raw_answer.lower() for term in ["visa", "permit"]):
+                    target_answers.extend(["valid visa holder", "visa holder", "visa"])
+            elif any(term in raw_answer.lower() for term in ["no", "false"]):
+                target_answers.extend(["no", "n", "false", "0", "requires sponsorship"])
+        elif core_field_key == "consent.sms" or "sms" in field_label.lower() or "text message" in field_label.lower():
+            if any(term in raw_answer.lower() for term in ["no", "false", "opt out", "don't consent", "do not consent"]):
+                target_answers.extend(["false", "no", "0", "no - i do not consent to receiving text messages"])
+            else:
+                target_answers.extend(["false", "no", "0", "no - i do not consent to receiving text messages", "true", "yes", "1", "yes - i consent to receiving text messages"])
+        elif core_field_key == "employment.visa_status":
+            if any(term in raw_answer.lower() for term in ["work visa", "temporary", "yes", "student", "bridging", "holder", "visa"]):
+                target_answers.extend(["yes", "y", "true", "1", "temporary visa holder", "work visa", "valid visa holder"])
+            elif any(term in raw_answer.lower() for term in ["no", "false", "citizen", "pr", "permanent"]):
+                target_answers.extend(["no", "n", "false", "0", "australian/new zealand citizen", "permanent resident"])
+        elif core_field_key == "employment.visa_sponsorship":
+            if any(term in raw_answer.lower() for term in ["no", "false", "none", "not required", "don't need"]):
+                target_answers.extend(["no", "n", "false", "0"])
+            elif any(term in raw_answer.lower() for term in ["yes", "true", "required", "need"]):
+                target_answers.extend(["yes", "y", "true", "1"])
+        elif core_field_key == "identity.pronouns" or "pronoun" in field_label.lower():
+            lower_ans = raw_answer.lower()
+            if any(term in lower_ans for term in ["he/him", "he / him", "male"]):
+                target_answers.extend(["he/him", "he / him", "he / him / his", "he/him/his", "he", "him", "his"])
+            elif any(term in lower_ans for term in ["she/her", "she / her", "female"]):
+                target_answers.extend(["she/her", "she / her", "she / her / hers", "she/her/hers", "she", "her", "hers"])
+            elif any(term in lower_ans for term in ["they/them", "they / them"]):
+                target_answers.extend(["they/them", "they / them", "they / them / theirs", "they/them/theirs", "they", "them", "theirs"])
+            elif any(term in lower_ans for term in ["prefer not to say", "decline", "do not wish"]):
+                target_answers.extend(["prefer not to say", "decline to state", "do not wish to specify", "prefer not to specify"])
+
+        normalized_candidates = {normalize_alias(ans) for ans in target_answers if ans}
+
+        for option in field.options:
+            option_value = str(option.get("value") or option.get("label") or "")
+            normalized_value = normalize_alias(option_value)
+            normalized_label = normalize_alias(option.get("label", ""))
+
+            if not normalized_value and not normalized_label:
+                continue
+            if normalized_label in {"select", "choose", "please select", "-- select --"}:
+                continue
+
+            if normalized_candidates & {normalized_value, normalized_label}:
+                return option_value, None
+
+        matched = next(
+            (
+                str(option.get("value") or option.get("label") or "")
+                for option in field.options
+                if (normalize_alias(option.get("label", "")) not in {"", "select", "choose", "please select", "-- select --"})
+                and any(
+                    (cand in normalize_alias(option.get("label", "")) or normalize_alias(option.get("label", "")) in cand)
+                    for cand in normalized_candidates
+                    if len(cand) >= 2 and len(normalize_alias(option.get("label", ""))) >= 2
+                )
+            ),
+            None,
+        )
+        if matched is None and field.options:
+            return None, "Value is not one of the available options."
+        if matched is not None:
             return matched, None
+
+    field_label = str(getattr(field, "label", "") or "")
+    if core_field_key == "employment.date_available" or "available" in field_label.lower():
+        label_text = f"{field_label} {getattr(field, 'placeholder', '')}".lower()
+        if "mm/dd/yyyy" in label_text or "mm-dd-yyyy" in label_text:
+            try:
+                dt = datetime.strptime(raw_answer[:10], "%Y-%m-%d")
+                return dt.strftime("%m/%d/%Y"), None
+            except ValueError:
+                pass
+        elif "dd/mm/yyyy" in label_text or "dd-mm-yyyy" in label_text:
+            try:
+                dt = datetime.strptime(raw_answer[:10], "%Y-%m-%d")
+                return dt.strftime("%d/%m/%Y"), None
+            except ValueError:
+                pass
+
     return raw_answer, None
 
 
@@ -3348,12 +3714,60 @@ def _build_form_autofill_instructions(
     values = core_profile_values(db, current_user.id)
     for field in payload.fields:
         features = _field_semantic_features(field)
+        if _is_phone_country_field(field):
+            value = _phone_country_value(
+                field,
+                values.get("identity.phone"),
+                values.get("address.country"),
+            )
+            if value:
+                instructions.append({
+                    "commandId": str(uuid4()),
+                    "source": "intent_classifier",
+                    "target": field.model_dump(exclude_none=True),
+                    "value": value,
+                })
+                traces.append({
+                    "key": field.key,
+                    "label": field.label,
+                    "intent_key": "identity.phone_country",
+                    "core_field_key": "identity.phone",
+                    "scene": scene,
+                    "semantic_features": features,
+                    "source": "phone_country_inference",
+                    "status": "filled",
+                    "value": value,
+                })
+            else:
+                reason = "Could not infer the phone country from the saved phone number or address country."
+                unanswered.append({"key": field.key, "label": field.label, "reason": reason})
+                traces.append({"key": field.key, "label": field.label, "intent_key": "identity.phone_country", "core_field_key": "identity.phone", "scene": scene, "semantic_features": features, "source": "phone_country_inference", "status": "unanswered", "reason": reason})
+            continue
         if field.type in {"password", "file", "unknown"}:
             reason = "This field requires explicit user handling."
             unanswered.append({"key": field.key, "label": field.label, "reason": reason})
             traces.append({"key": field.key, "label": field.label, "intent_key": None, "core_field_key": None, "scene": scene, "semantic_features": features, "source": "none", "status": "unanswered", "reason": reason})
             continue
-        match = match_mapping_rule(
+        if _is_single_consent_checkbox(field):
+            instructions.append({
+                "commandId": str(uuid4()),
+                "source": "backend",
+                "target": field.model_dump(exclude_none=True),
+                "value": True,
+            })
+            traces.append({
+                "key": field.key,
+                "label": field.label,
+                "intent_key": "consent.acceptance",
+                "core_field_key": None,
+                "scene": scene,
+                "semantic_features": features,
+                "source": "system_rule",
+                "status": "filled",
+                "value": True,
+            })
+            continue
+        match = None if _is_phone_country_field(field) else match_mapping_rule(
             db,
             user_id=current_user.id,
             alias=field.label,
@@ -3361,21 +3775,89 @@ def _build_form_autofill_instructions(
             semantic_features=features,
             field_type=field.type,
         )
-        if not match:
+        # High-confidence canonical questions (for example TechnologyOne's
+        # work-rights and work-visa questions) must not depend on a user's
+        # learned mapping rows. A stale or missing row otherwise leaves an
+        # otherwise answerable radio field as `None` in the side panel.
+        intent_key = _autofill_intent_key(field.label)
+        core_field_key = intent_key or (match.rule.core_field_key if match else None)
+        if not core_field_key:
             reason = "No mapping rule matched this alias and form scene."
             unanswered.append({"key": field.key, "label": field.label, "reason": reason})
             traces.append({"key": field.key, "label": field.label, "intent_key": None, "core_field_key": None, "scene": scene, "semantic_features": features, "source": "none", "status": "unanswered", "reason": reason})
             continue
-        raw_answer = transformed_core_value(match.rule, values)
+        raw_answer = values.get(core_field_key)
+        if match and not intent_key:
+            raw_answer = transformed_core_value(match.rule, values)
+        if core_field_key == "employment.work_authorization":
+            if not raw_answer or not str(raw_answer).strip():
+                citizenship = values.get("employment.citizenship")
+                visa_type = values.get("employment.visa_type") or values.get("employment.visa_status")
+                if citizenship and str(citizenship).strip():
+                    raw_answer = citizenship
+                elif visa_type and str(visa_type).strip():
+                    raw_answer = visa_type
+                elif values.get("employment.visa_sponsorship") == "Yes":
+                    raw_answer = "No"
+                else:
+                    raw_answer = "Yes"
+        elif core_field_key == "employment.visa_status":
+            if not raw_answer or not str(raw_answer).strip():
+                if values.get("employment.visa_sponsorship") == "Yes" or values.get("employment.visa_type") or values.get("employment.visa_status"):
+                    raw_answer = "Yes"
+                else:
+                    raw_answer = "No"
+        elif core_field_key == "employment.visa_type":
+            if not raw_answer or not str(raw_answer).strip():
+                v_type = values.get("employment.visa_type") or values.get("employment.visa_status")
+                v_expiry = values.get("employment.visa_expiry")
+                if v_type and v_expiry:
+                    raw_answer = f"{v_type} (Expiry: {v_expiry})"
+                elif v_type:
+                    raw_answer = v_type
+        if core_field_key == "employment.date_available":
+            notice_value = values.get("employment.notice_period")
+            if notice_value is None or not str(notice_value).strip():
+                raw_answer = None
+            else:
+                try:
+                    notice_days = max(0, int(str(notice_value).strip()))
+                except (TypeError, ValueError):
+                    notice_days = 0
+                raw_answer = (datetime.utcnow().date() + timedelta(days=notice_days)).isoformat()
+        elif core_field_key == "compensation.desired_day_rate":
+            if not raw_answer or not str(raw_answer).strip():
+                salary_val = values.get("compensation.desired_base_salary")
+                if salary_val and str(salary_val).strip():
+                    try:
+                        num = float(re.sub(r"[^\d.]", "", str(salary_val)))
+                        if num > 0:
+                            super_multiplier = 1.115
+                            working_days = 220.0
+                            raw_answer = str(int(round((num * super_multiplier) / working_days)))
+                    except (ValueError, TypeError):
+                        pass
+        elif core_field_key == "compensation.desired_base_salary":
+            if not raw_answer or not str(raw_answer).strip():
+                day_rate_val = values.get("compensation.desired_day_rate")
+                if day_rate_val and str(day_rate_val).strip():
+                    try:
+                        num = float(re.sub(r"[^\d.]", "", str(day_rate_val)))
+                        if num > 0:
+                            super_multiplier = 1.115
+                            working_days = 220.0
+                            raw_answer = str(int(round((num * working_days) / super_multiplier)))
+                    except (ValueError, TypeError):
+                        pass
         if not raw_answer:
             reason = "The mapped core field has no saved value."
             unanswered.append({"key": field.key, "label": field.label, "reason": reason})
-            traces.append({"key": field.key, "label": field.label, "intent_key": match.rule.core_field_key, "core_field_key": match.rule.core_field_key, "scene": scene, "semantic_features": features, "source": "core_profile", "status": "unanswered", "reason": reason})
+            traces.append({"key": field.key, "label": field.label, "intent_key": core_field_key, "core_field_key": core_field_key, "scene": scene, "semantic_features": features, "source": "core_profile", "status": "unanswered", "reason": reason})
             continue
-        value, reason = _coerce_form_value(str(raw_answer), field)
+        value, reason = _coerce_form_value(str(raw_answer), field, core_field_key)
         if reason or value is None:
             unanswered.append({"key": field.key, "label": field.label, "reason": reason or "Value could not be used in this control."})
-            traces.append({"key": field.key, "label": field.label, "intent_key": match.rule.core_field_key, "core_field_key": match.rule.core_field_key, "scene": scene, "semantic_features": features, "source": "core_profile", "status": "unanswered", "reason": reason})
+            traces.append({"key": field.key, "label": field.label, "intent_key": core_field_key, "core_field_key": core_field_key, "scene": scene, "semantic_features": features, "source": "core_profile", "status": "unanswered", "reason": reason})
             continue
         instructions.append({
             "commandId": str(uuid4()),
@@ -3383,8 +3865,8 @@ def _build_form_autofill_instructions(
             "target": field.model_dump(exclude_none=True),
             "value": value,
         })
-        traces.append({"key": field.key, "label": field.label, "intent_key": match.rule.core_field_key, "core_field_key": match.rule.core_field_key, "scene": scene, "semantic_features": features, "source": "user_rule" if match.rule.is_user_defined else "system_rule", "status": "filled", "value": value})
-        if not dry_run:
+        traces.append({"key": field.key, "label": field.label, "intent_key": core_field_key, "core_field_key": core_field_key, "scene": scene, "semantic_features": features, "source": "intent_classifier" if intent_key else ("user_rule" if match.rule.is_user_defined else "system_rule"), "status": "filled", "value": value})
+        if not dry_run and match:
             match.rule.times_used += 1
             match.rule.last_used_at = datetime.utcnow()
     if not dry_run:
@@ -3455,7 +3937,7 @@ def _upsert_form_temp_change(
         return None
     scene = normalize_scene(payload.scene)
     features = _field_semantic_features(field)
-    match = match_mapping_rule(
+    match = None if _is_phone_country_field(field) else match_mapping_rule(
         db,
         user_id=current_user.id,
         alias=field.label,
@@ -3567,7 +4049,7 @@ def finalize_form_temp_changes(
                     scene=change.scene,
                     semantic_features=change.semantic_features or [],
                     field_type=change.field_type,
-                    value_transform={},
+                    value_transform=default_core_value_transform(core_key),
                     is_user_defined=True,
                     confidence=100,
                 ))
@@ -3845,7 +4327,7 @@ def apply_application_plan_action(
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Unknown plan action: {action}")
     except HTTPException:
         raise
-    except (ValueError, TypeError) as exc:
+    except (ValueError, TypeError, PlanTransitionError) as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
 
     raw_data = append_plan_event(
@@ -3975,6 +4457,7 @@ def create_autofill_answer(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_or_create_current_user),
 ) -> dict[str, Any]:
+    payload.intent_key = _canonical_autofill_intent_key(payload.intent_key)
     answer = upsert_core_profile_value(
         db,
         user_id=current_user.id,
@@ -3999,6 +4482,7 @@ def update_autofill_answer(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_or_create_current_user),
 ) -> dict[str, Any]:
+    payload.intent_key = _canonical_autofill_intent_key(payload.intent_key)
     answer = db.get(UserCoreProfile, answer_id)
     if not answer or answer.user_id != current_user.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Autofill answer not found")

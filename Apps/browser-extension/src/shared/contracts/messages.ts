@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import type { AuthStatus } from "./auth";
-import { extensionPlanActionSchema, type ValidatedApplicationPlanResponse } from "./backend";
+import { applicationPlanResponseSchema, extensionPlanActionSchema, type ValidatedApplicationPlanResponse } from "./backend";
 import { pageInspectionSchema, type PageInspection } from "./page-inspection";
 import type { FormInspection } from "./form-inspection";
 import { formFieldTargetSchema } from "./form-actions";
@@ -22,8 +22,14 @@ export const runtimeMessageSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("auth.open-login") }),
   z.object({ type: z.literal("content.inspect-active") }),
   z.object({ type: z.literal("content.inspect-form-active") }),
+  z.object({
+    type: z.literal("content.render-score-card"),
+    inspection: pageInspectionSchema.optional(),
+    plan: applicationPlanResponseSchema.optional(),
+  }),
   z.object({ type: z.literal("form.autofill-active") }),
   z.object({ type: z.literal("content.focus-form-field-active"), target: formFieldTargetSchema }),
+  z.object({ type: z.literal("content.autofill-single-field-active"), target: formFieldTargetSchema }),
   z.object({ type: z.literal("content.upload-default-resume-active"), target: formFieldTargetSchema }),
   z.object({
     type: z.literal("content.edit-form-field-active"),

@@ -86,6 +86,7 @@ export const emptyProfile: UserProfile = {
   first_name: '',
   middle_name: '',
   last_name: '',
+  title: '',
   email: '',
   phone_number: '',
   current_city: '',

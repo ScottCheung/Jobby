@@ -6,7 +6,7 @@ import { api } from '@/lib/api';
 import type { CoreProfileField, FieldMappingRule } from '@/lib/types';
 import { coreFieldCategories, coreFieldCategoryForKey, coreFieldLabel } from '@/lib/core-field-categories';
 import { Field } from '@/components/forms';
-import { Button } from '@/components/UI/Button';
+import { Button } from '@jobby/ui';
 import CardWithNorth from '@/components/UI/card/CardWithNorth';
 import { useGlobalModalStore } from '@/lib/store/global-modal-store';
 

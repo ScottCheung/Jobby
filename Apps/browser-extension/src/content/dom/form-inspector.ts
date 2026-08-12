@@ -11,8 +11,43 @@ const CONTROL_SELECTOR = [
   "input:not([type='hidden']):not([type='button']):not([type='submit']):not([type='reset']):not([type='image'])",
   "select",
   "textarea",
+  "[role='combobox']",
 ].join(", ");
 const BUTTON_CHOICE_VALUE = /^(?:yes|no|true|false|agree|disagree|i agree|prefer not to say)$/i;
+const PLACEHOLDER_OPTION_LABELS = new Set([
+  "select",
+  "select option",
+  "select an option",
+  "select a option",
+  "select answer",
+  "select an answer",
+  "select a answer",
+  "select value",
+  "select a value",
+  "select country",
+  "select a country",
+  "select location",
+  "select a location",
+  "choose",
+  "choose option",
+  "choose an option",
+  "choose a option",
+  "choose answer",
+  "choose an answer",
+  "choose a answer",
+  "choose value",
+  "choose a value",
+  "choose country",
+  "choose a country",
+  "choose location",
+  "choose a location",
+  "please select",
+  "please select an option",
+  "please select a option",
+  "please choose",
+  "please choose an option",
+  "please choose a option",
+]);
 export type FormScope = Document | HTMLElement | ShadowRoot;
 type QueryScope = FormScope | ShadowRoot;
 type FormOption = { label: string; value: string };
@@ -25,11 +60,118 @@ function cleanLabel(value: string): string {
   return cleanText(value).replace(/\s*(?:Required|必填|\*)\s*$/gi, "").trim();
 }
 
+function precedingQuestionLabel(element: HTMLElement): string {
+  let container: HTMLElement | null = element.closest<HTMLElement>("[data-testid='field'], [data-testid*='field' i]") || element.parentElement;
+  for (let depth = 0; container && depth < 4; depth += 1) {
+    let sibling = container.previousElementSibling as HTMLElement | null;
+    while (sibling) {
+      const text = cleanText(sibling.textContent);
+      if (text.length >= 8 && text.length <= 500 && !/^(?:search|select|choose)$/i.test(text)) {
+        return cleanLabel(text);
+      }
+      sibling = sibling.previousElementSibling as HTMLElement | null;
+    }
+    container = container.parentElement;
+  }
+  return "";
+}
+
+
+function labelTextWithoutControl(label: HTMLElement | null | undefined): string {
+  if (!label) return "";
+  const copy = label.cloneNode(true) as HTMLLabelElement;
+  copy.querySelectorAll("input,select,textarea,button,img,svg,noscript,script,style").forEach((node) => node.remove());
+  return cleanLabel(copy.textContent || "");
+}
+
+function normalizedOptionLabel(value: string): string {
+  return cleanText(value)
+    .toLowerCase()
+    .replace(/[.…]+$/g, "")
+    .replace(/^[-–—\s]+|[-–—\s]+$/g, "")
+    .replace(/\s+/g, " ");
+}
+
+/** Empty-value options and common prompt labels are not user answers. */
+export function isPlaceholderOption(label: string, value = ""): boolean {
+  const normalizedLabel = normalizedOptionLabel(label);
+  const normalizedValue = cleanText(value);
+  if (!normalizedValue) return true;
+  if (PLACEHOLDER_OPTION_LABELS.has(normalizedLabel)) return true;
+  return /^(?:please\s+)?(?:select|choose)\s+(?:an?|the)\s+(?:option|answer|value|country|location)$/i
+    .test(normalizedLabel);
+}
+
+function observedOptionValue(value: string): string {
+  return isPlaceholderOption(value, "observed") ? "" : cleanText(value);
+}
+
 export function isVisibleElement(element: HTMLElement): boolean {
-  if (element.getAttribute("aria-hidden") === "true") return false;
+  if (element.hidden || element.getAttribute("aria-hidden") === "true") return false;
+
   const style = window.getComputedStyle(element);
+  if (style.display === "none" || style.visibility === "hidden" || style.visibility === "collapse") {
+    return false;
+  }
+
+  for (
+    let candidate: HTMLElement | null = element.parentElement;
+    candidate && candidate !== document.body && candidate !== document.documentElement;
+    candidate = candidate.parentElement
+  ) {
+    if (candidate.hidden || candidate.getAttribute("aria-hidden") === "true") return false;
+    const ancestorStyle = window.getComputedStyle(candidate);
+    if (
+      ancestorStyle.display === "none" ||
+      ancestorStyle.visibility === "hidden" ||
+      ancestorStyle.visibility === "collapse"
+    ) {
+      return false;
+    }
+    const cRect = candidate.getBoundingClientRect();
+    if (cRect.width > 0 || cRect.height > 0) {
+      if (cRect.right < -3000 || cRect.left < -3000) {
+        return false;
+      }
+    }
+  }
+
+  const isFormInput =
+    element instanceof HTMLInputElement ||
+    element instanceof HTMLSelectElement ||
+    element instanceof HTMLTextAreaElement;
+
   const rect = element.getBoundingClientRect();
-  return style.display !== "none" && style.visibility !== "hidden" && rect.width > 0 && rect.height > 0;
+  const hasSize =
+    (rect.width > 0 && rect.height > 0) ||
+    (element.offsetWidth > 0 && element.offsetHeight > 0);
+
+  if (hasSize && style.opacity !== "0" && rect.right >= -3000 && rect.left >= -3000) {
+    return true;
+  }
+
+  if (isFormInput) {
+    const container = (element.closest(
+      "label, fieldset, form, .form-group, .form-item, .form-field, .field-wrapper, [class*='control' i], [class*='field' i], [class*='radio' i], [class*='checkbox' i], [class*='select' i], [class*='t1-' i], [class*='jobwizard' i], [class*='question' i], [class*='component' i], [class*='item' i], [class*='container' i], [data-testid*='field' i], [data-testid*='question' i], [jobwizard_question_title_id]",
+    ) || element.parentElement) as HTMLElement | null;
+    if (container) {
+      const containerStyle = window.getComputedStyle(container);
+      const containerRect = container.getBoundingClientRect();
+      const containerHasSize =
+        (containerRect.width > 0 && containerRect.height > 0) ||
+        (container.offsetWidth > 0 && container.offsetHeight > 0);
+      if (
+        containerStyle.display !== "none" &&
+        containerStyle.visibility !== "hidden" &&
+        containerHasSize &&
+        containerRect.left >= -3000
+      ) {
+        return true;
+      }
+    }
+  }
+
+  return false;
 }
 
 function isInspectableControl(element: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement): boolean {
@@ -40,6 +182,40 @@ function isInspectableControl(element: HTMLInputElement | HTMLSelectElement | HT
   );
 }
 
+function ariaCheckboxElementsInScope(scope: FormScope): HTMLElement[] {
+  return elementsInScope(scope).filter((element) => {
+    if (!element.matches("[role='checkbox']")) return false;
+    if (element.getAttribute("aria-disabled") === "true" || element.getAttribute("aria-hidden") === "true") return false;
+    return isVisibleElement(element);
+  });
+}
+
+function ariaCheckboxLabel(element: HTMLElement, scope: FormScope): string {
+  const labelledBy = cleanText(element.getAttribute("aria-labelledby"))
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((id) => cleanText(scope.querySelector(`#${CSS.escape(id)}`)?.textContent))
+    .filter(Boolean)
+    .join(" ");
+  return cleanLabel(
+    cleanText(
+      labelledBy ||
+        element.getAttribute("aria-label") ||
+        labelTextWithoutControl(element.closest("label")) ||
+        containerLabelFor(element) ||
+        element.getAttribute("name") ||
+        element.id,
+    ) || "Unnamed field",
+  );
+}
+
+function ariaCheckboxIsChecked(element: HTMLElement): boolean {
+  return element.getAttribute("aria-checked") === "true" ||
+    element.getAttribute("data-state") === "checked" ||
+    element.classList.contains("checked") ||
+    element.classList.contains("selected");
+}
+
 function isDocumentSelectionRadio(element: HTMLInputElement): boolean {
   return (
     element.type.toLowerCase() === "radio" &&
@@ -47,25 +223,49 @@ function isDocumentSelectionRadio(element: HTMLInputElement): boolean {
   );
 }
 
-function fieldType(element: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement): FormFieldType {
+function fieldType(element: HTMLElement): FormFieldType {
   if (element instanceof HTMLSelectElement) return "select";
   if (element instanceof HTMLTextAreaElement) return "textarea";
-  if (isSelectableCombobox(element)) return "select";
-  const type = element.type.toLowerCase();
-  if (type === "text" || type === "search") return "text";
-  if (type === "checkbox" || type === "radio" || type === "file") return type;
-  if (["number", "email", "tel", "url", "date", "password"].includes(type)) return type as FormFieldType;
+  if (element.getAttribute("role") === "combobox" || isSelectableCombobox(element)) return "select";
+  if (element instanceof HTMLInputElement) {
+    const type = element.type.toLowerCase();
+    if (type === "text" || type === "search") return "text";
+    if (type === "checkbox" || type === "radio" || type === "file") return type;
+    if (["number", "email", "tel", "url", "date", "password"].includes(type)) return type as FormFieldType;
+  }
   return "unknown";
 }
 
 export function isSelectableCombobox(element: HTMLElement): boolean {
-  return (
-    element instanceof HTMLInputElement &&
-    element.getAttribute("role") === "combobox" &&
-    (element.getAttribute("aria-autocomplete") === "list" ||
-      element.getAttribute("aria-haspopup") === "listbox" ||
-      element.getAttribute("aria-haspopup") === "true")
+  if (!(element instanceof HTMLInputElement)) return false;
+  const role = element.getAttribute("role");
+  const ariaHasPopup = element.getAttribute("aria-haspopup");
+  const ariaAutocomplete = element.getAttribute("aria-autocomplete");
+  if (
+    role === "combobox" &&
+    (ariaAutocomplete === "list" ||
+      ariaAutocomplete === "both" ||
+      ariaHasPopup === "listbox" ||
+      ariaHasPopup === "true")
+  ) {
+    return true;
+  }
+  if (ariaHasPopup === "listbox" || ariaHasPopup === "grid") {
+    return true;
+  }
+  const container = element.closest(
+    "[class*='select' i], [class*='dropdown' i], [class*='combobox' i], [class*='lookup' i], [class*='t1-lookup' i], [class*='t1-select' i], [class*='t1-dropdown' i]",
   );
+  if (
+    container &&
+    (element.readOnly ||
+      element.getAttribute("aria-expanded") !== null ||
+      role === "combobox" ||
+      container.matches("[class*='lookup' i], [class*='t1-lookup' i]"))
+  ) {
+    return true;
+  }
+  return false;
 }
 
 function scopeFor(element: HTMLElement, fallback: FormScope): QueryScope {
@@ -124,20 +324,73 @@ export function checkboxIsChecked(element: HTMLInputElement, scope: FormScope): 
   return semanticState ?? element.checked;
 }
 
-function comboboxContainerFor(element: HTMLInputElement): HTMLElement | null {
-  return element.closest<HTMLElement>(".select-shell, [data-testid*='select' i], [class*='select' i]") ||
+function comboboxContainerFor(element: HTMLElement): HTMLElement | null {
+  return element.closest<HTMLElement>(".select-shell, [data-testid*='select' i], [class*='select' i], [class*='dropdown' i], [class*='t1-' i]") ||
     element.parentElement;
 }
 
-export function comboboxCurrentValue(element: HTMLInputElement): string {
-  const bridgedValue = inspectPageCombobox(element)?.currentValue;
+export function isPhoneCountryElement(element: HTMLElement): boolean {
+  const id = cleanText(element.id).toLowerCase();
+  const name = cleanText(element.getAttribute("name")).toLowerCase();
+  const ariaLabel = cleanText(element.getAttribute("aria-label")).toLowerCase();
+  const title = cleanText(element.getAttribute("title")).toLowerCase();
+  const placeholder = cleanText(element.getAttribute("placeholder")).toLowerCase();
+
+  if (id === "country" || name === "country") return true;
+
+  const countryKeywords = [
+    "phone_country", "phone-country", "country_code", "country-code",
+    "phone_code", "phone-code", "dial_code", "dial-code", "calling_code",
+    "countrycode", "phonecountry", "phonecountrycode", "phone_dial"
+  ];
+  if (countryKeywords.some((kw) => id.includes(kw) || name.includes(kw))) {
+    return true;
+  }
+
+  const labelTexts = [ariaLabel, title, placeholder];
+  if (labelTexts.some((text) => /(?:phone\s+country|country\s+code|phone\s+code|dial\s+code|calling\s+code)/i.test(text))) {
+    return true;
+  }
+
+  return false;
+}
+
+export function comboboxCurrentValue(element: HTMLElement): string {
+  const bridgedValue = observedOptionValue(inspectPageCombobox(element)?.currentValue || "");
   if (bridgedValue) return bridgedValue;
+
+  const rawValue = element instanceof HTMLInputElement ? element.value : element.getAttribute("value");
+  const directValue = observedOptionValue(cleanText(rawValue));
   const container = comboboxContainerFor(element);
-  return cleanText(
-    container?.querySelector<HTMLElement>(
-      ".select__single-value, [class*='single-value' i], [class*='singleValue' i]",
-    )?.textContent,
+  const displayedValue = observedOptionValue(
+    cleanText(
+      container?.querySelector<HTMLElement>(
+        ".select__single-value, [class*='single-value' i], [class*='singleValue' i], [class*='selected' i], [class*='value' i], [class*='trigger' i], [class*='display' i], [class*='selection' i]",
+      )?.textContent,
+    ),
   );
+  const buttonValue = observedOptionValue(
+    cleanText(container?.querySelector<HTMLElement>("button, [role='combobox']")?.textContent),
+  );
+  const selfText = observedOptionValue(cleanText(element.textContent));
+
+  const resolved = directValue || displayedValue || buttonValue || selfText;
+
+  // Phone-country selector displays only the dial code (for
+  // example, "+61") after selection while retaining the ISO code on its
+  // flag element. Normalize that display back to the country label so the
+  // panel and backend compare the same value.
+  if (isPhoneCountryElement(element)) {
+    const flagClass = Array.from(
+      container?.querySelector<HTMLElement>("[class*='iti__flag']")?.classList || [],
+    ).find((name) => /^iti__[a-z]{2}$/i.test(name));
+    const code = flagClass?.slice("iti__".length).toUpperCase();
+    if (code && typeof Intl.DisplayNames === "function") {
+      const country = new Intl.DisplayNames(["en"], { type: "region" }).of(code);
+      if (country) return country;
+    }
+  }
+  return resolved;
 }
 
 function liveComboboxOptions(element: HTMLInputElement, scope: QueryScope): FormOption[] {
@@ -148,7 +401,7 @@ function liveComboboxOptions(element: HTMLInputElement, scope: QueryScope): Form
   return Array.from(listbox.querySelectorAll<HTMLElement>("[role='option']")).map((option) => {
     const label = cleanText(option.textContent || option.getAttribute("aria-label"));
     return { label, value: label };
-  }).filter((option) => Boolean(option.label));
+  }).filter((option) => Boolean(option.label) && !isPlaceholderOption(option.label, option.value));
 }
 
 function record(value: unknown): Record<string, unknown> | null {
@@ -205,7 +458,7 @@ function greenhouseQuestionOptions(element: HTMLInputElement): FormOption[] {
           label,
           value: rawValue === undefined || rawValue === null ? label : String(rawValue),
         };
-      }).filter((option) => Boolean(option.label));
+      }).filter((option) => Boolean(option.label) && !isPlaceholderOption(option.label, option.value));
     }
   }
   return [];
@@ -232,7 +485,7 @@ const COUNTRY_CODES = [
 ] as const;
 
 function countryOptions(element: HTMLInputElement): FormOption[] {
-  if (element.id !== "country" && element.name !== "country") return [];
+  if (!isPhoneCountryElement(element)) return [];
   const displayNames = typeof Intl.DisplayNames === "function"
     ? new Intl.DisplayNames(["en"], { type: "region" })
     : null;
@@ -241,13 +494,28 @@ function countryOptions(element: HTMLInputElement): FormOption[] {
     .sort((left, right) => left.label.localeCompare(right.label));
 }
 
+function greenhouseChoiceOptions(
+  element: HTMLInputElement,
+  scope: QueryScope,
+): FormOption[] {
+  if (!element.id.startsWith("question_")) return [];
+  const label = cleanLabel(labelFor(element, scope)).toLowerCase();
+  if (!/(citizen|relocat|clearance)/i.test(label)) return [];
+  return ["Yes", "No"].map((value) => ({ label: value, value }));
+}
+
 export function comboboxOptionsFor(element: HTMLInputElement, scope: QueryScope): FormOption[] {
   const bridgedOptions = inspectPageCombobox(element)?.options;
-  if (bridgedOptions && bridgedOptions.length > 0) return bridgedOptions;
+  if (bridgedOptions && bridgedOptions.length > 0) {
+    const realOptions = bridgedOptions.filter((option) => !isPlaceholderOption(option.label, option.value));
+    if (realOptions.length > 0) return realOptions;
+  }
   const liveOptions = liveComboboxOptions(element, scope);
   if (liveOptions.length > 0) return liveOptions;
   const greenhouseOptions = greenhouseQuestionOptions(element);
   if (greenhouseOptions.length > 0) return greenhouseOptions;
+  const inferredOptions = greenhouseChoiceOptions(element, scope);
+  if (inferredOptions.length > 0) return inferredOptions;
   return countryOptions(element);
 }
 
@@ -262,7 +530,7 @@ function optionLabelFor(element: HTMLElement, scope: QueryScope): string {
     if (text) return cleanLabel(text);
   }
 
-  const parentLabel = cleanText(element.closest("label")?.textContent);
+  const parentLabel = labelTextWithoutControl(element.closest("label"));
   if (parentTextIsDistinct(parentLabel, element)) return cleanLabel(parentLabel);
 
   if (element instanceof HTMLInputElement && element.value) return cleanText(element.value);
@@ -277,12 +545,122 @@ function parentTextIsDistinct(text: string | null | undefined, element: HTMLElem
   return true;
 }
 
-function labelFor(element: HTMLElement, scope: QueryScope): string {
-  if (element instanceof HTMLInputElement && element.type.toLowerCase() === "radio") {
+function isOptionLabelElement(candidate: HTMLElement, element: HTMLElement): boolean {
+  if (candidate.contains(element)) return true;
+
+  const targetId = candidate.getAttribute("for");
+  if (targetId) {
+    const root = element.getRootNode();
+    const queryScope = root instanceof Document || root instanceof ShadowRoot ? root : document;
+    const targetInput = queryScope.querySelector<HTMLInputElement>(`#${CSS.escape(targetId)}`);
+    if (targetInput && (targetInput.type.toLowerCase() === "radio" || targetInput.type.toLowerCase() === "checkbox")) {
+      return true;
+    }
+  }
+
+  if (candidate.querySelector("input[type='radio'], input[type='checkbox']")) {
+    return true;
+  }
+
+  const candidateText = cleanText(labelTextWithoutControl(candidate));
+  if (BUTTON_CHOICE_VALUE.test(candidateText)) {
+    return true;
+  }
+
+  return false;
+}
+
+export function containerLabelFor(element: HTMLElement): string {
+  const root = scopeFor(element, document);
+
+  // Check jobwizard_question_title_id attribute matching element's input id or title_id (used in Rippling ATS)
+  const targetId = cleanText(element.id) ||
+    cleanText(element.getAttribute("jobwizard_question_input_id")) ||
+    cleanText(element.getAttribute("extra_data_id"));
+  if (targetId) {
+    const titleElem = root.querySelector<HTMLElement>(`[jobwizard_question_title_id='${CSS.escape(targetId)}']`);
+    const titleText = cleanText(titleElem?.textContent);
+    if (titleText) return cleanLabel(titleText);
+  }
+
+  const titleContainer = element.closest<HTMLElement>("[jobwizard_question_title_id]");
+  const titleId = titleContainer?.getAttribute("jobwizard_question_title_id");
+  if (titleId) {
+    const labelElem = root.querySelector<HTMLElement>(`#${CSS.escape(titleId)}-label, #${CSS.escape(titleId)}`) ||
+      root.querySelector<HTMLElement>(`[jobwizard_question_title_id='${CSS.escape(titleId)}']`);
+    const titleText = cleanText(labelElem?.textContent);
+    if (titleText) return cleanLabel(titleText);
+  }
+
+  let current: HTMLElement | null = element.parentElement;
+  for (let depth = 0; current && depth < 6; depth += 1) {
+    if (current.matches("body, html")) break;
+
+    const labelCandidates = Array.from(
+      current.querySelectorAll<HTMLElement>(
+        "legend, label, [class*='label' i], [class*='prompt' i], [class*='question' i], [class*='title' i], [class*='name' i], [class*='heading' i], [class*='caption' i], [class*='text' i], [class*='description' i], [class*='t1-' i], [data-label], [data-prompt]",
+      ),
+    );
+
+    for (const candidate of labelCandidates) {
+      if (isOptionLabelElement(candidate, element)) continue;
+
+      const text = labelTextWithoutControl(candidate);
+      if (text && text.length >= 2 && text.length <= 400) {
+        if (!BUTTON_CHOICE_VALUE.test(text)) {
+          return cleanLabel(text);
+        }
+      }
+    }
+
+    let sibling = current.previousElementSibling as HTMLElement | null;
+    while (sibling) {
+      if (!sibling.matches("input, select, textarea, button")) {
+        const text = cleanText(sibling.textContent);
+        if (text && text.length >= 2 && text.length <= 400 && !BUTTON_CHOICE_VALUE.test(text)) {
+          return cleanLabel(text);
+        }
+      }
+      sibling = sibling.previousElementSibling as HTMLElement | null;
+    }
+
+    current = current.parentElement;
+  }
+
+  return "";
+}
+
+export function cleanPlaceholderLabel(placeholder: string): string {
+  const cleaned = cleanText(placeholder);
+  if (!cleaned) return "";
+  const stripped = cleaned
+    .replace(/^(?:e\.g\.?|eg|example|enter|please enter|type|please type|select|please select|choose|please choose)\s+/i, "")
+    .replace(/^[.:\s]+|[.:\s]+$/g, "");
+  return cleanLabel(stripped || cleaned);
+}
+
+export function labelFor(element: HTMLElement, scope: QueryScope): string {
+  const isRadio = element instanceof HTMLInputElement && element.type.toLowerCase() === "radio";
+
+  if (isRadio) {
     const fieldset = element.closest("fieldset");
     const legend = cleanText(fieldset?.querySelector("legend")?.textContent);
     if (legend) return cleanLabel(legend);
+
+    const radiogroup = element.closest<HTMLElement>("[role='radiogroup']");
+    if (radiogroup) {
+      const groupLabel = labelledByText(radiogroup, scope) || cleanText(radiogroup.getAttribute("aria-label"));
+      if (groupLabel) return cleanLabel(groupLabel);
+    }
+
+    const questionLabel = precedingQuestionLabel(element);
+    if (questionLabel) return questionLabel;
+    const containerLabel = containerLabelFor(element);
+    if (containerLabel) return containerLabel;
   }
+
+  // Phone dialing country control nested in or near Phone input
+  if (isPhoneCountryElement(element)) return "Phone country";
 
   const labelledByIds = cleanText(element.getAttribute("aria-labelledby"))
     .split(/\s+/)
@@ -296,33 +674,96 @@ function labelFor(element: HTMLElement, scope: QueryScope): string {
     if (labelledByText) return cleanLabel(labelledByText);
   }
 
+  const isGenericActionLabel = (text: string) =>
+    /^(?:search|filter|type|select|choose|enter|type to search)$/i.test(text.trim());
+
   const labelledBy = cleanText(element.getAttribute("aria-label"));
-  if (labelledBy) return cleanLabel(labelledBy);
+  if (labelledBy && !isGenericActionLabel(labelledBy)) return cleanLabel(labelledBy);
 
-  const id = cleanText(element.id);
-  if (id) {
-    const label = scope.querySelector<HTMLLabelElement>(`label[for='${CSS.escape(id)}']`);
-    const text = cleanText(label?.textContent);
-    if (text) return cleanLabel(text);
+  const dataLabel = cleanText(element.getAttribute("data-label") || element.getAttribute("data-prompt") || element.getAttribute("title"));
+  if (dataLabel && !isGenericActionLabel(dataLabel)) return cleanLabel(dataLabel);
+
+  if (!isRadio) {
+    const id = cleanText(element.id);
+    if (id) {
+      const label = scope.querySelector<HTMLLabelElement>(`label[for='${CSS.escape(id)}']`);
+      const text = labelTextWithoutControl(label);
+      if (text) return cleanLabel(text);
+    }
+
+    const parentLabel = element.closest("label");
+    const parentText = labelTextWithoutControl(parentLabel);
+    if (parentText) return cleanLabel(parentText);
   }
-
-  const parentLabel = element.closest("label");
-  const parentText = cleanText(parentLabel?.textContent);
-  if (parentText) return cleanLabel(parentText);
 
   const fieldset = element.closest("fieldset");
   const legend = cleanText(fieldset?.querySelector("legend")?.textContent);
   if (legend) return cleanLabel(legend);
 
+  const questionLabel = precedingQuestionLabel(element);
+  if (questionLabel) return questionLabel;
+
+  const structuralLabel = containerLabelFor(element);
+  if (structuralLabel) return structuralLabel;
+
+  if (isRadio) {
+    const id = cleanText(element.id);
+    if (id) {
+      const label = scope.querySelector<HTMLLabelElement>(`label[for='${CSS.escape(id)}']`);
+      const text = labelTextWithoutControl(label);
+      if (text && !BUTTON_CHOICE_VALUE.test(text)) return cleanLabel(text);
+    }
+
+    const parentLabel = element.closest("label");
+    const parentText = labelTextWithoutControl(parentLabel);
+    if (parentText && !BUTTON_CHOICE_VALUE.test(parentText)) return cleanLabel(parentText);
+  }
+
   const placeholder = cleanText(element.getAttribute("placeholder"));
-  if (placeholder) return cleanLabel(placeholder);
+  if (placeholder) {
+    const cleanedPlaceholder = cleanPlaceholderLabel(placeholder);
+    if (cleanedPlaceholder) return cleanedPlaceholder;
+  }
   return cleanLabel(element.getAttribute("name") || "") || "Unnamed field";
 }
 
 function requiredFor(element: HTMLElement): boolean {
   if (element.hasAttribute("required") || element.getAttribute("aria-required") === "true") return true;
   const fieldset = element.closest("fieldset");
-  return Boolean(fieldset?.hasAttribute("required") || fieldset?.getAttribute("aria-required") === "true");
+  if (fieldset?.hasAttribute("required") || fieldset?.getAttribute("aria-required") === "true") return true;
+
+  const metadata = element.closest<HTMLElement>("[data-t1-control]")?.getAttribute("data-t1-control");
+  if (metadata) {
+    try {
+      const parsed = JSON.parse(metadata) as { IsMandatory?: unknown };
+      if (parsed.IsMandatory === true) return true;
+    } catch {
+      // Ignore malformed page metadata and keep the native attribute checks.
+    }
+  }
+  return false;
+}
+
+export function radioGroupForElement(
+  element: HTMLInputElement,
+  scope: QueryScope = document,
+): HTMLInputElement[] {
+  if (element.name) {
+    const namedGroup = Array.from(
+      scope.querySelectorAll<HTMLInputElement>(
+        `input[type='radio'][name='${CSS.escape(element.name)}']`,
+      ),
+    );
+    if (namedGroup.length > 0) return namedGroup;
+  }
+
+  let container = element.parentElement;
+  for (let depth = 0; container && depth < 8; depth += 1) {
+    const containerRadios = Array.from(container.querySelectorAll<HTMLInputElement>("input[type='radio']"));
+    if (containerRadios.length >= 2) return containerRadios;
+    container = container.parentElement;
+  }
+  return [element];
 }
 
 function optionsFor(
@@ -330,16 +771,18 @@ function optionsFor(
   scope: QueryScope,
 ): FormOption[] {
   if (element instanceof HTMLSelectElement) {
-    return Array.from(element.options).map((option) => ({
-      label: cleanText(option.textContent) || option.value,
-      value: option.value,
-    }));
+    return Array.from(element.options)
+      .map((option) => ({
+        label: cleanText(option.textContent) || option.value,
+        value: option.value,
+      }))
+      .filter((option) => !isPlaceholderOption(option.label, option.value));
   }
   if (element instanceof HTMLInputElement && isSelectableCombobox(element)) {
     return comboboxOptionsFor(element, scope);
   }
-  if (element instanceof HTMLInputElement && element.type.toLowerCase() === "radio" && element.name) {
-    return Array.from(scope.querySelectorAll<HTMLInputElement>(`input[type='radio'][name='${CSS.escape(element.name)}']`)).map((radio) => ({
+  if (element instanceof HTMLInputElement && element.type.toLowerCase() === "radio") {
+    return radioGroupForElement(element, scope).map((radio) => ({
       label: optionLabelFor(radio, scope),
       value: radio.value,
     }));
@@ -349,8 +792,8 @@ function optionsFor(
 
 function currentValue(element: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement, type: FormFieldType, scope: QueryScope): string | undefined {
   if (type === "password" || type === "file") return undefined;
-  if (element instanceof HTMLInputElement && type === "radio" && element.name) {
-    const group = Array.from(scope.querySelectorAll<HTMLInputElement>(`input[type='radio'][name='${CSS.escape(element.name)}']`));
+  if (element instanceof HTMLInputElement && type === "radio") {
+    const group = radioGroupForElement(element, scope);
     const checkedRadio = group.find((r) => r.checked);
     if (!checkedRadio) return "";
     return optionLabelFor(checkedRadio, scope) || checkedRadio.value || "true";
@@ -358,19 +801,23 @@ function currentValue(element: HTMLInputElement | HTMLSelectElement | HTMLTextAr
   if (element instanceof HTMLInputElement && type === "checkbox") {
     return checkboxIsChecked(element, scope) ? element.value || "true" : "";
   }
-  if (element instanceof HTMLInputElement && isSelectableCombobox(element)) {
+  if (element.getAttribute("role") === "combobox" || isSelectableCombobox(element)) {
     return comboboxCurrentValue(element);
   }
   if (element instanceof HTMLSelectElement) {
-    return Array.from(element.selectedOptions).map((option) => cleanText(option.textContent)).join(", ");
+    return Array.from(element.selectedOptions)
+      .filter((option) => !isPlaceholderOption(option.textContent || "", option.value))
+      .map((option) => cleanText(option.textContent) || cleanText(option.value))
+      .filter(Boolean)
+      .join(", ");
   }
-  return cleanText(element.value);
+  return cleanText((element as HTMLInputElement).value);
 }
 
 function isFilled(element: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement, type: FormFieldType, scope: QueryScope): boolean {
   if (type === "file") return Boolean(element instanceof HTMLInputElement && element.files?.length);
-  if (element instanceof HTMLInputElement && type === "radio" && element.name) {
-    const group = Array.from(scope.querySelectorAll<HTMLInputElement>(`input[type='radio'][name='${CSS.escape(element.name)}']`));
+  if (element instanceof HTMLInputElement && type === "radio") {
+    const group = radioGroupForElement(element, scope);
     return group.some((r) => r.checked);
   }
   if (element instanceof HTMLInputElement && type === "checkbox") return checkboxIsChecked(element, scope);
@@ -386,6 +833,43 @@ function fileUploadGroupFor(element: HTMLInputElement): HTMLElement | null {
   return element.closest<HTMLElement>("[role='group'][aria-labelledby], .file-upload, [class*='file-upload' i]");
 }
 
+function isUploadHelperText(text: string): boolean {
+  const cleaned = cleanText(text).toLowerCase();
+  if (!cleaned) return true;
+  return (
+    /^(?:total\s+\d+|drop\s+or\s+select|drag\s+and\s+drop|no\s+file|browse|choose\s+file|select\s+file)/i.test(cleaned) ||
+    /\b(?:file|files)\s+selected\b/i.test(cleaned) ||
+    /^(?:\.pdf|\.doc|\.docx|pdf|doc|docx)$/i.test(cleaned)
+  );
+}
+
+function labelledByTextFrom(element: HTMLElement | null | undefined, root: QueryScope): string {
+  if (!element) return "";
+  const ids = cleanText(element.getAttribute("aria-labelledby")).split(/\s+/).filter(Boolean);
+  if (ids.length === 0) return "";
+  const parts = ids
+    .map((id) => {
+      const target = root.querySelector(`#${CSS.escape(id)}`);
+      if (!target) return "";
+      if (target.matches("[data-testid*='screen-reader' i], [class*='screen-reader' i], [class*='sr-only' i]")) return "";
+      const txt = cleanText(target.textContent);
+      if (isUploadHelperText(txt)) return "";
+      return txt;
+    })
+    .filter(Boolean);
+  return cleanText(parts.join(" "));
+}
+
+function labelFromAttribute(val: string | null | undefined): string {
+  const cleaned = cleanText(val);
+  if (!cleaned) return "";
+  if (/cover[-_\s]*letter|cover/i.test(cleaned)) return "Cover Letter";
+  if (/resume|cv/i.test(cleaned)) return "Resume";
+  if (/portfolio|works|projects/i.test(cleaned)) return "Portfolio";
+  if (/transcript|degree|education/i.test(cleaned)) return "Transcript";
+  return "";
+}
+
 function fileUploadLabelFor(element: HTMLInputElement, scope: FormScope): string {
   const root = scopeFor(element, scope);
   const uploadGroup = fileUploadGroupFor(element);
@@ -393,20 +877,62 @@ function fileUploadLabelFor(element: HTMLInputElement, scope: FormScope): string
   const explicitLabel = element.id
     ? root.querySelector<HTMLLabelElement>(`label[for='${CSS.escape(element.id)}']`)
     : null;
+  const parentLabel = element.closest<HTMLLabelElement>("label");
   const controller = element.id
     ? root.querySelector<HTMLElement>(`[aria-controls='${CSS.escape(element.id)}']`)
     : null;
-  const text = cleanText(
-    groupLabel ||
-      explicitLabel?.textContent ||
-      controller?.getAttribute("aria-label") ||
-      controller?.textContent ||
-      element.getAttribute("aria-label") ||
-      element.getAttribute("name"),
-  );
-  if (/upload\s+resume|resume\s+upload/i.test(text)) return "Resume";
-  if (/upload\s+(?:cv|cover\s+letter)/i.test(text)) return cleanLabel(text.replace(/^upload\s+/i, ""));
-  return cleanLabel(text) || "Upload file";
+  const structuralLabel = containerLabelFor(element) || precedingQuestionLabel(element);
+
+  const ariaLabelledByText = labelledByTextFrom(element, root) || labelledByTextFrom(parentLabel, root);
+
+  const containerText = (() => {
+    const parent = element.closest<HTMLElement>(
+      "div[data-testid='field'], [class*='field' i], section, fieldset, [class*='upload' i], [class*='file' i], [class*='drop' i]",
+    ) || element.parentElement?.parentElement;
+    if (!parent) return "";
+    const copy = parent.cloneNode(true) as HTMLElement;
+    copy.querySelectorAll("input, button, svg, script, style, [data-testid*='screen-reader' i], [class*='screen-reader' i], [class*='sr-only' i]").forEach((n) => n.remove());
+    const candidates = Array.from(copy.querySelectorAll("h1, h2, h3, h4, h5, legend, label, p, span, div"))
+      .map((el) => cleanText(el.textContent))
+      .filter((txt) => txt.length >= 2 && txt.length <= 100 && !isUploadHelperText(txt));
+    return candidates[0] || "";
+  })();
+
+  const attributeHint =
+    labelFromAttribute(element.id) ||
+    labelFromAttribute(element.name) ||
+    labelFromAttribute(element.getAttribute("data-testid")) ||
+    labelFromAttribute(parentLabel?.getAttribute("data-testid")) ||
+    labelFromAttribute(parentLabel?.id);
+
+  const candidates = [
+    groupLabel,
+    ariaLabelledByText,
+    explicitLabel?.textContent,
+    labelTextWithoutControl(parentLabel),
+    controller?.getAttribute("aria-label"),
+    controller?.textContent,
+    element.getAttribute("aria-label"),
+    structuralLabel,
+    containerText,
+    attributeHint,
+    element.getAttribute("name"),
+  ].map((str) => cleanText(str)).filter((str) => str && !isUploadHelperText(str));
+
+  const text = candidates[0] || "";
+
+  if (/resume|cv|履历|简历/i.test(text)) return "Resume";
+  if (/cover\s*letter|求职信|自荐信/i.test(text)) return "Cover Letter";
+  if (text) return cleanLabel(text);
+
+  if (attributeHint) return attributeHint;
+
+  const allFileInputs = Array.from(root.querySelectorAll<HTMLInputElement>("input[type='file']"));
+  const inputIndex = allFileInputs.indexOf(element);
+  if (inputIndex > 0) {
+    return "Cover Letter";
+  }
+  return "Resume";
 }
 
 function selectedDocumentFor(
@@ -499,30 +1025,58 @@ function isPresentedFileInput(element: HTMLInputElement, scope: FormScope): bool
     : null;
   if (explicitLabel && isVisibleElement(explicitLabel)) return true;
 
+  const parentLabel = element.closest<HTMLElement>("label");
+  if (parentLabel && isVisibleElement(parentLabel)) return true;
+
+  const fieldContainer = element.closest<HTMLElement>("[data-testid='field'], [data-testid*='field' i]");
+  if (fieldContainer && isVisibleElement(fieldContainer)) return true;
+
   const controller = element.id
     ? root.querySelector<HTMLElement>(`[aria-controls='${CSS.escape(element.id)}']`)
     : null;
   if (controller && isVisibleElement(controller)) return true;
 
+  // Some React application forms keep the actual file input hidden inside a
+  // visible drop zone. The required Resume field in those forms has no
+  // upload-specific class, only a `role=button` or label wrapper.
+  const dropZone = element.closest<HTMLElement>("[role='button'], button, label");
+  if (dropZone) {
+    const acceptsDocument = /(?:\.pdf|\.docx|\.doc|application\/pdf|wordprocessingml)/i.test(element.accept || "");
+    if (isVisibleElement(dropZone) || acceptsDocument) return true;
+  }
+
   // Native file inputs are often visually hidden by design. Treat them as a
   // real field only when their visible uploader UI is present in the same
   // component. This filters LinkedIn's dormant global attachment inputs.
   const uploader = element.closest<HTMLElement>(
-    "[class*='file-upload' i], [class*='upload' i], [data-testid*='upload' i]",
+    [
+      "[class*='file-upload' i]",
+      "[class*='upload' i]",
+      "[data-testid*='upload' i]",
+      "[data-testid*='cover' i]",
+      "[data-testid*='resume' i]",
+      "[data-testid*='letter' i]",
+      "[data-testid*='file' i]",
+      "[class*='document' i]",
+      "[data-test-document-upload]",
+      ".jobs-document-upload",
+      ".jobs-document-upload-redesign-card",
+      ".jobs-easy-apply-form-element",
+      ".fb-dash-form-element",
+      "[data-test-form-element]",
+    ].join(", "),
   );
   if (!uploader || !isVisibleElement(uploader)) return false;
-  return Array.from(uploader.querySelectorAll<HTMLElement>("button, [role='button'], label"))
+  return Array.from(uploader.querySelectorAll<HTMLElement>("button, [role='button'], label, input"))
     .some((control) => isVisibleElement(control));
 }
 
-function isAutofillResumeInput(element: HTMLInputElement): boolean {
-  let container: HTMLElement | null = element.parentElement;
-  for (let depth = 0; container && depth < 4; depth += 1) {
-    const text = cleanText(container.textContent);
-    if (text.length <= 900 && /autofill from resume/i.test(text)) return true;
-    container = container.parentElement;
-  }
-  return false;
+export function isAutofillResumeInput(element: HTMLInputElement): boolean {
+  // Dover keeps both file inputs in one <form>. Looking beyond the input's
+  // own drop zone makes the required Resume field inherit the text from the
+  // separate top-level "Autofill from resume" helper and get filtered out.
+  const dropZone = element.closest<HTMLElement>("[role='button']");
+  return Boolean(dropZone && /autofill from resume/i.test(cleanText(dropZone.textContent)));
 }
 
 export function elementsInScope(scope: FormScope): HTMLElement[] {
@@ -554,8 +1108,15 @@ export function visibleControlsInScope(scope: FormScope): Array<HTMLInputElement
   return controlsInScope(scope).filter((element) => isVisibleElement(element) && isInspectableControl(element));
 }
 
-export function fieldKeyFor(element: HTMLElement, index: number): string {
-  return cleanText(element.id) || cleanText(element.getAttribute("name")) || `field-${index + 1}`;
+export function fieldKeyFor(element: HTMLElement, index: number, scope?: FormScope): string {
+  const explicit = cleanText(element.id) || cleanText(element.getAttribute("name"));
+  if (explicit) return explicit;
+  const label = cleanText(labelFor(element, scope || document));
+  if (label && label !== "Unnamed field") {
+    const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 30);
+    if (slug) return `field-${slug}`;
+  }
+  return `field-${index + 1}`;
 }
 
 type CheckboxChoiceGroup = {
@@ -708,7 +1269,10 @@ export function findButtonChoiceOption(
       (candidateLabel.length > 3 && targetLabel.length > 3 &&
         (candidateLabel.includes(targetLabel) || targetLabel.includes(candidateLabel)));
   });
-  return group?.options.find((option) => cleanText(option.textContent || option.getAttribute("aria-label")).toLowerCase() === targetValue) || null;
+  return group?.options.find((option) => {
+    const text = cleanText(option.textContent || option.getAttribute("aria-label")).toLowerCase();
+    return text === targetValue || (targetValue.length > 1 && (text.includes(targetValue) || targetValue.includes(text)));
+  }) || null;
 }
 
 export function inspectVisibleFormFields(scope: FormScope = document): FormFieldObservation[] {
@@ -752,9 +1316,11 @@ export function inspectVisibleFormFields(scope: FormScope = document): FormField
       }
     }
 
-    if (type === "radio" && element instanceof HTMLInputElement && element.name) {
-      if (seenRadioNames.has(element.name)) continue;
-      seenRadioNames.add(element.name);
+    if (type === "radio" && element instanceof HTMLInputElement) {
+      const radioGroup = radioGroupForElement(element, scope);
+      const groupKey = element.name || radioGroup.map((r) => r.id || r.value).join("-");
+      if (seenRadioNames.has(groupKey)) continue;
+      seenRadioNames.add(groupKey);
     }
 
     const elementScope = scopeFor(element, scope);
@@ -805,6 +1371,46 @@ export function inspectVisibleFormFields(scope: FormScope = document): FormField
     });
   }
 
+  // Rippling renders required selects such as work-rights questions as a
+  // focusable div rather than a native select or input. Treat those ARIA
+  // comboboxes as normal select fields so the backend can classify them.
+  for (const combobox of elementsInScope(scope)) {
+    if (result.length >= 200) break;
+    if (combobox instanceof HTMLInputElement || combobox.getAttribute("role") !== "combobox") continue;
+    if (!isVisibleElement(combobox) || combobox.getAttribute("aria-disabled") === "true") continue;
+    const key = fieldKeyFor(combobox, result.length, scope);
+    if (result.some((field) => field.key === key || (combobox.id && field.id === combobox.id))) continue;
+    const value = cleanText(combobox.textContent);
+    const label = labelFor(combobox, scope);
+
+    const controlsId = cleanText(combobox.getAttribute("aria-controls"));
+    let options: FormOption[] = [];
+    if (controlsId) {
+      const listbox = scope.querySelector<HTMLElement>(`#${CSS.escape(controlsId)}`);
+      if (listbox) {
+        options = Array.from(listbox.querySelectorAll<HTMLElement>("[role='option'], li"))
+          .map((opt) => {
+            const optLabel = cleanText(opt.textContent || opt.getAttribute("aria-label"));
+            return { label: optLabel, value: optLabel };
+          })
+          .filter((opt) => Boolean(opt.label) && !isPlaceholderOption(opt.label, opt.value));
+      }
+    }
+
+    result.push({
+      key,
+      id: cleanText(combobox.id) || undefined,
+      name: cleanText(combobox.getAttribute("name")) || undefined,
+      type: "select",
+      label,
+      required: requiredFor(combobox),
+      filled: Boolean(value && !isPlaceholderOption(value, "selected")),
+      sensitive: false,
+      options,
+      ...(value && !isPlaceholderOption(value, "selected") ? { currentValue: value } : {}),
+    });
+  }
+
   for (const group of buttonChoiceGroups(scope)) {
     if (result.length >= 200) break;
     if (result.some((field) => field.type === "radio" && cleanLabel(field.label) === cleanLabel(group.label))) continue;
@@ -821,6 +1427,28 @@ export function inspectVisibleFormFields(scope: FormScope = document): FormField
         return { label: value, value };
       }),
       ...(selected ? { currentValue: cleanText(selected.textContent || selected.getAttribute("aria-label")) } : {}),
+    });
+  }
+
+  // TechnologyOne renders its consent control as an ARIA checkbox rather
+  // than a native input. Keep it in the field model so it can be recognised
+  // and autofilled like a normal required checkbox.
+  for (const element of ariaCheckboxElementsInScope(scope)) {
+    if (result.length >= 200) break;
+    const label = ariaCheckboxLabel(element, scope);
+    const key = cleanText(element.id) || cleanText(element.getAttribute("name")) || `aria-checkbox-${result.length + 1}`;
+    if (result.some((field) => field.key === key || (field.type === "checkbox" && cleanLabel(field.label) === cleanLabel(label)))) continue;
+    result.push({
+      key,
+      id: cleanText(element.id) || undefined,
+      name: cleanText(element.getAttribute("name")) || undefined,
+      type: "checkbox",
+      label,
+      required: requiredFor(element),
+      filled: ariaCheckboxIsChecked(element),
+      sensitive: false,
+      options: [],
+      ...(ariaCheckboxIsChecked(element) ? { currentValue: "true" } : {}),
     });
   }
 

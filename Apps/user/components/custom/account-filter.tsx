@@ -5,7 +5,7 @@
 import * as React from 'react';
 import { cn } from '@/lib/utils';
 import { Check } from 'lucide-react';
-import { Button } from '@/components/UI/Button';
+import { Button } from '@jobby/ui';
 import { Badge } from '@/components/UI/badge';
 
 export interface Account {

@@ -62,3 +62,48 @@ def test_empty_inputs_are_safe_and_explainable() -> None:
 
     assert result.score == 0.0
     assert result.matched_terms == ()
+
+
+def test_recency_decay_boosts_fresh_and_penalises_old_jobs() -> None:
+    resume = {
+        "summary": "Senior Python Backend Developer with 5 years experience",
+        "skills": ["Python", "FastAPI", "PostgreSQL", "Docker", "AWS"],
+    }
+    desc = "Python Backend Developer role requiring FastAPI, PostgreSQL, Docker, AWS. 5+ years experience required."
+
+    fresh = score_job_match(desc, resume, date_posted="2 hours ago")
+    older = score_job_match(desc, resume, date_posted="30+ days ago")
+
+    assert fresh.score > older.score
+
+
+def test_daily_linear_recency_decay_schedule() -> None:
+    from services.shared.application_matching import parse_recency_score
+    assert parse_recency_score("today") == 1.00
+    assert parse_recency_score("2 days ago") == 0.90
+    assert parse_recency_score("3 days ago") == 0.80
+    assert parse_recency_score("4 days ago") == 0.70
+    assert parse_recency_score("5 days ago") == 0.60
+    assert parse_recency_score("6 days ago") == 0.50
+    assert parse_recency_score("7 days ago") == 0.40
+    assert parse_recency_score("30+ days ago") == 0.25
+
+
+def test_six_day_old_job_decay_significantly_reduces_score() -> None:
+    resume = {
+        "summary": "Full Stack Engineer",
+        "skills": ["Python", "React", "Docker", "MySQL"],
+    }
+    desc = "Python, React, Docker, MySQL."
+    
+    fresh = score_job_match(desc, resume, job_title="Full Stack Engineer", date_posted="today")
+    six_days_old = score_job_match(desc, resume, job_title="Full Stack Engineer", date_posted="6 days ago")
+    
+    assert fresh.score > 0.50
+    assert six_days_old.score == round(fresh.score * 0.50, 4)
+
+
+
+
+
+

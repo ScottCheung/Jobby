@@ -75,6 +75,7 @@ class UserProfileBase(BaseModel):
     first_name: str | None = None
     middle_name: str | None = None
     last_name: str | None = None
+    title: str | None = None
     email: str | None = None
     phone_number: str | None = None
     current_city: str | None = None
@@ -262,6 +263,9 @@ class ApplicationCandidateInput(BaseModel):
     match_score: float | None = None
     easy_apply: bool = False
     already_applied: bool = False
+    posted_at: str | None = None
+    date_posted: str | None = None
+    technologies: list[str] = Field(default_factory=list)
 
 
 class ApplicationDecisionRequest(BaseModel):

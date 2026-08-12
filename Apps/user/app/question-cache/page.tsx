@@ -4,7 +4,6 @@
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import {
-  ArrowUpRight,
   BriefcaseBusiness,
   Check,
   CircleAlert,
@@ -19,8 +18,6 @@ import {
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import type { AutofillAnswer, FormAnswerObservation } from '@/lib/types';
-import { FieldMappingRulesPanel } from '@/components/autofill/FieldMappingRules';
-import Link from 'next/link';
 
 type MemoryCategory = 'all' | 'work' | 'eligibility' | 'compensation';
 
@@ -218,13 +215,6 @@ export default function AiMemoryPage() {
               Save the answers that need your judgement. Profile remains the trusted source for personal details and preferences.
             </p>
           </div>
-          <Link
-            href='#field-mappings'
-            className='inline-flex shrink-0 items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80'
-          >
-            Manage field mappings
-            <ArrowUpRight className='size-3.5' />
-          </Link>
         </div>
       </header>
 
@@ -397,8 +387,6 @@ export default function AiMemoryPage() {
           </div>
         )}
       </section>
-
-      <FieldMappingRulesPanel />
 
       <section id='needs-review' className='scroll-mt-5 border-t border-border/60 pt-6'>
         <div className='mb-3 flex items-start justify-between gap-4'>

@@ -1,9 +1,12 @@
+import { initializeJobBindingListeners } from "./job-binding-service";
 import { logDiagnostic } from "./diagnostics";
 import { handleRuntimeMessage } from "./message-router";
 import { getRuntimeSnapshot } from "./session-store";
 import { acceptsFormChange } from "./content-bridge";
 import { finalizeManualFormAction, prepareManualFormAction, recordManualFormObservations } from "./observation-service";
 import { formFieldObservationSchema, formInspectionSchema } from "../shared/contracts/form-inspection";
+
+initializeJobBindingListeners();
 
 type FormChurnState = {
   windowStartedAt: number;

@@ -31,7 +31,7 @@ import {
 import { cn, formatInterviewDuration } from '@/lib/utils';
 import type { InterviewQuestion, QuestionAnswer } from '@/lib/types';
 import { Tooltip } from '@/components/UI/tooltip';
-import { Button } from '@/components/UI/Button';
+import { Button } from '@jobby/ui';
 import { Textarea } from '@/components/UI/textarea';
 import { EmptyPlaceHolder } from '@/components/UI/EmptyPlaceHolder';
 import { div } from 'framer-motion/client';

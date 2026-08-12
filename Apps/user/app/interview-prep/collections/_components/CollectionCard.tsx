@@ -24,7 +24,7 @@ import {
   Pencil,
 } from 'lucide-react';
 import type { InterviewCollection } from '@/lib/types';
-import { Button } from '@/components/UI/Button';
+import { Button } from '@jobby/ui';
 import { cn } from '@/lib/utils';
 
 type Props = {

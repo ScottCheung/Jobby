@@ -11,7 +11,7 @@ import {
   MapPin,
   Navigation,
 } from 'lucide-react';
-import { Button } from '@/components/UI/Button';
+import { Button } from '@jobby/ui';
 import { Modal } from '@/components/layout/modal';
 import { showGlobalToast } from '@/lib/toast';
 import { useConsole } from '@/components/ConsoleContext';

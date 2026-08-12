@@ -1,26 +1,45 @@
 /** @format */
 
+'use client';
+
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import React, {
   ReactNode,
+  useCallback,
   useEffect,
+  useLayoutEffect,
+  useMemo,
   useRef,
   useState,
-  useCallback,
 } from 'react';
+
+type ResponsiveValue = { sm?: number; md?: number; lg?: number; xl?: number };
 
 export interface WaterfallLayoutProps {
   children: ReactNode[];
-  gap?: number | { sm?: number; md?: number; lg?: number; xl?: number };
+  gap?: number | ResponsiveValue;
   className?: string;
   itemClassName?: string;
-  minColumnWidth?:
-    | number
-    | { sm?: number; md?: number; lg?: number; xl?: number };
+  minColumnWidth?: number | ResponsiveValue;
   padding?: boolean;
   itemScale?: number;
+  /** Render only the viewport and its buffer after the initial height measurement. */
+  virtualize?: boolean;
+  /** The scrollable ancestor that defines the virtual viewport. */
+  scrollContainerRef?: React.RefObject<HTMLElement | null>;
+  overscanPx?: number;
+  estimatedItemHeight?: number;
 }
+
+interface LayoutItem {
+  height: number;
+  width: number;
+  x: number;
+  y: number;
+}
+
+const DEFAULT_ESTIMATED_HEIGHT = 280;
 
 export const WaterfallLayout: React.FC<WaterfallLayoutProps> = ({
   children,
@@ -30,197 +49,238 @@ export const WaterfallLayout: React.FC<WaterfallLayoutProps> = ({
   minColumnWidth = { sm: 250, md: 250, lg: 280, xl: 300 },
   padding = false,
   itemScale = 1,
+  virtualize = false,
+  scrollContainerRef,
+  overscanPx = 800,
+  estimatedItemHeight = DEFAULT_ESTIMATED_HEIGHT,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const lastColumnWidthRef = useRef<number | null>(null);
+  const childArray = useMemo(() => React.Children.toArray(children), [children]);
+  const [containerWidth, setContainerWidth] = useState(0);
+  const [itemHeights, setItemHeights] = useState<Array<number | undefined>>([]);
+  const [viewport, setViewport] = useState({ height: 0, top: 0 });
 
-  // 只需要记录容器的高度来撑开父容器，不需要记录每个 item 的 style
-  const [containerHeight, setContainerHeight] = useState(0);
-
-  // 用于防抖的 timer refs
-  const resizeTimer = useRef<NodeJS.Timeout | null>(null);
-
-  // 计算列配置 (纯函数，提取出来避免依赖)
   const getColumnConfig = useCallback(
     (width: number) => {
       const numericGap =
         typeof gap === 'number' ? gap
-        : width >= 1280 ? (gap as any).xl || 24
-        : width >= 1024 ? (gap as any).lg || 20
-        : width >= 768 ? (gap as any).md || 16
-        : (gap as any).sm || 12;
-
+        : width >= 1280 ? gap.xl || 24
+        : width >= 1024 ? gap.lg || 20
+        : width >= 768 ? gap.md || 16
+        : gap.sm || 12;
       const numericMinWidth =
         typeof minColumnWidth === 'number' ? minColumnWidth
-        : width >= 1280 ? (minColumnWidth as any).xl || 300
-        : width >= 1024 ? (minColumnWidth as any).lg || 280
-        : width >= 768 ? (minColumnWidth as any).md || 250
-        : (minColumnWidth as any).sm || 200;
-
-      const availableWidth = padding ? width - 2 * numericGap : width;
+        : width >= 1280 ? minColumnWidth.xl || 300
+        : width >= 1024 ? minColumnWidth.lg || 280
+        : width >= 768 ? minColumnWidth.md || 250
+        : minColumnWidth.sm || 200;
+      const availableWidth = padding ? Math.max(0, width - 2 * numericGap) : width;
       const columnCount = Math.max(
         1,
-        Math.floor(
-          (availableWidth + numericGap) / (numericMinWidth + numericGap),
-        ),
+        Math.floor((availableWidth + numericGap) / (numericMinWidth + numericGap)),
       );
       const columnWidth =
         (availableWidth - (columnCount - 1) * numericGap) / columnCount;
 
-      return { columnCount, numericGap, columnWidth };
+      return { columnCount, columnWidth, numericGap };
     },
     [gap, minColumnWidth, padding],
   );
 
-  // 核心布局逻辑 - 直接操作 DOM，不触发 React Render
-  const positionItems = useCallback(() => {
-    if (!containerRef.current) return;
+  const columnConfig = useMemo(
+    () => getColumnConfig(containerWidth),
+    [containerWidth, getColumnConfig],
+  );
 
-    const containerWidth = containerRef.current.offsetWidth;
-    const { columnCount, numericGap, columnWidth } =
-      getColumnConfig(containerWidth);
+  const { items: layoutItems, containerHeight } = useMemo(() => {
+    if (!containerWidth || childArray.length === 0) {
+      return { containerHeight: 0, items: [] as LayoutItem[] };
+    }
 
-    // 记录每一列当前的堆叠高度
-    const columnHeights = new Array(columnCount).fill(0);
-
-    // 遍历所有子元素 DOM
-    itemRefs.current.forEach((item) => {
-      if (!item) return;
-
-      // 1. 设置宽度 (必须先设置宽度，否则 offsetHeight 可能不准)
-      // 如果有缩放，实际上我们希望内部渲染的宽度更大，然后缩小放入 columnWidth 的槽位
-      // 比如 slot=200px, scale=0.8 => renderWidth = 250px
-      item.style.width = `${columnWidth / itemScale}px`;
-
-      // 2. 找到当前高度最小的那一列
+    const columnHeights = new Array(columnConfig.columnCount).fill(0);
+    const items = childArray.map((_, index) => {
       const minHeight = Math.min(...columnHeights);
       const columnIndex = columnHeights.indexOf(minHeight);
-
-      // 3. 计算坐标
       const x =
-        (padding ? numericGap : 0) + columnIndex * (columnWidth + numericGap);
+        (padding ? columnConfig.numericGap : 0) +
+        columnIndex * (columnConfig.columnWidth + columnConfig.numericGap);
       const y =
         minHeight +
-        (minHeight > 0 ? numericGap
-        : padding ? numericGap
-        : 0);
+        (minHeight > 0 ? columnConfig.numericGap : padding ? columnConfig.numericGap : 0);
+      const height = (itemHeights[index] ?? estimatedItemHeight) * itemScale;
 
-      // 4. 直接应用样式 (GPU 加速)
-      // 使用 transform 代替 top/left，性能提升关键
-      item.style.transform = `translate3d(${x}px, ${y}px, 0) scale(${itemScale})`;
-      item.style.transformOrigin = '0 0'; // 左上角对齐
-      item.style.position = 'absolute';
-      item.style.top = '0'; // 重置 top
-      item.style.left = '0'; // 重置 left
-      // Apply proper transition here to ensure it's set even if re-renders happened differently
-      // Add width to transition to smooth out scale mode changes
-      item.style.transition =
-        'transform 1.2s cubic-bezier(0.22, 1.1, 0.36, 1), width 1.2s cubic-bezier(0.22, 1.1, 0.36, 1), opacity 1.2s ease';
-
-      // 此时 item 已经有了宽度，读取高度 (Layout Thrashing 依然存在但被限制在必要的范围内)
-      // 计算由于缩放而实际占用的高度
-      const currentItemHeight = item.offsetHeight * itemScale;
-
-      // 5. 更新列高
-      columnHeights[columnIndex] = y + currentItemHeight;
+      columnHeights[columnIndex] = y + height;
+      return { height, width: columnConfig.columnWidth, x, y };
     });
 
-    // 更新容器总高度，这是唯一会触发 Re-render 的地方
-    // 但我们做一个判断，只有高度变化很大时才更新，或者接受这是必要的
-    const maxContentHeight =
-      Math.max(...columnHeights) + (padding ? numericGap : 0);
-    setContainerHeight(maxContentHeight);
-  }, [getColumnConfig, padding, itemScale]);
+    return {
+      items,
+      containerHeight:
+        Math.max(...columnHeights, 0) + (padding ? columnConfig.numericGap : 0),
+    };
+  }, [
+    childArray,
+    columnConfig,
+    containerWidth,
+    estimatedItemHeight,
+    itemHeights,
+    itemScale,
+    padding,
+  ]);
 
-  // 监听 Resize 和 Children 变化
+  const hasMeasuredInitialLayout =
+    itemHeights.length > 0 &&
+    itemHeights
+      .slice(0, Math.min(itemHeights.length, childArray.length))
+      .every(Boolean);
+  const isVirtualizing = virtualize && hasMeasuredInitialLayout;
+
+  const visibleIndexes = useMemo(() => {
+    if (!isVirtualizing) return new Set(childArray.map((_, index) => index));
+
+    const start = Math.max(0, viewport.top - overscanPx);
+    const end = viewport.top + viewport.height + overscanPx;
+    return new Set(
+      layoutItems.flatMap((item, index) =>
+        item.y + item.height >= start && item.y <= end ? [index] : [],
+      ),
+    );
+  }, [childArray, isVirtualizing, layoutItems, overscanPx, viewport]);
+
+  const measureItems = useCallback(() => {
+    setItemHeights((previous) => {
+      let changed = previous.length !== childArray.length;
+      const next = childArray.map((_, index) => {
+        const measuredHeight = itemRefs.current[index]?.offsetHeight;
+        const height = measuredHeight && measuredHeight > 0 ? measuredHeight : previous[index];
+        if (height !== previous[index]) changed = true;
+        return height;
+      });
+      return changed ? next : previous;
+    });
+  }, [childArray]);
+
+  useLayoutEffect(() => {
+    measureItems();
+  }, [measureItems, visibleIndexes]);
+
   useEffect(() => {
-    // 初始化布局
-    // 使用 requestAnimationFrame 确保在下一帧渲染前执行，避免布局闪烁
-    const initFrame = requestAnimationFrame(() => {
-      positionItems();
-    });
+    const el = containerRef.current;
+    if (!el) return;
 
-    const handleResize = () => {
-      if (resizeTimer.current) clearTimeout(resizeTimer.current);
-      resizeTimer.current = setTimeout(() => {
-        positionItems();
-      }, 100); // 100ms 防抖，稍微加快响应速度
+    const updateContainerWidth = () => setContainerWidth(el.clientWidth);
+    updateContainerWidth();
+    const observer = new ResizeObserver(updateContainerWidth);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const columnWidthChanged =
+      lastColumnWidthRef.current !== null &&
+      lastColumnWidthRef.current !== columnConfig.columnWidth;
+    lastColumnWidthRef.current = columnConfig.columnWidth;
+
+    setItemHeights((previous) => {
+      if (columnWidthChanged) {
+        return new Array(childArray.length).fill(undefined);
+      }
+      if (previous.length === childArray.length) return previous;
+      return childArray.map((_, index) => previous[index]);
+    });
+  }, [childArray.length, columnConfig.columnWidth]);
+
+  useEffect(() => {
+    const scrollContainer = scrollContainerRef?.current;
+    if (!scrollContainer) return;
+
+    const updateViewport = () => {
+      setViewport({
+        height: scrollContainer.clientHeight,
+        top: Math.max(
+          0,
+          scrollContainer.scrollTop - getOffsetTopWithin(containerRef.current, scrollContainer),
+        ),
+      });
     };
 
-    const ro = new ResizeObserver(handleResize);
-
-    // 1. 监听容器宽度变化
-    if (containerRef.current) {
-      ro.observe(containerRef.current);
-    }
-
-    // 2. 监听所有子元素的高度变化 (关键优化)
-    itemRefs.current.forEach((item) => {
-      if (item) {
-        ro.observe(item);
-      }
-    });
-
-    const images = containerRef.current?.getElementsByTagName('img');
-    if (images) {
-      Array.from(images).forEach((img) => {
-        if (!img.complete) {
-          img.addEventListener('load', handleResize);
-        }
-      });
-    }
+    updateViewport();
+    scrollContainer.addEventListener('scroll', updateViewport, { passive: true });
+    const observer = new ResizeObserver(updateViewport);
+    observer.observe(scrollContainer);
 
     return () => {
-      cancelAnimationFrame(initFrame);
-      if (resizeTimer.current) clearTimeout(resizeTimer.current);
-      ro.disconnect();
-      if (images) {
-        Array.from(images).forEach((img) =>
-          img.removeEventListener('load', handleResize),
-        );
-      }
+      scrollContainer.removeEventListener('scroll', updateViewport);
+      observer.disconnect();
     };
-  }, [children, positionItems]); // 依赖 children 变化重新布局
+  }, [scrollContainerRef, scrollContainerRef?.current]);
+
+  useEffect(() => {
+    const visibleElements = itemRefs.current.filter(Boolean) as HTMLDivElement[];
+    if (!visibleElements.length) return;
+
+    const observer = new ResizeObserver(measureItems);
+    visibleElements.forEach((element) => observer.observe(element));
+    return () => observer.disconnect();
+  }, [measureItems, visibleIndexes]);
 
   return (
     <div
       ref={containerRef}
-      className={cn('w-full relative', className)}
-      style={{
-        height: containerHeight,
-        transition: 'height 1.2s cubic-bezier(0.22, 1.05, 0.36, 1)',
-      }}
+      className={cn('relative w-full', className)}
+      style={{ height: containerHeight }}
     >
-      {React.Children.map(children, (child, index) => {
+      {childArray.map((child, index) => {
+        if (!visibleIndexes.has(index)) return null;
+
+        const item = layoutItems[index];
+        if (!item) return null;
+        const isSkeleton = React.isValidElement(child) && String(child.key).includes('skeleton');
+
         return (
           <div
+            key={(React.isValidElement(child) && child.key) || index}
             ref={(el) => {
               itemRefs.current[index] = el;
             }}
-            className={cn('absolute relative left-0 top-0', itemClassName)}
+            className={cn('absolute left-0 top-0', itemClassName)}
+            style={{
+              transform: `translate3d(${item.x}px, ${item.y}px, 0) scale(${itemScale})`,
+              transformOrigin: '0 0',
+              width: `${item.width / itemScale}px`,
+            }}
           >
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
+              initial={isVirtualizing ? false : { opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{
-                duration: 1,
-                delay: 0.44 + 0.04 * (index % 30),
+                duration: isSkeleton ? 0.3 : 0.5,
+                delay: isSkeleton || isVirtualizing ? 0 : 0.04 * (index % 30),
                 ease: [0.22, 1.1, 0.36, 1],
               }}
-              className='z-10
-                            '
             >
               {child}
             </motion.div>
-            {/* <motion.div
-                            initial={{ opacity: 1, scale: 1 }}
-                            animate={{ opacity: 0, scale: 0.95 }}
-                            transition={{ duration: 3, delay: 0.44 + 0.04 * (index % 30), ease: [0.22, 1.1, 0.36, 1] }}
-                            className='absolute top-0 left-0 w-full h-full rounded-card bg-panel -z-10'
-                        > </motion.div> */}
           </div>
         );
       })}
     </div>
   );
 };
+
+function getOffsetTopWithin(
+  element: HTMLElement | null,
+  ancestor: HTMLElement,
+) {
+  let offset = 0;
+  let current = element;
+
+  while (current && current !== ancestor) {
+    offset += current.offsetTop;
+    current = current.offsetParent as HTMLElement | null;
+  }
+
+  return offset;
+}

@@ -23,6 +23,7 @@ class ResumeParseError(ValueError):
 
 RESUME_SCHEMA = {
     "basics": {
+        "title": None,
         "first_name": None,
         "middle_name": None,
         "last_name": None,
@@ -116,13 +117,13 @@ RESUME_PROMPT = (
     "- search_terms is required: include 3 to 8 concise job titles inferred only from the candidate's recent experience, headline, and skills.\n"
     "- Use exactly the supplied schema's top-level keys and nested field names; do not create aliases or extra keys.\n"
     "- Use Other for uncategorized skills or certifications.\n"
-    "- basics may include first_name, middle_name, last_name, email, phone, location, linkedin_id, website, portfolio_url, headline.\n"
+    "- basics may include title, first_name, middle_name, last_name, email, phone, location, linkedin_id, website, portfolio_url, headline.\n"
 )
 
 
 RESUME_COMPACT_PROMPT = """Extract factual resume data as compact JSON. Preserve source spelling, order, and section classification; never invent, correct, translate, or merge items. Omit missing fields.
 Schema:
-basics{first_name,middle_name,last_name,email,phone,location{city,state,country,postal_code},linkedin_id,website,portfolio_url,headline}; summary; experience[]{company,title,location,start_date,end_date,description,technologies[]}; projects[]{name,url,start_date,end_date,description,technologies[]}; education[]{institution,degree,field_of_study,location,start_date,end_date,highlights}; skills[]{type,skills[]}; certifications[]{type,certifications[]{name,issuer,issue_date,expiry_date,credential_url}}; links[]{type,link}; languages[]{name,proficiency}; other[]{type,title,organization,location,date,description}; search_terms[].
+basics{title,first_name,middle_name,last_name,email,phone,location{city,state,country,postal_code},linkedin_id,website,portfolio_url,headline}; summary; experience[]{company,title,location,start_date,end_date,description,technologies[]}; projects[]{name,url,start_date,end_date,description,technologies[]}; education[]{institution,degree,field_of_study,location,start_date,end_date,highlights}; skills[]{type,skills[]}; certifications[]{type,certifications[]{name,issuer,issue_date,expiry_date,credential_url}}; links[]{type,link}; languages[]{name,proficiency}; other[]{type,title,organization,location,date,description}; search_terms[].
 The resume is supplied as numbered lines. For summary, description, and highlights, return {"line_ids":[...]} instead of copying source text whenever possible. Each item may be one line number or an array of line numbers that form one wrapped paragraph/bullet. Return literal text only when line references cannot represent the value accurately.
 Rules:
 - Experience: exact role->title, employer->company, place->location, and exact dates. Project and education fields follow their nearest heading. In education, degree is the qualification only and field_of_study is the major/discipline only; split combined qualifications such as "Bachelor of Science in Computer Science".
@@ -681,7 +682,7 @@ def normalize_resume_data(raw: Any) -> dict:
     result: dict[str, Any] = {}
 
     basics: dict[str, Any] = {}
-    for field in ("first_name", "middle_name", "last_name", "email", "phone", "headline"):
+    for field in ("title", "first_name", "middle_name", "last_name", "email", "phone", "headline"):
         value = _text(basics_raw.get(field), 255 if field != "email" else 255)
         if value:
             basics[field] = value

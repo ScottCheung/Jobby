@@ -34,7 +34,7 @@ import { Textarea } from '@/components/UI/textarea';
 import { Switch } from '@/components/UI/switch';
 import { Checkbox } from '@/components/UI/checkbox';
 import { Select } from '@/components/UI/select/select';
-import { Button } from './UI/Button';
+import { Button } from '@jobby/ui';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
@@ -46,6 +46,7 @@ type FieldProps = {
   multiline?: boolean;
   full?: boolean;
   hint?: string;
+  placeholder?: string;
   required?: boolean;
 };
 
@@ -208,6 +209,7 @@ export function Field({
   multiline = false,
   full = false,
   hint,
+  placeholder,
   required = false,
 }: FieldProps) {
   if (multiline) {
@@ -231,6 +233,7 @@ export function Field({
       value={value ?? ''}
       onChange={(event) => onChange(event.target.value)}
       helpTextShort={hint}
+      placeholder={placeholder}
       containerClassName={full ? 'col-span-full' : ''}
       showCharCount={false}
       required={required}

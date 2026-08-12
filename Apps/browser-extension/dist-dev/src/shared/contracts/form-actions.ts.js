@@ -1,8 +1,8 @@
-import { z } from "/vendor/.vite-deps-zod.js__v--d9a92ae8.js";
+import { z } from "/vendor/.vite-deps-zod.js__v--ac2f9308.js";
 import { formFieldTypeSchema } from "/src/shared/contracts/form-inspection.ts.js";
 export const fieldFillInstructionSchema = z.object({
   type: z.literal("content.fill-field"),
-  commandId: z.string().min(1).max(128),
+  commandId: z.string().min(1).max(256),
   source: z.enum(["backend", "panel"]),
   target: z.object({
     key: z.string().min(1).max(256),
@@ -20,7 +20,7 @@ export const fieldFillInstructionSchema = z.object({
 export const formFieldTargetSchema = fieldFillInstructionSchema.shape.target;
 export const fileUploadInstructionSchema = z.object({
   type: z.literal("content.upload-file"),
-  commandId: z.string().min(1).max(128),
+  commandId: z.string().min(1).max(256),
   target: formFieldTargetSchema,
   filename: z.string().min(1).max(255),
   mimeType: z.string().min(1).max(128),

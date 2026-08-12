@@ -1,1731 +1,1125 @@
 {
-  "version": 1,
-  "activeQuestions": [
-    {
-      "label": "Full Name",
-      "group": "Identity & contact",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Legal Full Name",
-      "group": "Identity & contact",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Complete Name",
-      "group": "Identity & contact",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Preferred Name",
-      "group": "Identity & contact",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Nickname",
-      "group": "Identity & contact",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "First Name",
-      "group": "Identity & contact",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Given Name",
-      "group": "Identity & contact",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Middle Name",
-      "group": "Identity & contact",
-      "type": "number",
-      "required": false
-    },
-    {
-      "label": "Middle Initial",
-      "group": "Identity & contact",
-      "type": "number",
-      "required": false
-    },
-    {
-      "label": "Last Name",
-      "group": "Identity & contact",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Family Name",
-      "group": "Identity & contact",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Surname",
-      "group": "Identity & contact",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Legal First Name",
-      "group": "Identity & contact",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Legal Last Name",
-      "group": "Identity & contact",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Former Name",
-      "group": "Identity & contact",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Maiden Name",
-      "group": "Identity & contact",
-      "type": "number",
-      "required": false
-    },
-    {
-      "label": "Previous Legal Name",
-      "group": "Identity & contact",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Display Name",
-      "group": "Identity & contact",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Name as it appears on passport",
-      "group": "Identity & contact",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Name on government ID",
-      "group": "Identity & contact",
-      "type": "number",
-      "required": false
-    },
-    {
-      "label": "Email",
-      "group": "Identity & contact",
-      "type": "email",
-      "required": false
-    },
-    {
-      "label": "Email Address",
-      "group": "Identity & contact",
-      "type": "email",
-      "required": false
-    },
-    {
-      "label": "Primary Email",
-      "group": "Identity & contact",
-      "type": "email",
-      "required": false
-    },
-    {
-      "label": "Secondary Email",
-      "group": "Identity & contact",
-      "type": "email",
-      "required": false
-    },
-    {
-      "label": "Personal Email",
-      "group": "Identity & contact",
-      "type": "email",
-      "required": false
-    },
-    {
-      "label": "Work Email",
-      "group": "Identity & contact",
-      "type": "email",
-      "required": false
-    },
-    {
-      "label": "Business Email",
-      "group": "Identity & contact",
-      "type": "email",
-      "required": false
-    },
-    {
-      "label": "Best Email",
-      "group": "Identity & contact",
-      "type": "email",
-      "required": false
-    },
-    {
-      "label": "Contact Email",
-      "group": "Identity & contact",
-      "type": "email",
-      "required": false
-    },
-    {
-      "label": "Preferred Email",
-      "group": "Identity & contact",
-      "type": "email",
-      "required": false
-    },
-    {
-      "label": "Recovery Email",
-      "group": "Identity & contact",
-      "type": "email",
-      "required": false
-    },
-    {
-      "label": "Email for Communication",
-      "group": "Identity & contact",
-      "type": "email",
-      "required": false
-    },
-    {
-      "label": "University Email",
-      "group": "Identity & contact",
-      "type": "email",
-      "required": false
-    },
-    {
-      "label": "Alternate Email",
-      "group": "Identity & contact",
-      "type": "email",
-      "required": false
-    },
-    {
-      "label": "Confirm Email",
-      "group": "Identity & contact",
-      "type": "email",
-      "required": false
-    },
-    {
-      "label": "Re-enter Email",
-      "group": "Identity & contact",
-      "type": "email",
-      "required": false
-    },
-    {
-      "label": "Your Email",
-      "group": "Identity & contact",
-      "type": "email",
-      "required": false
-    },
-    {
-      "label": "Phone",
-      "group": "Identity & contact",
-      "type": "tel",
-      "required": false
-    },
-    {
-      "label": "Phone Number",
-      "group": "Identity & contact",
-      "type": "tel",
-      "required": false
-    },
-    {
-      "label": "Mobile Number",
-      "group": "Identity & contact",
-      "type": "tel",
-      "required": false
-    },
-    {
-      "label": "Mobile",
-      "group": "Identity & contact",
-      "type": "tel",
-      "required": false
-    },
-    {
-      "label": "Cell Phone",
-      "group": "Identity & contact",
-      "type": "tel",
-      "required": false
-    },
-    {
-      "label": "Cell Number",
-      "group": "Identity & contact",
-      "type": "tel",
-      "required": false
-    },
-    {
-      "label": "Telephone",
-      "group": "Identity & contact",
-      "type": "tel",
-      "required": false
-    },
-    {
-      "label": "Home Phone",
-      "group": "Identity & contact",
-      "type": "tel",
-      "required": false
-    },
-    {
-      "label": "Work Phone",
-      "group": "Identity & contact",
-      "type": "tel",
-      "required": false
-    },
-    {
-      "label": "Primary Contact Number",
-      "group": "Identity & contact",
-      "type": "tel",
-      "required": false
-    },
-    {
-      "label": "Secondary Contact Number",
-      "group": "Identity & contact",
-      "type": "tel",
-      "required": false
-    },
-    {
-      "label": "Emergency Contact Number",
-      "group": "Identity & contact",
-      "type": "tel",
-      "required": false
-    },
-    {
-      "label": "Country Code",
-      "group": "Identity & contact",
-      "type": "number",
-      "required": false
-    },
-    {
-      "label": "Area Code",
-      "group": "Identity & contact",
-      "type": "number",
-      "required": false
-    },
-    {
-      "label": "Extension",
-      "group": "Identity & contact",
-      "type": "number",
-      "required": false
-    },
-    {
-      "label": "Preferred Contact Number",
-      "group": "Identity & contact",
-      "type": "tel",
-      "required": false
-    },
-    {
-      "label": "Current Address",
-      "group": "Identity & contact",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Street Address",
-      "group": "Identity & contact",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Address Line 1",
-      "group": "Identity & contact",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Address Line 2",
-      "group": "Identity & contact",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Apartment / Unit Number",
-      "group": "Identity & contact",
-      "type": "number",
-      "required": false
-    },
-    {
-      "label": "Building Name",
-      "group": "Identity & contact",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "City",
-      "group": "Identity & contact",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Current City",
-      "group": "Identity & contact",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Suburb",
-      "group": "Identity & contact",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Town",
-      "group": "Identity & contact",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "State",
-      "group": "Identity & contact",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Province",
-      "group": "Identity & contact",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Region",
-      "group": "Identity & contact",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "County",
-      "group": "Identity & contact",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Postal Code",
-      "group": "Identity & contact",
-      "type": "number",
-      "required": false
-    },
-    {
-      "label": "Postcode",
-      "group": "Identity & contact",
-      "type": "number",
-      "required": false
-    },
-    {
-      "label": "ZIP Code",
-      "group": "Identity & contact",
-      "type": "number",
-      "required": false
-    },
-    {
-      "label": "Country",
-      "group": "Identity & contact",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Country of Residence",
-      "group": "Identity & contact",
-      "type": "number",
-      "required": false
-    },
-    {
-      "label": "Mailing Address",
-      "group": "Identity & contact",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Permanent Address",
-      "group": "Identity & contact",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Residential Address",
-      "group": "Identity & contact",
-      "type": "number",
-      "required": false
-    },
-    {
-      "label": "Date of Birth",
-      "group": "Identity & contact",
-      "type": "date",
-      "required": false
-    },
-    {
-      "label": "Age",
-      "group": "Identity & contact",
-      "type": "number",
-      "required": false
-    },
-    {
-      "label": "Place of Birth",
-      "group": "Identity & contact",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Nationality",
-      "group": "Identity & contact",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Country of Citizenship",
-      "group": "Identity & contact",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Second Citizenship",
-      "group": "Identity & contact",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "National ID Number",
-      "group": "Identity & contact",
-      "type": "number",
-      "required": false
-    },
-    {
-      "label": "Passport Number",
-      "group": "Identity & contact",
-      "type": "number",
-      "required": false
-    },
-    {
-      "label": "Passport Expiry Date",
-      "group": "Identity & contact",
-      "type": "date",
-      "required": false
-    },
-    {
-      "label": "Driver License Number",
-      "group": "Identity & contact",
-      "type": "number",
-      "required": false
-    },
-    {
-      "label": "Driver License Expiry Date",
-      "group": "Identity & contact",
-      "type": "date",
-      "required": false
-    },
-    {
-      "label": "Tax File Number",
-      "group": "Identity & contact",
-      "type": "number",
-      "required": false
-    },
-    {
-      "label": "Social Security Number",
-      "group": "Identity & contact",
-      "type": "number",
-      "required": false
-    },
-    {
-      "label": "Gender",
-      "group": "Identity & contact",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Sex",
-      "group": "Identity & contact",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Pronouns",
-      "group": "Identity & contact",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Marital Status",
-      "group": "Identity & contact",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "LinkedIn URL",
-      "group": "Compensation",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "GitHub URL",
-      "group": "Compensation",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Portfolio Website",
-      "group": "Compensation",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Personal Website",
-      "group": "Compensation",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Blog Website",
-      "group": "Compensation",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Stack Overflow Profile",
-      "group": "Compensation",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Kaggle Profile",
-      "group": "Compensation",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Medium Profile",
-      "group": "Compensation",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Behance Profile",
-      "group": "Compensation",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Dribbble Profile",
-      "group": "Compensation",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "X (Twitter) Profile",
-      "group": "Compensation",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Facebook Profile",
-      "group": "Compensation",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Instagram Profile",
-      "group": "Compensation",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "YouTube Channel",
-      "group": "Compensation",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Personal Portfolio Link",
-      "group": "Compensation",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Current Employer",
-      "group": "Compensation",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Current Company",
-      "group": "Compensation",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Most Recent Employer",
-      "group": "Compensation",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Previous Employer",
-      "group": "Compensation",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Current Job Title",
-      "group": "Compensation",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Current Position",
-      "group": "Compensation",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Department",
-      "group": "Compensation",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Manager Name",
-      "group": "Compensation",
-      "type": "number",
-      "required": false
-    },
-    {
-      "label": "Employee ID",
-      "group": "Compensation",
-      "type": "number",
-      "required": false
-    },
-    {
-      "label": "Employment Type",
-      "group": "Compensation",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Employment Status",
-      "group": "Compensation",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Work Location",
-      "group": "Compensation",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Office Location",
-      "group": "Compensation",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Preferred Office",
-      "group": "Compensation",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Preferred Work Location",
-      "group": "Compensation",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Current Salary",
-      "group": "Compensation",
-      "type": "number",
-      "required": false
-    },
-    {
-      "label": "Current Annual Salary",
-      "group": "Compensation",
-      "type": "number",
-      "required": false
-    },
-    {
-      "label": "Current Hourly Rate",
-      "group": "Compensation",
-      "type": "number",
-      "required": false
-    },
-    {
-      "label": "Expected Salary",
-      "group": "Compensation",
-      "type": "number",
-      "required": false
-    },
-    {
-      "label": "Expected Annual Salary",
-      "group": "Compensation",
-      "type": "number",
-      "required": false
-    },
-    {
-      "label": "Expected Hourly Rate",
-      "group": "Compensation",
-      "type": "number",
-      "required": false
-    },
-    {
-      "label": "Salary Currency",
-      "group": "Compensation",
-      "type": "number",
-      "required": false
-    },
-    {
-      "label": "Salary Expectations",
-      "group": "Compensation",
-      "type": "number",
-      "required": false
-    },
-    {
-      "label": "Bonus Expectation",
-      "group": "Compensation",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Notice Period",
-      "group": "Compensation",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Notice Period (days)",
-      "group": "Compensation",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Earliest Start Date",
-      "group": "Compensation",
-      "type": "date",
-      "required": false
-    },
-    {
-      "label": "Available Start Date",
-      "group": "Compensation",
-      "type": "date",
-      "required": false
-    },
-    {
-      "label": "Available From",
-      "group": "Compensation",
-      "type": "date",
-      "required": false
-    },
-    {
-      "label": "Preferred Start Date",
-      "group": "Compensation",
-      "type": "date",
-      "required": false
-    },
-    {
-      "label": "Can you relocate?",
-      "group": "Work setup",
-      "type": "radio",
-      "required": false
-    },
-    {
-      "label": "Preferred Relocation Location",
-      "group": "Work setup",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Can you travel?",
-      "group": "Work setup",
-      "type": "radio",
-      "required": false
-    },
-    {
-      "label": "Percentage of Travel Available",
-      "group": "Work setup",
-      "type": "number",
-      "required": false
-    },
-    {
-      "label": "Do you have a driver's license?",
-      "group": "Work setup",
-      "type": "radio",
-      "required": false
-    },
-    {
-      "label": "Driver License Class",
-      "group": "Work setup",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Do you own a vehicle?",
-      "group": "Work setup",
-      "type": "radio",
-      "required": false
-    },
-    {
-      "label": "Can you work weekends?",
-      "group": "Work setup",
-      "type": "radio",
-      "required": false
-    },
-    {
-      "label": "Can you work night shifts?",
-      "group": "Work setup",
-      "type": "radio",
-      "required": false
-    },
-    {
-      "label": "Can you work overtime?",
-      "group": "Work setup",
-      "type": "radio",
-      "required": false
-    },
-    {
-      "label": "Are you willing to work remotely?",
-      "group": "Work setup",
-      "type": "radio",
-      "required": false
-    },
-    {
-      "label": "Preferred Work Arrangement",
-      "group": "Work setup",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Highest Qualification",
-      "group": "Eligibility & application",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Highest Education",
-      "group": "Eligibility & application",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Highest Degree Earned",
-      "group": "Eligibility & application",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Degree Type",
-      "group": "Eligibility & application",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Field of Study",
-      "group": "Eligibility & application",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Major",
-      "group": "Eligibility & application",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Minor",
-      "group": "Eligibility & application",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "University",
-      "group": "Eligibility & application",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "College",
-      "group": "Eligibility & application",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Institution Name",
-      "group": "Eligibility & application",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Campus",
-      "group": "Eligibility & application",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Graduation Date",
-      "group": "Eligibility & application",
-      "type": "date",
-      "required": false
-    },
-    {
-      "label": "Graduation Year",
-      "group": "Eligibility & application",
-      "type": "date",
-      "required": false
-    },
-    {
-      "label": "Expected Graduation Date",
-      "group": "Eligibility & application",
-      "type": "date",
-      "required": false
-    },
-    {
-      "label": "Student ID",
-      "group": "Eligibility & application",
-      "type": "number",
-      "required": false
-    },
-    {
-      "label": "GPA",
-      "group": "Eligibility & application",
-      "type": "number",
-      "required": false
-    },
-    {
-      "label": "Weighted GPA",
-      "group": "Eligibility & application",
-      "type": "number",
-      "required": false
-    },
-    {
-      "label": "Academic Honors",
-      "group": "Eligibility & application",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Relevant Coursework",
-      "group": "Eligibility & application",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Years of Experience",
-      "group": "Eligibility & application",
-      "type": "number",
-      "required": false
-    },
-    {
-      "label": "Total Professional Experience",
-      "group": "Eligibility & application",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Relevant Experience",
-      "group": "Eligibility & application",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Industry Experience",
-      "group": "Eligibility & application",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Management Experience",
-      "group": "Eligibility & application",
-      "type": "number",
-      "required": false
-    },
-    {
-      "label": "Leadership Experience",
-      "group": "Eligibility & application",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Years of React Experience",
-      "group": "Eligibility & application",
-      "type": "number",
-      "required": false
-    },
-    {
-      "label": "Years of Node Experience",
-      "group": "Eligibility & application",
-      "type": "number",
-      "required": false
-    },
-    {
-      "label": "Years of .NET Experience",
-      "group": "Eligibility & application",
-      "type": "number",
-      "required": false
-    },
-    {
-      "label": "Years of Java Experience",
-      "group": "Eligibility & application",
-      "type": "number",
-      "required": false
-    },
-    {
-      "label": "Years of Python Experience",
-      "group": "Eligibility & application",
-      "type": "number",
-      "required": false
-    },
-    {
-      "label": "Years of C# Experience",
-      "group": "Eligibility & application",
-      "type": "number",
-      "required": false
-    },
-    {
-      "label": "Years of JavaScript Experience",
-      "group": "Eligibility & application",
-      "type": "number",
-      "required": false
-    },
-    {
-      "label": "Years of TypeScript Experience",
-      "group": "Eligibility & application",
-      "type": "number",
-      "required": false
-    },
-    {
-      "label": "Years of SQL Experience",
-      "group": "Eligibility & application",
-      "type": "number",
-      "required": false
-    },
-    {
-      "label": "Years of AWS Experience",
-      "group": "Eligibility & application",
-      "type": "number",
-      "required": false
-    },
-    {
-      "label": "Years of Azure Experience",
-      "group": "Eligibility & application",
-      "type": "number",
-      "required": false
-    },
-    {
-      "label": "Years of GCP Experience",
-      "group": "Eligibility & application",
-      "type": "number",
-      "required": false
-    },
-    {
-      "label": "Years of Docker Experience",
-      "group": "Eligibility & application",
-      "type": "number",
-      "required": false
-    },
-    {
-      "label": "Years of Kubernetes Experience",
-      "group": "Eligibility & application",
-      "type": "number",
-      "required": false
-    },
-    {
-      "label": "Years of CI/CD Experience",
-      "group": "Eligibility & application",
-      "type": "number",
-      "required": false
-    },
-    {
-      "label": "Visa Status",
-      "group": "Eligibility & application",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Visa Type",
-      "group": "Eligibility & application",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Current Visa",
-      "group": "Eligibility & application",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Visa Expiry Date",
-      "group": "Eligibility & application",
-      "type": "date",
-      "required": false
-    },
-    {
-      "label": "Work Authorization",
-      "group": "Eligibility & application",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Country of Work Authorization",
-      "group": "Eligibility & application",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Are you legally authorized to work?",
-      "group": "Eligibility & application",
-      "type": "radio",
-      "required": false
-    },
-    {
-      "label": "Will you require sponsorship?",
-      "group": "Eligibility & application",
-      "type": "radio",
-      "required": false
-    },
-    {
-      "label": "Do you now require sponsorship?",
-      "group": "Eligibility & application",
-      "type": "radio",
-      "required": false
-    },
-    {
-      "label": "Will you require visa sponsorship in the future?",
-      "group": "Eligibility & application",
-      "type": "radio",
-      "required": false
-    },
-    {
-      "label": "Do you hold permanent residency?",
-      "group": "Eligibility & application",
-      "type": "number",
-      "required": false
-    },
-    {
-      "label": "Citizenship Status",
-      "group": "Eligibility & application",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Immigration Status",
-      "group": "Eligibility & application",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "English Level",
-      "group": "Eligibility & application",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "English Proficiency",
-      "group": "Eligibility & application",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Primary Language",
-      "group": "Eligibility & application",
-      "type": "number",
-      "required": false
-    },
-    {
-      "label": "Other Languages",
-      "group": "Eligibility & application",
-      "type": "number",
-      "required": false
-    },
-    {
-      "label": "Language Proficiency",
-      "group": "Eligibility & application",
-      "type": "number",
-      "required": false
-    },
-    {
-      "label": "Military Status",
-      "group": "Eligibility & application",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Veteran Status",
-      "group": "Eligibility & application",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Disability Status",
-      "group": "Eligibility & application",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Indigenous Status",
-      "group": "Eligibility & application",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Ethnicity",
-      "group": "Eligibility & application",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Race",
-      "group": "Eligibility & application",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Religion (Optional)",
-      "group": "Eligibility & application",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Emergency Contact Name",
-      "group": "Eligibility & application",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Emergency Contact Relationship",
-      "group": "Eligibility & application",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Emergency Contact Phone",
-      "group": "Eligibility & application",
-      "type": "tel",
-      "required": false
-    },
-    {
-      "label": "Emergency Contact Email",
-      "group": "Eligibility & application",
-      "type": "email",
-      "required": false
-    },
-    {
-      "label": "Reference Name",
-      "group": "Eligibility & application",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Reference Relationship",
-      "group": "Eligibility & application",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Reference Company",
-      "group": "Eligibility & application",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Reference Position",
-      "group": "Eligibility & application",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Reference Email",
-      "group": "Eligibility & application",
-      "type": "email",
-      "required": false
-    },
-    {
-      "label": "Reference Phone",
-      "group": "Eligibility & application",
-      "type": "tel",
-      "required": false
-    },
-    {
-      "label": "Resume Upload",
-      "group": "Eligibility & application",
-      "type": "file",
-      "required": false
-    },
-    {
-      "label": "CV Upload",
-      "group": "Eligibility & application",
-      "type": "file",
-      "required": false
-    },
-    {
-      "label": "Cover Letter Upload",
-      "group": "Eligibility & application",
-      "type": "file",
-      "required": false
-    },
-    {
-      "label": "Transcript Upload",
-      "group": "Eligibility & application",
-      "type": "file",
-      "required": false
-    },
-    {
-      "label": "Portfolio Upload",
-      "group": "Eligibility & application",
-      "type": "file",
-      "required": false
-    },
-    {
-      "label": "Certification Upload",
-      "group": "Eligibility & application",
-      "type": "file",
-      "required": false
-    },
-    {
-      "label": "Work Sample Upload",
-      "group": "Eligibility & application",
-      "type": "file",
-      "required": false
-    },
-    {
-      "label": "Profile Photo Upload",
-      "group": "Eligibility & application",
-      "type": "file",
-      "required": false
-    },
-    {
-      "label": "Professional Summary",
-      "group": "Eligibility & application",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Career Objective",
-      "group": "Eligibility & application",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "About You",
-      "group": "Eligibility & application",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Tell us about yourself",
-      "group": "Eligibility & application",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Why are you interested in this role?",
-      "group": "Eligibility & application",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Why do you want to work here?",
-      "group": "Eligibility & application",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "What makes you a good fit?",
-      "group": "Eligibility & application",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Describe your experience.",
-      "group": "Eligibility & application",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Key Achievements",
-      "group": "Eligibility & application",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Technical Skills",
-      "group": "Eligibility & application",
-      "type": "text",
-      "required": false
-    },
-    {
-      "label": "Soft Skills",
-      "group": "Eligibility & application",
-      "type": "text",
-      "required": false
-    }
-  ],
+  "version": 3,
   "groups": [
     {
-      "id": "identity",
+      "id": "identity-contact",
       "label": "Identity & contact",
+      "description": "Names, contact details and professional links.",
       "questions": [
-        "Full Name",
-        "Legal Full Name",
-        "Complete Name",
-        "Preferred Name",
-        "Nickname",
-        "First Name",
-        "Given Name",
-        "Middle Name",
-        "Middle Initial",
-        "Last Name",
-        "Family Name",
-        "Surname",
-        "Legal First Name",
-        "Legal Last Name",
-        "Former Name",
-        "Maiden Name",
-        "Previous Legal Name",
-        "Display Name",
-        "Name as it appears on passport",
-        "Name on government ID",
-        "Email",
-        "Email Address",
-        "Primary Email",
-        "Secondary Email",
-        "Personal Email",
-        "Work Email",
-        "Business Email",
-        "Best Email",
-        "Contact Email",
-        "Preferred Email",
-        "Recovery Email",
-        "Email for Communication",
-        "University Email",
-        "Alternate Email",
-        "Confirm Email",
-        "Re-enter Email",
-        "Your Email",
-        "Phone",
-        "Phone Number",
-        "Mobile Number",
-        "Mobile",
-        "Cell Phone",
-        "Cell Number",
-        "Telephone",
-        "Home Phone",
-        "Work Phone",
-        "Primary Contact Number",
-        "Secondary Contact Number",
-        "Emergency Contact Number",
-        "Country Code",
-        "Area Code",
-        "Extension",
-        "Preferred Contact Number",
-        "Current Address",
-        "Street Address",
-        "Address Line 1",
-        "Address Line 2",
-        "Apartment / Unit Number",
-        "Building Name",
-        "City",
-        "Current City",
-        "Suburb",
-        "Town",
-        "State",
-        "Province",
-        "Region",
-        "County",
-        "Postal Code",
-        "Postcode",
-        "ZIP Code",
-        "Country",
-        "Country of Residence",
-        "Mailing Address",
-        "Permanent Address",
-        "Residential Address",
-        "Date of Birth",
-        "Age",
-        "Place of Birth",
-        "Nationality",
-        "Country of Citizenship",
-        "Second Citizenship",
-        "National ID Number",
-        "Passport Number",
-        "Passport Expiry Date",
-        "Driver License Number",
-        "Driver License Expiry Date",
-        "Tax File Number",
-        "Social Security Number",
-        "Gender",
-        "Sex",
-        "Pronouns",
-        "Marital Status"
+        {
+          "label": "Title",
+          "type": "select",
+          "options": [
+            {
+              "label": "Mr",
+              "value": "Mr"
+            },
+            {
+              "label": "Ms",
+              "value": "Ms"
+            },
+            {
+              "label": "Mx",
+              "value": "Mx"
+            },
+            {
+              "label": "Dr",
+              "value": "Dr"
+            },
+            {
+              "label": "Prefer not to say",
+              "value": "Prefer not to say"
+            }
+          ]
+        },
+        {
+          "label": "Preferred Name",
+          "type": "text"
+        },
+        {
+          "label": "First Name",
+          "type": "text",
+          "required": true
+        },
+        {
+          "label": "Middle Name",
+          "type": "text"
+        },
+        {
+          "label": "Last Name",
+          "type": "text",
+          "required": true
+        },
+        {
+          "label": "Full Name",
+          "type": "text",
+          "required": true
+        },
+        {
+          "label": "Name as it appears on your passport",
+          "type": "text"
+        },
+        {
+          "label": "Email Address",
+          "type": "email",
+          "required": true
+        },
+        {
+          "label": "Phone Number",
+          "type": "tel",
+          "required": true
+        },
+        {
+          "label": "LinkedIn URL",
+          "type": "url"
+        },
+        {
+          "label": "Professional portfolio URL",
+          "type": "url"
+        },
+        {
+          "label": "Personal website",
+          "type": "url"
+        },
+        {
+          "label": "Pronouns",
+          "type": "select",
+          "options": [
+            {
+              "label": "She/her",
+              "value": "She/her"
+            },
+            {
+              "label": "He/him",
+              "value": "He/him"
+            },
+            {
+              "label": "They/them",
+              "value": "They/them"
+            },
+            {
+              "label": "Use my name",
+              "value": "Use my name"
+            },
+            {
+              "label": "Prefer not to say",
+              "value": "Prefer not to say"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "location",
+      "label": "Location & work setup",
+      "description": "Australian address, location and commute preferences.",
+      "questions": [
+        {
+          "label": "Current City",
+          "type": "text"
+        },
+        {
+          "label": "Suburb",
+          "type": "text"
+        },
+        {
+          "label": "State or Territory",
+          "type": "select",
+          "options": [
+            {
+              "label": "Australian Capital Territory",
+              "value": "ACT"
+            },
+            {
+              "label": "New South Wales",
+              "value": "NSW"
+            },
+            {
+              "label": "Northern Territory",
+              "value": "NT"
+            },
+            {
+              "label": "Queensland",
+              "value": "QLD"
+            },
+            {
+              "label": "South Australia",
+              "value": "SA"
+            },
+            {
+              "label": "Tasmania",
+              "value": "TAS"
+            },
+            {
+              "label": "Victoria",
+              "value": "VIC"
+            },
+            {
+              "label": "Western Australia",
+              "value": "WA"
+            }
+          ]
+        },
+        {
+          "label": "Postcode",
+          "type": "text"
+        },
+        {
+          "label": "Country of residence",
+          "type": "select",
+          "options": [
+            {
+              "label": "Australia",
+              "value": "Australia"
+            },
+            {
+              "label": "New Zealand",
+              "value": "New Zealand"
+            },
+            {
+              "label": "Other",
+              "value": "Other"
+            }
+          ]
+        },
+        {
+          "label": "Street address",
+          "type": "text"
+        },
+        {
+          "label": "Preferred work location",
+          "type": "select",
+          "options": [
+            {
+              "label": "Sydney",
+              "value": "Sydney"
+            },
+            {
+              "label": "Melbourne",
+              "value": "Melbourne"
+            },
+            {
+              "label": "Brisbane",
+              "value": "Brisbane"
+            },
+            {
+              "label": "Perth",
+              "value": "Perth"
+            },
+            {
+              "label": "Adelaide",
+              "value": "Adelaide"
+            },
+            {
+              "label": "Canberra",
+              "value": "Canberra"
+            },
+            {
+              "label": "Remote",
+              "value": "Remote"
+            }
+          ]
+        },
+        {
+          "label": "Are you able to commute to the office?",
+          "type": "radio",
+          "options": [
+            {
+              "label": "Yes",
+              "value": "Yes"
+            },
+            {
+              "label": "No",
+              "value": "No"
+            },
+            {
+              "label": "Sometimes",
+              "value": "Sometimes"
+            }
+          ]
+        },
+        {
+          "label": "Preferred work arrangement",
+          "type": "select",
+          "options": [
+            {
+              "label": "On-site",
+              "value": "On-site"
+            },
+            {
+              "label": "Hybrid",
+              "value": "Hybrid"
+            },
+            {
+              "label": "Remote",
+              "value": "Remote"
+            }
+          ]
+        },
+        {
+          "label": "Maximum one-way commute (minutes)",
+          "type": "number"
+        }
+      ]
+    },
+    {
+      "id": "work-rights",
+      "label": "Work rights & visa",
+      "description": "Eligibility and sponsorship questions common in Australian applications.",
+      "questions": [
+        {
+          "label": "Citizenship",
+          "type": "select",
+          "required": true,
+          "options": [
+            {
+              "label": "Australian citizen",
+              "value": "Australian citizen"
+            },
+            {
+              "label": "Australian permanent resident",
+              "value": "Australian permanent resident"
+            },
+            {
+              "label": "New Zealand citizen",
+              "value": "New Zealand citizen"
+            },
+            {
+              "label": "Temporary visa holder",
+              "value": "Temporary visa holder"
+            },
+            {
+              "label": "Other",
+              "value": "Other"
+            }
+          ]
+        },
+        {
+          "label": "Are you legally authorized to work in Australia?",
+          "type": "radio",
+          "required": true,
+          "options": [
+            {
+              "label": "Yes",
+              "value": "Yes"
+            },
+            {
+              "label": "No",
+              "value": "No"
+            }
+          ]
+        },
+        {
+          "label": "Right to work status",
+          "type": "select",
+          "options": [
+            {
+              "label": "Unrestricted",
+              "value": "Unrestricted"
+            },
+            {
+              "label": "Restricted hours",
+              "value": "Restricted hours"
+            },
+            {
+              "label": "Pending",
+              "value": "Pending"
+            }
+          ]
+        },
+        {
+          "label": "Visa Status",
+          "type": "select",
+          "options": [
+            {
+              "label": "Australian citizen",
+              "value": "Australian citizen"
+            },
+            {
+              "label": "Permanent resident",
+              "value": "Permanent resident"
+            },
+            {
+              "label": "Temporary visa",
+              "value": "Temporary visa"
+            },
+            {
+              "label": "Not applicable",
+              "value": "Not applicable"
+            }
+          ]
+        },
+        {
+          "label": "Visa Type",
+          "type": "select",
+          "options": [
+            {
+              "label": "Subclass 482",
+              "value": "Subclass 482"
+            },
+            {
+              "label": "Subclass 485",
+              "value": "Subclass 485"
+            },
+            {
+              "label": "Subclass 500",
+              "value": "Subclass 500"
+            },
+            {
+              "label": "Subclass 417",
+              "value": "Subclass 417"
+            },
+            {
+              "label": "Other",
+              "value": "Other"
+            }
+          ]
+        },
+        {
+          "label": "Visa Expiry Date",
+          "type": "date"
+        },
+        {
+          "label": "Will you require visa sponsorship now or in the future?",
+          "type": "radio",
+          "required": true,
+          "options": [
+            {
+              "label": "Yes",
+              "value": "Yes"
+            },
+            {
+              "label": "No",
+              "value": "No"
+            }
+          ]
+        },
+        {
+          "label": "Are you willing to relocate for this role?",
+          "type": "radio",
+          "options": [
+            {
+              "label": "Yes",
+              "value": "Yes"
+            },
+            {
+              "label": "No",
+              "value": "No"
+            },
+            {
+              "label": "Maybe",
+              "value": "Maybe"
+            }
+          ]
+        },
+        {
+          "label": "Do you have unrestricted Australian work rights?",
+          "type": "radio",
+          "options": [
+            {
+              "label": "Yes",
+              "value": "Yes"
+            },
+            {
+              "label": "No",
+              "value": "No"
+            }
+          ]
+        },
+        {
+          "label": "VEVO check reference number",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "id": "role-availability",
+      "label": "Role & availability",
+      "description": "The role, hours, shifts and start-date details recruiters ask for.",
+      "questions": [
+        {
+          "label": "Desired job title",
+          "type": "text"
+        },
+        {
+          "label": "Employment type",
+          "type": "select",
+          "required": true,
+          "options": [
+            {
+              "label": "Full-time",
+              "value": "Full-time"
+            },
+            {
+              "label": "Part-time",
+              "value": "Part-time"
+            },
+            {
+              "label": "Casual",
+              "value": "Casual"
+            },
+            {
+              "label": "Contract",
+              "value": "Contract"
+            },
+            {
+              "label": "Temporary",
+              "value": "Temporary"
+            },
+            {
+              "label": "Internship",
+              "value": "Internship"
+            }
+          ]
+        },
+        {
+          "label": "Available from",
+          "type": "date"
+        },
+        {
+          "label": "Notice period (weeks)",
+          "type": "number"
+        },
+        {
+          "label": "Preferred weekly hours",
+          "type": "number"
+        },
+        {
+          "label": "Preferred hours",
+          "type": "select",
+          "options": [
+            {
+              "label": "Standard business hours",
+              "value": "Standard business hours"
+            },
+            {
+              "label": "Early morning",
+              "value": "Early morning"
+            },
+            {
+              "label": "Evening",
+              "value": "Evening"
+            },
+            {
+              "label": "Flexible",
+              "value": "Flexible"
+            }
+          ]
+        },
+        {
+          "label": "Are you available to work weekends?",
+          "type": "radio",
+          "options": [
+            {
+              "label": "Yes",
+              "value": "Yes"
+            },
+            {
+              "label": "No",
+              "value": "No"
+            },
+            {
+              "label": "Occasionally",
+              "value": "Occasionally"
+            }
+          ]
+        },
+        {
+          "label": "Are you available for night shifts?",
+          "type": "radio",
+          "options": [
+            {
+              "label": "Yes",
+              "value": "Yes"
+            },
+            {
+              "label": "No",
+              "value": "No"
+            }
+          ]
+        },
+        {
+          "label": "Are you willing to work overtime when required?",
+          "type": "radio",
+          "options": [
+            {
+              "label": "Yes",
+              "value": "Yes"
+            },
+            {
+              "label": "No",
+              "value": "No"
+            }
+          ]
+        },
+        {
+          "label": "Percentage of travel you can support",
+          "type": "number"
+        },
+        {
+          "label": "Do you have a preferred start date?",
+          "type": "checkbox"
+        }
+      ]
+    },
+    {
+      "id": "experience",
+      "label": "Experience & leadership",
+      "description": "Career history and evidence of scope.",
+      "questions": [
+        {
+          "label": "Years of professional experience",
+          "type": "number"
+        },
+        {
+          "label": "Years of experience in this industry",
+          "type": "number"
+        },
+        {
+          "label": "Most recent employer",
+          "type": "text"
+        },
+        {
+          "label": "Most recent job title",
+          "type": "text"
+        },
+        {
+          "label": "Previous employer",
+          "type": "text"
+        },
+        {
+          "label": "Team size in your most recent role",
+          "type": "number"
+        },
+        {
+          "label": "Years of people management experience",
+          "type": "number"
+        },
+        {
+          "label": "Have you led a team before?",
+          "type": "radio",
+          "options": [
+            {
+              "label": "Yes",
+              "value": "Yes"
+            },
+            {
+              "label": "No",
+              "value": "No"
+            }
+          ]
+        },
+        {
+          "label": "Key responsibilities in your most recent role",
+          "type": "textarea"
+        },
+        {
+          "label": "Most relevant achievement",
+          "type": "textarea"
+        }
       ]
     },
     {
       "id": "compensation",
       "label": "Compensation",
+      "description": "Annual salary, hourly rates and remuneration preferences.",
       "questions": [
-        "LinkedIn URL",
-        "GitHub URL",
-        "Portfolio Website",
-        "Personal Website",
-        "Blog Website",
-        "Stack Overflow Profile",
-        "Kaggle Profile",
-        "Medium Profile",
-        "Behance Profile",
-        "Dribbble Profile",
-        "X (Twitter) Profile",
-        "Facebook Profile",
-        "Instagram Profile",
-        "YouTube Channel",
-        "Personal Portfolio Link",
-        "Current Employer",
-        "Current Company",
-        "Most Recent Employer",
-        "Previous Employer",
-        "Current Job Title",
-        "Current Position",
-        "Department",
-        "Manager Name",
-        "Employee ID",
-        "Employment Type",
-        "Employment Status",
-        "Work Location",
-        "Office Location",
-        "Preferred Office",
-        "Preferred Work Location",
-        "Current Salary",
-        "Current Annual Salary",
-        "Current Hourly Rate",
-        "Expected Salary",
-        "Expected Annual Salary",
-        "Expected Hourly Rate",
-        "Salary Currency",
-        "Salary Expectations",
-        "Bonus Expectation",
-        "Notice Period",
-        "Notice Period (days)",
-        "Earliest Start Date",
-        "Available Start Date",
-        "Available From",
-        "Preferred Start Date"
+        {
+          "label": "Desired annual base salary",
+          "type": "number"
+        },
+        {
+          "label": "Minimum acceptable annual salary",
+          "type": "number"
+        },
+        {
+          "label": "Current annual salary",
+          "type": "number"
+        },
+        {
+          "label": "Expected hourly rate",
+          "type": "number"
+        },
+        {
+          "label": "Salary currency",
+          "type": "select",
+          "options": [
+            {
+              "label": "AUD",
+              "value": "AUD"
+            },
+            {
+              "label": "NZD",
+              "value": "NZD"
+            },
+            {
+              "label": "USD",
+              "value": "USD"
+            }
+          ]
+        },
+        {
+          "label": "Salary expectation basis",
+          "type": "select",
+          "options": [
+            {
+              "label": "Annual package",
+              "value": "Annual package"
+            },
+            {
+              "label": "Base salary plus super",
+              "value": "Base salary plus super"
+            },
+            {
+              "label": "Hourly rate",
+              "value": "Hourly rate"
+            }
+          ]
+        },
+        {
+          "label": "Are you open to discussing the salary range?",
+          "type": "radio",
+          "options": [
+            {
+              "label": "Yes",
+              "value": "Yes"
+            },
+            {
+              "label": "No",
+              "value": "No"
+            }
+          ]
+        },
+        {
+          "label": "Superannuation expectation",
+          "type": "select",
+          "options": [
+            {
+              "label": "On top of base salary",
+              "value": "On top of base salary"
+            },
+            {
+              "label": "Included in package",
+              "value": "Included in package"
+            },
+            {
+              "label": "Not applicable",
+              "value": "Not applicable"
+            }
+          ]
+        },
+        {
+          "label": "Bonus or commission expectation",
+          "type": "text"
+        }
       ]
     },
     {
-      "id": "work",
-      "label": "Work setup",
+      "id": "education-credentials",
+      "label": "Education & checks",
+      "description": "Qualifications, licences and checks frequently requested locally.",
       "questions": [
-        "Can you relocate?",
-        "Preferred Relocation Location",
-        "Can you travel?",
-        "Percentage of Travel Available",
-        "Do you have a driver's license?",
-        "Driver License Class",
-        "Do you own a vehicle?",
-        "Can you work weekends?",
-        "Can you work night shifts?",
-        "Can you work overtime?",
-        "Are you willing to work remotely?",
-        "Preferred Work Arrangement"
+        {
+          "label": "Highest qualification",
+          "type": "select",
+          "options": [
+            {
+              "label": "High school",
+              "value": "High school"
+            },
+            {
+              "label": "Certificate III/IV",
+              "value": "Certificate III/IV"
+            },
+            {
+              "label": "Diploma",
+              "value": "Diploma"
+            },
+            {
+              "label": "Bachelor degree",
+              "value": "Bachelor degree"
+            },
+            {
+              "label": "Postgraduate degree",
+              "value": "Postgraduate degree"
+            },
+            {
+              "label": "Other",
+              "value": "Other"
+            }
+          ]
+        },
+        {
+          "label": "Institution",
+          "type": "text"
+        },
+        {
+          "label": "Degree or certification name",
+          "type": "text"
+        },
+        {
+          "label": "Field of study",
+          "type": "text"
+        },
+        {
+          "label": "Graduation year",
+          "type": "number"
+        },
+        {
+          "label": "Professional registration or licence",
+          "type": "text"
+        },
+        {
+          "label": "Do you hold a current Australian driver's licence?",
+          "type": "radio",
+          "options": [
+            {
+              "label": "Yes",
+              "value": "Yes"
+            },
+            {
+              "label": "No",
+              "value": "No"
+            }
+          ]
+        },
+        {
+          "label": "Driver's licence class",
+          "type": "select",
+          "options": [
+            {
+              "label": "C",
+              "value": "C"
+            },
+            {
+              "label": "LR",
+              "value": "LR"
+            },
+            {
+              "label": "MR",
+              "value": "MR"
+            },
+            {
+              "label": "HR",
+              "value": "HR"
+            },
+            {
+              "label": "Other",
+              "value": "Other"
+            }
+          ]
+        },
+        {
+          "label": "Do you hold a current White Card?",
+          "type": "radio",
+          "options": [
+            {
+              "label": "Yes",
+              "value": "Yes"
+            },
+            {
+              "label": "No",
+              "value": "No"
+            },
+            {
+              "label": "Not applicable",
+              "value": "Not applicable"
+            }
+          ]
+        },
+        {
+          "label": "Do you consent to a police check?",
+          "type": "radio",
+          "options": [
+            {
+              "label": "Yes",
+              "value": "Yes"
+            },
+            {
+              "label": "No",
+              "value": "No"
+            }
+          ]
+        },
+        {
+          "label": "Do you have a Working with Children Check?",
+          "type": "radio",
+          "options": [
+            {
+              "label": "Yes",
+              "value": "Yes"
+            },
+            {
+              "label": "No",
+              "value": "No"
+            },
+            {
+              "label": "Not applicable",
+              "value": "Not applicable"
+            }
+          ]
+        },
+        {
+          "label": "Upload qualification evidence",
+          "type": "file"
+        }
       ]
     },
     {
-      "id": "eligibility",
-      "label": "Eligibility & application",
+      "id": "skills-languages",
+      "label": "Skills & languages",
+      "description": "Skills, communication and technical capability.",
       "questions": [
-        "Highest Qualification",
-        "Highest Education",
-        "Highest Degree Earned",
-        "Degree Type",
-        "Field of Study",
-        "Major",
-        "Minor",
-        "University",
-        "College",
-        "Institution Name",
-        "Campus",
-        "Graduation Date",
-        "Graduation Year",
-        "Expected Graduation Date",
-        "Student ID",
-        "GPA",
-        "Weighted GPA",
-        "Academic Honors",
-        "Relevant Coursework",
-        "Years of Experience",
-        "Total Professional Experience",
-        "Relevant Experience",
-        "Industry Experience",
-        "Management Experience",
-        "Leadership Experience",
-        "Years of React Experience",
-        "Years of Node Experience",
-        "Years of .NET Experience",
-        "Years of Java Experience",
-        "Years of Python Experience",
-        "Years of C# Experience",
-        "Years of JavaScript Experience",
-        "Years of TypeScript Experience",
-        "Years of SQL Experience",
-        "Years of AWS Experience",
-        "Years of Azure Experience",
-        "Years of GCP Experience",
-        "Years of Docker Experience",
-        "Years of Kubernetes Experience",
-        "Years of CI/CD Experience",
-        "Visa Status",
-        "Visa Type",
-        "Current Visa",
-        "Visa Expiry Date",
-        "Work Authorization",
-        "Country of Work Authorization",
-        "Are you legally authorized to work?",
-        "Will you require sponsorship?",
-        "Do you now require sponsorship?",
-        "Will you require visa sponsorship in the future?",
-        "Do you hold permanent residency?",
-        "Citizenship Status",
-        "Immigration Status",
-        "English Level",
-        "English Proficiency",
-        "Primary Language",
-        "Other Languages",
-        "Language Proficiency",
-        "Military Status",
-        "Veteran Status",
-        "Disability Status",
-        "Indigenous Status",
-        "Ethnicity",
-        "Race",
-        "Religion (Optional)",
-        "Emergency Contact Name",
-        "Emergency Contact Relationship",
-        "Emergency Contact Phone",
-        "Emergency Contact Email",
-        "Reference Name",
-        "Reference Relationship",
-        "Reference Company",
-        "Reference Position",
-        "Reference Email",
-        "Reference Phone",
-        "Resume Upload",
-        "CV Upload",
-        "Cover Letter Upload",
-        "Transcript Upload",
-        "Portfolio Upload",
-        "Certification Upload",
-        "Work Sample Upload",
-        "Profile Photo Upload",
-        "Professional Summary",
-        "Career Objective",
-        "About You",
-        "Tell us about yourself",
-        "Why are you interested in this role?",
-        "Why do you want to work here?",
-        "What makes you a good fit?",
-        "Describe your experience.",
-        "Key Achievements",
-        "Technical Skills",
-        "Soft Skills"
+        {
+          "label": "Primary skills",
+          "type": "textarea"
+        },
+        {
+          "label": "Technical skills",
+          "type": "textarea"
+        },
+        {
+          "label": "Software and tools you use",
+          "type": "textarea"
+        },
+        {
+          "label": "English proficiency",
+          "type": "select",
+          "options": [
+            {
+              "label": "Native or bilingual",
+              "value": "Native or bilingual"
+            },
+            {
+              "label": "Professional working proficiency",
+              "value": "Professional working proficiency"
+            },
+            {
+              "label": "Conversational",
+              "value": "Conversational"
+            }
+          ]
+        },
+        {
+          "label": "Additional languages",
+          "type": "text"
+        },
+        {
+          "label": "Professional certifications",
+          "type": "textarea"
+        },
+        {
+          "label": "Do you have customer-facing experience?",
+          "type": "radio",
+          "options": [
+            {
+              "label": "Yes",
+              "value": "Yes"
+            },
+            {
+              "label": "No",
+              "value": "No"
+            }
+          ]
+        },
+        {
+          "label": "Describe your strongest skill",
+          "type": "textarea"
+        }
+      ]
+    },
+    {
+      "id": "inclusion",
+      "label": "Workplace inclusion",
+      "description": "Optional equal-opportunity questions.",
+      "questions": [
+        {
+          "label": "Gender identity",
+          "type": "select",
+          "options": [
+            {
+              "label": "Woman",
+              "value": "Woman"
+            },
+            {
+              "label": "Man",
+              "value": "Man"
+            },
+            {
+              "label": "Non-binary",
+              "value": "Non-binary"
+            },
+            {
+              "label": "Prefer to self-describe",
+              "value": "Prefer to self-describe"
+            },
+            {
+              "label": "Prefer not to say",
+              "value": "Prefer not to say"
+            }
+          ]
+        },
+        {
+          "label": "Do you identify as Aboriginal or Torres Strait Islander?",
+          "type": "radio",
+          "options": [
+            {
+              "label": "Yes",
+              "value": "Yes"
+            },
+            {
+              "label": "No",
+              "value": "No"
+            },
+            {
+              "label": "Prefer not to say",
+              "value": "Prefer not to say"
+            }
+          ]
+        },
+        {
+          "label": "Disability status",
+          "type": "select",
+          "options": [
+            {
+              "label": "No disability",
+              "value": "No disability"
+            },
+            {
+              "label": "Disability or long-term health condition",
+              "value": "Disability or long-term health condition"
+            },
+            {
+              "label": "Prefer not to say",
+              "value": "Prefer not to say"
+            }
+          ]
+        },
+        {
+          "label": "Veteran status",
+          "type": "select",
+          "options": [
+            {
+              "label": "Not a veteran",
+              "value": "Not a veteran"
+            },
+            {
+              "label": "Australian Defence Force veteran",
+              "value": "Australian Defence Force veteran"
+            },
+            {
+              "label": "Prefer not to say",
+              "value": "Prefer not to say"
+            }
+          ]
+        },
+        {
+          "label": "Do you require workplace adjustments?",
+          "type": "radio",
+          "options": [
+            {
+              "label": "Yes",
+              "value": "Yes"
+            },
+            {
+              "label": "No",
+              "value": "No"
+            },
+            {
+              "label": "Prefer to discuss",
+              "value": "Prefer to discuss"
+            }
+          ]
+        },
+        {
+          "label": "Workplace adjustment details",
+          "type": "textarea"
+        },
+        {
+          "label": "Pronunciation of your name",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "id": "application-extras",
+      "label": "Application extras",
+      "description": "References, documents and short-form application prompts.",
+      "questions": [
+        {
+          "label": "How did you hear about this role?",
+          "type": "select",
+          "options": [
+            {
+              "label": "Seek",
+              "value": "Seek"
+            },
+            {
+              "label": "LinkedIn",
+              "value": "LinkedIn"
+            },
+            {
+              "label": "Indeed",
+              "value": "Indeed"
+            },
+            {
+              "label": "Company website",
+              "value": "Company website"
+            },
+            {
+              "label": "Referral",
+              "value": "Referral"
+            },
+            {
+              "label": "Other",
+              "value": "Other"
+            }
+          ]
+        },
+        {
+          "label": "Why are you interested in this role?",
+          "type": "textarea",
+          "required": true
+        },
+        {
+          "label": "Cover letter",
+          "type": "textarea"
+        },
+        {
+          "label": "Upload resume or CV",
+          "type": "file",
+          "required": true
+        },
+        {
+          "label": "Upload cover letter",
+          "type": "file"
+        },
+        {
+          "label": "May we contact your referees?",
+          "type": "radio",
+          "options": [
+            {
+              "label": "Yes",
+              "value": "Yes"
+            },
+            {
+              "label": "No",
+              "value": "No"
+            }
+          ]
+        },
+        {
+          "label": "Number of professional references",
+          "type": "number"
+        },
+        {
+          "label": "Reference relationship",
+          "type": "text"
+        },
+        {
+          "label": "Anything else you would like us to know?",
+          "type": "textarea"
+        }
       ]
     }
   ]

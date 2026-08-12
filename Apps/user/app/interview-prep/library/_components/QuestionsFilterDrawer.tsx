@@ -6,7 +6,7 @@ import React from 'react';
 import { X, Star } from 'lucide-react';
 import type { InterviewCategory, InterviewTag } from '@/lib/types';
 import { cn, cleanName } from '@/lib/utils';
-import { Button } from '@/components/UI/Button';
+import { Button } from '@jobby/ui';
 
 export interface QuestionsFilterDrawerProps {
   categories: InterviewCategory[];

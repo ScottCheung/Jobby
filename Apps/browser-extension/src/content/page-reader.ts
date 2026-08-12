@@ -55,10 +55,9 @@ export function readCurrentPage(): PageInspection {
   const url = window.location.href;
   const hostname = window.location.hostname;
 
-  // Run the lightweight classifier first. Known platforms (LinkedIn, Seek,
-  // Indeed) are always auto-qualified by the classifier so they won't be
-  // skipped. Generic / unknown hosts that show no job signals are rejected
-  // here before any expensive parsing work begins.
+  // Run the lightweight classifier first. Pages classified as non-job pages
+  // (e.g. help center, feeds, user profiles, salary tools) are rejected here
+  // before any DOM parsing or generic fallback begins.
   lastPageClass = classifyCurrentPage();
   if (!lastPageClass.isJobPage) {
     return {
@@ -69,16 +68,13 @@ export function readCurrentPage(): PageInspection {
   }
 
   if (isSeekHost(hostname)) {
-    const inspection = readSeekPage();
-    return inspection.kind === "job" ? inspection : fallbackToGenericJob(inspection);
+    return readSeekPage();
   }
   if (isLinkedInHost(hostname)) {
-    const inspection = readLinkedInPage();
-    return inspection.kind === "job" ? inspection : fallbackToGenericJob(inspection);
+    return readLinkedInPage();
   }
   if (isIndeedHost(hostname)) {
     const inspection = readIndeedJobPage();
-    // Always fall back to generic if Indeed reader has low confidence.
     return inspection.kind === "job" ? inspection : fallbackToGenericJob(inspection);
   }
   return readGenericJobPage();
@@ -101,6 +97,9 @@ export async function readCurrentPageWhenReady(): Promise<PageInspection> {
 }
 
 function fallbackToGenericJob(preferredInspection: PageInspection): PageInspection {
+  if (lastPageClass && !lastPageClass.isJobPage) {
+    return preferredInspection;
+  }
   const genericInspection = readGenericJobPage();
   if (genericInspection.kind === "job") return genericInspection;
 

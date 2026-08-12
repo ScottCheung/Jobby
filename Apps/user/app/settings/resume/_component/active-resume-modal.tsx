@@ -7,7 +7,7 @@ import { CheckCircle2, ExternalLink, FileText, Trash2, UploadCloud, X } from 'lu
 import { api } from '@/lib/api';
 import { showGlobalToast } from '@/lib/toast';
 import type { MasterResume, ResumeAsset } from '@/lib/types';
-import { Button } from '@/components/UI/Button';
+import { Button } from '@jobby/ui';
 
 export function ActiveResumeModal({
   currentUrl,

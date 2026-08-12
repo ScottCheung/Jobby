@@ -9,7 +9,7 @@ from datetime import datetime
 from difflib import SequenceMatcher
 from functools import lru_cache
 from typing import Any
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from cryptography.fernet import Fernet, InvalidToken
 from sqlalchemy import or_, select
@@ -27,6 +27,7 @@ LEGACY_PROFILE_KEYS = {
     "first_name": "identity.first_name",
     "middle_name": "identity.middle_name",
     "last_name": "identity.last_name",
+    "title": "identity.title",
     "email": "identity.email",
     "phone_number": "identity.phone",
     "current_city": "address.city",
@@ -34,6 +35,7 @@ LEGACY_PROFILE_KEYS = {
     "state": "address.state",
     "zipcode": "address.postal_code",
     "country": "address.country",
+    "pronouns": "identity.pronouns",
     "ethnicity": "demographic.ethnicity",
     "gender": "demographic.gender",
     "gender_identity": "demographic.gender_identity",
@@ -46,31 +48,97 @@ CORE_FIELD_LABELS = {
     "identity.first_name": "First name",
     "identity.middle_name": "Middle name",
     "identity.last_name": "Last name",
+    "identity.title": "Title",
+    "identity.pronouns": "Pronouns",
     "identity.full_name": "Full name",
     "identity.legal_full_name": "Legal full name",
     "identity.email": "Email",
     "identity.phone": "Phone number",
-    "address.street": "Street address",
+    "address.street": "Address Line 1",
+    "address.suburb": "Suburb",
     "address.city": "City",
     "address.state": "State / province",
-    "address.postal_code": "Postal code",
+    "address.postal_code": "Postcode",
     "address.country": "Country",
     "employment.current_location": "Current location",
+    "employment.citizenship": "Citizenship",
     "employment.work_authorization": "Work authorization",
-    "employment.visa_sponsorship": "Visa sponsorship",
+    "employment.visa_status": "Visa status",
+    "employment.visa_type": "Visa type",
+    "employment.visa_expiry": "Visa expiry date",
+    "employment.visa_sponsorship": "Visa sponsorship required",
+    "employment.work_restrictions": "Work hour restrictions",
+    "employment.security_clearance": "Security clearance",
+    "employment.police_check_consent": "Police check consent",
+    "employment.wwcc_status": "Working with children check (WWCC)",
+    "employment.drivers_license": "Driver license status",
     "employment.relocation": "Relocation",
     "employment.office_attendance": "Office attendance",
+    "employment.notice_period": "Notice period (days)",
+    "employment.date_available": "Date available",
     "employment.linkedin_url": "LinkedIn URL",
-    "employment.website": "Portfolio / website",
+    "employment.website": "Personal website",
+    "employment.portfolio_url": "Portfolio URL",
+    "employment.github_url": "GitHub URL",
     "employment.recent_employer": "Most recent employer",
     "experience.years": "Years of experience",
     "compensation.desired_base_salary": "Desired base salary",
+    "compensation.desired_day_rate": "Desired day rate",
+    "compensation.current_salary": "Current salary",
     "demographic.ethnicity": "Ethnicity",
     "demographic.gender": "Gender",
     "demographic.gender_identity": "Gender identity",
     "demographic.disability_status": "Disability status",
     "demographic.veteran_status": "Veteran status",
 }
+
+# These aliases are kept in code as a compatibility fallback for installations
+# that have not yet applied the mapping-rule migration. Database rules still
+# take priority, so users can override them with their own mappings.
+BUILT_IN_SYSTEM_MAPPING_RULES = (
+    ("identity.phone", "Mobile Phone", ["mobile", "phone"]),
+    ("identity.phone", "Phone", ["phone"]),
+    ("identity.phone", "Telephone", ["telephone"]),
+    ("identity.phone", "Contact number", ["contact", "number"]),
+    ("demographic.gender_identity", "Gender (please specify)", ["gender", "please", "specify"]),
+    ("demographic.gender_identity", "Please specify gender", ["please", "specify", "gender"]),
+    ("address.state", "State", ["state"]),
+    ("address.state", "State / Province", ["state", "province"]),
+    ("address.state", "Province", ["province"]),
+    ("address.state", "Region", ["region"]),
+    ("employment.date_available", "Date Available", ["date", "available"]),
+    ("employment.date_available", "Available Date", ["available", "date"]),
+    ("employment.date_available", "Available From", ["available", "from"]),
+    ("employment.date_available", "Earliest Start Date", ["earliest", "start", "date"]),
+    ("employment.date_available", "Availability Date", ["availability", "date"]),
+    ("employment.date_available", "When can you start", ["when", "start"]),
+    ("employment.notice_period", "Notice Period", ["notice", "period"]),
+    ("employment.notice_period", "Notice Time", ["notice", "time"]),
+    ("employment.notice_period", "Notice", ["notice"]),
+    ("compensation.desired_base_salary", "Salary Expectation", ["salary", "expectation"]),
+    ("compensation.desired_base_salary", "Salary Expectation (AUD/year)", ["salary", "expectation", "aud", "year"]),
+    ("compensation.desired_day_rate", "Day Rate Expectation", ["day", "rate", "expectation"]),
+    ("compensation.desired_day_rate", "Day Rate Expectation (AUD/day)", ["day", "rate", "expectation", "aud", "day"]),
+    ("compensation.desired_day_rate", "Daily Rate", ["daily", "rate"]),
+    ("compensation.desired_day_rate", "Day Rate", ["day", "rate"]),
+    ("address.suburb", "Suburb", ["suburb"]),
+    ("address.suburb", "Town / Suburb", ["town", "suburb"]),
+    ("address.suburb", "Locality", ["locality"]),
+    ("address.postal_code", "Postcode", ["postcode"]),
+    ("address.postal_code", "Post code", ["post", "code"]),
+    ("address.postal_code", "Postal code", ["postal", "code"]),
+    ("employment.work_authorization", "Do you currently have full working rights", ["full", "working", "rights"]),
+    ("employment.work_authorization", "Work rights", ["work", "rights"]),
+    ("employment.work_authorization", "Right to work", ["right", "to", "work"]),
+    ("employment.visa_status", "Are you currently on a work visa", ["on", "a", "work", "visa"]),
+    ("employment.visa_status", "Do you have a valid working visa", ["valid", "working", "visa"]),
+    ("employment.visa_status", "Work visa status", ["work", "visa", "status"]),
+    ("employment.visa_type", "Please provide details of your visa", ["details", "of", "your", "visa"]),
+    ("identity.pronouns", "Pronouns", ["pronouns"]),
+    ("identity.pronouns", "Preferred Pronouns", ["preferred", "pronouns"]),
+    ("identity.pronouns", "Your Pronouns", ["your", "pronouns"]),
+    ("identity.pronouns", "Gender Pronouns", ["gender", "pronouns"]),
+)
 
 STOP_WORDS = {
     "a", "an", "and", "are", "do", "enter", "for", "is", "of", "please", "the", "to", "what", "your",
@@ -203,6 +271,43 @@ def ensure_identity_core_values(db: Session, user: User) -> None:
             value=user.display_name,
         )
 
+    # Older profile versions stored personal extras and learned answers outside
+    # the canonical identity namespace. Promote a saved salutation once so a
+    # form labelled `Title` can use the same source as every other identity
+    # field. Do not overwrite an explicit canonical value.
+    if not values.get("identity.title"):
+        title_value: str | None = None
+        for legacy_key in (
+            "identity.salutation",
+            "identity.prefix",
+            "learned.title",
+            "learned.salutation",
+            "custom.title",
+        ):
+            candidate = str(values.get(legacy_key) or "").strip()
+            if candidate:
+                title_value = candidate
+                break
+        if not title_value:
+            raw_preferences = values.get(PROFILE_PREFERENCES_KEY, "")
+            try:
+                preferences = json.loads(raw_preferences) if raw_preferences else {}
+            except json.JSONDecodeError:
+                preferences = {}
+            if isinstance(preferences, dict):
+                for key in ("title", "salutation", "prefix", "honorific"):
+                    candidate = str(preferences.get(key) or "").strip()
+                    if candidate:
+                        title_value = candidate
+                        break
+        if title_value:
+            upsert_core_profile_value(
+                db,
+                user_id=user.id,
+                core_field_key="identity.title",
+                value=title_value,
+            )
+
 
 def profile_api_payload(db: Session, user: User) -> dict[str, Any]:
     rows = core_profile_rows(db, user.id)
@@ -221,7 +326,10 @@ def profile_api_payload(db: Session, user: User) -> dict[str, Any]:
             {
                 "id": row.id,
                 "core_field_key": row.core_field_key,
-                "label": CORE_FIELD_LABELS.get(row.core_field_key, row.core_field_key.replace(".", " ").title()),
+                "label": CORE_FIELD_LABELS.get(
+                    row.core_field_key,
+                    row.core_field_key.removeprefix("custom.").replace(".", " ").replace("_", " ").title(),
+                ),
                 "value": values[row.core_field_key],
                 "value_type": row.value_type,
                 "is_sensitive": row.is_sensitive,
@@ -279,6 +387,27 @@ def _mapping_score(
     return alias_score + feature_score + scene_score + type_score + confidence_score
 
 
+def _built_in_system_rules() -> list[FieldMappingRule]:
+    now = utc_now()
+    return [
+        FieldMappingRule(
+            id=uuid4(),
+            core_field_key=core_field_key,
+            alias=alias,
+            normalized_alias=normalize_alias(alias),
+            scene="generic",
+            semantic_features=features,
+            value_transform={},
+            is_user_defined=False,
+            confidence=90,
+            times_used=0,
+            created_at=now,
+            updated_at=now,
+        )
+        for core_field_key, alias, features in BUILT_IN_SYSTEM_MAPPING_RULES
+    ]
+
+
 def match_mapping_rule(
     db: Session,
     *,
@@ -289,6 +418,7 @@ def match_mapping_rule(
     field_type: str,
 ) -> MappingMatch | None:
     normalized_scene = normalize_scene(scene)
+    normalized_alias = normalize_alias(alias)
     rules = list(
         db.scalars(
             select(FieldMappingRule).where(
@@ -314,10 +444,31 @@ def match_mapping_rule(
                 ),
             )
             for rule in candidates
+            if not (
+                "please specify" in normalized_alias
+                and rule.core_field_key == "demographic.gender"
+            )
         ]
         scored = [candidate for candidate in scored if candidate.score >= 65]
         if scored:
             return max(scored, key=lambda item: (item.score, item.rule.confidence, item.rule.updated_at))
+
+    fallback_matches = [
+        MappingMatch(
+            rule,
+            _mapping_score(
+                rule,
+                alias=alias,
+                scene=normalized_scene,
+                semantic_features=semantic_features,
+                field_type=field_type,
+            ),
+        )
+        for rule in _built_in_system_rules()
+    ]
+    fallback_matches = [candidate for candidate in fallback_matches if candidate.score >= 65]
+    if fallback_matches:
+        return max(fallback_matches, key=lambda item: (item.score, item.rule.confidence, item.rule.updated_at))
     return None
 
 
@@ -336,6 +487,16 @@ def transformed_core_value(rule: FieldMappingRule, values: dict[str, str]) -> st
     if not parts:
         return None
     return str(transform.get("separator", " ")).join(parts)
+
+
+def default_core_value_transform(core_field_key: str) -> dict[str, Any]:
+    if core_field_key in {"identity.full_name", "identity.legal_full_name"}:
+        return {
+            "operation": "join",
+            "source_keys": ["identity.first_name", "identity.middle_name", "identity.last_name"],
+            "separator": " ",
+        }
+    return {}
 
 
 def suggested_custom_core_key(alias: str) -> str:

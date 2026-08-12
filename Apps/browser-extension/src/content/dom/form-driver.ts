@@ -18,6 +18,8 @@ import {
   findButtonChoiceOption,
   inspectVisibleFormFields,
   isSelectableCombobox,
+  isAutofillResumeInput,
+  labelFor,
   visibleControlsInScope,
   type FormScope,
 } from './form-inspector';
@@ -25,10 +27,9 @@ import { selectPageCombobox } from './combobox-bridge';
 
 type FormControl = HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
 
-function markAutofillWrite(element: FormControl, source: FieldFillInstruction['source']): void {
-  if (source !== 'backend') return;
-  element.dataset.jobbyAutofillUntil = String(Date.now() + 2_000);
-  window.setTimeout(() => delete element.dataset.jobbyAutofillUntil, 2_100);
+function markAutofillWrite(element: FormControl, _source: FieldFillInstruction['source']): void {
+  element.dataset.jobbyAutofillUntil = String(Date.now() + 3_000);
+  window.setTimeout(() => delete element.dataset.jobbyAutofillUntil, 3_100);
 }
 
 function cleanText(value: string | null | undefined): string {
@@ -55,6 +56,7 @@ function result(
 function fieldType(element: FormControl): FormFieldType {
   if (element instanceof HTMLSelectElement) return 'select';
   if (element instanceof HTMLTextAreaElement) return 'textarea';
+  if (isSelectableCombobox(element)) return 'select';
   const type = element.type.toLowerCase();
   if (type === 'text' || type === 'search') return 'text';
   if (
@@ -75,31 +77,14 @@ function fieldType(element: FormControl): FormFieldType {
   return 'unknown';
 }
 
-function labelFor(element: HTMLElement, scope: FormScope): string {
-  const root = element.getRootNode();
-  const queryScope =
-    root instanceof Document || root instanceof ShadowRoot ? root : scope;
-  const ariaLabel = cleanText(element.getAttribute('aria-label'));
-  if (ariaLabel) return ariaLabel;
-  if (element.id) {
-    const label = queryScope.querySelector<HTMLLabelElement>(
-      `label[for='${CSS.escape(element.id)}']`,
-    );
-    const text = cleanText(label?.textContent);
-    if (text) return text;
-  }
-  const parentLabel = cleanText(element.closest('label')?.textContent);
-  if (parentLabel) return parentLabel;
-  const legend = cleanText(
-    element.closest('fieldset')?.querySelector('legend')?.textContent,
-  );
-  if (legend) return legend;
-  return (
-    cleanText(element.getAttribute('placeholder')) ||
-    cleanText(element.getAttribute('name')) ||
-    'Unnamed field'
-  );
+function labelTextWithoutControl(label: HTMLElement | null | undefined): string {
+  if (!label) return '';
+  const copy = label.cloneNode(true) as HTMLElement;
+  copy.querySelectorAll('input,select,textarea,button,img,svg,noscript,script,style').forEach((node) => node.remove());
+  return cleanText(copy.textContent);
 }
+
+
 
 function checkboxChoiceGroupFor(
   element: HTMLInputElement,
@@ -166,6 +151,55 @@ function isVisible(element: HTMLElement): boolean {
   );
 }
 
+function ariaCheckboxLabel(element: HTMLElement, scope: FormScope): string {
+  const labelledBy = cleanText(element.getAttribute('aria-labelledby'))
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((id) => cleanText(scope.querySelector(`#${CSS.escape(id)}`)?.textContent))
+    .filter(Boolean)
+    .join(' ');
+  return cleanText(
+    labelledBy ||
+      element.getAttribute('aria-label') ||
+      labelTextWithoutControl(element.closest('label')) ||
+      element.getAttribute('name') ||
+      element.id,
+  );
+}
+
+function ariaCheckboxIsChecked(element: HTMLElement): boolean {
+  return element.getAttribute('aria-checked') === 'true' ||
+    element.getAttribute('data-state') === 'checked' ||
+    element.classList.contains('checked') ||
+    element.classList.contains('selected');
+}
+
+function findAriaCheckbox(target: FormFieldTarget, scope: FormScope): HTMLElement | null {
+  const candidates = elementsInScope(scope).filter((element) =>
+    element.matches("[role='checkbox']") && isVisible(element),
+  );
+  return candidates.find((element) =>
+    (target.id && element.id === target.id) ||
+    (target.name && element.getAttribute('name') === target.name) ||
+    normalized(ariaCheckboxLabel(element, scope)) === normalized(target.label),
+  ) || null;
+}
+
+function findAriaCombobox(target: FormFieldTarget, scope: FormScope): HTMLElement | null {
+  const candidates = elementsInScope(scope).filter((element) =>
+    !(element instanceof HTMLInputElement) &&
+    element.getAttribute('role') === 'combobox' &&
+    isVisible(element) &&
+    element.getAttribute('aria-disabled') !== 'true',
+  );
+  const targetLabel = normalized(target.label);
+  return candidates.find((element) =>
+    (target.id && element.id === target.id) ||
+    (target.name && element.getAttribute('name') === target.name) ||
+    normalized(labelFor(element, scope)) === targetLabel,
+  ) || null;
+}
+
 function labelsMatchTarget(
   element: FormControl,
   target: FormFieldTarget,
@@ -175,12 +209,12 @@ function labelsMatchTarget(
     element instanceof HTMLInputElement ?
       checkboxChoiceGroupFor(element, scope)
     : null;
-  const currentLabel = normalized(
+  const rawCurrent =
     isCheckboxChoiceGroupForTarget(element, target, scope) ?
       checkboxGroup?.label || ''
-    : labelFor(element, scope),
-  );
-  const targetLabel = normalized(target.label);
+    : labelFor(element, scope);
+  const currentLabel = normalized(rawCurrent).replace(/\s*\*+\s*$/g, '').trim();
+  const targetLabel = normalized(target.label).replace(/\s*\*+\s*$/g, '').trim();
   return (
     (fieldType(element) === target.type ||
       isCheckboxChoiceGroupForTarget(element, target, scope)) &&
@@ -200,13 +234,7 @@ export function findFormElement(
   const keyed = controls.find(
     (element, index) => fieldKeyFor(element, index) === target.key,
   );
-  if (
-    keyed &&
-    (!target.id || keyed.id === target.id) &&
-    (!target.name || keyed.getAttribute('name') === target.name) &&
-    (Boolean(target.id || target.name) ||
-      labelsMatchTarget(keyed, target, scope))
-  ) {
+  if (keyed) {
     return keyed;
   }
   if (target.id) {
@@ -242,15 +270,17 @@ function findFileInput(
   target: FormFieldTarget,
   scope: FormScope,
 ): HTMLInputElement | null {
-  const files = elementsInScope(scope).filter(
+  const allFiles = elementsInScope(scope).filter(
     (element): element is HTMLInputElement =>
-      element instanceof HTMLInputElement &&
-      element.type.toLowerCase() === 'file',
+      element instanceof HTMLInputElement && element.type.toLowerCase() === 'file',
   );
+  const files = allFiles.filter((element) => !isAutofillResumeInput(element));
   const keyed = files.find(
-    (element, index) =>
-      fieldKeyFor(element, visibleControlsInScope(scope).length + index) ===
-      target.key,
+    (element) =>
+      fieldKeyFor(
+        element,
+        visibleControlsInScope(scope).length + allFiles.indexOf(element),
+      ) === target.key,
   );
   if (
     keyed &&
@@ -309,6 +339,26 @@ function fileUploadTrigger(
   return explicitTrigger || input;
 }
 
+function nearbyFileLabelText(input: HTMLInputElement): string {
+  let container = input.parentElement;
+  for (let depth = 0; container && depth < 5; depth += 1) {
+    // Many React forms render the field label as a sibling of the upload drop
+    // zone rather than associating it with the hidden input. Only consider
+    // preceding siblings of the branch containing the input, so upload-copy
+    // such as "browse computer" inside the drop zone is not a field label.
+    const children = Array.from(container.children);
+    const inputBranchIndex = children.findIndex((child) => child.contains(input));
+    const siblingText = children
+      .slice(0, inputBranchIndex)
+      .map((child) => cleanText(child.textContent))
+      .filter(Boolean)
+      .join(' ');
+    if (siblingText) return siblingText;
+    container = container.parentElement;
+  }
+  return '';
+}
+
 function fileInputMatchesTarget(
   input: HTMLInputElement,
   target: FormFieldTarget,
@@ -332,6 +382,7 @@ function fileInputMatchesTarget(
   const context = normalized(
     [
       groupLabel,
+      nearbyFileLabelText(input),
       input.getAttribute('aria-label'),
       input.getAttribute('name'),
       trigger.getAttribute('aria-label'),
@@ -365,17 +416,44 @@ function selectExistingDocument(
   return option.checked ? 'selected' : 'not_found';
 }
 
+function formatValueForInput(
+  element: HTMLInputElement | HTMLTextAreaElement,
+  value: string,
+): string {
+  if (element instanceof HTMLInputElement) {
+    const placeholder = (element.getAttribute('placeholder') || '').toLowerCase();
+    const ariaLabel = (element.getAttribute('aria-label') || '').toLowerCase();
+    const isIsoDate = /^\d{4}-\d{2}-\d{2}$/.test(value.trim());
+    if (isIsoDate) {
+      const [year, month, day] = value.trim().split('-');
+      if (placeholder.includes('mm/dd/yyyy') || ariaLabel.includes('mm/dd/yyyy')) {
+        return `${month}/${day}/${year}`;
+      }
+      if (placeholder.includes('dd/mm/yyyy') || ariaLabel.includes('dd/mm/yyyy')) {
+        return `${day}/${month}/${year}`;
+      }
+    }
+  }
+  return value;
+}
+
 function setValue(
   element: HTMLInputElement | HTMLTextAreaElement,
   value: string,
 ): void {
+  const formattedValue = formatValueForInput(element, value);
+  const tracker = (element as unknown as { _valueTracker?: { setValue: (v: string) => void } })._valueTracker;
+  if (tracker) {
+    tracker.setValue(formattedValue);
+  }
+
   const prototype =
     element instanceof HTMLTextAreaElement ?
       HTMLTextAreaElement.prototype
     : HTMLInputElement.prototype;
   const setter = Object.getOwnPropertyDescriptor(prototype, 'value')?.set;
-  if (setter) setter.call(element, value);
-  else element.value = value;
+  if (setter) setter.call(element, formattedValue);
+  else element.value = formattedValue;
 }
 
 function emitChange(element: FormControl): void {
@@ -564,6 +642,66 @@ function restoreScrollAfterRerender(position: {
   [80, 260, 700].forEach((delay) => window.setTimeout(restore, delay));
 }
 
+function findFileRemoveButton(
+  input: HTMLInputElement,
+): HTMLElement | null {
+  let container: HTMLElement | null = input.parentElement;
+  for (let depth = 0; container && depth < 6; depth += 1) {
+    const candidateButtons = Array.from(
+      container.querySelectorAll<HTMLElement>(
+        "button, [role='button'], a, svg, span.dismiss, .remove-file, .delete-file, [aria-label*='remove' i], [aria-label*='delete' i], [aria-label*='clear' i], [aria-label*='trash' i], [aria-label*='删除' i], [aria-label*='移除' i], [aria-label*='清除' i]",
+      ),
+    );
+    const removeBtn = candidateButtons.find((candidate) => {
+      if (!isVisible(candidate) || candidate === input) return false;
+      const text = normalized(
+        candidate.textContent ||
+          candidate.getAttribute('aria-label') ||
+          candidate.getAttribute('title') ||
+          candidate.className ||
+          '',
+      );
+      return (
+        /delete|remove|clear|trash|dismiss|cancel|detach|remove-file|delete-file|删除|移除|清除/.test(
+          text,
+        ) || candidate.querySelector('svg') !== null
+      );
+    });
+    if (removeBtn) return removeBtn;
+    container = container.parentElement;
+  }
+  return null;
+}
+
+export function clearFormFile(
+  input: HTMLInputElement,
+  instruction: FieldFillInstruction,
+): FieldFillResult {
+  const scrollPosition = { left: window.scrollX, top: window.scrollY };
+  const removeBtn = findFileRemoveButton(input);
+  if (removeBtn) {
+    clickControl(removeBtn);
+  }
+
+  try {
+    const setter = Object.getOwnPropertyDescriptor(
+      HTMLInputElement.prototype,
+      'files',
+    )?.set;
+    const emptyTransfer = new DataTransfer();
+    if (setter) setter.call(input, emptyTransfer.files);
+    else input.files = emptyTransfer.files;
+  } catch {
+    // Ignore native files assignment failure
+  }
+
+  setValue(input, '');
+  emitChange(input);
+  restoreScrollAfterRerender(scrollPosition);
+
+  return result(instruction, 'filled', 'File upload cleared.');
+}
+
 function matchesTarget(
   element: FormControl,
   instruction: FieldFillInstruction,
@@ -573,12 +711,26 @@ function matchesTarget(
 }
 
 function setSelectValue(element: HTMLSelectElement, value: string): void {
+  const normVal = normalized(value);
+  const matchedOpt = Array.from(element.options).find(
+    (opt) =>
+      opt.value === value ||
+      normalized(opt.value) === normVal ||
+      normalized(opt.textContent || '') === normVal ||
+      (normVal.length > 1 && normalized(opt.textContent || '').includes(normVal)),
+  );
+  if (matchedOpt) {
+    Array.from(element.options).forEach((opt) => {
+      opt.selected = opt === matchedOpt;
+    });
+  }
+
   const setter = Object.getOwnPropertyDescriptor(
     HTMLSelectElement.prototype,
     'value',
   )?.set;
-  if (setter) setter.call(element, value);
-  else element.value = value;
+  if (setter) setter.call(element, matchedOpt?.value || value);
+  else element.value = matchedOpt?.value || value;
 }
 
 function clickControl(target: HTMLElement): void {
@@ -623,15 +775,18 @@ function visibleOptionMatch(
   value: string,
 ): HTMLElement | null {
   const targetValue = normalized(value);
+  const candidates = Array.from(
+    root.querySelectorAll<HTMLElement>(
+      "[role='option'], [role='listbox'] button, [role='listbox'] li, [data-value], [data-option-value], [class*='t1-' i], [class*='option' i], [class*='item' i], [class*='suggestion' i], [class*='result' i], [class*='row' i]",
+    ),
+  );
   return (
-    Array.from(
-      root.querySelectorAll<HTMLElement>(
-        "[role='option'], [role='listbox'] button, [role='listbox'] li, [data-value], [data-option-value]",
-      ),
-    ).find((candidate) => {
+    candidates.find((candidate) => {
       if (
         !isVisible(candidate) ||
-        candidate.getAttribute('aria-disabled') === 'true'
+        candidate.getAttribute('aria-disabled') === 'true' ||
+        candidate instanceof HTMLInputElement ||
+        candidate instanceof HTMLSelectElement
       )
         return false;
       const candidateValue = normalized(
@@ -650,11 +805,11 @@ function visibleOptionMatch(
   );
 }
 
-function clickVisualSelectOption(
+async function clickVisualSelectOption(
   element: HTMLSelectElement,
   value: string,
   scope: FormScope,
-): boolean {
+): Promise<boolean> {
   const root = element.getRootNode();
   const queryScope =
     root instanceof Document || root instanceof ShadowRoot ? root : scope;
@@ -668,9 +823,14 @@ function clickVisualSelectOption(
   if (!trigger) return false;
 
   clickControl(trigger);
-  const option =
-    visibleOptionMatch(queryScope, value) ||
-    (queryScope !== document ? visibleOptionMatch(document, value) : null);
+  const startedAt = Date.now();
+  let option: HTMLElement | null = null;
+  while (!option && Date.now() - startedAt < 900) {
+    option =
+      visibleOptionMatch(queryScope, value) ||
+      (queryScope !== document ? visibleOptionMatch(document, value) : null);
+    if (!option) await new Promise<void>((resolve) => window.setTimeout(resolve, 40));
+  }
   if (!option) return false;
   clickControl(option);
   return true;
@@ -725,7 +885,7 @@ function comboboxSelectionMatches(
   element: HTMLInputElement,
   value: string,
 ): boolean {
-  const selected = normalized(comboboxCurrentValue(element));
+  const selected = normalized(comboboxCurrentValue(element) || element.value);
   const expected = normalized(value);
   return Boolean(
     selected &&
@@ -733,6 +893,32 @@ function comboboxSelectionMatches(
       (expected.length > 1 &&
         (selected.includes(expected) || expected.includes(selected)))),
   );
+}
+
+function waitForComboboxOption(
+  element: HTMLInputElement,
+  scope: FormScope,
+  value: string,
+): Promise<HTMLElement | null> {
+  return new Promise((resolve) => {
+    const startedAt = Date.now();
+    const find = () => {
+      const listbox = comboboxListbox(element, scope);
+      const option =
+        (listbox && visibleOptionMatch(listbox, value)) ||
+        visibleOptionMatch(document, value);
+      if (option) {
+        resolve(option);
+        return;
+      }
+      if (Date.now() - startedAt >= 800) {
+        resolve(null);
+        return;
+      }
+      window.setTimeout(find, 40);
+    };
+    find();
+  });
 }
 
 async function fillCombobox(
@@ -746,24 +932,77 @@ async function fillCombobox(
   const bridged = await selectPageCombobox(element, value);
   if (bridged?.ok && comboboxSelectionMatches(element, label)) return true;
 
+  try {
+    element.focus({ preventScroll: true });
+  } catch {}
   if (element.getAttribute('aria-expanded') !== 'true') clickControl(element);
   setValue(element, label);
   emitInput(element);
 
-  const listbox = comboboxListbox(element, scope);
-  const option =
-    (listbox && visibleOptionMatch(listbox, label)) ||
-    visibleOptionMatch(document, label);
-  if (!option) return false;
-  clickControl(option);
-  return comboboxSelectionMatches(element, label);
+  const option = await waitForComboboxOption(element, scope, label);
+  if (option) {
+    clickControl(option);
+  }
+
+  const dispatchKey = (key: string, keyCode: number) => {
+    const keyOptions = { key, code: key, keyCode, which: keyCode, bubbles: true, cancelable: true };
+    element.dispatchEvent(new KeyboardEvent('keydown', keyOptions));
+    element.dispatchEvent(new KeyboardEvent('keyup', keyOptions));
+  };
+
+  dispatchKey('ArrowDown', 40);
+  dispatchKey('Enter', 13);
+
+  return new Promise((resolve) => {
+    const startedAt = Date.now();
+    let tabSent = false;
+    const verify = () => {
+      if (comboboxSelectionMatches(element, label)) {
+        resolve(true);
+        return;
+      }
+      if (!tabSent && Date.now() - startedAt >= 150) {
+        tabSent = true;
+        dispatchKey('Tab', 9);
+      }
+      if (Date.now() - startedAt >= 800) {
+        const current = normalized(comboboxCurrentValue(element) || element.value);
+        const expected = normalized(label);
+        const matched = Boolean(current && (current === expected || current.includes(expected) || expected.includes(current)));
+        resolve(matched);
+        return;
+      }
+      window.setTimeout(verify, 40);
+    };
+    verify();
+  });
 }
 
-function fillSelect(
+async function fillAriaCombobox(
+  element: HTMLElement,
+  value: string,
+): Promise<boolean> {
+  const before = normalized(element.textContent || '');
+  clickControl(element);
+  const startedAt = Date.now();
+  let option: HTMLElement | null = null;
+  while (!option && Date.now() - startedAt < 900) {
+    option = visibleOptionMatch(document, value);
+    if (!option) await new Promise<void>((resolve) => window.setTimeout(resolve, 40));
+  }
+  if (!option) return false;
+  clickControl(option);
+  await new Promise<void>((resolve) => window.setTimeout(resolve, 150));
+  const after = normalized(element.textContent || '');
+  const expected = normalized(value);
+  return after !== before || after === expected || after.includes(expected) || expected.includes(after);
+}
+
+async function fillSelect(
   element: HTMLSelectElement,
   value: string,
   scope: FormScope,
-): boolean {
+): Promise<{ matched: boolean; changed: boolean }> {
   const normValue = normalized(value);
   const option = Array.from(element.options).find(
     (candidate) =>
@@ -775,18 +1014,24 @@ function fillSelect(
       (normValue.length > 1 &&
         normValue.includes(normalized(candidate.textContent || ''))),
   );
-  if (!option) return false;
+  if (!option) return { matched: false, changed: false };
   // SEEK and other React application forms often render a hidden native
   // select beside a visual combobox. Prefer the same visible option click a
   // user performs so their controlled state updates as well.
-  clickVisualSelectOption(
+  const previousValue = element.value;
+  const visualSelected = await clickVisualSelectOption(
     element,
     option.value || option.textContent || value,
     scope,
   );
-  if (element.value === option.value) return true;
+  if (element.value === option.value) {
+    return { matched: true, changed: previousValue !== option.value || visualSelected };
+  }
   setSelectValue(element, option.value);
-  return element.value === option.value;
+  return {
+    matched: element.value === option.value || visualSelected,
+    changed: previousValue !== option.value || visualSelected,
+  };
 }
 
 function optionLabelFor(element: HTMLElement, scope: FormScope): string {
@@ -796,17 +1041,38 @@ function optionLabelFor(element: HTMLElement, scope: FormScope): string {
   const ariaLabel = cleanText(element.getAttribute('aria-label'));
   if (ariaLabel) return ariaLabel;
 
+  const labelledBy = cleanText(element.getAttribute('aria-labelledby'))
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((id) => cleanText(queryScope.querySelector(`#${CSS.escape(id)}`)?.textContent))
+    .filter(Boolean)
+    .join(' ');
+  if (labelledBy) return labelledBy;
+
+  const dataLabel = cleanText(element.getAttribute('data-label') || element.getAttribute('data-value'));
+  if (dataLabel) return dataLabel;
+
   const id = cleanText(element.id);
   if (id) {
     const label = queryScope.querySelector<HTMLLabelElement>(
       `label[for='${CSS.escape(id)}']`,
     );
-    const text = cleanText(label?.textContent);
+    const text = labelTextWithoutControl(label);
     if (text) return text;
   }
 
-  const parentLabel = cleanText(element.closest('label')?.textContent);
+  const parentLabel = labelTextWithoutControl(element.closest('label'));
   if (parentLabel) return parentLabel;
+
+  const siblingText = cleanText(
+    element.nextElementSibling?.textContent ||
+      element.parentElement?.textContent ||
+      '',
+  );
+  if (siblingText && siblingText.length <= 50) return siblingText;
+
+  const previousText = cleanText(element.previousElementSibling?.textContent || '');
+  if (previousText && previousText.length <= 50) return previousText;
 
   if (element instanceof HTMLInputElement && element.value)
     return element.value;
@@ -856,32 +1122,70 @@ function fillRadio(
   const root = element.getRootNode();
   const queryScope =
     root instanceof Document || root instanceof ShadowRoot ? root : scope;
-  const group =
+  let group =
     element.name ?
       Array.from(
         queryScope.querySelectorAll<HTMLInputElement>(
           `input[type='radio'][name='${CSS.escape(element.name)}']`,
         ),
       )
-    : [element];
+    : [];
+  if (group.length <= 1) {
+    let container = element.parentElement;
+    for (let depth = 0; container && depth < 8; depth += 1) {
+      const containerRadios = Array.from(container.querySelectorAll<HTMLInputElement>("input[type='radio']"));
+      if (containerRadios.length >= 2) {
+        group = containerRadios;
+        break;
+      }
+      container = container.parentElement;
+    }
+  }
+  if (group.length === 0) group = [element];
+
   const targetNorm = normalized(value);
-  const selected = group.find(
-    (candidate) =>
-      candidate.value === value ||
-      normalized(candidate.value) === targetNorm ||
-      normalized(optionLabelFor(candidate, scope)) === targetNorm ||
-      normalized(labelFor(candidate, scope)) === targetNorm ||
-      (targetNorm.length > 1 &&
-        normalized(optionLabelFor(candidate, scope)).includes(targetNorm)) ||
-      (targetNorm.length > 1 &&
-        targetNorm.includes(normalized(optionLabelFor(candidate, scope)))),
-  );
+  const targetAliases = new Set<string>([targetNorm]);
+  if (['yes', 'true', 'authorized', 'eligible'].includes(targetNorm)) {
+    targetAliases.add('y');
+    targetAliases.add('yes');
+    targetAliases.add('true');
+    targetAliases.add('1');
+  } else if (['no', 'false'].includes(targetNorm)) {
+    targetAliases.add('n');
+    targetAliases.add('no');
+    targetAliases.add('false');
+    targetAliases.add('0');
+  }
+
+  const selected = group.find((candidate) => {
+    const candVal = normalized(candidate.value);
+    const candLabel = normalized(optionLabelFor(candidate, scope));
+    if (candidate.value === value || targetAliases.has(candVal) || targetAliases.has(candLabel)) {
+      return true;
+    }
+    return (
+      (targetNorm.length > 1 && (candLabel.includes(targetNorm) || targetNorm.includes(candLabel))) ||
+      (targetNorm.length > 1 && (candVal.includes(targetNorm) || targetNorm.includes(candVal)))
+    );
+  });
   if (!selected) return false;
   const scrollPosition = { left: window.scrollX, top: window.scrollY };
   // LinkedIn's custom radio UI is often controlled by a handler on the
   // surrounding label/card rather than the input. Follow the same pointer
   // and click path a user takes on the whole option.
   clickRadioOption(selected, scope);
+  if (!selected.checked) {
+    try {
+      selected.click();
+    } catch {}
+  }
+  if (!selected.checked) {
+    try {
+      selected.checked = true;
+      selected.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
+      selected.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+    } catch {}
+  }
   if (!selected.checked) {
     return false;
   }
@@ -953,6 +1257,9 @@ export async function fillFormField(
       typeof instruction.value === 'string' &&
       instruction.source === 'panel'
     ) {
+      if (instruction.value === '') {
+        return clearFormFile(input, instruction);
+      }
       const selection = selectExistingDocument(input, instruction.value, scope);
       if (selection === 'selected')
         return result(instruction, 'filled', 'Existing document selected.');
@@ -975,7 +1282,49 @@ export async function fillFormField(
     );
   }
 
-  const element = findFormElement(instruction.target, scope);
+  const ariaCheckbox = instruction.target.type === 'checkbox'
+    ? findAriaCheckbox(instruction.target, scope)
+    : null;
+  if (ariaCheckbox) {
+    if (typeof instruction.value !== 'boolean')
+      return result(instruction, 'rejected', 'Checkbox values must be boolean.');
+    if (ariaCheckboxIsChecked(ariaCheckbox) === instruction.value)
+      return result(instruction, 'already_filled', 'Checkbox already has the requested value.');
+    if (instruction.value) clickControl(ariaCheckbox);
+    if (!instruction.value && ariaCheckboxIsChecked(ariaCheckbox)) clickControl(ariaCheckbox);
+    return result(
+      instruction,
+      ariaCheckboxIsChecked(ariaCheckbox) === instruction.value ? 'filled' : 'rejected',
+      ariaCheckboxIsChecked(ariaCheckbox) === instruction.value
+        ? 'Checkbox value updated.'
+        : 'The webpage did not accept this checkbox change. Please tick it directly on the webpage.',
+    );
+  }
+
+  const ariaCombobox = instruction.target.type === 'select'
+    ? findAriaCombobox(instruction.target, scope)
+    : null;
+  if (ariaCombobox) {
+    if (typeof instruction.value !== 'string')
+      return result(instruction, 'rejected', 'Dropdown values must be strings.');
+    const current = normalized(ariaCombobox.textContent || '');
+    const expected = normalized(instruction.value);
+    if (current && (current === expected || current.includes(expected) || expected.includes(current))) {
+      return result(instruction, 'already_filled', 'Dropdown already has the requested value.');
+    }
+    const filled = await fillAriaCombobox(ariaCombobox, instruction.value);
+    return result(
+      instruction,
+      filled ? 'filled' : 'rejected',
+      filled ? 'Dropdown value updated.' : 'The requested dropdown option is unavailable.',
+    );
+  }
+
+  let element = findFormElement(instruction.target, scope);
+  if (!element && instruction.target.type !== 'radio') {
+    await new Promise((resolve) => window.setTimeout(resolve, 200));
+    element = findFormElement(instruction.target, scope);
+  }
   if (!element) {
     if (
       instruction.target.type === 'radio' &&
@@ -1100,6 +1449,7 @@ export async function fillFormField(
           'The requested dropdown option is unavailable.',
         );
       }
+      await new Promise((res) => window.setTimeout(res, 150));
       if (
         normalized(comboboxCurrentValue(combobox)) === normalized(previousValue)
       ) {
@@ -1113,19 +1463,23 @@ export async function fillFormField(
     }
     const select = element as HTMLSelectElement;
     const previousValue = select.value;
-    if (!fillSelect(select, instruction.value, scope))
+    const selection = await fillSelect(select, instruction.value, scope);
+    if (!selection.matched)
       return result(
         instruction,
         'rejected',
         'The requested select option is unavailable.',
       );
-    if (select.value === previousValue)
+    // Dispatch after the async visual option click and native value write so
+    // controlled ATS components receive the event for the committed value.
+    emitChange(select);
+    await new Promise((res) => window.setTimeout(res, 150));
+    if (!selection.changed && select.value === previousValue)
       return result(
         instruction,
         'already_filled',
         'Select already has the requested value.',
       );
-    emitChange(select);
     return result(instruction, 'filled', 'Select value updated.');
   }
 
@@ -1136,8 +1490,31 @@ export async function fillFormField(
       'already_filled',
       'Field already has the requested value.',
     );
+
+  try {
+    textElement.focus({ preventScroll: true });
+  } catch {}
+  const focusEventOptions = { bubbles: true, composed: true, cancelable: true };
+  textElement.dispatchEvent(new PointerEvent('pointerdown', focusEventOptions));
+  textElement.dispatchEvent(new MouseEvent('mousedown', focusEventOptions));
+  textElement.dispatchEvent(
+    new FocusEvent('focusin', { bubbles: true, composed: true }),
+  );
+  textElement.dispatchEvent(
+    new FocusEvent('focus', { bubbles: true, composed: true }),
+  );
+
   setValue(textElement, instruction.value);
+  textElement.dispatchEvent(
+    new KeyboardEvent('keydown', { key: 'a', code: 'KeyA', bubbles: true, cancelable: true, composed: true }),
+  );
+  textElement.dispatchEvent(
+    new KeyboardEvent('keyup', { key: 'a', code: 'KeyA', bubbles: true, cancelable: true, composed: true }),
+  );
   emitChange(textElement);
+  try {
+    textElement.blur();
+  } catch {}
   return result(instruction, 'filled', 'Field value updated.');
 }
 
@@ -1146,10 +1523,12 @@ export function fillFormFieldValue(
   value: string | boolean,
   scope: FormScope | null = document,
 ): Promise<FieldFillResult> {
+  const safeKey = target.key.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 32);
+  const commandId = `panel-${Date.now()}-${safeKey}`.slice(0, 64);
   return fillFormField(
     {
       type: 'content.fill-field',
-      commandId: `panel-${Date.now()}-${target.key}`,
+      commandId,
       source: 'panel',
       target,
       value,
@@ -1349,16 +1728,20 @@ export async function tryFillDefaultRadioForUnanswered(
   let defaultAnswer = '';
 
   if (
-    /eligible|authorized|work\s+rights|right\s+to\s+work|permit|citizen|pr|residency|legally/i.test(
+    /eligible|authorized|work\s+rights|working\s+rights|right\s+to\s+work|permit|citizen|pr|residency|legally/i.test(
       labelNorm,
     )
   ) {
-    if (!/sponsorship|require\s+visa|visa\s+sponsorship/i.test(labelNorm)) {
+    if (!/sponsorship|require\s+visa|visa\s+sponsorship|on\s+a\s+work\s+visa/i.test(labelNorm)) {
       defaultAnswer = 'Yes';
     }
   }
 
   if (/sponsorship|require\s+visa|visa\s+sponsorship/i.test(labelNorm)) {
+    defaultAnswer = 'No';
+  }
+
+  if (/on\s+a\s+work\s+visa|work\s+visa|current\s+visa|visa\s+holder/i.test(labelNorm)) {
     defaultAnswer = 'No';
   }
 

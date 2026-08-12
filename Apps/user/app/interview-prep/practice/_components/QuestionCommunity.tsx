@@ -20,7 +20,7 @@ import { api } from '@/lib/api';
 import type { QuestionComment } from '@/lib/types';
 import { Tooltip } from '@/components/UI/tooltip/index';
 import { showGlobalToast } from '@/lib/toast';
-import { Button } from '@/components/UI/Button';
+import { Button } from '@jobby/ui';
 import { Textarea } from '@/components/UI/textarea';
 import { EmptyState } from '@/components/UI/EmptyState';
 import { cn } from '@/lib/utils';

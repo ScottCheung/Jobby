@@ -21,7 +21,7 @@ import type { InterviewQuestion, QuestionCommunitySummary } from '@/lib/types';
 import { showGlobalToast } from '@/lib/toast';
 import { cn } from '@/lib/utils';
 import { Tooltip, Kbd } from '@/components/UI/tooltip';
-import { Button } from '@/components/UI/Button';
+import { Button } from '@jobby/ui';
 import { div } from 'framer-motion/client';
 
 export function QuestionCommentActions({

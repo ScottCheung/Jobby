@@ -18,7 +18,7 @@ import {
   Layers,
   X,
 } from 'lucide-react';
-import { Button } from '@/components/UI/Button';
+import { Button } from '@jobby/ui';
 import { Input } from '@/components/UI/input';
 import { Textarea } from '@/components/UI/textarea';
 import { TagInput } from '@/components/UI/tag-input';

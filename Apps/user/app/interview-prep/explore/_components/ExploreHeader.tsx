@@ -3,7 +3,7 @@
 'use client';
 
 import { Compass, Plus } from 'lucide-react';
-import { Button } from '@/components/UI/Button';
+import { Button } from '@jobby/ui';
 
 type ExploreHeaderProps = {
   onCreateSet: () => void;

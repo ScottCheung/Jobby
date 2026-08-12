@@ -32,7 +32,7 @@ function parseOptions(value: unknown): Array<{ label: string; value: string }> {
 }
 
 function requestBridge(
-  element: HTMLInputElement,
+  element: HTMLElement,
   action: "inspect" | "select",
   value?: string,
 ): { ok: boolean; state: PageComboboxState } | null {
@@ -64,12 +64,12 @@ function requestBridge(
   };
 }
 
-export function inspectPageCombobox(element: HTMLInputElement): PageComboboxState | null {
+export function inspectPageCombobox(element: HTMLElement): PageComboboxState | null {
   return requestBridge(element, "inspect")?.state || null;
 }
 
 export function selectPageCombobox(
-  element: HTMLInputElement,
+  element: HTMLElement,
   value: string,
 ): Promise<{ ok: boolean; currentValue: string } | null> {
   if (!element.id) return Promise.resolve(null);
@@ -102,5 +102,30 @@ export function selectPageCombobox(
       }),
     );
     timer = window.setTimeout(() => finish(null), 700);
+  });
+}
+
+const CASCADE_EVENT = "jobby.network-cascade-complete";
+
+export function waitForNetworkCascadeOrSettle(maxWaitMs = 350): Promise<void> {
+  return new Promise((resolve) => {
+    let resolved = false;
+    let timer: number | undefined;
+
+    const finish = () => {
+      if (resolved) return;
+      resolved = true;
+      document.removeEventListener(CASCADE_EVENT, onCascade, true);
+      if (timer !== undefined) window.clearTimeout(timer);
+      resolve();
+    };
+
+    const onCascade = () => {
+      // Allow 40ms microtick for DOM rendering after the network response resolves
+      window.setTimeout(finish, 40);
+    };
+
+    document.addEventListener(CASCADE_EVENT, onCascade, true);
+    timer = window.setTimeout(finish, maxWaitMs);
   });
 }

@@ -1,4 +1,4 @@
-import { getValidAuthSession, restoreWebSession } from "./auth-service";
+import { getValidAuthSession, refreshAuthSession, restoreWebSession } from "./auth-service";
 import {
   applicationPlanResponseSchema,
   type ApplicationPlanAction,
@@ -79,6 +79,21 @@ function semanticFeaturesForPayload(label: string, name?: string, id?: string): 
   return semanticFeatures({ label, name, id, key: label, type: "text", required: false, filled: false, sensitive: false, options: [] });
 }
 
+async function fetchWithTimeout(url: string, init: RequestInit): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      throw new ApiClientError("Backend request timed out after 15 seconds.", 504);
+    }
+    throw new ApiClientError("Could not connect to Jobby backend server.", 503);
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 export class ApiClient {
   async request<T>(path: string, init: RequestInit = {}, authenticated = true): Promise<T> {
     const headers = new Headers(init.headers);
@@ -103,24 +118,26 @@ export class ApiClient {
       headers.set("Authorization", `Bearer ${session.accessToken}`);
     }
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000);
-
     let response: Response;
     try {
-      response = await fetch(`${apiBaseUrl()}${path}`, {
-        ...init,
-        headers,
-        signal: controller.signal,
-      });
-    } catch (err) {
-      clearTimeout(timeoutId);
-      if (err instanceof Error && err.name === "AbortError") {
-        throw new ApiClientError("Backend request timed out after 15 seconds.", 504);
+      response = await fetchWithTimeout(`${apiBaseUrl()}${path}`, { ...init, headers });
+      if (authenticated && response.status === 401) {
+        // The access token can be revoked before its local expiry. Recover the
+        // latest Supabase session and retry once before surfacing a login error.
+        let recovered = await refreshAuthSession().catch(() => null);
+        if (!recovered) {
+          await restoreWebSession().catch(() => null);
+          recovered = await getValidAuthSession().catch(() => null);
+        }
+        if (recovered) {
+          headers.set("Authorization", `Bearer ${recovered.accessToken}`);
+          response = await fetchWithTimeout(`${apiBaseUrl()}${path}`, { ...init, headers });
+        }
       }
+    } catch (error) {
+      if (error instanceof ApiClientError) throw error;
       throw new ApiClientError("Could not connect to Jobby backend server.", 503);
     }
-    clearTimeout(timeoutId);
 
     const body = await response.text();
     if (!response.ok) {

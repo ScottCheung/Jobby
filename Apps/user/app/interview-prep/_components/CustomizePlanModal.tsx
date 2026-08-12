@@ -6,7 +6,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Sliders, BookOpen, Clock, Search, Star } from 'lucide-react';
 import type { InterviewQuestion, InterviewCategory } from '@/lib/types';
 import { cn, cleanName } from '@/lib/utils';
-import { Button } from '@/components/UI/Button';
+import { Button } from '@jobby/ui';
 import { Modal } from '@/components/layout/modal';
 import { Switch } from '@/components/UI/switch';
 import { Input } from '@/components/UI/input';

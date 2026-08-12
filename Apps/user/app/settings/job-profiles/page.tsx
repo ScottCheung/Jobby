@@ -29,7 +29,7 @@ import { useGlobalModalStore } from '@/lib/store/global-modal-store';
 import { api } from '@/lib/api';
 import type { JobHuntingProfile } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/UI/Button';
+import { Button } from '@jobby/ui';
 import { ActiveResumeModal } from '@/app/settings/resume/_component/active-resume-modal';
 
 type SearchSection =

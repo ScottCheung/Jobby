@@ -1,0 +1,39 @@
+/** @format */
+
+@layer base {
+  :root {
+    --background-raw: 248 250 252;
+    --background-secondary-raw: 241 245 249;
+    --panel-raw: 255 255 255;
+    --panel-secondary-raw: 248 250 252;
+    --panel-foreground-raw: 15 23 42;
+    --popover-raw: 255 255 255;
+    --popover-foreground-raw: 15 23 42;
+    --muted-raw: 226 232 240;
+    --muted-foreground-raw: 100 116 139;
+    --foreground-raw: 15 23 42;
+  }
+
+  .dark {
+    --background-raw: 15 23 42;
+    --background-secondary-raw: 30 41 59;
+    --panel-raw: 15 23 42;
+    --panel-secondary-raw: 30 41 59;
+    --panel-foreground-raw: 248 250 252;
+    --popover-raw: 15 23 42;
+    --popover-foreground-raw: 248 250 252;
+    --muted-raw: 30 41 59;
+    --muted-foreground-raw: 148 163 184;
+    --foreground-raw: 248 250 252;
+  }
+}
+
+@layer utilities {
+  .bg-glass {
+    @apply bg-primary/5 backdrop-blur-[20px] dark:bg-primary/20;
+  }
+
+  /* .bg-glass-secondary {
+    @apply bg-background-secondary/80 backdrop-blur-[12px] dark:bg-background-secondary/60;
+  } */
+}

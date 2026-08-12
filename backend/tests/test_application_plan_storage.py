@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import os
 import sys
+from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
 
 WORKER_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "worker"))
 if WORKER_ROOT not in sys.path:
@@ -9,7 +11,7 @@ if WORKER_ROOT not in sys.path:
 
 import pytest
 
-from application_core.models import ApplicationAction, ApplicationState, ResumeStrategy
+from application_core.models import ApplicationAction, ApplicationDecision, ApplicationState, JobCandidate, ResumeStrategy
 from application_core.policy import ApplicationPolicy, evaluate_policy
 from application_core.models import JobCandidate
 from application_core.workflow import begin_preparation, create_application_plan, mark_prepared, reject_review
@@ -27,6 +29,7 @@ from services.shared.schemas import (
     ApplicationPlanActionRequest,
     ApplicationPlanCreateRequest,
 )
+from services.api import main
 
 
 def make_plan():
@@ -81,6 +84,81 @@ def test_plan_api_contract_separates_creation_from_state_actions() -> None:
 
     assert create.candidate.external_id == "job-42"
     assert action.action == "approve"
+
+
+def test_plan_creation_persists_candidate_posted_date() -> None:
+    db = MagicMock()
+    db.scalar.side_effect = [None, None, None]
+    candidate = JobCandidate(
+        platform="linkedin",
+        external_id="job-42",
+        title="Engineer",
+        company="Example Co",
+    )
+    evaluation = SimpleNamespace(
+        candidate=candidate,
+        decision=ApplicationDecision(action=ApplicationAction.APPLY),
+    )
+    payload = ApplicationPlanCreateRequest(
+        candidate={
+            "external_id": "job-42",
+            "title": "Engineer",
+            "company": "Example Co",
+            "date_posted": "14 hours ago",
+        },
+    )
+
+    with (
+        patch.object(main, "_get_user_active_resume_data", return_value=None),
+        patch.object(main, "evaluate_candidate", return_value=evaluation),
+        patch.object(main, "_application_plan_response", return_value={"ok": True}),
+    ):
+        main.create_application_plan_endpoint(
+            payload,
+            db=db,
+            current_user=SimpleNamespace(id="user-1"),
+        )
+
+    created = db.add.call_args.args[0]
+    assert created.date_posted == "14 hours ago"
+
+
+def test_plan_reevaluation_updates_candidate_posted_date_when_present() -> None:
+    existing = SimpleNamespace(raw_data={}, date_posted="2 days ago")
+    db = MagicMock()
+    db.scalar.side_effect = [None, None, existing]
+    candidate = JobCandidate(
+        platform="linkedin",
+        external_id="job-42",
+        title="Engineer",
+        company="Example Co",
+        already_applied=True,
+    )
+    evaluation = SimpleNamespace(
+        candidate=candidate,
+        decision=ApplicationDecision(action=ApplicationAction.APPLY),
+    )
+    payload = ApplicationPlanCreateRequest(
+        candidate={
+            "external_id": "job-42",
+            "title": "Engineer",
+            "company": "Example Co",
+            "date_posted": "14 hours ago",
+        },
+    )
+
+    with (
+        patch.object(main, "_get_user_active_resume_data", return_value=None),
+        patch.object(main, "evaluate_candidate", return_value=evaluation),
+        patch.object(main, "_application_plan_response", return_value={"ok": True}),
+    ):
+        main.create_application_plan_endpoint(
+            payload,
+            db=db,
+            current_user=SimpleNamespace(id="user-1"),
+        )
+
+    assert existing.date_posted == "14 hours ago"
 
 
 def test_form_instructions_omit_unavailable_optional_field_identifiers() -> None:

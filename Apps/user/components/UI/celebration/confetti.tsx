@@ -22,7 +22,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 
 import { resolveCelebrationStyle } from '@/lib/celebration-config';
 import { useLayoutStore } from '@/lib/store/layout-store';
-import { Button } from '@/components/UI/Button';
+import { Button } from '@jobby/ui';
 import { Trophy } from 'lucide-react';
 
 type Api = {

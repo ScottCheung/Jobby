@@ -9,12 +9,13 @@ import {
   inspectActiveTab,
   inspectFormActiveTab,
   openLinkedInApplicationActiveTab,
+  renderScoreCardActiveTab,
   setTargetedTabId,
 } from "./content-bridge";
 import { logDiagnostic } from "./diagnostics";
 import { createApplicationPlanFromActiveTab } from "./plan-service";
 import { applyApplicationPlanAction } from "./plan-action-service";
-import { autofillDetectedFormForActiveTab, fillAndNextForActiveTab, fillKnownFieldsForActiveTab, uploadDefaultResumeToActiveTab } from "./field-fill-service";
+import { autofillDetectedFormForActiveTab, autofillSingleFieldForActiveTab, fillAndNextForActiveTab, fillKnownFieldsForActiveTab, uploadDefaultResumeToActiveTab } from "./field-fill-service";
 import { submitLinkedInApplication } from "./linkedin-application-service";
 import { runLinkedInAutoApplication } from "./linkedin-automation-service";
 import {
@@ -87,6 +88,9 @@ export async function handleRuntimeMessage(
           snapshot: await getRuntimeSnapshot(),
           form: await inspectFormActiveTab(),
         };
+      case "content.render-score-card":
+        await renderScoreCardActiveTab(parsed.data.inspection, parsed.data.plan);
+        return { ok: true, snapshot: await getRuntimeSnapshot() };
       case "form.autofill-active":
         if (!isExtensionUiSender(sender)) return { ok: false, error: "Only the extension UI can autofill forms." };
         {
@@ -104,6 +108,13 @@ export async function handleRuntimeMessage(
           ok: true,
           snapshot: await getRuntimeSnapshot(),
           focusResult: await focusActiveTabField(parsed.data.target),
+        };
+      case "content.autofill-single-field-active":
+        if (!isExtensionUiSender(sender)) return { ok: false, error: "Only the extension UI can autofill form fields." };
+        return {
+          ok: true,
+          snapshot: await getRuntimeSnapshot(),
+          fillResult: await autofillSingleFieldForActiveTab(parsed.data.target),
         };
       case "content.upload-default-resume-active":
         if (!isExtensionUiSender(sender)) return { ok: false, error: "Only the extension UI can upload resumes." };

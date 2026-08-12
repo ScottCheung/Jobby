@@ -1,0 +1,63 @@
+/**
+ * Text Effects
+ */
+
+.text-gradient {
+  @apply bg-linear-to-br from-primary to-primary/70 bg-clip-text text-transparent;
+}
+
+.text-gradient-secondary {
+  @apply bg-linear-to-br from-secondary to-secondary/70 bg-clip-text text-transparent;
+}
+
+/* Headings */
+.title-page {
+  @apply text-2xl font-bold tracking-tight text-ink-primary;
+}
+
+.title-section {
+  @apply text-xl font-bold text-ink-primary;
+}
+
+.title-card {
+  @apply text-lg font-bold text-ink-primary;
+}
+
+.title-sub {
+  @apply text-base font-semibold text-ink-primary;
+}
+
+/* Body Text */
+.body-lg {
+  @apply text-base font-normal text-ink-primary leading-relaxed;
+}
+
+.body-md {
+  @apply text-sm font-normal text-ink-primary leading-relaxed;
+}
+
+.body-sm {
+  @apply text-xs font-normal text-ink-secondary leading-normal;
+}
+
+/* Labels & Actions */
+.label {
+  @apply text-sm font-semibold text-ink-primary;
+}
+
+.label-sm {
+  @apply text-xs font-semibold text-ink-secondary;
+}
+
+.label-overline {
+  @apply text-xs font-bold text-ink-secondary uppercase tracking-wider;
+}
+
+/* Metadata */
+.text-meta {
+  @apply text-xs text-ink-muted;
+}
+
+.text-hint {
+  @apply text-[11px] text-ink-muted leading-tight;
+}

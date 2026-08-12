@@ -17,16 +17,19 @@ export function AuthCard({
 }: AuthCardProps) {
   return (
     <div className='account-control' aria-label='Jobby account'>
-      {authStatus.connected ? (
-        <button type='button' className='account-state is-connected' onClick={onDisconnect} title='Disconnect Jobby account'>
-          <span className='account-dot' />
-          <span>{authStatus.user?.email}</span>
+      {authStatus.connected ?
+        <button
+          type='button'
+          className='account-state is-connected '
+          onClick={onDisconnect}
+          title='Disconnect Jobby account'
+        >
+          <span>{authStatus.user?.email.split('@')[0]}</span>
         </button>
-      ) : (
-        <button type='button' className='account-state' onClick={onSignIn}>
+      : <button type='button' className='account-state' onClick={onSignIn}>
           Connect account
         </button>
-      )}
+      }
       {authError && <p className='account-error'>{authError}</p>}
     </div>
   );

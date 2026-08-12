@@ -63,6 +63,7 @@ export type UserProfile = {
   first_name?: string | null;
   middle_name?: string | null;
   last_name?: string | null;
+  title?: string | null;
   email?: string | null;
   phone_number?: string | null;
   current_city?: string | null;

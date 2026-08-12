@@ -14,7 +14,7 @@ import {
   ThumbsUp,
 } from 'lucide-react';
 import type { InterviewQuestion } from '@/lib/types';
-import { Button } from '@/components/UI/Button';
+import { Button } from '@jobby/ui';
 import { cn, formatInterviewDuration } from '@/lib/utils';
 import {
   getCategoryPresentation,

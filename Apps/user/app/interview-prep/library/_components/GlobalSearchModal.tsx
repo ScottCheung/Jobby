@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import type { InterviewCollection, InterviewQuestion } from '@/lib/types';
-import { Button } from '@/components/UI/Button';
+import { Button } from '@jobby/ui';
 import { EmptyState } from '@/components/UI/EmptyState';
 import Link from 'next/link';
 

@@ -19,7 +19,7 @@ export async function executeOpenLinkedIn(
 ): Promise<ApplicationActionResult> {
   const response = await send({ type: "application.open-linkedin-active" });
   if (!response.ok) {
-    return { success: false, error: `❌ 打开发生错误: ${response.error}` };
+    return { success: false, error: `❌ Error opening application: ${response.error}` };
   }
   let form: FormInspection | null = null;
   for (let attempt = 0; attempt < 12; attempt += 1) {
@@ -32,8 +32,8 @@ export async function executeOpenLinkedIn(
       success: true,
       message:
         form?.kind === "application_form"
-          ? "✅ Easy Apply 申请弹窗和表单已就绪！"
-          : "✅ Easy Apply 申请弹窗已打开，表单字段仍在加载，请再次检测表单。",
+          ? "✅ Easy Apply modal and form fields are ready!"
+          : "✅ Easy Apply modal opened, form fields are loading...",
     };
   }
   return {
@@ -41,7 +41,7 @@ export async function executeOpenLinkedIn(
     error:
       form?.kind === "not_application_form"
         ? form.reason
-        : response.linkedinApplication?.message || "未检测到可用的 Easy Apply 按钮。",
+        : response.linkedinApplication?.message || "No Easy Apply button detected.",
   };
 }
 
@@ -50,11 +50,11 @@ export async function executeMoveNext(
 ): Promise<ApplicationActionResult> {
   const response = await send({ type: "application.linkedin-action-active", action: "next" });
   if (!response.ok) {
-    return { success: false, error: `❌ 点击下一步失败: ${response.error}` };
+    return { success: false, error: `❌ Failed to click Next: ${response.error}` };
   }
   await wait(80);
   await inspectForm();
-  return { success: true, message: `✅ ${response.linkedinApplication?.message || "已移动至下一步。"}` };
+  return { success: true, message: `✅ ${response.linkedinApplication?.message || "Moved to next step."}` };
 }
 
 export async function executeMovePrevious(
@@ -62,11 +62,11 @@ export async function executeMovePrevious(
 ): Promise<ApplicationActionResult> {
   const response = await send({ type: "application.linkedin-action-active", action: "previous" });
   if (!response.ok) {
-    return { success: false, error: `❌ 返回上一步失败: ${response.error}` };
+    return { success: false, error: `❌ Failed to click Previous: ${response.error}` };
   }
   await wait(80);
   await inspectForm();
-  return { success: true, message: `✅ ${response.linkedinApplication?.message || "已返回上一步。"}` };
+  return { success: true, message: `✅ ${response.linkedinApplication?.message || "Moved to previous step."}` };
 }
 
 export async function executeAutoRun(
@@ -77,7 +77,7 @@ export async function executeAutoRun(
     ...(latestPlanId ? { applicationId: latestPlanId } : {}),
   });
   if (!response.ok) {
-    return { success: false, error: `❌ 自动投递中断: ${response.error}` };
+    return { success: false, error: `❌ Auto-apply interrupted: ${response.error}` };
   }
   return {
     success: true,

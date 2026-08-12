@@ -184,9 +184,9 @@ export function Sidebar() {
 
   const activeNavigation = isDesktopApp ? desktopNavigation : navigation;
   const visibleNavigation =
-    user?.role === 'admin'
-      ? [...activeNavigation, ...adminNavigation]
-      : activeNavigation;
+    user?.role === 'admin' ?
+      [...activeNavigation, ...adminNavigation]
+    : activeNavigation;
 
   return (
     <motion.aside
@@ -212,11 +212,15 @@ export function Sidebar() {
             side='right'
           >
             <motion.div
-              layout
               onClick={toggleSidebar}
-              className='app-no-drag flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-xl bg-primary-gradient text-white transition-transform hover:scale-105'
+              className='app-no-drag flex  shrink-0 cursor-pointer items-center justify-center rounded-xl '
             >
-              <LayoutGrid className='size-6' />
+              <motion.img
+                layout
+                src='/favicon.svg'
+                alt='Logo'
+                className={isCollapsed ? 'w-10' : 'w-24'}
+              />
             </motion.div>
           </Tooltip>
           <AnimatePresence mode='popLayout'>
@@ -228,8 +232,8 @@ export function Sidebar() {
                 exit='exit'
                 className='flex flex-col whitespace-nowrap overflow-hidden'
               >
-                <H4>User Console</H4>
-                <p className='label-sm mt-1'>Auto Job Apply</p>
+                <H4>Jobby</H4>
+                <p className='label-sm mt-1'>Your Job Assistance</p>
               </motion.div>
             )}
           </AnimatePresence>

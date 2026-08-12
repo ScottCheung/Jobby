@@ -49,7 +49,7 @@ import type {
   ResumeSkillGroup,
 } from '@/lib/types';
 import { useConsole } from '@/components/ConsoleContext';
-import { Button } from '@/components/UI/Button';
+import { Button } from '@jobby/ui';
 import { Input } from '@/components/UI/input';
 import { Textarea } from '@/components/UI/textarea';
 import { TagInput } from '@/components/UI/tag-input';

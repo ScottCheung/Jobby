@@ -23,7 +23,7 @@ import {
   pdf,
 } from '@react-pdf/renderer';
 import type { MasterResumeData } from '@/lib/types';
-import { Button } from '@/components/UI/Button';
+import { Button } from '@jobby/ui';
 import { useGlobalModalStore } from '@/lib/store/global-modal-store';
 import { defaultResumeTemplate } from '@/app/Resume/Template/templates/registry';
 import { ResumeHtmlDocument } from '@/app/Resume/Template/[templateId]/_components/resume-html-document';

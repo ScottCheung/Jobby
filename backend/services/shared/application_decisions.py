@@ -44,15 +44,25 @@ def evaluate_candidate(
 ) -> CandidateEvaluation:
     candidate_payload = dict(payload)
     match_result = None
-    if candidate_payload.get("match_score") is None and candidate_payload.get("description") and resume_data:
+    if candidate_payload.get("description") and resume_data:
+        user_years = (
+            candidate_payload.get("user_years_experience")
+            or (resume_data.get("years_of_experience") if isinstance(resume_data, dict) else None)
+        )
         match_result = score_job_match(
             str(candidate_payload["description"]),
             dict(resume_data),
             job_title=str(candidate_payload.get("title") or ""),
+            date_posted=candidate_payload.get("posted_at") or candidate_payload.get("date_posted"),
+            technologies=candidate_payload.get("technologies"),
+            user_years_experience=user_years,
         )
-        candidate_payload["match_score"] = match_result.score
+        if candidate_payload.get("match_score") is None:
+            candidate_payload["match_score"] = match_result.score
     candidate = candidate_from_payload(candidate_payload)
     decision = evaluate_policy(candidate, policy_from_settings(settings))
+    if match_result:
+        decision = decision.model_copy(update={"matched_terms": match_result.matched_terms})
     if (
         decision.action.value == "apply"
         and decision.resume_strategy is not None

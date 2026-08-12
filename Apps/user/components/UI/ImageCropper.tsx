@@ -4,7 +4,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { Check } from 'lucide-react';
-import { Button } from '@/components/UI/Button';
+import { Button } from '@jobby/ui';
 
 type ImageCropperProps = {
   file: File;
@@ -321,7 +321,7 @@ export function ImageCropper({
   };
 
   return (
-    <div className='rounded-2xl border border-border bg-background/35 p-4 flex flex-col gap-4 w-full'>
+    <div className='rounded-2xl rounded-bl-[4em]! border border-border bg-background/35 p-4 flex flex-col gap-4 w-full'>
       <div className='text-sm font-semibold text-ink-primary'>{title}</div>
 
       <div

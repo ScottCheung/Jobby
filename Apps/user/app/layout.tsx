@@ -9,7 +9,7 @@ import ConsoleLayout from '@/components/ConsoleLayout';
 import { GeminiBackground } from '@/components/UI/GeminiBackground';
 
 export const metadata: Metadata = {
-  title: 'Auto Job Apply - User Console',
+  title: 'Jobby - User Console',
   description:
     'Manage user profile, job hunting profiles, agent settings, question cache, and application history.',
 };
@@ -20,7 +20,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang='en' suppressHydrationWarning className='bg-background h-screen overflow-hidden'>
+    <html
+      lang='en'
+      suppressHydrationWarning
+      className='bg-background h-screen overflow-hidden'
+    >
+      <head>
+        <link rel='icon' href='/favicon.svg' type='image/svg+xml' sizes='any' />
+      </head>
       <body suppressHydrationWarning className='h-screen overflow-hidden'>
         <QueryProvider>
           <ConsoleProvider>

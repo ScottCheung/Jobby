@@ -8,10 +8,11 @@ import { TailoredResumeModal } from './_components/TailoredResumeModal';
 import { useConsole } from '@/components/ConsoleContext';
 import { ScrollLayout } from '@/components/animation';
 import { api } from '@/lib/api';
-import { VirtualList } from '@/components/UI/VirtualList';
 import { formatRelativeDate } from '@/components/ConsoleUtils';
 import { withMinimumLoadingTime } from '@/lib/loading';
 import { useLayoutStore } from '@/lib/store/layout-store';
+import { useConfirmStore } from '@/lib/store/confirm-store';
+import { WaterfallLayout } from '@/components/layout/waterfallLayout';
 import {
   getCurrentApplicationStageTimestamp,
   getDisplayApplicationStatus,
@@ -22,18 +23,10 @@ import {
   shouldShowApplicationSkipReason,
   type JobApplication,
 } from '@/lib/types';
-import {
-  ApplicationRow,
-  type ApplicationRowViewModel,
-} from './_components/ApplicationRow';
-import { ApplicationSkeleton } from './_components/ApplicationSkeleton';
-
-type ApplicationListItem =
-  | { type: 'row'; id: string; data: ApplicationRowViewModel }
-  | { type: 'skeleton'; id: string };
+import { type ApplicationCardViewModel } from './_components/ApplicationCard';
+import { ApplicationCard } from './_components/ApplicationCard';
 
 const PAGE_SIZE = 20;
-const ROW_HEIGHT = 92;
 
 function matchesApplication(
   application: JobApplication,
@@ -91,9 +84,9 @@ export default function ApplicationsPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [searchText, setSearchText] = useState('');
   const [items, setItems] = useState<JobApplication[]>([]);
-  const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(true);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [canLoadMore, setCanLoadMore] = useState(false);
   const [scrollContainer, setScrollContainer] = useState<HTMLDivElement | null>(
     null,
   );
@@ -105,6 +98,11 @@ export default function ApplicationsPage() {
 
   const deferredSearchText = useDeferredValue(searchText);
   const scrollContainerRef = React.useRef<HTMLDivElement | null>(null);
+  const loadMoreSentinelRef = React.useRef<HTMLDivElement | null>(null);
+  const offsetRef = React.useRef(0);
+  const lastScrollTopRef = React.useRef(0);
+  const isFetchingRef = React.useRef(false);
+  const requestVersionRef = React.useRef(0);
   const applicationsById = useMemo(
     () =>
       new Map(applications.map((application) => [application.id, application])),
@@ -113,17 +111,30 @@ export default function ApplicationsPage() {
   const openDrawer = useLayoutStore((state) => state.actions.openDrawer);
   const isDrawerOpen = useLayoutStore((state) => state.isDrawerOpen);
   const drawerOpenId = useLayoutStore((state) => state.drawerConfig.id);
+  const confirm = useConfirmStore((state) => state.confirm);
 
   const setContainerRef = React.useCallback((el: HTMLDivElement | null) => {
     scrollContainerRef.current = el;
     setScrollContainer(el);
   }, []);
 
-  const fetchMore = async (reset = false) => {
-    if (isLoading) return;
+  const fetchMore = React.useCallback(async (reset = false) => {
+    if (isFetchingRef.current && !reset) return;
+
+    const requestVersion = requestVersionRef.current + 1;
+    requestVersionRef.current = requestVersion;
+    isFetchingRef.current = true;
     setIsLoading(true);
 
-    const currentOffset = reset ? 0 : offset;
+    if (reset) {
+      setItems([]);
+      offsetRef.current = 0;
+      setHasMore(true);
+      setCanLoadMore(false);
+      lastScrollTopRef.current = 0;
+    }
+
+    const currentOffset = reset ? 0 : offsetRef.current;
     try {
       const data = await withMinimumLoadingTime(
         api.applications(
@@ -132,11 +143,15 @@ export default function ApplicationsPage() {
           currentOffset,
           deferredSearchText,
         ),
+        800,
       );
+
+      // Ignore a response for an older filter/search request.
+      if (requestVersion !== requestVersionRef.current) return;
 
       if (reset) {
         setItems(data);
-        setOffset(data.length);
+        offsetRef.current = data.length;
         setHasMore(data.length === PAGE_SIZE);
         return;
       }
@@ -146,22 +161,52 @@ export default function ApplicationsPage() {
         const nextItems = data.filter((item) => !existingIds.has(item.id));
         return [...prev, ...nextItems];
       });
-      setOffset((prev) => prev + data.length);
+      offsetRef.current = currentOffset + data.length;
       setHasMore(data.length === PAGE_SIZE);
     } catch (err) {
-      console.error('Failed to fetch applications', err);
+      if (requestVersion === requestVersionRef.current) {
+        console.error('Failed to fetch applications', err);
+      }
     } finally {
-      setIsLoading(false);
+      if (requestVersion === requestVersionRef.current) {
+        isFetchingRef.current = false;
+        setIsLoading(false);
+      }
     }
-  };
+  }, [deferredSearchText, statusFilter]);
+
+  const handleDeleteApplication = React.useCallback(
+    async (applicationId: string, title?: string, company?: string) => {
+      const roleText = title ? ` for "${title}"` : '';
+      const companyText = company ? ` at "${company}"` : '';
+      const isConfirmed = await confirm({
+        title: 'Delete Application',
+        message: `Are you sure you want to delete this job application${roleText}${companyText}? This action cannot be undone.`,
+        confirmLabel: 'Delete Application',
+        cancelLabel: 'Cancel',
+        type: 'delete',
+      });
+
+      if (!isConfirmed) return;
+
+      setItems((prev) => prev.filter((item) => item.id !== applicationId));
+
+      try {
+        await deleteApplication(applicationId);
+      } catch (err) {
+        console.error('Failed to delete application:', err);
+        void fetchMore(true);
+      }
+    },
+    [confirm, deleteApplication, fetchMore],
+  );
 
   useEffect(() => {
-    setOffset(0);
-    setHasMore(true);
     void fetchMore(true);
-  }, [statusFilter, deferredSearchText]);
+  }, [fetchMore]);
 
   useEffect(() => {
+    if (isLoading) return;
     setItems((prevItems) => {
       const syncedItems = prevItems
         .map((item) => applicationsById.get(item.id) ?? item)
@@ -170,9 +215,55 @@ export default function ApplicationsPage() {
         );
       return syncedItems;
     });
-  }, [applicationsById, deferredSearchText, statusFilter]);
+  }, [applicationsById, deferredSearchText, statusFilter, isLoading]);
 
-  const rowItems = useMemo<ApplicationRowViewModel[]>(
+  useEffect(() => {
+    const sentinel = loadMoreSentinelRef.current;
+    if (!scrollContainer || !sentinel || !canLoadMore || !hasMore || isLoading) return;
+
+    let isVisible = false;
+    let loadTimer: ReturnType<typeof setTimeout> | undefined;
+    const clearLoadTimer = () => {
+      if (loadTimer !== undefined) {
+        clearTimeout(loadTimer);
+        loadTimer = undefined;
+      }
+    };
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        isVisible = entry.isIntersecting;
+        clearLoadTimer();
+
+        if (isVisible) {
+          // Avoid loading while the user only briefly passes the list footer.
+          loadTimer = setTimeout(() => {
+            if (isVisible) void fetchMore();
+          }, 600);
+        }
+      },
+      { root: scrollContainer, threshold: 0.01 },
+    );
+
+    observer.observe(sentinel);
+    return () => {
+      clearLoadTimer();
+      observer.disconnect();
+    };
+  }, [canLoadMore, fetchMore, hasMore, isLoading, scrollContainer]);
+
+  const handleCardScroll = React.useCallback(
+    (event: React.UIEvent<HTMLDivElement>) => {
+      const currentScrollTop = event.currentTarget.scrollTop;
+      if (currentScrollTop > lastScrollTopRef.current) {
+        setCanLoadMore(true);
+      }
+      lastScrollTopRef.current = currentScrollTop;
+    },
+    [],
+  );
+
+  const rowItems = useMemo<ApplicationCardViewModel[]>(
     () =>
       items.map((item) => {
         const displayStatus = getDisplayApplicationStatus(item);
@@ -195,8 +286,14 @@ export default function ApplicationsPage() {
           displayStageTime: formatRelativeDate(stageTimestamp),
           skipReason: item.skip_reason,
           shouldShowSkipReason: shouldShowApplicationSkipReason(item),
-          jobLink: item.job_link,
-          hasTailoredResume: Boolean(item.has_tailored_resume || item.job_description),
+          jobLink: item.job_link || item.external_job_link,
+          hasTailoredResume: Boolean(
+            item.has_tailored_resume || item.job_description,
+          ),
+          datePosted: item.date_posted || null,
+          displayDatePosted:
+            item.date_posted ? formatRelativeDate(item.date_posted) : null,
+          jobDescription: item.job_description || null,
         };
       }),
     [items],
@@ -224,59 +321,6 @@ export default function ApplicationsPage() {
     [applicationsById, openDrawer, saveApplicationPatch],
   );
 
-  const listItems = React.useMemo<ApplicationListItem[]>(() => {
-    const nextItems: ApplicationListItem[] = rowItems.map((item) => ({
-      type: 'row',
-      id: `${item.id}-row`,
-      data: item,
-    }));
-
-    if (isLoading && hasMore) {
-      nextItems.push(
-        { type: 'skeleton', id: 'application-skeleton-1' },
-        { type: 'skeleton', id: 'application-skeleton-2' },
-        { type: 'skeleton', id: 'application-skeleton-3' },
-        { type: 'skeleton', id: 'application-skeleton-4' },
-      );
-    }
-
-    return nextItems;
-  }, [hasMore, isLoading, rowItems]);
-
-  const renderRow = React.useCallback(
-    (item: ApplicationListItem, index: number, style: React.CSSProperties) => {
-      if (item.type === 'skeleton') {
-        return <ApplicationSkeleton key={item.id} style={style} />;
-      }
-
-      return (
-        <ApplicationRow
-          key={item.id}
-          entry={item.data}
-          style={style}
-          isLast={index === listItems.length - 1}
-          isSyncing={syncingApplicationId === item.data.id}
-          isSelected={isDrawerOpen && drawerOpenId === item.data.id}
-          onOpenDetails={openApplicationDetails}
-          onAsync={asyncApplication}
-          onDelete={deleteApplication}
-          onOpenResume={(id, title, company) =>
-            setActiveResumeModal({ id, title, company })
-          }
-        />
-      );
-    },
-    [
-      asyncApplication,
-      deleteApplication,
-      drawerOpenId,
-      isDrawerOpen,
-      listItems.length,
-      openApplicationDetails,
-      syncingApplicationId,
-    ],
-  );
-
   return (
     <div className='flex h-full min-h-[500px] flex-col overflow-hidden'>
       <div className='app-drag pb-4 select-none shrink-0'>
@@ -295,7 +339,7 @@ export default function ApplicationsPage() {
           </ScrollLayout.TopToLeft>
 
           <ScrollLayout.BtmToRight>
-            <div className='flex items-center gap-4 w-full'>
+            <div className='flex items-center gap-3 w-full'>
               <div className='relative flex-1'>
                 <Search className='absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400' />
                 <input
@@ -316,6 +360,7 @@ export default function ApplicationsPage() {
                 <option value='skipped'>Skipped</option>
                 <option value='cancelled'>Cancelled</option>
               </select>
+
             </div>
           </ScrollLayout.BtmToRight>
         </ScrollLayout>
@@ -325,38 +370,52 @@ export default function ApplicationsPage() {
         <div className='p-8 text-center text-ink-primary0 dark:text-zinc-400 flex-1 flex items-center justify-center'>
           No applications match this view.
         </div>
-      : <div className='flex-1 overflow-hidden relative border border-border/40 rounded-xl bg-panel'>
-          <div className='w-full h-full overflow-x-auto custom-scrollbar-primary'>
-            <div className='min-w-[950px] h-full flex flex-col'>
-              <div className='grid grid-cols-[minmax(0,3.5fr)_minmax(0,2fr)_minmax(0,2.5fr)_minmax(0,1.3fr)_minmax(0,1.2fr)] text-[11px] font-bold text-zinc-400 dark:text-ink-primary0 uppercase tracking-wider px-4 py-3 shrink-0 border-b border-border/40'>
-                <div className=' flex items-center justify-start'>
-                  Role & Info
-                </div>
-                <div className=' flex items-center justify-start'>Company</div>
-                <div className=' flex items-center justify-center'>Status</div>
-                <div className=' flex items-center justify-center'>Time</div>
-                <div className=' text-right flex items-center justify-end'>
-                  Actions
-                </div>
-              </div>
-
-              <div className='flex-1 min-h-0 relative'>
-                <VirtualList
-                  outerRef={setContainerRef}
-                  className='custom-scrollbar-primary'
-                  items={listItems}
-                  rowHeight={() => ROW_HEIGHT}
-                  overscanCount={3}
-                  onEndReached={() => {
-                    if (hasMore && !isLoading) {
-                      void fetchMore();
-                    }
-                  }}
-                  renderRow={renderRow}
+      :
+        <div
+          ref={setContainerRef}
+          onScroll={handleCardScroll}
+          className='flex-1 overflow-y-auto custom-scrollbar-primary p-2 relative'
+        >
+          {isLoading && items.length === 0 ?
+            <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 p-2'>
+              {[1, 2, 3, 4, 5, 6].map((n) => (
+                <div
+                  key={n}
+                  className='h-64 rounded-2xl border border-border/40 bg-panel/40 animate-pulse'
                 />
-              </div>
+              ))}
             </div>
-          </div>
+          : <>
+              <WaterfallLayout
+              minColumnWidth={340}
+              gap={20}
+              virtualize
+              scrollContainerRef={scrollContainerRef}
+            >
+              {rowItems.map((item) => (
+                <ApplicationCard
+                  key={item.id}
+                  entry={item}
+                  isSyncing={syncingApplicationId === item.id}
+                  isSelected={isDrawerOpen && drawerOpenId === item.id}
+                  onOpenDetails={openApplicationDetails}
+                  onAsync={asyncApplication}
+                  onDelete={handleDeleteApplication}
+                  onOpenResume={(id, title, company) =>
+                    setActiveResumeModal({ id, title, company })
+                  }
+                />
+              ))}
+              </WaterfallLayout>
+              {hasMore && (
+                <div
+                  ref={loadMoreSentinelRef}
+                  className='mt-5 h-64 rounded-2xl border border-border/40 bg-panel/40 animate-pulse'
+                  aria-hidden='true'
+                />
+              )}
+            </>
+          }
         </div>
       }
 

@@ -8,6 +8,13 @@ import type { AuthSession, AuthStatus } from "../shared/contracts/auth";
 
 const REFRESH_SKEW_MS = 60_000;
 
+class AuthRefreshError extends Error {
+  constructor(message: string, readonly definitive: boolean) {
+    super(message);
+    this.name = "AuthRefreshError";
+  }
+}
+
 type SessionPayload = {
   access_token: string;
   refresh_token: string;
@@ -119,6 +126,16 @@ export async function restoreWebSession(): Promise<AuthStatus | null> {
 }
 
 export async function refreshAuthSession(): Promise<AuthSession | null> {
+  if (refreshInFlight) return refreshInFlight;
+  refreshInFlight = refreshAuthSessionOnce().finally(() => {
+    refreshInFlight = null;
+  });
+  return refreshInFlight;
+}
+
+let refreshInFlight: Promise<AuthSession | null> | null = null;
+
+async function refreshAuthSessionOnce(): Promise<AuthSession | null> {
   const current = await getAuthSession();
   if (!current) return null;
 
@@ -138,10 +155,15 @@ export async function refreshAuthSession(): Promise<AuthSession | null> {
     // Network outages and backend/Supabase 5xx responses are recoverable and
     // must not force the user through the browser login flow again.
     if ([400, 401, 403].includes(response.status)) {
-      await clearAuthSession();
-      throw new Error(errorMessage(payload, "Your Jobby session expired. Please sign in again."));
+      throw new AuthRefreshError(
+        errorMessage(payload, "Your Jobby session expired. Please sign in again."),
+        true,
+      );
     }
-    throw new Error(errorMessage(payload, "Could not refresh the Jobby session. Please try again shortly."));
+    throw new AuthRefreshError(
+      errorMessage(payload, "Could not refresh the Jobby session. Please try again shortly."),
+      false,
+    );
   }
 
   return saveSession(payload as SessionPayload, current.user);
@@ -151,7 +173,19 @@ export async function getValidAuthSession(): Promise<AuthSession | null> {
   const current = await getAuthSession();
   if (!current) return null;
   if (Date.parse(current.expiresAt) > Date.now() + REFRESH_SKEW_MS) return current;
-  return refreshAuthSession();
+  try {
+    return await refreshAuthSession();
+  } catch (error) {
+    // Supabase rotates refresh tokens. If another client (usually the web app)
+    // rotated this token first, recover the current browser session before
+    // asking the user to sign in again.
+    if (error instanceof AuthRefreshError && error.definitive) {
+      const restored = await restoreWebSession();
+      if (restored?.connected) return getAuthSession();
+      await clearAuthSession();
+    }
+    throw error;
+  }
 }
 
 export async function disconnect(): Promise<void> {
