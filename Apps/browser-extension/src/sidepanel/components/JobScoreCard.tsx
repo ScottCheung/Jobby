@@ -29,9 +29,19 @@ export function JobScoreCard({
 
   const matchLabel =
     !hasScore ? 'Calculating Score...'
-    : percentage >= 75 ? 'High Match'
-    : percentage >= 50 ? 'Medium Match'
-    : 'Low Match';
+    : percentage >= 75 ? 'Highly Recommended'
+    : percentage >= 50 ? 'Recommended'
+    : 'Not Recommended';
+
+  const scoreDetails = (candidate?.match_score != null && candidate?.recency_factor != null)
+    ? `Match ${Math.round(candidate.match_score * 100)}% × Recency ${candidate.recency_factor}`
+    : `Skills, Title, Exp & Recency`;
+
+  const displayExplanation = explanation 
+    ? `${explanation} (${scoreDetails})`
+    : hasScore 
+      ? `Evaluation complete. (${scoreDetails})`
+      : 'Analyzing job skills and requirements...';
 
   return (
     <div className='rounded-tl-[4em]! rounded-br-[4em]!  page-class-banner--job  rounded-xl  bg-background-primary p-3 shadow-xs  transition-all'>
@@ -82,11 +92,8 @@ export function JobScoreCard({
             )}
           </div>
 
-          <p className='text-[11px] leading-relaxed text-muted-foreground line-clamp-2'>
-            {explanation ||
-              (hasScore ?
-                'Match evaluation completed.'
-              : 'Analyzing job skills and requirements...')}
+          <p className='text-[11px] leading-relaxed text-muted-foreground line-clamp-2' title={displayExplanation}>
+            {displayExplanation}
           </p>
         </div>
       </div>
