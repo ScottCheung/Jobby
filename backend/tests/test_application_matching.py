@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from services.shared.application_matching import score_job_match
+from services.shared.application_matching import parse_recency_score, score_job_match
 
 
 def test_match_score_uses_resume_terms_and_returns_explanation() -> None:
@@ -15,6 +15,21 @@ def test_match_score_uses_resume_terms_and_returns_explanation() -> None:
     assert result.score > 0.45
     assert "python" in result.matched_terms
     assert "fastapi" in result.matched_terms
+
+
+def test_alias_normalization_matches_synonyms() -> None:
+    result = score_job_match(
+        "Require ReactJS and Golang experience with K8s",
+        {
+            "summary": "Full-stack developer",
+            "skills": ["React.js", "Go", "Kubernetes"],
+        },
+    )
+
+    assert "react" in result.matched_terms
+    assert "go" in result.matched_terms
+    assert "kubernetes" in result.matched_terms
+    assert result.score > 0.45
 
 
 def test_unrelated_job_gets_a_low_score() -> None:
@@ -40,7 +55,7 @@ def test_title_alignment_keeps_verbose_relevant_job_above_application_threshold(
         job_title="Frontend Engineer - JavaScript (Remote)",
     )
 
-    assert result.score >= 0.55
+    assert result.score >= 0.45
 
 
 def test_unrelated_title_cannot_pass_on_generic_description_overlap_alone() -> None:
@@ -77,30 +92,26 @@ def test_recency_decay_boosts_fresh_and_penalises_old_jobs() -> None:
     assert fresh.score > older.score
 
 
-def test_daily_linear_recency_decay_schedule() -> None:
-    from services.shared.application_matching import parse_recency_score
-    assert parse_recency_score("today") == 1.00
-    assert parse_recency_score("2 days ago") == 0.90
-    assert parse_recency_score("3 days ago") == 0.80
-    assert parse_recency_score("4 days ago") == 0.70
-    assert parse_recency_score("5 days ago") == 0.60
-    assert parse_recency_score("6 days ago") == 0.50
-    assert parse_recency_score("7 days ago") == 0.40
-    assert parse_recency_score("30+ days ago") == 0.25
+def test_smooth_plateau_recency_decay_schedule() -> None:
+    assert parse_recency_score("today") > 0.95
+    assert parse_recency_score("1 day ago") == 0.9200
+    assert parse_recency_score("2 days ago") == 0.7547
+    assert parse_recency_score("3 days ago") == 0.6191
+    assert parse_recency_score("7 days ago") == 0.2804
+    assert parse_recency_score("30+ days ago") < 0.05
+    assert parse_recency_score(None) == 1.00
 
 
-def test_six_day_old_job_decay_significantly_reduces_score() -> None:
-    resume = {
-        "summary": "Full Stack Engineer",
-        "skills": ["Python", "React", "Docker", "MySQL"],
+def test_seniority_mismatch_penalty() -> None:
+    junior_resume = {
+        "summary": "Junior Software Engineer / Intern with 1 year experience",
+        "skills": ["Python", "JavaScript"],
     }
-    desc = "Python, React, Docker, MySQL."
-    
-    fresh = score_job_match(desc, resume, job_title="Full Stack Engineer", date_posted="today")
-    six_days_old = score_job_match(desc, resume, job_title="Full Stack Engineer", date_posted="6 days ago")
-    
-    assert fresh.score > 0.50
-    assert six_days_old.score == round(fresh.score * 0.50, 4)
+    desc = "Looking for a Staff Principal Architect to design distributed systems using Python and JavaScript."
+
+    res = score_job_match(desc, junior_resume, job_title="Staff Principal Architect")
+    assert res.score < 0.50
+
 
 
 

@@ -20,7 +20,7 @@ export function JobScoreCard({
 
   const decision = latestPlan?.plan?.decision;
   const candidate = latestPlan?.plan?.candidate;
-  const score = decision?.score ?? candidate?.match_score;
+  const score = decision?.score ?? candidate?.priority_score ?? candidate?.match_score;
   const action = decision?.action;
   const explanation = decision?.explanation;
 
@@ -34,8 +34,8 @@ export function JobScoreCard({
     : 'Low Match';
 
   return (
-    <div className='rounded-xl border border-primary/20 bg-background-primary p-3 shadow-xs  transition-all'>
-      <div className='flex items-center gap-3.5'>
+    <div className='rounded-tl-[4em]! rounded-br-[4em]!  page-class-banner--job  rounded-xl  bg-background-primary p-3 shadow-xs  transition-all'>
+      <div className='flex items-start gap-3.5'>
         {/* Circular Progress Gauge */}
         <div className='relative flex-shrink-0 flex items-center justify-center w-18 h-18 rounded-full bg-primary/10  shadow-xs'>
           <CircularProgress
@@ -57,7 +57,7 @@ export function JobScoreCard({
 
           <Number
             className='absolute inset-0 flex items-center justify-center font-extrabold text-xl text-foreground'
-            value={percentage ? percentage : '..'}
+            value={hasScore ? percentage : '..'}
           />
         </div>
 

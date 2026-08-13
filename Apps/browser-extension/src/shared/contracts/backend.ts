@@ -7,6 +7,8 @@ export type ApplicationCandidateInput = {
   company: string;
   description?: string | null;
   match_score?: number | null;
+  priority_score?: number | null;
+  recency_factor?: number | null;
   easy_apply?: boolean;
   already_applied?: boolean;
   posted_at?: string | null;
@@ -28,6 +30,8 @@ const applicationCandidateSchema = z.object({
   company: z.string().min(1),
   description: z.string().nullable().optional(),
   match_score: z.number().nullable().optional(),
+  priority_score: z.number().nullable().optional(),
+  recency_factor: z.number().nullable().optional(),
   easy_apply: z.boolean().optional(),
   already_applied: z.boolean().optional(),
   posted_at: z.string().nullable().optional(),

@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import math
 import re
 from dataclasses import dataclass
 from typing import Any, Iterable
 
+from services.shared.matching_dictionaries import CANONICAL_ALIAS_MAP, RECRUITMENT_STOPWORDS
 
 _WORD_RE = re.compile(r"[a-zA-Z][a-zA-Z0-9+#.-]{1,}")
+
 _STOPWORDS = frozenset(
     {
         "and", "the", "with", "for", "from", "this", "that", "you", "your",
@@ -17,24 +20,35 @@ _STOPWORDS = frozenset(
         "about", "skills", "required", "requirements", "responsibilities",
         "strong", "ability", "knowledge", "including", "such", "more", "apply",
     }
-)
+) | RECRUITMENT_STOPWORDS
 
 
 @dataclass(frozen=True, slots=True)
 class MatchScore:
-    score: float
+    match_score: float
+    recency_factor: float
+    priority_score: float
     matched_terms: tuple[str, ...]
+
+    @property
+    def score(self) -> float:
+        """Backwards compatibility alias for priority_score."""
+        return self.priority_score
 
 
 def _tokens(value: object) -> set[str]:
     if not isinstance(value, str):
         return set()
     value = re.sub(r"(?<=[A-Za-z])[-\u2010-\u2015](?=[A-Za-z])", " ", value)
-    return {
-        token.casefold()
-        for token in _WORD_RE.findall(value)
-        if token.casefold() not in _STOPWORDS
-    }
+    tokens: set[str] = set()
+    for raw in _WORD_RE.findall(value):
+        token = raw.casefold()
+        if token in _STOPWORDS:
+            continue
+        token = CANONICAL_ALIAS_MAP.get(token, token)
+        if token not in _STOPWORDS:
+            tokens.add(token)
+    return tokens
 
 
 def _resume_text(values: Any) -> Iterable[str]:
@@ -49,20 +63,11 @@ def _resume_text(values: Any) -> Iterable[str]:
 
 
 def parse_recency_score(date_posted: str | datetime | float | None) -> float:
-    """Calculate daily recency decay multiplier D(t):
-    
-    - 1 day (<24h / today): 1.00 (100% of base match)
-    - 2 days: 0.90 (90%)
-    - 3 days: 0.80 (80%)
-    - 4 days: 0.70 (70%)
-    - 5 days: 0.60 (60%)
-    - 6 days: 0.50 (50%)
-    - 7 days: 0.40 (40%)
-    - > 7 days (older / weeks / months): 0.25 (25%)
-    - Unknown / None: 1.00 (default)
-    """
+    """Calculate recency decay multiplier D(t) with a smooth 24h plateau and 3.5-day half-life."""
     if date_posted is None:
         return 1.00
+
+    diff_days: float | None = None
 
     if isinstance(date_posted, (int, float)):
         try:
@@ -74,53 +79,63 @@ def parse_recency_score(date_posted: str | datetime | float | None) -> float:
         now = datetime.now(timezone.utc)
         if date_posted.tzinfo is None:
             date_posted = date_posted.replace(tzinfo=timezone.utc)
-        diff_days = (now - date_posted).total_seconds() / 86400.0
-        if diff_days <= 1:
+        diff_days = max(0.0, (now - date_posted).total_seconds() / 86400.0)
+
+    if diff_days is None:
+        text = str(date_posted).strip().lower()
+        if not text:
             return 1.00
-        elif diff_days <= 2:
-            return 0.90
-        elif diff_days <= 3:
-            return 0.80
-        elif diff_days <= 4:
-            return 0.70
-        elif diff_days <= 5:
-            return 0.60
-        elif diff_days <= 6:
-            return 0.50
-        elif diff_days <= 7:
-            return 0.40
+
+        if any(k in text for k in ("just", "today", "hour", "hr", "刚刚", "今天", "0d")):
+            diff_days = 0.2
+        elif any(k in text for k in ("1 day", "24h", "1d", "1天前")):
+            diff_days = 1.0
+        elif any(k in text for k in ("2 days", "2d", "2天前")):
+            diff_days = 2.0
+        elif any(k in text for k in ("3 days", "3d", "3天前")):
+            diff_days = 3.0
+        elif any(k in text for k in ("4 days", "4d", "4天前")):
+            diff_days = 4.0
+        elif any(k in text for k in ("5 days", "5d", "5天前")):
+            diff_days = 5.0
+        elif any(k in text for k in ("6 days", "6d", "6天前")):
+            diff_days = 6.0
+        elif any(k in text for k in ("7 days", "7d", "1 week", "1w", "7天前", "1周前")):
+            diff_days = 7.0
+        elif any(k in text for k in ("2 weeks", "2w", "14d", "14天前", "2周前")):
+            diff_days = 14.0
+        elif any(k in text for k in ("week", "month", "30+", "older", "周前", "月前", "年前")):
+            diff_days = 30.0
         else:
-            return 0.25
+            try:
+                dt = datetime.fromisoformat(text.replace("z", "+00:00"))
+                now = datetime.now(timezone.utc)
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=timezone.utc)
+                diff_days = max(0.0, (now - dt).total_seconds() / 86400.0)
+            except Exception:
+                return 1.00
 
-    text = str(date_posted).strip().lower()
-    if not text:
-        return 1.00
+    if diff_days <= 1.0:
+        factor = 1.00 - 0.08 * diff_days
+    else:
+        factor = 0.92 * math.pow(2.0, -(diff_days - 1.0) / 3.5)
 
-    if any(k in text for k in ("just", "today", "hour", "hr", "1 day", "24h", "刚刚", "今天")):
-        return 1.00
-    elif any(k in text for k in ("2 days", "2d", "2天前", "2 天前")):
-        return 0.90
-    elif any(k in text for k in ("3 days", "3d", "3天前", "3 天前")):
-        return 0.80
-    elif any(k in text for k in ("4 days", "4d", "4天前", "4 天前")):
-        return 0.70
-    elif any(k in text for k in ("5 days", "5d", "5天前", "5 天前")):
-        return 0.60
-    elif any(k in text for k in ("6 days", "6d", "6天前", "6 天前")):
-        return 0.50
-    elif any(k in text for k in ("7 days", "7d", "1 week", "1w", "7天前", "7 天前", "1周前", "1 周前")):
-        return 0.40
-    elif any(k in text for k in ("week", "month", "30+", "older", "days", "周前", "月前", "个月前", "年前")):
-        return 0.25
+    return round(max(0.01, min(1.0, factor)), 4)
 
-    # Try ISO date parse
-    try:
-        dt = datetime.fromisoformat(text.replace("z", "+00:00"))
-        return parse_recency_score(dt)
-    except Exception:
-        pass
 
-    return 1.00
+def _detect_seniority_level(text: str) -> int:
+    """Classify seniority level into integer grade 1..5."""
+    lower = text.lower()
+    if any(k in lower for k in ("director", "vp", "head", "chief", "executive", "cto")):
+        return 5
+    if any(k in lower for k in ("staff", "principal", "architect")):
+        return 4
+    if any(k in lower for k in ("senior", "sr.", "sr ", "lead")):
+        return 3
+    if any(k in lower for k in ("junior", "entry", "intern", "associate")):
+        return 1
+    return 2
 
 
 def extract_required_years(job_description: str, job_title: str = "") -> float | None:
@@ -158,18 +173,20 @@ def score_job_match(
     technologies: list[str] | tuple[str, ...] | None = None,
     user_years_experience: float | int | None = None,
 ) -> MatchScore:
-    """Score role alignment considering title, skills, experience requirements, and multiplicative recency decay."""
+    """Score role match (Match Score) and submission priority (Priority Score)."""
     job_terms = _tokens(job_description)
     if technologies:
         for tech in technologies:
             job_terms.update(_tokens(tech))
 
     resume_terms: set[str] = set()
+    resume_raw_text = ""
     for value in _resume_text(resume_data or {}):
         resume_terms.update(_tokens(value))
+        resume_raw_text += f" {value}"
 
     if not job_terms:
-        return MatchScore(score=0.0, matched_terms=())
+        return MatchScore(match_score=0.0, recency_factor=1.0, priority_score=0.0, matched_terms=())
 
     matched = tuple(sorted(job_terms & resume_terms))
     description_denominator = min(len(job_terms), 40)
@@ -182,6 +199,12 @@ def score_job_match(
     recency_factor = parse_recency_score(date_posted)
     req_years = extract_required_years(job_description, job_title)
 
+    # Stepwise Seniority Disparity Penalty
+    job_seniority = _detect_seniority_level(f"{job_title} {job_description}")
+    user_seniority = _detect_seniority_level(resume_raw_text)
+    gap = max(0, job_seniority - user_seniority)
+    seniority_penalty = 1.00 if gap == 0 else 0.85 if gap == 1 else 0.65 if gap == 2 else 0.50
+
     if req_years is not None and user_years_experience is not None:
         user_years = float(user_years_experience)
         if user_years >= req_years:
@@ -191,19 +214,27 @@ def score_job_match(
         else:
             exp_score = max(0.2, 1.0 - 0.3 * (req_years - user_years))
 
-        # Base match: Title (50%) + Skill (30%) + Experience (20%)
+        # Weights: Skill (55%) + Title (25%) + Experience (20%)
         if has_title:
-            base_score = (0.50 * title_score) + (0.30 * skill_ratio) + (0.20 * exp_score)
+            base_score = (0.25 * title_score) + (0.55 * skill_ratio) + (0.20 * exp_score)
         else:
-            base_score = (0.75 * skill_ratio) + (0.25 * exp_score)
+            base_score = (0.80 * skill_ratio) + (0.20 * exp_score)
     else:
-        # Base match: Title (60%) + Skill (40%)
+        # Weights: Skill (70%) + Title (30%)
         if has_title:
-            base_score = (0.60 * title_score) + (0.40 * skill_ratio)
+            base_score = (0.25 * title_score) + (0.75 * skill_ratio)
         else:
             base_score = skill_ratio
 
-    final_score = base_score * recency_factor
-    final_score = round(min(1.0, max(0.0, final_score)), 4)
-    return MatchScore(score=final_score, matched_terms=matched)
+    match_score = round(min(1.0, max(0.0, base_score * seniority_penalty)), 4)
+    priority_score = round(min(1.0, max(0.0, match_score * recency_factor)), 4)
+
+    return MatchScore(
+        match_score=match_score,
+        recency_factor=recency_factor,
+        priority_score=priority_score,
+        matched_terms=matched,
+    )
+
+
 

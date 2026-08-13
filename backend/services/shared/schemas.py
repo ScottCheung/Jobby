@@ -261,6 +261,8 @@ class ApplicationCandidateInput(BaseModel):
     company: str
     description: str | None = None
     match_score: float | None = None
+    priority_score: float | None = None
+    recency_factor: float | None = None
     easy_apply: bool = False
     already_applied: bool = False
     posted_at: str | None = None

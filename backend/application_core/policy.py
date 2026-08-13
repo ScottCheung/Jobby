@@ -74,7 +74,7 @@ def evaluate_policy(candidate: JobCandidate, policy: ApplicationPolicy | None = 
                 explanation=f"Company '{candidate.company}' is blacklisted.",
             )
 
-    score = candidate.match_score if candidate.match_score is not None else 0.70
+    score = candidate.priority_score if candidate.priority_score is not None else (candidate.match_score if candidate.match_score is not None else 0.70)
     if score < policy.minimum_match_threshold:
         return ApplicationDecision(
             action=ApplicationAction.SKIP,
