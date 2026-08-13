@@ -1,6 +1,7 @@
 /** @format */
 
 import { CircularProgress } from '@jobby/ui/components/UI/Progress/CircularProgress';
+import { Number } from '@jobby/ui/components/UI/Number/Number';
 import type { ValidatedApplicationPlanResponse } from '../../shared/contracts/backend';
 import type { PageInspection } from '../../shared/contracts/page-inspection';
 
@@ -33,22 +34,31 @@ export function JobScoreCard({
     : 'Low Match';
 
   return (
-    <div className='rounded-xl border border-primary/20 bg-card/90 p-3 shadow-xs backdrop-blur-sm transition-all'>
+    <div className='rounded-xl border border-primary/20 bg-background-primary p-3 shadow-xs  transition-all'>
       <div className='flex items-center gap-3.5'>
         {/* Circular Progress Gauge */}
-        <div className='relative flex-shrink-0 flex items-center justify-center w-11 h-11 rounded-full bg-primary text-primary-foreground shadow-xs'>
+        <div className='relative flex-shrink-0 flex items-center justify-center w-18 h-18 rounded-full bg-primary/10  shadow-xs'>
           <CircularProgress
             value={hasScore ? percentage : 0}
             size='sm'
-            variant='solid'
-            color='white'
+            variant='gradient'
+            color={
+              !hasScore ? 'primary'
+              : percentage >= 75 ?
+                'primary'
+              : percentage >= 50 ?
+                'warning'
+              : 'danger'
+            }
             showValue={false}
             isIndeterminate={!hasScore}
-            thickness={3}
+            thickness={8}
           />
-          <div className='absolute inset-0 flex items-center justify-center font-bold text-xs text-primary-foreground'>
-            {hasScore ? `${percentage}%` : '...'}
-          </div>
+
+          <Number
+            className='absolute inset-0 flex items-center justify-center font-extrabold text-xl text-foreground'
+            value={percentage ? percentage : '..'}
+          />
         </div>
 
         {/* Info & Details */}
@@ -60,11 +70,11 @@ export function JobScoreCard({
             {action && (
               <span
                 className={`rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
-                  action === 'apply'
-                    ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
-                    : action === 'review'
-                    ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30'
-                    : 'bg-destructive/15 text-destructive border border-destructive/30'
+                  action === 'apply' ?
+                    'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
+                  : action === 'review' ?
+                    'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30'
+                  : 'bg-destructive/15 text-destructive border border-destructive/30'
                 }`}
               >
                 {action}
@@ -73,7 +83,10 @@ export function JobScoreCard({
           </div>
 
           <p className='text-[11px] leading-relaxed text-muted-foreground line-clamp-2'>
-            {explanation || (hasScore ? 'Match evaluation completed.' : 'Analyzing job skills and requirements...')}
+            {explanation ||
+              (hasScore ?
+                'Match evaluation completed.'
+              : 'Analyzing job skills and requirements...')}
           </p>
         </div>
       </div>

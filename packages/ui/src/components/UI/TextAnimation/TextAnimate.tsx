@@ -215,7 +215,7 @@ const TextAnimate: FC<Props> = ({
       {...props}
     >
       {letters.map((letter, index) => (
-        <motion.span key={index} variants={child}>
+        <motion.span key={index} variants={child as any}>
           {letter === ' ' ? '\u00A0' : letter}
         </motion.span>
       ))}

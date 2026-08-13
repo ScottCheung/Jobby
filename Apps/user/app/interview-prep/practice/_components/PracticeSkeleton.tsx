@@ -51,7 +51,7 @@ export function PracticeSkeleton() {
         {/* Workspace Skeleton */}
         <div className='flex-1 p-6 flex flex-col gap-4'>
           <div className='h-4 skeleton rounded w-1/4 mb-4'></div>
-          <div className='flex-1 skeleton rounded-2xl p-6 flex flex-col gap-4 items-center justify-center border border-dashed border-border dark:border-border/60'>
+          <div className='flex-1 skeleton rounded-2xl p-6 flex flex-col gap-4 items-center justify-center border border-dashed  /60'>
             <div className='w-16 h-16 rounded-full skeleton'></div>
             <div className='h-4 skeleton rounded w-1/3'></div>
             <div className='h-3 skeleton rounded w-1/2'></div>

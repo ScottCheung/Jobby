@@ -1,11 +1,14 @@
+'use client';
 /** @format */
 
 import * as React from 'react';
-import { LucideIcon, FileText } from 'lucide-react';
-import { cn } from '../../lib/utils';
+import { IPEmotion } from './IPEmotion';
+import { cn } from '@/lib/utils';
 
 export interface EmptyPlaceHolderProps {
-  icon?: LucideIcon | null;
+  Icon?: React.ElementType | null;
+  icon?: React.ElementType | null;
+  IP?: number;
   message?: React.ReactNode;
   title?: React.ReactNode;
   description?: React.ReactNode;
@@ -18,7 +21,9 @@ export interface EmptyPlaceHolderProps {
 }
 
 export function EmptyPlaceHolder({
-  icon: Icon = FileText,
+  Icon,
+  icon,
+  IP = 1,
   message,
   title,
   description,
@@ -30,25 +35,37 @@ export function EmptyPlaceHolder({
   descriptionClassName,
 }: EmptyPlaceHolderProps) {
   const displayTitle = title || message || 'No Content';
+  const EffectiveIcon = Icon || icon;
 
   return (
     <div className={cn('panel-lg items-center justify-center', className)}>
       <div className='py-6 text-center w-full flex flex-col items-center justify-center'>
-        {Icon && (
-          <Icon
-            className={cn(
-              'w-16 h-16 mx-auto text-ink-secondary/40 mb-3',
-              iconClassName,
-            )}
+        {EffectiveIcon && (
+          <EffectiveIcon className={cn('w-50 h-50 mx-auto -mt-10 ', iconClassName)} />
+        )}
+        {IP && (
+          <IPEmotion
+            emotionId={IP}
+            className={cn('w-50 h-50 mx-auto -mt-10 ')}
           />
         )}
 
-        <p className={cn('body-md text-ink-secondary/60 font-medium', messageClassName || titleClassName)}>
+        <p
+          className={cn(
+            'text-lg text-ink-primary font-medium',
+            messageClassName || titleClassName,
+          )}
+        >
           {displayTitle}
         </p>
 
         {description && (
-          <p className={cn('text-xs text-ink-secondary/70 mt-1 max-w-sm mx-auto', descriptionClassName)}>
+          <p
+            className={cn(
+              'text-xs text-ink-secondary/70 mt-1 max-w-sm mx-auto',
+              descriptionClassName,
+            )}
+          >
             {description}
           </p>
         )}

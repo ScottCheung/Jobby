@@ -1,11 +1,12 @@
 /** @format */
 
 'use client';
+import { CardWithNorth, H1, Number } from '@jobby/ui';
 
 import { useConsole } from '@/components/ConsoleContext';
-import CardWithNorth from '@/components/UI/card/CardWithNorth';
-import { H1 } from '@/components/UI/text/typography';
-import { Number } from '@/components/UI/Number/Number';
+
+
+
 import { Stagger, StaggerItem } from '@/components/animation';
 import { cn } from '@/lib/utils';
 

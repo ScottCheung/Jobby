@@ -22,6 +22,10 @@ export type SeekJobSnapshot = z.infer<typeof seekJobSnapshotSchema>;
 export const linkedinJobSnapshotSchema = z.object({
   platform: z.literal("linkedin"),
   ...jobSnapshotFields,
+  /** Work arrangement inferred from LinkedIn's workplaceTypes URNs. */
+  workType: z.enum(["onsite", "remote", "hybrid"]).optional(),
+  /** Formatted experience level string from the Voyager API. */
+  experienceLevel: z.string().optional(),
 });
 
 export type LinkedInJobSnapshot = z.infer<typeof linkedinJobSnapshotSchema>;

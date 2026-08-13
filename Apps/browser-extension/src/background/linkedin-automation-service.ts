@@ -25,6 +25,55 @@ export interface LinkedInAutoRunResult {
   unansweredFields?: Array<{ key: string; label: string; reason: string }>;
 }
 
+const FORM_OPEN_TIMEOUT_MS = 15_000;
+const STEP_TRANSITION_TIMEOUT_MS = 8_000;
+const FORM_POLL_INTERVAL_MS = 200;
+
+/**
+ * LinkedIn commonly keeps values from one question screen on the next. The
+ * action and field metadata are therefore part of the fingerprint; values
+ * alone cannot tell whether a step advanced.
+ */
+export function linkedInFormFingerprint(form: FormInspection): string {
+  if (form.kind !== "application_form") return form.kind;
+  return [
+    form.action || "",
+    form.hasSubmitAction ? "submit" : "",
+    form.submitLabel || "",
+    form.canGoBack ? "back" : "",
+    ...form.fields.map((field) =>
+      [field.key, field.id || "", field.name || "", field.label, field.type, field.required ? "required" : "", field.currentValue || ""].join(":"),
+    ),
+  ].join("|");
+}
+
+export async function waitForLinkedInStepTransition(
+  before: FormInspection,
+  inspect: () => Promise<FormInspection>,
+  timeoutMs = STEP_TRANSITION_TIMEOUT_MS,
+  pollIntervalMs = FORM_POLL_INTERVAL_MS,
+): Promise<{ form: FormInspection; changed: boolean }> {
+  const beforeFingerprint = linkedInFormFingerprint(before);
+  const deadline = Date.now() + timeoutMs;
+  let currentForm = await inspect();
+
+  while (
+    currentForm.kind === "application_form" &&
+    linkedInFormFingerprint(currentForm) === beforeFingerprint &&
+    Date.now() < deadline
+  ) {
+    await wait(pollIntervalMs);
+    currentForm = await inspect();
+  }
+
+  return {
+    form: currentForm,
+    changed:
+      currentForm.kind !== "application_form" ||
+      linkedInFormFingerprint(currentForm) !== beforeFingerprint,
+  };
+}
+
 export async function runLinkedInAutoApplication(
   providedId?: string,
 ): Promise<LinkedInAutoRunResult> {
@@ -148,27 +197,17 @@ export async function runLinkedInAutoApplication(
         };
       }
 
-      const beforeNextFingerprint = updatedActiveForm.fields
-        .map((f) => `${f.key}:${f.currentValue || ""}`)
-        .join("|");
-
       const actionRes = await clickLinkedInApplicationAction("next");
       if (actionRes.status !== "clicked") {
         throw new Error(`Failed to advance step: ${actionRes.message}`);
       }
       await logDiagnostic("info", "linkedin-automation", `Moved to next step (${step}).`, { applicationId });
-      await wait(600);
-      currentForm = await inspectFormActiveTab();
-
-      const afterNextFingerprint =
-        currentForm.kind === "application_form"
-          ? currentForm.fields.map((f) => `${f.key}:${f.currentValue || ""}`).join("|")
-          : "";
-      if (
-        currentForm.kind === "application_form" &&
-        beforeNextFingerprint === afterNextFingerprint &&
-        currentForm.action === "next"
-      ) {
+      const transition = await waitForLinkedInStepTransition(
+        updatedActiveForm,
+        () => inspectFormActiveTab(),
+      );
+      currentForm = transition.form;
+      if (!transition.changed && currentForm.kind === "application_form") {
         await logDiagnostic(
           "warn",
           "linkedin-automation",
@@ -179,7 +218,7 @@ export async function runLinkedInAutoApplication(
           step,
           status: "paused_for_user",
           message:
-            "Page did not change after clicking Next (validation errors or missing inputs may exist). Please check for page errors and click One-Click Auto Apply again.",
+            "Page did not change after waiting for LinkedIn to process Next (validation errors or missing inputs may exist). Please check for page errors and click One-Click Auto Apply again.",
           inspection,
           form: currentForm,
           plan,
@@ -207,10 +246,11 @@ function wait(ms: number): Promise<void> {
 }
 
 async function waitForLinkedInForm(): Promise<FormInspection | null> {
-  for (let attempt = 0; attempt < 60; attempt += 1) {
+  const deadline = Date.now() + FORM_OPEN_TIMEOUT_MS;
+  while (Date.now() < deadline) {
     const form = await inspectFormActiveTab().catch(() => null);
     if (form?.kind === "application_form") return form;
-    await wait(250);
+    await wait(FORM_POLL_INTERVAL_MS);
   }
   return inspectFormActiveTab().catch(() => null);
 }

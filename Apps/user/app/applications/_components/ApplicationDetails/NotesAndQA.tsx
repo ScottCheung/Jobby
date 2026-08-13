@@ -1,10 +1,11 @@
 /** @format */
 
 'use client';
+import { EmptyPlaceHolder } from '@jobby/ui';
 
 import React from 'react';
 import { AlertTriangle, Check, Edit3 } from 'lucide-react';
-import { EmptyPlaceHolder } from '@/components/UI/EmptyPlaceHolder';
+
 import { cn } from '@/lib/utils';
 import { FormTextarea } from './FormControls';
 

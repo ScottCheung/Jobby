@@ -569,22 +569,6 @@ export const api = {
       method: "PUT",
       body: JSON.stringify(payload),
     }),
-  asyncApplicationFromLink: (applicationId: string) =>
-    apiRequest<JobApplication>(
-      `/api/applications/${applicationId}/async-from-link`,
-      {
-        method: "POST",
-      },
-    ),
-  batchAsyncApplicationsFromLink: (limit = 100) =>
-    apiRequest<{
-      processed: number;
-      synced: number;
-      failed: number;
-      results: unknown[];
-    }>(`/api/applications/async-from-link/batch?limit=${limit}`, {
-      method: "POST",
-    }),
   deleteApplication: (applicationId: string) =>
     apiRequest<void>(`/api/applications/${applicationId}`, {
       method: "DELETE",

@@ -1,16 +1,10 @@
 "use client"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@jobby/ui';
 
 import * as React from "react"
 import { useTheme, ThemeColor } from "@/components/theme-provider"
 import { cn } from "@/lib/utils"
 import { Check } from "lucide-react"
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger,
-} from "@/components/UI/tooltip"
-
 const colors: { name: ThemeColor; class: string }[] = [
     { name: "blue", class: "bg-[#0f4c81]" },
     { name: "purple", class: "bg-[#7c3aed]" },

@@ -1,3 +1,4 @@
+'use client';
 import { NumberFormat, NumberType } from "../Number";
 import { applyCurrencyShortFormat } from "./applyCurrencyShortFormat";
 import { formatWithType } from "./formatWithType";

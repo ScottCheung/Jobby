@@ -1,5 +1,5 @@
+import { Switch } from '@jobby/ui';
 import { useState } from "react"
-import { Switch } from "@/components/UI/switch"
 import { notify } from "@/lib/notifications"
 
 interface StatusSwitchProps {

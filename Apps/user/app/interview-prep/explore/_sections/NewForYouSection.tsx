@@ -1,10 +1,11 @@
 /** @format */
 
 'use client';
+import { CardWithNorth } from '@jobby/ui';
 
 import { RefreshCw } from 'lucide-react';
 import type { InterviewQuestion } from '@/lib/types';
-import CardWithNorth from '@/components/UI/card/CardWithNorth';
+
 import { ScrollableContainer } from '@/components/layout/ScrollableContainer';
 import { QuestionRecommendationCard } from '../_components/QuestionRecommendationCard';
 import { QuestionCardSkeleton } from '../_components/ExploreSkeletons';

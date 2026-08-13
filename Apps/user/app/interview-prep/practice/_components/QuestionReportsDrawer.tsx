@@ -1,6 +1,7 @@
 /** @format */
 
 'use client';
+import { EmptyPlaceHolder } from '@jobby/ui';
 
 import { useEffect, useMemo, useState } from 'react';
 import {
@@ -15,7 +16,7 @@ import {
 import { api } from '@/lib/api';
 import type { CommunityInterviewReport } from '@/lib/types';
 import { useLayoutStore } from '@/lib/store/layout-store';
-import { EmptyPlaceHolder } from '@/components/UI/EmptyPlaceHolder';
+
 
 export interface QuestionReportsDrawerProps {
   isOpen?: boolean;

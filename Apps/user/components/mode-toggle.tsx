@@ -1,10 +1,9 @@
 "use client"
+import { ToggleGroup, ToggleGroupItem } from '@jobby/ui';
 
 import * as React from "react"
 import { Moon, Sun, Monitor } from "lucide-react"
 import { useTheme } from "@/components/theme-provider"
-import { ToggleGroup, ToggleGroupItem } from "@/components/UI/toggle-group"
-
 export function ModeToggle() {
     const { setTheme, theme } = useTheme()
 

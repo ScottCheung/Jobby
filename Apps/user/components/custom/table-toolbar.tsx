@@ -1,21 +1,18 @@
 /** @format */
 
 'use client';
+import { Button, H4, Input, Popover, PopoverContent, PopoverTrigger } from '@jobby/ui';
 
 import * as React from 'react';
 import { Search, Settings2, X, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-import { Button } from '@jobby/ui';
-import { Input } from '@/components/UI/input';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/UI/popover';
+
+
+
 import { AccountFilter, type Account } from './account-filter';
 import { cn } from '@/lib/utils';
-import { H4 } from '@/components/UI/text/typography';
+
 
 interface TableToolbarProps {
   search: {

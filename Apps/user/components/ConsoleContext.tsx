@@ -219,12 +219,7 @@ export const emptyApplicationSettings: ApplicationSettings = {
   },
 };
 
-function getLinkAsyncWarning(application: JobApplication) {
-  if (application.status === 'skipped') {
-    return `Warning: Link async resulted in 'skipped'. Reason: ${application.skip_reason ?? 'unknown'}`;
-  }
-  return '';
-}
+
 
 const DESKTOP_PLATFORMS: DesktopBotPlatform[] = [
   'linkedin',
@@ -272,8 +267,6 @@ interface ConsoleContextType {
   } | null;
   mainBotName: DesktopBotPlatform;
   processingApplicationsCount: number;
-  syncingApplicationId: string;
-  batchSyncing: boolean;
   expandedApplicationId: string;
   setExpandedApplicationId: (id: string) => void;
   notify: (message: string) => void;
@@ -304,8 +297,6 @@ interface ConsoleContextType {
     action: string,
     reason?: string,
   ) => Promise<ApplicationPlanResponse>;
-  asyncApplication: (applicationId: string) => Promise<void>;
-  batchAsyncApplications: () => Promise<void>;
   deleteApplication: (applicationId: string) => Promise<void>;
   startWorker: () => Promise<void>;
   stopWorker: () => Promise<void>;
@@ -391,8 +382,6 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
     useState<ApplicationSettings>(emptyApplicationSettings);
   const [questions, setQuestions] = useState<QuestionCacheEntry[]>([]);
   const [applications, setApplications] = useState<JobApplication[]>([]);
-  const [syncingApplicationId, setSyncingApplicationId] = useState('');
-  const [batchSyncing, setBatchSyncing] = useState(false);
   const [expandedApplicationId, setExpandedApplicationId] = useState('');
   const [error, setError] = useState('');
   const [isPending, startTransition] = useTransition();
@@ -1201,50 +1190,7 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
     return response;
   };
 
-  const asyncApplication = async (applicationId: string) => {
-    try {
-      setError('');
-      setSyncingApplicationId(applicationId);
-      const updated = await api.asyncApplicationFromLink(applicationId);
-      setApplications((current) =>
-        sortApplications(
-          current.map((item) => (item.id === updated.id ? updated : item)),
-        ),
-      );
-      notify(getLinkAsyncWarning(updated) || 'Application async completed');
-      void loadAppStats();
-    } catch (asyncError) {
-      setError(
-        asyncError instanceof Error ?
-          asyncError.message
-        : 'Failed to async application from link',
-      );
-    } finally {
-      setSyncingApplicationId('');
-    }
-  };
 
-  const batchAsyncApplications = async () => {
-    try {
-      setError('');
-      setBatchSyncing(true);
-      const result = await withMinimumLoadingTime(
-        api.batchAsyncApplicationsFromLink(100),
-      );
-      notify(
-        `Async finished: ${result.synced} synced, ${result.failed} failed`,
-      );
-      void loadAppStats();
-    } catch (batchError) {
-      setError(
-        batchError instanceof Error ?
-          batchError.message
-        : 'Failed to batch async applications',
-      );
-    } finally {
-      setBatchSyncing(false);
-    }
-  };
 
   const deleteApplication = async (applicationId: string) => {
     await api.deleteApplication(applicationId);
@@ -1591,8 +1537,6 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
     mainBotState,
     mainBotName,
     processingApplicationsCount,
-    syncingApplicationId,
-    batchSyncing,
     expandedApplicationId,
     setExpandedApplicationId,
     notify,
@@ -1616,8 +1560,6 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
     deleteQuestion,
     saveApplicationPatch,
     applicationPlanAction,
-    asyncApplication,
-    batchAsyncApplications,
     deleteApplication,
     startWorker,
     stopWorker,

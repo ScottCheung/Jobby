@@ -1,10 +1,11 @@
 /** @format */
 
 'use client';
+import { Textarea } from '@jobby/ui';
 
 import React from 'react';
 import { cn } from '@/lib/utils';
-import { Textarea } from '@/components/UI/textarea';
+
 
 export function toInputDateTime(value?: string | null) {
   if (!value) return '';

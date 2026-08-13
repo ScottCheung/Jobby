@@ -1,9 +1,10 @@
 /** @format */
 
 'use client';
+import { Accordion } from '@jobby/ui';
 
 import React from 'react';
-import { Accordion } from '@/components/UI/Accordion/Accordion';
+
 
 const faqItems = [
   {

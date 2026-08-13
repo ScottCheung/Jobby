@@ -1,6 +1,7 @@
 /** @format */
 
 'use client';
+import { Button, EmptyPlaceHolder } from '@jobby/ui';
 import React, { useEffect, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
@@ -38,7 +39,6 @@ import {
 } from 'lucide-react';
 import { cn, cleanName } from '@/lib/utils';
 import { practiceCache } from './practice/practice-cache';
-import { EmptyPlaceHolder } from '@/components/UI/EmptyPlaceHolder';
 
 import dynamic from 'next/dynamic';
 
@@ -60,7 +60,7 @@ const BatchImportModal = dynamic(
 
 import { PlanSetupSection } from './_components/PlanSetupSection';
 import { ActivityHeatmap } from './_components/ActivityHeatmap';
-import { Button } from '@jobby/ui';
+
 import { showGlobalToast } from '@/lib/toast';
 import { showCelebrationEvent } from '@/lib/celebration';
 import { useConfirmStore } from '@/lib/store/confirm-store';
@@ -919,8 +919,8 @@ export default function InterviewPrepPage() {
           : collections.length === 0 ?
             <EmptyPlaceHolder
               icon={Compass}
-              message="No recommended collections found."
-              className="border-dashed py-8"
+              message='No recommended collections found.'
+              className='border-dashed py-8'
             />
           : <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4'>
               {collections.map((col) => (
@@ -1160,7 +1160,7 @@ export default function InterviewPrepPage() {
                               'flex items-center gap-3 p-3 rounded-xl border transition-all',
                               isCompleted ?
                                 'bg-background-secondary/30 border-border/40/40 opacity-60'
-                              : 'bg-panel border-border dark:border-border',
+                              : 'bg-panel  ',
                             )}
                           >
                             <div className='label-sm w-6 h-6 rounded-full bg-background-secondary flex items-center justify-center shrink-0'>
@@ -1417,8 +1417,8 @@ export default function InterviewPrepPage() {
                 {recentAchievements.length === 0 ?
                   <EmptyPlaceHolder
                     icon={Trophy}
-                    message="No badges yet. Finish a quest, practice, or submit an application to start collecting them."
-                    className="border-dashed py-6"
+                    message='No badges yet. Finish a quest, practice, or submit an application to start collecting them.'
+                    className='border-dashed py-6'
                   />
                 : <div className='space-y-3'>
                     {recentAchievements.map((achievement) => (

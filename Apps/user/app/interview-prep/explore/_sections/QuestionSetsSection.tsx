@@ -1,11 +1,12 @@
 /** @format */
 
 'use client';
+import { CardWithNorth, EmptyPlaceHolder } from '@jobby/ui';
 
 import { BookOpen, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import type { InterviewCategory, InterviewCollection } from '@/lib/types';
-import CardWithNorth from '@/components/UI/card/CardWithNorth';
+
 import { ScrollableContainer } from '@/components/layout/ScrollableContainer';
 import { cn } from '@/lib/utils';
 import {
@@ -14,7 +15,7 @@ import {
 } from '@/lib/interview-categories';
 import { CollectionCard } from '../../collections/_components/CollectionCard';
 import { CollectionCardSkeleton } from '../_components/ExploreSkeletons';
-import { EmptyPlaceHolder } from '@/components/UI/EmptyPlaceHolder';
+
 import { div } from 'framer-motion/client';
 
 type CollectionSource = 'featured' | 'official' | 'community' | 'mine';

@@ -49,8 +49,6 @@ function isIndeedHost(hostname: string): boolean {
   return hostname === "indeed.com" || /\.indeed\.com$/.test(hostname);
 }
 
-let lastLinkedInRead: { url: string; externalId: string; title: string; company: string } | null = null;
-
 export function readCurrentPage(): PageInspection {
   const url = window.location.href;
   const hostname = window.location.hostname;
@@ -84,14 +82,15 @@ export async function readCurrentPageWhenReady(): Promise<PageInspection> {
   if (isLinkedInHost(window.location.hostname)) return readLinkedInPageWhenReady();
 
   let inspection = readCurrentPage();
-  if (inspection.kind === "job") return inspection;
 
-  // Job boards and ATS pages often render their content shortly after the URL
-  // changes. This bounded retry runs only when the user explicitly inspects.
+  // Job boards and ATS pages often render their content asynchronously.
+  // If a job page is identified but datePosted is missing, retry briefly (up to 400ms) for the date DOM element to render.
   for (let attempt = 0; attempt < 4; attempt += 1) {
-    await new Promise<void>((resolve) => window.setTimeout(resolve, 150));
+    if (inspection.kind === "job" && inspection.snapshot.datePosted) {
+      return inspection;
+    }
+    await new Promise<void>((resolve) => window.setTimeout(resolve, 100));
     inspection = readCurrentPage();
-    if (inspection.kind === "job") return inspection;
   }
   return inspection;
 }
@@ -117,52 +116,95 @@ function fallbackToGenericJob(preferredInspection: PageInspection): PageInspecti
 
 async function readLinkedInPageWhenReady(): Promise<PageInspection> {
   let observedUrl = window.location.href;
-  let previousSignature = "";
+  let previousSnapshotSignature = "";
+
+  // ── Fire API fetch in parallel with DOM polling ───────────────────────────
+  // We start the API call immediately (it doesn't wait for the DOM to settle).
+  // The Voyager API returns an exact posting timestamp, making the fragile DOM
+  // date extraction unnecessary for logged-in users.
+  const jobIdNow = linkedinAdapter.jobIdFromUrl(observedUrl);
+  // Import is deferred to avoid increasing the synchronous parse cost.
+  const apiDataPromise: Promise<import('./platforms/linkedin/api-client').LinkedInJobApiData | null> =
+    jobIdNow
+      ? import('./platforms/linkedin/api-client').then(({ fetchLinkedInJobPosting }) =>
+          fetchLinkedInJobPosting(jobIdNow),
+        )
+      : Promise.resolve(null);
+
   let inspection = readCurrentPage();
 
-  for (let attempt = 0; attempt < 12; attempt += 1) {
+  // LinkedIn mounts the top-card metadata independently from the title and
+  // description during client-side navigation.
+  for (let attempt = 0; attempt < 20; attempt += 1) {
     const currentUrl = window.location.href;
     if (currentUrl !== observedUrl) {
       observedUrl = currentUrl;
-      previousSignature = "";
+      previousSnapshotSignature = "";
     }
 
     inspection = readCurrentPage();
     if (inspection.kind === "job") {
-      const signature = `${inspection.snapshot.externalId}:${inspection.snapshot.title}:${inspection.snapshot.company}`;
-      const routeChanged = !lastLinkedInRead || lastLinkedInRead.url !== observedUrl;
-      const previousReadSignature = lastLinkedInRead
-        ? `${lastLinkedInRead.externalId}:${lastLinkedInRead.title}:${lastLinkedInRead.company}`
-        : "";
-      const contentChanged = signature !== previousReadSignature;
+      const snapshotSignature = [
+        inspection.snapshot.externalId,
+        inspection.snapshot.title,
+        inspection.snapshot.company,
+        inspection.snapshot.datePosted || "",
+      ].join(":");
       const descriptionReady = Boolean(inspection.snapshot.description);
-      if (descriptionReady && (!lastLinkedInRead || !routeChanged || (contentChanged && previousSignature === signature))) {
-        lastLinkedInRead = {
-          url: observedUrl,
-          externalId: inspection.snapshot.externalId,
-          title: inspection.snapshot.title,
-          company: inspection.snapshot.company,
-        };
+
+      // When the API data has already resolved, merge it in immediately.
+      // We use Promise.race-style "already settled" check via a flag so we
+      // don't await (which would block the current iteration).
+      let apiData: import('./platforms/linkedin/api-client').LinkedInJobApiData | null = null;
+      let apiResolved = false;
+      void apiDataPromise.then((data) => {
+        apiData = data;
+        apiResolved = true;
+      });
+
+      if (apiResolved && apiData) {
+        // API data is available — merge and return immediately.
+        // The API's listedAt is an exact ISO date, so we don't need to wait
+        // for the DOM date element to appear.
+        const enriched = readLinkedInPage(apiData);
+        if (enriched.kind === "job" && enriched.snapshot.description) {
+          return enriched;
+        }
+      }
+
+      const dateReady = Boolean(inspection.snapshot.datePosted);
+      const metadataReady = dateReady || attempt >= 19;
+      // LinkedIn replaces the selected card asynchronously while leaving
+      // result-list cards in the DOM. Require two identical reads of the
+      // identity and posting date before exposing the snapshot to the panel.
+      const snapshotStable = snapshotSignature === previousSnapshotSignature;
+      if (descriptionReady && metadataReady && (snapshotStable || attempt >= 19)) {
+        // DOM settled — wait for the API one final time (up to 0 ms, already resolved
+        // or near-resolved) before returning, so the caller gets the richest data.
+        const resolvedApiData = await apiDataPromise.catch(() => null);
+        if (resolvedApiData) {
+          const enriched = readLinkedInPage(resolvedApiData);
+          if (enriched.kind === "job") return enriched;
+        }
         return inspection;
       }
-      previousSignature = signature;
+      previousSnapshotSignature = snapshotSignature;
     } else {
-      previousSignature = "";
+      previousSnapshotSignature = "";
     }
 
     await new Promise<void>((resolve) => window.setTimeout(resolve, 150));
   }
 
-  if (inspection.kind === "job") {
-    lastLinkedInRead = {
-      url: observedUrl,
-      externalId: inspection.snapshot.externalId,
-      title: inspection.snapshot.title,
-      company: inspection.snapshot.company,
-    };
+  // Final attempt — await API one last time
+  const resolvedApiData = await apiDataPromise.catch(() => null);
+  if (resolvedApiData) {
+    const enriched = readLinkedInPage(resolvedApiData);
+    if (enriched.kind === "job") return enriched;
   }
   return inspection;
 }
+
 
 export function readCurrentForm(): FormInspection {
   if (isSeekHost(window.location.hostname)) return readSeekFormPage();

@@ -24,10 +24,13 @@ import { stageConfig } from './constants';
 
 export function ApplicationDetails({
   application,
+  initialTab = 'overview',
   onSave,
   onPlanAction,
+  onTabChange,
 }: {
   application: JobApplication;
+  initialTab?: 'overview' | 'qa' | 'description';
   onSave: (
     applicationId: string,
     payload: Partial<JobApplication>,
@@ -37,18 +40,28 @@ export function ApplicationDetails({
     action: string,
     reason?: string,
   ) => Promise<ApplicationPlanResponse>;
+  onTabChange?: (tab: 'overview' | 'qa' | 'description') => void;
 }) {
   const { actions } = useLayoutStore();
   const [draft, setDraft] = useState<JobApplication>(application);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'qa' | 'description'>(
-    'overview',
+    initialTab,
   );
   const [isEditingTimeline, setIsEditingTimeline] = useState(false);
   const [isEditingNotes, setIsEditingNotes] = useState(false);
   const [isEditingDescription, setIsEditingDescription] = useState(false);
   const [planBusy, setPlanBusy] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
+
+  useEffect(() => {
+    setActiveTab(initialTab);
+  }, [initialTab]);
+
+  const handleTabChange = (tab: 'overview' | 'qa' | 'description') => {
+    setActiveTab(tab);
+    onTabChange?.(tab);
+  };
 
   useEffect(() => {
     setDraft(application);
@@ -168,7 +181,7 @@ export function ApplicationDetails({
           jobLink={draft.job_link}
           onClose={actions.closeDrawer}
         />
-        <Tabs activeTab={activeTab} onChangeTab={setActiveTab} />
+        <Tabs activeTab={activeTab} onChangeTab={handleTabChange} />
       </div>
 
       {/* Scrollable Content Container */}

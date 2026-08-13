@@ -1,11 +1,12 @@
 /** @format */
 
 'use client';
+import { Tooltip } from '@jobby/ui';
 
 import * as React from 'react';
 import { Palette } from 'lucide-react';
 import { useTheme, ThemeColor } from '@/components/theme-provider';
-import { Tooltip } from '@/components/UI/tooltip';
+
 
 const colors: ThemeColor[] = ['blue', 'purple', 'green', 'orange', 'rose'];
 

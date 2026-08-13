@@ -1,8 +1,9 @@
 /** @format */
 
+import { HelpTip } from '@jobby/ui';
 import React, { memo } from 'react';
 import { Trash2, AlertTriangle } from 'lucide-react';
-import { HelpTip } from '@/components/UI/help-tip';
+
 import { useBrowserSessionStore } from './browser-session-store';
 
 export const ClearSavedLoginCard = memo(function ClearSavedLoginCard({
@@ -41,9 +42,7 @@ export const ClearSavedLoginCard = memo(function ClearSavedLoginCard({
 
       <div className='space-y-6 panel-sm'>
         <div className='flex items-center justify-between gap-3'>
-          <span className='body-md text-ink-primary0'>
-            Saved login data
-          </span>
+          <span className='body-md text-ink-primary0'>Saved login data</span>
           <span className='label'>
             {sessionStatus ? `${sessionStatus.sizeMb} MB` : 'N/A'}
           </span>
@@ -79,7 +78,7 @@ export const ClearSavedLoginCard = memo(function ClearSavedLoginCard({
             <button
               onClick={() => setShowClearConfirm(false)}
               disabled={isClearingSession}
-              className='label flex-1 py-2 rounded-lg border border-border dark:border-border hover:bg-background-secondary transition cursor-pointer'
+              className='label flex-1 py-2 rounded-lg border   hover:bg-background-secondary transition cursor-pointer'
             >
               Cancel
             </button>

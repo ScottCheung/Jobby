@@ -1,3 +1,4 @@
+'use client';
 // 颜色转 RGB（支持 #rgb, #rrggbb, rgb(), hsl(), 颜色名等）
 const parseColorToRGB = (color: string): [number, number, number] | null => {
   if (typeof document === 'undefined') {

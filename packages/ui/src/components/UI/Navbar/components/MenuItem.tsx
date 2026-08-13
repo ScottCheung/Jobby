@@ -1,3 +1,4 @@
+'use client';
 /** @format */
 
 // components/MenuItem.tsx

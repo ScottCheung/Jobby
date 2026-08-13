@@ -1,12 +1,13 @@
 /** @format */
 
 'use client';
+import { Badge, Button } from '@jobby/ui';
 
 import * as React from 'react';
 import { cn } from '@/lib/utils';
 import { Check } from 'lucide-react';
-import { Button } from '@jobby/ui';
-import { Badge } from '@/components/UI/badge';
+
+
 
 export interface Account {
   AccountId: string;

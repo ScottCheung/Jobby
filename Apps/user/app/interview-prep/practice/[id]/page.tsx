@@ -1,6 +1,7 @@
 /** @format */
 
 'use client';
+import { Kbd, Tooltip } from '@jobby/ui';
 import React, { Suspense, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
@@ -53,7 +54,7 @@ import { StandardAnswerCard } from '../_components/StandardAnswerCard';
 import { PracticeSkeleton } from '../_components/PracticeSkeleton';
 import { usePracticeData } from '../_hook/usePracticeData';
 import { QuestionComments } from '../_components/Comments/QuestionComments';
-import { Tooltip, Kbd } from '@/components/UI/tooltip';
+
 
 function PracticeModeQuestionPageInner() {
   const router = useRouter();

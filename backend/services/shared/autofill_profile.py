@@ -96,6 +96,7 @@ CORE_FIELD_LABELS = {
 # that have not yet applied the mapping-rule migration. Database rules still
 # take priority, so users can override them with their own mappings.
 BUILT_IN_SYSTEM_MAPPING_RULES = (
+    ("identity.full_name", "Name", ["name"]),
     ("identity.phone", "Mobile Phone", ["mobile", "phone"]),
     ("identity.phone", "Phone", ["phone"]),
     ("identity.phone", "Telephone", ["telephone"]),
@@ -397,7 +398,7 @@ def _built_in_system_rules() -> list[FieldMappingRule]:
             normalized_alias=normalize_alias(alias),
             scene="generic",
             semantic_features=features,
-            value_transform={},
+            value_transform=default_core_value_transform(core_field_key),
             is_user_defined=False,
             confidence=90,
             times_used=0,
@@ -485,6 +486,8 @@ def transformed_core_value(rule: FieldMappingRule, values: dict[str, str]) -> st
     parts = [values.get(str(key), "").strip() for key in source_keys]
     parts = [part for part in parts if part]
     if not parts:
+        if rule.core_field_key in {"identity.full_name", "identity.legal_full_name"}:
+            return values.get("identity.preferred_name")
         return None
     return str(transform.get("separator", " ")).join(parts)
 

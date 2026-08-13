@@ -1,6 +1,7 @@
 /** @format */
 
 'use client';
+import { Button, Kbd, Tooltip } from '@jobby/ui';
 
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -20,8 +21,8 @@ import { api } from '@/lib/api';
 import type { InterviewQuestion, QuestionCommunitySummary } from '@/lib/types';
 import { showGlobalToast } from '@/lib/toast';
 import { cn } from '@/lib/utils';
-import { Tooltip, Kbd } from '@/components/UI/tooltip';
-import { Button } from '@jobby/ui';
+
+
 import { div } from 'framer-motion/client';
 
 export function QuestionCommentActions({

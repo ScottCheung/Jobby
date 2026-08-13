@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { AuthCard } from './components/AuthCard';
+import { BottomNav, type TabType } from './components/BottomNav';
 import { DebugDrawer } from './components/DebugDrawer';
 import { DiagnosticsCard } from './components/DiagnosticsCard';
 import { JobScoreCard } from './components/JobScoreCard';
@@ -22,6 +23,7 @@ const LINKEDIN_CARD_RECOVERY_MS = 10_000;
 
 export function App() {
   const [isReviewOpen, setIsReviewOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabType>('home');
 
   const { diagnostics, errorMessage, refresh, clearLogs } = useDiagnostics();
   const { authStatus, authError, refreshAuth, signIn, disconnect } = useAuth();
@@ -43,6 +45,12 @@ export function App() {
     clearAllFormFields,
     uploadStates,
   } = useInspection();
+
+  useEffect(() => {
+    if (activeTab === 'form') {
+      void inspectForm(true);
+    }
+  }, [activeTab, inspectForm]);
 
   const {
     latestPlan,
@@ -160,7 +168,11 @@ export function App() {
       <header className='sidepanel-header'>
         <div className='sidepanel-brand'>
           <img
-            src='./favicon.svg'
+            src={
+              typeof chrome !== 'undefined' && chrome.runtime?.getURL
+                ? chrome.runtime.getURL('favicon.svg')
+                : '/favicon.svg'
+            }
             className='sidepanel-logo'
             alt='Jobby logo'
           />
@@ -174,155 +186,123 @@ export function App() {
         />
       </header>
 
-      <nav className='panel-nav' aria-label='Side panel sections'>
-        <button
-          type='button'
-          onClick={() =>
-            document
-              .getElementById('panel-page')
-              ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-          }
-        >
-          Recognize
-        </button>
-        <button
-          type='button'
-          onClick={() =>
-            document
-              .getElementById('panel-actions')
-              ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-          }
-        >
-          Autofill
-        </button>
-        <button
-          type='button'
-          onClick={() =>
-            document
-              .getElementById('panel-fields')
-              ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-          }
-        >
-          Form
-        </button>
-        <button
-          type='button'
-          onClick={() =>
-            document
-              .getElementById('panel-tools')
-              ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-          }
-        >
-          Tools
-        </button>
-      </nav>
-
       <div className='sidepanel-content'>
-        <section
-          id='panel-page'
-          className='sidebar-menu panel-section'
-          aria-label='Current page'
-        >
-          <p className='menu-label'>Current Page</p>
-          <JobScoreCard
-            latestInspection={latestInspection}
-            latestPlan={latestPlan}
-          />
-          <PageClassBanner
-            latestInspection={latestInspection}
-            latestPlan={latestPlan}
-            isInspecting={isInspectingPage}
-            error={inspectionError}
-          />
-        </section>
+        {activeTab === 'home' && (
+          <>
+            <section
+              id='panel-page'
+              className='sidebar-menu panel-section'
+              aria-label='Current page'
+            >
+              <p className='menu-label'>Current Page</p>
+              <JobScoreCard
+                latestInspection={latestInspection}
+                latestPlan={latestPlan}
+              />
+              <PageClassBanner
+                latestInspection={latestInspection}
+                latestPlan={latestPlan}
+                isInspecting={isInspectingPage}
+                error={inspectionError}
+              />
+            </section>
 
-        <section
-          id='panel-actions'
-          className='sidebar-menu sidebar-menu--actions panel-section'
-          aria-label='Application actions'
-        >
-          <p className='menu-label'>Actions</p>
-          <StatusBanner status={status} />
-          <WorkflowSection
-            latestInspection={latestInspection}
-            latestForm={latestForm}
-            latestPlan={latestPlan}
-            loadingButton={loadingButton}
-            isClearingForm={isClearingForm}
-            onAutofill={autofillForm}
-            onClearAll={clearAllFormFields}
-            onAutoApply={autoRunLinkedIn}
-            onOpenLinkedIn={openLinkedIn}
-            onMovePrevious={movePrevious}
-            onMoveNext={moveNext}
-            onFillAndNext={fillAndNext}
-            onOpenReviewModal={() => setIsReviewOpen(true)}
-            onRecordApplication={recordApplication}
-            hideAutofill
-          />
-        </section>
-        <div className='panel-form-area'>
-          <div className='sticky-autofill' aria-label='Form autofill'>
-            <WorkflowSection
+            <section
+              id='panel-actions'
+              className='sidebar-menu sidebar-menu--actions panel-section'
+              aria-label='Application actions'
+            >
+              <p className='menu-label'>Actions</p>
+              <StatusBanner status={status} />
+              <WorkflowSection
+                latestInspection={latestInspection}
+                latestForm={latestForm}
+                latestPlan={latestPlan}
+                loadingButton={loadingButton}
+                isClearingForm={isClearingForm}
+                onAutofill={autofillForm}
+                onClearAll={clearAllFormFields}
+                onAutoApply={autoRunLinkedIn}
+                onOpenLinkedIn={openLinkedIn}
+                onMovePrevious={movePrevious}
+                onMoveNext={moveNext}
+                onFillAndNext={fillAndNext}
+                onOpenReviewModal={() => setIsReviewOpen(true)}
+                onRecordApplication={recordApplication}
+                hideAutofill
+              />
+            </section>
+          </>
+        )}
+
+        {activeTab === 'form' && (
+          <div className='panel-form-area'>
+            <div className='sticky-autofill' aria-label='Form autofill'>
+              <WorkflowSection
+                latestInspection={latestInspection}
+                latestForm={latestForm}
+                latestPlan={latestPlan}
+                loadingButton={loadingButton}
+                isClearingForm={isClearingForm}
+                onAutofill={autofillForm}
+                onClearAll={clearAllFormFields}
+                onAutoApply={autoRunLinkedIn}
+                onOpenLinkedIn={openLinkedIn}
+                onMovePrevious={movePrevious}
+                onMoveNext={moveNext}
+                onFillAndNext={fillAndNext}
+                onOpenReviewModal={() => setIsReviewOpen(true)}
+                autofillOnly
+              />
+            </div>
+
+            <section
+              id='panel-fields'
+              className='sidebar-menu sidebar-menu--fields panel-section'
+              aria-label='Detected form fields'
+            >
+              <ResultsDisplay
+                latestForm={latestForm}
+                isInspectingForm={isInspectingForm}
+                onFocusField={focusFormField}
+                onFillSingleField={autofillSingleField}
+                onUploadDefaultResume={uploadDefaultResume}
+                onEditField={editFormField}
+                uploadStates={uploadStates}
+                isAutofilling={loadingButton === 'autofill'}
+              />
+            </section>
+          </div>
+        )}
+
+        {activeTab === 'tools' && (
+          <section
+            id='panel-tools'
+            className='sidebar-menu sidebar-menu--tools'
+            aria-label='Advanced tools'
+          >
+            <DebugDrawer
               latestInspection={latestInspection}
               latestForm={latestForm}
               latestPlan={latestPlan}
               loadingButton={loadingButton}
-              isClearingForm={isClearingForm}
-              onAutofill={autofillForm}
-              onClearAll={clearAllFormFields}
-              onAutoApply={autoRunLinkedIn}
-              onOpenLinkedIn={openLinkedIn}
-              onMovePrevious={movePrevious}
+              onInspectPage={inspectPage}
+              onInspectForm={inspectForm}
+              onCreatePlan={createPlan}
+              onApplyPlanAction={applyPlanAction}
               onMoveNext={moveNext}
-              onFillAndNext={fillAndNext}
-              onOpenReviewModal={() => setIsReviewOpen(true)}
-              autofillOnly
+              onMovePrevious={movePrevious}
             />
-          </div>
-
-          <section
-            id='panel-fields'
-            className='sidebar-menu sidebar-menu--fields panel-section'
-            aria-label='Detected form fields'
-          >
-            <ResultsDisplay
-              latestForm={latestForm}
-              isInspectingForm={isInspectingForm}
-              onFocusField={focusFormField}
-              onFillSingleField={autofillSingleField}
-              onUploadDefaultResume={uploadDefaultResume}
-              onEditField={editFormField}
-              uploadStates={uploadStates}
-              isAutofilling={loadingButton === 'autofill'}
+            <DiagnosticsCard
+              diagnostics={diagnostics}
+              errorMessage={errorMessage}
+              onClearLogs={clearLogs}
             />
           </section>
-        </div>
-
-        <section
-          id='panel-tools'
-          className='sidebar-menu sidebar-menu--tools'
-          aria-label='Advanced tools'
-        >
-          <DebugDrawer
-            latestInspection={latestInspection}
-            latestForm={latestForm}
-            latestPlan={latestPlan}
-            loadingButton={loadingButton}
-            onInspectPage={inspectPage}
-            onInspectForm={inspectForm}
-            onCreatePlan={createPlan}
-            onApplyPlanAction={applyPlanAction}
-            onMoveNext={moveNext}
-            onMovePrevious={movePrevious}
-          />
-          <DiagnosticsCard
-            diagnostics={diagnostics}
-            errorMessage={errorMessage}
-            onClearLogs={clearLogs}
-          />
-        </section>
+        )}
       </div>
+
+      <BottomNav activeTab={activeTab} onChange={setActiveTab} />
 
       <ReviewModal
         isOpen={isReviewOpen}

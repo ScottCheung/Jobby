@@ -1,3 +1,4 @@
+'use client';
 // @ts-nocheck
 // AnimatedNumber.stories.tsx
 // Mocks to satisfy build

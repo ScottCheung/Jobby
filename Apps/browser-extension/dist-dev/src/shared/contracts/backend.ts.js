@@ -1,4 +1,4 @@
-import { z } from "/vendor/.vite-deps-zod.js__v--ac2f9308.js";
+import { z } from "/vendor/.vite-deps-zod.js__v--1dc95216.js";
 const applicationCandidateSchema = z.object({
   platform: z.string().min(1),
   external_id: z.string().min(1),

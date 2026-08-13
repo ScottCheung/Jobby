@@ -1,5 +1,6 @@
 /** @format */
 
+import { AutoTooltip, Popover, PopoverContent, PopoverTrigger, Tooltip } from '@jobby/ui';
 import React, { useState, useRef, useEffect } from 'react';
 import {
   Archive,
@@ -19,17 +20,13 @@ import type {
   InterviewCollection,
 } from '@/lib/types';
 import { cn, cleanName, formatInterviewDuration } from '@/lib/utils';
-import { AutoTooltip } from '@/components/UI/tooltip/auto-tooltip';
-import { Tooltip } from '@/components/UI/tooltip';
+
+
 import { api } from '@/lib/api';
 import { showGlobalToast } from '@/lib/toast';
 import { QuestionFeedbackFormContent } from './QuestionFeedbackModal';
 import { useGlobalModalStore } from '@/lib/store/global-modal-store';
-import {
-  Popover,
-  PopoverTrigger,
-  PopoverContent,
-} from '@/components/UI/popover';
+
 
 interface QuestionRowProps {
   question: InterviewQuestion;

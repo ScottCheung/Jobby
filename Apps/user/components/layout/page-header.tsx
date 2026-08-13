@@ -1,10 +1,10 @@
 "use client"
+import { H1, H2, Small } from '@jobby/ui';
 
 import * as React from "react"
 import { motion } from "framer-motion"
 import { LinearBlur } from "progressive-blur"
 import { cn } from "@/lib/utils"
-import { H1, H2, Small } from "@/components/UI/text/typography"
 import { ScrollLayout } from "@/components/animation"
 
 interface PageHeaderProps {

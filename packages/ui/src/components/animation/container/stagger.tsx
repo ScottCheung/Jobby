@@ -1,3 +1,4 @@
+'use client';
 /** @format */
 
 import { motion, type HTMLMotionProps, type Variants } from 'framer-motion';

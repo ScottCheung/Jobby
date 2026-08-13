@@ -1,5 +1,6 @@
 /** @format */
 
+import { HelpTip } from '@jobby/ui';
 import React, { memo } from 'react';
 import {
   RefreshCw,
@@ -8,7 +9,7 @@ import {
   Sparkles,
   AlertTriangle,
 } from 'lucide-react';
-import { HelpTip } from '@/components/UI/help-tip';
+
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 dayjs.extend(relativeTime);
@@ -94,9 +95,7 @@ export const CheckLoginStatusCard = memo(function CheckLoginStatusCard({
         </div>
 
         <div className='flex items-center justify-between'>
-          <span className='body-md text-ink-primary0'>
-            Last check
-          </span>
+          <span className='body-md text-ink-primary0'>Last check</span>
           <span
             className='status-badge'
             title={
@@ -162,7 +161,7 @@ export const CheckLoginStatusCard = memo(function CheckLoginStatusCard({
             ))}
           </div>
         : null
-      : <div className='body-md rounded-xl border border-dashed border-border dark:border-border px-4 py-6 text-center text-ink-secondary'>
+      : <div className='body-md rounded-xl border border-dashed   px-4 py-6 text-center text-ink-secondary'>
           {isDesktop ?
             'Checking status...'
           : 'Status is only available in the desktop app.'}

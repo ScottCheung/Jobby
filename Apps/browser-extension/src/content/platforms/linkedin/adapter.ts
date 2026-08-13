@@ -5,6 +5,9 @@ import type {
   LinkedInApplicationAction,
   LinkedInApplicationResult,
 } from '../../../shared/contracts/linkedin';
+import { extractLinkedInPostedDate, cleanPostedAt } from './date-parser';
+import { extractStructuredText } from '../../text-utils';
+import type { LinkedInJobApiData } from './api-client';
 
 type LinkedInJobData = Omit<
   LinkedInJobSnapshot,
@@ -162,6 +165,15 @@ function cleanText(value: string | null | undefined): string {
   return (value || '').replace(/\s+/g, ' ').trim();
 }
 
+/**
+ * Search-result URLs carry `currentJobId`, tracking parameters, and sometimes
+ * a stale route. Persisting this canonical URL makes every downstream action
+ * target one job detail page instead of returning to a multi-card search view.
+ */
+export function canonicalLinkedInJobUrl(jobId: string): string {
+  return `https://www.linkedin.com/jobs/view/${jobId}/`;
+}
+
 function extractCleanElementText(element: Element): string {
   const clone = element.cloneNode(true) as Element;
   const noisyNodes = clone.querySelectorAll(
@@ -231,9 +243,7 @@ function firstText(root: ParentNode, selectors: readonly string[]): string {
 }
 
 function descriptionText(element: HTMLElement): string {
-  const clone = element.cloneNode(true) as HTMLElement;
-  clone.querySelectorAll("button, script, style, svg, [role='img'], .visually-hidden, .sr-only").forEach((node) => node.remove());
-  return cleanText(clone.innerText || clone.textContent);
+  return extractStructuredText(element);
 }
 
 function firstDescriptionText(root: ParentNode, selectors: readonly string[]): string {
@@ -261,7 +271,10 @@ function descriptionFromHeading(root: ParentNode): string {
 
   const text = descriptionText(container);
   const headingText = cleanText(heading.textContent);
-  const body = cleanText(text.replace(headingText, ""));
+  let body = text;
+  if (headingText && body.toLowerCase().startsWith(headingText.toLowerCase())) {
+    body = body.slice(headingText.length).trim();
+  }
   return body.length >= 40 ? body : '';
 }
 
@@ -286,11 +299,43 @@ function normalized(value: string): string {
   return cleanText(value).toLowerCase();
 }
 
+/**
+ * Returns the right-side job detail panel on search-results pages, or the
+ * full detail root on a direct job page. Unlike `getJobDetailRoot()`, this
+ * function never falls back to `main` — which on search pages wraps BOTH the
+ * left job-list sidebar and the right detail panel.
+ *
+ * Priority: most-specific detail-panel selectors first; `main` only as
+ * absolute last resort when we're on a direct /jobs/view/ page where `main`
+ * is safe (there is no list sidebar).
+ */
+function getJobDetailPanel(): HTMLElement | null {
+  // These selectors resolve to the right-side detail panel only.
+  // They do NOT match list-card elements.
+  const directSelectors = [
+    '.jobs-search__job-details--detail-view',
+    '.jobs-search__job-details',
+    '.jobs-details__main-content',
+    '.job-details-jobs-unified-top-card__container',
+    '.job-details-jobs-unified-top-card',
+    '.jobs-unified-top-card__container',
+  ];
+  for (const sel of directSelectors) {
+    const el = document.querySelector<HTMLElement>(sel);
+    if (el) return el;
+  }
+  // On a direct /jobs/view/<id> page there is no left sidebar, so `main` is safe.
+  const isDirectJobPage = /\/jobs\/view\/\d+/i.test(window.location.pathname);
+  if (isDirectJobPage) {
+    return document.querySelector<HTMLElement>('main');
+  }
+  return null;
+}
+
 function getJobDetailRoot(): ParentNode {
-  const root = document.querySelector<HTMLElement>(
-    ".jobs-search__job-details, .jobs-details__main-content, .job-details-jobs-unified-top-card, main",
-  );
-  return root || document;
+  return getJobDetailPanel() || document.querySelector<HTMLElement>(
+    ".jobs-details__main-content, .job-details-jobs-unified-top-card, main",
+  ) || document;
 }
 
 const JOB_ROLE_KEYWORDS = /\b(?:engineer|developer|architect|lead|principal|senior|junior|mid|staff|manager|director|consultant|analyst|specialist|designer|administrator|coordinator|officer|executive|head|vp|intern|graduate|associate|agent|advisor|operator|technician|contractor)\b/i;
@@ -384,48 +429,155 @@ function locationFromPage(): string | undefined {
 }
 
 /**
- * Extract the job posting date from LinkedIn's top card.
+ * Selectors that LinkedIn uses for the top-card metadata row containing the
+ * post date (typically "Location · N days ago · N applicants").
+ * Listed in order of descending specificity.
  *
- * LinkedIn exposes this in two ways:
- *  1. A <time datetime="YYYY-MM-DD"> element — most reliable.
- *  2. Plain text inside the primary-description container:
- *     "Location · X days ago · N applicants"
+ * NOTE: `span.tvm__text` is intentionally excluded — it is used in ALL job
+ * cards across the page, so it matches list-card elements before the detail
+ * panel when root is broad.
  */
-function datePostedFromPage(): string | undefined {
-  const root = getJobDetailRoot();
+const DATE_METADATA_SELECTORS = [
+  // Detail-panel-only primary/tertiary description containers
+  '.job-details-jobs-unified-top-card__primary-description-without-tagline',
+  '.job-details-jobs-unified-top-card__primary-description-container',
+  '.job-details-jobs-unified-top-card__primary-description',
+  '.jobs-unified-top-card__primary-description-container',
+  '.jobs-unified-top-card__primary-description',
+  '.job-details-jobs-unified-top-card__tertiary-description-container',
+  '.jobs-unified-top-card__tertiary-description-container',
+  '.job-details-jobs-unified-top-card__subtitle-primary-grouping',
+  '.jobs-unified-top-card__subtitle-primary-grouping',
+  // aria-labelled elements are reliable because they're authored on purpose
+  '[aria-label*="posted" i]',
+  '[aria-label*="reposted" i]',
+];
 
-  // Prefer a <time> element with a machine-readable datetime attribute
-  const timeEl = root.querySelector<HTMLElement>('time[datetime]') ||
-    document.querySelector<HTMLElement>(
-      '.job-details-jobs-unified-top-card__primary-description-container time[datetime], ' +
-      '.jobs-unified-top-card__primary-description time[datetime], ' +
-      'main time[datetime]',
-    );
-  if (timeEl) {
-    const dt = timeEl.getAttribute('datetime');
-    if (dt) return cleanText(dt);
-    const text = cleanText(timeEl.textContent);
-    if (text) return text;
+/**
+ * Find the list-card container element for the given job ID.
+ *
+ * LinkedIn renders each job card in the left sidebar as an `<li>` with a
+ * `data-occludable-job-id` attribute equal to the numeric job ID.  Falling
+ * back to walking up from any matching `<a>` is used when that attribute is
+ * absent (e.g. older LinkedIn layouts).
+ */
+function findListCard(externalId: string): HTMLElement | null {
+  // Most reliable: LinkedIn stamps the job ID directly onto the list item.
+  const byAttr = (document.querySelector<HTMLElement>(
+    `[data-occludable-job-id="${externalId}"], [data-job-id="${externalId}"]`,
+  ));
+  if (byAttr) return byAttr;
+
+  // Fallback: walk up from a link whose href contains the job ID.
+  // IMPORTANT: only consider links that are NOT inside the right-side detail
+  // panel — detail-panel links are title/company links, not list-card links.
+  const panel = getJobDetailPanel();
+  const jobLinkPattern = new RegExp(`/jobs/view/${externalId}(?:/|\\?|$)`, 'i');
+  const allLinks = Array.from(
+    document.querySelectorAll<HTMLAnchorElement>("a[href*='/jobs/view/']"),
+  ).filter((link) => {
+    if (!jobLinkPattern.test(link.getAttribute('href') || '')) return false;
+    // Exclude links that live inside the detail panel
+    if (panel && panel.contains(link)) return false;
+    return true;
+  });
+
+  for (const link of allLinks) {
+    let el: HTMLElement | null = link.parentElement;
+    for (let d = 0; el && d < 10; d += 1) {
+      if (el.matches(
+        '.job-card-container, .jobs-search-results__list-item, ' +
+        'li[data-occludable-job-id], li[data-job-id], article.job-card-container',
+      )) {
+        return el;
+      }
+      el = el.parentElement;
+    }
+  }
+  return null;
+}
+
+/**
+ * Extract the job posting date from the currently selected job's top card.
+ *
+ * Strategy (ordered by reliability):
+ *
+ * 1. `<time datetime="...">` inside the exact list-card for this job — the
+ *    most precise source because LinkedIn stamps each card's <time> with the
+ *    job's own ISO date, completely independent of the detail panel.
+ * 2. `<time datetime="...">` inside the detail panel only.
+ * 3. Known top-card metadata selectors inside the detail panel.
+ * 4. Leaf `<span>` nodes inside the top-card within the detail panel.
+ * 5. Leaf `<span>` nodes inside the matched list-card (relative text fallback).
+ */
+function datePostedFromPage(externalId: string): string | undefined {
+  // ── 1. List-card <time datetime> for this specific job ────────────────────
+  // LinkedIn places a <time datetime="YYYY-MM-DDTHH:MM:SSZ"> inside each job
+  // card in the sidebar.  Because we locate the card by externalId (not by
+  // position), this read is always scoped to the correct job even when the
+  // detail panel has not yet rendered its own date metadata.
+  const listCard = externalId ? findListCard(externalId) : null;
+  if (listCard) {
+    for (const timeEl of Array.from(listCard.querySelectorAll<HTMLElement>('time'))) {
+      const date =
+        extractLinkedInPostedDate(timeEl.getAttribute('datetime')) ||
+        extractLinkedInPostedDate(timeEl.textContent);
+      if (date) return date;
+    }
   }
 
-  // Fall back: parse the bullet-separated metadata line
-  // e.g. "Sydney, New South Wales · 2 days ago · 47 applicants"
-  const primaryDesc = firstText(root, [
-    '.job-details-jobs-unified-top-card__primary-description-container',
-    '.jobs-unified-top-card__primary-description-container',
-    '.job-details-jobs-unified-top-card__bullet',
-  ]) || firstText(document, [
-    '.job-details-jobs-unified-top-card__primary-description-container',
-    '.jobs-unified-top-card__primary-description-container',
-  ]);
+  // ── 2–4. Detail-panel scans ───────────────────────────────────────────────
+  // Use the precise detail-panel root so we never accidentally scan the
+  // left-side job-list sidebar which contains dates for other jobs.
+  const panel = getJobDetailPanel();
+  const root: ParentNode = panel || getJobDetailRoot();
 
-  if (primaryDesc) {
-    const segments = primaryDesc.split(/\s*[·•]\s*/)
-      .map((s) => cleanText(s))
-      .filter(Boolean);
-    for (const seg of segments) {
-      if (/\b(\d+\s*\+?\s*(?:minute|hour|day|week|month|year)s?\s+ago|today|yesterday|just\s+now|reposted)\b/i.test(seg)) {
-        return seg;
+  // ── 2. <time datetime="..."> inside detail panel ──────────────────────────
+  for (const timeNode of Array.from(root.querySelectorAll<HTMLElement>('time'))) {
+    const dt = timeNode.getAttribute('datetime');
+    const dateStr = extractLinkedInPostedDate(dt) || extractLinkedInPostedDate(timeNode.textContent);
+    if (dateStr) return dateStr;
+  }
+
+  // ── 3. Known metadata selectors scoped to detail panel ───────────────────
+  for (const selector of DATE_METADATA_SELECTORS) {
+    for (const element of deepQueryAll(root, selector)) {
+      const date =
+        extractLinkedInPostedDate(element.getAttribute('aria-label')) ||
+        extractLinkedInPostedDate(element.getAttribute('datetime')) ||
+        extractLinkedInPostedDate(element.textContent);
+      if (date) return date;
+    }
+  }
+
+  // ── 4. Leaf spans inside the detail-panel top-card ───────────────────────
+  const topCard = (root as HTMLElement).querySelector?.<HTMLElement>(
+    '.job-details-jobs-unified-top-card, .jobs-unified-top-card, ' +
+    '.job-details-jobs-unified-top-card__primary-description-container, ' +
+    '.jobs-unified-top-card__primary-description-container',
+  ) || root;
+  const leafSpans = Array.from((topCard as HTMLElement).querySelectorAll<HTMLElement>('span, time, font'))
+    .filter((el) => el.childElementCount === 0);
+  for (const element of leafSpans) {
+    const text = cleanText(element.textContent);
+    if (text && text.length <= 80) {
+      const date = extractLinkedInPostedDate(text);
+      if (date) return date;
+    }
+  }
+
+  // ── 5. List-card leaf-span fallback (relative text) ──────────────────────
+  // If the list card had no <time datetime>, scan its leaf spans for a
+  // relative expression like "2 days ago".  This is the last resort because
+  // LinkedIn sometimes prepends "Viewed · " before the actual date text.
+  if (listCard) {
+    const cardLeafs = Array.from(listCard.querySelectorAll<HTMLElement>('span, time'))
+      .filter((el) => el.childElementCount === 0);
+    for (const leaf of cardLeafs) {
+      const text = cleanText(leaf.textContent);
+      if (text && text.length <= 80) {
+        const date = extractLinkedInPostedDate(text);
+        if (date) return date;
       }
     }
   }
@@ -454,7 +606,7 @@ export class LinkedInAdapter {
     return Boolean(this.jobIdFromUrl(url));
   }
 
-  readJob(url: string): LinkedInJobData | null {
+  readJob(url: string, apiData?: LinkedInJobApiData | null): LinkedInJobData | null {
     const externalId = this.jobIdFromUrl(url);
     if (!externalId) return null;
     if (!this.hasCurrentJobReference(externalId)) return null;
@@ -469,14 +621,26 @@ export class LinkedInAdapter {
       firstDescriptionText(document, SELECTORS.description) ||
       descriptionFromHeading(root) ||
       descriptionFromHeading(document);
+
+    // ── Date: API is authoritative (exact ISO date), DOM is the fallback ──────
+    // The Voyager API provides `listedAt` as a precise Unix timestamp converted
+    // to an ISO date string (e.g. "2026-04-24"). This is always preferred over
+    // the relative DOM text (e.g. "2 days ago") which is fragile and ambiguous.
+    const datePosted = apiData?.listedAt ?? cleanPostedAt(datePostedFromPage(externalId));
+
+    // ── Easy Apply: API is authoritative when available ───────────────────────
+    const easyApply = apiData?.easyApply ?? Boolean(this.findEasyApplyTrigger());
+
     return {
       externalId,
       title,
       company,
-      location: locationFromPage(),
-      datePosted: datePostedFromPage(),
+      location: apiData?.location || locationFromPage(),
+      datePosted,
       description: description || undefined,
-      easyApply: Boolean(this.findEasyApplyTrigger()),
+      easyApply,
+      ...(apiData?.workType ? { workType: apiData.workType } : {}),
+      ...(apiData?.experienceLevel ? { experienceLevel: apiData.experienceLevel } : {}),
     };
   }
 

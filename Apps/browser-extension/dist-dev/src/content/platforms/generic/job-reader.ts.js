@@ -179,6 +179,19 @@ function jobPostingFromStructuredData() {
   return null;
 }
 function datePostedFromDom() {
+  const metaSelectors = [
+    "meta[property='article:published_time']",
+    "meta[name='datePosted']",
+    "meta[name='date']",
+    "meta[property='og:article:published_time']",
+    "meta[itemprop='datePosted']",
+    "meta[name='dcterms.created']"
+  ];
+  for (const selector of metaSelectors) {
+    const meta = document.querySelector(selector);
+    const content = cleanText(meta?.getAttribute("content"));
+    if (content) return content;
+  }
   const timeEl = document.querySelector("time[datetime]");
   if (timeEl) {
     const dt = timeEl.getAttribute("datetime");
@@ -196,12 +209,17 @@ function datePostedFromDom() {
         "[id*='date' i]"
       ].join(", ")
     )
-  ).slice(0, 40);
+  ).slice(0, 50);
+  const datePattern = /\b(?:(?:posted|reposted|over|more\s+than)\s+)*(?:\d+\s*\+?\s*(?:minutes?|mins?|hours?|hrs?|days?|weeks?|wks?|months?|mos?|years?|yrs?|[dhwmy]|mo)\s*(?:ago)?|today|yesterday|just\s+(?:now|posted))\b/i;
+  const zhPattern = /(?:(?:发布于|重新发布于)\s*)?(?:\d+\s*\+?\s*(?:个?月|周|天|小时|分钟)前|刚刚|今天|昨天)/;
+  const isoPattern = /\b\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z?)?\b/;
   for (const el of candidates) {
+    if (!isVisible(el)) continue;
     const text = cleanText(el.textContent);
-    if (text.length > 60) continue;
-    if (/\b(\d+\s*\+?\s*(?:minute|hour|day|week|month|year)s?\s+ago|today|yesterday|just\s+(?:now|posted)|reposted|posted\s+\d|\d+\s+days?)\b/i.test(text)) {
-      return text;
+    if (text.length > 80) continue;
+    const match = text.match(datePattern) || text.match(zhPattern) || text.match(isoPattern);
+    if (match?.[0]) {
+      return match[0].trim();
     }
   }
   return void 0;

@@ -1,3 +1,4 @@
+'use client';
 // This function calculates the number of decimal places to use for a number.
 // It supports different number formats (none, currency, percentage, decimal) and different number types (standard, scientific, engineering).
 // It also supports short format for large numbers.

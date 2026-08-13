@@ -1,3 +1,4 @@
+'use client';
 const colorPalette = [
   '#64748b', // slate
   // '#475569', // slate dark

@@ -1,13 +1,11 @@
 /** @format */
 
+import { Button, Kbd as KeyboardHint, Tooltip as TooltipContent } from '@jobby/ui';
 import React from 'react';
 import { Mic, Square, RotateCcw, Save } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Button } from '@jobby/ui';
-import {
-  Tooltip as TooltipContent,
-  Kbd as KeyboardHint,
-} from '@/components/UI/tooltip';
+
+
 import { AudioVisualizer } from './AudioVisualizer';
 import { InteractiveTranscript } from './InteractiveTranscript';
 import { AnimatePresence, motion } from 'framer-motion';

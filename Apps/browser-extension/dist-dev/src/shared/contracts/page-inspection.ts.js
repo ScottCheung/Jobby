@@ -1,4 +1,4 @@
-import { z } from "/vendor/.vite-deps-zod.js__v--ac2f9308.js";
+import { z } from "/vendor/.vite-deps-zod.js__v--1dc95216.js";
 const jobSnapshotFields = {
   externalId: z.string().min(1),
   url: z.string().url(),
@@ -16,7 +16,11 @@ export const seekJobSnapshotSchema = z.object({
 });
 export const linkedinJobSnapshotSchema = z.object({
   platform: z.literal("linkedin"),
-  ...jobSnapshotFields
+  ...jobSnapshotFields,
+  /** Work arrangement inferred from LinkedIn's workplaceTypes URNs. */
+  workType: z.enum(["onsite", "remote", "hybrid"]).optional(),
+  /** Formatted experience level string from the Voyager API. */
+  experienceLevel: z.string().optional()
 });
 export const genericJobSnapshotSchema = z.object({
   platform: z.literal("generic"),

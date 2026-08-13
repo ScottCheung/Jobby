@@ -3,7 +3,7 @@
 'use client';
 
 import React from 'react';
-import { RefreshCw, Settings, Trash2, ExternalLink, ChevronLeft, ChevronRight, FileText } from 'lucide-react';
+import { Settings, Trash2, ExternalLink, ChevronLeft, ChevronRight, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { JobApplication } from '@/lib/types';
 
@@ -69,13 +69,12 @@ export function IconButton({
   danger = false,
 }: {
   label: string;
-  icon: 'async' | 'edit' | 'delete' | 'open' | 'resume';
+  icon: 'edit' | 'delete' | 'open' | 'resume';
   onClick: () => void;
   disabled?: boolean;
   danger?: boolean;
 }) {
   const Icon = {
-    async: RefreshCw,
     edit: Settings,
     delete: Trash2,
     open: ExternalLink,

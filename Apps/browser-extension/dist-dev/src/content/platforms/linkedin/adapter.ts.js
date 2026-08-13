@@ -1,3 +1,5 @@
+import { extractLinkedInPostedDate, cleanPostedAt } from "/src/content/platforms/linkedin/date-parser.ts.js";
+import { extractStructuredText } from "/src/content/text-utils.ts.js";
 const SELECTORS = {
   title: [
     ".job-details-jobs-unified-top-card__job-title-link",
@@ -142,6 +144,9 @@ const INVALID_TITLE_PATTERNS = [
 function cleanText(value) {
   return (value || "").replace(/\s+/g, " ").trim();
 }
+export function canonicalLinkedInJobUrl(jobId) {
+  return `https://www.linkedin.com/jobs/view/${jobId}/`;
+}
 function extractCleanElementText(element) {
   const clone = element.cloneNode(true);
   const noisyNodes = clone.querySelectorAll(
@@ -192,9 +197,7 @@ function firstText(root, selectors) {
   return "";
 }
 function descriptionText(element) {
-  const clone = element.cloneNode(true);
-  clone.querySelectorAll("button, script, style, svg, [role='img'], .visually-hidden, .sr-only").forEach((node) => node.remove());
-  return cleanText(clone.innerText || clone.textContent);
+  return extractStructuredText(element);
 }
 function firstDescriptionText(root, selectors) {
   for (const selector of selectors) {
@@ -218,7 +221,10 @@ function descriptionFromHeading(root) {
   if (!container) return "";
   const text = descriptionText(container);
   const headingText = cleanText(heading.textContent);
-  const body = cleanText(text.replace(headingText, ""));
+  let body = text;
+  if (headingText && body.toLowerCase().startsWith(headingText.toLowerCase())) {
+    body = body.slice(headingText.length).trim();
+  }
   return body.length >= 40 ? body : "";
 }
 function findVisible(root, selectors, predicate = () => true) {
@@ -234,11 +240,29 @@ function findVisible(root, selectors, predicate = () => true) {
 function normalized(value) {
   return cleanText(value).toLowerCase();
 }
+function getJobDetailPanel() {
+  const directSelectors = [
+    ".jobs-search__job-details--detail-view",
+    ".jobs-search__job-details",
+    ".jobs-details__main-content",
+    ".job-details-jobs-unified-top-card__container",
+    ".job-details-jobs-unified-top-card",
+    ".jobs-unified-top-card__container"
+  ];
+  for (const sel of directSelectors) {
+    const el = document.querySelector(sel);
+    if (el) return el;
+  }
+  const isDirectJobPage = /\/jobs\/view\/\d+/i.test(window.location.pathname);
+  if (isDirectJobPage) {
+    return document.querySelector("main");
+  }
+  return null;
+}
 function getJobDetailRoot() {
-  const root = document.querySelector(
-    ".jobs-search__job-details, .jobs-details__main-content, .job-details-jobs-unified-top-card, main"
-  );
-  return root || document;
+  return getJobDetailPanel() || document.querySelector(
+    ".jobs-details__main-content, .job-details-jobs-unified-top-card, main"
+  ) || document;
 }
 const JOB_ROLE_KEYWORDS = /\b(?:engineer|developer|architect|lead|principal|senior|junior|mid|staff|manager|director|consultant|analyst|specialist|designer|administrator|coordinator|officer|executive|head|vp|intern|graduate|associate|agent|advisor|operator|technician|contractor)\b/i;
 function isLikelyTitle(value, company) {
@@ -311,30 +335,87 @@ function locationFromPage() {
   const metadata = Array.from(root.querySelectorAll("p")).map((element) => cleanText(element.textContent)).find((text) => /\s*[·•]\s*/.test(text) && /\b(?:ago|applicants?)\b/i.test(text));
   return metadata?.split(/\s*[·•]\s*/)[0] || void 0;
 }
-function datePostedFromPage() {
-  const root = getJobDetailRoot();
-  const timeEl = root.querySelector("time[datetime]") || document.querySelector(
-    ".job-details-jobs-unified-top-card__primary-description-container time[datetime], .jobs-unified-top-card__primary-description time[datetime], main time[datetime]"
+const DATE_METADATA_SELECTORS = [
+  // Detail-panel-only primary/tertiary description containers
+  ".job-details-jobs-unified-top-card__primary-description-without-tagline",
+  ".job-details-jobs-unified-top-card__primary-description-container",
+  ".job-details-jobs-unified-top-card__primary-description",
+  ".jobs-unified-top-card__primary-description-container",
+  ".jobs-unified-top-card__primary-description",
+  ".job-details-jobs-unified-top-card__tertiary-description-container",
+  ".jobs-unified-top-card__tertiary-description-container",
+  ".job-details-jobs-unified-top-card__subtitle-primary-grouping",
+  ".jobs-unified-top-card__subtitle-primary-grouping",
+  // aria-labelled elements are reliable because they're authored on purpose
+  '[aria-label*="posted" i]',
+  '[aria-label*="reposted" i]'
+];
+function findListCard(externalId) {
+  const byAttr = document.querySelector(
+    `[data-occludable-job-id="${externalId}"], [data-job-id="${externalId}"]`
   );
-  if (timeEl) {
-    const dt = timeEl.getAttribute("datetime");
-    if (dt) return cleanText(dt);
-    const text = cleanText(timeEl.textContent);
-    if (text) return text;
+  if (byAttr) return byAttr;
+  const panel = getJobDetailPanel();
+  const jobLinkPattern = new RegExp(`/jobs/view/${externalId}(?:/|\\?|$)`, "i");
+  const allLinks = Array.from(
+    document.querySelectorAll("a[href*='/jobs/view/']")
+  ).filter((link) => {
+    if (!jobLinkPattern.test(link.getAttribute("href") || "")) return false;
+    if (panel && panel.contains(link)) return false;
+    return true;
+  });
+  for (const link of allLinks) {
+    let el = link.parentElement;
+    for (let d = 0; el && d < 10; d += 1) {
+      if (el.matches(
+        ".job-card-container, .jobs-search-results__list-item, li[data-occludable-job-id], li[data-job-id], article.job-card-container"
+      )) {
+        return el;
+      }
+      el = el.parentElement;
+    }
   }
-  const primaryDesc = firstText(root, [
-    ".job-details-jobs-unified-top-card__primary-description-container",
-    ".jobs-unified-top-card__primary-description-container",
-    ".job-details-jobs-unified-top-card__bullet"
-  ]) || firstText(document, [
-    ".job-details-jobs-unified-top-card__primary-description-container",
-    ".jobs-unified-top-card__primary-description-container"
-  ]);
-  if (primaryDesc) {
-    const segments = primaryDesc.split(/\s*[·•]\s*/).map((s) => cleanText(s)).filter(Boolean);
-    for (const seg of segments) {
-      if (/\b(\d+\s*\+?\s*(?:minute|hour|day|week|month|year)s?\s+ago|today|yesterday|just\s+now|reposted)\b/i.test(seg)) {
-        return seg;
+  return null;
+}
+function datePostedFromPage(externalId) {
+  const listCard = externalId ? findListCard(externalId) : null;
+  if (listCard) {
+    for (const timeEl of Array.from(listCard.querySelectorAll("time"))) {
+      const date = extractLinkedInPostedDate(timeEl.getAttribute("datetime")) || extractLinkedInPostedDate(timeEl.textContent);
+      if (date) return date;
+    }
+  }
+  const panel = getJobDetailPanel();
+  const root = panel || getJobDetailRoot();
+  for (const timeNode of Array.from(root.querySelectorAll("time"))) {
+    const dt = timeNode.getAttribute("datetime");
+    const dateStr = extractLinkedInPostedDate(dt) || extractLinkedInPostedDate(timeNode.textContent);
+    if (dateStr) return dateStr;
+  }
+  for (const selector of DATE_METADATA_SELECTORS) {
+    for (const element of deepQueryAll(root, selector)) {
+      const date = extractLinkedInPostedDate(element.getAttribute("aria-label")) || extractLinkedInPostedDate(element.getAttribute("datetime")) || extractLinkedInPostedDate(element.textContent);
+      if (date) return date;
+    }
+  }
+  const topCard = root.querySelector?.(
+    ".job-details-jobs-unified-top-card, .jobs-unified-top-card, .job-details-jobs-unified-top-card__primary-description-container, .jobs-unified-top-card__primary-description-container"
+  ) || root;
+  const leafSpans = Array.from(topCard.querySelectorAll("span, time, font")).filter((el) => el.childElementCount === 0);
+  for (const element of leafSpans) {
+    const text = cleanText(element.textContent);
+    if (text && text.length <= 80) {
+      const date = extractLinkedInPostedDate(text);
+      if (date) return date;
+    }
+  }
+  if (listCard) {
+    const cardLeafs = Array.from(listCard.querySelectorAll("span, time")).filter((el) => el.childElementCount === 0);
+    for (const leaf of cardLeafs) {
+      const text = cleanText(leaf.textContent);
+      if (text && text.length <= 80) {
+        const date = extractLinkedInPostedDate(text);
+        if (date) return date;
       }
     }
   }
@@ -357,7 +438,7 @@ export class LinkedInAdapter {
   isJobPageUrl(url) {
     return Boolean(this.jobIdFromUrl(url));
   }
-  readJob(url) {
+  readJob(url, apiData) {
     const externalId = this.jobIdFromUrl(url);
     if (!externalId) return null;
     if (!this.hasCurrentJobReference(externalId)) return null;
@@ -366,14 +447,18 @@ export class LinkedInAdapter {
     const title = titleFromPage(externalId, company);
     if (!title) return null;
     const description = firstDescriptionText(root, SELECTORS.description) || firstDescriptionText(document, SELECTORS.description) || descriptionFromHeading(root) || descriptionFromHeading(document);
+    const datePosted = apiData?.listedAt ?? cleanPostedAt(datePostedFromPage(externalId));
+    const easyApply = apiData?.easyApply ?? Boolean(this.findEasyApplyTrigger());
     return {
       externalId,
       title,
       company,
-      location: locationFromPage(),
-      datePosted: datePostedFromPage(),
+      location: apiData?.location || locationFromPage(),
+      datePosted,
       description: description || void 0,
-      easyApply: Boolean(this.findEasyApplyTrigger())
+      easyApply,
+      ...apiData?.workType ? { workType: apiData.workType } : {},
+      ...apiData?.experienceLevel ? { experienceLevel: apiData.experienceLevel } : {}
     };
   }
   getApplicationRoot() {

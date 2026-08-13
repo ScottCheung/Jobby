@@ -1,3 +1,4 @@
+'use client';
 // This function formats a number with significant digits.
 // It supports different number types (standard, scientific, engineering).
 // It also supports short format for large numbers.
@@ -12,7 +13,7 @@
 export const formatWithSignificantDigits = (
   num: number,
   type: 'scientific' | 'engineering',
-  decimalPlaces: number,
+  _decimalPlaces: number,
   maxNumberPlaces: number
 ): string => {
   // 辅助函数：将指数数字转换为上标
@@ -27,13 +28,15 @@ export const formatWithSignificantDigits = (
   // 辅助函数：精确分解数字为科学计数法各部分
   const toExactExponential = (n: number) => {
     const str = n.toExponential(20); // 获取最大精度表示
-    const [significand, exponent] = str.split('e');
-    const [integerPart, fractionalPart] = significand.split('.');
+    const parts = str.split('e');
+    const significand = parts[0] ?? '0';
+    const expStr = parts[1] ?? '0';
+    const [integerPart = '0', fractionalPart = ''] = significand.split('.');
     
     return {
       integer: integerPart,
-      fractional: fractionalPart || '',
-      exponent: parseInt(exponent, 10)
+      fractional: fractionalPart,
+      exponent: parseInt(expStr, 10)
     };
   };
 
@@ -96,7 +99,7 @@ export const formatWithSignificantDigits = (
 
   // 处理科学计数法
   const { coefficient, exponent } = (() => {
-    const { integer, fractional, exponent } = toExactExponential(num);
+    const { integer, fractional, exponent: exp } = toExactExponential(num);
     const targetLength = maxNumberPlaces > 0 
       ? Math.min(integer.length + fractional.length, maxNumberPlaces)
       : integer.length + fractional.length;
@@ -108,7 +111,7 @@ export const formatWithSignificantDigits = (
 
     return {
       coefficient: formattedCoefficient,
-      exponent: exponent
+      exponent: exp
     };
   })();
 

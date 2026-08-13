@@ -1,9 +1,10 @@
 /** @format */
 
 'use client';
+import { Avatar, Button, EmptyState, Textarea, Tooltip } from '@jobby/ui';
 
 import { KeyboardEvent, RefObject, useEffect, useRef, useState } from 'react';
-import { Avatar } from '@/components/UI/Avatar/Avatar';
+
 import {
   ChevronDown,
   ChevronUp,
@@ -18,11 +19,11 @@ import {
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import type { QuestionComment } from '@/lib/types';
-import { Tooltip } from '@/components/UI/tooltip/index';
+
 import { showGlobalToast } from '@/lib/toast';
-import { Button } from '@jobby/ui';
-import { Textarea } from '@/components/UI/textarea';
-import { EmptyState } from '@/components/UI/EmptyState';
+
+
+
 import { cn } from '@/lib/utils';
 import { useRelativeTime } from '@/lib/use-relative-time';
 import { useConsole } from '@/components/ConsoleContext';

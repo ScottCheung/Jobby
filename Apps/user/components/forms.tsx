@@ -1,6 +1,7 @@
 /** @format */
 
 'use client';
+import { Button, CardWithNorth, Checkbox, Input, InputField, Select, Switch, TagInput, Textarea } from '@jobby/ui';
 
 import { useMemo, useState } from 'react';
 import {
@@ -27,14 +28,14 @@ import type {
   JobHuntingProfile,
   UserProfile,
 } from '@/lib/types';
-import CardWithNorth from '@/components/UI/card/CardWithNorth';
-import { InputField, Input } from '@/components/UI/input';
-import { TagInput } from '@/components/UI/tag-input';
-import { Textarea } from '@/components/UI/textarea';
-import { Switch } from '@/components/UI/switch';
-import { Checkbox } from '@/components/UI/checkbox';
-import { Select } from '@/components/UI/select/select';
-import { Button } from '@jobby/ui';
+
+
+
+
+
+
+
+
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 

@@ -1,6 +1,7 @@
 /** @format */
 
 'use client';
+import { Tooltip } from '@jobby/ui';
 
 import React, { useEffect, useState, useRef } from 'react';
 import {
@@ -22,7 +23,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { api } from '@/lib/api';
-import { Tooltip } from '@/components/UI/tooltip';
+
 import { showGlobalToast } from '@/lib/toast';
 import { showCelebrationEvent } from '@/lib/celebration';
 import { cn } from '@/lib/utils';

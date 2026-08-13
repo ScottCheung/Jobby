@@ -1,6 +1,7 @@
 /** @format */
 
 'use client';
+import { Button, EmptyPlaceHolder, Input, TagInput, Textarea } from '@jobby/ui';
 import {
   ChangeEvent,
   useEffect,
@@ -32,7 +33,7 @@ import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { api } from '@/lib/api';
 import { showGlobalToast } from '@/lib/toast';
-import { EmptyPlaceHolder } from '@/components/UI/EmptyPlaceHolder';
+
 import type {
   MasterResume,
   MasterResumeData,
@@ -49,10 +50,10 @@ import type {
   ResumeSkillGroup,
 } from '@/lib/types';
 import { useConsole } from '@/components/ConsoleContext';
-import { Button } from '@jobby/ui';
-import { Input } from '@/components/UI/input';
-import { Textarea } from '@/components/UI/textarea';
-import { TagInput } from '@/components/UI/tag-input';
+
+
+
+
 import { useGlobalModalStore } from '@/lib/store/global-modal-store';
 import { useConfirmStore } from '@/lib/store/confirm-store';
 import { ApplicationSettingsCards } from '@/app/settings/job-profiles/_component/application-settings-cards';

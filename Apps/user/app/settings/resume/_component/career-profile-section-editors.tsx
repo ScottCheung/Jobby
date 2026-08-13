@@ -1,6 +1,7 @@
 /** @format */
 
 'use client';
+import { BulletListInput, Button, Input, TagInput, Textarea } from '@jobby/ui';
 
 import { useState } from 'react';
 import {
@@ -18,11 +19,11 @@ import {
   Layers,
   X,
 } from 'lucide-react';
-import { Button } from '@jobby/ui';
-import { Input } from '@/components/UI/input';
-import { Textarea } from '@/components/UI/textarea';
-import { TagInput } from '@/components/UI/tag-input';
-import { BulletListInput } from '@/components/UI/bullet-list-input';
+
+
+
+
+
 import type {
   MasterResumeData,
   ResumeLocation,

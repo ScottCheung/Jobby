@@ -1,4 +1,5 @@
 'use client';
+import { EmptyPlaceHolder } from '@jobby/ui';
 
 import React, { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
@@ -9,7 +10,7 @@ import {
 } from '@/lib/types';
 import { Loader2, Coins, Trophy, Clock, PlayCircle, History, Gem, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { EmptyPlaceHolder } from '@/components/UI/EmptyPlaceHolder';
+
 
 type TabType = 'practice' | 'rewards';
 

@@ -1,5 +1,6 @@
 /** @format */
 
+import { Avatar } from '@jobby/ui';
 import { useEffect, useRef, useState } from 'react';
 import {
   Bookmark,
@@ -13,7 +14,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useRelativeTime } from '@/lib/use-relative-time';
 import type { QuestionComment } from '@/lib/types';
-import { Avatar } from '@/components/UI/Avatar/Avatar';
+
 import { ReportReason } from './utils';
 import { useConsole } from '@/components/ConsoleContext';
 

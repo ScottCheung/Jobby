@@ -1,11 +1,13 @@
 /** @format */
 
 'use client';
+import { EmptyPlaceHolder } from '@jobby/ui';
 
 import React from 'react';
 import { Check, Edit3 } from 'lucide-react';
-import { EmptyPlaceHolder } from '@/components/UI/EmptyPlaceHolder';
+
 import { cn } from '@/lib/utils';
+import { StructuredJobDescription } from '@/components/StructuredJobDescription';
 import { FormTextarea } from './FormControls';
 
 interface JobDescriptionProps {
@@ -58,8 +60,8 @@ export function JobDescription({
           rows={15}
         />
       : description ?
-        <div className='body-md whitespace-pre-wrap font-sans text-ink-secondary panel-lg'>
-          {description}
+        <div className='panel-lg p-5'>
+          <StructuredJobDescription content={description} />
         </div>
       : <EmptyPlaceHolder />}
     </div>

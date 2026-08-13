@@ -1,3 +1,4 @@
+'use client';
 // @ts-nocheck
 import type { Meta, StoryObj } from '@storybook/react';
 import { Chart, ChartProps } from './Chart';

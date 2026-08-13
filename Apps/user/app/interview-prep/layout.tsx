@@ -1,6 +1,7 @@
 /** @format */
 
 'use client';
+import { Button, Tooltip } from '@jobby/ui';
 import React, { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import {
@@ -11,13 +12,13 @@ import {
   Search,
 } from 'lucide-react';
 import { api } from '@/lib/api';
-import { Tooltip } from '@/components/UI/tooltip';
+
 import { motion } from 'framer-motion';
 import { GamificationStats } from './_components/GamificationStats';
 import { useConsole } from '@/components/ConsoleContext';
 import { GlobalSearchModal } from './library/_components/GlobalSearchModal';
 import { useGlobalModalStore } from '@/lib/store/global-modal-store';
-import { Button } from '@jobby/ui';
+
 import {
   ModuleTopNav,
   type ModuleNavigationItem,

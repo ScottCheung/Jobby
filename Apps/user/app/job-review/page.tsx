@@ -1,6 +1,7 @@
 /** @format */
 
 'use client';
+import { Textarea } from '@jobby/ui';
 
 import { FormEvent, useEffect, useState } from 'react';
 import {
@@ -20,7 +21,7 @@ import {
   type TailoredResume,
 } from '@/lib/api';
 import type { MasterResumeData } from '@/lib/types';
-import { Textarea } from '@/components/UI/textarea';
+
 import { ResumePdfPreview } from '@/app/settings/resume/_component/resume-pdf-preview';
 
 export default function JobReviewPage() {

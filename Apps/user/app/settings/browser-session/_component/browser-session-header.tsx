@@ -1,7 +1,8 @@
 /** @format */
 
+import { HelpTip } from '@jobby/ui';
 import React, { memo } from 'react';
-import { HelpTip } from '@/components/UI/help-tip';
+
 import { ChromeIcon } from './chrome-icon';
 
 export const BrowserSessionHeader = memo(function BrowserSessionHeader() {

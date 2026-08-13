@@ -1,13 +1,14 @@
 /** @format */
 
 'use client';
+import { Tooltip } from '@jobby/ui';
 
 import type { LucideIcon } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import { Tooltip } from '@/components/UI/tooltip';
+
 
 export type ModuleNavigationItem = {
   name: string;

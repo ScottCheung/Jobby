@@ -1,10 +1,11 @@
 /** @format */
 
+import { Tooltip } from '@jobby/ui';
 import React from 'react';
 import { CheckCircle2, Folder } from 'lucide-react';
 import type { InterviewCategory } from '@/lib/types';
 import { cn, cleanName } from '@/lib/utils';
-import { Tooltip } from '@/components/UI/tooltip/index';
+
 
 interface CategorySelectorProps {
   importDefaultCategory: string;

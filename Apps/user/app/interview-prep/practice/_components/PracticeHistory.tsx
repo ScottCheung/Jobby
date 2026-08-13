@@ -1,5 +1,6 @@
 /** @format */
 
+import { EmptyPlaceHolder } from '@jobby/ui';
 import React, { useEffect, useState } from 'react';
 import {
   Award,
@@ -21,7 +22,7 @@ import { useConfirmStore } from '@/lib/store/confirm-store';
 import { formatRelativeDate } from '@/components/ConsoleUtils';
 import { InteractiveTranscript } from './InteractiveTranscript';
 import { motion } from 'framer-motion';
-import { EmptyPlaceHolder } from '@/components/UI/EmptyPlaceHolder';
+
 
 const normalizePlayback = (audio: HTMLAudioElement) => {
   audio.defaultPlaybackRate = 1;

@@ -1,12 +1,13 @@
 /** @format */
 
 'use client';
+import { H3, H4 } from '@jobby/ui';
 
 import React, { useState } from 'react';
 import { useConsole } from '@/components/ConsoleContext';
 import { Bell, BellOff, MessageSquare, Heart, Settings, Save } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { H3, H4 } from '@/components/UI/text/typography';
+
 import { showGlobalToast } from '@/lib/toast';
 
 export default function SettingsPage() {

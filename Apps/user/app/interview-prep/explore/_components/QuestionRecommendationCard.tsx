@@ -1,6 +1,7 @@
 /** @format */
 
 'use client';
+import { Button, Tooltip } from '@jobby/ui';
 
 import {
   Bookmark,
@@ -14,14 +15,14 @@ import {
   ThumbsUp,
 } from 'lucide-react';
 import type { InterviewQuestion } from '@/lib/types';
-import { Button } from '@jobby/ui';
+
 import { cn, formatInterviewDuration } from '@/lib/utils';
 import {
   getCategoryPresentation,
   type ContentActivityBadge,
 } from './explore-utils';
 import { div } from 'framer-motion/client';
-import { Tooltip } from '@/components/UI/tooltip';
+
 
 type QuestionRecommendationCardProps = {
   question: InterviewQuestion;

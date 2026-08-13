@@ -1,6 +1,7 @@
+import { EmptyPlaceHolder } from '@jobby/ui';
 import React from 'react';
 import { Calendar } from 'lucide-react';
-import { EmptyPlaceHolder } from '@/components/UI/EmptyPlaceHolder';
+
 
 export function EmptyState() {
   return (

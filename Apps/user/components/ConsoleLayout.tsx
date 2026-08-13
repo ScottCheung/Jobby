@@ -1,6 +1,7 @@
 /** @format */
 
 'use client';
+import { CelebrationLayer, Toaster } from '@jobby/ui';
 
 import React, { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
@@ -13,8 +14,8 @@ import { GlobalModal } from '@/components/layout/global-modal';
 import { cn } from '@/lib/utils';
 import { RefreshCw } from 'lucide-react';
 import AutomationPanel from '@/app/_component/AutomationPanel';
-import { Toaster } from '@/components/UI/toast/toaster';
-import { CelebrationLayer } from '@/components/UI/celebration/confetti';
+
+
 import { DashboardStats } from '@/components/layout/dashboard-stats';
 
 export default function ConsoleLayout({
@@ -24,6 +25,13 @@ export default function ConsoleLayout({
 }) {
   const pathname = usePathname();
   const { error, isPending, isDesktopApp } = useConsole();
+
+  const isFullHeightRoute =
+    pathname?.startsWith('/interview-prep') ||
+    pathname?.startsWith('/job-application') ||
+    pathname?.startsWith('/applications') ||
+    pathname?.startsWith('/settings') ||
+    pathname?.startsWith('/design-system');
 
   if (pathname?.startsWith('/Resume/Template/')) {
     return <>{children}</>;
@@ -37,33 +45,22 @@ export default function ConsoleLayout({
 
         {/* Main Content Area */}
         <main className='relative flex h-full flex-1 min-w-0 flex-col overflow-hidden'>
-          <div className='app-no-drag custom-scrollbar-primary flex-1 overflow-y-auto'>
+          <div
+            className={cn(
+              'app-no-drag custom-scrollbar-primary flex-1',
+              isFullHeightRoute ? 'flex flex-col overflow-hidden' : 'overflow-y-auto',
+            )}
+          >
             <div
               className={cn(
-                !pathname?.startsWith('/interview-prep') &&
-                  !pathname?.startsWith('/job-application') &&
-                  !pathname?.startsWith('/design-system') &&
-                  !pathname?.startsWith('/settings') &&
-                  'p-page',
-                (pathname?.startsWith('/interview-prep') ||
-                  pathname?.startsWith('/job-application') ||
-                  pathname?.startsWith('/settings') ||
-                  pathname?.startsWith('/design-system')) &&
-                  'h-full flex flex-col overflow-hidden',
+                !isFullHeightRoute && 'p-page',
+                isFullHeightRoute && 'h-full flex flex-col overflow-hidden',
               )}
             >
               <div
                 className={cn(
-                  !pathname?.startsWith('/interview-prep') &&
-                    !pathname?.startsWith('/job-application') &&
-                    !pathname?.startsWith('/design-system') &&
-                    !pathname?.startsWith('/settings') &&
-                    'mx-auto grid gap-8',
-                  (pathname?.startsWith('/interview-prep') ||
-                    pathname?.startsWith('/job-application') ||
-                    pathname?.startsWith('/settings') ||
-                    pathname?.startsWith('/design-system')) &&
-                    'h-full flex flex-col overflow-hidden',
+                  !isFullHeightRoute && 'mx-auto grid gap-8',
+                  isFullHeightRoute && 'h-full flex flex-col overflow-hidden',
                 )}
               >
                 {/* Hero Header */}

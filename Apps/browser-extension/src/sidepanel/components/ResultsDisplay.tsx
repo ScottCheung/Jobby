@@ -57,9 +57,12 @@ export function ResultsDisplay({
             isAutofilling={isAutofilling}
           />
         </div>
-      : <div className='p-3 text-xs text-center text-muted-foreground bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-dashed border-slate-200 dark:border-slate-800'>
-          No form fields detected yet. Click <strong>Autofill Form</strong> to scan and fill the page.
-        </div>}
+      : <div className='gap-2 border border-primary/50 p-2.5 rounded-xl bg-panel'>
+          No form fields detected yet. Click{' '}
+          <strong className='text-ink-primary'>Autofill Form</strong> to scan
+          and fill the page.
+        </div>
+      }
     </>
   );
 }
@@ -304,7 +307,9 @@ function FormFieldRow({
                 : ''
               }`}
             >
-              {isAutofilling && !field.filled ? 'AI is thinking...' : currentValue}
+              {isAutofilling && !field.filled ?
+                'AI is thinking...'
+              : currentValue}
             </span>
           </span>
         </button>

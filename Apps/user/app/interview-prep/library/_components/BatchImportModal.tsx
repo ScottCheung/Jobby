@@ -1,6 +1,7 @@
 /** @format */
 
 'use client';
+import { Button, H3, Textarea, Tooltip } from '@jobby/ui';
 
 import React, { useState, useEffect } from 'react';
 import { FileText, X, Trash2, ArrowLeft, Loader, Folder } from 'lucide-react';
@@ -12,11 +13,11 @@ import type {
 } from '@/lib/types';
 import { cn, cleanName } from '@/lib/utils';
 import { CategorySelector } from './selectors';
-import { Button } from '@jobby/ui';
-import { Textarea } from '@/components/UI/textarea';
+
+
 import { Modal } from '@/components/layout/modal';
-import { H3 } from '@/components/UI/text/typography';
-import { Tooltip } from '@/components/UI/tooltip';
+
+
 import { div } from 'framer-motion/client';
 import { Info, List } from 'lucide-react';
 

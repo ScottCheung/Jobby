@@ -1,8 +1,9 @@
 /** @format */
 
+import { SegmentedControl } from '@jobby/ui';
 import React from 'react';
 import { Pencil, Play, Save, Trash2, X } from 'lucide-react';
-import { SegmentedControl } from '@/components/UI/segmented-control';
+
 import type { JobHuntingProfile } from '@/lib/types';
 
 type SearchSection = 'overview' | 'filters' | 'rules' | 'application';

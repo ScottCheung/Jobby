@@ -1,3 +1,4 @@
+'use client';
 /** @format */
 
 import { cn } from '@/lib/utils';
@@ -8,9 +9,6 @@ import { parseFormattedNumber } from './util/parseFormattedNumber';
 
 import {
   AnimatedNumberProps,
-  AnimationType,
-  NumberFormat,
-  NumberType,
 } from './types';
 
 export * from './types';

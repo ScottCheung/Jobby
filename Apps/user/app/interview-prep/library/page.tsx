@@ -1,6 +1,7 @@
 /** @format */
 
 'use client';
+import { Button, Tooltip } from '@jobby/ui';
 import React, {
   useEffect,
   useState,
@@ -38,7 +39,7 @@ import type {
   InterviewCollection,
   User,
 } from '@/lib/types';
-import { Tooltip } from '@/components/UI/tooltip';
+
 import { cn, cleanName } from '@/lib/utils';
 import { useLayoutStore } from '@/lib/store/layout-store';
 import { useDebounce } from '@/lib/hooks/useDebounce';
@@ -77,7 +78,7 @@ import { QuestionForm } from './_components/QuestionForm';
 import { FilterSidebar } from './_components/FilterSidebar';
 import { QuestionRow } from './_components/QuestionRow';
 import { QuestionsFilterDrawer } from './_components/QuestionsFilterDrawer';
-import { Button } from '@jobby/ui';
+
 import { showGlobalToast } from '@/lib/toast';
 import { List, type RowComponentProps } from 'react-window';
 import { div } from 'framer-motion/client';
@@ -1248,7 +1249,7 @@ export default function QuestionsLibraryPage() {
                     selectedFrequencies.length > 0
                 ) ?
                   'bg-primary/10 text-primary border-primary/30'
-                : 'bg-panel border-border dark:border-border text-ink-secondary hover:text-ink-primary',
+                : 'bg-panel   text-ink-secondary hover:text-ink-primary',
               )}
             >
               <Tooltip content='Filters' side='bottom'>

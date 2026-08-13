@@ -1,6 +1,7 @@
 /** @format */
 
 'use client';
+import { EmptyPlaceHolder } from '@jobby/ui';
 
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
@@ -29,7 +30,7 @@ import type {
 import { useLayoutStore } from '@/lib/store/layout-store';
 import { showGlobalToast } from '@/lib/toast';
 import { cn } from '@/lib/utils';
-import { EmptyPlaceHolder } from '@/components/UI/EmptyPlaceHolder';
+
 import { motion, AnimatePresence } from 'framer-motion';
 
 type TabType = 'questions' | 'comments' | 'answers' | 'collections';

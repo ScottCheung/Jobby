@@ -1,4 +1,5 @@
 'use client';
+import { Button, CardWithNorth } from '@jobby/ui';
 
 import { useEffect, useState } from 'react';
 import { BookOpenText, Check, Pencil, Plus, Trash2, X } from 'lucide-react';
@@ -6,8 +7,8 @@ import { api } from '@/lib/api';
 import type { CoreProfileField, FieldMappingRule } from '@/lib/types';
 import { coreFieldCategories, coreFieldCategoryForKey, coreFieldLabel } from '@/lib/core-field-categories';
 import { Field } from '@/components/forms';
-import { Button } from '@jobby/ui';
-import CardWithNorth from '@/components/UI/card/CardWithNorth';
+
+
 import { useGlobalModalStore } from '@/lib/store/global-modal-store';
 
 function MappingRuleEditor({

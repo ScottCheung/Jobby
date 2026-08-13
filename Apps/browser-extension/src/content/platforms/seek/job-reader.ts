@@ -42,6 +42,57 @@ function hasApplyAction(): boolean {
   return SEEK_SELECTORS.apply.some((selector) => Boolean(document.querySelector(selector)));
 }
 
+function datePostedFromDom(jobId?: string): string | undefined {
+  const timeEl = document.querySelector<HTMLElement>("time[datetime]");
+  if (timeEl) {
+    const dt = timeEl.getAttribute("datetime");
+    if (dt) return cleanText(dt);
+    const text = cleanText(timeEl.textContent);
+    if (text) return text;
+  }
+
+  const selectors = [
+    "[data-automation='job-detail-date']",
+    "[data-automation='jobListingDate']",
+    "[data-automation='job-posted-date']",
+    "span[class*='date' i]",
+    "span[class*='posted' i]",
+  ];
+  const datePattern = /\b(?:posted\s+)?(?:\d+\s*\+?\s*(?:minutes?|mins?|hours?|hrs?|days?|weeks?|wks?|months?|mos?|years?|yrs?|[dhwmy]|mo)\s*(?:ago)?|today|yesterday|just\s+(?:now|posted))\b/i;
+
+  for (const selector of selectors) {
+    const element = document.querySelector<HTMLElement>(selector);
+    if (!element) continue;
+    const text = cleanText(element.textContent);
+    if (text && datePattern.test(text)) {
+      return text;
+    }
+  }
+
+  // Fallback to searching list card for current jobId
+  if (jobId) {
+    const links = Array.from(document.querySelectorAll<HTMLAnchorElement>(`a[href*='/job/${jobId}']`));
+    for (const link of links) {
+      let container: HTMLElement | null = link;
+      for (let depth = 0; container && depth < 5; depth += 1) {
+        const dateEl = container.querySelector<HTMLElement>("[data-automation='jobListingDate'], time");
+        if (dateEl) {
+          const dt = dateEl.getAttribute("datetime");
+          if (dt) return cleanText(dt);
+          const txt = cleanText(dateEl.textContent);
+          if (txt) return txt;
+        }
+        const containerText = cleanText(container.textContent);
+        const match = containerText.match(datePattern);
+        if (match?.[0]) return match[0];
+        container = container.parentElement;
+      }
+    }
+  }
+
+  return undefined;
+}
+
 export function readSeekPage(): PageInspection {
   const url = window.location.href;
   const jobId = jobIdFromUrl(url);
@@ -62,6 +113,7 @@ export function readSeekPage(): PageInspection {
     title,
     company: firstText(SEEK_SELECTORS.company) || "Unknown company",
     location: firstText(SEEK_SELECTORS.location) || undefined,
+    datePosted: datePostedFromDom(jobId),
     description: description || undefined,
     technologies: extractTechnologyKeywords(description),
     easyApply: hasApplyAction(),

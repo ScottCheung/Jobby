@@ -1,6 +1,7 @@
 /** @format */
 
 'use client';
+import { Button, EmptyPlaceHolder } from '@jobby/ui';
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import {
@@ -20,11 +21,10 @@ import type {
   InterviewCollection,
 } from '@/lib/types';
 import { cleanName, cn } from '@/lib/utils';
-import { Button } from '@jobby/ui';
+
 import { Modal } from '@/components/layout/modal';
 import { useLayoutStore } from '@/lib/store/layout-store';
 import { QuestionsFilterDrawer } from './QuestionsFilterDrawer';
-import { EmptyPlaceHolder } from '@/components/UI/EmptyPlaceHolder';
 
 interface AddQuestionsToCollectionModalProps {
   isOpen: boolean;
@@ -277,7 +277,7 @@ export function AddQuestionsToCollectionModal({
                   activeFiltersCount > 0
               ) ?
                 'bg-primary/10 text-primary border-primary/30'
-              : 'border-border dark:border-border text-ink-secondary hover:text-ink-primary bg-panel',
+              : '  text-ink-secondary hover:text-ink-primary bg-panel',
             )}
           >
             <SlidersHorizontal className='w-4 h-4' />

@@ -1,3 +1,4 @@
+'use client';
 // components/Menu.tsx
 
 import React from "react";

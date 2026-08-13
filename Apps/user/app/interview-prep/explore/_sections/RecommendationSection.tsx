@@ -1,14 +1,15 @@
 /** @format */
 
 'use client';
+import { CardWithNorth, EmptyPlaceHolder } from '@jobby/ui';
 
 import { RefreshCw } from 'lucide-react';
 import type { InterviewQuestion } from '@/lib/types';
-import CardWithNorth from '@/components/UI/card/CardWithNorth';
+
 import { cn } from '@/lib/utils';
 import { QuestionRecommendationCard } from '../_components/QuestionRecommendationCard';
 import { QuestionCardSkeleton } from '../_components/ExploreSkeletons';
-import { EmptyPlaceHolder } from '@/components/UI/EmptyPlaceHolder';
+
 
 export type RankingMode = 'hot' | 'season' | 'month' | 'week';
 export type RecommendationFeed = 'forYou' | RankingMode;

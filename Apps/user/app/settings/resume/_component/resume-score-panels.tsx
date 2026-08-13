@@ -1,20 +1,21 @@
 /** @format */
 
 'use client';
+import { Button, CircularProgress, Tooltip } from '@jobby/ui';
 
 import { motion } from 'framer-motion';
 import { Plus, RefreshCw, TicketCheck, Timer, X } from 'lucide-react';
-import { CircularProgress } from '@/components/UI/Progress/CircularProgress';
+
 
 import type {
   MasterResumeData,
   MasterResumeEvaluation,
   MasterResumeEvaluationHistoryItem,
 } from '@/lib/types';
-import { Button } from '@jobby/ui';
+
 import { useGlobalModalStore } from '@/lib/store/global-modal-store';
 import { ResumePdfPreview } from './resume-pdf-preview';
-import { Tooltip } from '@/components/UI/tooltip';
+
 
 const EVALUATION_DIMENSIONS = {
   factual_completeness: { label: 'Factual completeness', weight: 25 },

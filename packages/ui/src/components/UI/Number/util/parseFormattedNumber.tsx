@@ -1,3 +1,4 @@
+'use client';
 import { NumberFormat } from "../Number";
 // This function is a helper function that parses a formatted number string into its currency symbol, integer part, and decimal part.
 // It is used by the AnimatedNumber component to parse the formatted number string into its currency symbol, integer part, and decimal part.

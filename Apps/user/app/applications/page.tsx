@@ -71,11 +71,11 @@ function matchesApplication(
   );
 }
 
+const SKELETON_HEIGHTS = [340, 420, 280, 380, 320, 400, 460, 290];
+
 export default function ApplicationsPage() {
   const {
     applications,
-    syncingApplicationId,
-    asyncApplication,
     saveApplicationPatch,
     applicationPlanAction,
     deleteApplication,
@@ -86,7 +86,6 @@ export default function ApplicationsPage() {
   const [items, setItems] = useState<JobApplication[]>([]);
   const [hasMore, setHasMore] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
-  const [canLoadMore, setCanLoadMore] = useState(false);
   const [scrollContainer, setScrollContainer] = useState<HTMLDivElement | null>(
     null,
   );
@@ -98,9 +97,7 @@ export default function ApplicationsPage() {
 
   const deferredSearchText = useDeferredValue(searchText);
   const scrollContainerRef = React.useRef<HTMLDivElement | null>(null);
-  const loadMoreSentinelRef = React.useRef<HTMLDivElement | null>(null);
   const offsetRef = React.useRef(0);
-  const lastScrollTopRef = React.useRef(0);
   const isFetchingRef = React.useRef(false);
   const requestVersionRef = React.useRef(0);
   const applicationsById = useMemo(
@@ -118,62 +115,63 @@ export default function ApplicationsPage() {
     setScrollContainer(el);
   }, []);
 
-  const fetchMore = React.useCallback(async (reset = false) => {
-    if (isFetchingRef.current && !reset) return;
+  const fetchMore = React.useCallback(
+    async (reset = false) => {
+      if (isFetchingRef.current && !reset) return;
 
-    const requestVersion = requestVersionRef.current + 1;
-    requestVersionRef.current = requestVersion;
-    isFetchingRef.current = true;
-    setIsLoading(true);
-
-    if (reset) {
-      setItems([]);
-      offsetRef.current = 0;
-      setHasMore(true);
-      setCanLoadMore(false);
-      lastScrollTopRef.current = 0;
-    }
-
-    const currentOffset = reset ? 0 : offsetRef.current;
-    try {
-      const data = await withMinimumLoadingTime(
-        api.applications(
-          statusFilter,
-          PAGE_SIZE,
-          currentOffset,
-          deferredSearchText,
-        ),
-        800,
-      );
-
-      // Ignore a response for an older filter/search request.
-      if (requestVersion !== requestVersionRef.current) return;
+      const requestVersion = requestVersionRef.current + 1;
+      requestVersionRef.current = requestVersion;
+      isFetchingRef.current = true;
+      setIsLoading(true);
 
       if (reset) {
-        setItems(data);
-        offsetRef.current = data.length;
-        setHasMore(data.length === PAGE_SIZE);
-        return;
+        setItems([]);
+        offsetRef.current = 0;
+        setHasMore(true);
       }
 
-      setItems((prev) => {
-        const existingIds = new Set(prev.map((item) => item.id));
-        const nextItems = data.filter((item) => !existingIds.has(item.id));
-        return [...prev, ...nextItems];
-      });
-      offsetRef.current = currentOffset + data.length;
-      setHasMore(data.length === PAGE_SIZE);
-    } catch (err) {
-      if (requestVersion === requestVersionRef.current) {
-        console.error('Failed to fetch applications', err);
+      const currentOffset = reset ? 0 : offsetRef.current;
+      try {
+        const data = await withMinimumLoadingTime(
+          api.applications(
+            statusFilter,
+            PAGE_SIZE,
+            currentOffset,
+            deferredSearchText,
+          ),
+          800,
+        );
+
+        // Ignore a response for an older filter/search request.
+        if (requestVersion !== requestVersionRef.current) return;
+
+        if (reset) {
+          setItems(data);
+          offsetRef.current = data.length;
+          setHasMore(data.length === PAGE_SIZE);
+          return;
+        }
+
+        setItems((prev) => {
+          const existingIds = new Set(prev.map((item) => item.id));
+          const nextItems = data.filter((item) => !existingIds.has(item.id));
+          return [...prev, ...nextItems];
+        });
+        offsetRef.current = currentOffset + data.length;
+        setHasMore(data.length === PAGE_SIZE);
+      } catch (err) {
+        if (requestVersion === requestVersionRef.current) {
+          console.error('Failed to fetch applications', err);
+        }
+      } finally {
+        if (requestVersion === requestVersionRef.current) {
+          isFetchingRef.current = false;
+          setIsLoading(false);
+        }
       }
-    } finally {
-      if (requestVersion === requestVersionRef.current) {
-        isFetchingRef.current = false;
-        setIsLoading(false);
-      }
-    }
-  }, [deferredSearchText, statusFilter]);
+    },
+    [deferredSearchText, statusFilter],
+  );
 
   const handleDeleteApplication = React.useCallback(
     async (applicationId: string, title?: string, company?: string) => {
@@ -217,50 +215,18 @@ export default function ApplicationsPage() {
     });
   }, [applicationsById, deferredSearchText, statusFilter, isLoading]);
 
-  useEffect(() => {
-    const sentinel = loadMoreSentinelRef.current;
-    if (!scrollContainer || !sentinel || !canLoadMore || !hasMore || isLoading) return;
-
-    let isVisible = false;
-    let loadTimer: ReturnType<typeof setTimeout> | undefined;
-    const clearLoadTimer = () => {
-      if (loadTimer !== undefined) {
-        clearTimeout(loadTimer);
-        loadTimer = undefined;
-      }
-    };
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        isVisible = entry.isIntersecting;
-        clearLoadTimer();
-
-        if (isVisible) {
-          // Avoid loading while the user only briefly passes the list footer.
-          loadTimer = setTimeout(() => {
-            if (isVisible) void fetchMore();
-          }, 600);
-        }
-      },
-      { root: scrollContainer, threshold: 0.01 },
-    );
-
-    observer.observe(sentinel);
-    return () => {
-      clearLoadTimer();
-      observer.disconnect();
-    };
-  }, [canLoadMore, fetchMore, hasMore, isLoading, scrollContainer]);
-
   const handleCardScroll = React.useCallback(
     (event: React.UIEvent<HTMLDivElement>) => {
-      const currentScrollTop = event.currentTarget.scrollTop;
-      if (currentScrollTop > lastScrollTopRef.current) {
-        setCanLoadMore(true);
+      if (isLoading || !hasMore) return;
+
+      const target = event.currentTarget;
+      const distanceToBottom =
+        target.scrollHeight - (target.scrollTop + target.clientHeight);
+      if (distanceToBottom < 160) {
+        void fetchMore();
       }
-      lastScrollTopRef.current = currentScrollTop;
     },
-    [],
+    [fetchMore, hasMore, isLoading],
   );
 
   const rowItems = useMemo<ApplicationCardViewModel[]>(
@@ -299,11 +265,48 @@ export default function ApplicationsPage() {
     [items],
   );
 
+  const updateUrlParams = React.useCallback(
+    (appId?: string | null, tab?: string | null, replace = false) => {
+      if (typeof window === 'undefined') return;
+      const url = new URL(window.location.href);
+      if (appId) {
+        url.searchParams.set('appId', appId);
+        if (tab) {
+          url.searchParams.set('tab', tab);
+        } else {
+          url.searchParams.delete('tab');
+        }
+      } else {
+        url.searchParams.delete('appId');
+        url.searchParams.delete('tab');
+      }
+
+      const newUrl = url.pathname + (url.search ? url.search : '');
+      if (window.location.pathname + window.location.search !== newUrl) {
+        if (replace) {
+          window.history.replaceState(window.history.state, '', newUrl);
+        } else {
+          window.history.pushState({ appId, tab }, '', newUrl);
+        }
+      }
+    },
+    [],
+  );
+
   const openApplicationDetails = React.useCallback(
-    (applicationId: string) => {
+    (
+      applicationId: string,
+      initialTab: 'overview' | 'qa' | 'description' = 'overview',
+      updateUrl = true,
+      replaceUrl = false,
+    ) => {
       const application = applicationsById.get(applicationId);
       if (!application) {
         return;
+      }
+
+      if (updateUrl) {
+        updateUrlParams(applicationId, initialTab, replaceUrl);
       }
 
       openDrawer({
@@ -312,18 +315,79 @@ export default function ApplicationsPage() {
         content: (
           <ApplicationDetails
             application={application}
+            initialTab={initialTab}
+            onTabChange={(tab) => {
+              updateUrlParams(applicationId, tab, true);
+            }}
             onSave={saveApplicationPatch}
             onPlanAction={applicationPlanAction}
           />
         ),
       });
     },
-    [applicationsById, openDrawer, saveApplicationPatch],
+    [
+      applicationsById,
+      openDrawer,
+      saveApplicationPatch,
+      applicationPlanAction,
+      updateUrlParams,
+    ],
   );
+
+  // Sync URL when drawer is closed via close button / backdrop click / ESC
+  const prevIsDrawerOpenRef = React.useRef(isDrawerOpen);
+  useEffect(() => {
+    if (prevIsDrawerOpenRef.current && !isDrawerOpen) {
+      updateUrlParams(null, null, true);
+    }
+    prevIsDrawerOpenRef.current = isDrawerOpen;
+  }, [isDrawerOpen, updateUrlParams]);
+
+  // Handle browser Back / Forward (popstate)
+  useEffect(() => {
+    const handlePopState = () => {
+      if (typeof window === 'undefined') return;
+      const params = new URLSearchParams(window.location.search);
+      const appId = params.get('appId');
+      const tab =
+        (params.get('tab') as 'overview' | 'qa' | 'description') || 'overview';
+
+      if (appId) {
+        if (applicationsById.has(appId)) {
+          openApplicationDetails(appId, tab, false);
+        }
+      } else if (useLayoutStore.getState().isDrawerOpen) {
+        useLayoutStore.getState().actions.closeDrawer();
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [applicationsById, openApplicationDetails]);
+
+  // Deep-link auto open drawer on initial load
+  const hasInitialOpenedRef = React.useRef(false);
+  useEffect(() => {
+    if (hasInitialOpenedRef.current || isLoading || items.length === 0) return;
+
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const appId = params.get('appId');
+      const tab =
+        (params.get('tab') as 'overview' | 'qa' | 'description') || 'overview';
+
+      if (appId && applicationsById.has(appId)) {
+        hasInitialOpenedRef.current = true;
+        openApplicationDetails(appId, tab, false, true);
+      }
+    }
+  }, [applicationsById, isLoading, items.length, openApplicationDetails]);
 
   return (
     <div className='flex h-full min-h-[500px] flex-col overflow-hidden'>
-      <div className='app-drag pb-4 select-none shrink-0'>
+      <div className='app-drag px-page select-none shrink-0'>
         <ScrollLayout
           key={scrollContainer ? 'scrolling' : 'static'}
           scrollContainerRef={scrollContainerRef}
@@ -360,7 +424,6 @@ export default function ApplicationsPage() {
                 <option value='skipped'>Skipped</option>
                 <option value='cancelled'>Cancelled</option>
               </select>
-
             </div>
           </ScrollLayout.BtmToRight>
         </ScrollLayout>
@@ -370,52 +433,53 @@ export default function ApplicationsPage() {
         <div className='p-8 text-center text-ink-primary0 dark:text-zinc-400 flex-1 flex items-center justify-center'>
           No applications match this view.
         </div>
-      :
-        <div
+      : <div
           ref={setContainerRef}
           onScroll={handleCardScroll}
-          className='flex-1 overflow-y-auto custom-scrollbar-primary p-2 relative'
+          className='flex-1 body overflow-y-auto custom-scrollbar-primary p-page relative'
         >
-          {isLoading && items.length === 0 ?
-            <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 p-2'>
-              {[1, 2, 3, 4, 5, 6].map((n) => (
+          <WaterfallLayout
+            minColumnWidth={340}
+            gap={20}
+            virtualize
+            scrollContainerRef={scrollContainerRef}
+          >
+            {isLoading &&
+              items.length === 0 &&
+              [1, 2, 3, 4, 5, 6].map((n, index) => (
                 <div
                   key={n}
-                  className='h-64 rounded-2xl border border-border/40 bg-panel/40 animate-pulse'
+                  style={{
+                    height: `${SKELETON_HEIGHTS[index % SKELETON_HEIGHTS.length]}px`,
+                  }}
+                  className='rounded-2xl rounded-tl-3xl! border border-border/40 bg-background-secondary animate-pulse'
                 />
               ))}
-            </div>
-          : <>
-              <WaterfallLayout
-              minColumnWidth={340}
-              gap={20}
-              virtualize
-              scrollContainerRef={scrollContainerRef}
-            >
-              {rowItems.map((item) => (
-                <ApplicationCard
-                  key={item.id}
-                  entry={item}
-                  isSyncing={syncingApplicationId === item.id}
-                  isSelected={isDrawerOpen && drawerOpenId === item.id}
-                  onOpenDetails={openApplicationDetails}
-                  onAsync={asyncApplication}
-                  onDelete={handleDeleteApplication}
-                  onOpenResume={(id, title, company) =>
-                    setActiveResumeModal({ id, title, company })
-                  }
-                />
-              ))}
-              </WaterfallLayout>
-              {hasMore && (
+            {rowItems.map((item) => (
+              <ApplicationCard
+                key={item.id}
+                entry={item}
+                isSelected={isDrawerOpen && drawerOpenId === item.id}
+                onOpenDetails={openApplicationDetails}
+                onDelete={handleDeleteApplication}
+                onOpenResume={(id, title, company) =>
+                  setActiveResumeModal({ id, title, company })
+                }
+              />
+            ))}
+            {isLoading &&
+              hasMore &&
+              items.length > 0 &&
+              [1, 2, 3, 4, 5, 6].map((n, index) => (
                 <div
-                  ref={loadMoreSentinelRef}
-                  className='mt-5 h-64 rounded-2xl border border-border/40 bg-panel/40 animate-pulse'
-                  aria-hidden='true'
+                  key={`card-skeleton-bottom-${n}`}
+                  style={{
+                    height: `${SKELETON_HEIGHTS[(index + 3) % SKELETON_HEIGHTS.length]}px`,
+                  }}
+                  className='rounded-2xl rounded-tl-3xl! border border-border/40 bg-background-secondary animate-pulse'
                 />
-              )}
-            </>
-          }
+              ))}
+          </WaterfallLayout>
         </div>
       }
 

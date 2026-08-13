@@ -29,9 +29,7 @@ export const BrowserSessionAlerts = memo(function BrowserSessionAlerts({
           <div className='flex items-start gap-3'>
             <AlertTriangle className='h-5 w-5 shrink-0 text-amber-500 mt-0.5' />
             <div className='space-y-1'>
-              <p className='label'>
-                Close other Chrome windows first
-              </p>
+              <p className='label'>Close other Chrome windows first</p>
               <p className='body-md text-ink-secondary'>
                 This helps the app open the right login browser, so your sign-in
                 stays saved for Auto Apply.
@@ -52,7 +50,7 @@ export const BrowserSessionAlerts = memo(function BrowserSessionAlerts({
             <button
               onClick={() => setShowCloseOtherChromePrompt(false)}
               disabled={isClosingAllChrome}
-              className='label inline-flex items-center justify-center rounded-xl border border-border dark:border-border hover:bg-background-secondary px-4 py-2.5 transition active:scale-98 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed'
+              className='label inline-flex items-center justify-center rounded-xl border   hover:bg-background-secondary px-4 py-2.5 transition active:scale-98 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed'
             >
               Cancel
             </button>

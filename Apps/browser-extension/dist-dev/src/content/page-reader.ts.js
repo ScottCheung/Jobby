@@ -25,7 +25,6 @@ function isSeekHost(hostname) {
 function isIndeedHost(hostname) {
   return hostname === "indeed.com" || /\.indeed\.com$/.test(hostname);
 }
-let lastLinkedInRead = null;
 export function readCurrentPage() {
   const url = window.location.href;
   const hostname = window.location.hostname;
@@ -52,11 +51,12 @@ export function readCurrentPage() {
 export async function readCurrentPageWhenReady() {
   if (isLinkedInHost(window.location.hostname)) return readLinkedInPageWhenReady();
   let inspection = readCurrentPage();
-  if (inspection.kind === "job") return inspection;
   for (let attempt = 0; attempt < 4; attempt += 1) {
-    await new Promise((resolve) => window.setTimeout(resolve, 150));
+    if (inspection.kind === "job" && inspection.snapshot.datePosted) {
+      return inspection;
+    }
+    await new Promise((resolve) => window.setTimeout(resolve, 100));
     inspection = readCurrentPage();
-    if (inspection.kind === "job") return inspection;
   }
   return inspection;
 }
@@ -73,43 +73,60 @@ function fallbackToGenericJob(preferredInspection) {
 }
 async function readLinkedInPageWhenReady() {
   let observedUrl = window.location.href;
-  let previousSignature = "";
+  let previousSnapshotSignature = "";
+  const jobIdNow = linkedinAdapter.jobIdFromUrl(observedUrl);
+  const apiDataPromise = jobIdNow ? import("/src/content/platforms/linkedin/api-client.ts.js").then(
+    ({ fetchLinkedInJobPosting }) => fetchLinkedInJobPosting(jobIdNow)
+  ) : Promise.resolve(null);
   let inspection = readCurrentPage();
-  for (let attempt = 0; attempt < 12; attempt += 1) {
+  for (let attempt = 0; attempt < 20; attempt += 1) {
     const currentUrl = window.location.href;
     if (currentUrl !== observedUrl) {
       observedUrl = currentUrl;
-      previousSignature = "";
+      previousSnapshotSignature = "";
     }
     inspection = readCurrentPage();
     if (inspection.kind === "job") {
-      const signature = `${inspection.snapshot.externalId}:${inspection.snapshot.title}:${inspection.snapshot.company}`;
-      const routeChanged = !lastLinkedInRead || lastLinkedInRead.url !== observedUrl;
-      const previousReadSignature = lastLinkedInRead ? `${lastLinkedInRead.externalId}:${lastLinkedInRead.title}:${lastLinkedInRead.company}` : "";
-      const contentChanged = signature !== previousReadSignature;
+      const snapshotSignature = [
+        inspection.snapshot.externalId,
+        inspection.snapshot.title,
+        inspection.snapshot.company,
+        inspection.snapshot.datePosted || ""
+      ].join(":");
       const descriptionReady = Boolean(inspection.snapshot.description);
-      if (descriptionReady && (!lastLinkedInRead || !routeChanged || contentChanged && previousSignature === signature)) {
-        lastLinkedInRead = {
-          url: observedUrl,
-          externalId: inspection.snapshot.externalId,
-          title: inspection.snapshot.title,
-          company: inspection.snapshot.company
-        };
+      let apiData = null;
+      let apiResolved = false;
+      void apiDataPromise.then((data) => {
+        apiData = data;
+        apiResolved = true;
+      });
+      if (apiResolved && apiData) {
+        const enriched = readLinkedInPage(apiData);
+        if (enriched.kind === "job" && enriched.snapshot.description) {
+          return enriched;
+        }
+      }
+      const dateReady = Boolean(inspection.snapshot.datePosted);
+      const metadataReady = dateReady || attempt >= 19;
+      const snapshotStable = snapshotSignature === previousSnapshotSignature;
+      if (descriptionReady && metadataReady && (snapshotStable || attempt >= 19)) {
+        const resolvedApiData2 = await apiDataPromise.catch(() => null);
+        if (resolvedApiData2) {
+          const enriched = readLinkedInPage(resolvedApiData2);
+          if (enriched.kind === "job") return enriched;
+        }
         return inspection;
       }
-      previousSignature = signature;
+      previousSnapshotSignature = snapshotSignature;
     } else {
-      previousSignature = "";
+      previousSnapshotSignature = "";
     }
     await new Promise((resolve) => window.setTimeout(resolve, 150));
   }
-  if (inspection.kind === "job") {
-    lastLinkedInRead = {
-      url: observedUrl,
-      externalId: inspection.snapshot.externalId,
-      title: inspection.snapshot.title,
-      company: inspection.snapshot.company
-    };
+  const resolvedApiData = await apiDataPromise.catch(() => null);
+  if (resolvedApiData) {
+    const enriched = readLinkedInPage(resolvedApiData);
+    if (enriched.kind === "job") return enriched;
   }
   return inspection;
 }

@@ -218,13 +218,13 @@ export function PageClassBanner({
                   {isDescExpanded ? 'Show Less ▲' : 'Show More ▼'}
                 </button>
               </div>
-              <p
+              <div
                 className={`text-[11px] leading-relaxed text-foreground/80 whitespace-pre-wrap ${
                   isDescExpanded ? '' : 'job-desc-collapsed'
                 }`}
               >
                 {description}
-              </p>
+              </div>
             </div>
           )}
         </div>

@@ -89,4 +89,5 @@ const CardWithNorth: React.FC<CardWithNorthProps> = ({
   );
 };
 
+export { CardWithNorth };
 export default CardWithNorth;

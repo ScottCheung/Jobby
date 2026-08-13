@@ -1,5 +1,8 @@
 /** @format */
 
+'use client';
+/** @format */
+
 // import { ViewportAnimation } from '@/stories/Animation/ViewportAnimation';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
@@ -66,7 +69,7 @@ export const CircularProgress = React.memo<CircularProgressProps>(
     showValue = false,
     isIndeterminate = false,
     thickness = 12,
-    duration = 3,
+    duration = 0.8,
     className,
     ...props
   }) => {
@@ -78,19 +81,29 @@ export const CircularProgress = React.memo<CircularProgressProps>(
       : size === 'lg' ? 64
       : size === 'xl' ? 80
       : 96;
-    const circumference = 2 * Math.PI * radius;
+    const normalizedRadius = Math.max(0, radius - thickness / 2);
+    const circumference = 2 * Math.PI * normalizedRadius;
     const strokeDashoffset = circumference - (percentage / 100) * circumference;
+
+    const dashArray =
+      isIndeterminate ?
+        `${circumference * 0.3} ${circumference * 0.7}`
+      : circumference;
+
     return (
       <div
         className={cn(
-          'relative inline-flex items-center justify-center',
+          'relative inline-flex  items-center justify-center',
           className,
         )}
         {...props}
       >
         <React.Fragment>
           <svg
-            className='transform -rotate-90'
+            className={cn(
+              'transform -rotate-90 origin-center  transition-transform duration-300',
+              isIndeterminate && 'animate-spin',
+            )}
             width={radius * 2}
             height={radius * 2}
             viewBox={`0 0 ${radius * 2} ${radius * 2}`}
@@ -103,59 +116,62 @@ export const CircularProgress = React.memo<CircularProgressProps>(
                     x1='0%'
                     y1='0%'
                     x2='100%'
-                    y2='0%'
+                    y2='100%'
                   >
-                    <stop offset='0%' className='stop-color-primary' />
-                    <stop offset='100%' className='stop-color-secondary' />
+                    <stop offset='0%' stopColor='var(--primary, #10b981)' />
+                    <stop
+                      offset='100%'
+                      stopColor='var(--color-primary-accent, #3b82f6)'
+                    />
                   </linearGradient>
                   <linearGradient
                     id='gradient-success'
                     x1='0%'
                     y1='0%'
                     x2='100%'
-                    y2='0%'
+                    y2='100%'
                   >
-                    <stop offset='0%' className='stop-color-success-400' />
-                    <stop offset='100%' className='stop-color-success-600' />
+                    <stop offset='0%' stopColor='#10b981' />
+                    <stop offset='100%' stopColor='#34d399' />
                   </linearGradient>
                   <linearGradient
                     id='gradient-warning'
                     x1='0%'
                     y1='0%'
                     x2='100%'
-                    y2='0%'
+                    y2='100%'
                   >
-                    <stop offset='0%' className='stop-color-warning-400' />
-                    <stop offset='100%' className='stop-color-warning-600' />
+                    <stop offset='0%' stopColor='#f59e0b' />
+                    <stop offset='100%' stopColor='#fbbf24' />
                   </linearGradient>
                   <linearGradient
                     id='gradient-danger'
                     x1='0%'
                     y1='0%'
                     x2='100%'
-                    y2='0%'
+                    y2='100%'
                   >
-                    <stop offset='0%' className='stop-color-danger-400' />
-                    <stop offset='100%' className='stop-color-danger-600' />
+                    <stop offset='0%' stopColor='#ef4444' />
+                    <stop offset='100%' stopColor='#f87171' />
                   </linearGradient>
                   <linearGradient
                     id='gradient-info'
                     x1='0%'
                     y1='0%'
                     x2='100%'
-                    y2='0%'
+                    y2='100%'
                   >
-                    <stop offset='0%' className='stop-color-blue-400' />
-                    <stop offset='100%' className='stop-color-blue-600' />
+                    <stop offset='0%' stopColor='#3b82f6' />
+                    <stop offset='100%' stopColor='#60a5fa' />
                   </linearGradient>
                 </>
               )}
             </defs>
             <circle
-              className={cn('stroke-gray-200')}
+              className={cn('stroke-muted/20 dark:stroke-border/40')}
               strokeWidth={thickness}
               fill='none'
-              r={radius - thickness / 2}
+              r={normalizedRadius}
               cx={radius}
               cy={radius}
             />
@@ -166,25 +182,19 @@ export const CircularProgress = React.memo<CircularProgressProps>(
                 : gradientStyles[color],
               )}
               initial={{ strokeDashoffset: circumference }}
-              whileInView={{
-                strokeDashoffset: isIndeterminate ? 0 : strokeDashoffset,
-                rotate: isIndeterminate ? 360 : 0,
-              }}
-              viewport={{
-                margin: '25% 0px -25% 0px',
-                once: true,
-                amount: 0.25,
+              animate={{
+                strokeDashoffset:
+                  isIndeterminate ? circumference * 0.7 : strokeDashoffset,
               }}
               transition={{
-                duration: isIndeterminate ? 1 : duration,
-                ease: [0.22, 1, 0.36, 1],
-                repeat: isIndeterminate ? Infinity : 0,
+                duration: duration,
+                ease: [0.16, 1, 0.3, 1],
               }}
               strokeWidth={thickness}
-              strokeDasharray={circumference}
+              strokeDasharray={dashArray}
               strokeLinecap='round'
               fill='none'
-              r={radius - thickness / 2}
+              r={normalizedRadius}
               cx={radius}
               cy={radius}
             />

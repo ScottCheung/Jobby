@@ -75,7 +75,7 @@ function structuredJobPosting() {
   }
   return null;
 }
-function datePostedFromDom() {
+function datePostedFromDom(jobKey) {
   const timeEl = document.querySelector(
     "time[datetime], [data-testid*='date'] time, [class*='date'] time"
   );
@@ -87,21 +87,47 @@ function datePostedFromDom() {
   }
   const selectors = [
     "[data-testid='jobsearch-JobMetadataFooter-item']",
+    "[data-testid='myJobsStateDate']",
     "[class*='PostedDate']",
     "[class*='posted-date']",
     "[class*='postedDate']",
     "[class*='date-posted']",
     "[class*='job-age']",
-    "span[class*='date']"
+    "span[class*='date']",
+    "span[class*='posted']"
   ];
   const candidates = Array.from(
     document.querySelectorAll(selectors.join(", "))
   );
+  const datePattern = /\b(?:(?:posted|reposted|over|active)\s+)*(?:\d+\s*\+?\s*(?:minutes?|mins?|hours?|hrs?|days?|weeks?|wks?|months?|mos?|years?|yrs?|[dhwmy]|mo)\s*(?:ago)?|today|yesterday|just\s+(?:now|posted)|recently\s+posted)\b/i;
+  const zhPattern = /(?:(?:发布于|重新发布于)\s*)?(?:\d+\s*\+?\s*(?:个?月|周|天|小时|分钟)前|刚刚|今天|昨天)/;
   for (const el of candidates) {
     if (!isVisible(el)) continue;
     const text = cleanText(el.textContent);
-    if (/\b(posted|today|yesterday|\d+\s*\+?\s*days?\s+ago|just\s+posted|recently\s+posted)\b/i.test(text)) {
-      return text;
+    if (text.length > 60) continue;
+    const match = text.match(datePattern) || text.match(zhPattern);
+    if (match?.[0]) {
+      return match[0].trim();
+    }
+  }
+  if (jobKey) {
+    const links = Array.from(document.querySelectorAll(`a[href*='jk=${jobKey}'], [data-jk='${jobKey}']`));
+    for (const link of links) {
+      let container = link;
+      for (let depth = 0; container && depth < 5; depth += 1) {
+        const dateSpan = container.querySelector("span.date, [class*='date'], time");
+        if (dateSpan) {
+          const dt = dateSpan.getAttribute("datetime");
+          if (dt) return cleanText(dt);
+          const txt = cleanText(dateSpan.textContent);
+          const match2 = txt.match(datePattern) || txt.match(zhPattern);
+          if (match2?.[0]) return match2[0].trim();
+        }
+        const containerText = cleanText(container.textContent);
+        const match = containerText.match(datePattern) || containerText.match(zhPattern);
+        if (match?.[0]) return match[0].trim();
+        container = container.parentElement;
+      }
     }
   }
   return void 0;
@@ -155,7 +181,7 @@ export function readIndeedJobPage() {
     const match = url.match(/[?&]jk=([a-z0-9]+)/i);
     return match?.[1] || stableId(`${url}|${title}|${company}`);
   })();
-  const datePosted = structured?.datePosted || datePostedFromDom();
+  const datePosted = structured?.datePosted || datePostedFromDom(externalId);
   const enoughEvidence = Boolean(title) && (Boolean(structured) || description.length >= 90);
   if (!enoughEvidence) {
     return {

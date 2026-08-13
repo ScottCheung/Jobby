@@ -1,6 +1,7 @@
 /** @format */
 
 'use client';
+import { Button, EmptyState } from '@jobby/ui';
 
 import React, { useEffect, useState } from 'react';
 import {
@@ -15,8 +16,8 @@ import {
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import type { InterviewCollection, InterviewQuestion } from '@/lib/types';
-import { Button } from '@jobby/ui';
-import { EmptyState } from '@/components/UI/EmptyState';
+
+
 import Link from 'next/link';
 
 interface GlobalSearchModalProps {

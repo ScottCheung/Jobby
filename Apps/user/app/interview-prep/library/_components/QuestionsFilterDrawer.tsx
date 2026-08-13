@@ -105,7 +105,7 @@ export function QuestionsFilterDrawer({
                   'label-sm px-3 py-1.5 rounded-full border transition-all',
                   selectedCategoryIds.length === 0 ?
                     'bg-primary/10 text-primary border-primary/30 font-bold'
-                  : 'border-border dark:border-border text-ink-secondary hover:text-ink-primary hover:border-primary/30 bg-panel',
+                  : '  text-ink-secondary hover:text-ink-primary hover:border-primary/30 bg-panel',
                 )}
               >
                 All Categories
@@ -117,7 +117,7 @@ export function QuestionsFilterDrawer({
                   'label-sm px-3 py-1.5 rounded-full border transition-all',
                   selectedCategoryIds.includes('uncategorized') ?
                     'bg-primary/10 text-primary border-primary/30 font-bold'
-                  : 'border-border dark:border-border text-ink-secondary hover:text-ink-primary hover:border-primary/30 bg-panel',
+                  : '  text-ink-secondary hover:text-ink-primary hover:border-primary/30 bg-panel',
                 )}
               >
                 Uncategorized
@@ -133,7 +133,7 @@ export function QuestionsFilterDrawer({
                       'label-sm px-3 py-1.5 rounded-full border transition-all',
                       active ?
                         'bg-primary/10 text-primary border-primary/30 font-bold'
-                      : 'border-border dark:border-border text-ink-secondary hover:text-ink-primary hover:border-primary/30 bg-panel',
+                      : '  text-ink-secondary hover:text-ink-primary hover:border-primary/30 bg-panel',
                     )}
                   >
                     {cleanName(cat.name)}
@@ -156,7 +156,7 @@ export function QuestionsFilterDrawer({
                   'label-sm px-3 py-1.5 rounded-full border transition-all',
                   selectedTagIds.length === 0 ?
                     'bg-primary/10 text-primary border-primary/30 font-bold'
-                  : 'border-border dark:border-border text-ink-secondary hover:text-ink-primary hover:border-primary/30 bg-panel',
+                  : 'text-ink-secondary hover:text-ink-primary hover:border-primary/30 bg-panel',
                 )}
               >
                 All Tags
@@ -172,7 +172,7 @@ export function QuestionsFilterDrawer({
                       'label-sm px-3 py-1.5 rounded-full border transition-all',
                       active ?
                         'bg-primary/10 text-primary border-primary/30 font-bold'
-                      : 'border-border dark:border-border text-ink-secondary hover:text-ink-primary hover:border-primary/30 bg-panel',
+                      : '  text-ink-secondary hover:text-ink-primary hover:border-primary/30 bg-panel',
                     )}
                   >
                     #{cleanName(tag.name)}
@@ -204,7 +204,7 @@ export function QuestionsFilterDrawer({
                     'label-sm flex items-center gap-1 px-3 py-1.5 rounded-lg border transition-all',
                     active ?
                       'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-400/40 font-extrabold'
-                    : 'border-border dark:border-border text-ink-secondary hover:text-ink-primary bg-panel',
+                    : '  text-ink-secondary hover:text-ink-primary bg-panel',
                   )}
                 >
                   {n}
@@ -246,7 +246,7 @@ export function QuestionsFilterDrawer({
                   className={cn(
                     'label-sm px-3.5 py-1.5 rounded-lg border transition-all',
                     active ? activeColor : (
-                      'border-border dark:border-border text-ink-secondary hover:text-ink-primary bg-panel'
+                      '  text-ink-secondary hover:text-ink-primary bg-panel'
                     ),
                   )}
                 >

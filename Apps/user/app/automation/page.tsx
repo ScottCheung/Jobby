@@ -1,12 +1,13 @@
 /** @format */
 
 'use client';
+import { EmptyPlaceHolder, H1, SegmentedControl } from '@jobby/ui';
 
 import React, { useState } from 'react';
 import { useConsole } from '@/components/ConsoleContext';
-import { H1 } from '@/components/UI/text/typography';
-import { SegmentedControl } from '@/components/UI/segmented-control';
-import { EmptyPlaceHolder } from '@/components/UI/EmptyPlaceHolder';
+
+
+
 import { type DesktopBotPlatform } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import {

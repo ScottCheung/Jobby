@@ -1,6 +1,7 @@
 /** @format */
 
 'use client';
+import { Avatar } from '@jobby/ui';
 
 import React, { useState } from 'react';
 import {
@@ -23,7 +24,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import type { Prospect, ProspectStatus } from '@/lib/types';
-import { Avatar } from '@/components/UI/Avatar/Avatar';
+
 
 const LinkedInIcon = ({ className }: { className?: string }) => (
   <svg className={className} viewBox='0 0 34 34' fill='currentColor'>

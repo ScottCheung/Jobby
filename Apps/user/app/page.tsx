@@ -1,12 +1,13 @@
 /** @format */
 
 'use client';
+import { Chart, ChartWrapper, CityVectorMap, EmptyPlaceHolder, H2, SegmentedControl, ToggleGroup } from '@jobby/ui';
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useConsole } from '@/components/ConsoleContext';
-import { H2 } from '@/components/UI/text/typography';
-import { Chart, ChartWrapper } from '@/components/UI/Chart';
+
+
 import {
   getDisplayApplicationStatus,
   getStatusBadgeClasses,
@@ -30,12 +31,12 @@ import {
   MessageSquareCode,
   LayoutGrid,
 } from 'lucide-react';
-import { ToggleGroup } from '@/components/UI/toggle-group';
+
 import { cn } from '@/lib/utils';
 import { formatDate } from '@/components/ConsoleUtils';
-import { CityVectorMap } from '@/components/UI/Map/CityVectorMap';
-import { EmptyPlaceHolder } from '@/components/UI/EmptyPlaceHolder';
-import { SegmentedControl } from '@/components/UI/segmented-control';
+
+
+
 
 const PLATFORM_CARDS: Array<{
   key: DesktopBotPlatform;

@@ -1,3 +1,4 @@
+'use client';
 import { calculateDecimalPlaces } from "./calculateDecimalPlaces";
 
 // This function formats a number with short format.

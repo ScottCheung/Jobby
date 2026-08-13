@@ -1,8 +1,8 @@
 "use client"
+import { ToggleGroup, ToggleGroupItem } from '@jobby/ui';
 
 import * as React from "react"
 import { List, LayoutGrid } from "lucide-react"
-import { ToggleGroup, ToggleGroupItem } from "@/components/UI/toggle-group"
 import { usePreferencesActions, usePreferencesStore } from "@/lib/store/preferences-store"
 
 export function ListGridToggle() {

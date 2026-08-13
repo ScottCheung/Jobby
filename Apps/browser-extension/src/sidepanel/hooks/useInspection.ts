@@ -87,6 +87,30 @@ function sameJob(left: PageInspection | null, right: PageInspection): boolean {
   );
 }
 
+function mergePageInspection(
+  previous: PageInspection | null,
+  next: PageInspection,
+): PageInspection {
+  if (
+    !sameJob(previous, next) ||
+    previous?.kind !== 'job' ||
+    next.kind !== 'job'
+  ) {
+    return next;
+  }
+
+  // Merge snapshot fields, keeping previous valid values if next is temporarily partial
+  return {
+    ...next,
+    snapshot: {
+      ...next.snapshot,
+      location: next.snapshot.location || previous.snapshot.location,
+      description: next.snapshot.description || previous.snapshot.description,
+      datePosted: next.snapshot.datePosted || previous.snapshot.datePosted,
+    },
+  };
+}
+
 function inspectionUrl(inspection: PageInspection): string {
   return inspection.kind === 'job' ? inspection.snapshot.url : inspection.url;
 }
@@ -292,7 +316,11 @@ export function useInspection(onJobChanged?: () => void) {
       const tabOrUrlChanged =
         tabId !== lastObservedActiveTabId.current ||
         url !== lastObservedActiveUrl.current;
-      if (!force && !tabOrUrlChanged) return false;
+      const missingDateOnJob =
+        latestInspection?.kind === 'job' &&
+        !latestInspection.snapshot.datePosted;
+
+      if (!force && !tabOrUrlChanged && !missingDateOnJob) return false;
 
       pageInspectionInFlight.current = true;
       if (showLoading) {
@@ -313,12 +341,16 @@ export function useInspection(onJobChanged?: () => void) {
 
         setInspectionError('');
         setLatestInspection((prev) => {
-          if (!sameJob(prev, response.inspection!)) {
+          const mergedInspection = mergePageInspection(
+            prev,
+            response.inspection!,
+          );
+          if (!sameJob(prev, mergedInspection)) {
             setLatestForm(null);
             lastFormSignature.current = '';
             onJobChanged?.();
           }
-          return response.inspection!;
+          return mergedInspection;
         });
 
         // Always record the current tab/URL even for non-job results.

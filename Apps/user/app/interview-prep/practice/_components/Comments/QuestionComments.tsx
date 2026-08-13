@@ -1,6 +1,7 @@
 /** @format */
 
 'use client';
+import { Avatar, EmptyState, Textarea } from '@jobby/ui';
 
 import { KeyboardEvent, useEffect, useRef, useState } from 'react';
 import {
@@ -27,9 +28,9 @@ import { showGlobalToast } from '@/lib/toast';
 import { useRelativeTime } from '@/lib/use-relative-time';
 import { cn } from '@/lib/utils';
 import { useConsole } from '@/components/ConsoleContext';
-import { EmptyState } from '@/components/UI/EmptyState';
-import { Avatar } from '@/components/UI/Avatar/Avatar';
-import { Textarea } from '@/components/UI/textarea';
+
+
+
 import { CommentItem } from './CommentItem';
 import { ReplyItem } from './ReplyItem';
 import { CommentSkeleton } from './CommentSkeleton';

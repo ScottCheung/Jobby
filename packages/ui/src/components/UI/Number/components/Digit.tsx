@@ -1,3 +1,4 @@
+'use client';
 import { AnimatePresence, motion as m } from 'framer-motion';
 import { AnimationType } from '../Number';
 import { getVariants } from '../util/getAnimationVariants';

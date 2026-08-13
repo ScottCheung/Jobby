@@ -1,6 +1,7 @@
 /** @format */
 
 'use client';
+import { Button, InputField, Select, Switch, TagInput } from '@jobby/ui';
 
 import React, { useMemo } from 'react';
 import {
@@ -14,11 +15,11 @@ import {
   Sparkles,
 } from 'lucide-react';
 import type { ApplicationSettings } from '@/lib/types';
-import { InputField } from '@/components/UI/input';
-import { Select } from '@/components/UI/select/select';
-import { TagInput } from '@/components/UI/tag-input';
-import { Switch } from '@/components/UI/switch';
-import { Button } from '@jobby/ui';
+
+
+
+
+
 import { cn } from '@/lib/utils';
 
 type SettingsSection = 'policy' | 'automation' | 'ai_resume';

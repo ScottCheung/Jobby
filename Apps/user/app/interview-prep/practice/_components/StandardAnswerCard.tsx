@@ -1,6 +1,7 @@
 /** @format */
 
 'use client';
+import { Button, EmptyPlaceHolder, Textarea, Tooltip } from '@jobby/ui';
 
 import React, { useEffect, useMemo, useState } from 'react';
 import {
@@ -30,10 +31,10 @@ import {
 } from 'lucide-react';
 import { cn, formatInterviewDuration } from '@/lib/utils';
 import type { InterviewQuestion, QuestionAnswer } from '@/lib/types';
-import { Tooltip } from '@/components/UI/tooltip';
-import { Button } from '@jobby/ui';
-import { Textarea } from '@/components/UI/textarea';
-import { EmptyPlaceHolder } from '@/components/UI/EmptyPlaceHolder';
+
+
+
+
 import { div } from 'framer-motion/client';
 
 export type AnswerTypeTab = 'ai' | 'author' | 'community' | 'mine';

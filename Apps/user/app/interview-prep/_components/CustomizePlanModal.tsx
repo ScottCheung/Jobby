@@ -1,18 +1,16 @@
 /** @format */
 
 'use client';
+import { Button, Checkbox, EmptyPlaceHolder, Input, Switch } from '@jobby/ui';
 
 import React, { useState, useEffect } from 'react';
 import { X, Sliders, BookOpen, Clock, Search, Star } from 'lucide-react';
 import type { InterviewQuestion, InterviewCategory } from '@/lib/types';
 import { cn, cleanName } from '@/lib/utils';
-import { Button } from '@jobby/ui';
+
 import { Modal } from '@/components/layout/modal';
-import { Switch } from '@/components/UI/switch';
-import { Input } from '@/components/UI/input';
-import { Checkbox } from '@/components/UI/checkbox';
+
 import { showGlobalToast } from '@/lib/toast';
-import { EmptyPlaceHolder } from '@/components/UI/EmptyPlaceHolder';
 
 interface CustomizePlanModalProps {
   isOpen: boolean;
@@ -388,9 +386,9 @@ export function CustomizePlanModal({
 
           {/* Manual Questions Checklist */}
           {selectionMethod === 'manual' && (
-            <div className='flex flex-col gap-3 border border-border dark:border-border rounded-2xl p-4 bg-background-secondary/20 min-h-[420px] transition-all duration-300'>
+            <div className='flex flex-col gap-3 border   rounded-2xl p-4 bg-background-secondary/20 min-h-[420px] transition-all duration-300'>
               <div className='flex items-center gap-2 shrink-0'>
-                <div className='flex items-center gap-2.5 bg-panel px-3.5 py-2.5 rounded-xl border border-border dark:border-border flex-1'>
+                <div className='flex items-center gap-2.5 bg-panel px-3.5 py-2.5 rounded-xl border   flex-1'>
                   <Search className='w-4 h-4 text-ink-secondary shrink-0' />
                   <input
                     type='text'
@@ -412,7 +410,7 @@ export function CustomizePlanModal({
                         filterFrequencies.length > 0
                     ) ?
                       'bg-primary/10 text-primary border-primary/30 font-bold'
-                    : 'bg-white dark:bg-background border-border dark:border-border text-ink-secondary hover:text-ink-primary',
+                    : 'bg-white dark:bg-background   text-ink-secondary hover:text-ink-primary',
                   )}
                 >
                   <Sliders className='w-4 h-4' />
@@ -612,7 +610,7 @@ export function CustomizePlanModal({
                 )}
               </div>
 
-              <div className='label-sm flex justify-between items-center pt-2.5 border-t border-border dark:border-border shrink-0'>
+              <div className='label-sm flex justify-between items-center pt-2.5 border-t   shrink-0'>
                 <span>Select study items manually:</span>
                 <span className='font-bold text-primary'>
                   {manuallySelectedQuestionIds.length} Selected
@@ -700,7 +698,7 @@ export function CustomizePlanModal({
                   </span>
                 </div>
               )}
-              <div className='flex justify-between items-center pt-2.5 border-t border-border dark:border-border font-extrabold text-ink-primary'>
+              <div className='flex justify-between items-center pt-2.5 border-t   font-extrabold text-ink-primary'>
                 <span>Total Scheduled Tasks</span>
                 <span className='text-primary'>{totalTasksCount}</span>
               </div>

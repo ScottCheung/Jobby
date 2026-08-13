@@ -1,6 +1,7 @@
 /** @format */
 
 'use client';
+import { Button, CardSelector, ImageCropper, Textarea, type CardSelectorOption } from '@jobby/ui';
 
 import React, { useEffect, useId, useState } from 'react';
 import {
@@ -17,15 +18,12 @@ import {
   X,
 } from 'lucide-react';
 import type { InterviewCategory, InterviewCollection } from '@/lib/types';
-import { Button } from '@jobby/ui';
-import { Textarea } from '@/components/UI/textarea';
-import {
-  CardSelector,
-  type CardSelectorOption,
-} from '@/components/UI/CardSelector';
+
+
+
 import { showGlobalToast } from '@/lib/toast';
 import { useGlobalModalStore } from '@/lib/store/global-modal-store';
-import { ImageCropper } from '@/components/UI/ImageCropper';
+
 
 interface Props {
   collection?: InterviewCollection | null;

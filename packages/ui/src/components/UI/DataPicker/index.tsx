@@ -1,3 +1,4 @@
+'use client';
 import * as React from "react"
 import { LucideIcon, ChevronDown, ChevronLeft, ChevronRight, Calendar as CalendarIcon, X } from "lucide-react"
 import { cn } from "@/lib/utils"

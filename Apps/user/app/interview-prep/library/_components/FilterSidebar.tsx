@@ -1,6 +1,7 @@
 /** @format */
 
 'use client';
+import { AutoScroll } from '@jobby/ui';
 
 import React from 'react';
 import {
@@ -26,7 +27,7 @@ import {
   getInterviewCategoryIcon,
   getInterviewCategoryLabel,
 } from '@/lib/interview-categories';
-import { AutoScroll } from '@/components/UI/AutoScroll/AutoScroll';
+
 import { LibraryCollectionItem } from './LibraryCollectionItem';
 import { motion } from 'framer-motion';
 

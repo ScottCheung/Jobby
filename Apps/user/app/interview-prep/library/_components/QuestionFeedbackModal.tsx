@@ -1,4 +1,5 @@
 'use client';
+import { Textarea } from '@jobby/ui';
 
 import React, { useState, useEffect } from 'react';
 import { AlertCircle, Loader2, Send, X } from 'lucide-react';
@@ -6,7 +7,7 @@ import type { InterviewQuestion } from '@/lib/types';
 import { api } from '@/lib/api';
 import { showGlobalToast } from '@/lib/toast';
 import { useGlobalModalStore } from '@/lib/store/global-modal-store';
-import { Textarea } from '@/components/UI/textarea';
+
 
 interface QuestionFeedbackModalProps {
   isOpen?: boolean;

@@ -1,6 +1,7 @@
 /** @format */
 
 'use client';
+import { Textarea } from '@jobby/ui';
 
 import React, { useState } from 'react';
 import { X, AlertCircle, Plus, Star } from 'lucide-react';
@@ -11,7 +12,6 @@ import type {
   InterviewTag,
 } from '@/lib/types';
 import { cn, cleanName } from '@/lib/utils';
-import { Textarea } from '@/components/UI/textarea';
 
 export interface QuestionFormProps {
   question: InterviewQuestion;
@@ -43,7 +43,7 @@ export function QuestionForm({
       question?.estimated_duration_seconds ?
         Math.round(question.estimated_duration_seconds / 10) * 10
       : 120,
-  );
+    );
   const [frequency, setFrequency] = useState(question?.frequency || '');
   const [importanceScore, setImportanceScore] = useState<number | ''>(
     question?.importance_score ?? '',
@@ -153,7 +153,7 @@ export function QuestionForm({
             placeholder='Question title'
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className='body-md w-full px-4 py-2.5 rounded-xl border border-border dark:border-border bg-panel text-ink-primary focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20'
+            className='body-md w-full px-4 py-2.5 rounded-xl border   bg-panel text-ink-primary focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20'
           />
         </div>
 
@@ -166,7 +166,7 @@ export function QuestionForm({
             required
             value={categoryId}
             onChange={(e) => setCategoryId(e.target.value)}
-            className='body-md w-full px-4 py-2.5 rounded-xl border border-border dark:border-border bg-panel text-ink-primary focus:outline-none focus:border-primary/50'
+            className='body-md w-full px-4 py-2.5 rounded-xl border   bg-panel text-ink-primary focus:outline-none focus:border-primary/50'
           >
             <option value=''>Select Category</option>
             {categories.map((cat) => (
@@ -187,12 +187,12 @@ export function QuestionForm({
               placeholder='New tag name'
               value={newTagName}
               onChange={(e) => setNewTagName(e.target.value)}
-              className='body-sm flex-1 px-3 py-1.5 rounded-lg border border-border dark:border-border bg-panel text-ink-primary focus:outline-none focus:border-primary/50'
+              className='body-sm flex-1 px-3 py-1.5 rounded-lg border   bg-panel text-ink-primary focus:outline-none focus:border-primary/50'
             />
             <button
               type='button'
               onClick={handleCreateTag}
-              className='label-sm px-3 py-1.5 bg-background-secondary hover:bg-background-secondary dark:bg-panel dark:hover:bg-panel text-ink-primary rounded-lg border border-border dark:border-border'
+              className='label-sm px-3 py-1.5 bg-background-secondary hover:bg-background-secondary dark:bg-panel dark:hover:bg-panel text-ink-primary rounded-lg border  '
             >
               Create Tag
             </button>
@@ -232,7 +232,7 @@ export function QuestionForm({
             <select
               value={difficulty}
               onChange={(e) => setDifficulty(e.target.value)}
-              className='body-md w-full px-4 py-2.5 rounded-xl border border-border dark:border-border bg-panel text-ink-primary focus:outline-none focus:border-primary/50'
+              className='body-md w-full px-4 py-2.5 rounded-xl border   bg-panel text-ink-primary focus:outline-none focus:border-primary/50'
             >
               <option value='Easy'>Easy</option>
               <option value='Medium'>Medium</option>
@@ -250,7 +250,7 @@ export function QuestionForm({
               onChange={(e) =>
                 setEstimatedDurationSeconds(Number(e.target.value) || 10)
               }
-              className='body-md w-full px-4 py-2.5 rounded-xl border border-border dark:border-border bg-panel text-ink-primary focus:outline-none focus:border-primary/50'
+              className='body-md w-full px-4 py-2.5 rounded-xl border   bg-panel text-ink-primary focus:outline-none focus:border-primary/50'
             />
             <p className='text-xs text-ink-secondary'>
               Use 10-second intervals, from 10s to 600s.
@@ -265,7 +265,7 @@ export function QuestionForm({
             <select
               value={frequency}
               onChange={(e) => setFrequency(e.target.value)}
-              className='body-md w-full px-4 py-2.5 rounded-xl border border-border dark:border-border bg-panel text-ink-primary focus:outline-none focus:border-primary/50'
+              className='body-md w-full px-4 py-2.5 rounded-xl border   bg-panel text-ink-primary focus:outline-none focus:border-primary/50'
             >
               <option value=''>Unspecified (Optional)</option>
               <option value='Low'>Low Frequency</option>
@@ -280,7 +280,7 @@ export function QuestionForm({
               onChange={(e) =>
                 setImportanceScore(e.target.value ? Number(e.target.value) : '')
               }
-              className='body-md w-full px-4 py-2.5 rounded-xl border border-border dark:border-border bg-panel text-ink-primary focus:outline-none focus:border-primary/50'
+              className='body-md w-full px-4 py-2.5 rounded-xl border   bg-panel text-ink-primary focus:outline-none focus:border-primary/50'
             >
               <option value=''>Unspecified (Optional)</option>
               <option value={1}>1 Star</option>

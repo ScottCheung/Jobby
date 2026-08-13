@@ -1,6 +1,7 @@
 /** @format */
 
 'use client';
+import { H4, Tooltip, TooltipContent, TooltipProvider, TooltipRoot, TooltipTrigger } from '@jobby/ui';
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -82,14 +83,8 @@ import { useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 
-import {
-  Tooltip,
-  TooltipRoot,
-  TooltipTrigger,
-  TooltipContent,
-  TooltipProvider,
-} from '@/components/UI/tooltip';
-import { H4 } from '@/components/UI/text/typography';
+
+
 import { NotificationCenter } from '@/components/notifications/NotificationCenter';
 import { Stagger, StaggerItem } from '../animation';
 

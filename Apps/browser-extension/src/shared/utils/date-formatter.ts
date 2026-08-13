@@ -35,7 +35,7 @@ export function parseAndFormatJobDate(
 
   // 1. Try parsing relative hour and minute keywords
   const hourMatch = lower.match(/(\d+)\s*(?:hours?|hrs?|h\b|小时前)/i);
-  const minMatch = lower.match(/(\d+)\s*(?:minutes?|mins?|m\b|分钟前)/i);
+  const minMatch = lower.match(/(\d+)\s*(?:minutes?|mins?|分钟前)/i);
 
   if (hourMatch && hourMatch[1]) {
     ageInHours = parseInt(hourMatch[1], 10);
@@ -57,19 +57,19 @@ export function parseAndFormatJobDate(
     if (dayMatch && dayMatch[1]) {
       ageInDays = parseInt(dayMatch[1], 10);
     } else {
-      // Check week count: e.g. "1 week ago", "1w", "1周前"
-      const weekMatch = lower.match(/(\d+)\s*(?:weeks?|w\b|周前|星期前)/i);
+      // Check week count: e.g. "1 week ago", "1w", "1周前", "Over 2 weeks"
+      const weekMatch = lower.match(/(\d+)\s*(?:weeks?|wks?|w\b|周前|星期前)/i);
       if (weekMatch && weekMatch[1]) {
         ageInDays = parseInt(weekMatch[1], 10) * 7;
       } else {
-        // Check month count: e.g. "1 month ago", "1m", "1个月前"
-        const monthMatch = lower.match(/(\d+)\s*(?:months?|m\b|个月前|月前)/i);
+        // Check month count: e.g. "1 month ago", "1mo", "1个月前"
+        const monthMatch = lower.match(/(\d+)\s*(?:months?|mos?|mo\b|m\b|个月前|月前)/i);
         if (monthMatch && monthMatch[1]) {
           ageInDays = parseInt(monthMatch[1], 10) * 30;
-        } else if (/30\+\s*days/i.test(lower)) {
+        } else if (/30\+\s*(?:days?|d)/i.test(lower)) {
           ageInDays = 30;
         } else {
-          const yearMatch = lower.match(/(\d+)\s*(?:years?|y\b|年前)/i);
+          const yearMatch = lower.match(/(\d+)\s*(?:years?|yrs?|y\b|年前)/i);
           if (yearMatch && yearMatch[1]) {
             ageInDays = parseInt(yearMatch[1], 10) * 365;
           }
@@ -78,8 +78,9 @@ export function parseAndFormatJobDate(
     }
   }
 
-  // 2. Try parsing as an explicit date or timestamp
-  const timestamp = Date.parse(trimmed);
+  // 2. Try parsing as an explicit date or timestamp (strip prefix words first)
+  const cleanDateStr = trimmed.replace(/^(?:posted\s+(?:on\s+)?|reposted\s+(?:on\s+)?|date\s*:\s*|发布于\s*|重新发布于\s*|over\s+|more\s+than\s+)/i, '').trim();
+  const timestamp = Date.parse(cleanDateStr) || Date.parse(trimmed);
   if (!isNaN(timestamp)) {
     const parsedDate = new Date(timestamp);
     const year = parsedDate.getFullYear();
@@ -144,8 +145,20 @@ export function parseAndFormatJobDate(
   }
 
   // Older than 2 weeks (> 14 days) -> Not Fresh
+  let displayText: string;
+  if (ageInDays >= 365) {
+    const years = Math.floor(ageInDays / 365);
+    displayText = `${years} year${years === 1 ? '' : 's'} ago`;
+  } else if (ageInDays >= 28) {
+    const months = Math.max(1, Math.floor(ageInDays / 30));
+    displayText = `${months} month${months === 1 ? '' : 's'} ago`;
+  } else {
+    const weeks = Math.floor(ageInDays / 7);
+    displayText = `${weeks} week${weeks === 1 ? '' : 's'} ago`;
+  }
+
   return {
-    displayText: realDateStr,
+    displayText,
     isNotFresh: true,
     realDate: realDateStr,
     ageInDays,

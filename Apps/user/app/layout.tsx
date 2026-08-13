@@ -1,12 +1,13 @@
 /** @format */
 
+import { GeminiBackground } from '@jobby/ui';
 import type { Metadata } from 'next';
 import './globals.css';
 import { QueryProvider } from '@/components/providers/QueryProvider';
 import { ThemeProvider } from '@/components/theme-provider';
 import { ConsoleProvider } from '@/components/ConsoleContext';
 import ConsoleLayout from '@/components/ConsoleLayout';
-import { GeminiBackground } from '@/components/UI/GeminiBackground';
+
 
 export const metadata: Metadata = {
   title: 'Jobby - User Console',

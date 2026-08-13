@@ -1,3 +1,4 @@
+'use client';
 /** @format */
 
 import { EmptyPlaceHolder, type EmptyPlaceHolderProps } from './EmptyPlaceHolder';

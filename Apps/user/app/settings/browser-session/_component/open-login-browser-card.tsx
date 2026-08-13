@@ -1,8 +1,9 @@
 /** @format */
 
+import { HelpTip } from '@jobby/ui';
 import React, { memo } from 'react';
 import { FolderOpen, XCircle } from 'lucide-react';
-import { HelpTip } from '@/components/UI/help-tip';
+
 import { ChromeIcon } from './chrome-icon';
 import { useBrowserSessionStore } from './browser-session-store';
 

@@ -116,7 +116,7 @@ function structuredJobPosting(): {
  * Indeed uses relative-date spans near the job header,
  * e.g. "Posted 3 days ago", "Posted today", "30+ days ago".
  */
-function datePostedFromDom(): string | undefined {
+function datePostedFromDom(jobKey?: string): string | undefined {
   // Try <time> elements first — most reliable
   const timeEl = document.querySelector<HTMLElement>(
     "time[datetime], [data-testid*='date'] time, [class*='date'] time",
@@ -128,27 +128,56 @@ function datePostedFromDom(): string | undefined {
     if (text) return text;
   }
 
-  // Indeed often wraps the posting date in a span near the header
+  // Indeed wraps posting date in metadata spans/footers
   const selectors = [
     "[data-testid='jobsearch-JobMetadataFooter-item']",
+    "[data-testid='myJobsStateDate']",
     "[class*='PostedDate']",
     "[class*='posted-date']",
     "[class*='postedDate']",
     "[class*='date-posted']",
     "[class*='job-age']",
     "span[class*='date']",
+    "span[class*='posted']",
   ];
   const candidates = Array.from(
     document.querySelectorAll<HTMLElement>(selectors.join(", ")),
   );
+  const datePattern = /\b(?:(?:posted|reposted|over|active)\s+)*(?:\d+\s*\+?\s*(?:minutes?|mins?|hours?|hrs?|days?|weeks?|wks?|months?|mos?|years?|yrs?|[dhwmy]|mo)\s*(?:ago)?|today|yesterday|just\s+(?:now|posted)|recently\s+posted)\b/i;
+  const zhPattern = /(?:(?:发布于|重新发布于)\s*)?(?:\d+\s*\+?\s*(?:个?月|周|天|小时|分钟)前|刚刚|今天|昨天)/;
+
   for (const el of candidates) {
     if (!isVisible(el)) continue;
     const text = cleanText(el.textContent);
-    // Match "Posted 3 days ago", "30+ days ago", "Today", etc.
-    if (/\b(posted|today|yesterday|\d+\s*\+?\s*days?\s+ago|just\s+posted|recently\s+posted)\b/i.test(text)) {
-      return text;
+    if (text.length > 60) continue;
+    const match = text.match(datePattern) || text.match(zhPattern);
+    if (match?.[0]) {
+      return match[0].trim();
     }
   }
+
+  // Fallback to searching list card for current job key
+  if (jobKey) {
+    const links = Array.from(document.querySelectorAll<HTMLElement>(`a[href*='jk=${jobKey}'], [data-jk='${jobKey}']`));
+    for (const link of links) {
+      let container: HTMLElement | null = link;
+      for (let depth = 0; container && depth < 5; depth += 1) {
+        const dateSpan = container.querySelector<HTMLElement>("span.date, [class*='date'], time");
+        if (dateSpan) {
+          const dt = dateSpan.getAttribute("datetime");
+          if (dt) return cleanText(dt);
+          const txt = cleanText(dateSpan.textContent);
+          const match = txt.match(datePattern) || txt.match(zhPattern);
+          if (match?.[0]) return match[0].trim();
+        }
+        const containerText = cleanText(container.textContent);
+        const match = containerText.match(datePattern) || containerText.match(zhPattern);
+        if (match?.[0]) return match[0].trim();
+        container = container.parentElement;
+      }
+    }
+  }
+
   return undefined;
 }
 
@@ -228,7 +257,7 @@ export function readIndeedJobPage(): PageInspection {
     })();
 
   // Date posted: prefer JSON-LD datePosted, fall back to DOM scraping
-  const datePosted = structured?.datePosted || datePostedFromDom();
+  const datePosted = structured?.datePosted || datePostedFromDom(externalId);
 
   const enoughEvidence = Boolean(title) && (Boolean(structured) || description.length >= 90);
   if (!enoughEvidence) {

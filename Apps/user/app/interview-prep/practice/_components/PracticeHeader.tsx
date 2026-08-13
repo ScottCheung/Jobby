@@ -1,6 +1,7 @@
 /** @format */
 
 'use client';
+import { Button, Kbd, Tooltip } from '@jobby/ui';
 
 import React from 'react';
 import {
@@ -21,8 +22,8 @@ import {
 } from 'lucide-react';
 import type { InterviewQuestion } from '@/lib/types';
 import { cn, cleanName, formatInterviewDuration } from '@/lib/utils';
-import { Tooltip, Kbd } from '@/components/UI/tooltip';
-import { Button } from '@jobby/ui';
+
+
 import type { PracticeMode } from './PracticeModeModal';
 import { QuestionCommentActions } from './Comments/QuestionCommentActions';
 import { useLayoutStore } from '@/lib/store/layout-store';

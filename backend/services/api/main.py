@@ -3789,6 +3789,16 @@ def _build_form_autofill_instructions(
         raw_answer = values.get(core_field_key)
         if match and not intent_key:
             raw_answer = transformed_core_value(match.rule, values)
+        elif not raw_answer and intent_key in {"identity.full_name", "identity.legal_full_name"}:
+            transform = default_core_value_transform(intent_key)
+            if transform.get("operation") == "join":
+                source_keys = transform.get("source_keys", [])
+                parts = [values.get(str(k), "").strip() for k in source_keys]
+                parts = [p for p in parts if p]
+                if parts:
+                    raw_answer = str(transform.get("separator", " ")).join(parts)
+                else:
+                    raw_answer = values.get("identity.preferred_name")
         if core_field_key == "employment.work_authorization":
             if not raw_answer or not str(raw_answer).strip():
                 citizenship = values.get("employment.citizenship")

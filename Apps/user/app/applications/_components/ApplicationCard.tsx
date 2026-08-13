@@ -1,6 +1,7 @@
 /** @format */
 
 'use client';
+import { Avatar, Tooltip } from '@jobby/ui';
 
 import React from 'react';
 import {
@@ -16,10 +17,11 @@ import {
   Calendar,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { cn } from '@/lib/utils';
-import { Avatar } from '@/components/UI/Avatar/Avatar';
+import { cn, cleanDescription } from '@/lib/utils';
+import { StructuredJobDescription } from '@/components/StructuredJobDescription';
+
 import { IconButton } from '@/components/ConsoleUtils';
-import { Tooltip } from '@/components/UI/tooltip';
+
 export interface ApplicationCardViewModel {
   id: string;
   title: string;
@@ -44,10 +46,11 @@ export interface ApplicationCardViewModel {
 
 interface ApplicationCardProps {
   entry: ApplicationCardViewModel;
-  isSyncing: boolean;
   isSelected: boolean;
-  onOpenDetails: (applicationId: string) => void;
-  onAsync: (applicationId: string) => void;
+  onOpenDetails: (
+    applicationId: string,
+    initialTab?: 'overview' | 'qa' | 'description',
+  ) => void;
   onDelete: (applicationId: string, title?: string, company?: string) => void;
   onOpenResume?: (
     applicationId: string,
@@ -78,10 +81,8 @@ c17.958,0,32.508-14.553,32.508-32.505C66.523,16.062,51.972,1.51,34.015,1.51z'
 
 export function ApplicationCard({
   entry,
-  isSyncing,
   isSelected,
   onOpenDetails,
-  onAsync,
   onDelete,
   onOpenResume,
 }: ApplicationCardProps) {
@@ -101,6 +102,10 @@ export function ApplicationCard({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
+      transition={{
+        duration: 0.5,
+        // delay: 0.07 * Math.random(),
+      }}
       onClick={() => onOpenDetails(entry.id)}
       className={cn(
         'group relative flex flex-col justify-between rounded-tl-3xl! rounded-2xl border border-border/60 bg-panel/70 p-5  hover:border-primary/40 hover:shadow-md cursor-pointer',
@@ -213,19 +218,23 @@ export function ApplicationCard({
             size='lg'
             delay={150}
             content={
-              <div className='max-h-[350px] max-w-[460px] overflow-y-auto custom-scrollbar-primary p-1 space-y-1 text-xs'>
+              <div className='max-h-[350px] max-w-[460px] overflow-y-auto custom-scrollbar-primary p-2 space-y-1 text-xs'>
                 <div className='font-bold text-primary text-[11px] uppercase tracking-wider border-b border-border/40 pb-1 mb-2'>
                   Full Job Description ({entry.company})
                 </div>
-                <p className='whitespace-pre-wrap leading-relaxed text-ink-primary/90 font-normal'>
-                  {entry.jobDescription}
-                </p>
+                <StructuredJobDescription content={entry.jobDescription} />
               </div>
             }
           >
-            <div className='mt-3.5 rounded-xl border border-border/40 bg-background-secondary/40 p-3 text-xs text-ink-secondary hover:border-primary/30 transition-colors'>
+            <div
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenDetails(entry.id, 'description');
+              }}
+              className='mt-3.5 rounded-xl border border-border/40 bg-background-secondary/40 p-3 text-xs text-ink-secondary hover:border-primary/30 transition-colors cursor-pointer group/jdp'
+            >
               <div className='flex items-center justify-between mb-1'>
-                <span className='text-[10px] font-bold text-ink-secondary/70 uppercase tracking-wider'>
+                <span className='text-[10px] font-bold text-ink-secondary/70 uppercase tracking-wider group-hover/jdp:text-primary transition-colors'>
                   Job Description Preview
                 </span>
                 <span className='text-[10px] text-primary font-medium'>
@@ -233,7 +242,7 @@ export function ApplicationCard({
                 </span>
               </div>
               <p className='leading-relaxed text-ink-primary/80 line-clamp-3 whitespace-pre-wrap'>
-                {entry.jobDescription}
+                {cleanDescription(entry.jobDescription)}
               </p>
             </div>
           </Tooltip>
@@ -269,20 +278,12 @@ export function ApplicationCard({
           )}
 
           {!entry.isLiveProcessing && (
-            <>
-              <IconButton
-                label='Async sync from link'
-                icon='async'
-                onClick={() => onAsync(entry.id)}
-                disabled={!entry.jobLink || isSyncing}
-              />
-              <IconButton
-                label='Delete application'
-                icon='delete'
-                onClick={() => onDelete(entry.id, entry.title, entry.company)}
-                danger
-              />
-            </>
+            <IconButton
+              label='Delete application'
+              icon='delete'
+              onClick={() => onDelete(entry.id, entry.title, entry.company)}
+              danger
+            />
           )}
         </div>
 
