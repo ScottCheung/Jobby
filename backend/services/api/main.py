@@ -3125,7 +3125,8 @@ def create_application_plan_endpoint(
         stored_plan = (existing.raw_data or {}).get("application_plan")
         if stored_plan:
             previous_plan = plan_from_dict(stored_plan)
-            if previous_plan.decision.matched_terms and not plan_can_be_reevaluated(previous_plan):
+            has_new_scores = previous_plan.candidate.priority_score is not None and previous_plan.candidate.recency_factor is not None
+            if previous_plan.decision.matched_terms and has_new_scores and not plan_can_be_reevaluated(previous_plan):
                 return _application_plan_response(existing, previous_plan)
         else:
             candidate_payload["already_applied"] = True
