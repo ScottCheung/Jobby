@@ -6,13 +6,6 @@ import type { PageInspection } from "../../shared/contracts/page-inspection";
 import { executeAutoRun, executeMoveNext, executeMovePrevious, executeOpenLinkedIn } from "../services/application-actions";
 import { send, wait } from "../services/messaging";
 
-export type StatusState = "idle" | "running" | "success" | "warning" | "error";
-
-export interface StatusBannerState {
-  state: StatusState;
-  message: string;
-}
-
 export function useApplicationPlan(
   latestInspection: PageInspection | null,
   latestForm: FormInspection | null,
@@ -20,10 +13,6 @@ export function useApplicationPlan(
   inspectForm: () => Promise<FormInspection | null>,
 ) {
   const [latestPlan, setLatestPlan] = useState<ValidatedApplicationPlanResponse | null>(null);
-  const [status, setStatus] = useState<StatusBannerState>({
-    state: "idle",
-    message: "Ready: Open job details or Easy Apply popup to get started.",
-  });
   const [fillResults, setFillResults] = useState<FieldFillResult[]>([]);
   const [unansweredFields, setUnansweredFields] = useState<Array<{ key: string; label: string; reason: string }>>([]);
   const [loadingButton, setLoadingButton] = useState<string | null>(null);
@@ -39,10 +28,6 @@ export function useApplicationPlan(
       setLatestPlan(null);
       setFillResults([]);
       setUnansweredFields([]);
-      setStatus({
-        state: "idle",
-        message: "New job detected, ready for application.",
-      });
     }
     lastJobKey.current = currentJobKey;
   }, [latestInspection]);
@@ -82,22 +67,17 @@ export function useApplicationPlan(
     }
   }, [latestInspection, latestPlan]);
 
-  const setActionStatus = useCallback((state: StatusState, message: string) => {
-    setStatus({ state, message });
-  }, []);
-
   const createPlan = useCallback(async () => {
     const response = await send({
       type: "application.create-plan-active",
       ...(latestInspection ? { inspection: latestInspection } : {}),
     });
     if (!response.ok) {
-      setActionStatus("error", response.error);
       return null;
     }
     if (response.plan) setLatestPlan(response.plan);
     return response.plan ?? null;
-  }, [latestInspection, setActionStatus]);
+  }, [latestInspection]);
 
   const applyPlanAction = useCallback(async (
     action: ExtensionPlanAction,
@@ -132,7 +112,6 @@ export function useApplicationPlan(
 
   const autofillForm = useCallback(async () => {
     setLoadingButton("autofill");
-    setActionStatus("running", "Matching your profile and filling out the form...");
     try {
       let form =
         latestForm?.kind === "application_form" || latestForm?.kind === "page_input_fields"
@@ -143,13 +122,11 @@ export function useApplicationPlan(
         form = await inspectForm();
       }
       if (!form || (form.kind !== "application_form" && form.kind !== "page_input_fields")) {
-        setActionStatus("error", "No fillable form detected. Please open the application form and try again.");
         return;
       }
 
       const response = await send({ type: "form.autofill-active" });
       if (!response.ok) {
-        setActionStatus("error", `Autofill failed: ${response.error}`);
         return;
       }
 
@@ -158,24 +135,13 @@ export function useApplicationPlan(
       setFillResults(results);
       setUnansweredFields(unanswered);
       await inspectForm();
-
-      const filledCount = results.filter(
-        (item) => item.status === "filled" || item.status === "already_filled",
-      ).length;
-      setActionStatus(
-        unanswered.length > 0 ? "warning" : "success",
-        unanswered.length > 0
-          ? `Autofilled ${filledCount} field(s). ${unanswered.length} field(s) need your review.`
-          : `Autofilled ${filledCount} field(s). Please inspect and proceed to next step.`,
-      );
     } finally {
       setLoadingButton(null);
     }
-  }, [latestForm, inspectForm, setActionStatus]);
+  }, [latestForm, inspectForm]);
 
   const fillAndNext = useCallback(async () => {
     setLoadingButton("fillAndNext");
-    setActionStatus("running", "🔄 Preparing application plan and extracting form fields...");
     try {
       let form = latestForm?.kind === "application_form" ? latestForm : await inspectForm();
       if (!form || form.kind !== "application_form") {
@@ -186,11 +152,9 @@ export function useApplicationPlan(
         }
       }
       if (!form || form.kind !== "application_form") {
-        setActionStatus("error", "❌ No application form popup detected. Please open Easy Apply first.");
         return;
       }
       if (await ensurePlanPrepared() && latestPlan) {
-        setActionStatus("running", "🔄 Matching answers, autofilling, and proceeding...");
         const response = await send({ type: "application.fill-and-next-active", applicationId: latestPlan.application_id });
         if (response.ok) {
           setFillResults(response.fillResults || []);
@@ -198,80 +162,67 @@ export function useApplicationPlan(
           if (response.plan) setLatestPlan(response.plan);
           await inspectForm();
           if (response.stepAdvanced) {
-            setActionStatus("success", `✅ Form filled and moved to next step (${response.actionLabel || "Next"})!`);
             return;
           }
         }
       }
-      const res = await executeMoveNext(inspectForm);
-      setActionStatus(res.success ? "success" : "error", res.success ? res.message || "Moved to next step" : res.error || "Failed");
+      await executeMoveNext(inspectForm);
     } finally {
       setLoadingButton(null);
     }
-  }, [latestForm, inspectForm, ensurePlanPrepared, latestPlan, setActionStatus]);
+  }, [latestForm, inspectForm, ensurePlanPrepared, latestPlan]);
 
   const runAction = useCallback(
-    async (btnName: string, runningMsg: string, fn: () => Promise<{ success: boolean; message?: string; error?: string }>) => {
+    async (btnName: string, fn: () => Promise<{ success: boolean; message?: string; error?: string }>) => {
       setLoadingButton(btnName);
-      setActionStatus("running", runningMsg);
       try {
-        const res = await fn();
-        setActionStatus(res.success ? "success" : "error", res.success ? res.message || "Done" : res.error || "Failed");
+        await fn();
       } finally {
         setLoadingButton(null);
       }
     },
-    [setActionStatus],
+    [],
   );
 
-  const openLinkedIn = () => runAction("open", "🔄 Attempting to open Easy Apply modal...", () => executeOpenLinkedIn(inspectForm));
-  const moveNext = () => runAction("next", "🔄 Requesting Next step...", () => executeMoveNext(inspectForm));
-  const movePrevious = () => runAction("previous", "🔄 Requesting Previous step...", () => executeMovePrevious(inspectForm));
+  const openLinkedIn = () => runAction("open", () => executeOpenLinkedIn(inspectForm));
+  const moveNext = () => runAction("next", () => executeMoveNext(inspectForm));
+  const movePrevious = () => runAction("previous", () => executeMovePrevious(inspectForm));
 
   const submitApplication = useCallback(async () => {
     setLoadingButton("submit");
-    setActionStatus("running", "🔄 Confirming Plan and submitting LinkedIn application...");
     try {
       let plan = latestPlan ?? (latestInspection?.kind === "job" ? await createPlan() : null);
-      if (!plan) return setActionStatus("error", "❌ Submission failed: Application plan not created.");
+      if (!plan) return;
 
       const response = await send({ type: "application.submit-linkedin-active", applicationId: plan.application_id });
-      if (!response.ok) return setActionStatus("error", `❌ Application submission failed: ${response.error}`);
-      setActionStatus("success", `🎉 ${response.linkedinApplication?.message || "LinkedIn application successfully submitted!"}`);
+      if (!response.ok) return;
       if (response.plan) setLatestPlan(response.plan);
     } finally {
       setLoadingButton(null);
     }
-  }, [latestPlan, latestInspection, createPlan, setActionStatus]);
+  }, [latestPlan, latestInspection, createPlan]);
 
   const autoRunLinkedIn = useCallback(async () => {
     setLoadingButton("autoRun");
-    setActionStatus("running", "⚡ Starting auto-apply workflow, analyzing & filling form...");
     try {
       const res = await executeAutoRun(latestPlan?.application_id);
-      if (!res.success) return setActionStatus("error", res.error || "Failed");
+      if (!res.success) return;
       if (res.plan) setLatestPlan(res.plan);
       if (res.fillResults) setFillResults(res.fillResults);
       if (res.unansweredFields) setUnansweredFields(res.unansweredFields);
-      setActionStatus(
-        res.autoStatus === "paused_for_user" ? "warning" : "success",
-        res.autoStatus === "paused_for_user" ? `⏸️ Auto-apply paused: ${res.autoMessage || "Please complete remaining fields on page."}` : `✅ ${res.autoMessage || "Auto-apply phase completed!"}`,
-      );
     } finally {
       setLoadingButton(null);
     }
-  }, [latestPlan, setActionStatus]);
+  }, [latestPlan]);
 
   const recordApplication = useCallback(async () => {
     setLoadingButton("record");
-    setActionStatus("running", "📝 Recording application info...");
     try {
       let plan = latestPlan;
       if (!plan && latestInspection?.kind === "job") {
         plan = await createPlan();
       }
       if (!plan) {
-        setActionStatus("error", "❌ Record failed: Unable to extract job info from current page.");
         return;
       }
 
@@ -314,23 +265,17 @@ export function useApplicationPlan(
 
       if (response.ok && response.plan) {
         setLatestPlan(response.plan);
-        setActionStatus("success", "🎉 Application record successfully saved! View on /applications page.");
-      } else {
-        const errMsg = !response.ok ? response.error : "Error saving application record.";
-        setActionStatus("error", `❌ Record failed: ${errMsg}`);
       }
     } catch (error) {
-      const msg = error instanceof Error ? error.message : "An exception occurred while recording.";
-      setActionStatus("error", `❌ Record failed: ${msg}`);
+      // ignore
     } finally {
       setLoadingButton(null);
     }
-  }, [latestPlan, latestInspection, createPlan, setActionStatus]);
+  }, [latestPlan, latestInspection, createPlan]);
 
   return {
     latestPlan,
     setLatestPlan,
-    status,
     fillResults,
     unansweredFields,
     loadingButton,

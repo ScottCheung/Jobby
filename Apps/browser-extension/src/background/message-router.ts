@@ -24,6 +24,7 @@ import {
   listDiagnostics,
 } from "./session-store";
 import { controlRun } from "./run-controller";
+import { isSidepanelOpenForWindow } from "./service-worker";
 
 export async function handleRuntimeMessage(
   rawMessage: unknown,
@@ -252,6 +253,34 @@ export async function handleRuntimeMessage(
             autoMessage: autoRes.message,
           };
         }
+      case "sidepanel.query-state":
+        if (sender?.tab?.windowId !== undefined) {
+          try {
+            const win = await chrome.windows.get(sender.tab.windowId);
+            if (win.type === "popup") {
+              return { ok: true, snapshot: await getRuntimeSnapshot(), isOpen: false, canHostSidepanel: false };
+            }
+          } catch {
+            // Ignore error and fall back
+          }
+          return { ok: true, snapshot: await getRuntimeSnapshot(), isOpen: isSidepanelOpenForWindow(sender.tab.windowId), canHostSidepanel: true };
+        }
+        return { ok: true, snapshot: await getRuntimeSnapshot(), isOpen: false, canHostSidepanel: false };
+      case "sidepanel.open":
+        if (sender?.tab?.id !== undefined && sender?.tab?.windowId !== undefined) {
+          try {
+            const win = await chrome.windows.get(sender.tab.windowId);
+            if (win.type === "popup") {
+              return { ok: false, error: "Side panel not supported in popup windows" };
+            }
+            await chrome.sidePanel.open({ tabId: sender.tab.id });
+            return { ok: true, snapshot: await getRuntimeSnapshot() };
+          } catch (error: unknown) {
+            const msg = error instanceof Error ? error.message : String(error);
+            return { ok: false, error: msg };
+          }
+        }
+        return { ok: false, error: "No sender tab" };
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unexpected extension error.";

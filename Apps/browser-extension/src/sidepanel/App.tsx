@@ -9,13 +9,13 @@ import { JobScoreCard } from './components/JobScoreCard';
 import { PageClassBanner } from './components/PageClassBanner';
 import { ResultsDisplay } from './components/ResultsDisplay';
 import { ReviewModal } from './components/ReviewModal';
-import { StatusBanner } from './components/StatusBanner';
 import { WorkflowSection } from './components/WorkflowSection';
 import { useApplicationPlan } from './hooks/useApplicationPlan';
 import { useAuth } from './hooks/useAuth';
 import { useDiagnostics } from './hooks/useDiagnostics';
 import { useInspection } from './hooks/useInspection';
 import { useThemeSync } from './hooks/useThemeSync';
+import { EmptyPlaceHolder } from '@jobby/ui/components/UI/EmptyPlaceHolder';
 import { getActiveTab } from './services/messaging';
 
 const PAGE_READY_DELAY_MS = 150;
@@ -26,7 +26,14 @@ export function App() {
   const [activeTab, setActiveTab] = useState<TabType>('home');
 
   const { diagnostics, errorMessage, refresh, clearLogs } = useDiagnostics();
-  const { authStatus, authError, refreshAuth, signIn, disconnect } = useAuth();
+  const {
+    authStatus,
+    authError,
+    refreshAuth,
+    signIn,
+    disconnect,
+    isSigningIn,
+  } = useAuth();
   useThemeSync(authStatus);
   const {
     latestInspection,
@@ -52,9 +59,32 @@ export function App() {
     }
   }, [activeTab, inspectForm]);
 
+  useEffect(() => {
+    const isIframe =
+      typeof window !== 'undefined' && window.self !== window.top;
+    if (!isIframe && typeof chrome !== 'undefined' && chrome.runtime?.connect) {
+      const port = chrome.runtime.connect({ name: 'jobby-sidepanel' });
+
+      const registerWindow = async () => {
+        try {
+          // getCurrent inside the sidepanel page context always returns the window hosting the sidepanel
+          const win = await chrome.windows.getCurrent();
+          if (win && win.id !== undefined) {
+            port.postMessage({ type: 'sidepanel.init', windowId: win.id });
+          }
+        } catch {}
+      };
+
+      void registerWindow();
+
+      return () => {
+        port.disconnect();
+      };
+    }
+  }, []);
+
   const {
     latestPlan,
-    status,
     loadingButton,
     createPlan,
     applyPlanAction,
@@ -158,6 +188,55 @@ export function App() {
     };
   }, [refresh, refreshAuth, autoInspectActivePage, inspectForm]);
 
+  const [navVisible, setNavVisible] = useState(true);
+  const lastScrollYRef = useRef(0);
+  const lastTargetRef = useRef<EventTarget | null>(null);
+
+  useEffect(() => {
+    setNavVisible(true);
+  }, [activeTab]);
+
+  useEffect(() => {
+    const handleScroll = (e: Event) => {
+      const target = e.target;
+      let currentY = 0;
+
+      if (target === document || target === window) {
+        currentY = window.scrollY || document.documentElement?.scrollTop || 0;
+      } else if (target instanceof HTMLElement) {
+        currentY = target.scrollTop;
+      } else {
+        return;
+      }
+
+      if (lastTargetRef.current !== target) {
+        lastTargetRef.current = target;
+        lastScrollYRef.current = currentY;
+        return;
+      }
+
+      const diff = currentY - lastScrollYRef.current;
+
+      if (currentY <= 10) {
+        setNavVisible(true);
+      } else if (diff > 6) {
+        setNavVisible(false);
+      } else if (diff < -6) {
+        setNavVisible(true);
+      }
+
+      lastScrollYRef.current = currentY;
+    };
+
+    window.addEventListener('scroll', handleScroll, {
+      capture: true,
+      passive: true,
+    });
+    return () => {
+      window.removeEventListener('scroll', handleScroll, { capture: true });
+    };
+  }, []);
+
   const handleConfirmSubmit = async () => {
     setIsReviewOpen(false);
     await submitApplication();
@@ -165,13 +244,19 @@ export function App() {
 
   return (
     <main className='sidepanel-shell'>
-      <header className='sidepanel-header'>
+      <header
+        className={`sidepanel-header ${
+          navVisible ? 'translate-y-0 ' : (
+            '-translate-y-full  pointer-events-none'
+          )
+        }`}
+      >
         <div className='sidepanel-brand'>
           <img
             src={
-              typeof chrome !== 'undefined' && chrome.runtime?.getURL
-                ? chrome.runtime.getURL('favicon.svg')
-                : '/favicon.svg'
+              typeof chrome !== 'undefined' && chrome.runtime?.getURL ?
+                chrome.runtime.getURL('favicon.svg')
+              : '/favicon.svg'
             }
             className='sidepanel-logo'
             alt='Jobby logo'
@@ -183,6 +268,7 @@ export function App() {
           authError={authError}
           onSignIn={signIn}
           onDisconnect={disconnect}
+          isSigningIn={isSigningIn}
         />
       </header>
 
@@ -195,16 +281,61 @@ export function App() {
               aria-label='Current page'
             >
               <p className='menu-label'>Current Page</p>
-              <JobScoreCard
-                latestInspection={latestInspection}
-                latestPlan={latestPlan}
-              />
-              <PageClassBanner
-                latestInspection={latestInspection}
-                latestPlan={latestPlan}
-                isInspecting={isInspectingPage}
-                error={inspectionError}
-              />
+              {(() => {
+                const isJobPage = latestInspection?.kind === 'job';
+                const showNotJobOverlay =
+                  !isInspectingPage &&
+                  !isJobPage &&
+                  (latestInspection !== null || Boolean(inspectionError));
+
+                if (showNotJobOverlay) {
+                  return (
+                    <div className='relative rounded-2xl overflow-hidden min-h-[340px] flex flex-col gap-2 transition-all duration-200 border border-border/40 p-1 bg-panel/30'>
+                      {/* Underlying baseline skeleton to keep height completely unchanged */}
+                      <div className='opacity-20 pointer-events-none filter blur-[2px] select-none flex flex-col gap-2'>
+                        <JobScoreCard
+                          latestInspection={null}
+                          latestPlan={null}
+                          isInspecting={true}
+                        />
+                        <PageClassBanner
+                          latestInspection={null}
+                          latestPlan={null}
+                          isInspecting={true}
+                        />
+                      </div>
+
+                      {/* Overlay Mask */}
+                      <div className='absolute inset-0 z-10 flex flex-col items-center justify-center bg-background/85 backdrop-blur-md p-4 rounded-2xl border border-border/50 shadow-xs'>
+                        <EmptyPlaceHolder
+                          title='Insufficient Content'
+                          description='Unable to extract job info'
+                          IP={1}
+                          className='border-0 bg-transparent p-0 shadow-none'
+                          messageClassName='!mt-20 !text-xs font-bold uppercase tracking-wider text-foreground'
+                          descriptionClassName='!text-[11px] text-muted-foreground max-w-[240px] text-center'
+                        />
+                      </div>
+                    </div>
+                  );
+                }
+
+                return (
+                  <>
+                    <JobScoreCard
+                      latestInspection={latestInspection}
+                      latestPlan={latestPlan}
+                      isInspecting={isInspectingPage}
+                    />
+                    <PageClassBanner
+                      latestInspection={latestInspection}
+                      latestPlan={latestPlan}
+                      isInspecting={isInspectingPage}
+                      error={inspectionError}
+                    />
+                  </>
+                );
+              })()}
             </section>
 
             <section
@@ -213,7 +344,6 @@ export function App() {
               aria-label='Application actions'
             >
               <p className='menu-label'>Actions</p>
-              <StatusBanner status={status} />
               <WorkflowSection
                 latestInspection={latestInspection}
                 latestForm={latestForm}
@@ -302,7 +432,11 @@ export function App() {
         )}
       </div>
 
-      <BottomNav activeTab={activeTab} onChange={setActiveTab} />
+      <BottomNav
+        activeTab={activeTab}
+        onChange={setActiveTab}
+        visible={navVisible}
+      />
 
       <ReviewModal
         isOpen={isReviewOpen}

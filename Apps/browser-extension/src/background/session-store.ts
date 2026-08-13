@@ -75,6 +75,18 @@ export async function clearAuthSession(): Promise<void> {
   await chrome.storage.local.remove(AUTH_KEY);
 }
 
+const EXPLICIT_DISCONNECT_KEY = "jobby.auth.explicit_disconnect";
+
+export async function setExplicitDisconnect(value: boolean): Promise<void> {
+  await chrome.storage.local.set({ [EXPLICIT_DISCONNECT_KEY]: value });
+}
+
+export async function isExplicitlyDisconnected(): Promise<boolean> {
+  const stored = await chrome.storage.local.get(EXPLICIT_DISCONNECT_KEY);
+  return Boolean(stored[EXPLICIT_DISCONNECT_KEY]);
+}
+
+
 export async function getAuthStatus(): Promise<AuthStatus> {
   const session = await getAuthSession();
   if (!session) return { connected: false };

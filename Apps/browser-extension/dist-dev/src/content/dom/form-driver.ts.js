@@ -120,9 +120,9 @@ function findAriaCombobox(target, scope) {
 function labelsMatchTarget(element, target, scope) {
   const checkboxGroup = element instanceof HTMLInputElement ? checkboxChoiceGroupFor(element, scope) : null;
   const rawCurrent = isCheckboxChoiceGroupForTarget(element, target, scope) ? checkboxGroup?.label || "" : labelFor(element, scope);
-  const currentLabel = normalized(rawCurrent).replace(/\s*\*+\s*$/g, "").trim();
-  const targetLabel = normalized(target.label).replace(/\s*\*+\s*$/g, "").trim();
-  return (fieldType(element) === target.type || isCheckboxChoiceGroupForTarget(element, target, scope)) && (currentLabel === targetLabel || currentLabel.length > 3 && targetLabel.length > 3 && (currentLabel.includes(targetLabel) || targetLabel.includes(currentLabel)));
+  const currentLabel = normalized(rawCurrent).replace(/^\s*(?:\(?(?:required|optional|必填|选填)\)?|\*)+\s*/gi, "").replace(/\s*(?:\(?(?:required|optional|必填|选填)\)?|\*)+\s*$/gi, "").trim();
+  const targetLabel = normalized(target.label).replace(/^\s*(?:\(?(?:required|optional|必填|选填)\)?|\*)+\s*/gi, "").replace(/\s*(?:\(?(?:required|optional|必填|选填)\)?|\*)+\s*$/gi, "").trim();
+  return (fieldType(element) === target.type || isCheckboxChoiceGroupForTarget(element, target, scope)) && (currentLabel === targetLabel || currentLabel.length >= 2 && targetLabel.length >= 2 && (currentLabel.includes(targetLabel) || targetLabel.includes(currentLabel)));
 }
 export function findFormElement(target, scope) {
   const controls = visibleControlsInScope(scope);
@@ -462,6 +462,8 @@ export function clearFormFile(input, instruction) {
   return result(instruction, "filled", "File upload cleared.");
 }
 function matchesTarget(element, instruction, scope) {
+  if (instruction.target.id && element.id === instruction.target.id) return true;
+  if (instruction.target.name && element.getAttribute("name") === instruction.target.name) return true;
   return labelsMatchTarget(element, instruction.target, scope);
 }
 function setSelectValue(element, value) {

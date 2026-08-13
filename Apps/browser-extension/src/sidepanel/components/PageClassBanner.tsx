@@ -20,44 +20,88 @@ export function PageClassBanner({
   latestInspection,
   latestPlan,
   isInspecting,
-  error,
+  error: _error,
 }: PageClassBannerProps) {
   const [isDescExpanded, setIsDescExpanded] = useState(false);
 
-  if (isInspecting) {
+  if (isInspecting || !latestInspection) {
     return (
       <div
-        className='page-class-banner page-class-banner--checking'
+        className='page-class-banner page-class-banner--job flex-col !items-stretch gap-2.5'
         role='status'
-        aria-live='polite'
       >
-        <span className='page-class-banner__icon'>⟳</span>
-        <span className='page-class-banner__label'>
-          Inspecting page type...
-        </span>
-      </div>
-    );
-  }
-
-  if (!latestInspection) {
-    if (error) {
-      return (
-        <div
-          className='page-class-banner page-class-banner--error'
-          role='alert'
-        >
-          <span className='page-class-banner__icon'>!</span>
-          <span className='page-class-banner__label'>
-            <strong>Page Inspection Failed</strong>
-            <span className='page-class-banner__sub'>{error}</span>
-          </span>
+        <div className='flex items-center justify-between gap-2 border-b border-primary/20 pb-2'>
+          <div className='flex items-center gap-1.5'>
+            <span className='page-class-banner__icon text-primary font-bold animate-spin'>
+              ⟳
+            </span>
+            <strong className='text-xs font-bold text-foreground animate-text-shimmer-primary animate-text-shimmer'>
+              Inspecting Page...
+            </strong>
+          </div>
+          <span className='h-4 w-16 rounded-full animate-skeleton-shimmer' />
         </div>
-      );
-    }
-    return (
-      <div className='page-class-banner page-class-banner--idle' role='status'>
-        <span className='page-class-banner__icon'>○</span>
-        <span className='page-class-banner__label'>Awaiting inspection...</span>
+
+        {/* Skeleton Placeholder Content matching loaded job structure */}
+        <div className='grid gap-2 text-xs text-foreground/90 pt-0.5'>
+          <div className='grid grid-cols-[85px_minmax(0,1fr)] gap-1 items-center'>
+            <span className='text-muted-foreground text-[11px] font-medium'>
+              Job Title:
+            </span>
+            <div className='h-3.5 w-3/4 rounded-md animate-skeleton-shimmer' />
+          </div>
+
+          <div className='grid grid-cols-[85px_minmax(0,1fr)] gap-1 items-center'>
+            <span className='text-muted-foreground text-[11px] font-medium'>
+              Company:
+            </span>
+            <div className='h-3.5 w-1/2 rounded-md animate-skeleton-shimmer' />
+          </div>
+
+          <div className='grid grid-cols-[85px_minmax(0,1fr)] gap-1 items-center'>
+            <span className='text-muted-foreground text-[11px] font-medium'>
+              Location:
+            </span>
+            <div className='h-3.5 w-2/3 rounded-md animate-skeleton-shimmer' />
+          </div>
+
+          <div className='grid grid-cols-[85px_minmax(0,1fr)] gap-1 items-center'>
+            <span className='text-muted-foreground text-[11px] font-medium'>
+              Posted:
+            </span>
+            <div className='h-3.5 w-1/3 rounded-md animate-skeleton-shimmer' />
+          </div>
+
+          <div className='grid grid-cols-[85px_minmax(0,1fr)] gap-1 items-center'>
+            <span className='text-muted-foreground text-[11px] font-medium'>
+              Easy Apply:
+            </span>
+            <div className='h-3.5 w-10 rounded-md animate-skeleton-shimmer' />
+          </div>
+
+          <div className='grid grid-cols-[85px_minmax(0,1fr)] gap-1 items-center'>
+            <span className='text-muted-foreground text-[11px] font-medium'>
+              Technologies:
+            </span>
+            <div className='flex gap-1.5'>
+              <div className='h-4 w-14 rounded-md animate-skeleton-shimmer' />
+              <div className='h-4 w-16 rounded-md animate-skeleton-shimmer' />
+            </div>
+          </div>
+
+          <div className='mt-1 pt-2 border-t border-border/60 grid gap-1.5'>
+            <div className='flex items-center justify-between'>
+              <span className='text-muted-foreground text-[11px] font-semibold uppercase tracking-wider'>
+                Job Description
+              </span>
+            </div>
+            <div className='grid gap-1.5 pt-0.5'>
+              <div className='h-3 w-full rounded-md animate-skeleton-shimmer' />
+              <div className='h-3 w-5/6 rounded-md animate-skeleton-shimmer' />
+              <div className='h-3 w-4/6 rounded-md animate-skeleton-shimmer' />
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -76,7 +120,7 @@ export function PageClassBanner({
     } = latestInspection.snapshot;
 
     const matchedTerms = latestPlan?.plan?.decision?.matched_terms || [];
-    const matchedSet = new Set(matchedTerms.map((t) => t.toLowerCase()));
+    const matchedSet = new Set(matchedTerms.map((t: string) => t.toLowerCase()));
 
     return (
       <div
@@ -163,28 +207,19 @@ export function PageClassBanner({
             </div>
           </div>
 
-          <div className='grid grid-cols-[85px_minmax(0,1fr)] gap-1'>
-            <span className='text-muted-foreground text-[11px] font-medium'>
-              External ID:
-            </span>
-            <span className='font-mono text-[11px] text-muted-foreground truncate'>
-              {externalId}
-            </span>
-          </div>
-
           {technologies && technologies.length > 0 && (
             <div className='grid grid-cols-[85px_minmax(0,1fr)] gap-1 items-start'>
               <span className='text-muted-foreground text-[11px] font-medium pt-0.5'>
                 Technologies:
               </span>
               <div className='flex flex-wrap gap-1'>
-                {technologies.map((tech) => {
+                {technologies.map((tech: string) => {
                   const techLower = tech.toLowerCase();
                   const isMatched =
                     matchedSet.has(techLower) ||
                     techLower
                       .split(/[\s/\-+.]+/)
-                      .some((token) => token && matchedSet.has(token));
+                      .some((token: string) => token && matchedSet.has(token));
 
                   return (
                     <span
@@ -192,7 +227,7 @@ export function PageClassBanner({
                       className={`rounded-md px-1.5 py-0.5 text-[10px] font-medium inline-flex items-center gap-0.5 border ${
                         isMatched ?
                           'bg-success/15 text-success border-success/30'
-                        : 'bg-success/15 text-warning border-warning/30'
+                        : 'bg-warning/15 text-warning border-warning/30'
                       }`}
                     >
                       {tech}
@@ -202,6 +237,18 @@ export function PageClassBanner({
                 })}
               </div>
             </div>
+          )}
+
+          {externalId && (
+            <details className='mt-1 text-[10px] text-muted-foreground/60 cursor-pointer select-none'>
+              <summary className='hover:text-muted-foreground transition-colors'>
+                Show Technical Details
+              </summary>
+              <div className='grid grid-cols-[85px_minmax(0,1fr)] gap-1 mt-1 font-mono text-[10px] border-t border-border/40 pt-1'>
+                <span>External ID:</span>
+                <span className='truncate'>{externalId}</span>
+              </div>
+            </details>
           )}
 
           {description && (

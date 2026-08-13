@@ -60,7 +60,7 @@ button.is-loading {
   @apply min-h-screen bg-background text-foreground;
 }
 .sidepanel-header {
-  @apply sticky top-0 z-10 flex items-center justify-between gap-3 bg-panel/95 px-4 py-2.5 backdrop-blur;
+  @apply sticky top-0 z-10 flex items-center justify-between gap-3 bg-panel/95 px-4 py-2.5 backdrop-blur transition-all duration-500 ease-in-out;
 }
 .sidepanel-brand {
   @apply flex items-center gap-2;
@@ -83,10 +83,22 @@ button.is-loading {
   @apply flex max-w-[155px] flex-col items-end gap-1;
 }
 .account-state {
-  @apply inline-flex min-h-[28px] max-w-full items-center gap-1.5 rounded-full border border-border bg-panel px-2.5 py-1 text-[10px] font-semibold text-muted-foreground truncate;
+  @apply inline-flex min-h-[28px] max-w-full items-center gap-1.5 rounded-full border border-border bg-panel px-2.5 py-1 text-[10px] font-semibold text-muted-foreground truncate transition-all duration-150;
+}
+.account-state:hover:not(:disabled) {
+  @apply bg-muted/25 text-foreground border-border/80;
 }
 .account-state.is-connected {
   @apply border-primary/40 bg-primary/10 text-primary;
+}
+.account-state.is-connected:hover:not(:disabled) {
+  @apply border-primary/60 bg-primary/20 text-primary;
+}
+.account-state.text-destructive {
+  @apply border-destructive/30 bg-destructive/10 text-destructive;
+}
+.account-state.text-destructive:hover:not(:disabled) {
+  @apply border-destructive/50 bg-destructive/20 text-destructive;
 }
 .account-dot {
   @apply h-1.5 w-1.5 shrink-0 rounded-full bg-primary;
@@ -102,7 +114,7 @@ button.is-loading {
 }
 /* ── Bottom Navigation ─────────────────────────────────────────────────── */
 .bottom-nav-container {
-  @apply fixed bottom-0 left-0 right-0 z-50 p-4 transition-transform duration-1000 ease-in-out pointer-events-none;
+  @apply fixed bottom-0 left-0 right-0 z-50 p-4 transition-all duration-500 ease-in-out pointer-events-none;
 }
 .bottom-nav-card {
   @apply flex items-center justify-around rounded-[24px] bg-panel/80 p-1.5 backdrop-blur-xl shadow-2xl shadow-2xl shadow-primary pointer-events-auto;
@@ -673,6 +685,19 @@ details.page-class-banner .page-class-banner__summary {
   );
 }
 
+@utility animate-skeleton-shimmer {
+  background-size: 300% 100%;
+  background-image: linear-gradient(
+    105deg,
+    color-mix(in srgb, var(--primary) 12%, transparent) 0%,
+    color-mix(in srgb, var(--primary) 12%, transparent) 35%,
+    color-mix(in srgb, var(--primary) 45%, transparent) 50%,
+    color-mix(in srgb, var(--primary) 12%, transparent) 65%,
+    color-mix(in srgb, var(--primary) 12%, transparent) 100%
+  );
+  animation: text-shimmer 3s linear infinite;
+}
+
 @keyframes text-shimmer {
   from {
     background-position: 220% 0;
@@ -681,4 +706,113 @@ details.page-class-banner .page-class-banner__summary {
   to {
     background-position: -220% 0;
   }
+}
+
+/* ── Bubble Splitting Animations ────────────────────────────────────────── */
+@keyframes bubble-split-left {
+  0% {
+    transform: translateX(45px) scale(0.3);
+    filter: blur(1px);
+    opacity: 0;
+  }
+  30% {
+    opacity: 0.9;
+  }
+  70% {
+    transform: translateX(-4px) scale(1.08);
+    filter: blur(0px);
+  }
+  100% {
+    transform: translateX(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes bubble-split-right {
+  0% {
+    transform: translateX(-45px) scale(0.3);
+    filter: blur(1px);
+    opacity: 0;
+  }
+  30% {
+    opacity: 0.9;
+  }
+  70% {
+    transform: translateX(4px) scale(1.08);
+    filter: blur(0px);
+  }
+  100% {
+    transform: translateX(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes bubble-pop-in {
+  0% {
+    transform: scale(0.85);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-bubble-left {
+  animation: bubble-split-left 0.38s cubic-bezier(0.19, 1, 0.22, 1) forwards;
+  transform-origin: right center;
+}
+
+.animate-bubble-right {
+  animation: bubble-split-right 0.38s cubic-bezier(0.19, 1, 0.22, 1) forwards;
+  transform-origin: left center;
+}
+
+.animate-bubble-pop {
+  animation: bubble-pop-in 0.25s cubic-bezier(0.19, 1, 0.22, 1) forwards;
+}
+
+@keyframes bubble-merge-left {
+  0% {
+    transform: translateX(0) scale(1);
+    filter: blur(0px);
+    opacity: 1;
+  }
+  30% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translateX(45px) scale(0.2);
+    filter: blur(1.5px);
+    opacity: 0;
+  }
+}
+
+@keyframes bubble-merge-right {
+  0% {
+    transform: translateX(0) scale(1);
+    filter: blur(0px);
+    opacity: 1;
+  }
+  30% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translateX(-45px) scale(0.2);
+    filter: blur(1.5px);
+    opacity: 0;
+  }
+}
+
+.animate-bubble-merge-left {
+  animation: bubble-merge-left 0.32s cubic-bezier(0.19, 1, 0.22, 1) forwards;
+  transform-origin: right center;
+}
+
+.animate-bubble-merge-right {
+  animation: bubble-merge-right 0.32s cubic-bezier(0.19, 1, 0.22, 1) forwards;
+  transform-origin: left center;
 }

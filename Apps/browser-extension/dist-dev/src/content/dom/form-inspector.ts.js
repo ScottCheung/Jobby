@@ -44,7 +44,7 @@ function cleanText(value) {
   return (value || "").replace(/\s+/g, " ").trim();
 }
 function cleanLabel(value) {
-  return cleanText(value).replace(/\s*(?:Required|必填|\*)\s*$/gi, "").trim();
+  return cleanText(value).replace(/^\s*(?:\(?(?:Required|Optional|必填|选填)\)?|\*)+\s*/gi, "").replace(/\s*(?:\(?(?:Required|Optional|必填|选填)\)?|\*)+\s*$/gi, "").replace(/\s+/g, " ").trim();
 }
 function precedingQuestionLabel(element) {
   let container = element.closest("[data-testid='field'], [data-testid*='field' i]") || element.parentElement;
@@ -64,7 +64,9 @@ function precedingQuestionLabel(element) {
 function labelTextWithoutControl(label) {
   if (!label) return "";
   const copy = label.cloneNode(true);
-  copy.querySelectorAll("input,select,textarea,button,img,svg,noscript,script,style").forEach((node) => node.remove());
+  copy.querySelectorAll(
+    "input, select, textarea, button, img, svg, noscript, script, style, .helper-text, .help-block, .field-hint, [class*='helper' i], [class*='tooltip' i], [class*='error' i], [class*='hint' i]"
+  ).forEach((node) => node.remove());
   return cleanLabel(copy.textContent || "");
 }
 function normalizedOptionLabel(value) {

@@ -1,37 +1,20 @@
+/** @format */
+
 import { FileText, Home, Settings } from 'lucide-react';
-import { useEffect, useState } from 'react';
 
 export type TabType = 'home' | 'form' | 'tools';
 
 interface BottomNavProps {
   activeTab: TabType;
   onChange: (tab: TabType) => void;
+  visible?: boolean;
 }
 
-export function BottomNav({ activeTab, onChange }: BottomNavProps) {
-  const [isVisible, setIsVisible] = useState(true);
-  const [lastScrollY, setLastScrollY] = useState(0);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      const currentScrollY = window.scrollY;
-      
-      // If we scroll down more than 10px, hide the nav
-      if (currentScrollY > lastScrollY + 10) {
-        setIsVisible(false);
-        setLastScrollY(currentScrollY);
-      } 
-      // If we scroll up more than 10px, show the nav
-      else if (currentScrollY < lastScrollY - 10) {
-        setIsVisible(true);
-        setLastScrollY(currentScrollY);
-      }
-    };
-
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [lastScrollY]);
-
+export function BottomNav({
+  activeTab,
+  onChange,
+  visible = true,
+}: BottomNavProps) {
   const tabs: { id: TabType; label: string; icon: React.ReactNode }[] = [
     { id: 'home', label: 'Home', icon: <Home className='w-5 h-5' /> },
     { id: 'form', label: 'AutoFill', icon: <FileText className='w-5 h-5' /> },
@@ -41,7 +24,7 @@ export function BottomNav({ activeTab, onChange }: BottomNavProps) {
   return (
     <div
       className={`bottom-nav-container ${
-        isVisible ? 'translate-y-0' : 'translate-y-full'
+        visible ? 'translate-y-0 ' : 'translate-y-[150%] '
       }`}
     >
       <div className='bottom-nav-card'>

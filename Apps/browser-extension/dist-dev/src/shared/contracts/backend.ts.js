@@ -1,4 +1,4 @@
-import { z } from "/vendor/.vite-deps-zod.js__v--1dc95216.js";
+import { z } from "/vendor/.vite-deps-zod.js__v--14b8c224.js";
 const applicationCandidateSchema = z.object({
   platform: z.string().min(1),
   external_id: z.string().min(1),
@@ -6,6 +6,11 @@ const applicationCandidateSchema = z.object({
   company: z.string().min(1),
   description: z.string().nullable().optional(),
   match_score: z.number().nullable().optional(),
+  priority_score: z.number().nullable().optional(),
+  recency_factor: z.number().nullable().optional(),
+  skill_score: z.number().nullable().optional(),
+  title_score: z.number().nullable().optional(),
+  exp_score: z.number().nullable().optional(),
   easy_apply: z.boolean().optional(),
   already_applied: z.boolean().optional(),
   posted_at: z.string().nullable().optional(),

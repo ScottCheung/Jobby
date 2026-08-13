@@ -74,4 +74,10 @@ export default defineManifest({
       '128': 'public/icons/icon-128.png',
     },
   },
+  web_accessible_resources: [
+    {
+      resources: ['src/sidepanel/index.html', 'favicon.svg', 'assets/*'],
+      matches: ['http://*/*', 'https://*/*'],
+    },
+  ],
 });

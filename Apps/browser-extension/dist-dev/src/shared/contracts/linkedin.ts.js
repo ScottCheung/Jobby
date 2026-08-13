@@ -1,4 +1,4 @@
-import { z } from "/vendor/.vite-deps-zod.js__v--1dc95216.js";
+import { z } from "/vendor/.vite-deps-zod.js__v--14b8c224.js";
 export const linkedinApplicationActionSchema = z.enum(["previous", "next", "submit"]);
 export const linkedinApplicationResultSchema = z.object({
   status: z.enum(["already_open", "opened", "navigating", "clicked", "not_open", "unavailable"]),

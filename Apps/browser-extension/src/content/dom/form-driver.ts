@@ -213,14 +213,20 @@ function labelsMatchTarget(
     isCheckboxChoiceGroupForTarget(element, target, scope) ?
       checkboxGroup?.label || ''
     : labelFor(element, scope);
-  const currentLabel = normalized(rawCurrent).replace(/\s*\*+\s*$/g, '').trim();
-  const targetLabel = normalized(target.label).replace(/\s*\*+\s*$/g, '').trim();
+  const currentLabel = normalized(rawCurrent)
+    .replace(/^\s*(?:\(?(?:required|optional|必填|选填)\)?|\*)+\s*/gi, '')
+    .replace(/\s*(?:\(?(?:required|optional|必填|选填)\)?|\*)+\s*$/gi, '')
+    .trim();
+  const targetLabel = normalized(target.label)
+    .replace(/^\s*(?:\(?(?:required|optional|必填|选填)\)?|\*)+\s*/gi, '')
+    .replace(/\s*(?:\(?(?:required|optional|必填|选填)\)?|\*)+\s*$/gi, '')
+    .trim();
   return (
     (fieldType(element) === target.type ||
       isCheckboxChoiceGroupForTarget(element, target, scope)) &&
     (currentLabel === targetLabel ||
-      (currentLabel.length > 3 &&
-        targetLabel.length > 3 &&
+      (currentLabel.length >= 2 &&
+        targetLabel.length >= 2 &&
         (currentLabel.includes(targetLabel) ||
           targetLabel.includes(currentLabel))))
   );
@@ -707,6 +713,8 @@ function matchesTarget(
   instruction: FieldFillInstruction,
   scope: FormScope,
 ): boolean {
+  if (instruction.target.id && element.id === instruction.target.id) return true;
+  if (instruction.target.name && element.getAttribute('name') === instruction.target.name) return true;
   return labelsMatchTarget(element, instruction.target, scope);
 }
 

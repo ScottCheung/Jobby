@@ -3,6 +3,8 @@ import {
   getAuthSession,
   getAuthStatus as readAuthStatus,
   setAuthSession,
+  setExplicitDisconnect,
+  isExplicitlyDisconnected,
 } from "./session-store";
 import type { AuthSession, AuthStatus } from "../shared/contracts/auth";
 
@@ -112,11 +114,15 @@ export async function openLogin(interactive = true): Promise<AuthStatus> {
     expires_at: expiresAt,
     user: { id: userId, email },
   });
+  await setExplicitDisconnect(false);
   return getAuthStatus();
 }
 
 export async function restoreWebSession(): Promise<AuthStatus | null> {
   try {
+    if (await isExplicitlyDisconnected()) {
+      return null;
+    }
     return await openLogin(false);
   } catch {
     // A non-interactive flow normally fails when the Jobby web session is not
@@ -190,6 +196,7 @@ export async function getValidAuthSession(): Promise<AuthSession | null> {
 
 export async function disconnect(): Promise<void> {
   await clearAuthSession();
+  await setExplicitDisconnect(true);
 }
 
 export async function getAuthStatus(): Promise<AuthStatus> {

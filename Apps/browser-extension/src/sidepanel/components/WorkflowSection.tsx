@@ -179,45 +179,58 @@ export function WorkflowSection({
 
       <div className='action-group action-group--secondary'>
         <p className='action-group-label'>Current Application</p>
-        <div className='action-grid'>
-          <button
-            type='button'
-            className={loadingButton === 'open' ? 'is-loading' : ''}
-            disabled={disableOpen || loadingButton !== null}
-            onClick={onOpenLinkedIn}
-          >
-            {loadingButton === 'open' ? 'Opening...' : 'Open Application'}
-          </button>
+        <div className='flex flex-col gap-2'>
+          <div className='grid grid-cols-3 gap-1.5'>
+            <button
+              type='button'
+              className={`text-[10px] font-bold px-1 py-2 rounded-full border border-border bg-panel hover:bg-muted/30 truncate ${
+                loadingButton === 'open' ? 'is-loading' : ''
+              }`}
+              disabled={disableOpen || loadingButton !== null}
+              onClick={onOpenLinkedIn}
+              title="Open Application"
+            >
+              {loadingButton === 'open' ? 'Opening...' : 'Open App'}
+            </button>
+
+            <button
+              type='button'
+              className={`text-[10px] font-bold px-1 py-2 rounded-full border border-primary/30 bg-primary/5 text-primary hover:bg-primary/10 truncate ${
+                loadingButton === 'fillAndNext' ? 'is-loading' : ''
+              }`}
+              disabled={disableFillAndNext || loadingButton !== null}
+              onClick={onFillAndNext}
+              title="Fill & Next"
+            >
+              {loadingButton === 'fillAndNext' ? 'Filling...' : 'Fill & Next'}
+            </button>
+
+            <button
+              type='button'
+              className={`text-[10px] font-bold px-1 py-2 rounded-full border border-border bg-panel hover:bg-muted/30 truncate ${
+                loadingButton === 'record' ? 'is-loading' : ''
+              }`}
+              disabled={disableRecord || loadingButton !== null}
+              onClick={onRecordApplication}
+              title={isAlreadyRecorded ? "Recorded" : "Record Application"}
+            >
+              {loadingButton === 'record'
+                ? 'Recording...'
+                : isAlreadyRecorded
+                  ? 'Recorded'
+                  : 'Record App'}
+            </button>
+          </div>
 
           <button
             type='button'
-            className={`primary ${loadingButton === 'fillAndNext' ? 'is-loading' : ''}`}
-            disabled={disableFillAndNext || loadingButton !== null}
-            onClick={onFillAndNext}
-          >
-            {loadingButton === 'fillAndNext' ? 'Filling...' : 'Fill & Next'}
-          </button>
-
-          <button
-            type='button'
-            className={`primary danger-btn ${loadingButton === 'submit' ? 'is-loading' : ''}`}
+            className={`w-full min-h-[38px] primary font-bold text-xs uppercase tracking-wider ${
+              loadingButton === 'submit' ? 'is-loading' : ''
+            }`}
             disabled={disableSubmit || loadingButton !== null}
             onClick={onOpenReviewModal}
           >
             Submit Application
-          </button>
-
-          <button
-            type='button'
-            className={loadingButton === 'record' ? 'is-loading' : ''}
-            disabled={disableRecord || loadingButton !== null}
-            onClick={onRecordApplication}
-          >
-            {loadingButton === 'record'
-              ? 'Recording...'
-              : isAlreadyRecorded
-                ? 'Recorded'
-                : 'Record Application'}
           </button>
         </div>
       </div>

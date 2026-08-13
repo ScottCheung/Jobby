@@ -128,6 +128,7 @@ async function fillFormWithReactiveConvergence<T extends { instructions: Array<{
       attemptsCount.set(key, attempts + 1);
 
       const res = await fillActiveTabField({
+        type: "content.fill-field",
         ...(instruction as any),
         target: {
           label: field?.label || instruction.target.label || "",

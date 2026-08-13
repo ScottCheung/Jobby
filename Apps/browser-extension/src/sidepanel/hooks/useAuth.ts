@@ -7,6 +7,7 @@ const DEFAULT_AUTH: AuthStatus = { connected: false };
 export function useAuth() {
   const [authStatus, setAuthStatus] = useState<AuthStatus>(DEFAULT_AUTH);
   const [authError, setAuthError] = useState<string>("");
+  const [isSigningIn, setIsSigningIn] = useState<boolean>(false);
 
   const refreshAuth = useCallback(async () => {
     const response = await send({ type: "auth.status" });
@@ -26,12 +27,18 @@ export function useAuth() {
   }, []);
 
   const signIn = useCallback(async () => {
-    const response = await send({ type: "auth.open-login" });
-    if (!response.ok) {
-      setAuthError(response.error);
-      return;
+    setIsSigningIn(true);
+    setAuthError("");
+    try {
+      const response = await send({ type: "auth.open-login" });
+      if (!response.ok) {
+        setAuthError(response.error);
+        return;
+      }
+      await refreshAuth();
+    } finally {
+      setIsSigningIn(false);
     }
-    await refreshAuth();
   }, [refreshAuth]);
 
   const disconnect = useCallback(async () => {
@@ -49,5 +56,6 @@ export function useAuth() {
     refreshAuth,
     signIn,
     disconnect,
+    isSigningIn,
   };
 }

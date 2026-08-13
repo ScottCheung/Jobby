@@ -1,6 +1,7 @@
 import { handleContentCommand, startContentFormDiscovery } from "./command-handler";
 import { readCurrentPageWhenReady } from "./page-reader";
 import { injectInPageScoreCard } from "./dom/score-card-injector";
+import { initializeFloatingBall } from "./dom/floating-ball";
 
 type ContentMessageListener = Parameters<typeof chrome.runtime.onMessage.addListener>[0];
 
@@ -66,6 +67,7 @@ const isAutoObservedHost =
   hostname.endsWith(".seek.com.au");
 
 if (isTopLevelFrame) {
+  initializeFloatingBall();
   if (isAutoObservedHost) startContentFormDiscovery();
   void readCurrentPageWhenReady()
     .then((inspection) => {

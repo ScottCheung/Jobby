@@ -55,6 +55,8 @@ export const runtimeMessageSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("application.fill-and-next-active"), applicationId: z.string().min(1).max(128) }),
   z.object({ type: z.literal("application.submit-linkedin-active"), applicationId: z.string().min(1).max(128) }),
   z.object({ type: z.literal("application.auto-run-linkedin-active"), applicationId: z.string().min(1).max(128).optional() }),
+  z.object({ type: z.literal("sidepanel.query-state") }),
+  z.object({ type: z.literal("sidepanel.open") }),
 ]);
 
 export type RuntimeMessage = z.infer<typeof runtimeMessageSchema>;
@@ -78,6 +80,8 @@ export type RuntimeMessageResponse =
       unfilledRequiredLabels?: string[];
       autoStatus?: "completed" | "paused_for_user" | "ready_to_submit" | "error";
       autoMessage?: string;
+      isOpen?: boolean;
+      canHostSidepanel?: boolean;
     }
   | {
       ok: false;

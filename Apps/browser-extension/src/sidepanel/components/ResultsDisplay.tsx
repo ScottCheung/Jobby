@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Check, RotateCw, Circle } from 'lucide-react';
+import { IPEmotion } from '@jobby/ui/components/UI/IPEmotion';
 import type {
   FormFieldObservation,
   FormInspection,
@@ -57,10 +58,18 @@ export function ResultsDisplay({
             isAutofilling={isAutofilling}
           />
         </div>
-      : <div className='gap-2 border border-primary/50 p-2.5 rounded-xl bg-panel'>
-          No form fields detected yet. Click{' '}
-          <strong className='text-ink-primary'>Autofill Form</strong> to scan
-          and fill the page.
+      : <div className=' page-class-banner--job flex flex-col items-center justify-center text-center p-6  bg-panel/50 rounded-2xl gap-3 mt-2'>
+          <IPEmotion emotionId={1} className={'w-50 h-50 mx-auto pr-4 '} />
+          <div className='grid gap-1'>
+            <span className='text-xs font-bold text-foreground uppercase tracking-wider'>
+              Scan Required
+            </span>
+            <p className='text-[11px] leading-relaxed text-muted-foreground max-w-[220px]'>
+              No form fields detected yet. Click the{' '}
+              <strong className='text-primary font-bold'>Autofill Form</strong>{' '}
+              button above to scan and fill the page.
+            </p>
+          </div>
         </div>
       }
     </>
@@ -431,8 +440,8 @@ function UploadState({
     state?.message ||
     (field.upload?.state === 'ready' ?
       field.upload.filename ?
-        `Comfirm: ${field.upload.filename}`
-      : 'Comfirm: file is ready.'
+        `Confirm: ${field.upload.filename}`
+      : 'Confirm: file is ready.'
     : field.upload?.state === 'rejected' ?
       field.upload.detail || 'The website rejected the file.'
     : isResumeUpload ? 'Reading default Resume from Jobby and uploading...'

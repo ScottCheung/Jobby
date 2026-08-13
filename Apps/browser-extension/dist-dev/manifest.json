@@ -82,6 +82,17 @@
   },
   "web_accessible_resources": [
     {
+      "resources": [
+        "src/sidepanel/index.html",
+        "favicon.svg",
+        "assets/*"
+      ],
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ]
+    },
+    {
       "matches": [
         "<all_urls>"
       ],

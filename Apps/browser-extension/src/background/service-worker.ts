@@ -8,6 +8,59 @@ import { formFieldObservationSchema, formInspectionSchema } from "../shared/cont
 
 initializeJobBindingListeners();
 
+const activeSidepanelPorts = new Map<chrome.runtime.Port, number>();
+
+export function isSidepanelOpenForWindow(windowId: number): boolean {
+  return Array.from(activeSidepanelPorts.values()).includes(windowId);
+}
+
+chrome.runtime.onConnect.addListener((port) => {
+  if (port.name === "jobby-sidepanel") {
+    port.onMessage.addListener((message: unknown) => {
+      if (
+        typeof message === "object" &&
+        message !== null &&
+        (message as { type?: unknown }).type === "sidepanel.init"
+      ) {
+        const windowId = (message as { windowId?: unknown }).windowId;
+        if (typeof windowId === "number") {
+          activeSidepanelPorts.set(port, windowId);
+          broadcastSidepanelState(windowId, true);
+        }
+      }
+    });
+
+    port.onDisconnect.addListener(() => {
+      const windowId = activeSidepanelPorts.get(port);
+      activeSidepanelPorts.delete(port);
+      if (windowId !== undefined) {
+        const stillOpen = Array.from(activeSidepanelPorts.values()).includes(windowId);
+        if (!stillOpen) {
+          broadcastSidepanelState(windowId, false);
+        }
+      }
+    });
+  }
+});
+
+function broadcastSidepanelState(windowId: number, isOpen: boolean) {
+  // Only broadcast to tabs in normal (non-popup) windows.
+  // Popup windows have their own windowId and cannot host the native side panel,
+  // so they must never receive the host-window's sidepanel state — otherwise
+  // the floating ball (which is the only way to open the iframe sidepanel in a
+  // popup) would be hidden whenever the native sidepanel is open in the parent window.
+  chrome.windows.get(windowId, (win) => {
+    if (chrome.runtime.lastError || win.type !== "normal") return;
+    chrome.tabs.query({ windowId }, (tabs) => {
+      for (const tab of tabs) {
+        if (tab.id !== undefined) {
+          chrome.tabs.sendMessage(tab.id, { type: "sidepanel.state-changed", isOpen }).catch(() => {});
+        }
+      }
+    });
+  });
+}
+
 type FormChurnState = {
   windowStartedAt: number;
   lastAt: number;

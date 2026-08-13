@@ -63,12 +63,12 @@ export function renderScoreCard() {
   }
   const decision = currentPlan?.plan?.decision;
   const candidate = currentPlan?.plan?.candidate;
-  const score = decision?.score ?? candidate?.match_score;
+  const score = decision?.score ?? candidate?.priority_score ?? candidate?.match_score;
   const action = decision?.action;
   const explanation = decision?.explanation;
   const hasScore = typeof score === "number" && !isNaN(score);
   const percentage = hasScore ? Math.round(score * 100) : 0;
-  const matchLabel = !hasScore ? "Calculating Score..." : percentage >= 75 ? "High Match" : percentage >= 50 ? "Medium Match" : "Low Match";
+  const matchLabel = !hasScore ? "Calculating Score..." : percentage >= 75 ? "Highly Recommended" : percentage >= 50 ? "Recommended" : "Not Recommended";
   const defaultExplanation = hasScore ? "Match evaluation completed." : "Analyzing job skills and requirements...";
   const displayExplanation = explanation || defaultExplanation;
   const actionStyle = action === "apply" ? "background: rgba(16, 185, 129, 0.15); color: #059669; border: 1px solid rgba(16, 185, 129, 0.3);" : action === "review" ? "background: rgba(245, 158, 11, 0.15); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.3);" : "background: rgba(239, 68, 68, 0.15); color: #dc2626; border: 1px solid rgba(239, 68, 68, 0.3);";
