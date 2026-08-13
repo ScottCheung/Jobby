@@ -37,6 +37,18 @@ function isReactiveAddressCountryField(
   return /(?:^|\s)country(?:\s|$)/i.test(identity);
 }
 
+function isAshbyForm(form: FormInspection): boolean {
+  try {
+    return new URL(form.url).hostname.endsWith("ashbyhq.com");
+  } catch {
+    return false;
+  }
+}
+
+function isFillComplete(result: FieldFillResult | undefined): boolean {
+  return result?.status === "filled" || result?.status === "already_filled";
+}
+
 export async function uploadDefaultResumeToActiveTab(target: FormFieldTarget): Promise<FieldFillResult> {
   const commandId = makeCommandId("default-resume", target.key);
   if (target.type !== "file") {
@@ -113,7 +125,8 @@ async function fillFormWithReactiveConvergence<T extends { instructions: Array<{
     let filledInThisPass = 0;
     let selectOrComboboxFilledInThisPass = false;
     let hitReactiveAddressBarrier = false;
-    const fields = form.kind === "application_form" || form.kind === "page_input_fields" ? form.fields : [];
+    let fields = form.kind === "application_form" || form.kind === "page_input_fields" ? form.fields : [];
+    const ashbyForm = isAshbyForm(form);
     for (const instruction of instructions.instructions) {
       const key = instruction.target.key;
       const field = fields.find((candidate) => candidate.key === key);
@@ -139,7 +152,7 @@ async function fillFormWithReactiveConvergence<T extends { instructions: Array<{
       });
 
       resultsMap.set(key, res);
-      if (res.status === "filled" || res.status === "already_filled") {
+      if (isFillComplete(res)) {
         filledInThisPass += 1;
         if (instruction.target.type === "select" || field?.type === "select") {
           selectOrComboboxFilledInThisPass = true;
@@ -151,6 +164,23 @@ async function fillFormWithReactiveConvergence<T extends { instructions: Array<{
         if (isReactiveAddressCountryField(instruction, field)) {
           hitReactiveAddressBarrier = true;
           break;
+        }
+
+        // Ashby's controlled form fields persist their value asynchronously
+        // and can replace the input nodes after every change. A single-field
+        // fill naturally gives that update time to settle; batch fill did not,
+        // so later writes could target a detached field and end the run early.
+        // Re-read the live form before advancing to the next Ashby field.
+        if (ashbyForm) {
+          await new Promise((resolve) => setTimeout(resolve, 120));
+          const refreshedForm = await getForm().catch(() => null);
+          if (
+            refreshedForm &&
+            (refreshedForm.kind === "application_form" || refreshedForm.kind === "page_input_fields")
+          ) {
+            form = refreshedForm;
+            fields = refreshedForm.fields;
+          }
         }
       }
     }

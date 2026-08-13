@@ -39,6 +39,7 @@ export function App() {
     latestInspection,
     latestForm,
     inspectionError,
+    setInspectionError,
     isInspectingPage,
     isInspectingForm,
     isClearingForm,
@@ -101,6 +102,7 @@ export function App() {
     latestForm,
     inspectPage,
     inspectForm,
+    setInspectionError,
   );
 
   // Inspection results are intentionally kept out of the event effect's

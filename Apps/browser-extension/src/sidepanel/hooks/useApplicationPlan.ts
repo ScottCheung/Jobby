@@ -11,6 +11,7 @@ export function useApplicationPlan(
   latestForm: FormInspection | null,
   inspectPage: () => Promise<void>,
   inspectForm: () => Promise<FormInspection | null>,
+  reportError: (message: string) => void,
 ) {
   const [latestPlan, setLatestPlan] = useState<ValidatedApplicationPlanResponse | null>(null);
   const [fillResults, setFillResults] = useState<FieldFillResult[]>([]);
@@ -125,8 +126,14 @@ export function useApplicationPlan(
         return;
       }
 
-      const response = await send({ type: "form.autofill-active" });
+      const response = await send({ type: "form.autofill-active" }).catch((error: unknown) => ({
+        ok: false as const,
+        error: error instanceof Error ? error.message : "Autofill could not start.",
+      }));
       if (!response.ok) {
+        setFillResults([]);
+        setUnansweredFields([]);
+        reportError(response.error);
         return;
       }
 
@@ -134,11 +141,12 @@ export function useApplicationPlan(
       const unanswered = response.unansweredFields || [];
       setFillResults(results);
       setUnansweredFields(unanswered);
+      reportError('');
       await inspectForm();
     } finally {
       setLoadingButton(null);
     }
-  }, [latestForm, inspectForm]);
+  }, [latestForm, inspectForm, reportError]);
 
   const fillAndNext = useCallback(async () => {
     setLoadingButton("fillAndNext");

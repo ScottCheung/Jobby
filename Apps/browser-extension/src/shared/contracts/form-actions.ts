@@ -5,7 +5,10 @@ import { formFieldTypeSchema } from "./form-inspection";
 export const fieldFillInstructionSchema = z.object({
   type: z.literal("content.fill-field"),
   commandId: z.string().min(1).max(256),
-  source: z.enum(["backend", "panel"]),
+  // The backend also records how it derived an answer. These source labels
+  // are execution-equivalent to `backend`, but must remain valid here so a
+  // batch response is not rejected before its first field is filled.
+  source: z.enum(["backend", "panel", "intent_classifier", "user_rule", "system_rule", "phone_country_inference"]),
   target: z.object({
     key: z.string().min(1).max(256),
     frameId: z.number().int().nonnegative().optional(),
