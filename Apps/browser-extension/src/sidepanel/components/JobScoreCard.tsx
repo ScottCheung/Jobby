@@ -33,10 +33,18 @@ export function JobScoreCard({
     : percentage >= 50 ? 'Recommended'
     : 'Not Recommended';
 
-  const skillPct = candidate?.skill_score != null ? Math.round(candidate.skill_score * 100) : (candidate?.match_score != null ? Math.round(candidate.match_score * 100) : 0);
-  const titlePct = candidate?.title_score != null ? Math.round(candidate.title_score * 100) : (candidate?.match_score != null ? Math.round(candidate.match_score * 100) : 0);
-  const expPct = candidate?.exp_score != null ? Math.round(candidate.exp_score * 100) : (candidate?.match_score != null ? Math.round(candidate.match_score * 100) : 100);
-  const recencyPct = candidate?.recency_factor != null ? Math.round(candidate.recency_factor * 100) : 100;
+  const derivedRecency = candidate?.recency_factor ?? (
+    (candidate?.priority_score != null && candidate?.match_score != null && candidate.match_score > 0)
+      ? candidate.priority_score / candidate.match_score
+      : (hasScore && candidate?.match_score != null && candidate.match_score > 0)
+        ? score / candidate.match_score
+        : 1.0
+  );
+
+  const skillPct = Math.min(100, Math.max(0, candidate?.skill_score != null ? Math.round(candidate.skill_score * 100) : (candidate?.match_score != null ? Math.round(candidate.match_score * 100) : percentage)));
+  const titlePct = Math.min(100, Math.max(0, candidate?.title_score != null ? Math.round(candidate.title_score * 100) : (candidate?.match_score != null ? Math.round(candidate.match_score * 100) : percentage)));
+  const expPct = Math.min(100, Math.max(0, candidate?.exp_score != null ? Math.round(candidate.exp_score * 100) : (candidate?.match_score != null ? Math.round(candidate.match_score * 100) : percentage)));
+  const recencyPct = Math.min(100, Math.max(0, Math.round(derivedRecency * 100)));
 
   return (
     <div className='rounded-tl-[4em]! rounded-br-[4em]!  page-class-banner--job  rounded-xl  bg-background-primary p-3 shadow-xs  transition-all'>

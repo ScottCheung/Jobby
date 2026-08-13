@@ -62,18 +62,12 @@ def evaluate_candidate(
             technologies=candidate_payload.get("technologies"),
             user_years_experience=user_years,
         )
-        if candidate_payload.get("match_score") is None:
-            candidate_payload["match_score"] = match_result.match_score
-        if candidate_payload.get("priority_score") is None:
-            candidate_payload["priority_score"] = match_result.priority_score
-        if candidate_payload.get("recency_factor") is None:
-            candidate_payload["recency_factor"] = match_result.recency_factor
-        if candidate_payload.get("skill_score") is None:
-            candidate_payload["skill_score"] = match_result.skill_score
-        if candidate_payload.get("title_score") is None:
-            candidate_payload["title_score"] = match_result.title_score
-        if candidate_payload.get("exp_score") is None:
-            candidate_payload["exp_score"] = match_result.exp_score
+        candidate_payload["match_score"] = match_result.match_score
+        candidate_payload["priority_score"] = match_result.priority_score
+        candidate_payload["recency_factor"] = match_result.recency_factor
+        candidate_payload["skill_score"] = match_result.skill_score
+        candidate_payload["title_score"] = match_result.title_score
+        candidate_payload["exp_score"] = match_result.exp_score
     candidate = candidate_from_payload(candidate_payload)
     decision = evaluate_policy(candidate, policy_from_settings(settings))
     if match_result:

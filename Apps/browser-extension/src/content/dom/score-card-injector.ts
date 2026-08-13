@@ -76,7 +76,7 @@ export function renderScoreCard(): void {
 
   const decision = currentPlan?.plan?.decision;
   const candidate = currentPlan?.plan?.candidate;
-  const score = decision?.score ?? candidate?.match_score;
+  const score = decision?.score ?? candidate?.priority_score ?? candidate?.match_score;
   const action = decision?.action;
   const explanation = decision?.explanation;
 
@@ -85,9 +85,9 @@ export function renderScoreCard(): void {
 
   const matchLabel =
     !hasScore ? 'Calculating Score...'
-    : percentage >= 75 ? 'High Match'
-    : percentage >= 50 ? 'Medium Match'
-    : 'Low Match';
+    : percentage >= 75 ? 'Highly Recommended'
+    : percentage >= 50 ? 'Recommended'
+    : 'Not Recommended';
 
   const defaultExplanation =
     hasScore ?
