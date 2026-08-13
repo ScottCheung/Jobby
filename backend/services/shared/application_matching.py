@@ -29,6 +29,9 @@ class MatchScore:
     recency_factor: float
     priority_score: float
     matched_terms: tuple[str, ...]
+    skill_score: float = 0.0
+    title_score: float = 0.0
+    exp_score: float = 0.0
 
     @property
     def score(self) -> float:
@@ -229,11 +232,16 @@ def score_job_match(
     match_score = round(min(1.0, max(0.0, base_score * seniority_penalty)), 4)
     priority_score = round(min(1.0, max(0.0, match_score * recency_factor)), 4)
 
+    calculated_exp = (exp_score * seniority_penalty) if 'exp_score' in locals() else seniority_penalty
+
     return MatchScore(
         match_score=match_score,
         recency_factor=recency_factor,
         priority_score=priority_score,
         matched_terms=matched,
+        skill_score=round(skill_ratio, 4),
+        title_score=round(title_score, 4),
+        exp_score=round(calculated_exp, 4),
     )
 
 

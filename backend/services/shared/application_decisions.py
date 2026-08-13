@@ -32,6 +32,9 @@ def candidate_from_payload(payload: Mapping[str, Any]) -> JobCandidate:
         match_score=payload.get("match_score"),
         priority_score=payload.get("priority_score"),
         recency_factor=payload.get("recency_factor"),
+        skill_score=payload.get("skill_score"),
+        title_score=payload.get("title_score"),
+        exp_score=payload.get("exp_score"),
         easy_apply=bool(payload.get("easy_apply", False)),
         already_applied=bool(payload.get("already_applied", False)),
         description=str(payload.get("description") or payload.get("job_description") or ""),
@@ -65,6 +68,12 @@ def evaluate_candidate(
             candidate_payload["priority_score"] = match_result.priority_score
         if candidate_payload.get("recency_factor") is None:
             candidate_payload["recency_factor"] = match_result.recency_factor
+        if candidate_payload.get("skill_score") is None:
+            candidate_payload["skill_score"] = match_result.skill_score
+        if candidate_payload.get("title_score") is None:
+            candidate_payload["title_score"] = match_result.title_score
+        if candidate_payload.get("exp_score") is None:
+            candidate_payload["exp_score"] = match_result.exp_score
     candidate = candidate_from_payload(candidate_payload)
     decision = evaluate_policy(candidate, policy_from_settings(settings))
     if match_result:
@@ -109,6 +118,9 @@ def evaluation_to_dict(result: CandidateEvaluation) -> dict[str, Any]:
             "match_score": candidate.match_score,
             "priority_score": candidate.priority_score,
             "recency_factor": candidate.recency_factor,
+            "skill_score": candidate.skill_score,
+            "title_score": candidate.title_score,
+            "exp_score": candidate.exp_score,
             "easy_apply": candidate.easy_apply,
             "already_applied": candidate.already_applied,
             "description": candidate.description,

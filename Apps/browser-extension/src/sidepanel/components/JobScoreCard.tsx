@@ -33,15 +33,10 @@ export function JobScoreCard({
     : percentage >= 50 ? 'Recommended'
     : 'Not Recommended';
 
-  const scoreDetails = (candidate?.match_score != null && candidate?.recency_factor != null)
-    ? `Match ${Math.round(candidate.match_score * 100)}% × Recency ${candidate.recency_factor}`
-    : `Skills, Title, Exp & Recency`;
-
-  const displayExplanation = explanation 
-    ? `${explanation} (${scoreDetails})`
-    : hasScore 
-      ? `Evaluation complete. (${scoreDetails})`
-      : 'Analyzing job skills and requirements...';
+  const skillPct = candidate?.skill_score != null ? Math.round(candidate.skill_score * 100) : (candidate?.match_score != null ? Math.round(candidate.match_score * 100) : 0);
+  const titlePct = candidate?.title_score != null ? Math.round(candidate.title_score * 100) : (candidate?.match_score != null ? Math.round(candidate.match_score * 100) : 0);
+  const expPct = candidate?.exp_score != null ? Math.round(candidate.exp_score * 100) : (candidate?.match_score != null ? Math.round(candidate.match_score * 100) : 100);
+  const recencyPct = candidate?.recency_factor != null ? Math.round(candidate.recency_factor * 100) : 100;
 
   return (
     <div className='rounded-tl-[4em]! rounded-br-[4em]!  page-class-banner--job  rounded-xl  bg-background-primary p-3 shadow-xs  transition-all'>
@@ -72,7 +67,7 @@ export function JobScoreCard({
         </div>
 
         {/* Info & Details */}
-        <div className='flex min-w-0 flex-1 flex-col gap-1'>
+        <div className='flex min-w-0 flex-1 flex-col gap-1.5'>
           <div className='flex items-center justify-between gap-2'>
             <span className='font-bold text-xs text-foreground truncate'>
               {matchLabel}
@@ -92,9 +87,62 @@ export function JobScoreCard({
             )}
           </div>
 
-          <p className='text-[11px] leading-relaxed text-muted-foreground line-clamp-2' title={displayExplanation}>
-            {displayExplanation}
-          </p>
+          {/* Sub-score Mini Bars */}
+          {hasScore ? (
+            <div className='grid grid-cols-2 gap-x-3 gap-y-1 mt-0.5 text-[10px] select-none' title={explanation || 'Score breakdown'}>
+              {/* Skill Bar */}
+              <div className='flex items-center gap-1.5 min-w-0'>
+                <span className='w-7 shrink-0 text-muted-foreground font-medium truncate'>Skill</span>
+                <div className='h-1.5 flex-1 rounded-full bg-muted/30 overflow-hidden relative'>
+                  <div
+                    className='h-full bg-emerald-500 rounded-full transition-all duration-500'
+                    style={{ width: `${Math.min(100, Math.max(0, skillPct))}%` }}
+                  />
+                </div>
+                <span className='w-6 shrink-0 text-right font-mono font-semibold text-foreground/80'>{skillPct}%</span>
+              </div>
+
+              {/* Title Bar */}
+              <div className='flex items-center gap-1.5 min-w-0'>
+                <span className='w-7 shrink-0 text-muted-foreground font-medium truncate'>Title</span>
+                <div className='h-1.5 flex-1 rounded-full bg-muted/30 overflow-hidden relative'>
+                  <div
+                    className='h-full bg-sky-500 rounded-full transition-all duration-500'
+                    style={{ width: `${Math.min(100, Math.max(0, titlePct))}%` }}
+                  />
+                </div>
+                <span className='w-6 shrink-0 text-right font-mono font-semibold text-foreground/80'>{titlePct}%</span>
+              </div>
+
+              {/* Exp Bar */}
+              <div className='flex items-center gap-1.5 min-w-0'>
+                <span className='w-7 shrink-0 text-muted-foreground font-medium truncate'>Exp</span>
+                <div className='h-1.5 flex-1 rounded-full bg-muted/30 overflow-hidden relative'>
+                  <div
+                    className='h-full bg-indigo-500 rounded-full transition-all duration-500'
+                    style={{ width: `${Math.min(100, Math.max(0, expPct))}%` }}
+                  />
+                </div>
+                <span className='w-6 shrink-0 text-right font-mono font-semibold text-foreground/80'>{expPct}%</span>
+              </div>
+
+              {/* Recency / Freshness Bar */}
+              <div className='flex items-center gap-1.5 min-w-0'>
+                <span className='w-7 shrink-0 text-muted-foreground font-medium truncate'>Fresh</span>
+                <div className='h-1.5 flex-1 rounded-full bg-muted/30 overflow-hidden relative'>
+                  <div
+                    className='h-full bg-amber-500 rounded-full transition-all duration-500'
+                    style={{ width: `${Math.min(100, Math.max(0, recencyPct))}%` }}
+                  />
+                </div>
+                <span className='w-6 shrink-0 text-right font-mono font-semibold text-foreground/80'>{recencyPct}%</span>
+              </div>
+            </div>
+          ) : (
+            <p className='text-[11px] leading-relaxed text-muted-foreground'>
+              Analyzing job skills and requirements...
+            </p>
+          )}
         </div>
       </div>
     </div>
