@@ -12,6 +12,7 @@ export function useApplicationPlan(
   inspectPage: () => Promise<void>,
   inspectForm: () => Promise<FormInspection | null>,
   reportError: (message: string) => void,
+  applyAutofillResults: (results: FieldFillResult[], form?: FormInspection) => void,
 ) {
   const [latestPlan, setLatestPlan] = useState<ValidatedApplicationPlanResponse | null>(null);
   const [fillResults, setFillResults] = useState<FieldFillResult[]>([]);
@@ -141,12 +142,13 @@ export function useApplicationPlan(
       const unanswered = response.unansweredFields || [];
       setFillResults(results);
       setUnansweredFields(unanswered);
+      applyAutofillResults(results, response.form);
       reportError('');
       await inspectForm();
     } finally {
       setLoadingButton(null);
     }
-  }, [latestForm, inspectForm, reportError]);
+  }, [latestForm, inspectForm, reportError, applyAutofillResults]);
 
   const fillAndNext = useCallback(async () => {
     setLoadingButton("fillAndNext");

@@ -3,7 +3,7 @@
 
 import { cn } from '@/lib/utils';
 import React from 'react';
-import { InView } from '@/components/animation';
+import { InView } from '../../animation';
 import { BarChart3 } from 'lucide-react';
 
 interface ChartWrapperProps extends React.HTMLAttributes<HTMLDivElement> {

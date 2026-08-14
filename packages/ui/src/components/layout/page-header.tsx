@@ -4,8 +4,8 @@ import * as React from "react"
 import { motion } from "framer-motion"
 import { LinearBlur } from "progressive-blur"
 import { cn } from "@/lib/utils"
-import { H1, Small } from "@/components/UI/text/typography"
-import { ScrollLayout } from "@/components/animation"
+import { H1, Small } from "../UI/text/typography"
+import { ScrollLayout } from "../animation"
 
 interface PageHeaderProps {
     title: string

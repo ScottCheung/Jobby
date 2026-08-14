@@ -1,6 +1,6 @@
 // LabeledInput component – wraps an input with a label and a tooltip icon
 import React from 'react';
-import { HelpCircle } from 'lucode-react'; // using a placeholder icon library; adjust import as needed
+import { HelpCircle } from 'lucide-react'; // using a placeholder icon library; adjust import as needed
 
 export interface LabeledInputProps {
   label: string;

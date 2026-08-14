@@ -19,7 +19,7 @@
     "nameSize": 22,
     "headlineSize": 11,
     "contactSize": 8,
-    "sectionTitleSize": 9,
+    "sectionTitleSize": 10.5,
     "dateSize": 8.5,
     "metaSize": 8,
     "urlSize": 7.5,
@@ -30,11 +30,12 @@
     "body": "#3f3f46",
     "muted": "#52525b",
     "subtle": "#71717a",
-    "skill": "#001f0b",
-    "metric": "#000029",
+    "skill": "#27272a",
+    "metric": "#27272a",
     "rule": "#d4d4d8",
     "headerRule": "#18181b",
-    "paper": "#ffffff"
+    "paper": "#ffffff",
+    "primary": "#8E5B15"
   },
   "spacing": {
     "headerPaddingBottom": 12,
@@ -49,6 +50,7 @@
     "detailGap": 1,
     "bulletGap": 2,
     "bulletMarkWidth": 10,
+    "bulletIndent": 10,
     "technologyGap": 3,
     "skillGap": 5,
     "contentInset": 7,

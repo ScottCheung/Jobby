@@ -27,8 +27,20 @@ import {
   MapPin,
   Mail,
   Briefcase,
+  FolderGit2,
+  Globe,
   X,
 } from 'lucide-react';
+
+function LinkedinIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round' {...props}>
+      <path d='M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z' />
+      <rect x='2' y='9' width='4' height='12' />
+      <circle cx='4' cy='4' r='2' />
+    </svg>
+  );
+}
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { api } from '@/lib/api';
@@ -50,9 +62,6 @@ import type {
   ResumeSkillGroup,
 } from '@/lib/types';
 import { useConsole } from '@/components/ConsoleContext';
-
-
-
 
 import { useGlobalModalStore } from '@/lib/store/global-modal-store';
 import { useConfirmStore } from '@/lib/store/confirm-store';
@@ -127,11 +136,11 @@ function TagList({ values }: { values: string[] }) {
   if (!values.length)
     return <span className='body-sm text-ink-secondary'>Not listed</span>;
   return (
-    <div className='flex flex-wrap gap-2'>
+    <div className='flex flex-wrap gap-2.5 my-1'>
       {values.map((value) => (
         <span
           key={value}
-          className='rounded-md border border-border bg-background-secondary/50 px-1 py-0.5 text-[13px] text-ink-secondary'
+          className='inline-flex items-center rounded-lg border border-border/80 bg-background-secondary/60 px-3 py-1 text-xs font-medium text-ink-primary shadow-2xs transition-colors hover:border-primary/40'
         >
           {value}
         </span>
@@ -164,20 +173,19 @@ function SectionCard({
         ease: [0.22, 1, 0.36, 1],
       }}
       className={cn(
-        'border border-border bg-panel group rounded-3xl relative',
+        'border border-border bg-panel group rounded-2xl relative',
         onClick && 'cursor-pointer ',
       )}
     >
-      <div className='sticky top-0 z-20 flex items-start justify-between gap-3 pt-5 pb-6 px-6 '>
-        <div className='relative '>
-          <h2 className='text-xl shadow-text pl-9 font-semibold text-ink-primary! z-10'>
-            <div className='z-30 ml-2'>{title}</div>{' '}
-            <div className='opacity-100   '>
-              <div className='w-4  -z-10 h-full   bg-primary-gradient absolute -translate-x-6 top-1/2 -translate-y-1/2 rounded-br-full rounded-tl-full' />{' '}
+      <div className='sticky top-0 z-20 flex items-center justify-between gap-3 pt-4 pb-3 px-5'>
+        <div className='relative flex items-center'>
+          <h2 className='text-base font-bold pl-7 text-ink-primary z-10'>
+            <div className='z-30'>{title}</div>
+            <div className='opacity-100'>
+              <div className='w-2.5 -z-10 h-full bg-primary-gradient absolute -translate-x-5 top-1/2 -translate-y-1/2 rounded-br-full rounded-tl-full' />
             </div>
           </h2>
-          <div className='absolute bg-background-primary dark:bg-background-secondary w-full h-full translate-x-6 scale-105  top-0 -z-10 blur-xl'></div>
-          {/* <div className='absolute bg-background-primary w-full h-full translate-x-6 scale-150 left-0 top-0 -z-10 blur-xl'></div> */}
+          <div className='w-full h-full bg-background-primary absolute blur-sm scale-105' />
         </div>
         {action && (
           <div
@@ -188,7 +196,7 @@ function SectionCard({
           </div>
         )}
       </div>
-      <div className='-mt-3 pb-8 px-8'>{children}</div>
+      <div className='pt-4 pb-5 px-5'>{children}</div>
     </motion.section>
   );
 }
@@ -1357,41 +1365,52 @@ export default function ResumePage() {
                     </Button>
                   }
                 >
-                  <div className='row flex-wrap gap-5 text-ink-primary'>
-                    <h3 className='flex items-center gap-2 text-lg font-semibold text-ink-primary'>
-                      <User className='h-5 w-5 text-primary' />
-                      {[basics.first_name, basics.last_name]
-                        .filter(Boolean)
-                        .join(' ') || 'Name not listed'}
+                  <div className='flex flex-wrap items-center gap-x-6 gap-y-3.5 text-ink-primary'>
+                    <h3 className='flex items-center gap-2 text-base font-bold text-ink-primary'>
+                      <User className='h-4.5 w-4.5 text-primary shrink-0' />
+                      <span className='font-semibold text-ink-primary'>
+                        {[basics.first_name, basics.last_name]
+                          .filter(Boolean)
+                          .join(' ') || 'Name not listed'}
+                      </span>
                     </h3>
 
                     {basics.headline && (
-                      <p className='mt-1 flex items-center gap-2 text-ink-primary'>
-                        <Briefcase className='h-4 w-4 text-primary' />
-                        {basics.headline}
+                      <p className='flex items-center gap-2 text-sm font-semibold text-ink-primary'>
+                        <Briefcase className='h-4 w-4 text-primary shrink-0' />
+                        <span className='font-semibold text-ink-primary'>
+                          {basics.headline}
+                        </span>
                       </p>
                     )}
 
                     {basics.email && (
-                      <div className='flex items-center gap-2'>
+                      <div className='flex items-center gap-2 text-sm'>
                         <Mail className='h-4 w-4 text-primary shrink-0' />
-                        <span>{basics.email}</span>
+
+                        <span className='font-semibold text-ink-primary'>
+                          {basics.email}
+                        </span>
                       </div>
                     )}
 
                     {basics.phone && (
-                      <div className='flex items-center gap-2'>
+                      <div className='flex items-center gap-2 text-sm'>
                         <Phone className='h-4 w-4 text-primary shrink-0' />
-                        <span>{basics.phone}</span>
+
+                        <span className='font-semibold text-ink-primary'>
+                          {basics.phone}
+                        </span>
                       </div>
                     )}
 
                     {[location.city, location.state, location.country]
                       .filter(Boolean)
                       .join(', ') && (
-                      <div className='flex items-center gap-2'>
+                      <div className='flex items-center gap-2 text-sm'>
                         <MapPin className='h-4 w-4 text-primary shrink-0' />
-                        <span>
+
+                        <span className='font-semibold text-ink-primary'>
                           {[location.city, location.state, location.country]
                             .filter(Boolean)
                             .join(', ')}
@@ -1400,11 +1419,72 @@ export default function ResumePage() {
                     )}
 
                     {basics.linkedin_id && (
-                      <div className='flex items-center gap-2'>
-                        <span className='text-xs font-semibold text-primary'>
-                          LinkedIn:
+                      <div className='flex items-center gap-2 text-sm'>
+                        <LinkedinIcon className='h-4 w-4 text-primary shrink-0' />
+                        <span className='text-xs text-ink-secondary'>
+                          linkedin:
                         </span>
-                        <span>{basics.linkedin_id}</span>
+                        <a
+                          href={
+                            basics.linkedin_id.startsWith('http') ?
+                              basics.linkedin_id.endsWith('/') ?
+                                basics.linkedin_id
+                              : `${basics.linkedin_id}/`
+                            : `https://www.linkedin.com/in/${basics.linkedin_id.replace(/^\/+|\/+$/g, '')}/`
+                          }
+                          target='_blank'
+                          rel='noreferrer'
+                          className='font-semibold text-ink-primary hover:text-primary'
+                        >
+                          {basics.linkedin_id
+                            .replace(
+                              /^https?:\/\/(www\.)?linkedin\.com\/in\//i,
+                              '',
+                            )
+                            .replace(/\/$/, '')}
+                        </a>
+                      </div>
+                    )}
+
+                    {basics.portfolio_url && (
+                      <div className='flex items-center gap-2 text-sm'>
+                        <FolderGit2 className='h-4 w-4 text-primary shrink-0' />
+                        <span className='text-xs text-ink-secondary'>
+                          Portfolio:
+                        </span>
+                        <a
+                          href={
+                            basics.portfolio_url.startsWith('http') ?
+                              basics.portfolio_url
+                            : `https://${basics.portfolio_url}`
+                          }
+                          target='_blank'
+                          rel='noreferrer'
+                          className='font-semibold text-ink-primary hover:text-primary'
+                        >
+                          {basics.portfolio_url.replace(/^https?:\/\//i, '').replace(/\/$/, '')}
+                        </a>
+                      </div>
+                    )}
+
+                    {basics.website && (
+                      <div className='flex items-center gap-2 text-sm'>
+                        <Globe className='h-4 w-4 text-primary shrink-0' />
+                        <span className='text-xs text-ink-secondary'>
+                          Website:
+                        </span>
+                        <a
+                          href={
+                            basics.website.startsWith('http') ?
+                              basics.website
+                            : `https://${basics.website}`
+                          }
+                          target='_blank'
+                          rel='noreferrer'
+                          className='font-semibold text-ink-primary hover:text-primary'
+                        >
+                          {basics.website.replace(/^https?:\/\//i, '').replace(/\/$/, '')}
+                        </a>
                       </div>
                     )}
                   </div>
@@ -1591,12 +1671,12 @@ export default function ResumePage() {
                             {item.url && (
                               <p className='body-sm mt-1 text-ink-secondary'>
                                 <a
-                                  href={item.url}
+                                  href={item.url.startsWith('http') ? item.url : `https://${item.url}`}
                                   target='_blank'
                                   rel='noreferrer'
-                                  className='text-primary hover:underline break-all'
+                                  className='text-primary hover:text-primary/80 break-all'
                                 >
-                                  {item.url}
+                                  {item.url.replace(/^https?:\/\//i, '').replace(/\/$/, '')}
                                 </a>
                               </p>
                             )}
@@ -1675,12 +1755,18 @@ export default function ResumePage() {
                             {item.type || 'Link'}
                           </p>
                           <a
-                            href={item.link || '#'}
+                            href={
+                              item.link ?
+                                item.link.startsWith('http') ?
+                                  item.link
+                                : `https://${item.link}`
+                              : '#'
+                            }
                             target='_blank'
                             rel='noreferrer'
-                            className='body-sm text-primary hover:underline truncate'
+                            className='body-sm text-primary hover:text-primary/80 truncate font-semibold'
                           >
-                            {item.link || 'Not listed'}
+                            {item.link ? item.link.replace(/^https?:\/\//i, '').replace(/\/$/, '') : 'Not listed'}
                           </a>
                         </div>
                       ))

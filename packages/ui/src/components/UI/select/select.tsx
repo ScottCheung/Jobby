@@ -6,7 +6,7 @@ import * as React from 'react';
 import { createPortal } from 'react-dom';
 import { LucideIcon, ChevronDown, Check, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { LabelWithHelp } from '@/components/UI/label/with-help';
+import { LabelWithHelp } from '../label/with-help';
 import { Error } from '../text/typography';
 import { motion, AnimatePresence } from 'framer-motion';
 

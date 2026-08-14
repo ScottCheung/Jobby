@@ -1,8 +1,7 @@
 /** @format */
 
 'use client';
-import { Button, EmptyPlaceHolder } from '@jobby/ui';
-
+import { Button, EmptyPlaceHolder, Modal } from '@jobby/ui';
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import {
   X,
@@ -21,8 +20,6 @@ import type {
   InterviewCollection,
 } from '@/lib/types';
 import { cleanName, cn } from '@/lib/utils';
-
-import { Modal } from '@/components/layout/modal';
 import { useLayoutStore } from '@/lib/store/layout-store';
 import { QuestionsFilterDrawer } from './QuestionsFilterDrawer';
 

@@ -1122,5 +1122,1239 @@
         }
       ]
     }
+  ],
+  "activeQuestions": [
+    {
+      "label": "Title",
+      "group": "Identity & contact",
+      "type": "select",
+      "required": false,
+      "options": [
+        {
+          "label": "Mr",
+          "value": "Mr"
+        },
+        {
+          "label": "Ms",
+          "value": "Ms"
+        },
+        {
+          "label": "Mx",
+          "value": "Mx"
+        },
+        {
+          "label": "Dr",
+          "value": "Dr"
+        },
+        {
+          "label": "Prefer not to say",
+          "value": "Prefer not to say"
+        }
+      ]
+    },
+    {
+      "label": "Preferred Name",
+      "group": "Identity & contact",
+      "type": "text",
+      "required": false
+    },
+    {
+      "label": "First Name",
+      "group": "Identity & contact",
+      "type": "text",
+      "required": true
+    },
+    {
+      "label": "Middle Name",
+      "group": "Identity & contact",
+      "type": "text",
+      "required": false
+    },
+    {
+      "label": "Last Name",
+      "group": "Identity & contact",
+      "type": "text",
+      "required": true
+    },
+    {
+      "label": "Full Name",
+      "group": "Identity & contact",
+      "type": "text",
+      "required": true
+    },
+    {
+      "label": "Name as it appears on your passport",
+      "group": "Identity & contact",
+      "type": "text",
+      "required": false
+    },
+    {
+      "label": "Email Address",
+      "group": "Identity & contact",
+      "type": "email",
+      "required": true
+    },
+    {
+      "label": "Phone Number",
+      "group": "Identity & contact",
+      "type": "tel",
+      "required": true
+    },
+    {
+      "label": "LinkedIn URL",
+      "group": "Identity & contact",
+      "type": "url",
+      "required": false
+    },
+    {
+      "label": "Professional portfolio URL",
+      "group": "Identity & contact",
+      "type": "url",
+      "required": false
+    },
+    {
+      "label": "Personal website",
+      "group": "Identity & contact",
+      "type": "url",
+      "required": false
+    },
+    {
+      "label": "Pronouns",
+      "group": "Identity & contact",
+      "type": "select",
+      "required": false,
+      "options": [
+        {
+          "label": "She/her",
+          "value": "She/her"
+        },
+        {
+          "label": "He/him",
+          "value": "He/him"
+        },
+        {
+          "label": "They/them",
+          "value": "They/them"
+        },
+        {
+          "label": "Use my name",
+          "value": "Use my name"
+        },
+        {
+          "label": "Prefer not to say",
+          "value": "Prefer not to say"
+        }
+      ]
+    },
+    {
+      "label": "Current City",
+      "group": "Location & work setup",
+      "type": "text",
+      "required": false
+    },
+    {
+      "label": "Suburb",
+      "group": "Location & work setup",
+      "type": "text",
+      "required": false
+    },
+    {
+      "label": "State or Territory",
+      "group": "Location & work setup",
+      "type": "select",
+      "required": false,
+      "options": [
+        {
+          "label": "Australian Capital Territory",
+          "value": "ACT"
+        },
+        {
+          "label": "New South Wales",
+          "value": "NSW"
+        },
+        {
+          "label": "Northern Territory",
+          "value": "NT"
+        },
+        {
+          "label": "Queensland",
+          "value": "QLD"
+        },
+        {
+          "label": "South Australia",
+          "value": "SA"
+        },
+        {
+          "label": "Tasmania",
+          "value": "TAS"
+        },
+        {
+          "label": "Victoria",
+          "value": "VIC"
+        },
+        {
+          "label": "Western Australia",
+          "value": "WA"
+        }
+      ]
+    },
+    {
+      "label": "Postcode",
+      "group": "Location & work setup",
+      "type": "text",
+      "required": false
+    },
+    {
+      "label": "Country of residence",
+      "group": "Location & work setup",
+      "type": "select",
+      "required": false,
+      "options": [
+        {
+          "label": "Australia",
+          "value": "Australia"
+        },
+        {
+          "label": "New Zealand",
+          "value": "New Zealand"
+        },
+        {
+          "label": "Other",
+          "value": "Other"
+        }
+      ]
+    },
+    {
+      "label": "Street address",
+      "group": "Location & work setup",
+      "type": "text",
+      "required": false
+    },
+    {
+      "label": "Preferred work location",
+      "group": "Location & work setup",
+      "type": "select",
+      "required": false,
+      "options": [
+        {
+          "label": "Sydney",
+          "value": "Sydney"
+        },
+        {
+          "label": "Melbourne",
+          "value": "Melbourne"
+        },
+        {
+          "label": "Brisbane",
+          "value": "Brisbane"
+        },
+        {
+          "label": "Perth",
+          "value": "Perth"
+        },
+        {
+          "label": "Adelaide",
+          "value": "Adelaide"
+        },
+        {
+          "label": "Canberra",
+          "value": "Canberra"
+        },
+        {
+          "label": "Remote",
+          "value": "Remote"
+        }
+      ]
+    },
+    {
+      "label": "Are you able to commute to the office?",
+      "group": "Location & work setup",
+      "type": "radio",
+      "required": false,
+      "options": [
+        {
+          "label": "Yes",
+          "value": "Yes"
+        },
+        {
+          "label": "No",
+          "value": "No"
+        },
+        {
+          "label": "Sometimes",
+          "value": "Sometimes"
+        }
+      ]
+    },
+    {
+      "label": "Preferred work arrangement",
+      "group": "Location & work setup",
+      "type": "select",
+      "required": false,
+      "options": [
+        {
+          "label": "On-site",
+          "value": "On-site"
+        },
+        {
+          "label": "Hybrid",
+          "value": "Hybrid"
+        },
+        {
+          "label": "Remote",
+          "value": "Remote"
+        }
+      ]
+    },
+    {
+      "label": "Maximum one-way commute (minutes)",
+      "group": "Location & work setup",
+      "type": "number",
+      "required": false
+    },
+    {
+      "label": "Citizenship",
+      "group": "Work rights & visa",
+      "type": "select",
+      "required": true,
+      "options": [
+        {
+          "label": "Australian citizen",
+          "value": "Australian citizen"
+        },
+        {
+          "label": "Australian permanent resident",
+          "value": "Australian permanent resident"
+        },
+        {
+          "label": "New Zealand citizen",
+          "value": "New Zealand citizen"
+        },
+        {
+          "label": "Temporary visa holder",
+          "value": "Temporary visa holder"
+        },
+        {
+          "label": "Other",
+          "value": "Other"
+        }
+      ]
+    },
+    {
+      "label": "Are you legally authorized to work in Australia?",
+      "group": "Work rights & visa",
+      "type": "radio",
+      "required": true,
+      "options": [
+        {
+          "label": "Yes",
+          "value": "Yes"
+        },
+        {
+          "label": "No",
+          "value": "No"
+        }
+      ]
+    },
+    {
+      "label": "Right to work status",
+      "group": "Work rights & visa",
+      "type": "select",
+      "required": false,
+      "options": [
+        {
+          "label": "Unrestricted",
+          "value": "Unrestricted"
+        },
+        {
+          "label": "Restricted hours",
+          "value": "Restricted hours"
+        },
+        {
+          "label": "Pending",
+          "value": "Pending"
+        }
+      ]
+    },
+    {
+      "label": "Visa Status",
+      "group": "Work rights & visa",
+      "type": "select",
+      "required": false,
+      "options": [
+        {
+          "label": "Australian citizen",
+          "value": "Australian citizen"
+        },
+        {
+          "label": "Permanent resident",
+          "value": "Permanent resident"
+        },
+        {
+          "label": "Temporary visa",
+          "value": "Temporary visa"
+        },
+        {
+          "label": "Not applicable",
+          "value": "Not applicable"
+        }
+      ]
+    },
+    {
+      "label": "Visa Type",
+      "group": "Work rights & visa",
+      "type": "select",
+      "required": false,
+      "options": [
+        {
+          "label": "Subclass 482",
+          "value": "Subclass 482"
+        },
+        {
+          "label": "Subclass 485",
+          "value": "Subclass 485"
+        },
+        {
+          "label": "Subclass 500",
+          "value": "Subclass 500"
+        },
+        {
+          "label": "Subclass 417",
+          "value": "Subclass 417"
+        },
+        {
+          "label": "Other",
+          "value": "Other"
+        }
+      ]
+    },
+    {
+      "label": "Visa Expiry Date",
+      "group": "Work rights & visa",
+      "type": "date",
+      "required": false
+    },
+    {
+      "label": "Will you require visa sponsorship now or in the future?",
+      "group": "Work rights & visa",
+      "type": "radio",
+      "required": true,
+      "options": [
+        {
+          "label": "Yes",
+          "value": "Yes"
+        },
+        {
+          "label": "No",
+          "value": "No"
+        }
+      ]
+    },
+    {
+      "label": "Are you willing to relocate for this role?",
+      "group": "Work rights & visa",
+      "type": "radio",
+      "required": false,
+      "options": [
+        {
+          "label": "Yes",
+          "value": "Yes"
+        },
+        {
+          "label": "No",
+          "value": "No"
+        },
+        {
+          "label": "Maybe",
+          "value": "Maybe"
+        }
+      ]
+    },
+    {
+      "label": "Do you have unrestricted Australian work rights?",
+      "group": "Work rights & visa",
+      "type": "radio",
+      "required": false,
+      "options": [
+        {
+          "label": "Yes",
+          "value": "Yes"
+        },
+        {
+          "label": "No",
+          "value": "No"
+        }
+      ]
+    },
+    {
+      "label": "VEVO check reference number",
+      "group": "Work rights & visa",
+      "type": "text",
+      "required": false
+    },
+    {
+      "label": "Desired job title",
+      "group": "Role & availability",
+      "type": "text",
+      "required": false
+    },
+    {
+      "label": "Employment type",
+      "group": "Role & availability",
+      "type": "select",
+      "required": true,
+      "options": [
+        {
+          "label": "Full-time",
+          "value": "Full-time"
+        },
+        {
+          "label": "Part-time",
+          "value": "Part-time"
+        },
+        {
+          "label": "Casual",
+          "value": "Casual"
+        },
+        {
+          "label": "Contract",
+          "value": "Contract"
+        },
+        {
+          "label": "Temporary",
+          "value": "Temporary"
+        },
+        {
+          "label": "Internship",
+          "value": "Internship"
+        }
+      ]
+    },
+    {
+      "label": "Available from",
+      "group": "Role & availability",
+      "type": "date",
+      "required": false
+    },
+    {
+      "label": "Notice period (weeks)",
+      "group": "Role & availability",
+      "type": "number",
+      "required": false
+    },
+    {
+      "label": "Preferred weekly hours",
+      "group": "Role & availability",
+      "type": "number",
+      "required": false
+    },
+    {
+      "label": "Preferred hours",
+      "group": "Role & availability",
+      "type": "select",
+      "required": false,
+      "options": [
+        {
+          "label": "Standard business hours",
+          "value": "Standard business hours"
+        },
+        {
+          "label": "Early morning",
+          "value": "Early morning"
+        },
+        {
+          "label": "Evening",
+          "value": "Evening"
+        },
+        {
+          "label": "Flexible",
+          "value": "Flexible"
+        }
+      ]
+    },
+    {
+      "label": "Are you available to work weekends?",
+      "group": "Role & availability",
+      "type": "radio",
+      "required": false,
+      "options": [
+        {
+          "label": "Yes",
+          "value": "Yes"
+        },
+        {
+          "label": "No",
+          "value": "No"
+        },
+        {
+          "label": "Occasionally",
+          "value": "Occasionally"
+        }
+      ]
+    },
+    {
+      "label": "Are you available for night shifts?",
+      "group": "Role & availability",
+      "type": "radio",
+      "required": false,
+      "options": [
+        {
+          "label": "Yes",
+          "value": "Yes"
+        },
+        {
+          "label": "No",
+          "value": "No"
+        }
+      ]
+    },
+    {
+      "label": "Are you willing to work overtime when required?",
+      "group": "Role & availability",
+      "type": "radio",
+      "required": false,
+      "options": [
+        {
+          "label": "Yes",
+          "value": "Yes"
+        },
+        {
+          "label": "No",
+          "value": "No"
+        }
+      ]
+    },
+    {
+      "label": "Percentage of travel you can support",
+      "group": "Role & availability",
+      "type": "number",
+      "required": false
+    },
+    {
+      "label": "Do you have a preferred start date?",
+      "group": "Role & availability",
+      "type": "checkbox",
+      "required": false
+    },
+    {
+      "label": "Years of professional experience",
+      "group": "Experience & leadership",
+      "type": "number",
+      "required": false
+    },
+    {
+      "label": "Years of experience in this industry",
+      "group": "Experience & leadership",
+      "type": "number",
+      "required": false
+    },
+    {
+      "label": "Most recent employer",
+      "group": "Experience & leadership",
+      "type": "text",
+      "required": false
+    },
+    {
+      "label": "Most recent job title",
+      "group": "Experience & leadership",
+      "type": "text",
+      "required": false
+    },
+    {
+      "label": "Previous employer",
+      "group": "Experience & leadership",
+      "type": "text",
+      "required": false
+    },
+    {
+      "label": "Team size in your most recent role",
+      "group": "Experience & leadership",
+      "type": "number",
+      "required": false
+    },
+    {
+      "label": "Years of people management experience",
+      "group": "Experience & leadership",
+      "type": "number",
+      "required": false
+    },
+    {
+      "label": "Have you led a team before?",
+      "group": "Experience & leadership",
+      "type": "radio",
+      "required": false,
+      "options": [
+        {
+          "label": "Yes",
+          "value": "Yes"
+        },
+        {
+          "label": "No",
+          "value": "No"
+        }
+      ]
+    },
+    {
+      "label": "Key responsibilities in your most recent role",
+      "group": "Experience & leadership",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "label": "Most relevant achievement",
+      "group": "Experience & leadership",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "label": "Desired annual base salary",
+      "group": "Compensation",
+      "type": "number",
+      "required": false
+    },
+    {
+      "label": "Minimum acceptable annual salary",
+      "group": "Compensation",
+      "type": "number",
+      "required": false
+    },
+    {
+      "label": "Current annual salary",
+      "group": "Compensation",
+      "type": "number",
+      "required": false
+    },
+    {
+      "label": "Expected hourly rate",
+      "group": "Compensation",
+      "type": "number",
+      "required": false
+    },
+    {
+      "label": "Salary currency",
+      "group": "Compensation",
+      "type": "select",
+      "required": false,
+      "options": [
+        {
+          "label": "AUD",
+          "value": "AUD"
+        },
+        {
+          "label": "NZD",
+          "value": "NZD"
+        },
+        {
+          "label": "USD",
+          "value": "USD"
+        }
+      ]
+    },
+    {
+      "label": "Salary expectation basis",
+      "group": "Compensation",
+      "type": "select",
+      "required": false,
+      "options": [
+        {
+          "label": "Annual package",
+          "value": "Annual package"
+        },
+        {
+          "label": "Base salary plus super",
+          "value": "Base salary plus super"
+        },
+        {
+          "label": "Hourly rate",
+          "value": "Hourly rate"
+        }
+      ]
+    },
+    {
+      "label": "Are you open to discussing the salary range?",
+      "group": "Compensation",
+      "type": "radio",
+      "required": false,
+      "options": [
+        {
+          "label": "Yes",
+          "value": "Yes"
+        },
+        {
+          "label": "No",
+          "value": "No"
+        }
+      ]
+    },
+    {
+      "label": "Superannuation expectation",
+      "group": "Compensation",
+      "type": "select",
+      "required": false,
+      "options": [
+        {
+          "label": "On top of base salary",
+          "value": "On top of base salary"
+        },
+        {
+          "label": "Included in package",
+          "value": "Included in package"
+        },
+        {
+          "label": "Not applicable",
+          "value": "Not applicable"
+        }
+      ]
+    },
+    {
+      "label": "Bonus or commission expectation",
+      "group": "Compensation",
+      "type": "text",
+      "required": false
+    },
+    {
+      "label": "Highest qualification",
+      "group": "Education & checks",
+      "type": "select",
+      "required": false,
+      "options": [
+        {
+          "label": "High school",
+          "value": "High school"
+        },
+        {
+          "label": "Certificate III/IV",
+          "value": "Certificate III/IV"
+        },
+        {
+          "label": "Diploma",
+          "value": "Diploma"
+        },
+        {
+          "label": "Bachelor degree",
+          "value": "Bachelor degree"
+        },
+        {
+          "label": "Postgraduate degree",
+          "value": "Postgraduate degree"
+        },
+        {
+          "label": "Other",
+          "value": "Other"
+        }
+      ]
+    },
+    {
+      "label": "Institution",
+      "group": "Education & checks",
+      "type": "text",
+      "required": false
+    },
+    {
+      "label": "Degree or certification name",
+      "group": "Education & checks",
+      "type": "text",
+      "required": false
+    },
+    {
+      "label": "Field of study",
+      "group": "Education & checks",
+      "type": "text",
+      "required": false
+    },
+    {
+      "label": "Graduation year",
+      "group": "Education & checks",
+      "type": "number",
+      "required": false
+    },
+    {
+      "label": "Professional registration or licence",
+      "group": "Education & checks",
+      "type": "text",
+      "required": false
+    },
+    {
+      "label": "Do you hold a current Australian driver's licence?",
+      "group": "Education & checks",
+      "type": "radio",
+      "required": false,
+      "options": [
+        {
+          "label": "Yes",
+          "value": "Yes"
+        },
+        {
+          "label": "No",
+          "value": "No"
+        }
+      ]
+    },
+    {
+      "label": "Driver's licence class",
+      "group": "Education & checks",
+      "type": "select",
+      "required": false,
+      "options": [
+        {
+          "label": "C",
+          "value": "C"
+        },
+        {
+          "label": "LR",
+          "value": "LR"
+        },
+        {
+          "label": "MR",
+          "value": "MR"
+        },
+        {
+          "label": "HR",
+          "value": "HR"
+        },
+        {
+          "label": "Other",
+          "value": "Other"
+        }
+      ]
+    },
+    {
+      "label": "Do you hold a current White Card?",
+      "group": "Education & checks",
+      "type": "radio",
+      "required": false,
+      "options": [
+        {
+          "label": "Yes",
+          "value": "Yes"
+        },
+        {
+          "label": "No",
+          "value": "No"
+        },
+        {
+          "label": "Not applicable",
+          "value": "Not applicable"
+        }
+      ]
+    },
+    {
+      "label": "Do you consent to a police check?",
+      "group": "Education & checks",
+      "type": "radio",
+      "required": false,
+      "options": [
+        {
+          "label": "Yes",
+          "value": "Yes"
+        },
+        {
+          "label": "No",
+          "value": "No"
+        }
+      ]
+    },
+    {
+      "label": "Do you have a Working with Children Check?",
+      "group": "Education & checks",
+      "type": "radio",
+      "required": false,
+      "options": [
+        {
+          "label": "Yes",
+          "value": "Yes"
+        },
+        {
+          "label": "No",
+          "value": "No"
+        },
+        {
+          "label": "Not applicable",
+          "value": "Not applicable"
+        }
+      ]
+    },
+    {
+      "label": "Primary skills",
+      "group": "Skills & languages",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "label": "Technical skills",
+      "group": "Skills & languages",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "label": "Software and tools you use",
+      "group": "Skills & languages",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "label": "English proficiency",
+      "group": "Skills & languages",
+      "type": "select",
+      "required": false,
+      "options": [
+        {
+          "label": "Native or bilingual",
+          "value": "Native or bilingual"
+        },
+        {
+          "label": "Professional working proficiency",
+          "value": "Professional working proficiency"
+        },
+        {
+          "label": "Conversational",
+          "value": "Conversational"
+        }
+      ]
+    },
+    {
+      "label": "Additional languages",
+      "group": "Skills & languages",
+      "type": "text",
+      "required": false
+    },
+    {
+      "label": "Professional certifications",
+      "group": "Skills & languages",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "label": "Do you have customer-facing experience?",
+      "group": "Skills & languages",
+      "type": "radio",
+      "required": false,
+      "options": [
+        {
+          "label": "Yes",
+          "value": "Yes"
+        },
+        {
+          "label": "No",
+          "value": "No"
+        }
+      ]
+    },
+    {
+      "label": "Describe your strongest skill",
+      "group": "Skills & languages",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "label": "Gender identity",
+      "group": "Workplace inclusion",
+      "type": "select",
+      "required": false,
+      "options": [
+        {
+          "label": "Woman",
+          "value": "Woman"
+        },
+        {
+          "label": "Man",
+          "value": "Man"
+        },
+        {
+          "label": "Non-binary",
+          "value": "Non-binary"
+        },
+        {
+          "label": "Prefer to self-describe",
+          "value": "Prefer to self-describe"
+        },
+        {
+          "label": "Prefer not to say",
+          "value": "Prefer not to say"
+        }
+      ]
+    },
+    {
+      "label": "Do you identify as Aboriginal or Torres Strait Islander?",
+      "group": "Workplace inclusion",
+      "type": "radio",
+      "required": false,
+      "options": [
+        {
+          "label": "Yes",
+          "value": "Yes"
+        },
+        {
+          "label": "No",
+          "value": "No"
+        },
+        {
+          "label": "Prefer not to say",
+          "value": "Prefer not to say"
+        }
+      ]
+    },
+    {
+      "label": "Disability status",
+      "group": "Workplace inclusion",
+      "type": "select",
+      "required": false,
+      "options": [
+        {
+          "label": "No disability",
+          "value": "No disability"
+        },
+        {
+          "label": "Disability or long-term health condition",
+          "value": "Disability or long-term health condition"
+        },
+        {
+          "label": "Prefer not to say",
+          "value": "Prefer not to say"
+        }
+      ]
+    },
+    {
+      "label": "Veteran status",
+      "group": "Workplace inclusion",
+      "type": "select",
+      "required": false,
+      "options": [
+        {
+          "label": "Not a veteran",
+          "value": "Not a veteran"
+        },
+        {
+          "label": "Australian Defence Force veteran",
+          "value": "Australian Defence Force veteran"
+        },
+        {
+          "label": "Prefer not to say",
+          "value": "Prefer not to say"
+        }
+      ]
+    },
+    {
+      "label": "Do you require workplace adjustments?",
+      "group": "Workplace inclusion",
+      "type": "radio",
+      "required": false,
+      "options": [
+        {
+          "label": "Yes",
+          "value": "Yes"
+        },
+        {
+          "label": "No",
+          "value": "No"
+        },
+        {
+          "label": "Prefer to discuss",
+          "value": "Prefer to discuss"
+        }
+      ]
+    },
+    {
+      "label": "Workplace adjustment details",
+      "group": "Workplace inclusion",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "label": "Pronunciation of your name",
+      "group": "Workplace inclusion",
+      "type": "text",
+      "required": false
+    },
+    {
+      "label": "How did you hear about this role?",
+      "group": "Application extras",
+      "type": "select",
+      "required": false,
+      "options": [
+        {
+          "label": "Seek",
+          "value": "Seek"
+        },
+        {
+          "label": "LinkedIn",
+          "value": "LinkedIn"
+        },
+        {
+          "label": "Indeed",
+          "value": "Indeed"
+        },
+        {
+          "label": "Company website",
+          "value": "Company website"
+        },
+        {
+          "label": "Referral",
+          "value": "Referral"
+        },
+        {
+          "label": "Other",
+          "value": "Other"
+        }
+      ]
+    },
+    {
+      "label": "Why are you interested in this role?",
+      "group": "Application extras",
+      "type": "textarea",
+      "required": true
+    },
+    {
+      "label": "Cover letter",
+      "group": "Application extras",
+      "type": "textarea",
+      "required": false
+    },
+    {
+      "label": "Upload resume or CV",
+      "group": "Application extras",
+      "type": "file",
+      "required": true
+    },
+    {
+      "label": "Upload cover letter",
+      "group": "Application extras",
+      "type": "file",
+      "required": false
+    },
+    {
+      "label": "May we contact your referees?",
+      "group": "Application extras",
+      "type": "radio",
+      "required": false,
+      "options": [
+        {
+          "label": "Yes",
+          "value": "Yes"
+        },
+        {
+          "label": "No",
+          "value": "No"
+        }
+      ]
+    },
+    {
+      "label": "Number of professional references",
+      "group": "Application extras",
+      "type": "number",
+      "required": false
+    },
+    {
+      "label": "Reference relationship",
+      "group": "Application extras",
+      "type": "text",
+      "required": false
+    },
+    {
+      "label": "Anything else you would like us to know?",
+      "group": "Application extras",
+      "type": "textarea",
+      "required": false
+    }
   ]
 }

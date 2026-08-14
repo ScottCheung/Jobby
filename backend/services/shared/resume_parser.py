@@ -706,24 +706,26 @@ def normalize_resume_data(raw: Any) -> dict:
         result["summary"] = summary
 
     links: list[dict[str, Any]] = []
-    raw_links = raw.get("links") if isinstance(raw.get("links"), list) else []
-    for item in raw_links:
-        if not isinstance(item, dict):
-            continue
-        link = _text(item.get("link"), 2048)
-        if not link:
-            continue
-        link_type = _text(item.get("type"), 100) or "Other"
-        _append_unique(links, {"type": link_type, "link": link})
-    legacy_link_map = [
-        ("LinkedIn", _normalise_linkedin_url(basics_raw.get("linkedin_id") or basics_raw.get("linkedin_url"))),
-        ("Website", website),
-        ("Portfolio", portfolio_url),
-    ]
-    for link_type, link in legacy_link_map:
-        if link:
+    raw_links = raw.get("links") if isinstance(raw.get("links"), list) else None
+    if raw_links is not None:
+        for item in raw_links:
+            if not isinstance(item, dict):
+                continue
+            link = _text(item.get("link"), 2048)
+            if not link:
+                continue
+            link_type = _text(item.get("type"), 100) or "Other"
             _append_unique(links, {"type": link_type, "link": link})
-    if links:
+    else:
+        legacy_link_map = [
+            ("LinkedIn", _normalise_linkedin_url(basics_raw.get("linkedin_id") or basics_raw.get("linkedin_url"))),
+            ("Website", website),
+            ("Portfolio", portfolio_url),
+        ]
+        for link_type, link in legacy_link_map:
+            if link:
+                _append_unique(links, {"type": link_type, "link": link})
+    if links or raw_links is not None:
         result["links"] = links
 
     experience: list[dict[str, Any]] = []

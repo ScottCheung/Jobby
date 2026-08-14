@@ -1,21 +1,13 @@
 /** @format */
 
 'use client';
-import { Avatar, Button, CardWithNorth, ImageCropper, Select, Tooltip } from '@jobby/ui';
-
+import { Avatar, Button, CardWithNorth, ImageCropper, Select, Tooltip, WaterfallLayout } from '@jobby/ui';
 import React, { useId, useRef, useState } from 'react';
 import { Check, ImagePlus, LogOut, Plus, Trash2, X } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useConsole } from '@/components/ConsoleContext';
 import { DisplayField, Field } from '@/components/forms';
-
-
-
-
-
-
-import { WaterfallLayout } from '@/components/layout/waterfallLayout';
 import { useGlobalModalStore } from '@/lib/store/global-modal-store';
 import type { CoreProfileField, UserProfile } from '@/lib/types';
 import {

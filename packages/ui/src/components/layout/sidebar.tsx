@@ -29,7 +29,17 @@ import { ColorPicker } from '@/components/color-picker';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { ThemeColorToggle } from '@/components/theme-color-toggle';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FavoritesDrawer } from '@/components/layout/FavoritesDrawer';
+import { FavoritesDrawer } from './FavoritesDrawer';
+import {
+  Tooltip,
+  TooltipRoot,
+  TooltipTrigger,
+  TooltipContent,
+  TooltipProvider,
+} from '../UI/tooltip';
+import { H4 } from '../UI/text/typography';
+import { NotificationCenter } from '../notifications/NotificationCenter';
+import { Stagger, StaggerItem } from '../animation';
 
 const ChromeIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg
@@ -81,17 +91,6 @@ import { useConsole } from '@/components/ConsoleContext';
 import { useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
-
-import {
-  Tooltip,
-  TooltipRoot,
-  TooltipTrigger,
-  TooltipContent,
-  TooltipProvider,
-} from '@/components/UI/tooltip';
-import { H4 } from '@/components/UI/text/typography';
-import { NotificationCenter } from '@/components/notifications/NotificationCenter';
-import { Stagger, StaggerItem } from '../animation';
 
 export function Sidebar() {
   const pathname = usePathname();

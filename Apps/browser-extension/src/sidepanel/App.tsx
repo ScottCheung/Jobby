@@ -17,6 +17,8 @@ import { useInspection } from './hooks/useInspection';
 import { useThemeSync } from './hooks/useThemeSync';
 import { EmptyPlaceHolder } from '@jobby/ui/components/UI/EmptyPlaceHolder';
 import { getActiveTab } from './services/messaging';
+import { IPEmotion } from '@jobby/ui/components/UI/IPEmotion';
+import { cn } from '@jobby/ui/lib/utils';
 
 const PAGE_READY_DELAY_MS = 150;
 const LINKEDIN_CARD_RECOVERY_MS = 10_000;
@@ -40,6 +42,7 @@ export function App() {
     latestForm,
     inspectionError,
     setInspectionError,
+    applyAutofillResults,
     isInspectingPage,
     isInspectingForm,
     isClearingForm,
@@ -103,6 +106,7 @@ export function App() {
     inspectPage,
     inspectForm,
     setInspectionError,
+    applyAutofillResults,
   );
 
   // Inspection results are intentionally kept out of the event effect's
@@ -292,31 +296,31 @@ export function App() {
 
                 if (showNotJobOverlay) {
                   return (
-                    <div className='relative rounded-2xl overflow-hidden min-h-[340px] flex flex-col gap-2 transition-all duration-200 border border-border/40 p-1 bg-panel/30'>
-                      {/* Underlying baseline skeleton to keep height completely unchanged */}
-                      <div className='opacity-20 pointer-events-none filter blur-[2px] select-none flex flex-col gap-2'>
-                        <JobScoreCard
-                          latestInspection={null}
-                          latestPlan={null}
-                          isInspecting={true}
-                        />
-                        <PageClassBanner
-                          latestInspection={null}
-                          latestPlan={null}
-                          isInspecting={true}
-                        />
-                      </div>
-
+                    <div className='relative rounded-2xl overflow-hidden min-h-[340px] flex flex-col gap-2 transition-all duration-200  p-1 bg-primary/30'>
                       {/* Overlay Mask */}
-                      <div className='absolute inset-0 z-10 flex flex-col items-center justify-center bg-background/85 backdrop-blur-md p-4 rounded-2xl border border-border/50 shadow-xs'>
-                        <EmptyPlaceHolder
-                          title='Insufficient Content'
-                          description='Unable to extract job info'
-                          IP={1}
-                          className='border-0 bg-transparent p-0 shadow-none'
-                          messageClassName='!mt-20 !text-xs font-bold uppercase tracking-wider text-foreground'
-                          descriptionClassName='!text-[11px] text-muted-foreground max-w-[240px] text-center'
-                        />
+                      <div className='absolute inset-0 z-10 flex flex-col items-center justify-center bg-background/85 backdrop-blur-md p-4 rounded-2xl '>
+                        <div className='bg-background-50  w-full h-full justify-center items-center flex flex-col'>
+                          <IPEmotion
+                            emotionId={1}
+                            className={cn('w-40 h-40 mx-auto -mt-10 ')}
+                          />
+
+                          <p
+                            className={cn(
+                              'text-xs mt-60 font-bold text-foreground max-w-[400px] uppercase tracking-wider',
+                            )}
+                          >
+                            Insufficient Content
+                          </p>
+
+                          <p
+                            className={cn(
+                              'text-[11px] mt-3 leading-relaxed text-muted-foreground max-w-[220px]',
+                            )}
+                          >
+                            Unable to extract job info
+                          </p>
+                        </div>
                       </div>
                     </div>
                   );

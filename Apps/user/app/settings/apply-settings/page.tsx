@@ -4,7 +4,7 @@
 
 import React from 'react';
 import { useConsole } from '@/components/ConsoleContext';
-import { WaterfallLayout } from '@/components/layout/waterfallLayout';
+import { WaterfallLayout } from '@jobby/ui';
 import { useGlobalModalStore } from '@/lib/store/global-modal-store';
 import {
   SearchStrategyCard,

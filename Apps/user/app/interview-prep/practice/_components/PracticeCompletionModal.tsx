@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Award, ChevronRight, RotateCcw, Sparkles, Star } from 'lucide-react';
-import { Modal } from '@/components/layout/modal';
+import { Modal } from '@jobby/ui';
 import { api } from '@/lib/api';
 import type { GamificationUpdate } from '@/lib/types';
 import { cn } from '@/lib/utils';

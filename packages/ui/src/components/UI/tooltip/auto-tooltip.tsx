@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/UI/tooltip"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./index"
 import { cn } from "@/lib/utils"
 
 interface AutoTooltipProps extends Omit<React.HTMLAttributes<HTMLDivElement>, "content"> {

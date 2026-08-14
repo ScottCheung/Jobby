@@ -3,10 +3,10 @@
 'use client';
 
 import { useConsole } from '@/components/ConsoleContext';
-import CardWithNorth from '@/components/UI/card/CardWithNorth';
-import { H1 } from '@/components/UI/text/typography';
-import { Number } from '@/components/UI/Number/Number';
-import { Stagger, StaggerItem } from '@/components/animation';
+import CardWithNorth from '../UI/card/CardWithNorth';
+import { H1 } from '../UI/text/typography';
+import { Number } from '../UI/Number/Number';
+import { Stagger, StaggerItem } from '../animation';
 import { cn } from '@/lib/utils';
 
 export function DashboardStats({ className }: { className?: string }) {
@@ -20,7 +20,7 @@ export function DashboardStats({ className }: { className?: string }) {
         className,
       )}
     >
-      {stats.map((item) => {
+      {stats.map((item: any) => {
         const Icon = item.icon;
         return (
           <StaggerItem key={item.label} yOffset={20}>

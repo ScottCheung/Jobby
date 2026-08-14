@@ -1,9 +1,8 @@
 /** @format */
 
-import { GeminiBackground } from '@jobby/ui';
+import { GeminiBackground, QueryProvider } from '@jobby/ui';
 import type { Metadata } from 'next';
 import './globals.css';
-import { QueryProvider } from '@/components/providers/QueryProvider';
 import { ThemeProvider } from '@/components/theme-provider';
 import { ConsoleProvider } from '@/components/ConsoleContext';
 import ConsoleLayout from '@/components/ConsoleLayout';

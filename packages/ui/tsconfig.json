@@ -14,11 +14,13 @@
     "jsx": "react-jsx",
     "paths": {
       "@/lib/utils": ["./src/lib/utils.ts"],
-      "@/components/*": ["./src/components/*"],
+      "@/lib/*": ["../../Apps/user/lib/*"],
+      "@/components/*": ["../../Apps/user/components/*", "./src/components/*"],
       "@/styles/*": ["./src/styles/*"],
       "@jobby/ui": ["./src/index.ts"],
       "@jobby/ui/*": ["./src/*"]
     }
   },
-  "include": ["src/**/*"]
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "**/*.stories.tsx"]
 }

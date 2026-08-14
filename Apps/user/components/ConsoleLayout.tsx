@@ -1,22 +1,23 @@
 /** @format */
 
 'use client';
-import { CelebrationLayer, Toaster } from '@jobby/ui';
+import {
+  CelebrationLayer,
+  Toaster,
+  Sidebar,
+  GlobalDrawer,
+  GlobalConfirm,
+  GlobalModal,
+  DashboardStats,
+} from '@jobby/ui';
 
 import React, { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { LayoutGroup } from 'framer-motion';
 import { useConsole } from '@/components/ConsoleContext';
-import { Sidebar } from '@/components/layout/sidebar';
-import { GlobalDrawer } from '@/components/layout/global-drawer';
-import { GlobalConfirm } from '@/components/layout/global-confirm';
-import { GlobalModal } from '@/components/layout/global-modal';
 import { cn } from '@/lib/utils';
 import { RefreshCw } from 'lucide-react';
 import AutomationPanel from '@/app/_component/AutomationPanel';
-
-
-import { DashboardStats } from '@/components/layout/dashboard-stats';
 
 export default function ConsoleLayout({
   children,

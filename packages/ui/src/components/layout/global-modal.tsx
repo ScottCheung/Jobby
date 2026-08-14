@@ -1,6 +1,6 @@
 'use client';
 
-import { Modal } from '@/components/layout/modal';
+import { Modal } from './modal';
 import { useGlobalModalStore } from '@/lib/store/global-modal-store';
 
 export function GlobalModal() {

@@ -10,7 +10,7 @@ import type {
   PlanTask,
   InterviewCategory,
 } from '@/lib/types';
-import { WaterfallLayout } from '@/components/layout/waterfallLayout';
+import { Button, Modal, WaterfallLayout } from '@jobby/ui';
 import * as LucideIcons from 'lucide-react';
 import {
   Trash2,
@@ -57,9 +57,6 @@ const InventoryModal = dynamic(
 );
 
 import { showCelebrationEvent } from '@/lib/celebration';
-import { Modal } from '@/components/layout/modal';
-import { Button } from '@jobby/ui';
-import { div } from 'framer-motion/client';
 import { useConsole } from '@/components/ConsoleContext';
 
 // ─────────────────────────────────────────────

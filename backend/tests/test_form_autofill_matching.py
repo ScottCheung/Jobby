@@ -180,3 +180,32 @@ def test_rippling_custom_questions_matching() -> None:
     assert _autofill_intent_key("What is your current notice period or availability?") == "employment.notice_period"
     assert _autofill_intent_key("What are your salary expectations for this role?") == "compensation.desired_base_salary"
 
+
+def test_chinese_intent_key_matching() -> None:
+    assert _autofill_intent_key("期望薪资") == "compensation.desired_base_salary"
+    assert _autofill_intent_key("国籍") == "employment.citizenship"
+    assert _autofill_intent_key("最快到岗时间") == "employment.date_available"
+    assert _autofill_intent_key("离职通知期") == "employment.notice_period"
+    assert _autofill_intent_key("合法工作权限") == "employment.work_authorization"
+    assert _autofill_intent_key("是否需要签证赞助") == "employment.visa_sponsorship"
+
+
+def test_token_overlap_option_coercion() -> None:
+    sponsorship_field = SimpleNamespace(
+        type="select",
+        label="Visa Sponsorship",
+        options=[
+            {"label": "Please select", "value": ""},
+            {"label": "Yes, I will require sponsorship now or in the future", "value": "Yes"},
+            {"label": "No, I do not require sponsorship now or in the future", "value": "No"},
+        ],
+    )
+    val_no, err_no = _coerce_form_value("No", sponsorship_field, "employment.visa_sponsorship")
+    assert val_no == "No"
+    assert err_no is None
+
+    val_yes, err_yes = _coerce_form_value("Yes", sponsorship_field, "employment.visa_sponsorship")
+    assert val_yes == "Yes"
+    assert err_yes is None
+
+

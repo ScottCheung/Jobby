@@ -1,15 +1,11 @@
 /** @format */
 
 'use client';
-import { Button, Checkbox, EmptyPlaceHolder, Input, Switch } from '@jobby/ui';
-
+import { Button, Checkbox, EmptyPlaceHolder, Input, Switch, Modal } from '@jobby/ui';
 import React, { useState, useEffect } from 'react';
 import { X, Sliders, BookOpen, Clock, Search, Star } from 'lucide-react';
 import type { InterviewQuestion, InterviewCategory } from '@/lib/types';
 import { cn, cleanName } from '@/lib/utils';
-
-import { Modal } from '@/components/layout/modal';
-
 import { showGlobalToast } from '@/lib/toast';
 
 interface CustomizePlanModalProps {

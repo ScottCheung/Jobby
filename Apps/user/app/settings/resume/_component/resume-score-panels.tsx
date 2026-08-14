@@ -6,7 +6,6 @@ import { Button, CircularProgress, Tooltip } from '@jobby/ui';
 import { motion } from 'framer-motion';
 import { Plus, RefreshCw, TicketCheck, Timer, X } from 'lucide-react';
 
-
 import type {
   MasterResumeData,
   MasterResumeEvaluation,
@@ -15,7 +14,6 @@ import type {
 
 import { useGlobalModalStore } from '@/lib/store/global-modal-store';
 import { ResumePdfPreview } from './resume-pdf-preview';
-
 
 const EVALUATION_DIMENSIONS = {
   factual_completeness: { label: 'Factual completeness', weight: 25 },

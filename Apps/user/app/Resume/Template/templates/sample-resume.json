@@ -14,6 +14,14 @@
     "website": "xianzhe.site",
     "headline": "Full-stack Engineer"
   },
+  "core_competencies": [
+    "C#/.NET & RESTful API Development",
+    "React & Next.js Frontend Development",
+    "AWS Cloud Infrastructure & CI/CD",
+    "Relational Database Design & Optimization",
+    "Full-Stack Application Architecture",
+    "Performance Optimization & Reliability"
+  ],
   "summary": "I am a pragmatic full-stack software engineer with 8+ years of experience. I specialize in building reliable web platforms, developer tooling, and data-intensive services. I am known for simplifying complex systems and helping teams ship measurable customer outcomes.",
   "experience": [
     {

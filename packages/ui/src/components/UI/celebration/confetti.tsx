@@ -22,8 +22,9 @@ import { AnimatePresence, motion } from 'framer-motion';
 
 import { resolveCelebrationStyle } from '@/lib/celebration-config';
 import { useLayoutStore } from '@/lib/store/layout-store';
-import { Button } from '@/components/UI/Button';
-import { Trophy } from 'lucide-react';
+import { Button } from '../Button';
+import { IPEmotion } from '../IPEmotion';
+import { cn } from '@/lib/utils';
 
 type Api = {
   fire: (options?: ConfettiOptions) => void;
@@ -152,17 +153,34 @@ ConfettiButtonComponent.displayName = 'ConfettiButton';
 
 export const ConfettiButton = ConfettiButtonComponent;
 
+export interface CelebrationLayerProps {
+  emotionId?: number;
+}
+
 // Global Celebration Layer Component
-export function CelebrationLayer() {
-  const celebration = useLayoutStore((state) => state.celebration);
+export function CelebrationLayer({
+  emotionId: propEmotionId,
+}: CelebrationLayerProps = {}) {
+  // Set to true to freeze card UI for style tuning
+  const FORCE_SHOW_FOR_DEV = false;
+
+  const storeCelebration = useLayoutStore((state: any) => state.celebration);
+  const celebration =
+    storeCelebration ||
+    (FORCE_SHOW_FOR_DEV ?
+      ({ type: 'basic', message: 'Unlocked!' } as any)
+    : null);
   const clearCelebration = useLayoutStore(
-    (state) => state.actions.clearCelebration,
+    (state: any) => state.actions.clearCelebration,
   );
   const resolvedStyle =
     celebration?.style ?? resolveCelebrationStyle(celebration?.type ?? 'basic');
 
+  const activeEmotionId =
+    propEmotionId ?? celebration?.emotionId ?? resolvedStyle?.emotionId ?? 14;
+
   useEffect(() => {
-    if (!celebration) return;
+    if (!celebration || FORCE_SHOW_FOR_DEV) return;
 
     const celebrationDuration =
       celebration.duration ?? resolvedStyle.durationMs;
@@ -311,18 +329,35 @@ export function CelebrationLayer() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: -20 }}
               transition={{ type: 'spring', damping: 15, stiffness: 200 }}
-              style={{
-                background: 'linear-gradient(135deg, #100f11, #08164c)',
-              }}
-              className='relative max-w-sm rounded-2xl border flex flex-col gap-1 px-8 py-5 backdrop-blur-2xl text-center shadow-[0_0_50px_rgba(0,0,0,0.5),0_0_20px_rgba(34,197,94,0.1)]'
+              className='relative  w-full flex flex-col items-center justify-center px-4'
             >
-              <div className='mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full border  border-[#F3D092]/30 text-[#F3D092]'>
-                <Trophy />
+              {/* Overlapping IP Mascot */}
+              <div
+                className={cn(
+                  'relative z-10 w-60 h-60 -mb-23  flex items-center justify-center',
+                )}
+              >
+                <IPEmotion
+                  emotionId={activeEmotionId}
+                  className='w-full h-full drop-shadow-[0_10px_25px_rgba(0,0,0,0.5)] transition-transform hover:scale-105'
+                />
               </div>
-              <h3 className='label mb-1 text-[#F3D092]!'>Celebration!</h3>
-              <p className='title-sub text-[#F3D092]!'>
-                {celebration.message || 'Unlocked!'}
-              </p>
+
+              {/* Card Body */}
+              <div
+                style={{
+                  background:
+                    'linear-gradient(135deg, #100f11 0%, #08164c 100%)',
+                }}
+                className='max-w-[300px] relative w-full rounded-3xl border border-[#F3D092]/30 pt-16 pb-6 px-8 text-center shadow-[0_0_50px_rgba(0,0,0,0.6),0_0_20px_rgba(243,208,146,0.15)] backdrop-blur-2xl flex flex-col items-center gap-1.5'
+              >
+                <h3 className='text-lg font-extrabold tracking-wide text-[#F3D092]'>
+                  Celebration
+                </h3>
+                <p className='text-sm font-medium text-[#F3D092]/80 max-w-xs leading-relaxed'>
+                  {celebration.message || 'Unlocked!'}
+                </p>
+              </div>
             </motion.div>
           )}
         </div>

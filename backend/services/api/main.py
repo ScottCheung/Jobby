@@ -3217,43 +3217,43 @@ def _normalize_form_label(value: str) -> str:
 
 def _autofill_answer_category(label: str) -> str | None:
     norm = _normalize_form_label(label)
-    if any(term in norm for term in ["notice period", "notice", "availability or notice", "notice period or availability"]):
+    if any(term in norm for term in ["notice period", "notice", "availability or notice", "notice period or availability", "离职状态", "离职通知期", "通知期", "离职期"]):
         return "notice_period"
-    if any(term in norm for term in ["date available", "available date", "availability date", "earliest start date", "start date", "when can you start"]):
+    if any(term in norm for term in ["date available", "available date", "availability date", "earliest start date", "start date", "when can you start", "到岗时间", "最快到岗", "可到岗日期"]):
         return "date_available"
-    if "current" in norm and any(term in norm for term in ["salary", "compensation", "remuneration"]):
+    if "current" in norm and any(term in norm for term in ["salary", "compensation", "remuneration", "ctc", "薪资", "目前薪资", "当前薪资"]):
         return "current_salary"
-    if any(term in norm for term in ["day rate", "daily rate", "per day", "aud/day"]):
+    if any(term in norm for term in ["day rate", "daily rate", "per day", "aud/day", "期望日薪", "日薪"]):
         return "day_rate"
-    if any(term in norm for term in ["salary", "compensation", "remuneration", "pay expectation", "aud/year", "per year"]):
+    if any(term in norm for term in ["salary", "compensation", "remuneration", "pay expectation", "aud/year", "per year", "expected salary", "desired salary", "期望薪资", "目标薪资", "年薪"]):
         return "salary"
-    if any(term in norm for term in ["visa sponsorship", "visa sponsor", "require sponsorship", "need sponsorship", "require visa"]):
+    if any(term in norm for term in ["visa sponsorship", "visa sponsor", "require sponsorship", "need sponsorship", "require visa", "sponsorship support", "签证赞助", "需要赞助"]):
         return "visa_sponsorship"
-    if any(term in norm for term in ["citizenship", "nationality"]):
+    if any(term in norm for term in ["citizenship", "nationality", "国籍"]):
         return "citizenship"
-    if any(term in norm for term in ["details of your visa", "visa details", "details of visa", "visa type", "type of visa", "visa category"]):
+    if any(term in norm for term in ["details of your visa", "visa details", "details of visa", "visa type", "type of visa", "visa category", "签证类型", "签证细节"]):
         return "visa_type"
-    if any(term in norm for term in ["on a work visa", "on a visa", "work visa", "working visa", "visa status", "current visa", "hold a visa", "visa holder"]):
+    if any(term in norm for term in ["on a work visa", "on a visa", "work visa", "working visa", "visa status", "current visa", "hold a visa", "visa holder", "签证状态", "持有签证"]):
         return "visa_status"
-    if any(term in norm for term in ["work authorization", "authorized to work", "right to work", "work rights", "working rights", "full working rights", "eligible to work", "entitled to work", "legally authorized", "permission to work"]):
+    if any(term in norm for term in ["work authorization", "authorized to work", "right to work", "work rights", "working rights", "full working rights", "eligible to work", "entitled to work", "legally authorized", "permission to work", "unrestricted work rights", "工作权限", "工作合法性", "合法工作"]):
         return "work_authorization"
-    if any(term in norm for term in ["security clearance", "clearance status", "nv1", "nv2", "baseline clearance"]):
+    if any(term in norm for term in ["security clearance", "clearance status", "nv1", "nv2", "baseline clearance", "安全审查"]):
         return "security_clearance"
-    if any(term in norm for term in ["police check", "background check", "criminal history"]):
+    if any(term in norm for term in ["police check", "background check", "criminal history", "无犯罪记录", "背景调查"]):
         return "police_check_consent"
     if any(term in norm for term in ["working with children", "wwcc", "wwc"]):
         return "wwcc_status"
-    if any(term in norm for term in ["driver license", "driver's license", "driving license", "valid license"]):
+    if any(term in norm for term in ["driver license", "driver's license", "driving license", "valid license", "驾照"]):
         return "drivers_license"
-    if any(term in norm for term in ["work restriction", "restriction on work", "limitation on hours"]):
+    if any(term in norm for term in ["work restriction", "restriction on work", "limitation on hours", "工作限制"]):
         return "work_restrictions"
-    if any(term in norm for term in ["years of experience", "years experience", "experience years", "professional experience"]):
+    if any(term in norm for term in ["years of experience", "years experience", "experience years", "professional experience", "工作年限", "经验年限", "工作经验"]):
         return "experience"
-    if any(term in norm for term in ["relocate", "relocation", "move for this role"]):
+    if any(term in norm for term in ["relocate", "relocation", "move for this role", "异地搬迁", "接受异地"]):
         return "relocation"
-    if any(term in norm for term in ["office", "hybrid", "commute", "on-site", "onsite"]):
+    if any(term in norm for term in ["office", "hybrid", "commute", "on-site", "onsite", "办公方式", "到岗频次"]):
         return "office_attendance"
-    if any(term in norm for term in ["based", "where are you", "location", "city", "relocate"]):
+    if any(term in norm for term in ["based", "where are you", "location", "city", "relocate", "所在城市", "当前位置", "居住地"]):
         return "location"
     if any(term in norm for term in ["text message", "sms", "text updates", "receive text"]):
         return "sms_opt_in"
@@ -3262,25 +3262,25 @@ def _autofill_answer_category(label: str) -> str | None:
 
 def _autofill_intent_key(label: str) -> str | None:
     norm = _normalize_form_label(label)
-    if norm in {"title", "salutation", "prefix", "honorific", "name prefix"}:
+    if norm in {"title", "salutation", "prefix", "honorific", "name prefix", "称谓", "尊称"}:
         return "identity.title"
-    if "preferred name" in norm or "preferred first name" in norm:
+    if "preferred name" in norm or "preferred first name" in norm or "常用名" in norm:
         return "identity.preferred_name"
-    if "pronoun" in norm:
+    if "pronoun" in norm or "代词" in norm:
         return "identity.pronouns"
-    if "legal name" in norm:
+    if "legal name" in norm or "法定姓名" in norm:
         return "identity.legal_name"
-    if any(term in norm for term in ["first name", "given name", "forename"]):
+    if any(term in norm for term in ["first name", "given name", "forename", "名字", "名"]):
         return "identity.first_name"
-    if any(term in norm for term in ["last name", "family name", "surname"]):
+    if any(term in norm for term in ["last name", "family name", "surname", "姓氏", "姓"]):
         return "identity.last_name"
-    if norm in {"name", "full name"}:
+    if norm in {"name", "full name", "姓名", "全名"}:
         return "identity.full_name"
-    if any(term in norm for term in ["email", "e-mail"]):
+    if any(term in norm for term in ["email", "e-mail", "邮箱", "电子邮箱"]):
         return "identity.email"
-    if any(term in norm for term in ["phone", "mobile", "contact number", "telephone"]):
+    if any(term in norm for term in ["phone", "mobile", "contact number", "telephone", "电话", "手机", "联系电话"]):
         return "identity.phone"
-    if any(term in norm for term in ["day rate", "daily rate", "per day", "aud/day"]):
+    if any(term in norm for term in ["day rate", "daily rate", "per day", "aud/day", "期望日薪"]):
         return "compensation.desired_day_rate"
     category = _autofill_answer_category(label)
     return {
@@ -3580,10 +3580,10 @@ def _notice_period_candidates(raw_answer: str) -> list[str]:
     else:
         weeks = round(days / 7)
         if weeks > 0:
-            candidates.extend([f"{weeks} week", f"{weeks} weeks", f"{weeks} wks", f"{weeks} wk", f"{weeks}w"])
+            candidates.extend([f"{weeks} week", f"{weeks} weeks", f"{weeks} wks", f"{weeks} wk", f"{weeks}w", f"{weeks} week notice", f"{weeks} weeks notice"])
         months = round(days / 30)
         if months > 0:
-            candidates.extend([f"{months} month", f"{months} months", f"{months} mon", f"{months}m"])
+            candidates.extend([f"{months} month", f"{months} months", f"{months} mon", f"{months}m", f"{months} month notice"])
     return candidates
 
 
@@ -3602,16 +3602,16 @@ def _coerce_form_value(
         if core_field_key == "employment.notice_period" or "notice" in field_label.lower():
             target_answers.extend(_notice_period_candidates(raw_answer))
         elif core_field_key == "employment.work_authorization":
-            if any(term in raw_answer.lower() for term in ["yes", "true", "full", "authorized", "citizen", "pr", "permanent", "permit", "work rights"]):
-                target_answers.extend(["yes", "y", "true", "1", "authorized", "eligible"])
+            if any(term in raw_answer.lower() for term in ["yes", "true", "full", "authorized", "citizen", "pr", "permanent", "permit", "work rights", "unrestricted"]):
+                target_answers.extend(["yes", "y", "true", "1", "authorized", "eligible", "unrestricted work rights", "full working rights"])
                 if "citizen" in raw_answer.lower():
-                    target_answers.extend(["citizen", "australian/new zealand citizen"])
+                    target_answers.extend(["citizen", "australian/new zealand citizen", "australian citizen", "citizen / permanent resident"])
                 elif any(term in raw_answer.lower() for term in ["pr", "permanent"]):
-                    target_answers.extend(["permanent resident", "permanent"])
+                    target_answers.extend(["permanent resident", "permanent", "pr holder", "citizen / permanent resident"])
                 elif any(term in raw_answer.lower() for term in ["visa", "permit"]):
-                    target_answers.extend(["valid visa holder", "visa holder", "visa"])
+                    target_answers.extend(["valid visa holder", "visa holder", "visa", "temporary visa holder"])
             elif any(term in raw_answer.lower() for term in ["no", "false"]):
-                target_answers.extend(["no", "n", "false", "0", "requires sponsorship"])
+                target_answers.extend(["no", "n", "false", "0", "requires sponsorship", "no work rights"])
         elif core_field_key == "consent.sms" or "sms" in field_label.lower() or "text message" in field_label.lower():
             if any(term in raw_answer.lower() for term in ["no", "false", "opt out", "don't consent", "do not consent"]):
                 target_answers.extend(["false", "no", "0", "no - i do not consent to receiving text messages"])
@@ -3619,20 +3619,20 @@ def _coerce_form_value(
                 target_answers.extend(["false", "no", "0", "no - i do not consent to receiving text messages", "true", "yes", "1", "yes - i consent to receiving text messages"])
         elif core_field_key == "employment.visa_status":
             if any(term in raw_answer.lower() for term in ["work visa", "temporary", "yes", "student", "bridging", "holder", "visa"]):
-                target_answers.extend(["yes", "y", "true", "1", "temporary visa holder", "work visa", "valid visa holder"])
+                target_answers.extend(["yes", "y", "true", "1", "temporary visa holder", "work visa", "valid visa holder", "working visa"])
             elif any(term in raw_answer.lower() for term in ["no", "false", "citizen", "pr", "permanent"]):
                 target_answers.extend(["no", "n", "false", "0", "australian/new zealand citizen", "permanent resident"])
         elif core_field_key == "employment.visa_sponsorship":
-            if any(term in raw_answer.lower() for term in ["no", "false", "none", "not required", "don't need"]):
-                target_answers.extend(["no", "n", "false", "0"])
+            if any(term in raw_answer.lower() for term in ["no", "false", "none", "not required", "don't need", "will not require"]):
+                target_answers.extend(["no", "n", "false", "0", "no sponsorship required", "will not require sponsorship"])
             elif any(term in raw_answer.lower() for term in ["yes", "true", "required", "need"]):
-                target_answers.extend(["yes", "y", "true", "1"])
+                target_answers.extend(["yes", "y", "true", "1", "sponsorship required"])
         elif core_field_key == "identity.pronouns" or "pronoun" in field_label.lower():
             lower_ans = raw_answer.lower()
             if any(term in lower_ans for term in ["he/him", "he / him", "male"]):
-                target_answers.extend(["he/him", "he / him", "he / him / his", "he/him/his", "he", "him", "his"])
+                target_answers.extend(["he/him", "he / him", "he / him / his", "he/him/his", "he", "him", "his", "male"])
             elif any(term in lower_ans for term in ["she/her", "she / her", "female"]):
-                target_answers.extend(["she/her", "she / her", "she / her / hers", "she/her/hers", "she", "her", "hers"])
+                target_answers.extend(["she/her", "she / her", "she / her / hers", "she/her/hers", "she", "her", "hers", "female"])
             elif any(term in lower_ans for term in ["they/them", "they / them"]):
                 target_answers.extend(["they/them", "they / them", "they / them / theirs", "they/them/theirs", "they", "them", "theirs"])
             elif any(term in lower_ans for term in ["prefer not to say", "decline", "do not wish"]):
@@ -3653,23 +3653,34 @@ def _coerce_form_value(
             if normalized_candidates & {normalized_value, normalized_label}:
                 return option_value, None
 
-        matched = next(
-            (
-                str(option.get("value") or option.get("label") or "")
-                for option in field.options
-                if (normalize_alias(option.get("label", "")) not in {"", "select", "choose", "please select", "-- select --"})
-                and any(
-                    (cand in normalize_alias(option.get("label", "")) or normalize_alias(option.get("label", "")) in cand)
-                    for cand in normalized_candidates
-                    if len(cand) >= 2 and len(normalize_alias(option.get("label", ""))) >= 2
-                )
-            ),
-            None,
-        )
-        if matched is None and field.options:
+        # Multi-token overlap scoring for best candidate option matching
+        best_option = None
+        best_score = 0
+        for option in field.options:
+            option_value = str(option.get("value") or option.get("label") or "")
+            norm_label = normalize_alias(option.get("label", ""))
+            if not norm_label or norm_label in {"select", "choose", "please select", "-- select --"}:
+                continue
+            
+            option_tokens = set(norm_label.split())
+            for cand in normalized_candidates:
+                if len(cand) < 2:
+                    continue
+                cand_tokens = set(cand.split())
+                overlap = len(cand_tokens & option_tokens)
+                if cand in norm_label or norm_label in cand:
+                    score = 10 + overlap
+                else:
+                    score = overlap
+                if score > best_score and score >= 1:
+                    best_score = score
+                    best_option = option_value
+
+        if best_option is not None:
+            return best_option, None
+
+        if field.options:
             return None, "Value is not one of the available options."
-        if matched is not None:
-            return matched, None
 
     field_label = str(getattr(field, "label", "") or "")
     if core_field_key == "employment.date_available" or "available" in field_label.lower():
@@ -3723,8 +3734,13 @@ def _build_form_autofill_instructions(
             )
             if value:
                 instructions.append({
+                    "type": "content.fill-field",
                     "commandId": str(uuid4()),
-                    "source": "intent_classifier",
+                    # `ApplicationFieldInstruction.source` is an execution
+                    # channel, not an attribution field. Keep the detailed
+                    # derivation in `traces`; returning it here violates the
+                    # response schema and rejects the entire batch response.
+                    "source": "backend",
                     "target": field.model_dump(exclude_none=True),
                     "value": value,
                 })
@@ -3751,6 +3767,7 @@ def _build_form_autofill_instructions(
             continue
         if _is_single_consent_checkbox(field):
             instructions.append({
+                "type": "content.fill-field",
                 "commandId": str(uuid4()),
                 "source": "backend",
                 "target": field.model_dump(exclude_none=True),
@@ -3871,6 +3888,7 @@ def _build_form_autofill_instructions(
             traces.append({"key": field.key, "label": field.label, "intent_key": core_field_key, "core_field_key": core_field_key, "scene": scene, "semantic_features": features, "source": "core_profile", "status": "unanswered", "reason": reason})
             continue
         instructions.append({
+            "type": "content.fill-field",
             "commandId": str(uuid4()),
             "source": "backend",
             "target": field.model_dump(exclude_none=True),

@@ -6,7 +6,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Reorder, useDragControls } from 'framer-motion';
 import { GripVertical, Plus, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/UI/Button';
+import { Button } from './Button';
 
 type BulletListInputProps = {
   values: string[];
@@ -64,7 +64,7 @@ function AutoResizeTextarea({
       onPointerDown={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.stopPropagation()}
       className={cn(
-        'w-full h-auto resize-none outline-none mt-0! min-h-[100px] rounded-tr-2xl!',
+        'w-full h-auto resize-none outline-none mt-0! min-h-[38px] text-sm text-ink-primary bg-transparent',
         className,
       )}
     />
@@ -231,7 +231,7 @@ export function BulletListInput({
   return (
     <div
       className={cn(
-        'border border-border bg-background-secondary p-4 rounded-lg space-y-3',
+        'border border-border bg-background-secondary p-2.5 rounded-xl space-y-2',
         className,
       )}
     >

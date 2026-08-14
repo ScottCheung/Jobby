@@ -22,7 +22,7 @@ import {
   GripVertical,
 } from 'lucide-react';
 
-import { Button } from '@/components/UI/Button';
+import { Button } from '../../Button';
 import { cn } from '@/lib/utils';
 
 interface DataTableProps<TData, TValue> {

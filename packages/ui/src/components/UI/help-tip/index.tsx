@@ -5,7 +5,7 @@
 import React from 'react';
 import { HelpCircle } from 'lucide-react';
 import { Button } from '@jobby/ui';
-import { Tooltip } from '@/components/UI/tooltip';
+import { Tooltip } from '../tooltip';
 import { cn } from '@/lib/utils';
 
 type HelpTipProps = {

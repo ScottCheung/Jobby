@@ -48,6 +48,7 @@ export type ResumeTemplateConfig = {
     rule: string;
     headerRule: string;
     paper: string;
+    primary?: string;
   };
   spacing: {
     headerPaddingBottom: number;
@@ -62,6 +63,7 @@ export type ResumeTemplateConfig = {
     detailGap: number;
     bulletGap: number;
     bulletMarkWidth: number;
+    bulletIndent?: number;
     technologyGap: number;
     skillGap: number;
     contentInset: number;

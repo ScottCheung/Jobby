@@ -4,7 +4,7 @@
 
 import type { LucideIcon } from 'lucide-react';
 import { motion } from 'framer-motion';
-import AnimatedIcon from '@/components/UI/SVGanimation/StatusSVG';
+import AnimatedIcon from '../SVGanimation/StatusSVG';
 import { cn } from '@/lib/utils';
 
 export type CardSelectorOption<T extends string> = {

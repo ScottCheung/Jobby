@@ -1,13 +1,10 @@
 /** @format */
 
 'use client';
-import { CardWithNorth, EmptyPlaceHolder } from '@jobby/ui';
-
+import { CardWithNorth, EmptyPlaceHolder, ScrollableContainer } from '@jobby/ui';
 import { BookOpen, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import type { InterviewCategory, InterviewCollection } from '@/lib/types';
-
-import { ScrollableContainer } from '@/components/layout/ScrollableContainer';
 import { cn } from '@/lib/utils';
 import {
   getInterviewCategoryIcon,

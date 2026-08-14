@@ -5,7 +5,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Stagger, StaggerItem } from '@/components/animation/container/stagger';
+import { Stagger, StaggerItem } from '../animation/container/stagger';
 
 export interface ScrollableContainerProps {
   children: React.ReactNode;

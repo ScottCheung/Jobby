@@ -65,6 +65,16 @@ export * from './components/layout/drawer';
 export * from './components/layout/modal';
 export * from './components/layout/page-header';
 export * from './components/layout/module-top-nav';
+export * from './components/layout/sidebar';
+export * from './components/layout/global-drawer';
+export * from './components/layout/global-confirm';
+export * from './components/layout/global-modal';
+export * from './components/layout/dashboard-stats';
+export * from './components/layout/FavoritesDrawer';
+
+// Notification Components
+export * from './components/notifications/NotificationCenter';
 
 // Providers
 export * from './components/providers/QueryProvider';
+

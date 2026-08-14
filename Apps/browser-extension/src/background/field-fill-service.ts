@@ -249,6 +249,11 @@ export async function autofillDetectedFormForActiveTab(): Promise<{
   results: FieldFillResult[];
   unansweredFields: Array<{ key: string; label: string; reason: string }>;
 }> {
+  const initialForm = await inspectFormActiveTab();
+  if (isAshbyForm(initialForm)) {
+    return autofillAshbyFieldsIndividually(initialForm);
+  }
+
   const page = await inspectActiveTab().catch(() => null);
   const company = page?.kind === "job" ? page.snapshot.company : undefined;
   const activeTab = (await chrome.tabs.query({ active: true, lastFocusedWindow: true }))[0];
@@ -269,6 +274,59 @@ export async function autofillDetectedFormForActiveTab(): Promise<{
       );
     },
   );
+}
+
+/**
+ * Ashby persists each answer through its own controlled-field update. The
+ * normal batch endpoint is therefore a poor fit: it captures a stale form
+ * snapshot before the first field changes. The per-field control in the
+ * panel already uses the reliable sequence of inspect -> answer -> write.
+ * Reuse that sequence for the top-level action and re-inspect after each
+ * write so every next target belongs to the current Ashby DOM.
+ */
+async function autofillAshbyFieldsIndividually(initialForm: FormInspection): Promise<{
+  results: FieldFillResult[];
+  unansweredFields: Array<{ key: string; label: string; reason: string }>;
+}> {
+  if (initialForm.kind !== "application_form" && initialForm.kind !== "page_input_fields") {
+    throw new Error("Inspect a supported application form before autofilling.");
+  }
+
+  const results: FieldFillResult[] = [];
+  const attempted = new Set<string>();
+  let form = initialForm;
+
+  while (form.kind === "application_form" || form.kind === "page_input_fields") {
+    const field = form.fields.find((candidate) => !candidate.filled && !attempted.has(candidate.key));
+    if (!field) break;
+    attempted.add(field.key);
+
+    const target: FormFieldTarget = {
+      key: field.key,
+      id: field.id,
+      name: field.name,
+      label: field.label,
+      type: field.type,
+      ...(field.frameId !== undefined ? { frameId: field.frameId } : {}),
+    };
+    const result = await autofillSingleFieldForActiveTab(target);
+    results.push(result);
+
+    // Wait for Ashby's save and React commit before locating the next field.
+    await new Promise((resolve) => setTimeout(resolve, 180));
+    const refreshed = await inspectFormActiveTab().catch(() => null);
+    if (!refreshed || (refreshed.kind !== "application_form" && refreshed.kind !== "page_input_fields")) {
+      break;
+    }
+    form = refreshed;
+  }
+
+  return {
+    results,
+    unansweredFields: results
+      .filter((result) => !isFillComplete(result))
+      .map((result) => ({ key: result.key, label: result.key, reason: result.message })),
+  };
 }
 
 export async function fillKnownFieldsForActiveTab(applicationId: string): Promise<{

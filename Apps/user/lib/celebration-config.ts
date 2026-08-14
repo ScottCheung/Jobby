@@ -95,7 +95,7 @@ const DEFAULT_STYLES: Record<CelebrationType, CelebrationStyleConfig> = {
     durationMs: 1600,
     overlayOpacity: 0,
     overlayBlurPx: 0,
-    panelEnabled: false,
+    panelEnabled: true,
     panelOpacity: 88,
     particleMultiplier: 0.75,
   },

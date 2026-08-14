@@ -40,6 +40,7 @@ export function scaleResumeTemplate(
       detailGap: scaled(config.spacing.detailGap),
       bulletGap: scaled(config.spacing.bulletGap),
       bulletMarkWidth: scaled(config.spacing.bulletMarkWidth),
+      bulletIndent: config.spacing.bulletIndent ? scaled(config.spacing.bulletIndent) : undefined,
       technologyGap: scaled(config.spacing.technologyGap),
       skillGap: scaled(config.spacing.skillGap),
       contentInset: scaled(config.spacing.contentInset),

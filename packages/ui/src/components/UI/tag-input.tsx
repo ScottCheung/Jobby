@@ -6,7 +6,7 @@ import { useState, useRef, useEffect, type DragEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GripVertical, Plus, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Input } from '@/components/UI/input';
+import { Input } from './input';
 import { Button } from './Button';
 
 type TagInputProps = {

@@ -6,8 +6,7 @@ import React, { useState } from 'react';
 import { X, Folder, FolderX, Check, Search, Loader2 } from 'lucide-react';
 import type { InterviewCategory } from '@/lib/types';
 import { cleanName, cn } from '@/lib/utils';
-import { Button } from '@jobby/ui';
-import { Modal } from '@/components/layout/modal';
+import { Button, Modal } from '@jobby/ui';
 
 interface BatchAssignCategoryModalProps {
   isOpen: boolean;

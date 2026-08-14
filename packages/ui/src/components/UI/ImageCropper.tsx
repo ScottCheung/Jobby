@@ -4,7 +4,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { Check } from 'lucide-react';
-import { Button } from '@/components/UI/Button';
+import { Button } from './Button';
 
 type ImageCropperProps = {
   file: File;

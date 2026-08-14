@@ -1,7 +1,7 @@
 "use client"
 
 import { useLayoutStore } from "@/lib/store/layout-store"
-import { Drawer } from "@/components/layout/drawer"
+import { Drawer } from "./drawer"
 
 export function GlobalDrawer() {
     const isDrawerOpen = useLayoutStore((state) => state.isDrawerOpen)

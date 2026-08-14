@@ -24,7 +24,7 @@ import {
   Edit3,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Modal } from '@/components/layout/modal';
+import { Button, Modal } from '@jobby/ui';
 import { api } from '@/lib/api';
 import { createClient } from '@/lib/supabase/client';
 import type {
@@ -33,7 +33,6 @@ import type {
   ProspectAgentLogEntry,
 } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { Button } from '@jobby/ui';
 
 interface DiscoveryAgentModalProps {
   isOpen: boolean;

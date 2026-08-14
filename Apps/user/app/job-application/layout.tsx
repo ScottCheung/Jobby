@@ -11,9 +11,9 @@ import {
 import {
   ModuleTopNav,
   type ModuleNavigationItem,
-} from '@/components/layout/module-top-nav';
+  DashboardStats,
+} from '@jobby/ui';
 import { GamificationStats } from '@/app/interview-prep/_components/GamificationStats';
-import { DashboardStats } from '@/components/layout/dashboard-stats';
 
 const tabs: ModuleNavigationItem[] = [
   {

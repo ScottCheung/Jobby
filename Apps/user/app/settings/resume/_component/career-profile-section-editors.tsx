@@ -18,11 +18,10 @@ import {
   Link as LinkIcon,
   Layers,
   X,
+  ChevronUp,
+  ChevronDown,
+  GripVertical,
 } from 'lucide-react';
-
-
-
-
 
 import type {
   MasterResumeData,
@@ -120,6 +119,8 @@ export function BasicsEditor({
     phone: string;
     headline: string;
     linkedin_id: string;
+    website: string;
+    portfolio_url: string;
     city: string;
     state: string;
     country: string;
@@ -130,6 +131,8 @@ export function BasicsEditor({
     phone: asValue(basics.phone),
     headline: asValue(basics.headline),
     linkedin_id: asValue(basics.linkedin_id),
+    website: asValue(basics.website),
+    portfolio_url: asValue(basics.portfolio_url),
     city: asValue(location.city),
     state: asValue(location.state),
     country: asValue(location.country),
@@ -147,6 +150,8 @@ export function BasicsEditor({
         phone: draft.phone || null,
         headline: draft.headline || null,
         linkedin_id: draft.linkedin_id || null,
+        website: draft.website || null,
+        portfolio_url: draft.portfolio_url || null,
         location: {
           ...location,
           city: draft.city || null,
@@ -171,10 +176,11 @@ export function BasicsEditor({
       <div className='body space-y-4'>
         <div className='grid gap-4 md:grid-cols-2'>
           <div>
-            <label className='body-sm mb-1 block font-medium text-ink-primary'>
+            <label className='text-xs font-medium text-ink-secondary mb-1 block'>
               First Name
             </label>
             <Input
+              className='font-semibold text-ink-primary'
               value={draft.first_name}
               placeholder='First name'
               onChange={(e) =>
@@ -183,10 +189,11 @@ export function BasicsEditor({
             />
           </div>
           <div>
-            <label className='body-sm mb-1 block font-medium text-ink-primary'>
+            <label className='text-xs font-medium text-ink-secondary mb-1 block'>
               Last Name
             </label>
             <Input
+              className='font-semibold text-ink-primary'
               value={draft.last_name}
               placeholder='Last name'
               onChange={(e) =>
@@ -195,62 +202,94 @@ export function BasicsEditor({
             />
           </div>
           <div>
-            <label className='body-sm mb-1 block font-medium text-ink-primary'>
+            <label className='text-xs font-medium text-ink-secondary mb-1 block'>
               Email
             </label>
             <Input
+              className='font-semibold text-ink-primary'
               value={draft.email}
               placeholder='email@example.com'
               onChange={(e) => setDraft({ ...draft, email: e.target.value })}
             />
           </div>
           <div>
-            <label className='body-sm mb-1 block font-medium text-ink-primary'>
+            <label className='text-xs font-medium text-ink-secondary mb-1 block'>
               Phone
             </label>
             <Input
+              className='font-semibold text-ink-primary'
               value={draft.phone}
               placeholder='+1 (555) 000-0000'
               onChange={(e) => setDraft({ ...draft, phone: e.target.value })}
             />
           </div>
           <div>
-            <label className='body-sm mb-1 block font-medium text-ink-primary'>
+            <label className='text-xs font-medium text-ink-secondary mb-1 block'>
               City
             </label>
             <Input
+              className='font-semibold text-ink-primary'
               value={draft.city}
               placeholder='City'
               onChange={(e) => setDraft({ ...draft, city: e.target.value })}
             />
           </div>
           <div>
-            <label className='body-sm mb-1 block font-medium text-ink-primary'>
+            <label className='text-xs font-medium text-ink-secondary mb-1 block'>
               Country
             </label>
             <Input
+              className='font-semibold text-ink-primary'
               value={draft.country}
               placeholder='Country'
               onChange={(e) => setDraft({ ...draft, country: e.target.value })}
             />
           </div>
-          <div className='md:col-span-2'>
-            <label className='body-sm mb-1 block font-medium text-ink-primary'>
+          <div>
+            <label className='text-xs font-medium text-ink-secondary mb-1 block'>
               LinkedIn ID
             </label>
             <Input
+              className='font-semibold text-ink-primary'
               value={draft.linkedin_id}
-              placeholder='e.g. johndoe'
+              placeholder='e.g. scottzhang1110'
               onChange={(e) =>
                 setDraft({ ...draft, linkedin_id: e.target.value })
               }
             />
           </div>
+          <div>
+            <label className='text-xs font-medium text-ink-secondary mb-1 block'>
+              Portfolio / Project URL
+            </label>
+            <Input
+              className='font-semibold text-ink-primary'
+              value={draft.portfolio_url}
+              placeholder='https://...'
+              onChange={(e) =>
+                setDraft({ ...draft, portfolio_url: e.target.value })
+              }
+            />
+          </div>
           <div className='md:col-span-2'>
-            <label className='body-sm mb-1 block font-medium text-ink-primary'>
+            <label className='text-xs font-medium text-ink-secondary mb-1 block'>
+              Personal Website
+            </label>
+            <Input
+              className='font-semibold text-ink-primary'
+              value={draft.website}
+              placeholder='https://...'
+              onChange={(e) =>
+                setDraft({ ...draft, website: e.target.value })
+              }
+            />
+          </div>
+          <div className='md:col-span-2'>
+            <label className='text-xs font-medium text-ink-secondary mb-1 block'>
               Professional Headline
             </label>
             <Input
+              className='font-semibold text-ink-primary'
               value={draft.headline}
               placeholder='e.g. Senior Software Engineer'
               onChange={(e) => setDraft({ ...draft, headline: e.target.value })}
@@ -336,6 +375,15 @@ export function ExperienceEditor({
     setItems(items.filter((_, i) => i !== index));
   };
 
+  const moveItem = (index: number, direction: 'up' | 'down') => {
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= items.length) return;
+    const next = [...items];
+    const [moved] = next.splice(index, 1);
+    next.splice(targetIndex, 0, moved);
+    setItems(next);
+  };
+
   const addItem = () => {
     setItems([
       ...items,
@@ -364,37 +412,64 @@ export function ExperienceEditor({
     <div className='flex max-h-[88vh] min-h-[480px] flex-col'>
       <ModalHeader
         title='Experience'
-        description='Manage work history, bullet points, and key technologies.'
+        description='Manage work history, bullet points, and key technologies. Reorder experiences using the arrow buttons.'
         icon={Briefcase}
         onClose={onClose}
       />
-      <div className='body'>
+      <div className='body space-y-4'>
         {items.map((item, index) => (
           <div
             key={`exp-${index}`}
-            className='rounded-xl border border-border bg-panel p-4 md:p-5 space-y-4'
+            className='rounded-xl border border-border bg-panel p-4 md:p-5 space-y-4 shadow-xs'
           >
             <div className='flex items-center justify-between gap-3 border-b border-border/40 pb-3'>
-              <h3 className='font-semibold text-ink-primary'>
-                {item.title || item.company ?
-                  `${item.title || 'Role'} at ${item.company || 'Company'}`
-                : `Experience #${index + 1}`}
-              </h3>
-              <Button
-                type='button'
-                size='sm'
-                variant='ghost'
-                className='text-red-500 hover:bg-red-500/10 hover:text-red-600'
-                Icon={Trash2}
-                onClick={() => removeItem(index)}
-              >
-                Delete Role
-              </Button>
+              <div className='flex items-center gap-2 min-w-0'>
+                <span className='inline-flex h-5 min-w-5 items-center justify-center rounded-md bg-primary/10 px-1.5 text-[11px] font-bold text-primary shrink-0'>
+                  {index + 1}
+                </span>
+                <h3 className='font-semibold text-ink-primary truncate text-sm'>
+                  {item.title || item.company ?
+                    `${item.title || 'Role'} at ${item.company || 'Company'}`
+                  : `Experience #${index + 1}`}
+                </h3>
+              </div>
+              <div className='flex items-center gap-1 shrink-0'>
+                <button
+                  type='button'
+                  title='Move role up'
+                  aria-label='Move role up'
+                  disabled={index === 0}
+                  onClick={() => moveItem(index, 'up')}
+                  className='p-1 rounded-md text-ink-secondary hover:text-ink-primary hover:bg-background-secondary disabled:opacity-30 cursor-pointer'
+                >
+                  <ChevronUp className='size-4' />
+                </button>
+                <button
+                  type='button'
+                  title='Move role down'
+                  aria-label='Move role down'
+                  disabled={index === items.length - 1}
+                  onClick={() => moveItem(index, 'down')}
+                  className='p-1 rounded-md text-ink-secondary hover:text-ink-primary hover:bg-background-secondary disabled:opacity-30 cursor-pointer'
+                >
+                  <ChevronDown className='size-4' />
+                </button>
+                <Button
+                  type='button'
+                  size='sm'
+                  variant='ghost'
+                  className='text-red-500 hover:bg-red-500/10 hover:text-red-600'
+                  Icon={Trash2}
+                  onClick={() => removeItem(index)}
+                >
+                  Delete Role
+                </Button>
+              </div>
             </div>
 
             <div className='grid gap-3 md:grid-cols-2'>
               <div>
-                <label className='body-sm mb-1 block text-ink-secondary'>
+                <label className='text-xs font-medium text-ink-secondary mb-1 block'>
                   Job Title
                 </label>
                 <Input
@@ -406,7 +481,7 @@ export function ExperienceEditor({
                 />
               </div>
               <div>
-                <label className='body-sm mb-1 block text-ink-secondary'>
+                <label className='text-xs font-medium text-ink-secondary mb-1 block'>
                   Company
                 </label>
                 <Input
@@ -418,7 +493,7 @@ export function ExperienceEditor({
                 />
               </div>
               <div>
-                <label className='body-sm mb-1 block text-ink-secondary'>
+                <label className='text-xs font-medium text-ink-secondary mb-1 block'>
                   Location
                 </label>
                 <Input
@@ -431,7 +506,7 @@ export function ExperienceEditor({
               </div>
               <div className='grid grid-cols-2 gap-2'>
                 <div>
-                  <label className='body-sm mb-1 block text-ink-secondary'>
+                  <label className='text-xs font-medium text-ink-secondary mb-1 block'>
                     Start Date
                   </label>
                   <Input
@@ -443,7 +518,7 @@ export function ExperienceEditor({
                   />
                 </div>
                 <div>
-                  <label className='body-sm mb-1 block text-ink-secondary'>
+                  <label className='text-xs font-medium text-ink-secondary mb-1 block'>
                     End Date
                   </label>
                   <Input
@@ -458,8 +533,8 @@ export function ExperienceEditor({
             </div>
 
             <div>
-              <label className='body-sm mb-1 block font-medium text-ink-primary'>
-                Key Achievements / Responsibilities (Drag to reorder)
+              <label className='text-xs font-semibold text-ink-secondary mb-1 block'>
+                Key Achievements / Responsibilities <span className='text-ink-secondary/70 font-normal'>(Drag to reorder)</span>
               </label>
               <BulletListInput
                 values={item.description ?? []}
@@ -469,7 +544,7 @@ export function ExperienceEditor({
             </div>
 
             <div>
-              <label className='body-sm mb-1 block font-medium text-ink-primary'>
+              <label className='text-xs font-semibold text-ink-secondary mb-1 block'>
                 Technologies Used
               </label>
               <TagInput

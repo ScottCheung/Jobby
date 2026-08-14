@@ -1,7 +1,7 @@
 /** @format */
 
 'use client';
-import { Button, Checkbox } from '@jobby/ui';
+import { Button, Checkbox, Modal } from '@jobby/ui';
 
 import React, { useState, useMemo, useEffect } from 'react';
 import {
@@ -19,9 +19,6 @@ import type {
   PracticePlan,
 } from '@/lib/types';
 import { cn, cleanName } from '@/lib/utils';
-
-
-import { Modal } from '@/components/layout/modal';
 
 export type PracticeMode = 'free' | 'custom' | 'plan';
 

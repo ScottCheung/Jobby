@@ -18,8 +18,7 @@ import {
   X,
 } from 'lucide-react';
 import { SearchForm } from '@/components/forms';
-import { WaterfallLayout } from '@/components/layout/waterfallLayout';
-import { Button } from '@jobby/ui';
+import { Button, WaterfallLayout } from '@jobby/ui';
 import { useGlobalModalStore } from '@/lib/store/global-modal-store';
 import { cn } from '@/lib/utils';
 import type { JobHuntingProfile } from '@/lib/types';

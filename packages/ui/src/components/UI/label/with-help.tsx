@@ -9,7 +9,7 @@ import {
   TooltipRoot,
   TooltipTrigger,
   TooltipContent,
-} from '@/components/UI/tooltip';
+} from '../tooltip';
 
 export interface LabelWithHelpProps {
   label: string;

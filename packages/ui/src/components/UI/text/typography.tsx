@@ -3,7 +3,7 @@
 
 import * as React from 'react';
 import { cn } from '@/lib/utils';
-import { Collapse } from '@/components/animation';
+import { Collapse } from '../../animation';
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface TypographyProps extends React.HTMLAttributes<HTMLElement> {}

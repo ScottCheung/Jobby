@@ -23,7 +23,6 @@ import { formatRelativeDate } from '@/components/ConsoleUtils';
 import { InteractiveTranscript } from './InteractiveTranscript';
 import { motion } from 'framer-motion';
 
-
 const normalizePlayback = (audio: HTMLAudioElement) => {
   audio.defaultPlaybackRate = 1;
   audio.playbackRate = 1;
@@ -123,7 +122,6 @@ export function PracticeHistory({
   if (attempts.length === 0) {
     return (
       <EmptyPlaceHolder
-        icon={Award}
         title='No practice records for this question yet.'
         description='Submit your response in the Workspace tab to create your first history record.'
         className='border-0 bg-transparent min-h-[300px]'

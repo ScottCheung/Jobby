@@ -4,7 +4,7 @@
 
 import React, { useEffect, useState, useMemo } from 'react';
 import { cn } from '@/lib/utils';
-import { InView } from '@/components/animation';
+import { InView } from '../../animation';
 
 interface CityData {
   name: string;

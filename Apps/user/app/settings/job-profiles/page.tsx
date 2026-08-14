@@ -24,12 +24,11 @@ import {
   useConsole,
 } from '@/components/ConsoleContext';
 import { SearchForm } from '@/components/forms';
-import { WaterfallLayout } from '@/components/layout/waterfallLayout';
+import { Button, WaterfallLayout } from '@jobby/ui';
 import { useGlobalModalStore } from '@/lib/store/global-modal-store';
 import { api } from '@/lib/api';
 import type { JobHuntingProfile } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { Button } from '@jobby/ui';
 import { ActiveResumeModal } from '@/app/settings/resume/_component/active-resume-modal';
 
 type SearchSection =

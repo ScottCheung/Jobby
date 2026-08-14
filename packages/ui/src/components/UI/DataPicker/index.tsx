@@ -2,10 +2,10 @@
 import * as React from "react"
 import { LucideIcon, ChevronDown, ChevronLeft, ChevronRight, Calendar as CalendarIcon, X } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { LabelWithHelp } from "@/components/UI/label/with-help"
+import { LabelWithHelp } from "../label/with-help"
 import { Error } from "../text/typography"
 import { motion } from "framer-motion"
-import { Collapse } from "@/components/animation"
+import { Collapse } from "../../animation"
 import dayjs from "dayjs"
 import { AutoTooltip } from "../tooltip/auto-tooltip"
 

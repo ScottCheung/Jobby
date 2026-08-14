@@ -4,10 +4,10 @@
 import * as React from 'react';
 import { ClipboardPaste, LucideIcon, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { LabelWithHelp } from '@/components/UI/label/with-help';
-import { Tooltip } from '@/components/UI/tooltip';
+import { LabelWithHelp } from '../label/with-help';
+import { Tooltip } from '../tooltip';
 import { Button } from '../Button';
-import { Error } from '@/components/UI/text/typography';
+import { Error } from '../text/typography';
 
 export interface LabeledTextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
   label?: string;

@@ -5,7 +5,7 @@
 import * as React from 'react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import { Tooltip } from '@/components/UI/tooltip';
+import { Tooltip } from '../tooltip';
 
 export interface ToggleGroupItem {
   value: string;

@@ -17,7 +17,6 @@ import {
 import { api } from '@/lib/api';
 import type { InterviewCollection, InterviewQuestion } from '@/lib/types';
 
-
 import Link from 'next/link';
 
 interface GlobalSearchModalProps {
@@ -140,20 +139,22 @@ export function GlobalSearchModal({
 
       <div className='body custom-scrollbar-primary'>
         {query.trim().length < 2 && (
-          <div className='py-12 text-center text-ink-secondary'>
-            Type at least 2 characters to search questions and Question Sets.
-          </div>
+          <EmptyState
+            // icon={Search}
+            title='No results'
+            description={`Type at least 2 characters to search questions and Question Sets.`}
+          />
         )}
         {query.trim().length >= 2 &&
           questionResults.length === 0 &&
           collectionResults.length === 0 &&
           !isLoading && (
-          <EmptyState
-            icon={Search}
-            title='No results'
-            description={`No questions or Question Sets found matching "${query}".`}
-          />
-        )}
+            <EmptyState
+              icon={Search}
+              title='No results'
+              description={`No questions or Question Sets found matching "${query}".`}
+            />
+          )}
         {questionResults.length > 0 && (
           <section className='grid gap-3'>
             <div className='flex items-center gap-2 px-1 pt-1 text-xs font-bold uppercase tracking-wide text-ink-secondary'>
@@ -195,13 +196,18 @@ export function GlobalSearchModal({
                         variant={isAdded ? 'secondary' : 'default'}
                         disabled={isAdded || isAdding}
                         onClick={() => handleAdd(question)}
-                        Icon={isAdded ? Check : isAdding ? Loader2 : Plus}
+                        Icon={
+                          isAdded ? Check
+                          : isAdding ?
+                            Loader2
+                          : Plus
+                        }
                       >
-                        {isAdded
-                          ? 'In Library'
-                          : isAdding
-                            ? 'Adding...'
-                            : 'Add to Library'}
+                        {isAdded ?
+                          'In Library'
+                        : isAdding ?
+                          'Adding...'
+                        : 'Add to Library'}
                       </Button>
                     </div>
                   </article>
@@ -243,9 +249,9 @@ export function GlobalSearchModal({
                     <span>{collection.question_count} questions</span>
                     {collection.theme && <span>{collection.theme}</span>}
                     <span>
-                      {collection.collection_type === 'official'
-                        ? 'Official'
-                        : 'Community'}
+                      {collection.collection_type === 'official' ?
+                        'Official'
+                      : 'Community'}
                     </span>
                   </span>
                 </Link>

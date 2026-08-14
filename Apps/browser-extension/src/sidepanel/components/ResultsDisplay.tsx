@@ -59,7 +59,7 @@ export function ResultsDisplay({
           />
         </div>
       : <div className=' page-class-banner--job flex flex-col items-center justify-center text-center p-6  bg-panel/50 rounded-2xl gap-3 mt-2'>
-          <IPEmotion emotionId={1} className={'w-50 h-50 mx-auto pr-4 '} />
+          <IPEmotion emotionId={5} className={'w-40 h-40 mx-auto pr-4 '} />
           <div className='grid gap-1'>
             <span className='text-xs font-bold text-foreground uppercase tracking-wider'>
               Scan Required

@@ -29,8 +29,8 @@
     "app/**/*.ts",
     "app/**/*.tsx",
     "lib/**/*.ts",
-    "components/UserConsole.tsx",
-    "components/ApplicationDetails.tsx",
+    "components/**/*.ts",
+    "components/**/*.tsx",
     "components/forms.tsx",
     "lib/runtime.ts",
     ".next/types/**/*.ts"

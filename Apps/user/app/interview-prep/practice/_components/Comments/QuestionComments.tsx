@@ -29,8 +29,6 @@ import { useRelativeTime } from '@/lib/use-relative-time';
 import { cn } from '@/lib/utils';
 import { useConsole } from '@/components/ConsoleContext';
 
-
-
 import { CommentItem } from './CommentItem';
 import { ReplyItem } from './ReplyItem';
 import { CommentSkeleton } from './CommentSkeleton';
@@ -787,7 +785,7 @@ export function QuestionComments({ questionId }: { questionId: string }) {
           <CommentSkeleton />
         : totalVisibleItems === 0 ?
           <EmptyState
-            icon={MessageCircle}
+            IP={10}
             title='Nothing here yet'
             description='Be the first to share feedback, discussion, or an example answer.'
           />

@@ -7,7 +7,7 @@ import { motion, useReducedMotion } from 'framer-motion';
 import { ChevronDown } from 'lucide-react';
 import React, { useCallback, useId, useRef, useState } from 'react';
 import { H4 } from '../text/typography';
-import { Collapse } from '@/components/animation';
+import { Collapse } from '../../animation';
 
 export interface AccordionProps extends Omit<
   React.HTMLAttributes<HTMLDivElement>,

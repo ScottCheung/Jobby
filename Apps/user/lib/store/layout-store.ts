@@ -23,6 +23,7 @@ export interface Celebration {
   type?: CelebrationType;
   eventKey?: CelebrationEventKey;
   style?: CelebrationStyleConfig;
+  emotionId?: number;
 }
 
 interface LayoutState {
@@ -79,6 +80,7 @@ export const useLayoutStore = create<LayoutState>()((set) => ({
           type: celebration?.type,
           eventKey: celebration?.eventKey,
           style: celebration?.style,
+          emotionId: celebration?.emotionId,
         },
       })),
     clearCelebration: () => set(() => ({ celebration: null })),

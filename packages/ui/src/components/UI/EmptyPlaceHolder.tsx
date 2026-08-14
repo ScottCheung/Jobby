@@ -1,3 +1,5 @@
+/** @format */
+
 'use client';
 /** @format */
 
@@ -41,18 +43,22 @@ export function EmptyPlaceHolder({
     <div className={cn('panel-lg items-center justify-center', className)}>
       <div className='py-6 text-center w-full flex flex-col items-center justify-center'>
         {EffectiveIcon && (
-          <EffectiveIcon className={cn('w-50 h-50 mx-auto -mt-10 ', iconClassName)} />
-        )}
-        {IP && (
-          <IPEmotion
-            emotionId={IP}
-            className={cn('w-50 h-50 mx-auto -mt-10 ')}
+          <EffectiveIcon
+            className={cn('w-50 h-50 mx-auto -mt-10 ', iconClassName)}
           />
         )}
+        <div className='absolute'>
+          {IP && (
+            <IPEmotion
+              emotionId={IP}
+              className={cn('w-70 h-70 mx-auto -mt-10 ')}
+            />
+          )}
+        </div>
 
         <p
           className={cn(
-            'text-lg text-ink-primary font-medium',
+            'text-xs mt-60 font-bold text-foreground max-w-[400px] uppercase tracking-wider',
             messageClassName || titleClassName,
           )}
         >
@@ -62,7 +68,7 @@ export function EmptyPlaceHolder({
         {description && (
           <p
             className={cn(
-              'text-xs text-ink-secondary/70 mt-1 max-w-sm mx-auto',
+              'text-[11px] mt-3 leading-relaxed text-muted-foreground max-w-[220px]',
               descriptionClassName,
             )}
           >

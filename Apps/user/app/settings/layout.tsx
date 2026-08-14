@@ -6,7 +6,7 @@ import { Bell, FileText, MessageSquareCode, Monitor, Settings2, User } from 'luc
 import {
   ModuleTopNav,
   type ModuleNavigationItem,
-} from '@/components/layout/module-top-nav';
+} from '@jobby/ui';
 
 const settingsNavigation: ModuleNavigationItem[] = [
   {

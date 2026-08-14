@@ -6,13 +6,12 @@ import { Search } from 'lucide-react';
 import { ApplicationDetails } from './_components/ApplicationDetails';
 import { TailoredResumeModal } from './_components/TailoredResumeModal';
 import { useConsole } from '@/components/ConsoleContext';
-import { ScrollLayout } from '@/components/animation';
+import { ScrollLayout, WaterfallLayout } from '@jobby/ui';
 import { api } from '@/lib/api';
 import { formatRelativeDate } from '@/components/ConsoleUtils';
 import { withMinimumLoadingTime } from '@/lib/loading';
 import { useLayoutStore } from '@/lib/store/layout-store';
 import { useConfirmStore } from '@/lib/store/confirm-store';
-import { WaterfallLayout } from '@/components/layout/waterfallLayout';
 import {
   getCurrentApplicationStageTimestamp,
   getDisplayApplicationStatus,
@@ -441,8 +440,6 @@ export default function ApplicationsPage() {
           <WaterfallLayout
             minColumnWidth={340}
             gap={20}
-            virtualize
-            scrollContainerRef={scrollContainerRef}
           >
             {isLoading &&
               items.length === 0 &&

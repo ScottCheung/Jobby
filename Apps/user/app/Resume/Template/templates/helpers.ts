@@ -15,18 +15,51 @@ export function resumeDateRange(start?: string | null, end?: string | null) {
   return [start, end].filter(Boolean).join(" - ");
 }
 
-export function resumeContactItems(data: MasterResumeData) {
+export type ResumeContactItem = {
+  type: 'email' | 'phone' | 'location' | 'linkedin' | 'portfolio' | 'website';
+  text: string;
+  href?: string;
+};
+
+export function resumeContactItems(data: MasterResumeData): ResumeContactItem[] {
   const basics = data.basics ?? {};
-  return [
-    basics.email,
-    basics.phone,
-    basics.location?.city,
-    basics.location?.state,
-    basics.location?.country,
-    basics.linkedin_id,
-    basics.website,
-    basics.portfolio_url,
-  ].filter((value): value is string => Boolean(value));
+  const items: ResumeContactItem[] = [];
+
+  if (basics.email) {
+    items.push({ type: 'email', text: basics.email, href: `mailto:${basics.email}` });
+  }
+  if (basics.phone) {
+    items.push({ type: 'phone', text: basics.phone, href: `tel:${basics.phone.replace(/[^+\d]/g, '')}` });
+  }
+  const locationStr = [basics.location?.city, basics.location?.state, basics.location?.country]
+    .filter(Boolean)
+    .join(', ');
+  if (locationStr) {
+    items.push({ type: 'location', text: locationStr });
+  }
+
+  if (basics.linkedin_id) {
+    const handle = basics.linkedin_id
+      .replace(/^https?:\/\/(www\.)?linkedin\.com\/in\//i, '')
+      .replace(/^\/+|\/+$/g, '');
+    const href = handle ? `https://www.linkedin.com/in/${handle}/` : (basics.linkedin_id.startsWith('http') ? basics.linkedin_id : `https://${basics.linkedin_id}`);
+    const text = handle || basics.linkedin_id.replace(/^https?:\/\//i, '').replace(/\/$/, '');
+    items.push({ type: 'linkedin', text, href });
+  }
+
+  if (basics.portfolio_url) {
+    const href = basics.portfolio_url.startsWith('http') ? basics.portfolio_url : `https://${basics.portfolio_url}`;
+    const cleanDisplay = basics.portfolio_url.replace(/^https?:\/\//i, '').replace(/\/$/, '');
+    items.push({ type: 'portfolio', text: cleanDisplay, href });
+  }
+
+  if (basics.website) {
+    const href = basics.website.startsWith('http') ? basics.website : `https://${basics.website}`;
+    const cleanDisplay = basics.website.replace(/^https?:\/\//i, '').replace(/\/$/, '');
+    items.push({ type: 'website', text: cleanDisplay, href });
+  }
+
+  return items;
 }
 
 export function templateCssVariables(config: ResumeTemplateConfig) {
@@ -44,12 +77,13 @@ export function templateCssVariables(config: ResumeTemplateConfig) {
     "--resume-meta-size": px(config.typography.metaSize),
     "--resume-url-size": px(config.typography.urlSize),
     "--resume-footer-size": px(config.typography.footerSize),
+    "--resume-primary": config.colors.primary || "#8E5B15",
     "--resume-ink": config.colors.ink,
     "--resume-body": config.colors.body,
     "--resume-muted": config.colors.muted,
     "--resume-subtle": config.colors.subtle,
-    "--resume-skill": config.colors.skill,
-    "--resume-metric": config.colors.metric,
+    "--resume-skill": config.colors.skill || config.colors.ink,
+    "--resume-metric": config.colors.metric || config.colors.ink,
     "--resume-rule": config.colors.rule,
     "--resume-header-rule": config.colors.headerRule,
     "--resume-paper": config.colors.paper,
@@ -64,6 +98,7 @@ export function templateCssVariables(config: ResumeTemplateConfig) {
     "--resume-detail-gap": px(config.spacing.detailGap),
     "--resume-bullet-gap": px(config.spacing.bulletGap),
     "--resume-bullet-mark-width": px(config.spacing.bulletMarkWidth),
+    "--resume-bullet-indent": px(config.spacing.bulletIndent ?? 10),
     "--resume-technology-gap": px(config.spacing.technologyGap),
     "--resume-skill-gap": px(config.spacing.skillGap),
     "--resume-content-inset": px(config.spacing.contentInset),

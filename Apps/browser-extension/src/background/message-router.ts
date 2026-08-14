@@ -96,11 +96,15 @@ export async function handleRuntimeMessage(
         if (!isExtensionUiSender(sender)) return { ok: false, error: "Only the extension UI can autofill forms." };
         {
           const result = await autofillDetectedFormForActiveTab();
+          // Return a fresh post-fill snapshot with the command result. The
+          // side panel must not rely on an observer race to show completion.
+          const form = await inspectFormActiveTab().catch(() => undefined);
           return {
             ok: true,
             snapshot: await getRuntimeSnapshot(),
             fillResults: result.results,
             unansweredFields: result.unansweredFields,
+            ...(form ? { form } : {}),
           };
         }
       case "content.focus-form-field-active":

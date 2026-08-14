@@ -20,9 +20,9 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { GripVertical, X } from 'lucide-react';
-import { Switch } from '@/components/UI/switch';
+import { Switch } from '../switch';
 import { ColumnDef, VisibilityState } from '@tanstack/react-table';
-import { H2, H3, P } from '@/components/UI/text/typography';
+import { H2, H3, P } from '../text/typography';
 import { Button } from '../Button';
 
 function SortableColumnItem({

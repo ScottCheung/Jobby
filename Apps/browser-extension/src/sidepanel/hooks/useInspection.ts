@@ -399,6 +399,31 @@ export function useInspection(onJobChanged?: () => void) {
     [setFormIfChanged],
   );
 
+  const applyAutofillResults = useCallback(
+    (results: Array<{ key: string; status: string }>, form?: FormInspection) => {
+      if (form) setFormIfChanged(form);
+      const completed = new Set(
+        results
+          .filter((result) => result.status === 'filled' || result.status === 'already_filled')
+          .map((result) => result.key),
+      );
+      if (completed.size === 0) return;
+      setLatestForm((previous) => {
+        if (!previous || (previous.kind !== 'application_form' && previous.kind !== 'page_input_fields')) return previous;
+        const next = {
+          ...previous,
+          fields: previous.fields.map((field) =>
+            completed.has(field.key) ? { ...field, filled: true } : field,
+          ),
+        };
+        latestFormRef.current = next;
+        lastFormSignature.current = formSignature(next);
+        return next;
+      });
+    },
+    [setFormIfChanged],
+  );
+
   const focusFormField = useCallback(async (field: FormFieldObservation) => {
     const response = await send({
       type: 'content.focus-form-field-active',
@@ -675,6 +700,7 @@ export function useInspection(onJobChanged?: () => void) {
     inspectPage,
     autoInspectActivePage,
     inspectForm,
+    applyAutofillResults,
     focusFormField,
     autofillSingleField,
     uploadDefaultResume,

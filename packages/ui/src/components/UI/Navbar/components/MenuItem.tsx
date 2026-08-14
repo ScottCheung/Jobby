@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { cn } from '@/utils/twMerge';
+import { cn } from '@/lib/utils';
 
 const MenuItem = ({
   setActive,
@@ -66,5 +66,5 @@ export default MenuItem;
 
 const transition = {
   duration: 1,
-  ease: [0.23, 1, 0.36, 1],
+  ease: [0.23, 1, 0.36, 1] as const,
 };

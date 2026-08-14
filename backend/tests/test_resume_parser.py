@@ -48,6 +48,22 @@ class ResumeParserOptimizationTests(unittest.TestCase):
         )
         self.assertEqual(result["education"][0]["highlights"], ["Dean's List"])
 
+    def test_respects_explicit_empty_or_modified_links_array(self):
+        # When links is explicitly set to [] (user deleted all links),
+        # normalize_resume_data should NOT re-add basics.linkedin_id via legacy_link_map
+        result = resume_parser.normalize_resume_data({
+            "basics": {"first_name": "John", "linkedin_id": "https://linkedin.com/in/johndoe"},
+            "links": [],
+        })
+        self.assertEqual(result.get("links"), [])
+
+        # When links has specific custom links, do not auto-append legacy linkedin link if excluded
+        result_custom = resume_parser.normalize_resume_data({
+            "basics": {"first_name": "John", "linkedin_id": "https://linkedin.com/in/johndoe"},
+            "links": [{"type": "GitHub", "link": "https://github.com/johndoe"}],
+        })
+        self.assertEqual(result_custom.get("links"), [{"type": "GitHub", "link": "https://github.com/johndoe"}])
+
     def test_normalizes_combined_degree_and_field_of_study(self):
         cases = (
             ("Bachelor of Science in Computer Science", "Bachelor of Science", "Computer Science"),
