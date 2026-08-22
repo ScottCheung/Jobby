@@ -24,6 +24,17 @@ export type TailorGenerationTask = {
   startedAt: number;
 };
 
+function hasGeneratedResume(item: TailoredResume): boolean {
+  const generated = item.raw_ai_response?.generated_documents as
+    | { resume?: boolean; cover_letter?: boolean }
+    | undefined;
+
+  // Records from before document-type tracking only contained resumes.
+  return generated && ("resume" in generated || "cover_letter" in generated)
+    ? generated.resume === true
+    : Boolean(item.resume_data);
+}
+
 export function tailorGenerationFingerprint(
   type: DocType,
   jobTitle: string,
@@ -105,10 +116,12 @@ export function useTailoredResumeStudio(
         ];
       });
 
-      // Default select the first tailored resume if available, otherwise default base profile
-      if (saved.length > 0) {
-        const first = saved[0];
-        if (first && !first.isGenerating) {
+      // A cover-letter-only record keeps base resume data for the letter's
+      // candidate details, but it must not be selected as a generated CV.
+      // Default to the first actual tailored resume instead.
+      const first = saved.find(hasGeneratedResume);
+      if (first) {
+        if (!first.isGenerating) {
           setResult((prev) => {
             if (prev) return prev;
             return {
@@ -344,6 +357,10 @@ export function useTailoredResumeStudio(
     const generationId = crypto.randomUUID();
     const optimisticId = `optimistic-${generationId}`;
     const controller = new AbortController();
+    // A generation explicitly started by the user should become the active
+    // result when it completes. A later history click can still opt out while
+    // this request is running.
+    userSelectedVersionRef.current = false;
     generationControllers.current.set(generationId, {
       controller,
       fingerprint,

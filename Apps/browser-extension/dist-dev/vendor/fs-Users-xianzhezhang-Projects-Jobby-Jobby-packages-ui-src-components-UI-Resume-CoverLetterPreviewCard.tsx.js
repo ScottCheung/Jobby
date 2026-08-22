@@ -1,4 +1,4 @@
-import { createHotContext as __vite__createHotContext } from "/vendor/vite-client.js";import.meta.hot = __vite__createHotContext("/vendor/fs-Users-xianzhezhang-Projects-Jobby-Jobby-packages-ui-src-components-UI-Resume-CoverLetterPreviewCard.tsx.js");import __vite__cjsImport0_react_jsxDevRuntime from "/vendor/.vite-deps-react_jsx-dev-runtime.js__v--22c5bc1a.js"; const jsxDEV = __vite__cjsImport0_react_jsxDevRuntime["jsxDEV"];
+import { createHotContext as __vite__createHotContext } from "/vendor/vite-client.js";import.meta.hot = __vite__createHotContext("/vendor/fs-Users-xianzhezhang-Projects-Jobby-Jobby-packages-ui-src-components-UI-Resume-CoverLetterPreviewCard.tsx.js");import __vite__cjsImport0_react_jsxDevRuntime from "/vendor/.vite-deps-react_jsx-dev-runtime.js__v--f5b0ea50.js"; const jsxDEV = __vite__cjsImport0_react_jsxDevRuntime["jsxDEV"];
 import * as RefreshRuntime from "/vendor/react-refresh.js";
 const inWebWorker = typeof WorkerGlobalScope !== "undefined" && self instanceof WorkerGlobalScope;
 let prevRefreshReg;
@@ -16,13 +16,13 @@ if (import.meta.hot && !inWebWorker) {
 }
 "use client";
 var _s = $RefreshSig$();
-import __vite__cjsImport3_react from "/vendor/.vite-deps-react.js__v--22c5bc1a.js"; const useState = __vite__cjsImport3_react["useState"];
+import __vite__cjsImport3_react from "/vendor/.vite-deps-react.js__v--f5b0ea50.js"; const useState = __vite__cjsImport3_react["useState"];
 import {
   Check,
   Copy,
   Download,
   Sparkles
-} from "/vendor/.vite-deps-lucide-react.js__v--22c5bc1a.js";
+} from "/vendor/.vite-deps-lucide-react.js__v--d47d6985.js";
 import { Button } from "/vendor/fs-Users-xianzhezhang-Projects-Jobby-Jobby-packages-ui-src-components-UI-Button-index.tsx.js";
 import { notify } from "/vendor/fs-Users-xianzhezhang-Projects-Jobby-Jobby-packages-ui-src-components-UI-toast-toast-store.ts.js";
 import {

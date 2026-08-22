@@ -175,21 +175,7 @@ export function JobScoreCard({
               {matchLabel}
             </span>
             {hasScore ?
-              <button
-                type='button'
-                onClick={() => onTailor?.('resume')}
-                className={cn(
-                  'inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold tracking-wide transition-all select-none shrink-0',
-                  'bg-primary/15 text-primary border border-primary/30',
-                  onTailor ?
-                    'hover:bg-primary/25 cursor-pointer active:scale-95'
-                  : 'cursor-default',
-                )}
-                title='Tailor CV & CL for this job'
-              >
-                <Sparkles className='w-2.5 h-2.5 shrink-0 text-primary' />
-                <span>Tailor Resume</span>
-              </button>
+              null
             : !authConnected && onSignIn ?
               <button
                 type='button'
@@ -344,13 +330,13 @@ export function JobScoreCard({
         </div>
       </div>
       {isJob && authConnected && onTailor && (
-        <div className='mt-3 grid grid-cols-3  gap-1.5 border-t border-primary/15 pt-2.5'>
+        <div className='mt-3 grid grid-cols-3 pr-1 gap-1.5 border-t border-primary/15 pt-2.5'>
           <button
             type='button'
             onClick={() => onTailor('resume')}
-            className='inline-flex items-center justify-center gap-1 rounded-lg bg-primary px-2 py-2 text-[10px] font-bold text-primary-foreground transition-opacity hover:opacity-90'
+            className='inline-flex items-center justify-center gap-1 rounded-lg bg-primary-gradient px-2 py-2 text-[10px] font-bold text-primary-foreground transition-opacity hover:opacity-90'
           >
-            <Sparkles className='h-3 w-3' /> Tailor Resume
+            <Sparkles className='h-3 w-3' /> Tailor CV
           </button>
           <button
             type='button'
@@ -362,7 +348,7 @@ export function JobScoreCard({
           <button
             type='button'
             onClick={() => onTailor('both')}
-            className='inline-flex items-center rounded-br-[5em] justify-center gap-1 rounded-lg border border-primary/25 bg-primary/8 px-2 py-2 text-[10px] font-bold text-primary hover:bg-primary/15'
+            className='inline-flex items-center rounded-l-xl rounded-tr-lg rounded-br-[5em] justify-center gap-1  border border-primary/25 bg-primary/8 px-2 py-2 text-[10px] font-bold text-primary hover:bg-primary/15'
           >
             <Layers className='h-3 w-3' /> Get Both
           </button>

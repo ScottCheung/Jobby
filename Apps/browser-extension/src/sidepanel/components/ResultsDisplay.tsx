@@ -267,7 +267,18 @@ function FormFieldRow({
   const isDocumentUpload =
     isResumeUpload || purpose === 'cover_letter' || purpose === 'other';
   const recentTailoredResumes = tailoredResumes.filter(
-    (resume) => !resume.isGenerating && Boolean(resume.resume_data),
+    (resume) => {
+      const generated = resume.raw_ai_response?.generated_documents as
+        | { resume?: boolean; cover_letter?: boolean }
+        | undefined;
+      // Cover-letter-only records retain base resume data so the letter can
+      // include candidate details. They are not CVs available for upload.
+      const hasGeneratedResume =
+        generated && ("resume" in generated || "cover_letter" in generated)
+          ? generated.resume === true
+          : Boolean(resume.resume_data);
+      return !resume.isGenerating && hasGeneratedResume;
+    },
   );
   const selectedResume = recentTailoredResumes.find(
     (resume) => resume.id === selectedResumeId,

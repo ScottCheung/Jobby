@@ -9,6 +9,7 @@ import {
   AI_TAILOR_STATUS_MESSAGES,
   AI_COVER_LETTER_STATUS_MESSAGES,
 } from '../constants/ai-status-messages';
+import { Number } from '@jobby/ui/components/UI/Number/Number';
 
 interface BaseGeneratingCardProps {
   jobTitle?: string | null;
@@ -28,7 +29,7 @@ export function GeneratingResumeCard({
     startedAt ? Math.max(0, Math.floor((Date.now() - startedAt) / 1000)) : 0,
   );
 
-  // Status message rotation
+  // Status message rotation (gentle 5.5s interval)
   useEffect(() => {
     const messageTimer = setInterval(() => {
       setIsFading(true);
@@ -36,7 +37,7 @@ export function GeneratingResumeCard({
         setIndex((prev) => (prev + 1) % messages.length);
         setIsFading(false);
       }, 250);
-    }, 2800);
+    }, 5500);
 
     return () => clearInterval(messageTimer);
   }, [messages.length]);
@@ -77,7 +78,7 @@ export function GeneratingResumeCard({
             className='pointer-events-none select-none !px-2 font-mono text-xs font-medium'
             title={`Generation running for ${elapsedSeconds}s`}
           >
-            {elapsedSeconds}s
+            <Number value={elapsedSeconds} />s
           </Button>
 
           <Button
@@ -94,9 +95,9 @@ export function GeneratingResumeCard({
 
       {/* Preview Area - Matches ResumePdfPreview container and realistic paper scale */}
       <div className='flex flex-col gap-2 pt-1 w-full min-w-0'>
-        <div className='group relative flex max-h-[360px] min-h-[300px] w-full items-center justify-center overflow-hidden rounded-xl border border-primary/20 bg-muted/40 p-3 shadow-2xs select-none'>
+        <div className='group relative flex h-[150px] w-full items-center justify-center overflow-hidden rounded-xl border border-primary/20 bg-muted/40 p-3 shadow-2xs select-none'>
           {/* Compact Document Paper Preview Skeleton */}
-          <div className='relative flex flex-col w-[145px] h-[205px] bg-card border border-primary/20 rounded-xs shadow-md p-2.5 overflow-hidden'>
+          <div className='relative flex flex-col w-[145px] h-[180px] bg-card border border-primary/20 rounded-xs shadow-md p-2.5 overflow-hidden scale-75'>
             {/* Header Block Skeleton */}
             <div className='flex flex-col items-center gap-0.5 border-b border-primary/15 pb-1.5'>
               <div className='h-1.5 w-16 rounded-full bg-primary/35 animate-pulse' />
@@ -147,19 +148,11 @@ export function GeneratingResumeCard({
                 </div>
               </div>
             </div>
-
-            {/* Indeterminate Bottom Line on Paper */}
-            <div className='w-full bg-primary/15 h-0.5 rounded-full overflow-hidden mt-auto'>
-              <div className='animate-indeterminate-bar h-full bg-primary' />
-            </div>
           </div>
 
           {/* Bottom-left AI Status Badge - Exactly replacing normal document pill */}
-          <div className='absolute bottom-1.5 left-1.5 z-10 flex items-center gap-1.5 rounded-md bg-panel/85 backdrop-blur-xs px-2 py-0.5 text-[9.5px] font-medium text-primary border border-primary/25 shadow-xs max-w-[88%]'>
-            <Sparkles
-              className='h-3 w-3 text-primary shrink-0 animate-spin'
-              style={{ animationDuration: '3.5s' }}
-            />
+          <div className='absolute bottom-3 left-3 z-10 flex items-center gap-1.5 rounded-md bg-panel backdrop-blur-xs px-2 py-1 text-[11px] font-medium text-primary shadow-xs max-w-[88%] transition-all'>
+            <Sparkles className='h-3 w-3 text-primary shrink-0' />
             <p
               className={`truncate transition-opacity duration-200 ${
                 isFading ? 'opacity-0' : 'opacity-100'
@@ -185,15 +178,18 @@ export function GeneratingCoverLetterCard({
     startedAt ? Math.max(0, Math.floor((Date.now() - startedAt) / 1000)) : 0,
   );
 
-  // Status message rotation
+  // Status message rotation (gentle 5.5s interval)
   useEffect(() => {
-    const messageTimer = setInterval(() => {
-      setIsFading(true);
-      setTimeout(() => {
-        setIndex((prev) => (prev + 1) % messages.length);
-        setIsFading(false);
-      }, 250);
-    }, 2800);
+    const messageTimer = setInterval(
+      () => {
+        setIsFading(true);
+        setTimeout(() => {
+          setIndex((prev) => (prev + 1) % messages.length);
+          setIsFading(false);
+        }, 250);
+      },
+      Math.random() * (5500 - 3000) + 3000,
+    );
 
     return () => clearInterval(messageTimer);
   }, [messages.length]);
@@ -234,7 +230,7 @@ export function GeneratingCoverLetterCard({
             className='pointer-events-none select-none !px-2 font-mono text-xs font-medium'
             title={`Generation running for ${elapsedSeconds}s`}
           >
-            {elapsedSeconds}s
+            <Number value={elapsedSeconds} />s
           </Button>
 
           <Button
@@ -251,9 +247,9 @@ export function GeneratingCoverLetterCard({
 
       {/* Preview Area - Matches CoverLetterPdfPreview container and realistic paper scale */}
       <div className='flex flex-col gap-2 pt-1 w-full min-w-0'>
-        <div className='group relative flex max-h-[360px] min-h-[300px] w-full items-center justify-center overflow-hidden rounded-xl border border-primary/20 bg-muted/40 p-3 shadow-2xs select-none'>
+        <div className='group relative flex h-[150px] w-full items-center justify-center overflow-hidden rounded-xl border border-primary/20 bg-muted/40 p-3 shadow-2xs select-none'>
           {/* Compact Cover Letter Paper Preview Skeleton */}
-          <div className='relative flex flex-col w-[145px] h-[205px] bg-card border border-primary/20 rounded-xs shadow-md p-2.5 overflow-hidden'>
+          <div className='relative flex flex-col w-[145px] h-[180px] bg-card border border-primary/20 rounded-xs shadow-md p-2.5 overflow-hidden scale-75'>
             {/* Letterhead Top */}
             <div className='flex flex-col gap-0.5 border-b border-primary/15 pb-1.5'>
               <div className='h-1.5 w-14 rounded-full bg-primary/35 animate-pulse' />
@@ -288,19 +284,11 @@ export function GeneratingCoverLetterCard({
               <div className='h-0.5 w-6 rounded-full bg-muted-foreground/20' />
               <div className='h-1 w-10 rounded-full bg-primary/30 mt-0.5' />
             </div>
-
-            {/* Indeterminate Progress Line */}
-            <div className='w-full bg-primary/15 h-0.5 rounded-full overflow-hidden mt-auto'>
-              <div className='animate-indeterminate-bar h-full bg-primary' />
-            </div>
           </div>
 
           {/* Bottom-left AI Status Badge - Exactly replacing normal document pill */}
-          <div className='absolute bottom-1.5 left-1.5 z-10 flex items-center gap-1.5 rounded-md bg-panel/85 backdrop-blur-xs px-2 py-0.5 text-[9.5px] font-medium text-primary border border-primary/25 shadow-xs max-w-[88%]'>
-            <Sparkles
-              className='h-3 w-3 text-primary shrink-0 animate-spin'
-              style={{ animationDuration: '3.5s' }}
-            />
+          <div className='absolute bottom-3 left-3 z-10 flex items-center gap-1.5 rounded-md bg-panel backdrop-blur-xs px-2 py-1 text-[11px] font-medium text-primary shadow-xs max-w-[88%] transition-all'>
+            <Sparkles className='h-3 w-3 text-primary shrink-0' />
             <p
               className={`truncate transition-opacity duration-200 ${
                 isFading ? 'opacity-0' : 'opacity-100'

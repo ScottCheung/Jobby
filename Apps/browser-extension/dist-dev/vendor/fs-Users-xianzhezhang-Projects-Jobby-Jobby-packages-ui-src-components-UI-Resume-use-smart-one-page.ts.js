@@ -1,5 +1,5 @@
 "use client";
-import __vite__cjsImport0_react from "/vendor/.vite-deps-react.js__v--22c5bc1a.js"; const useLayoutEffect = __vite__cjsImport0_react["useLayoutEffect"]; const useMemo = __vite__cjsImport0_react["useMemo"]; const useRef = __vite__cjsImport0_react["useRef"]; const useState = __vite__cjsImport0_react["useState"];
+import __vite__cjsImport0_react from "/vendor/.vite-deps-react.js__v--f5b0ea50.js"; const useLayoutEffect = __vite__cjsImport0_react["useLayoutEffect"]; const useMemo = __vite__cjsImport0_react["useMemo"]; const useRef = __vite__cjsImport0_react["useRef"]; const useState = __vite__cjsImport0_react["useState"];
 import { clampSmartScale, scaleResumeTemplate } from "/vendor/fs-Users-xianzhezhang-Projects-Jobby-Jobby-packages-ui-src-components-UI-Resume-scale.ts.js";
 export function useSmartOnePage(config, data) {
   const pageRef = useRef(null);

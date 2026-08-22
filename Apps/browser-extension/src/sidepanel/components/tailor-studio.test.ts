@@ -317,23 +317,27 @@ describe('Document Studio & Resume Tailoring (Zero-Token Mock Mode)', () => {
     expect(formatResumeFilename(testResume, '', '')).toBe('Scott Zhang_CV.pdf');
   });
 
-  it('provides rich English AI status messages for resume, cover letter, and bundle generation', async () => {
-    const { getAiStatusMessages, AI_TAILOR_STATUS_MESSAGES, AI_COVER_LETTER_STATUS_MESSAGES, AI_BOTH_STATUS_MESSAGES } =
-      await import('../constants/ai-status-messages');
+  it('provides concise AI status messages for resume, cover letter, and bundle generation', async () => {
+    const {
+      getAiStatusMessages,
+      AI_TAILOR_STATUS_MESSAGES,
+      AI_COVER_LETTER_STATUS_MESSAGES,
+      AI_BOTH_STATUS_MESSAGES,
+    } = await import('../constants/ai-status-messages');
 
     const resumeMessages = getAiStatusMessages('resume');
-    expect(resumeMessages.length).toBeGreaterThan(10);
+    expect(resumeMessages.length).toBeGreaterThan(5);
     expect(resumeMessages[0]).toContain('job requirements');
     expect(resumeMessages).toEqual(AI_TAILOR_STATUS_MESSAGES);
 
     const letterMessages = getAiStatusMessages('cover_letter');
-    expect(letterMessages.length).toBeGreaterThan(5);
-    expect(letterMessages[0]).toContain('company culture');
+    expect(letterMessages.length).toBeGreaterThan(4);
+    expect(letterMessages[0]).toContain('company');
     expect(letterMessages).toEqual(AI_COVER_LETTER_STATUS_MESSAGES);
 
     const bothMessages = getAiStatusMessages('both');
-    expect(bothMessages.length).toBeGreaterThan(5);
-    expect(bothMessages[0]).toContain('all documents');
+    expect(bothMessages.length).toBeGreaterThan(4);
+    expect(bothMessages[0]).toContain('role requirements');
     expect(bothMessages).toEqual(AI_BOTH_STATUS_MESSAGES);
   });
 
@@ -390,7 +394,17 @@ describe('Document Studio & Resume Tailoring (Zero-Token Mock Mode)', () => {
   });
 
   it('renders cover letter PDF with vector SVG in milliseconds without hanging', async () => {
-    const { renderCoverLetterPdfOnce } = await import('@jobby/ui/components/UI/Resume');
+    const { COVER_LETTER_SIGNATURE_STYLE, renderCoverLetterPdfOnce } =
+      await import('@jobby/ui/components/UI/Resume');
+
+    expect(COVER_LETTER_SIGNATURE_STYLE).toEqual({
+      fontFamily: "'Times New Roman', Times, serif",
+      fontStyle: 'italic',
+      fontWeight: 600,
+    });
+    expect(JSON.stringify(COVER_LETTER_SIGNATURE_STYLE)).not.toMatch(
+      /Dancing Script|Caveat|https?:|data:/,
+    );
 
     const sampleLetter = `Dear Hiring Team,\n\nI am writing to express my enthusiasm for the Senior Frontend Engineer position at Acme Corp. With extensive experience in React, TypeScript, and modern design systems, I have delivered robust user interfaces and high-performance web applications.\n\nThank you for considering my application.\n\nSincerely,\nScott Zhang`;
 

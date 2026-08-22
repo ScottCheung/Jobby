@@ -1,4 +1,4 @@
-import { createHotContext as __vite__createHotContext } from "/vendor/vite-client.js";import.meta.hot = __vite__createHotContext("/vendor/fs-Users-xianzhezhang-Projects-Jobby-Jobby-packages-ui-src-components-UI-Resume-CoverLetterPdfPreview.tsx.js");import __vite__cjsImport0_react_jsxDevRuntime from "/vendor/.vite-deps-react_jsx-dev-runtime.js__v--22c5bc1a.js"; const Fragment = __vite__cjsImport0_react_jsxDevRuntime["Fragment"]; const jsxDEV = __vite__cjsImport0_react_jsxDevRuntime["jsxDEV"];
+import { createHotContext as __vite__createHotContext } from "/vendor/vite-client.js";import.meta.hot = __vite__createHotContext("/vendor/fs-Users-xianzhezhang-Projects-Jobby-Jobby-packages-ui-src-components-UI-Resume-CoverLetterPdfPreview.tsx.js");import __vite__cjsImport0_react_jsxDevRuntime from "/vendor/.vite-deps-react_jsx-dev-runtime.js__v--f5b0ea50.js"; const Fragment = __vite__cjsImport0_react_jsxDevRuntime["Fragment"]; const jsxDEV = __vite__cjsImport0_react_jsxDevRuntime["jsxDEV"];
 import * as RefreshRuntime from "/vendor/react-refresh.js";
 const inWebWorker = typeof WorkerGlobalScope !== "undefined" && self instanceof WorkerGlobalScope;
 let prevRefreshReg;
@@ -16,8 +16,8 @@ if (import.meta.hot && !inWebWorker) {
 }
 "use client";
 var _s = $RefreshSig$();
-import __vite__cjsImport3_react from "/vendor/.vite-deps-react.js__v--22c5bc1a.js"; const useEffect = __vite__cjsImport3_react["useEffect"]; const useMemo = __vite__cjsImport3_react["useMemo"]; const useRef = __vite__cjsImport3_react["useRef"]; const useState = __vite__cjsImport3_react["useState"];
-import __vite__cjsImport4_reactDom from "/vendor/.vite-deps-react-dom.js__v--22c5bc1a.js"; const createPortal = __vite__cjsImport4_reactDom["createPortal"];
+import __vite__cjsImport3_react from "/vendor/.vite-deps-react.js__v--f5b0ea50.js"; const useEffect = __vite__cjsImport3_react["useEffect"]; const useMemo = __vite__cjsImport3_react["useMemo"]; const useRef = __vite__cjsImport3_react["useRef"]; const useState = __vite__cjsImport3_react["useState"];
+import __vite__cjsImport4_reactDom from "/vendor/.vite-deps-react-dom.js__v--f5b0ea50.js"; const createPortal = __vite__cjsImport4_reactDom["createPortal"];
 import {
   Download,
   Edit3,
@@ -26,7 +26,7 @@ import {
   Loader2,
   Maximize2,
   X
-} from "/vendor/.vite-deps-lucide-react.js__v--22c5bc1a.js";
+} from "/vendor/.vite-deps-lucide-react.js__v--d47d6985.js";
 import {
   Document,
   Link as PdfLink,
@@ -36,9 +36,9 @@ import {
   Text,
   View,
   pdf
-} from "/vendor/.vite-deps-@react-pdf_renderer.js__v--22c5bc1a.js";
+} from "/vendor/.vite-deps-@react-pdf_renderer.js__v--e810af01.js";
 import { Button } from "/vendor/fs-Users-xianzhezhang-Projects-Jobby-Jobby-packages-ui-src-components-UI-Button-index.tsx.js";
-import { Mail, Phone, MapPin, FolderGit2, Globe } from "/vendor/.vite-deps-lucide-react.js__v--22c5bc1a.js";
+import { Mail, Phone, MapPin, FolderGit2, Globe } from "/vendor/.vite-deps-lucide-react.js__v--d47d6985.js";
 import {
   formatCoverLetterFilename,
   resumeContactItems,
@@ -48,6 +48,11 @@ import {
   CLBG_MAIN_PATH_D,
   COVER_LETTER_GOLD_SVG_DATA_URI
 } from "/vendor/fs-Users-xianzhezhang-Projects-Jobby-Jobby-packages-ui-src-components-UI-Resume-cover-letter-contour.ts.js";
+export const COVER_LETTER_SIGNATURE_STYLE = {
+  fontFamily: "'Times New Roman', Times, serif",
+  fontStyle: "italic",
+  fontWeight: 600
+};
 function computeLayoutMetrics(text) {
   const wordCount = text.trim().split(/\s+/).filter(Boolean).length;
   const charCount = text.length;
@@ -163,7 +168,7 @@ function renderPdfFormattedParagraph(text, fontSize, lineHeight, marginBottom, k
             false,
             {
               fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-              lineNumber: 237,
+              lineNumber: 245,
               columnNumber: 13
             },
             this
@@ -171,7 +176,7 @@ function renderPdfFormattedParagraph(text, fontSize, lineHeight, marginBottom, k
         }
         return /* @__PURE__ */ jsxDEV(Text, { children: part }, index, false, {
           fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-          lineNumber: 248,
+          lineNumber: 256,
           columnNumber: 16
         }, this);
       })
@@ -180,7 +185,7 @@ function renderPdfFormattedParagraph(text, fontSize, lineHeight, marginBottom, k
     false,
     {
       fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-      lineNumber: 224,
+      lineNumber: 232,
       columnNumber: 5
     },
     this
@@ -210,13 +215,13 @@ function PdfContactIcon({ type, color }) {
         false,
         {
           fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-          lineNumber: 267,
+          lineNumber: 275,
           columnNumber: 11
         },
         this
       ) }, void 0, false, {
         fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-        lineNumber: 266,
+        lineNumber: 274,
         columnNumber: 9
       }, this);
     case "phone":
@@ -234,13 +239,13 @@ function PdfContactIcon({ type, color }) {
         false,
         {
           fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-          lineNumber: 280,
+          lineNumber: 288,
           columnNumber: 11
         },
         this
       ) }, void 0, false, {
         fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-        lineNumber: 279,
+        lineNumber: 287,
         columnNumber: 9
       }, this);
     case "location":
@@ -258,13 +263,13 @@ function PdfContactIcon({ type, color }) {
         false,
         {
           fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-          lineNumber: 293,
+          lineNumber: 301,
           columnNumber: 11
         },
         this
       ) }, void 0, false, {
         fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-        lineNumber: 292,
+        lineNumber: 300,
         columnNumber: 9
       }, this);
     case "linkedin":
@@ -282,13 +287,13 @@ function PdfContactIcon({ type, color }) {
         false,
         {
           fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-          lineNumber: 306,
+          lineNumber: 314,
           columnNumber: 11
         },
         this
       ) }, void 0, false, {
         fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-        lineNumber: 305,
+        lineNumber: 313,
         columnNumber: 9
       }, this);
     case "portfolio":
@@ -306,13 +311,13 @@ function PdfContactIcon({ type, color }) {
         false,
         {
           fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-          lineNumber: 319,
+          lineNumber: 327,
           columnNumber: 11
         },
         this
       ) }, void 0, false, {
         fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-        lineNumber: 318,
+        lineNumber: 326,
         columnNumber: 9
       }, this);
     case "website":
@@ -330,13 +335,13 @@ function PdfContactIcon({ type, color }) {
         false,
         {
           fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-          lineNumber: 332,
+          lineNumber: 340,
           columnNumber: 11
         },
         this
       ) }, void 0, false, {
         fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-        lineNumber: 331,
+        lineNumber: 339,
         columnNumber: 9
       }, this);
     default:
@@ -400,7 +405,7 @@ export function CoverLetterPdfDocument({
               false,
               {
                 fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-                lineNumber: 404,
+                lineNumber: 412,
                 columnNumber: 11
               },
               this
@@ -410,7 +415,7 @@ export function CoverLetterPdfDocument({
           false,
           {
             fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-            lineNumber: 392,
+            lineNumber: 400,
             columnNumber: 9
           },
           this
@@ -439,7 +444,7 @@ export function CoverLetterPdfDocument({
               false,
               {
                 fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-                lineNumber: 424,
+                lineNumber: 432,
                 columnNumber: 11
               },
               this
@@ -449,7 +454,7 @@ export function CoverLetterPdfDocument({
           false,
           {
             fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-            lineNumber: 412,
+            lineNumber: 420,
             columnNumber: 9
           },
           this
@@ -491,7 +496,7 @@ export function CoverLetterPdfDocument({
                   false,
                   {
                     fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-                    lineNumber: 451,
+                    lineNumber: 459,
                     columnNumber: 13
                   },
                   this
@@ -501,7 +506,7 @@ export function CoverLetterPdfDocument({
               false,
               {
                 fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-                lineNumber: 439,
+                lineNumber: 447,
                 columnNumber: 11
               },
               this
@@ -511,7 +516,7 @@ export function CoverLetterPdfDocument({
           false,
           {
             fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-            lineNumber: 431,
+            lineNumber: 439,
             columnNumber: 9
           },
           this
@@ -542,7 +547,7 @@ export function CoverLetterPdfDocument({
                 false,
                 {
                   fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-                  lineNumber: 471,
+                  lineNumber: 479,
                   columnNumber: 11
                 },
                 this
@@ -562,7 +567,7 @@ export function CoverLetterPdfDocument({
                 false,
                 {
                   fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-                  lineNumber: 485,
+                  lineNumber: 493,
                   columnNumber: 11
                 },
                 this
@@ -600,14 +605,14 @@ export function CoverLetterPdfDocument({
                             false,
                             {
                               fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-                              lineNumber: 516,
+                              lineNumber: 524,
                               columnNumber: 15
                             },
                             this
                           ),
                           /* @__PURE__ */ jsxDEV(PdfContactIcon, { type: item.type, color: "#784508" }, void 0, false, {
                             fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-                            lineNumber: 526,
+                            lineNumber: 534,
                             columnNumber: 19
                           }, this),
                           item.href ? /* @__PURE__ */ jsxDEV(
@@ -625,13 +630,13 @@ export function CoverLetterPdfDocument({
                             false,
                             {
                               fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-                              lineNumber: 528,
+                              lineNumber: 536,
                               columnNumber: 15
                             },
                             this
                           ) : /* @__PURE__ */ jsxDEV(Text, { style: { fontSize: 8.5, color: "#57534E" }, children: item.text }, void 0, false, {
                             fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-                            lineNumber: 538,
+                            lineNumber: 546,
                             columnNumber: 15
                           }, this)
                         ]
@@ -640,7 +645,7 @@ export function CoverLetterPdfDocument({
                       true,
                       {
                         fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-                        lineNumber: 508,
+                        lineNumber: 516,
                         columnNumber: 13
                       },
                       this
@@ -651,7 +656,7 @@ export function CoverLetterPdfDocument({
                 false,
                 {
                   fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-                  lineNumber: 498,
+                  lineNumber: 506,
                   columnNumber: 11
                 },
                 this
@@ -670,7 +675,7 @@ export function CoverLetterPdfDocument({
                 false,
                 {
                   fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-                  lineNumber: 548,
+                  lineNumber: 556,
                   columnNumber: 11
                 },
                 this
@@ -681,7 +686,7 @@ export function CoverLetterPdfDocument({
           true,
           {
             fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-            lineNumber: 464,
+            lineNumber: 472,
             columnNumber: 9
           },
           this
@@ -719,7 +724,7 @@ export function CoverLetterPdfDocument({
                 true,
                 {
                   fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-                  lineNumber: 569,
+                  lineNumber: 577,
                   columnNumber: 11
                 },
                 this
@@ -738,7 +743,7 @@ export function CoverLetterPdfDocument({
                 false,
                 {
                   fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-                  lineNumber: 583,
+                  lineNumber: 591,
                   columnNumber: 11
                 },
                 this
@@ -749,7 +754,7 @@ export function CoverLetterPdfDocument({
           true,
           {
             fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-            lineNumber: 559,
+            lineNumber: 567,
             columnNumber: 9
           },
           this
@@ -764,7 +769,7 @@ export function CoverLetterPdfDocument({
           )
         ) }, void 0, false, {
           fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-          lineNumber: 595,
+          lineNumber: 603,
           columnNumber: 9
         }, this),
         /* @__PURE__ */ jsxDEV(
@@ -796,7 +801,7 @@ export function CoverLetterPdfDocument({
                 true,
                 {
                   fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-                  lineNumber: 617,
+                  lineNumber: 625,
                   columnNumber: 11
                 },
                 this
@@ -816,7 +821,7 @@ export function CoverLetterPdfDocument({
                 false,
                 {
                   fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-                  lineNumber: 627,
+                  lineNumber: 635,
                   columnNumber: 11
                 },
                 this
@@ -827,7 +832,7 @@ export function CoverLetterPdfDocument({
           true,
           {
             fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-            lineNumber: 608,
+            lineNumber: 616,
             columnNumber: 9
           },
           this
@@ -838,13 +843,13 @@ export function CoverLetterPdfDocument({
     true,
     {
       fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-      lineNumber: 378,
+      lineNumber: 386,
       columnNumber: 7
     },
     this
   ) }, void 0, false, {
     fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-    lineNumber: 377,
+    lineNumber: 385,
     columnNumber: 5
   }, this);
 }
@@ -863,7 +868,7 @@ export async function renderCoverLetterPdfOnce(coverLetter, candidateData, compa
       false,
       {
         fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-        lineNumber: 650,
+        lineNumber: 658,
         columnNumber: 5
       },
       this
@@ -895,7 +900,7 @@ function renderHtmlFormattedParagraph(text, fontSize, lineHeight, marginBottom, 
             false,
             {
               fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-              lineNumber: 682,
+              lineNumber: 690,
               columnNumber: 13
             },
             this
@@ -903,7 +908,7 @@ function renderHtmlFormattedParagraph(text, fontSize, lineHeight, marginBottom, 
         }
         return /* @__PURE__ */ jsxDEV("span", { children: part }, index, false, {
           fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-          lineNumber: 690,
+          lineNumber: 698,
           columnNumber: 16
         }, this);
       })
@@ -912,7 +917,7 @@ function renderHtmlFormattedParagraph(text, fontSize, lineHeight, marginBottom, 
     false,
     {
       fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-      lineNumber: 670,
+      lineNumber: 678,
       columnNumber: 5
     },
     this
@@ -942,17 +947,17 @@ function LinkedinHtmlIcon({
       children: [
         /* @__PURE__ */ jsxDEV("path", { d: "M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z" }, void 0, false, {
           fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-          lineNumber: 720,
+          lineNumber: 728,
           columnNumber: 7
         }, this),
         /* @__PURE__ */ jsxDEV("rect", { x: "2", y: "9", width: "4", height: "12" }, void 0, false, {
           fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-          lineNumber: 721,
+          lineNumber: 729,
           columnNumber: 7
         }, this),
         /* @__PURE__ */ jsxDEV("circle", { cx: "4", cy: "4", r: "2" }, void 0, false, {
           fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-          lineNumber: 722,
+          lineNumber: 730,
           columnNumber: 7
         }, this)
       ]
@@ -961,7 +966,7 @@ function LinkedinHtmlIcon({
     true,
     {
       fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-      lineNumber: 704,
+      lineNumber: 712,
       columnNumber: 5
     },
     this
@@ -980,37 +985,37 @@ function HtmlContactIcon({ type }) {
     case "email":
       return /* @__PURE__ */ jsxDEV(Mail, { className, style: iconStyle }, void 0, false, {
         fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-        lineNumber: 737,
+        lineNumber: 745,
         columnNumber: 14
       }, this);
     case "phone":
       return /* @__PURE__ */ jsxDEV(Phone, { className, style: iconStyle }, void 0, false, {
         fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-        lineNumber: 739,
+        lineNumber: 747,
         columnNumber: 14
       }, this);
     case "location":
       return /* @__PURE__ */ jsxDEV(MapPin, { className, style: iconStyle }, void 0, false, {
         fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-        lineNumber: 741,
+        lineNumber: 749,
         columnNumber: 14
       }, this);
     case "linkedin":
       return /* @__PURE__ */ jsxDEV(LinkedinHtmlIcon, { className, style: iconStyle }, void 0, false, {
         fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-        lineNumber: 743,
+        lineNumber: 751,
         columnNumber: 14
       }, this);
     case "portfolio":
       return /* @__PURE__ */ jsxDEV(FolderGit2, { className, style: iconStyle }, void 0, false, {
         fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-        lineNumber: 745,
+        lineNumber: 753,
         columnNumber: 14
       }, this);
     case "website":
       return /* @__PURE__ */ jsxDEV(Globe, { className, style: iconStyle }, void 0, false, {
         fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-        lineNumber: 747,
+        lineNumber: 755,
         columnNumber: 14
       }, this);
     default:
@@ -1065,7 +1070,7 @@ export function CoverLetterHtmlDocument({
           false,
           {
             fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-            lineNumber: 802,
+            lineNumber: 810,
             columnNumber: 7
           },
           this
@@ -1081,7 +1086,7 @@ export function CoverLetterHtmlDocument({
           false,
           {
             fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-            lineNumber: 809,
+            lineNumber: 817,
             columnNumber: 7
           },
           this
@@ -1099,26 +1104,26 @@ export function CoverLetterHtmlDocument({
               false,
               {
                 fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-                lineNumber: 818,
+                lineNumber: 826,
                 columnNumber: 11
               },
               this
             ),
             headline && /* @__PURE__ */ jsxDEV("p", { className: "text-[12.5px] font-bold text-[#784508] mt-0.5 mb-1.5", children: headline }, void 0, false, {
               fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-              lineNumber: 826,
+              lineNumber: 834,
               columnNumber: 11
             }, this),
             contacts.length > 0 && /* @__PURE__ */ jsxDEV("div", { className: "flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[12px] text-stone-600 mt-1 mb-1", children: contacts.map(
               (item, idx) => /* @__PURE__ */ jsxDEV("span", { className: "inline-flex items-center gap-1.5", children: [
                 idx > 0 && /* @__PURE__ */ jsxDEV("span", { className: "text-[#DEC8A0] font-normal", children: "|" }, void 0, false, {
                   fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-                  lineNumber: 836,
+                  lineNumber: 844,
                   columnNumber: 15
                 }, this),
                 /* @__PURE__ */ jsxDEV(HtmlContactIcon, { type: item.type }, void 0, false, {
                   fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-                  lineNumber: 838,
+                  lineNumber: 846,
                   columnNumber: 19
                 }, this),
                 item.href ? /* @__PURE__ */ jsxDEV(
@@ -1134,23 +1139,23 @@ export function CoverLetterHtmlDocument({
                   false,
                   {
                     fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-                    lineNumber: 840,
+                    lineNumber: 848,
                     columnNumber: 15
                   },
                   this
                 ) : /* @__PURE__ */ jsxDEV("span", { children: item.text }, void 0, false, {
                   fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-                  lineNumber: 848,
+                  lineNumber: 856,
                   columnNumber: 15
                 }, this)
               ] }, idx, true, {
                 fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-                lineNumber: 834,
+                lineNumber: 842,
                 columnNumber: 13
               }, this)
             ) }, void 0, false, {
               fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-              lineNumber: 832,
+              lineNumber: 840,
               columnNumber: 11
             }, this),
             /* @__PURE__ */ jsxDEV(
@@ -1163,23 +1168,23 @@ export function CoverLetterHtmlDocument({
               false,
               {
                 fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-                lineNumber: 855,
+                lineNumber: 863,
                 columnNumber: 11
               },
               this
             )
           ] }, void 0, true, {
             fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-            lineNumber: 817,
+            lineNumber: 825,
             columnNumber: 9
           }, this),
           /* @__PURE__ */ jsxDEV("div", { className: "mb-3", children: /* @__PURE__ */ jsxDEV("div", { className: "inline-flex items-center px-3 py-1 rounded bg-[#FAF5EC] border border-[#DEC8A0] text-[#784508] text-[11.5px] font-bold shadow-2xs", children: subjectTitle }, void 0, false, {
             fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-            lineNumber: 863,
+            lineNumber: 871,
             columnNumber: 11
           }, this) }, void 0, false, {
             fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-            lineNumber: 862,
+            lineNumber: 870,
             columnNumber: 9
           }, this),
           /* @__PURE__ */ jsxDEV("div", { className: "flex items-baseline justify-between gap-3 mb-3.5", children: [
@@ -1197,19 +1202,19 @@ export function CoverLetterHtmlDocument({
               true,
               {
                 fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-                lineNumber: 870,
+                lineNumber: 878,
                 columnNumber: 11
               },
               this
             ),
             /* @__PURE__ */ jsxDEV("span", { className: "text-stone-500 font-medium text-[11.5px] shrink-0", children: formattedDate }, void 0, false, {
               fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-              lineNumber: 876,
+              lineNumber: 884,
               columnNumber: 11
             }, this)
           ] }, void 0, true, {
             fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-            lineNumber: 869,
+            lineNumber: 877,
             columnNumber: 9
           }, this),
           /* @__PURE__ */ jsxDEV("div", { className: "flex flex-col text-justify", children: paragraphs.map(
@@ -1222,7 +1227,7 @@ export function CoverLetterHtmlDocument({
             )
           ) }, void 0, false, {
             fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-            lineNumber: 882,
+            lineNumber: 890,
             columnNumber: 9
           }, this),
           /* @__PURE__ */ jsxDEV(
@@ -1245,7 +1250,7 @@ export function CoverLetterHtmlDocument({
                   true,
                   {
                     fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-                    lineNumber: 899,
+                    lineNumber: 907,
                     columnNumber: 11
                   },
                   this
@@ -1254,17 +1259,14 @@ export function CoverLetterHtmlDocument({
                   "span",
                   {
                     className: "text-[36px] text-[#784508] -rotate-2 select-none leading-none",
-                    style: {
-                      fontFamily: "'Dancing Script', 'Caveat', 'Snell Roundhand', 'Brush Script MT', cursive",
-                      fontWeight: 600
-                    },
+                    style: COVER_LETTER_SIGNATURE_STYLE,
                     children: signoffName
                   },
                   void 0,
                   false,
                   {
                     fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-                    lineNumber: 905,
+                    lineNumber: 913,
                     columnNumber: 11
                   },
                   this
@@ -1275,14 +1277,14 @@ export function CoverLetterHtmlDocument({
             true,
             {
               fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-              lineNumber: 895,
+              lineNumber: 903,
               columnNumber: 9
             },
             this
           )
         ] }, void 0, true, {
           fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-          lineNumber: 815,
+          lineNumber: 823,
           columnNumber: 7
         }, this)
       ]
@@ -1291,7 +1293,7 @@ export function CoverLetterHtmlDocument({
     true,
     {
       fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-      lineNumber: 783,
+      lineNumber: 791,
       columnNumber: 5
     },
     this
@@ -1411,54 +1413,54 @@ export function CoverLetterPdfPreview({
             /* @__PURE__ */ jsxDEV("div", { className: "flex items-center gap-3 min-w-0", children: [
               /* @__PURE__ */ jsxDEV("div", { className: "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary", children: /* @__PURE__ */ jsxDEV(FileText, { className: "h-4.5 w-4.5" }, void 0, false, {
                 fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-                lineNumber: 1048,
+                lineNumber: 1052,
                 columnNumber: 17
               }, this) }, void 0, false, {
                 fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-                lineNumber: 1047,
+                lineNumber: 1051,
                 columnNumber: 15
               }, this),
               /* @__PURE__ */ jsxDEV("div", { className: "min-w-0", children: [
                 /* @__PURE__ */ jsxDEV("p", { className: "label font-semibold text-ink-primary truncate", children: resolvedFilename }, void 0, false, {
                   fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-                  lineNumber: 1051,
+                  lineNumber: 1055,
                   columnNumber: 17
                 }, this),
                 /* @__PURE__ */ jsxDEV("div", { className: "flex items-center gap-2 text-xs text-ink-secondary mt-0.5 truncate", children: [
                   /* @__PURE__ */ jsxDEV("span", { children: "1 page" }, void 0, false, {
                     fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-                    lineNumber: 1055,
+                    lineNumber: 1059,
                     columnNumber: 19
                   }, this),
                   fileSize ? /* @__PURE__ */ jsxDEV(Fragment, { children: [
                     /* @__PURE__ */ jsxDEV("span", { className: "opacity-40", children: "•" }, void 0, false, {
                       fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-                      lineNumber: 1058,
+                      lineNumber: 1062,
                       columnNumber: 23
                     }, this),
                     /* @__PURE__ */ jsxDEV("span", { children: formatBytes(fileSize) }, void 0, false, {
                       fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-                      lineNumber: 1059,
+                      lineNumber: 1063,
                       columnNumber: 23
                     }, this)
                   ] }, void 0, true, {
                     fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-                    lineNumber: 1057,
+                    lineNumber: 1061,
                     columnNumber: 19
                   }, this) : null
                 ] }, void 0, true, {
                   fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-                  lineNumber: 1054,
+                  lineNumber: 1058,
                   columnNumber: 17
                 }, this)
               ] }, void 0, true, {
                 fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-                lineNumber: 1050,
+                lineNumber: 1054,
                 columnNumber: 15
               }, this)
             ] }, void 0, true, {
               fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-              lineNumber: 1046,
+              lineNumber: 1050,
               columnNumber: 13
             }, this),
             /* @__PURE__ */ jsxDEV("div", { className: "flex items-center gap-2 shrink-0", children: /* @__PURE__ */ jsxDEV(
@@ -1475,18 +1477,18 @@ export function CoverLetterPdfPreview({
               false,
               {
                 fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-                lineNumber: 1067,
+                lineNumber: 1071,
                 columnNumber: 15
               },
               this
             ) }, void 0, false, {
               fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-              lineNumber: 1066,
+              lineNumber: 1070,
               columnNumber: 13
             }, this)
           ] }, void 0, true, {
             fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-            lineNumber: 1045,
+            lineNumber: 1049,
             columnNumber: 11
           }, this),
           pdfUrl ? /* @__PURE__ */ jsxDEV(
@@ -1500,29 +1502,29 @@ export function CoverLetterPdfPreview({
             false,
             {
               fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-              lineNumber: 1080,
+              lineNumber: 1084,
               columnNumber: 11
             },
             this
           ) : /* @__PURE__ */ jsxDEV("div", { className: "flex h-full flex-col items-center justify-center gap-2 text-ink-secondary", children: [
             /* @__PURE__ */ jsxDEV(Loader2, { className: "h-6 w-6 animate-spin text-primary" }, void 0, false, {
               fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-              lineNumber: 1086,
+              lineNumber: 1090,
               columnNumber: 15
             }, this),
             /* @__PURE__ */ jsxDEV("p", { className: "text-xs font-medium", children: "Loading PDF engine..." }, void 0, false, {
               fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-              lineNumber: 1087,
+              lineNumber: 1091,
               columnNumber: 15
             }, this)
           ] }, void 0, true, {
             fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-            lineNumber: 1085,
+            lineNumber: 1089,
             columnNumber: 11
           }, this)
         ] }, void 0, true, {
           fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-          lineNumber: 1044,
+          lineNumber: 1048,
           columnNumber: 9
         }, this)
       );
@@ -1569,7 +1571,7 @@ export function CoverLetterPdfPreview({
                     false,
                     {
                       fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-                      lineNumber: 1123,
+                      lineNumber: 1127,
                       columnNumber: 15
                     },
                     this
@@ -1579,7 +1581,7 @@ export function CoverLetterPdfPreview({
                 false,
                 {
                   fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-                  lineNumber: 1114,
+                  lineNumber: 1118,
                   columnNumber: 13
                 },
                 this
@@ -1589,27 +1591,27 @@ export function CoverLetterPdfPreview({
             false,
             {
               fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-              lineNumber: 1107,
+              lineNumber: 1111,
               columnNumber: 11
             },
             this
           ) }, void 0, false, {
             fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-            lineNumber: 1106,
+            lineNumber: 1110,
             columnNumber: 9
           }, this),
           error && /* @__PURE__ */ jsxDEV("p", { className: "absolute inset-x-4 top-1/2 -translate-y-1/2 text-center text-xs text-red-600 bg-panel/95 py-2 px-3 rounded-lg border border-red-200 dark:border-red-900/40 shadow-xs", children: error }, void 0, false, {
             fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-            lineNumber: 1134,
+            lineNumber: 1138,
             columnNumber: 9
           }, this),
           isGenerating && /* @__PURE__ */ jsxDEV("div", { className: "absolute right-2 top-2 rounded-full bg-white/90 dark:bg-slate-900/90 p-1 text-ink-secondary shadow-sm", children: /* @__PURE__ */ jsxDEV(Loader2, { className: "size-2.5 animate-spin text-primary" }, void 0, false, {
             fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-            lineNumber: 1141,
+            lineNumber: 1145,
             columnNumber: 13
           }, this) }, void 0, false, {
             fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-            lineNumber: 1140,
+            lineNumber: 1144,
             columnNumber: 9
           }, this),
           /* @__PURE__ */ jsxDEV("div", { className: "absolute inset-0 z-20 flex items-center justify-center gap-1.5 bg-slate-950/20 opacity-0 transition-opacity group-hover:opacity-100 backdrop-blur-xs", children: [
@@ -1626,7 +1628,7 @@ export function CoverLetterPdfPreview({
                 className: "flex h-8 w-8 items-center justify-center rounded-lg bg-white/95 dark:bg-slate-900/95 text-slate-800 dark:text-slate-100 hover:scale-110 hover:text-primary hover:border-primary/40 border border-black/[0.06] dark:border-white/[0.1] cursor-pointer shadow-md transition-all",
                 children: /* @__PURE__ */ jsxDEV(Maximize2, { className: "h-3.5 w-3.5" }, void 0, false, {
                   fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-                  lineNumber: 1157,
+                  lineNumber: 1161,
                   columnNumber: 13
                 }, this)
               },
@@ -1634,7 +1636,7 @@ export function CoverLetterPdfPreview({
               false,
               {
                 fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-                lineNumber: 1147,
+                lineNumber: 1151,
                 columnNumber: 11
               },
               this
@@ -1658,7 +1660,7 @@ export function CoverLetterPdfPreview({
                 className: "flex h-8 w-8 items-center justify-center rounded-lg bg-white/95 dark:bg-slate-900/95 text-slate-800 dark:text-slate-100 hover:scale-110 hover:text-primary hover:border-primary/40 border border-black/[0.06] dark:border-white/[0.1] cursor-pointer shadow-md transition-all",
                 children: /* @__PURE__ */ jsxDEV(ExternalLink, { className: "h-3.5 w-3.5" }, void 0, false, {
                   fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-                  lineNumber: 1176,
+                  lineNumber: 1180,
                   columnNumber: 13
                 }, this)
               },
@@ -1666,7 +1668,7 @@ export function CoverLetterPdfPreview({
               false,
               {
                 fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-                lineNumber: 1160,
+                lineNumber: 1164,
                 columnNumber: 11
               },
               this
@@ -1684,7 +1686,7 @@ export function CoverLetterPdfPreview({
                 className: "flex h-8 w-8 items-center justify-center rounded-lg bg-white/95 dark:bg-slate-900/95 text-slate-800 dark:text-slate-100 hover:scale-110 hover:text-primary hover:border-primary/40 border border-black/[0.06] dark:border-white/[0.1] cursor-pointer shadow-md transition-all",
                 children: /* @__PURE__ */ jsxDEV(Edit3, { className: "h-3.5 w-3.5" }, void 0, false, {
                   fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-                  lineNumber: 1190,
+                  lineNumber: 1194,
                   columnNumber: 15
                 }, this)
               },
@@ -1692,7 +1694,7 @@ export function CoverLetterPdfPreview({
               false,
               {
                 fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-                lineNumber: 1180,
+                lineNumber: 1184,
                 columnNumber: 11
               },
               this
@@ -1715,7 +1717,7 @@ export function CoverLetterPdfPreview({
                 disabled: !onDownload && (!pdfUrl || isGenerating),
                 children: /* @__PURE__ */ jsxDEV(Download, { className: "h-3.5 w-3.5" }, void 0, false, {
                   fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-                  lineNumber: 1209,
+                  lineNumber: 1213,
                   columnNumber: 13
                 }, this)
               },
@@ -1723,20 +1725,20 @@ export function CoverLetterPdfPreview({
               false,
               {
                 fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-                lineNumber: 1194,
+                lineNumber: 1198,
                 columnNumber: 11
               },
               this
             )
           ] }, void 0, true, {
             fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-            lineNumber: 1146,
+            lineNumber: 1150,
             columnNumber: 9
           }, this),
           /* @__PURE__ */ jsxDEV("div", { className: "absolute bottom-1.5 left-1.5 z-10 flex items-center gap-1 rounded-md bg-panel/60 backdrop-blur-xs px-1.5 py-0.5 text-[9.5px] font-medium text-ink-primary", children: [
             /* @__PURE__ */ jsxDEV(FileText, { className: "h-3 w-3 text-primary shrink-0" }, void 0, false, {
               fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-              lineNumber: 1215,
+              lineNumber: 1219,
               columnNumber: 11
             }, this),
             /* @__PURE__ */ jsxDEV("span", { children: [
@@ -1744,12 +1746,12 @@ export function CoverLetterPdfPreview({
               fileSize ? `· ${formatBytes(fileSize)}` : ""
             ] }, void 0, true, {
               fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-              lineNumber: 1216,
+              lineNumber: 1220,
               columnNumber: 11
             }, this)
           ] }, void 0, true, {
             fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-            lineNumber: 1214,
+            lineNumber: 1218,
             columnNumber: 9
           }, this)
         ]
@@ -1758,7 +1760,7 @@ export function CoverLetterPdfPreview({
       true,
       {
         fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-        lineNumber: 1101,
+        lineNumber: 1105,
         columnNumber: 7
       },
       this
@@ -1779,54 +1781,54 @@ export function CoverLetterPdfPreview({
                   /* @__PURE__ */ jsxDEV("div", { className: "flex items-center gap-3 min-w-0", children: [
                     /* @__PURE__ */ jsxDEV("div", { className: "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary", children: /* @__PURE__ */ jsxDEV("div", { className: "text-[11px] font-bold", children: "PDF" }, void 0, false, {
                       fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-                      lineNumber: 1238,
+                      lineNumber: 1242,
                       columnNumber: 21
                     }, this) }, void 0, false, {
                       fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-                      lineNumber: 1237,
+                      lineNumber: 1241,
                       columnNumber: 19
                     }, this),
                     /* @__PURE__ */ jsxDEV("div", { className: "min-w-0", children: [
                       /* @__PURE__ */ jsxDEV("p", { className: "label font-semibold text-ink-primary truncate", children: resolvedFilename }, void 0, false, {
                         fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-                        lineNumber: 1241,
+                        lineNumber: 1245,
                         columnNumber: 21
                       }, this),
                       /* @__PURE__ */ jsxDEV("div", { className: "flex flex-wrap items-center gap-1 text-[10px] text-ink-secondary", children: [
                         /* @__PURE__ */ jsxDEV("span", { children: "1 page" }, void 0, false, {
                           fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-                          lineNumber: 1245,
+                          lineNumber: 1249,
                           columnNumber: 23
                         }, this),
                         fileSize && /* @__PURE__ */ jsxDEV(Fragment, { children: [
                           /* @__PURE__ */ jsxDEV("span", { className: "opacity-40", children: "•" }, void 0, false, {
                             fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-                            lineNumber: 1248,
+                            lineNumber: 1252,
                             columnNumber: 27
                           }, this),
                           /* @__PURE__ */ jsxDEV("span", { children: formatBytes(fileSize) }, void 0, false, {
                             fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-                            lineNumber: 1249,
+                            lineNumber: 1253,
                             columnNumber: 27
                           }, this)
                         ] }, void 0, true, {
                           fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-                          lineNumber: 1247,
+                          lineNumber: 1251,
                           columnNumber: 21
                         }, this)
                       ] }, void 0, true, {
                         fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-                        lineNumber: 1244,
+                        lineNumber: 1248,
                         columnNumber: 21
                       }, this)
                     ] }, void 0, true, {
                       fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-                      lineNumber: 1240,
+                      lineNumber: 1244,
                       columnNumber: 19
                     }, this)
                   ] }, void 0, true, {
                     fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-                    lineNumber: 1236,
+                    lineNumber: 1240,
                     columnNumber: 17
                   }, this),
                   /* @__PURE__ */ jsxDEV("div", { className: "flex items-center gap-2 shrink-0", children: [
@@ -1843,7 +1845,7 @@ export function CoverLetterPdfPreview({
                       false,
                       {
                         fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-                        lineNumber: 1257,
+                        lineNumber: 1261,
                         columnNumber: 19
                       },
                       this
@@ -1857,7 +1859,7 @@ export function CoverLetterPdfPreview({
                         className: "flex h-9 w-9 items-center justify-center rounded-lg text-ink-secondary hover:bg-background-secondary transition cursor-pointer",
                         children: /* @__PURE__ */ jsxDEV(X, { className: "h-4 w-4" }, void 0, false, {
                           fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-                          lineNumber: 1271,
+                          lineNumber: 1275,
                           columnNumber: 21
                         }, this)
                       },
@@ -1865,19 +1867,19 @@ export function CoverLetterPdfPreview({
                       false,
                       {
                         fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-                        lineNumber: 1265,
+                        lineNumber: 1269,
                         columnNumber: 19
                       },
                       this
                     )
                   ] }, void 0, true, {
                     fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-                    lineNumber: 1256,
+                    lineNumber: 1260,
                     columnNumber: 17
                   }, this)
                 ] }, void 0, true, {
                   fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-                  lineNumber: 1235,
+                  lineNumber: 1239,
                   columnNumber: 15
                 }, this),
                 pdfUrl ? /* @__PURE__ */ jsxDEV(
@@ -1891,24 +1893,24 @@ export function CoverLetterPdfPreview({
                   false,
                   {
                     fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-                    lineNumber: 1278,
+                    lineNumber: 1282,
                     columnNumber: 13
                   },
                   this
                 ) : /* @__PURE__ */ jsxDEV("div", { className: "flex h-full flex-col items-center justify-center gap-2 text-ink-secondary", children: [
                   /* @__PURE__ */ jsxDEV(Loader2, { className: "h-6 w-6 animate-spin text-primary" }, void 0, false, {
                     fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-                    lineNumber: 1284,
+                    lineNumber: 1288,
                     columnNumber: 19
                   }, this),
                   /* @__PURE__ */ jsxDEV("p", { className: "text-xs font-medium", children: "Loading PDF engine..." }, void 0, false, {
                     fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-                    lineNumber: 1285,
+                    lineNumber: 1289,
                     columnNumber: 19
                   }, this)
                 ] }, void 0, true, {
                   fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-                  lineNumber: 1283,
+                  lineNumber: 1287,
                   columnNumber: 13
                 }, this)
               ]
@@ -1917,7 +1919,7 @@ export function CoverLetterPdfPreview({
             true,
             {
               fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-              lineNumber: 1230,
+              lineNumber: 1234,
               columnNumber: 13
             },
             this
@@ -1927,7 +1929,7 @@ export function CoverLetterPdfPreview({
         false,
         {
           fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-          lineNumber: 1226,
+          lineNumber: 1230,
           columnNumber: 9
         },
         this
@@ -1936,7 +1938,7 @@ export function CoverLetterPdfPreview({
     )
   ] }, void 0, true, {
     fileName: "/Users/xianzhezhang/Projects/Jobby/Jobby/packages/ui/src/components/UI/Resume/CoverLetterPdfPreview.tsx",
-    lineNumber: 1099,
+    lineNumber: 1103,
     columnNumber: 5
   }, this);
 }

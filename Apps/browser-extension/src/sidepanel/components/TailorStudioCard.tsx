@@ -58,6 +58,14 @@ function documentTypeLabel(item: TailoredResume): string[] {
   return ['CV'];
 }
 
+function savedCoverLetter(item: TailoredResume): string | null {
+  if (item.cover_letter) return item.cover_letter;
+  const legacyCoverLetter = item.raw_ai_response?.cover_letter;
+  return typeof legacyCoverLetter === 'string' && legacyCoverLetter.trim() ?
+      legacyCoverLetter
+    : null;
+}
+
 interface TailorStudioCardProps {
   studio: ReturnType<typeof useTailoredResumeStudio>;
   latestInspection: PageInspection | null;
@@ -75,7 +83,7 @@ export function TailorStudioCard({
   managementOnly = false,
 }: TailorStudioCardProps) {
   const [isDescExpanded, setIsDescExpanded] = useState(false);
-  const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
+  const [showAdvancedSettings, setShowAdvancedSettings] = useState(true);
   const [confirmModalType, setConfirmModalType] = useState<DocType | null>(
     null,
   );
@@ -123,7 +131,21 @@ export function TailorStudioCard({
     isJobPage &&
     (Boolean(detectedJob?.title) || Boolean(detectedJob?.jobDescription));
   const resume = result?.resume_data;
+  const generatedDocuments = result?.tailored_resume?.raw_ai_response
+    ?.generated_documents as
+    | { resume?: boolean; cover_letter?: boolean }
+    | undefined;
+  // A CL-only result carries base resume data solely for the letter's
+  // candidate details. Do not present that data as a newly generated CV.
+  const hasGeneratedResume =
+    (
+      generatedDocuments &&
+      ('resume' in generatedDocuments || 'cover_letter' in generatedDocuments)
+    ) ?
+      generatedDocuments.resume === true
+    : Boolean(resume);
   const effectiveResume = resume || originalResume || defaultMasterResumeData;
+  const displayResume = hasGeneratedResume ? effectiveResume : null;
   const competencies = result?.core_competencies || [];
 
   // A resume-only version must never invent a default cover letter. Showing one
@@ -133,7 +155,7 @@ export function TailorStudioCard({
   // Active generating view: only shown if activeOptimisticId is selected/active
   const isViewingGenerating = Boolean(
     activeOptimisticId &&
-      (!result || result?.tailored_resume?.id === activeOptimisticId),
+    (!result || result?.tailored_resume?.id === activeOptimisticId),
   );
   const activeOptimisticItem = savedResumes.find(
     (s) => s.id === activeOptimisticId,
@@ -480,7 +502,11 @@ export function TailorStudioCard({
       });
       const payload = {
         type: 'content.show-resume-library',
-        resumes: savedResumes.filter((item) => !item.isGenerating),
+        // Earlier saved records keep their cover letter in raw_ai_response.
+        // Normalize it before passing the library so CV and CL are both shown.
+        resumes: savedResumes
+          .filter((item) => !item.isGenerating)
+          .map((item) => ({ ...item, cover_letter: savedCoverLetter(item) })),
         selectedId: result?.tailored_resume?.id,
       };
       await chrome.tabs.sendMessage(activeTab.id, payload);
@@ -523,7 +549,8 @@ export function TailorStudioCard({
             throw new Error('Could not find the active page.');
 
           const isCoverLetter = request.documentType === 'cover_letter';
-          if (isCoverLetter && !saved.cover_letter)
+          const coverLetter = savedCoverLetter(saved);
+          if (isCoverLetter && !coverLetter)
             throw new Error('No cover letter is saved for this tailoring.');
 
           const competencies =
@@ -533,7 +560,7 @@ export function TailorStudioCard({
           let pdfScale: number | undefined;
           if (isCoverLetter) {
             const rendered = await renderCoverLetterPdfOnce(
-              saved.cover_letter!,
+              coverLetter!,
               saved.resume_data,
               saved.company || undefined,
               saved.job_title || undefined,
@@ -595,6 +622,35 @@ export function TailorStudioCard({
     chrome.runtime.onMessage.addListener(onLibraryPreview);
     return () => chrome.runtime.onMessage.removeListener(onLibraryPreview);
   }, [savedResumes, webAppBaseUrl]);
+
+  useEffect(() => {
+    const onLibraryDelete = (
+      message: unknown,
+      _sender: chrome.runtime.MessageSender,
+      sendResponse: (response: { ok: boolean }) => void,
+    ): boolean | void => {
+      if (
+        typeof message !== 'object' ||
+        message === null ||
+        (message as { type?: unknown }).type !== 'tailor.delete-library-resume'
+      )
+        return;
+      const id = (message as { id?: unknown }).id;
+      if (typeof id !== 'string') {
+        sendResponse({ ok: false });
+        return;
+      }
+      void deleteSavedResume(id)
+        .then(() => sendResponse({ ok: true }))
+        .catch(() => {
+          notify.error('Could not delete this tailored resume.');
+          sendResponse({ ok: false });
+        });
+      return true;
+    };
+    chrome.runtime.onMessage.addListener(onLibraryDelete);
+    return () => chrome.runtime.onMessage.removeListener(onLibraryDelete);
+  }, [deleteSavedResume]);
 
   const handleOpenFloatingResumePreview = async () => {
     if (!resume) return;
@@ -899,28 +955,42 @@ export function TailorStudioCard({
                       key={item.id}
                       type='button'
                       onClick={() => loadSavedResume(item)}
-                      className={`shrink-0 w-[148px] p-2 rounded-xl text-left transition-all duration-200 cursor-pointer flex flex-col justify-center gap-1 page-class-banner--job relative overflow-hidden ${
+                      className={`group/history border page-class-banner--job relative shrink-0 w-[150px] min-h-[86px] p-2.5 rounded-xl text-left transition-all duration-200 cursor-pointer flex flex-col gap-1  ${
                         isSelected ?
-                          'bg-primary/20 border-primary shadow-xs ring-1 ring-primary/40 text-primary'
-                        : 'bg-primary/10 border-primary/30 hover:border-primary/50 text-foreground'
+                          'border-primary  text-primary shadow-xs '
+                        : 'page-class-banner--job border-primary/0 hover:-translate-y-0.5 hover:bg-muted/40 hover:border-primary text-foreground'
                       }`}
                     >
-                      <div className='flex items-center justify-between gap-1 w-full min-w-0'>
-                        <span className='inline-flex items-center gap-1 text-[8px] font-bold text-primary uppercase tracking-tight truncate'>
-                          <Sparkles
-                            className='w-2.5 h-2.5 animate-spin text-primary shrink-0'
-                            style={{ animationDuration: '3s' }}
-                          />
-                          <span className='truncate'>AI Generating...</span>
+                      {' '}
+                      <div className='flex items-center justify-between gap-1 w-full min-w-0  transition-all'>
+                        <span
+                          className={cn(
+                            'text-[8px] font-bold leading-tight line-clamp-1 flex-1 min-w-0',
+                            // isSelected ?
+                            //   'text-primary-foreground'
+                            // : 'text-primary',
+                          )}
+                        >
+                          {item.job_title || 'Tailored Resume'}
                         </span>
-                        <span className='w-1.5 h-1.5 rounded-full bg-primary animate-ping shrink-0' />
                       </div>
                       <div className='flex items-center justify-between gap-1 w-full min-w-0'>
-                        <p className='text-[10px] font-semibold text-foreground line-clamp-1 break-words leading-tight flex-1 min-w-0'>
-                          {item.company ||
-                            item.job_title ||
-                            'Tailored Application'}
+                        <p
+                          className={cn(
+                            'text-[12px] text-ink-primary font-semibold leading-tight line-clamp-1 break-words flex-1 min-w-0',
+                            // isSelected ?
+                            //   'text-primary-foreground'
+                            // : 'text-ink-primary',
+                          )}
+                        >
+                          {item.company || 'Job Application'}{' '}
                         </p>
+                      </div>
+                      <div className='flex mt-3 items-start justify-between gap-1 w-full min-w-0'>
+                        <span className='inline-flex animate-text-shimmer animate-text-shimmer-primary items-center gap-1 text-[8px] font-bold text-primary uppercase tracking-tight truncate'>
+                          <Sparkles className='w-2.5 h-2.5 text-primary shrink-0' />
+                          <span className='truncate '>AI is Working...</span>
+                        </span>
                       </div>
                     </button>
                   );
@@ -1032,16 +1102,14 @@ export function TailorStudioCard({
           onCancel={() => {
             const taskId =
               activeGeneratingTask?.id ||
-              (activeOptimisticId ?
-                `dev-task-${activeGeneratingDocType}`
-              : '');
+              (activeOptimisticId ? `dev-task-${activeGeneratingDocType}` : '');
             if (taskId) void cancelGeneration(taskId);
           }}
         />
       )}
 
       {/* ── 4. RESUME PREVIEW SHOWCASE (Tailored or Default Base Resume) ── */}
-      {!isViewingGenerating && effectiveResume && (
+      {!isViewingGenerating && displayResume && (
         <div className='page-class-banner page-class-banner--job flex-col !items-stretch gap-2.5 !p-3.5 w-full min-w-0 max-w-full box-border'>
           {/* Header */}
           <div className='flex items-center justify-between gap-2 border-b border-primary/40 pb-2.5 w-full min-w-0'>
@@ -1080,7 +1148,7 @@ export function TailorStudioCard({
           {/* Preview card with hover actions: page modal, floating window, web edit, or download */}
           <div className='flex flex-col gap-2 pt-1 w-full min-w-0'>
             <ResumePdfPreview
-              data={effectiveResume}
+              data={displayResume}
               coreCompetencies={competencies}
               company={company || detectedJob?.company}
               jobTitle={jobTitle || detectedJob?.title}

@@ -1,8 +1,10 @@
 /** @format */
 
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
-import { Sparkles } from 'lucide-react';
+import { Coins, Sparkles, X } from 'lucide-react';
 import { Button } from '@jobby/ui/components/UI/Button';
+import { Input } from '@jobby/ui/components/UI/input';
+import { Textarea } from '@jobby/ui/components/UI/textarea';
 import type { DocType } from '../shared/contracts/tailored-resume';
 import { AuthCard } from './components/AuthCard';
 import { AuthGuardBanner } from './components/AuthGuardBanner';
@@ -163,7 +165,10 @@ export function App() {
       type,
       jobTitle: tailorStudio.jobTitle || tailorStudio.detectedJob?.title || '',
       company: tailorStudio.company || tailorStudio.detectedJob?.company || '',
-      jobDescription: tailorStudio.jobDescription || tailorStudio.detectedJob?.jobDescription || '',
+      jobDescription:
+        tailorStudio.jobDescription ||
+        tailorStudio.detectedJob?.jobDescription ||
+        '',
     });
   };
 
@@ -173,6 +178,8 @@ export function App() {
     setGenerationDraft(null);
     void tailorStudio.generateTailoredResume(draft.type, draft);
   };
+
+  const generationCoinCost = generationDraft?.type === 'both' ? 18 : 10;
 
   useEffect(() => {
     if (activeTab === 'studio') tailorStudio.markDocumentsSeen();
@@ -355,10 +362,7 @@ export function App() {
       <div className='sidepanel-content'>
         {!authStatus?.connected && (
           <div className='px-4 pt-3 pb-1'>
-            <AuthGuardBanner
-              onSignIn={signIn}
-              isSigningIn={isSigningIn}
-            />
+            <AuthGuardBanner onSignIn={signIn} isSigningIn={isSigningIn} />
           </div>
         )}
 
@@ -577,26 +581,84 @@ export function App() {
       />
 
       {generationDraft && (
-        <div className='modal-backdrop' onClick={() => setGenerationDraft(null)}>
-          <div className='modal-card max-w-[520px]' onClick={(event) => event.stopPropagation()}>
-            <div className='modal-header'>
-              <div>
-                <span className='modal-badge bg-primary text-primary-foreground'>Confirm generation</span>
-                <h3 className='text-sm font-bold text-foreground'>
-                  {generationDraft.type === 'both' ? 'Resume + Cover Letter' : generationDraft.type === 'cover_letter' ? 'Generate Cover Letter' : 'Tailor Resume'}
-                </h3>
-              </div>
-              <button type='button' className='close-btn' onClick={() => setGenerationDraft(null)} aria-label='Close'>&times;</button>
+        <div
+          className='modal-backdrop'
+          onClick={() => setGenerationDraft(null)}
+        >
+          <div
+            className='modal-card max-w-[520px] !border-0'
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className='modal-header !border-0'>
+              <span className='modal-badge bg-primary text-primary-foreground'>
+                {generationDraft.type === 'both' ?
+                  'Resume + Cover Letter'
+                : generationDraft.type === 'cover_letter' ?
+                  'Generate Cover Letter'
+                : 'Tailor Resume'}
+              </span>
             </div>
             <div className='modal-body flex flex-col gap-3'>
-              <p className='text-[11px] text-muted-foreground'>Review or edit the job details before the background task starts.</p>
-              <input value={generationDraft.jobTitle} onChange={(event) => setGenerationDraft({ ...generationDraft, jobTitle: event.target.value })} placeholder='Job title' className='w-full rounded-lg border border-primary/20 bg-background px-3 py-2 text-xs text-foreground' />
-              <input value={generationDraft.company} onChange={(event) => setGenerationDraft({ ...generationDraft, company: event.target.value })} placeholder='Company' className='w-full rounded-lg border border-primary/20 bg-background px-3 py-2 text-xs text-foreground' />
-              <textarea value={generationDraft.jobDescription} onChange={(event) => setGenerationDraft({ ...generationDraft, jobDescription: event.target.value })} placeholder='Job description' className='min-h-32 w-full resize-y rounded-lg border border-primary/20 bg-background px-3 py-2 text-xs leading-relaxed text-foreground' />
+              <p className='text-[11px] text-muted-foreground'>
+                Review or edit the job details before the background task
+                starts.
+              </p>
+              <Input
+                value={generationDraft.jobTitle}
+                onChange={(event) =>
+                  setGenerationDraft({
+                    ...generationDraft,
+                    jobTitle: event.target.value,
+                  })
+                }
+                placeholder='Job title'
+                aria-label='Job title'
+                className='!h-10 !border-0 !bg-muted/50 !px-3 text-xs focus:!ring-0'
+              />
+              <Input
+                value={generationDraft.company}
+                onChange={(event) =>
+                  setGenerationDraft({
+                    ...generationDraft,
+                    company: event.target.value,
+                  })
+                }
+                placeholder='Company'
+                aria-label='Company'
+                className='!h-10 !border-0 !bg-muted/50 !px-3 text-xs focus:!ring-0'
+              />
+              <Textarea
+                value={generationDraft.jobDescription}
+                onChange={(event) =>
+                  setGenerationDraft({
+                    ...generationDraft,
+                    jobDescription: event.target.value,
+                  })
+                }
+                placeholder='Job description'
+                aria-label='Job description'
+                minHeight={176}
+                showClearButton={false}
+                className='!min-h-44 !rounded-xl !border-0 !bg-muted/50 !p-3 text-xs leading-relaxed focus:!ring-0'
+              />
             </div>
-            <div className='modal-footer'>
-              <Button variant='ghost' size='sm' onClick={() => setGenerationDraft(null)}>Cancel</Button>
-              <Button size='sm' Icon={Sparkles} onClick={confirmGeneration} disabled={!generationDraft.jobDescription.trim()}>Confirm & start</Button>
+            <div className='modal-footer !border-0'>
+              <Button
+                variant='ghost'
+                size='sm'
+                onClick={() => setGenerationDraft(null)}
+              >
+                Cancel
+              </Button>
+              <Button
+                size='sm'
+                Icon={Sparkles}
+                className='w-full'
+                onClick={confirmGeneration}
+                disabled={!generationDraft.jobDescription.trim()}
+              >
+                Confirm & start · {generationCoinCost}
+              </Button>
             </div>
           </div>
         </div>
