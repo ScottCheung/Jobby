@@ -66,9 +66,12 @@ export function ResultsDisplay({
             isAutofilling={isAutofilling}
           />
         </div>
-      : <div className=' page-class-banner--job flex flex-col items-center justify-center text-center p-6  bg-panel/50 rounded-2xl gap-3 mt-2'>
-          <IPEmotion emotionId={5} className={'w-40 h-40 mx-auto pr-4 '} />
-          <div className='grid gap-1'>
+      : <div className='relative page-class-banner--job flex flex-col items-center justify-center text-center p-6  bg-panel/50 rounded-2xl gap-3 mt-2'>
+          <IPEmotion
+            emotionId={5}
+            className={'absolute w-40 top-10 h-40 mx-auto  '}
+          />
+          <div className='grid gap-1 pt-40'>
             <span className='text-xs font-bold text-foreground uppercase tracking-wider'>
               Scan Required
             </span>

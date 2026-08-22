@@ -1181,7 +1181,7 @@ export function ResumePdfPreview({
                 transform: `scale(${thumbnailScale})`,
                 transformOrigin: 'top left',
               }}
-              className='absolute left-0 top-0 overflow-hidden rounded-xs bg-white shadow-md'
+              className='absolute left-0 top-0 overflow-hidden rounded-xs bg-white '
             >
               <ResumeHtmlDocument
                 config={smartPage.config}

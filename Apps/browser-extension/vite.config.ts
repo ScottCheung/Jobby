@@ -18,7 +18,13 @@ function stripCrossorigin(): Plugin {
 
 import manifest from "./manifest.config";
 
-export default defineConfig(({ mode }) => {
+export default defineConfig(({ command, mode }) => {
+  if (command === "serve" && process.env.VITEST !== "true") {
+    throw new Error(
+      "Browser-extension HMR is disabled because React Refresh is not Web Worker safe. Use `npm run dev` to rebuild dist-dev.",
+    );
+  }
+
   const extensionEnv = loadEnv(mode, ".", "");
   const webAppEnv = loadEnv(mode, "../user", "");
   const isDevelopment = mode === "development";

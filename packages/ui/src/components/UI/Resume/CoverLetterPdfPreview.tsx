@@ -1098,7 +1098,7 @@ export function CoverLetterPdfPreview({
       <div
         ref={containerRef}
         onClick={openPreview}
-        className='group relative h-36 sm:h-40 w-full cursor-zoom-in overflow-hidden rounded-xl border border-black/[0.06] dark:border-white/[0.08] bg-background-secondary/80 flex items-center justify-center p-1.5 shadow-xs transition-all hover:border-primary/40'
+        className='group relative h-36 sm:h-40 w-full cursor-zoom-in bg-background-secondary overflow-hidden rounded-lg p-1.5'
       >
         <div className='pointer-events-none flex items-center justify-center'>
           <div
@@ -1134,7 +1134,7 @@ export function CoverLetterPdfPreview({
         )}
 
         {isGenerating && (
-          <div className='absolute right-2 top-2 rounded-full bg-white/90 dark:bg-slate-900/90 p-1 text-ink-secondary shadow-sm'>
+          <div className='absolute right-2 top-2 rounded-full bg-white/90 dark:bg-slate-900/90 p-1 text-ink-secondary '>
             <Loader2 className='size-2.5 animate-spin text-primary' />
           </div>
         )}
@@ -1211,7 +1211,7 @@ export function CoverLetterPdfPreview({
         <div className='absolute bottom-1.5 left-1.5 z-10 flex items-center gap-1 rounded-md bg-panel/60 backdrop-blur-xs px-1.5 py-0.5 text-[9.5px] font-medium text-ink-primary'>
           <FileText className='h-3 w-3 text-primary shrink-0' />
           <span>
-            1 page ·
+            1 page
             {fileSize ? `· ${formatCoverLetterPdfFileSize(fileSize)}` : ''}
           </span>
         </div>

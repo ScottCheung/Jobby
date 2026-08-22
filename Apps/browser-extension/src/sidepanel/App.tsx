@@ -1,7 +1,7 @@
 /** @format */
 
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
-import { Coins, Sparkles, X } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 import { Button } from '@jobby/ui/components/UI/Button';
 import { Input } from '@jobby/ui/components/UI/input';
 import { Textarea } from '@jobby/ui/components/UI/textarea';
@@ -389,12 +389,12 @@ export function App() {
                         <div className='bg-background-50  w-full h-full justify-center items-center flex flex-col'>
                           <IPEmotion
                             emotionId={1}
-                            className={cn('w-40 h-40 mx-auto -mt-10 ')}
+                            className={cn('w-40 absolute h-40 mx-auto -mt-10 ')}
                           />
 
                           <p
                             className={cn(
-                              'text-xs mt-60 font-bold text-foreground max-w-[400px] uppercase tracking-wider',
+                              'text-xs pt-30 font-bold text-foreground max-w-[400px] uppercase tracking-wider',
                             )}
                           >
                             Insufficient Content

@@ -4,12 +4,7 @@
 
 import { useState } from 'react';
 import type { ReactNode } from 'react';
-import {
-  Check,
-  Copy,
-  Download,
-  Sparkles,
-} from 'lucide-react';
+import { Check, Copy, Download, Sparkles } from 'lucide-react';
 import { Button } from '../Button';
 import { notify } from '../toast/toast-store';
 import {
@@ -80,8 +75,7 @@ export function CoverLetterPreviewCard({
     setDownloading(true);
     try {
       const downloadName =
-        filename ||
-        formatCoverLetterFilename(candidateData, company, jobTitle);
+        filename || formatCoverLetterFilename(candidateData, company, jobTitle);
       const { blob } = await renderCoverLetterPdfOnce(
         coverLetter,
         candidateData,
@@ -106,7 +100,7 @@ export function CoverLetterPreviewCard({
 
   return (
     <div
-      className={`panel-xl col group gap-2.5 p-3.5 w-full min-w-0 max-w-full box-border rounded-xl ${className}`}
+      className={`group relative h-36 sm:h-40 w-full cursor-zoom-in bg-background-secondary overflow-hidden rounded-lg p-1.5 ${className}`}
     >
       {/* Header */}
       <div className='flex items-center justify-between gap-2 border-b border-primary/40 pb-2.5 w-full min-w-0'>
@@ -115,21 +109,18 @@ export function CoverLetterPreviewCard({
           <strong className='text-xs font-bold text-ink-primary shrink-0'>
             Cover Letter
           </strong>
-          {badge ? (
+          {badge ?
             <span
               title={badge}
               className='inline-flex items-center rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary truncate max-w-[100px]'
             >
               {badge}
             </span>
-          ) : title ? (
-            <span
-              title={title}
-              className='text-xs text-ink-secondary truncate'
-            >
+          : title ?
+            <span title={title} className='text-xs text-ink-secondary truncate'>
               {title}
             </span>
-          ) : null}
+          : null}
         </div>
 
         <div className='flex items-center gap-1.5 shrink-0'>
