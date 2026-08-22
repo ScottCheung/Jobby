@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import sys
+from copy import deepcopy
 
 WORKER_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "worker"))
 if WORKER_ROOT not in sys.path:
@@ -125,6 +126,35 @@ def test_extracted_technologies_are_matched_without_a_job_description() -> None:
     assert result.candidate.match_score is not None
     assert {"python", "react", "typescript", "postgresql"} <= set(result.matched_terms)
     assert "tdd" not in result.matched_terms
+
+
+def test_profile_skills_affect_scoring_without_mutating_resume_data() -> None:
+    resume_data = {
+        "skills": [
+            {
+                "type": "Frontend",
+                "skills": ["React", "Next.js", "TypeScript"],
+            }
+        ]
+    }
+    original_resume = deepcopy(resume_data)
+
+    result = evaluate_candidate(
+        candidate_payload(
+            match_score=None,
+            description="Git source control experience is required",
+            technologies=["Git"],
+        ),
+        settings=settings(ai_enabled=False),
+        resume_data=resume_data,
+        profile_skills=["Git"],
+    )
+
+    assert "git" in result.matched_terms
+    assert result.candidate.skill_score is not None
+    assert result.candidate.skill_score >= 0.8
+    assert resume_data == original_resume
+    assert resume_data["skills"][0]["skills"] == ["React", "Next.js", "TypeScript"]
 
 
 def test_decision_request_keeps_candidate_as_a_nested_contract() -> None:

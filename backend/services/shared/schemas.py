@@ -556,6 +556,21 @@ class SkillRead(SkillBase, OrmModel):
     updated_at: datetime
 
 
+class UserSkillCreate(BaseModel):
+    skill_name: str = Field(min_length=1, max_length=255)
+    category: str | None = Field(default=None, max_length=100)
+
+
+class UserSkillRead(OrmModel):
+    id: UUID
+    skill_name: str
+    canonical_name: str
+    category: str | None = None
+    source: str | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
 class InterviewCategoryBase(BaseModel):
     name: str
     icon_key: str | None = None

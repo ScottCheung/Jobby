@@ -19,7 +19,7 @@ import { send, wait } from '../services/messaging';
 import { apiClient } from '../../background/api-client';
 import type {
   CareerProfile,
-  ResumeSkillGroup,
+  UserSkill,
 } from '../../shared/contracts/tailored-resume';
 
 const MAX_AUTO_PLAN_ATTEMPTS = 3;
@@ -491,12 +491,17 @@ export function useApplicationPlan(
 
   const [careerProfiles, setCareerProfiles] = useState<CareerProfile[]>([]);
   const [activeProfile, setActiveProfile] = useState<CareerProfile | null>(null);
+  const [profileSkills, setProfileSkills] = useState<UserSkill[]>([]);
 
   const refreshCareerProfiles = useCallback(async () => {
     if (!authConnected) return null;
     try {
-      const profiles = await apiClient.getCareerProfiles();
+      const [profiles, skills] = await Promise.all([
+        apiClient.getCareerProfiles(),
+        apiClient.getUserSkills(),
+      ]);
       setCareerProfiles(profiles);
+      setProfileSkills(skills);
       const primary =
         profiles.find((p) => p.is_default) || profiles[0] || null;
       setActiveProfile(primary);
@@ -521,49 +526,16 @@ export function useApplicationPlan(
       }
 
       try {
-        let profile = activeProfile;
-        if (!profile) {
-          profile = await refreshCareerProfiles();
-        }
-        if (!profile) {
-          notify.error('Please sign in or create a career profile first.');
-          return;
-        }
-
-        const resumeData = profile.resume_data || {};
-        const skillGroups: ResumeSkillGroup[] =
-          Array.isArray(resumeData.skills) ?
-            resumeData.skills.map((group) => ({
-              ...group,
-              skills: [...(group.skills || [])],
-            }))
-          : [];
-
-        // Check if skill already exists in any group (case-insensitive)
-        const exists = skillGroups.some((group) =>
-          (group.skills || []).some(
-            (s) => s.toLowerCase() === trimmed.toLowerCase(),
-          ),
-        );
-
-        if (!exists) {
-          if (skillGroups.length === 0) {
-            skillGroups.push({
-              type: 'Skills & Technologies',
-              skills: [trimmed],
-            });
-          } else {
-            const first = skillGroups[0];
-            if (first) {
-              first.skills = [...(first.skills || []), trimmed];
-            }
-          }
-        }
-
-        const updatedResumeData = {
-          ...resumeData,
-          skills: skillGroups,
-        };
+        // Plugin-claimed skills are stored separately and are scoring-only.
+        // Never send resume_data from here: the extension may hold an older
+        // profile snapshot and must not overwrite edits made in Settings.
+        const addedSkill = await apiClient.addUserSkill(trimmed);
+        setProfileSkills((current) => {
+          const remaining = current.filter(
+            (skill) => skill.id !== addedSkill.id,
+          );
+          return [...remaining, addedSkill];
+        });
 
         // 1. Optimistic UI update: instantly mark as matched in local state
         setLatestPlan((prev) => {
@@ -605,15 +577,9 @@ export function useApplicationPlan(
           };
         });
 
-        // 2. Persist to backend
-        const updatedProfile = await apiClient.updateCareerProfile(profile.id, {
-          resume_data: updatedResumeData,
-        });
-
-        setActiveProfile(updatedProfile);
         notify.success(`Added "${trimmed}" to your profile skills!`);
 
-        // 3. Re-evaluate from backend to get authoritative plan and scores
+        // Re-evaluate from backend to get authoritative plan and scores.
         const freshPlan = await createPlan();
         if (freshPlan && latestInspection?.kind === 'job') {
           void send({
@@ -630,7 +596,7 @@ export function useApplicationPlan(
         );
       }
     },
-    [authConnected, onSignIn, activeProfile, createPlan, latestInspection, refreshCareerProfiles],
+    [authConnected, onSignIn, createPlan, latestInspection],
   );
 
   const unclaimSkill = useCallback(
@@ -644,27 +610,8 @@ export function useApplicationPlan(
       }
 
       try {
-        let profile = activeProfile;
-        if (!profile) {
-          profile = await refreshCareerProfiles();
-        }
-        if (!profile) return;
-
-        const resumeData = profile.resume_data || {};
-        const skillGroups: ResumeSkillGroup[] =
-          Array.isArray(resumeData.skills) ?
-            resumeData.skills.map((group) => ({
-              ...group,
-              skills: (group.skills || []).filter(
-                (s) => s.toLowerCase() !== trimmed.toLowerCase(),
-              ),
-            }))
-          : [];
-
-        const updatedResumeData = {
-          ...resumeData,
-          skills: skillGroups,
-        };
+        await apiClient.deleteUserSkill(trimmed);
+        setProfileSkills(await apiClient.getUserSkills());
 
         // 1. Optimistic UI update: remove from matched terms
         setLatestPlan((prev) => {
@@ -684,15 +631,9 @@ export function useApplicationPlan(
           };
         });
 
-        // 2. Persist to backend
-        const updatedProfile = await apiClient.updateCareerProfile(profile.id, {
-          resume_data: updatedResumeData,
-        });
-
-        setActiveProfile(updatedProfile);
         notify.success(`Removed "${trimmed}" from your profile.`);
 
-        // 3. Re-evaluate from backend
+        // Re-evaluate from backend.
         const freshPlan = await createPlan();
         if (freshPlan && latestInspection?.kind === 'job') {
           void send({
@@ -709,53 +650,7 @@ export function useApplicationPlan(
         );
       }
     },
-    [authConnected, onSignIn, activeProfile, createPlan, latestInspection, refreshCareerProfiles],
-  );
-
-  const updateProfileSkills = useCallback(
-    async (updatedGroups: ResumeSkillGroup[]) => {
-      if (!authConnected) {
-        notify.info('Please sign in to Jobby to update skills.');
-        onSignIn?.();
-        return;
-      }
-      try {
-        let profile = activeProfile;
-        if (!profile) {
-          profile = await refreshCareerProfiles();
-        }
-        if (!profile) {
-          notify.error('Please sign in to update skills.');
-          return;
-        }
-
-        const updatedResumeData = {
-          ...(profile.resume_data || {}),
-          skills: updatedGroups,
-        };
-
-        const updatedProfile = await apiClient.updateCareerProfile(profile.id, {
-          resume_data: updatedResumeData,
-        });
-
-        setActiveProfile(updatedProfile);
-        notify.success('Profile skills updated successfully!');
-
-        const freshPlan = await createPlan();
-        if (freshPlan && latestInspection?.kind === 'job') {
-          void send({
-            type: 'content.render-score-card',
-            inspection: latestInspection,
-            plan: freshPlan,
-          }).catch(() => undefined);
-        }
-      } catch (err) {
-        notify.error(
-          err instanceof Error ? err.message : 'Failed to save profile skills.',
-        );
-      }
-    },
-    [authConnected, onSignIn, activeProfile, createPlan, latestInspection, refreshCareerProfiles],
+    [authConnected, onSignIn, createPlan, latestInspection],
   );
 
   return {
@@ -778,9 +673,9 @@ export function useApplicationPlan(
     autoRunLinkedIn,
     careerProfiles,
     activeProfile,
+    profileSkills,
     refreshCareerProfiles,
     claimSkill,
     unclaimSkill,
-    updateProfileSkills,
   };
 }

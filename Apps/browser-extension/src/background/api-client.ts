@@ -24,6 +24,7 @@ import type {
   JobReviewPreview,
   JobReviewResult,
   TailoredResume,
+  UserSkill,
 } from '../shared/contracts/tailored-resume';
 
 export interface ResumeAsset {
@@ -503,6 +504,24 @@ export class ApiClient {
 
   async getCareerProfiles(): Promise<CareerProfile[]> {
     return this.request<CareerProfile[]>('/api/career-profiles');
+  }
+
+  async getUserSkills(): Promise<UserSkill[]> {
+    return this.request<UserSkill[]>('/api/user-skills');
+  }
+
+  async addUserSkill(skillName: string): Promise<UserSkill> {
+    return this.request<UserSkill>('/api/user-skills', {
+      method: 'POST',
+      body: JSON.stringify({ skill_name: skillName }),
+    });
+  }
+
+  async deleteUserSkill(skillName: string): Promise<void> {
+    await this.request(
+      `/api/user-skills?skill_name=${encodeURIComponent(skillName)}`,
+      { method: 'DELETE' },
+    );
   }
 
   async updateCareerProfile(

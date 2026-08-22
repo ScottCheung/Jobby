@@ -37,7 +37,7 @@ export const classicResumeTemplate: ResumeTemplateConfig = {
     skill: '#27272a',
     metric: '#27272a',
     rule: '#d4d4d8',
-    headerRule: '#18181b',
+    headerRule: '#cdaa61',
     paper: '#ffffff',
     primary: '#8E5B15',
   },

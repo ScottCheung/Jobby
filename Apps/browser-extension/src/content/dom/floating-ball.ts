@@ -230,7 +230,11 @@ function removeFloatingBall() {
 }
 
 function createFloatingBall() {
-  if (ballRoot) return;
+  if (ballRoot?.isConnected) return;
+  // SPA navigations and development HMR can replace the page body without
+  // updating our module-level reference. Drop that stale reference so the
+  // in-page entry point can mount again.
+  ballRoot = null;
   const existing = document.getElementById(BALL_CONTAINER_ID);
   if (existing) {
     existing.remove();
@@ -1077,13 +1081,22 @@ function removeSidepanelIframe(immediate = false) {
 
 // ─── Initialization ───────────────────────────────────────────────────────────
 
-export function initializeFloatingBall() {
+export function initializeFloatingBall(): () => void {
   if (
     typeof chrome === 'undefined' ||
     !chrome.runtime ||
     !chrome.runtime.onMessage
   )
-    return;
+    return () => undefined;
+
+  // Some job sites replace large DOM subtrees (and occasionally <body>) during
+  // client-side navigation. Recover the floating ball if the host page removes
+  // it, instead of retaining a disconnected ballRoot forever.
+  const recoveryTimer = window.setInterval(() => {
+    if (shouldShowBall() && !ballRoot?.isConnected) {
+      createFloatingBall();
+    }
+  }, 1_000);
 
   // Initialize theme and disabled settings from storage
   chrome.storage.local.get(
@@ -1161,27 +1174,34 @@ export function initializeFloatingBall() {
   }
 
   // Ask the background for the authoritative window + side-panel state.
-  chrome.runtime.sendMessage({ type: 'sidepanel.query-state' }, (response) => {
-    if (response?.ok) {
-      if (typeof response.canHostSidepanel === 'boolean') {
-        windowCanHostSidepanel = response.canHostSidepanel;
-      }
+  try {
+    if (chrome.runtime?.id) {
+      chrome.runtime.sendMessage({ type: 'sidepanel.query-state' }, (response) => {
+        if (chrome.runtime.lastError) return;
+        if (response?.ok) {
+          if (typeof response.canHostSidepanel === 'boolean') {
+            windowCanHostSidepanel = response.canHostSidepanel;
+          }
 
-      if (windowCanHostSidepanel) {
-        panelState = response.isOpen ? 'native' : 'idle';
-        // Native Chrome side panel manages viewport resizing automatically;
-        // do not add page padding. Ensure any leftover fallback shrink style is restored.
-        if (panelState === 'native') {
-          restoreBodyRight();
+          if (windowCanHostSidepanel) {
+            panelState = response.isOpen ? 'native' : 'idle';
+            // Native Chrome side panel manages viewport resizing automatically;
+            // do not add page padding. Ensure any leftover fallback shrink style is restored.
+            if (panelState === 'native') {
+              restoreBodyRight();
+            }
+          } else {
+            panelState = 'idle';
+            if (!iframeRoot) preloadSidepanelIframe();
+          }
+
+          updateBallVisibility();
         }
-      } else {
-        panelState = 'idle';
-        if (!iframeRoot) preloadSidepanelIframe();
-      }
-
-      updateBallVisibility();
+      });
     }
-  });
+  } catch {
+    // Ignore context invalidation
+  }
 
   // Listen for native side panel open/close broadcasts from the background.
   chrome.runtime.onMessage.addListener((message) => {
@@ -1213,4 +1233,6 @@ export function initializeFloatingBall() {
       }
     }
   });
+
+  return () => window.clearInterval(recoveryTimer);
 }

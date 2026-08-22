@@ -3,7 +3,11 @@
 import { describe, expect, it } from 'vitest';
 import type { PageInspection } from '../../shared/contracts/page-inspection';
 import type { ValidatedApplicationPlanResponse } from '../../shared/contracts/backend';
-import type { CareerProfile } from '../../shared/contracts/tailored-resume';
+import type {
+  CareerProfile,
+  UserSkill,
+} from '../../shared/contracts/tailored-resume';
+import { getSkillSource } from './PageClassBanner';
 
 describe('Technologies and Skills Management', () => {
   const sampleInspection: PageInspection = {
@@ -74,77 +78,26 @@ describe('Technologies and Skills Management', () => {
     expect(matchedSet.has('python')).toBe(false);
   });
 
-  it('simulates claiming an unmatched skill and updating career profile', () => {
-    const claimSkill = (tech: string, profile: CareerProfile): CareerProfile => {
-      const trimmed = tech.trim();
-      const resumeData = profile.resume_data || {};
-      const skillGroups = Array.isArray(resumeData.skills) ?
-        resumeData.skills.map((g) => ({ ...g, skills: [...(g.skills || [])] }))
-      : [];
+  it('keeps claimed plugin skills separate from resume skills', () => {
+    const before = structuredClone(sampleProfile);
+    const claimedSkills: UserSkill[] = [
+      {
+        id: 'skill-docker',
+        skill_name: 'Docker',
+        canonical_name: 'docker',
+        category: 'Plugin Skills',
+        source: 'plugin',
+        created_at: '2026-08-23T00:00:00Z',
+        updated_at: '2026-08-23T00:00:00Z',
+      },
+    ];
 
-      const exists = skillGroups.some((g) =>
-        (g.skills || []).some((s) => s.toLowerCase() === trimmed.toLowerCase()),
-      );
-
-      if (!exists) {
-        if (skillGroups.length === 0) {
-          skillGroups.push({ type: 'Skills & Technologies', skills: [trimmed] });
-        } else {
-          const first = skillGroups[0];
-          if (first) {
-            first.skills = [...(first.skills || []), trimmed];
-          }
-        }
-      }
-
-      return {
-        ...profile,
-        resume_data: {
-          ...resumeData,
-          skills: skillGroups,
-        },
-      };
-    };
-
-    const updatedProfile = claimSkill('Docker', sampleProfile);
-    const allSkills = (updatedProfile.resume_data?.skills || []).flatMap(
-      (g) => g.skills || [],
-    );
-
-    expect(allSkills).toContain('Docker');
-    expect(allSkills).toContain('React');
-    expect(allSkills).toContain('TypeScript');
-  });
-
-  it('simulates unclaiming a matched skill from career profile', () => {
-    const unclaimSkill = (tech: string, profile: CareerProfile): CareerProfile => {
-      const trimmed = tech.trim();
-      const resumeData = profile.resume_data || {};
-      const skillGroups = Array.isArray(resumeData.skills) ?
-        resumeData.skills.map((g) => ({
-          ...g,
-          skills: (g.skills || []).filter(
-            (s) => s.toLowerCase() !== trimmed.toLowerCase(),
-          ),
-        }))
-      : [];
-
-      return {
-        ...profile,
-        resume_data: {
-          ...resumeData,
-          skills: skillGroups,
-        },
-      };
-    };
-
-    const updatedProfile = unclaimSkill('React', sampleProfile);
-    const allSkills = (updatedProfile.resume_data?.skills || []).flatMap(
-      (g) => g.skills || [],
-    );
-
-    expect(allSkills).not.toContain('React');
-    expect(allSkills).toContain('TypeScript');
+    expect(claimedSkills.map((skill) => skill.skill_name)).toContain('Docker');
+    expect(sampleProfile).toEqual(before);
+    expect(sampleProfile.resume_data?.skills?.[0]?.skills).toEqual([
+      'React',
+      'TypeScript',
+    ]);
   });
 
   it('allows adding and removing custom job technologies', () => {
@@ -183,33 +136,38 @@ describe('Technologies and Skills Management', () => {
         skills: [
           {
             type: 'Frameworks',
-            skills: ['React'], // explicitly in profile
+            skills: ['React'],
           },
         ],
       },
     };
 
-    const getSource = (tech: string): 'profile' | 'resume' | 'unclaimed' => {
-      const lower = tech.toLowerCase();
-      if (!matchedSet.has(lower)) return 'unclaimed';
-      const profileSkills = (profile.resume_data?.skills || []).flatMap(
-        (g) => (g.skills || []).map((s) => s.toLowerCase()),
-      );
-      if (profileSkills.includes(lower)) return 'profile';
-      return 'resume';
-    };
+    const profileSkills: UserSkill[] = [
+      {
+        id: 'skill-docker',
+        skill_name: 'Docker',
+        canonical_name: 'docker',
+        source: 'plugin',
+        created_at: '2026-08-23T00:00:00Z',
+        updated_at: '2026-08-23T00:00:00Z',
+      },
+    ];
 
-    // React is in matchedSet AND in profile skills -> profile
-    expect(getSource('React')).toBe('profile');
+    expect(getSkillSource('React', matchedSet, profile, profileSkills)).toBe(
+      'resume',
+    );
 
-    // TypeScript is in matchedSet but NOT in profile skills -> resume
-    expect(getSource('TypeScript')).toBe('resume');
+    expect(
+      getSkillSource('TypeScript', matchedSet, profile, profileSkills),
+    ).toBe('resume');
 
-    // Docker is in matchedSet but NOT in profile skills -> resume
-    expect(getSource('Docker')).toBe('resume');
+    expect(getSkillSource('Docker', matchedSet, profile, profileSkills)).toBe(
+      'profile',
+    );
 
-    // Python is NOT in matchedSet -> unclaimed
-    expect(getSource('Python')).toBe('unclaimed');
+    expect(getSkillSource('Python', matchedSet, profile, profileSkills)).toBe(
+      'unclaimed',
+    );
   });
 
   it('triggers onReDetect callback when Re-detect button is clicked', () => {

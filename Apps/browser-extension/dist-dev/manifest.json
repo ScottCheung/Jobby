@@ -16,7 +16,7 @@
   "content_scripts": [
     {
       "js": [
-        "assets/main-world-bridge.ts-DB7fX7v4.js"
+        "src/content/main-world-bridge.js"
       ],
       "matches": [
         "http://*/*",
@@ -28,7 +28,7 @@
     },
     {
       "js": [
-        "assets/bootstrap.ts-loader-BzEwFu0W.js"
+        "assets/bootstrap.ts-loader-4XZ5A3oV.js"
       ],
       "matches": [
         "http://*/*",
@@ -93,11 +93,10 @@
         "src/sidepanel/index.html",
         "favicon.svg",
         "assets/*",
-        "assets/main-world-bridge.ts-DB7fX7v4.js",
         "assets/linkedin-r06Kst4s.js",
-        "assets/date-formatter-DrQrhRd-.js",
+        "assets/date-formatter-Bzi1tIR-.js",
         "assets/api-client-C0qVo5f3.js",
-        "assets/bootstrap.ts-wTFsDDjD.js"
+        "assets/bootstrap.ts-Bmwk3o7N.js"
       ],
       "use_dynamic_url": false
     }

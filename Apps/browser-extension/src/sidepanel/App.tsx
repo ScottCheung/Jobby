@@ -134,6 +134,7 @@ export function App() {
     recordApplication,
     autoRunLinkedIn,
     activeProfile,
+    profileSkills,
     claimSkill,
     unclaimSkill,
   } = useApplicationPlan(
@@ -432,6 +433,7 @@ export function App() {
                       onClaimSkill={claimSkill}
                       onUnclaimSkill={unclaimSkill}
                       activeProfile={activeProfile}
+                      profileSkills={profileSkills}
                       onReDetect={handleReDetectPage}
                       authConnected={authStatus?.connected}
                       onSignIn={signIn}

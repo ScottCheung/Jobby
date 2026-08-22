@@ -46,13 +46,14 @@ def evaluate_candidate(
     *,
     settings: ApplicationSettings,
     resume_data: Mapping[str, Any] | None = None,
+    profile_skills: list[str] | tuple[str, ...] | None = None,
 ) -> CandidateEvaluation:
     candidate_payload = dict(payload)
     match_result = None
     # The page reader can identify technologies even when a platform exposes
     # no usable description. Those explicit requirements are sufficient for
     # an item-by-item resume match.
-    if resume_data and (
+    if (resume_data or profile_skills) and (
         candidate_payload.get("description") or candidate_payload.get("technologies")
     ):
         user_years = (
@@ -66,6 +67,7 @@ def evaluate_candidate(
             date_posted=candidate_payload.get("posted_at") or candidate_payload.get("date_posted"),
             technologies=candidate_payload.get("technologies"),
             user_years_experience=user_years,
+            profile_skills=profile_skills,
         )
         candidate_payload["match_score"] = match_result.match_score
         candidate_payload["priority_score"] = match_result.priority_score

@@ -21,7 +21,7 @@ import manifest from "./manifest.config";
 export default defineConfig(({ command, mode }) => {
   if (command === "serve" && process.env.VITEST !== "true") {
     throw new Error(
-      "Browser-extension HMR is disabled because React Refresh is not Web Worker safe. Use `npm run dev` to rebuild dist-dev.",
+      "Browser-extension dev mode uses `vite build --watch` because MAIN-world IIFE content scripts are not supported by the Vite dev server.",
     );
   }
 
@@ -74,7 +74,13 @@ export default defineConfig(({ command, mode }) => {
       stripCrossorigin(),
       crx({
         manifest,
-        liveReload: process.env.CRX_LIVE_RELOAD === "true",
+        liveReload: false,
+        contentScripts: {
+          // MAIN-world scripts cannot safely run CRXJS's ESM/HMR loader: it
+          // depends on extension APIs and a React Refresh `window` preamble.
+          // Emit the page bridge as a self-contained classic script instead.
+          standaloneFiles: ["src/content/main-world-bridge.ts"],
+        },
       }),
     ],
   };

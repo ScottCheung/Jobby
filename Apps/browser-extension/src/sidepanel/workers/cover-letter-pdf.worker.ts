@@ -1,6 +1,6 @@
 /** @format */
 
-import { renderCoverLetterPdfOnce } from '@jobby/ui/components/UI/Resume/CoverLetterPdfPreview';
+import { renderCoverLetterPdfOnce } from '@jobby/ui/components/UI/Resume/cover-letter-pdf-document';
 import type { MasterResumeData } from '@jobby/ui/components/UI/Resume/types';
 
 type RenderRequest = {

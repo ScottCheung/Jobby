@@ -22,7 +22,9 @@ export type ResumeContactItem = {
   href?: string;
 };
 
-export function resumeContactItems(data: MasterResumeData): ResumeContactItem[] {
+export function resumeContactItems(
+  data: MasterResumeData,
+): ResumeContactItem[] {
   const basics = data.basics ?? {};
   const items: ResumeContactItem[] = [];
 
@@ -55,11 +57,10 @@ export function resumeContactItems(data: MasterResumeData): ResumeContactItem[] 
     const handle = basics.linkedin_id
       .replace(/^https?:\/\/(www\.)?linkedin\.com\/in\//i, '')
       .replace(/^\/+|\/+$/g, '');
-    const href = handle
-      ? `https://www.linkedin.com/in/${handle}/`
-      : basics.linkedin_id.startsWith('http')
-        ? basics.linkedin_id
-        : `https://${basics.linkedin_id}`;
+    const href =
+      handle ? `https://www.linkedin.com/in/${handle}/`
+      : basics.linkedin_id.startsWith('http') ? basics.linkedin_id
+      : `https://${basics.linkedin_id}`;
     const text =
       handle ||
       basics.linkedin_id.replace(/^https?:\/\//i, '').replace(/\/$/, '');
@@ -67,8 +68,9 @@ export function resumeContactItems(data: MasterResumeData): ResumeContactItem[] 
   }
 
   if (basics.portfolio_url) {
-    const href = basics.portfolio_url.startsWith('http')
-      ? basics.portfolio_url
+    const href =
+      basics.portfolio_url.startsWith('http') ?
+        basics.portfolio_url
       : `https://${basics.portfolio_url}`;
     const cleanDisplay = basics.portfolio_url
       .replace(/^https?:\/\//i, '')
@@ -77,8 +79,9 @@ export function resumeContactItems(data: MasterResumeData): ResumeContactItem[] 
   }
 
   if (basics.website) {
-    const href = basics.website.startsWith('http')
-      ? basics.website
+    const href =
+      basics.website.startsWith('http') ?
+        basics.website
       : `https://${basics.website}`;
     const cleanDisplay = basics.website
       .replace(/^https?:\/\//i, '')
@@ -145,15 +148,12 @@ export function formatCoverLetterFilename(
     .replace(/\s+/g, ' ')
     .trim();
 
-  const parts = [cleanName, 'Cover_Letter', cleanCompany, cleanTitle].filter(
-    Boolean,
-  );
+  const parts = [cleanName, 'CL', cleanCompany, cleanTitle].filter(Boolean);
   return `${parts.join('_')}.pdf`;
 }
 
 export function templateCssVariables(config: ResumeTemplateConfig) {
-  const px = (points: number) =>
-    `${points * config.paper.cssPixelsPerPoint}px`;
+  const px = (points: number) => `${points * config.paper.cssPixelsPerPoint}px`;
 
   return {
     '--resume-font': config.typography.fontFamily,
@@ -300,7 +300,9 @@ export function formatResumeAsPlainText(
   if (resume.certifications && resume.certifications.length > 0) {
     const certStrings = resume.certifications.flatMap((group) =>
       (group.certifications || []).map((c) =>
-        [c.name, c.issuer, c.issue_date || (c as any).date].filter(Boolean).join(' - '),
+        [c.name, c.issuer, c.issue_date || (c as any).date]
+          .filter(Boolean)
+          .join(' - '),
       ),
     );
     if (certStrings.length > 0) {

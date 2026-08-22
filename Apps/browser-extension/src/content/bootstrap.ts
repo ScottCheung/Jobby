@@ -18,8 +18,12 @@ window.__jobbyContentBootstrapCleanup = undefined;
 
 // Backward-compatible cleanup for a page that was injected by an older build
 // before the unified teardown hook existed.
-if (window.__jobbyContentMessageListener) {
-  chrome.runtime.onMessage.removeListener(window.__jobbyContentMessageListener);
+if (window.__jobbyContentMessageListener && typeof chrome !== "undefined" && chrome.runtime?.id && chrome.runtime?.onMessage) {
+  try {
+    chrome.runtime.onMessage.removeListener(window.__jobbyContentMessageListener);
+  } catch {
+    // Ignore
+  }
 }
 window.__jobbyFormObserverCleanup?.();
 window.__jobbyFormDiscoveryCleanup?.();
@@ -39,8 +43,18 @@ const listener: ContentMessageListener = (message, _sender, sendResponse) => {
 };
 
 window.__jobbyContentMessageListener = listener;
-chrome.runtime.onMessage.addListener(listener);
-cleanupCallbacks.push(() => chrome.runtime.onMessage.removeListener(listener));
+if (typeof chrome !== "undefined" && chrome.runtime?.id && chrome.runtime?.onMessage) {
+  chrome.runtime.onMessage.addListener(listener);
+  cleanupCallbacks.push(() => {
+    try {
+      if (chrome.runtime?.id) {
+        chrome.runtime.onMessage.removeListener(listener);
+      }
+    } catch {
+      // Ignore
+    }
+  });
+}
 
 // Listen for theme changes from the Jobby web app and update chrome.storage.local
 const onThemeMessage = (event: MessageEvent) => {
@@ -101,7 +115,7 @@ const isAutoObservedHost =
   hostname.endsWith(".indeed.com");
 
 if (isTopLevelFrame) {
-  initializeFloatingBall();
+  cleanupCallbacks.push(initializeFloatingBall());
   if (isAutoObservedHost) {
     const syncDiscoveryState = () => {
       const pageClass = classifyCurrentPage();
@@ -121,8 +135,12 @@ if (isTopLevelFrame) {
       pageChangeTimer = window.setTimeout(() => {
         pageChangeTimer = undefined;
         syncDiscoveryState();
-        if (typeof chrome !== "undefined" && chrome.runtime?.sendMessage) {
-          chrome.runtime.sendMessage({ type: "content.page-changed" }).catch(() => undefined);
+        if (typeof chrome !== "undefined" && chrome.runtime?.id && chrome.runtime?.sendMessage) {
+          try {
+            chrome.runtime.sendMessage({ type: "content.page-changed" }).catch(() => undefined);
+          } catch {
+            // Ignore context invalidation on reload
+          }
         }
       }, 100);
     };

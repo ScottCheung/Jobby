@@ -446,6 +446,7 @@ def score_job_match(
     date_posted: str | datetime | float | None = None,
     technologies: list[str] | tuple[str, ...] | None = None,
     user_years_experience: float | int | None = None,
+    profile_skills: list[str] | tuple[str, ...] | None = None,
 ) -> MatchScore:
     """Score role match (Match Score) and submission priority (Priority Score)."""
     job_terms = _tokens(job_description)
@@ -458,6 +459,10 @@ def score_job_match(
     for value in _resume_text(resume_data or {}):
         resume_terms.update(_tokens(value))
         resume_raw_text += f" {value}"
+    # Skills claimed from the browser extension are scoring-only evidence.
+    # Keep them out of resume_data so they can never alter the saved resume.
+    for skill in profile_skills or ():
+        resume_terms.update(_tokens(skill))
 
     if not job_terms and not technologies and not job_title:
         return MatchScore(match_score=0.0, recency_factor=1.0, priority_score=0.0, matched_terms=())
@@ -514,7 +519,6 @@ def score_job_match(
         title_score=round(title_score, 4),
         exp_score=round(exp_score, 4),
     )
-
 
 
 

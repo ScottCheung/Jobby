@@ -57,6 +57,8 @@ from services.shared.schemas import (
     QuestionCacheEntryRead,
     RuntimeSettingsBase,
     RuntimeSettingsRead,
+    UserSkillCreate,
+    UserSkillRead,
     ApplicationDecisionRequest,
     ApplicationFormInstructionsRequest,
     ApplicationFormInstructionsResponse,
@@ -1441,9 +1443,22 @@ def recommended_job_search_terms(raw_resume: dict, resume_data: dict) -> list[st
     return list(dict.fromkeys(term for term in terms if term))[:8]
 
 
+def _skill_identity(db: Session, raw_name: str) -> tuple[str, str]:
+    name = raw_name.strip()
+    catalog_skill = db.scalar(
+        select(Skill).where(Skill.name == name.casefold())
+    )
+    display_name = (
+        str(catalog_skill.canonical_name).strip()
+        if catalog_skill and str(catalog_skill.canonical_name).strip()
+        else name
+    )
+    return display_name, display_name.casefold()
+
+
 def sync_user_skills(db: Session, current_user: User, resume_data: dict) -> None:
     raw_skills = resume_data.get("skills")
-    extracted: list[tuple[str, str]] = []
+    extracted: list[tuple[str, str, str]] = []
     if isinstance(raw_skills, list):
         groups = raw_skills
     elif isinstance(raw_skills, dict):
@@ -1467,7 +1482,7 @@ def sync_user_skills(db: Session, current_user: User, resume_data: dict) -> None
             name = raw.strip()
             if not name:
                 continue
-            canonical_name = skill_index.get(name.lower(), name.lower())
+            canonical_name = str(skill_index.get(name.lower(), name)).casefold()
             extracted.append((category, canonical_name, name))
 
     unique_rows: list[tuple[str, str, str]] = []
@@ -1478,8 +1493,26 @@ def sync_user_skills(db: Session, current_user: User, resume_data: dict) -> None
         seen.add(canonical_name)
         unique_rows.append((category, canonical_name, name))
 
-    db.execute(delete(UserSkill).where(UserSkill.user_id == current_user.id))
+    # Resume-derived rows can be rebuilt, but plugin-claimed skills are an
+    # independent scoring input and must survive resume edits/confirmation.
+    db.execute(
+        delete(UserSkill).where(
+            UserSkill.user_id == current_user.id,
+            UserSkill.source == "resume",
+        )
+    )
+    plugin_canonical_names = {
+        str(value).casefold()
+        for value in db.scalars(
+            select(UserSkill.canonical_name).where(
+                UserSkill.user_id == current_user.id,
+                UserSkill.source == "plugin",
+            )
+        ).all()
+    }
     for category, canonical_name, name in unique_rows:
+        if canonical_name in plugin_canonical_names:
+            continue
         db.add(UserSkill(user_id=current_user.id, category=category, canonical_name=canonical_name, skill_name=name, source="resume"))
 
 
@@ -3137,6 +3170,19 @@ def _get_user_active_resume_data(db: Session, current_user: User) -> dict[str, A
     return None
 
 
+def _get_user_profile_skills(db: Session, current_user: User) -> list[str]:
+    return list(
+        db.scalars(
+            select(UserSkill.skill_name)
+            .where(
+                UserSkill.user_id == current_user.id,
+                UserSkill.source == "plugin",
+            )
+            .order_by(UserSkill.created_at.asc())
+        ).all()
+    )
+
+
 @app.post("/api/application-decisions")
 def evaluate_application_decision(
     payload: ApplicationDecisionRequest,
@@ -3176,6 +3222,7 @@ def evaluate_application_decision(
         candidate_payload,
         settings=settings,
         resume_data=resume_data,
+        profile_skills=_get_user_profile_skills(db, current_user),
     )
     return evaluation_to_dict(result)
 
@@ -3239,6 +3286,7 @@ def create_application_plan_endpoint(
         candidate_payload,
         settings=settings,
         resume_data=resume_data,
+        profile_skills=_get_user_profile_skills(db, current_user),
     )
     from application_core.workflow import create_application_plan
 
@@ -5348,3 +5396,89 @@ def get_skills(db: Session = Depends(get_db)) -> dict:
         "version": version_str,
         "index": index_map
     }
+
+
+@app.get("/api/user-skills", response_model=list[UserSkillRead])
+def list_user_skills(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_or_create_current_user),
+) -> list[UserSkill]:
+    return list(
+        db.scalars(
+            select(UserSkill)
+            .where(
+                UserSkill.user_id == current_user.id,
+                UserSkill.source == "plugin",
+            )
+            .order_by(UserSkill.created_at.asc())
+        ).all()
+    )
+
+
+@app.post(
+    "/api/user-skills",
+    response_model=UserSkillRead,
+    status_code=status.HTTP_201_CREATED,
+)
+def add_user_skill(
+    payload: UserSkillCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_or_create_current_user),
+) -> UserSkill:
+    raw_name = payload.skill_name.strip()
+    if not raw_name:
+        raise HTTPException(status_code=422, detail="skill_name cannot be blank")
+    display_name, canonical_name = _skill_identity(db, raw_name)
+    existing = db.scalar(
+        select(UserSkill).where(
+            UserSkill.user_id == current_user.id,
+            func.lower(UserSkill.canonical_name) == canonical_name,
+        )
+    )
+    if existing:
+        existing.skill_name = display_name
+        existing.canonical_name = canonical_name
+        existing.category = payload.category or existing.category or "Plugin Skills"
+        existing.source = "plugin"
+        skill = existing
+    else:
+        skill = UserSkill(
+            user_id=current_user.id,
+            skill_name=display_name,
+            canonical_name=canonical_name,
+            category=payload.category or "Plugin Skills",
+            source="plugin",
+        )
+        db.add(skill)
+    db.commit()
+    db.refresh(skill)
+    return skill
+
+
+@app.delete("/api/user-skills")
+def delete_user_skill(
+    skill_name: str = Query(..., min_length=1, max_length=255),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_or_create_current_user),
+) -> dict[str, Any]:
+    raw_name = skill_name.strip()
+    if not raw_name:
+        raise HTTPException(status_code=422, detail="skill_name cannot be blank")
+    _, canonical_name = _skill_identity(db, raw_name)
+    skill = db.scalar(
+        select(UserSkill).where(
+            UserSkill.user_id == current_user.id,
+            UserSkill.source == "plugin",
+            func.lower(UserSkill.canonical_name) == canonical_name,
+        )
+    )
+    if not skill:
+        raise HTTPException(status_code=404, detail="Profile skill not found")
+    deleted = {
+        "id": str(skill.id),
+        "skill_name": skill.skill_name,
+        "canonical_name": skill.canonical_name,
+    }
+    db.delete(skill)
+    db.commit()
+    return {"success": True, "skill": deleted}

@@ -19,7 +19,10 @@ import {
 import { Tooltip } from '@jobby/ui/components/UI/tooltip';
 import type { ValidatedApplicationPlanResponse } from '../../shared/contracts/backend';
 import type { PageInspection } from '../../shared/contracts/page-inspection';
-import type { CareerProfile } from '../../shared/contracts/tailored-resume';
+import type {
+  CareerProfile,
+  UserSkill,
+} from '../../shared/contracts/tailored-resume';
 import { parseAndFormatJobDate } from '../../shared/utils/date-formatter';
 import { cn } from '@jobby/ui/lib/utils';
 
@@ -32,6 +35,7 @@ interface PageClassBannerProps {
   onClaimSkill?: (tech: string) => Promise<void> | void;
   onUnclaimSkill?: (tech: string) => Promise<void> | void;
   activeProfile?: CareerProfile | null;
+  profileSkills?: UserSkill[];
   onReDetect?: () => void;
   authConnected?: boolean;
   onSignIn?: () => void;
@@ -116,30 +120,34 @@ function isTechMatched(tech: string, matchedSet: Set<string>): boolean {
 
 type SkillSource = 'profile' | 'resume' | 'unclaimed';
 
-function getSkillSource(
+export function getSkillSource(
   tech: string,
   matchedSet: Set<string>,
   activeProfile?: CareerProfile | null,
+  profileSkills: UserSkill[] = [],
 ): SkillSource {
   const isMatched = isTechMatched(tech, matchedSet);
   if (!isMatched) return 'unclaimed';
 
-  if (!activeProfile?.resume_data?.skills) {
-    return 'resume';
-  }
-
-  const profileSkillSet = new Set<string>();
-  for (const group of activeProfile.resume_data.skills) {
-    for (const s of group.skills || []) {
-      if (s) profileSkillSet.add(s.trim().toLowerCase());
+  const resumeSkillSet = new Set<string>();
+  if (activeProfile?.resume_data?.skills) {
+    for (const group of activeProfile.resume_data.skills) {
+      for (const skill of group.skills || []) {
+        if (skill) resumeSkillSet.add(skill.trim().toLowerCase());
+      }
     }
   }
+  if (isTechMatched(tech, resumeSkillSet)) return 'resume';
 
-  const isPresentInProfile = isTechMatched(tech, profileSkillSet);
-  if (isPresentInProfile) {
-    return 'profile';
+  const claimedSkillSet = new Set<string>();
+  for (const skill of profileSkills) {
+    if (skill.skill_name) claimedSkillSet.add(skill.skill_name.toLowerCase());
+    if (skill.canonical_name)
+      claimedSkillSet.add(skill.canonical_name.toLowerCase());
   }
+  if (isTechMatched(tech, claimedSkillSet)) return 'profile';
 
+  // A match may come from experience, projects, or other resume text.
   return 'resume';
 }
 
@@ -163,6 +171,7 @@ export function PageClassBanner({
   onClaimSkill,
   onUnclaimSkill,
   activeProfile,
+  profileSkills = [],
   onReDetect,
   authConnected = true,
   onSignIn: _onSignIn,
@@ -447,6 +456,7 @@ export function PageClassBanner({
                     tech,
                     matchedSet,
                     activeProfile,
+                    profileSkills,
                   );
                   const isClaiming = claimingSkills.has(tech);
                   const isUnclaiming = unclaimingSkills.has(tech);
