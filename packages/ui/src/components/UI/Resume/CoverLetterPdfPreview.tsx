@@ -51,6 +51,14 @@ export type CoverLetterPdfPreviewProps = {
   onDownload?: () => void;
 };
 
+// The extension preview must not depend on downloadable or data-URI fonts.
+// Match the PDF's built-in Times-Italic face with a locally available stack.
+export const COVER_LETTER_SIGNATURE_STYLE = {
+  fontFamily: "'Times New Roman', Times, serif",
+  fontStyle: 'italic',
+  fontWeight: 600,
+} as const;
+
 interface CoverLetterMetrics {
   bodyFontSize: number;
   bodyLineHeight: number;
@@ -885,11 +893,7 @@ export function CoverLetterHtmlDocument({
           </p>
           <span
             className='text-[36px] text-[#784508] -rotate-2 select-none leading-none'
-            style={{
-              fontFamily:
-                "'Dancing Script', 'Caveat', 'Snell Roundhand', 'Brush Script MT', cursive",
-              fontWeight: 600,
-            }}
+            style={COVER_LETTER_SIGNATURE_STYLE}
           >
             {signoffName}
           </span>
