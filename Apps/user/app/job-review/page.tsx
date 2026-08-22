@@ -1,412 +1,1179 @@
 /** @format */
 
 'use client';
-import { Textarea } from '@jobby/ui';
 
-import { FormEvent, useEffect, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import {
-  AlertCircle,
-  ArrowRight,
+  Button,
+  EmptyPlaceHolder,
+  SectionHeading,
+} from '@jobby/ui';
+import {
+  Briefcase,
   Check,
-  FileJson,
+  Download,
+  FolderGit2,
+  Globe,
   History,
   Loader2,
-  Search,
-  X,
+  Mail,
+  MapPin,
+  Pencil,
+  Phone,
+  Sparkles,
+  User,
 } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { api, type TailoredResume } from '@/lib/api';
+import type {
+  MasterResumeData,
+  ResumeLocation,
+  ResumeOtherItem,
+} from '@/lib/types';
+import { useGlobalModalStore } from '@/lib/store/global-modal-store';
+import { showGlobalToast } from '@/lib/toast';
+import { cn } from '@/lib/utils';
+import { ResumePreviewCard } from '@/app/settings/resume/_component/resume-pdf-preview';
 import {
-  api,
-  type JobReviewPreview,
-  type JobReviewResult,
-  type TailoredResume,
-} from '@/lib/api';
-import type { MasterResumeData } from '@/lib/types';
+  formatResumeFilename,
+  renderResumePdfOnce,
+} from '@jobby/ui/components/UI/Resume';
+import {
+  BasicsEditor,
+  CertificationsEditor,
+  EducationEditor,
+  ExperienceEditor,
+  LinksEditor,
+  OtherEditor,
+  ProjectsEditor,
+  SkillsEditor,
+  SummaryEditor,
+} from '@/app/settings/resume/_component/career-profile-section-editors';
 
-import { ResumePdfPreview } from '@/app/settings/resume/_component/resume-pdf-preview';
-
-export default function JobReviewPage() {
-  const [jobDescription, setJobDescription] = useState('');
-  const [title, setTitle] = useState('');
-  const [company, setCompany] = useState('');
-  const [datePosted, setDatePosted] = useState('');
-  const [result, setResult] = useState<JobReviewResult | null>(null);
-  const [savedResumes, setSavedResumes] = useState<TailoredResume[]>([]);
-  const [originalResume, setOriginalResume] = useState<MasterResumeData | null>(
-    null,
+function LinkedinIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      viewBox='0 0 24 24'
+      fill='none'
+      stroke='currentColor'
+      strokeWidth='2'
+      strokeLinecap='round'
+      strokeLinejoin='round'
+      {...props}
+    >
+      <path d='M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z' />
+      <rect x='2' y='9' width='4' height='12' />
+      <circle cx='4' cy='4' r='2' />
+    </svg>
   );
-  const [pendingPayload, setPendingPayload] = useState<{
-    job_description: string;
-    title?: string;
-    company?: string;
-    date_posted?: string;
-  } | null>(null);
-  const [preview, setPreview] = useState<JobReviewPreview | null>(null);
-  const [showPayload, setShowPayload] = useState(false);
+}
+
+function dateRange(start?: string | null, end?: string | null) {
+  return [start, end].filter(Boolean).join(' - ') || 'Date not listed';
+}
+
+function TagList({ values }: { values: string[] }) {
+  if (!values.length)
+    return <span className='body-sm text-ink-secondary'>Not listed</span>;
+  return (
+    <div className='flex flex-wrap gap-2'>
+      {values.map((value) => (
+        <span
+          key={value}
+          className='rounded-md bg-background-secondary px-2 py-1 text-xs text-ink-secondary'
+        >
+          {value}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function SectionCard({
+  title,
+  children,
+  action,
+  layoutId,
+  onClick,
+}: {
+  title: string;
+  children: ReactNode;
+  action?: ReactNode;
+  layoutId?: string;
+  onClick?: () => void;
+}) {
+  return (
+    <motion.section
+      layoutId={layoutId}
+      onClick={onClick}
+      transition={{
+        type: 'spring',
+        duration: 0.7,
+        bounce: 0.2,
+        ease: [0.22, 1, 0.36, 1],
+      }}
+      className={cn(
+        'bg-panel group rounded-2xl relative',
+        onClick && 'cursor-pointer',
+      )}
+    >
+      <div className='sticky top-0 z-20 flex items-center justify-between gap-3 pt-4 pb-3 px-5'>
+        <div className='relative flex items-center'>
+          <SectionHeading as='h2' size='md' withBackdrop>
+            {title}
+          </SectionHeading>
+        </div>
+        {action && (
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className='group-hover:opacity-100 opacity-0 transition-opacity'
+          >
+            {action}
+          </div>
+        )}
+      </div>
+      <div className='pt-4 pb-5 px-5'>{children}</div>
+    </motion.section>
+  );
+}
+
+function JobReviewContent() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const targetId = searchParams?.get('id');
+
+  const [tailoredResumes, setTailoredResumes] = useState<TailoredResume[]>([]);
+  const [currentResume, setCurrentResume] = useState<TailoredResume | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+
+  const { openModal, closeModal } = useGlobalModalStore(
+    (state) => state.actions,
+  );
 
   useEffect(() => {
-    void Promise.all([api.careerProfiles(), api.tailoredResumes()])
-      .then(([profiles, saved]) => {
-        const selected =
-          profiles.find((profile) => profile.is_default) ?? profiles[0];
-        if (selected?.resume_data) setOriginalResume(selected.resume_data);
-        setSavedResumes(saved);
-        if (saved[0]) loadSavedResume(saved[0]);
-      })
-      .catch(() => undefined);
-  }, []);
+    let isCancelled = false;
 
-  async function submit(event: FormEvent) {
-    event.preventDefault();
-    if (!jobDescription.trim()) return;
-    setError('');
-    setResult(null);
-    const nextPayload = {
-      job_description: jobDescription.trim(),
-      title: title.trim() || undefined,
-      company: company.trim() || undefined,
-      date_posted: datePosted.trim() || undefined,
-    };
-    setPendingPayload(nextPayload);
-    setLoading(true);
-    try {
-      setPreview(await api.previewJobReview(nextPayload));
-      setShowPayload(true);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '无法预览发送内容');
-    } finally {
-      setLoading(false);
-    }
-  }
+    async function loadData() {
+      setLoading(true);
+      setError('');
+      try {
+        const list = await api.tailoredResumes(50);
+        if (isCancelled) return;
+        setTailoredResumes(list);
 
-  async function confirmGenerate() {
-    if (!pendingPayload) return;
-    setLoading(true);
-    setError('');
-    setShowPayload(false);
-    try {
-      const nextResult = await api.reviewJob(pendingPayload);
-      setResult(nextResult);
-      if (nextResult.tailored_resume) {
-        setSavedResumes((current) => [nextResult.tailored_resume!, ...current]);
+        if (targetId) {
+          const matched = list.find((item) => item.id === targetId);
+          if (matched) {
+            setCurrentResume(matched);
+          } else {
+            try {
+              const single = await api.tailoredResume(targetId);
+              if (!isCancelled) {
+                setCurrentResume(single);
+                setTailoredResumes((prev) => [single, ...prev.filter((i) => i.id !== single.id)]);
+              }
+            } catch {
+              if (!isCancelled && list.length > 0) {
+                setCurrentResume(list[0]);
+              }
+            }
+          }
+        } else if (list.length > 0) {
+          setCurrentResume(list[0]);
+        }
+      } catch (err) {
+        if (!isCancelled) {
+          setError(
+            err instanceof Error ? err.message : 'Failed to load tailored resumes.',
+          );
+        }
+      } finally {
+        if (!isCancelled) setLoading(false);
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '简历生成失败');
-    } finally {
-      setLoading(false);
     }
-  }
 
-  const aiPayload = preview;
+    void loadData();
 
-  function loadSavedResume(saved: TailoredResume) {
-    setResult({
-      resume_data: saved.resume_data,
-      core_competencies: saved.core_competencies || saved.key_qualifications,
-      key_qualifications: saved.key_qualifications,
-      targeted_projects: saved.targeted_projects,
-      raw_ai_response: saved.raw_ai_response,
-      tailored_resume: saved,
+    return () => {
+      isCancelled = true;
+    };
+  }, [targetId]);
+
+  const selectTailoredResume = (resume: TailoredResume) => {
+    setCurrentResume(resume);
+    router.replace(`/job-review?id=${resume.id}`);
+  };
+
+  const resumeData = (currentResume?.resume_data || {}) as MasterResumeData;
+  const coreCompetencies: string[] = useMemo(() => {
+    if (!currentResume) return [];
+    return (
+      currentResume.core_competencies ||
+      currentResume.key_qualifications ||
+      (Array.isArray(resumeData.core_competencies) ?
+        (resumeData.core_competencies as string[])
+      : []) ||
+      []
+    );
+  }, [currentResume, resumeData]);
+
+  const pdfFilename = useMemo(() => {
+    return formatResumeFilename(
+      resumeData,
+      currentResume?.company || '',
+      currentResume?.job_title || '',
+    );
+  }, [resumeData, currentResume]);
+
+  const handleSaveSection = async (
+    nextResumeData: MasterResumeData,
+    nextCompetencies?: string[],
+  ) => {
+    if (!currentResume) return;
+    setSaving(true);
+    try {
+      const updatedCompetencies =
+        nextCompetencies ??
+        nextResumeData.core_competencies ??
+        currentResume.core_competencies ??
+        coreCompetencies;
+
+      const updated = await api.updateTailoredResume(currentResume.id, {
+        resume_data: nextResumeData,
+        core_competencies: updatedCompetencies,
+      });
+
+      setCurrentResume(updated);
+      setTailoredResumes((prev) =>
+        prev.map((item) => (item.id === updated.id ? updated : item)),
+      );
+      showGlobalToast('Tailored resume changes saved successfully');
+    } catch (err) {
+      showGlobalToast(
+        err instanceof Error ?
+          err.message
+        : 'Failed to save changes, please try again',
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDownloadPdf = async () => {
+    if (!resumeData || !currentResume) return;
+    setDownloading(true);
+    try {
+      const { blob } = await renderResumePdfOnce(
+        resumeData,
+        1,
+        coreCompetencies,
+        [],
+      );
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${pdfFilename.replace(/\.pdf$/i, '') || 'tailored-resume'}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      showGlobalToast('Tailored resume downloaded successfully.');
+    } catch {
+      showGlobalToast('Could not download resume PDF.');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const openSectionModal = (layoutId: string, content: ReactNode) => {
+    openModal({
+      layoutId,
+      className: 'w-[94vw] max-w-4xl max-h-[88vh] rounded-2xl',
+      content,
+      onClose: closeModal,
     });
-    setJobDescription(saved.job_description);
-    setTitle(saved.job_title || '');
-    setCompany(saved.company || '');
+  };
+
+  const openHistoryModal = () => {
+    openModal({
+      layoutId: 'tailored-resumes-switcher',
+      className: 'w-[94vw] max-w-2xl max-h-[86vh] rounded-2xl',
+      content: (
+        <div className='flex max-h-[78vh] flex-col gap-5 p-6'>
+          <div>
+            <h2 className='title-card text-ink-primary'>
+              Switch Tailored Resume
+            </h2>
+            <p className='body-sm mt-1 text-ink-secondary'>
+              Select a tailored resume generated for your previous job applications.
+            </p>
+          </div>
+          <div className='custom-scrollbar-primary min-h-0 space-y-2 overflow-y-auto'>
+            {tailoredResumes.map((item) => {
+              const selected = item.id === currentResume?.id;
+              return (
+                <div
+                  key={item.id}
+                  onClick={() => {
+                    selectTailoredResume(item);
+                    closeModal();
+                  }}
+                  className={cn(
+                    'flex cursor-pointer items-center justify-between gap-3 rounded-xl p-3.5 transition-colors',
+                    selected ?
+                      'bg-primary/10 text-primary'
+                    : 'bg-background-secondary/60 hover:bg-background-secondary text-ink-primary',
+                  )}
+                >
+                  <div className='min-w-0'>
+                    <div className='flex items-center gap-2'>
+                      <p className='truncate text-sm font-semibold'>
+                        {item.job_title || 'Untitled Role'}
+                      </p>
+                      {selected && (
+                        <span className='rounded bg-primary/20 px-2 py-0.5 text-[11px] font-medium text-primary'>
+                          Current
+                        </span>
+                      )}
+                    </div>
+                    <p className='mt-0.5 truncate text-xs text-ink-secondary'>
+                      {item.company || 'Company not specified'} ·{' '}
+                      {new Date(item.created_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <Button size='sm' variant={selected ? 'default' : 'secondary'}>
+                    {selected ? 'Active' : 'Select'}
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ),
+      onClose: closeModal,
+    });
+  };
+
+  if (loading) {
+    return (
+      <div className='flex h-[60vh] items-center justify-center'>
+        <div className='flex flex-col items-center gap-3 text-ink-secondary'>
+          <Loader2 className='h-8 w-8 animate-spin text-primary' />
+          <p className='text-sm font-medium'>Loading tailored resume...</p>
+        </div>
+      </div>
+    );
   }
+
+  if (error || !currentResume) {
+    return (
+      <div className='mx-auto flex w-full max-w-4xl flex-col gap-6 p-6 lg:p-10'>
+        <EmptyPlaceHolder
+          title='No Tailored Resumes Found'
+          message={
+            error ||
+            'No tailored resumes have been created yet. Generate one directly from the browser extension or job application page.'
+          }
+          className='py-16'
+        />
+      </div>
+    );
+  }
+
+  const basics = resumeData.basics || {};
+  const location = (basics.location || {}) as ResumeLocation;
+  const experienceItems = resumeData.experience ?? [];
+  const projectItems = resumeData.projects ?? [];
+  const educationItems = resumeData.education ?? [];
+  const certGroups = resumeData.certifications ?? [];
+  const linkItems = resumeData.links ?? [];
+  const otherItems = (resumeData.other ?? []) as ResumeOtherItem[];
+  const otherTypes = Array.from(
+    new Set(otherItems.map((item) => item.type).filter(Boolean)),
+  );
+  const otherSectionTitle =
+    otherTypes.length === 1 ?
+      otherTypes[0] || 'Additional information'
+    : 'Additional information';
 
   return (
     <div className='mx-auto flex w-full flex-col gap-6 p-6 lg:p-10'>
-      <header className='app-drag border-b border-border/60 pb-6'>
-        <div className='flex items-center gap-2 text-sm font-medium text-primary'>
-          <Search className='h-4 w-4' />
-          定制简历 Demo
+      <header className='app-drag flex flex-wrap items-center justify-between gap-4 border-b border-primary/20 pb-6'>
+        <div className='min-w-0'>
+          <div className='flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary'>
+            <Sparkles className='h-4 w-4' />
+            Tailored Resume
+          </div>
+          <div className='mt-1 flex flex-wrap items-baseline gap-2.5'>
+            <h1 className='text-2xl font-bold tracking-tight text-ink-primary sm:text-3xl'>
+              {currentResume.job_title || 'Tailored Position'}
+            </h1>
+            {currentResume.company && (
+              <span className='rounded-full bg-background-secondary px-3 py-1 text-xs font-semibold text-ink-secondary'>
+                {currentResume.company}
+              </span>
+            )}
+          </div>
+          <p className='mt-1.5 text-xs text-ink-secondary'>
+            Created {new Date(currentResume.created_at).toLocaleString()} · Edits on the left live-sync to the PDF
+          </p>
         </div>
-        <h1 className='mt-2 text-3xl font-semibold tracking-tight text-ink-primary'>
-          按 JD 生成一版更匹配的简历
-        </h1>
-        <p className='mt-2 text-sm leading-6 text-ink-secondary'>
-          粘贴申请流程已经提取好的 JD，系统会直接生成一版定制简历，并把它和
-          master resume 放在一起对照。
-        </p>
+
+        <div className='flex flex-wrap items-center gap-2.5'>
+          {tailoredResumes.length > 1 && (
+            <Button
+              variant='secondary'
+              size='sm'
+              Icon={History}
+              onClick={openHistoryModal}
+            >
+              Switch Role ({tailoredResumes.length})
+            </Button>
+          )}
+
+          <Button
+            variant='default'
+            size='sm'
+            Icon={Download}
+            isLoading={downloading}
+            onClick={() => void handleDownloadPdf()}
+          >
+            Download PDF
+          </Button>
+        </div>
       </header>
 
-      <form
-        onSubmit={submit}
-        className='rounded-xl border border-border/70 bg-background/70 p-4 shadow-sm'
-      >
-        <div className='grid gap-3 sm:grid-cols-3'>
-          <input
-            value={title}
-            onChange={(event) => setTitle(event.target.value)}
-            placeholder='职位名称（可选）'
-            className='rounded-lg border border-border bg-background px-4 py-3 text-sm text-ink-primary outline-none ring-primary/30 placeholder:text-ink-secondary/60 focus:ring-2'
-          />
-          <input
-            value={company}
-            onChange={(event) => setCompany(event.target.value)}
-            placeholder='公司（可选）'
-            className='rounded-lg border border-border bg-background px-4 py-3 text-sm text-ink-primary outline-none ring-primary/30 placeholder:text-ink-secondary/60 focus:ring-2'
-          />
-          <input
-            value={datePosted}
-            onChange={(event) => setDatePosted(event.target.value)}
-            placeholder='发布时间（可选）'
-            className='rounded-lg border border-border bg-background px-4 py-3 text-sm text-ink-primary outline-none ring-primary/30 placeholder:text-ink-secondary/60 focus:ring-2'
-          />
-        </div>
-        <Textarea
-          value={jobDescription}
-          onChange={(event) => setJobDescription(event.target.value)}
-          placeholder='把已提取的完整 JD 粘贴到这里...'
-          minHeight={224}
-          className='mt-3 w-full'
-          required
-        />
-        <button
-          disabled={loading}
-          className='mt-3 inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-5 py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60'
-        >
-          {loading ?
-            <Loader2 className='h-4 w-4 animate-spin' />
-          : <ArrowRight className='h-4 w-4' />}
-          {loading ? '生成中' : '预览发送内容'}
-        </button>
-      </form>
-
-      {error && (
-        <div className='flex items-start gap-3 rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700'>
-          <AlertCircle className='mt-0.5 h-4 w-4 shrink-0' />
-          {error}
+      {saving && (
+        <div className='fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-xl bg-panel px-4 py-2.5 shadow-lg'>
+          <Loader2 className='h-4 w-4 animate-spin text-primary' />
+          <span className='text-xs font-medium text-ink-primary'>Saving changes...</span>
         </div>
       )}
 
-      {showPayload && aiPayload && (
-        <PayloadPreview
-          payload={aiPayload}
-          onCancel={() => setShowPayload(false)}
-          onConfirm={confirmGenerate}
-          loading={loading}
-        />
-      )}
-      {savedResumes.length > 0 && (
-        <section className='flex flex-wrap items-center gap-3 border-y border-border/60 py-3'>
-          <span className='inline-flex items-center gap-2 text-sm font-medium text-ink-primary'>
-            <History className='h-4 w-4 text-primary' />
-            已保存的定制记录
-          </span>
-          <select
-            value={result?.tailored_resume?.id || ''}
-            onChange={(event) => {
-              const saved = savedResumes.find(
-                (item) => item.id === event.target.value,
-              );
-              if (saved) loadSavedResume(saved);
-            }}
-            className='min-w-56 rounded-md border border-border bg-background px-3 py-2 text-sm text-ink-primary'
-          >
-            <option value='' disabled>
-              选择一份记录
-            </option>
-            {savedResumes.map((item) => (
-              <option key={item.id} value={item.id}>
-                {[item.job_title || 'Untitled role', item.company]
-                  .filter(Boolean)
-                  .join(' · ')}{' '}
-                · {new Date(item.created_at).toLocaleString()}
-              </option>
-            ))}
-          </select>
-        </section>
-      )}
-      {result?.resume_data && (
-        <>
-          <ResultInspector result={result} />
-          <ResumeComparison
-            original={originalResume}
-            generated={result.resume_data}
-            coreCompetencies={
-              result.core_competencies ||
-              result.key_qualifications ||
-              result.resume_data.core_competencies ||
-              result.resume_data.key_qualifications ||
-              []
+      <div className='grid min-h-[600px] items-start gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(360px,0.8fr)] xl:grid-cols-[minmax(0,1.3fr)_minmax(420px,0.7fr)]'>
+        <div className='space-y-5'>
+          <SectionCard
+            title='Personal info'
+            layoutId='job-review-section-basics'
+            onClick={() =>
+              openSectionModal(
+                'job-review-section-basics',
+                <BasicsEditor
+                  data={resumeData}
+                  onClose={closeModal}
+                  onSave={async (next) => {
+                    await handleSaveSection(next);
+                    closeModal();
+                  }}
+                />,
+              )
             }
-          />
-        </>
-      )}
-    </div>
-  );
-}
-
-function PayloadPreview({
-  payload,
-  onCancel,
-  onConfirm,
-  loading,
-}: {
-  payload: unknown;
-  onCancel: () => void;
-  onConfirm: () => void;
-  loading: boolean;
-}) {
-  const messages =
-    (
-      payload as {
-        messages?: Array<{ role?: string; content?: string }>;
-      } | null
-    )?.messages || [];
-  return (
-    <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-5 backdrop-blur-sm'>
-      <div className='flex max-h-[90vh] w-full max-w-4xl flex-col rounded-xl border border-border bg-background p-5 shadow-2xl'>
-        <div className='flex items-center justify-between'>
-          <div>
-            <h2 className='text-lg font-semibold text-ink-primary'>
-              发送给 AI 的内容
-            </h2>
-            <p className='mt-1 text-xs text-ink-secondary'>
-              逐段检查 system prompt 和 user message 后再发送。
-            </p>
-          </div>
-          <button
-            type='button'
-            aria-label='关闭预览'
-            onClick={onCancel}
-            className='rounded-md p-2 text-ink-secondary hover:bg-background-secondary'
+            action={
+              <Button
+                size='sm'
+                variant='ghost'
+                Icon={Pencil}
+                onClick={() =>
+                  openSectionModal(
+                    'job-review-section-basics',
+                    <BasicsEditor
+                      data={resumeData}
+                      onClose={closeModal}
+                      onSave={async (next) => {
+                        await handleSaveSection(next);
+                        closeModal();
+                      }}
+                    />,
+                  )
+                }
+              >
+                Edit
+              </Button>
+            }
           >
-            <X className='h-4 w-4' />
-          </button>
-        </div>
-        <div className='mt-4 min-h-0 space-y-4 overflow-y-auto'>
-          {messages.map((message, index) => (
-            <div
-              key={`${message.role || 'message'}-${index}`}
-              className='overflow-hidden rounded-lg border border-border/70'
-            >
-              <div className='border-b border-border/70 bg-background-secondary px-3 py-2 text-xs font-semibold uppercase tracking-wide text-ink-secondary'>
-                {message.role || 'message'}
-              </div>
-              <pre className='max-h-[45vh] overflow-auto whitespace-pre-wrap break-words bg-zinc-950 p-4 text-xs leading-6 text-zinc-200'>
-                {prettyMessageContent(message.content)}
-              </pre>
+            <div className='flex flex-wrap items-center gap-x-6 gap-y-3.5 text-ink-primary'>
+              <h3 className='flex items-center gap-2 text-base font-bold text-ink-primary'>
+                <User className='h-4.5 w-4.5 shrink-0 text-primary' />
+                <span className='font-semibold text-ink-primary'>
+                  {[basics.first_name, basics.last_name]
+                    .filter(Boolean)
+                    .join(' ') || 'Name not listed'}
+                </span>
+              </h3>
+
+              {basics.headline && (
+                <p className='flex items-center gap-2 text-sm font-semibold text-ink-primary'>
+                  <Briefcase className='h-4 w-4 shrink-0 text-primary' />
+                  <span className='font-semibold text-ink-primary'>
+                    {basics.headline}
+                  </span>
+                </p>
+              )}
+
+              {basics.email && (
+                <div className='flex items-center gap-2 text-sm'>
+                  <Mail className='h-4 w-4 shrink-0 text-primary' />
+                  <span className='font-semibold text-ink-primary'>
+                    {basics.email}
+                  </span>
+                </div>
+              )}
+
+              {basics.phone && (
+                <div className='flex items-center gap-2 text-sm'>
+                  <Phone className='h-4 w-4 shrink-0 text-primary' />
+                  <span className='font-semibold text-ink-primary'>
+                    {basics.phone}
+                  </span>
+                </div>
+              )}
+
+              {[location.city, location.state, location.country]
+                .filter(Boolean)
+                .join(', ') && (
+                <div className='flex items-center gap-2 text-sm'>
+                  <MapPin className='h-4 w-4 shrink-0 text-primary' />
+                  <span className='font-semibold text-ink-primary'>
+                    {[location.city, location.state, location.country]
+                      .filter(Boolean)
+                      .join(', ')}
+                  </span>
+                </div>
+              )}
+
+              {basics.linkedin_id && (
+                <div className='flex items-center gap-2 text-sm'>
+                  <LinkedinIcon className='h-4 w-4 shrink-0 text-primary' />
+                  <span className='text-xs text-ink-secondary'>linkedin:</span>
+                  <a
+                    href={
+                      basics.linkedin_id.startsWith('http') ?
+                        basics.linkedin_id
+                      : `https://www.linkedin.com/in/${basics.linkedin_id.replace(/^\/+|\/+$/g, '')}/`
+                    }
+                    target='_blank'
+                    rel='noreferrer'
+                    className='font-semibold text-ink-primary hover:text-primary'
+                  >
+                    {basics.linkedin_id
+                      .replace(/^https?:\/\/(www\.)?linkedin\.com\/in\//i, '')
+                      .replace(/\/$/, '')}
+                  </a>
+                </div>
+              )}
+
+              {basics.portfolio_url && (
+                <div className='flex items-center gap-2 text-sm'>
+                  <FolderGit2 className='h-4 w-4 shrink-0 text-primary' />
+                  <span className='text-xs text-ink-secondary'>Portfolio:</span>
+                  <a
+                    href={
+                      basics.portfolio_url.startsWith('http') ?
+                        basics.portfolio_url
+                      : `https://${basics.portfolio_url}`
+                    }
+                    target='_blank'
+                    rel='noreferrer'
+                    className='font-semibold text-ink-primary hover:text-primary'
+                  >
+                    {basics.portfolio_url
+                      .replace(/^https?:\/\//i, '')
+                      .replace(/\/$/, '')}
+                  </a>
+                </div>
+              )}
+
+              {basics.website && (
+                <div className='flex items-center gap-2 text-sm'>
+                  <Globe className='h-4 w-4 shrink-0 text-primary' />
+                  <span className='text-xs text-ink-secondary'>Website:</span>
+                  <a
+                    href={
+                      basics.website.startsWith('http') ?
+                        basics.website
+                      : `https://${basics.website}`
+                    }
+                    target='_blank'
+                    rel='noreferrer'
+                    className='font-semibold text-ink-primary hover:text-primary'
+                  >
+                    {basics.website
+                      .replace(/^https?:\/\//i, '')
+                      .replace(/\/$/, '')}
+                  </a>
+                </div>
+              )}
             </div>
-          ))}
-        </div>
-        <div className='mt-4 flex justify-end gap-3'>
-          <button
-            type='button'
-            onClick={onCancel}
-            className='rounded-lg border border-border px-4 py-2 text-sm text-ink-secondary'
+          </SectionCard>
+
+          <SectionCard
+            title='Executive Summary'
+            layoutId='job-review-section-summary'
+            onClick={() =>
+              openSectionModal(
+                'job-review-section-summary',
+                <SummaryEditor
+                  data={resumeData}
+                  onClose={closeModal}
+                  onSave={async (next) => {
+                    await handleSaveSection(next);
+                    closeModal();
+                  }}
+                />,
+              )
+            }
+            action={
+              <Button
+                size='sm'
+                variant='ghost'
+                Icon={Pencil}
+                onClick={() =>
+                  openSectionModal(
+                    'job-review-section-summary',
+                    <SummaryEditor
+                      data={resumeData}
+                      onClose={closeModal}
+                      onSave={async (next) => {
+                        await handleSaveSection(next);
+                        closeModal();
+                      }}
+                    />,
+                  )
+                }
+              >
+                Edit
+              </Button>
+            }
           >
-            返回修改
-          </button>
-          <button
-            type='button'
-            onClick={onConfirm}
-            disabled={loading}
-            className='inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white disabled:opacity-60'
+            <p className='body-sm whitespace-pre-wrap leading-relaxed text-ink-secondary'>
+              {resumeData.summary || 'No summary listed.'}
+            </p>
+          </SectionCard>
+
+          <SectionCard
+            title='Skills & Core Competencies'
+            layoutId='job-review-section-skills'
+            onClick={() =>
+              openSectionModal(
+                'job-review-section-skills',
+                <SkillsEditor
+                  data={resumeData}
+                  initialCoreCompetencies={coreCompetencies}
+                  onClose={closeModal}
+                  onSave={async (next, nextCompetencies) => {
+                    await handleSaveSection(next, nextCompetencies);
+                    closeModal();
+                  }}
+                />,
+              )
+            }
+            action={
+              <Button
+                size='sm'
+                variant='ghost'
+                Icon={Pencil}
+                onClick={() =>
+                  openSectionModal(
+                    'job-review-section-skills',
+                    <SkillsEditor
+                      data={resumeData}
+                      initialCoreCompetencies={coreCompetencies}
+                      onClose={closeModal}
+                      onSave={async (next, nextCompetencies) => {
+                        await handleSaveSection(next, nextCompetencies);
+                        closeModal();
+                      }}
+                    />,
+                  )
+                }
+              >
+                Edit
+              </Button>
+            }
           >
-            <Check className='h-4 w-4' />
-            确认发送
-          </button>
+            <div className='space-y-4'>
+              {coreCompetencies.length > 0 && (
+                <div>
+                  <p className='label text-ink-primary'>
+                    Targeted Key Qualifications
+                  </p>
+                  <ul className='body-sm mt-2 list-disc space-y-1 pl-4 text-ink-secondary'>
+                    {coreCompetencies.map((comp, idx) => (
+                      <li key={`cc-${idx}`}>{comp}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <div className='space-y-3'>
+                {(resumeData.skills ?? []).length ?
+                  (resumeData.skills ?? []).map((group, index) => (
+                    <div key={`skill-group-${index}`}>
+                      <p className='body-sm font-medium text-ink-primary'>
+                        {group.type || 'Skill group'}
+                      </p>
+                      <div className='mt-1.5'>
+                        <TagList values={group.skills ?? []} />
+                      </div>
+                    </div>
+                  ))
+                : <p className='body-sm text-ink-secondary'>Not listed</p>}
+              </div>
+            </div>
+          </SectionCard>
+
+          <SectionCard
+            title='Experience'
+            layoutId='job-review-section-experience'
+            onClick={() =>
+              openSectionModal(
+                'job-review-section-experience',
+                <ExperienceEditor
+                  data={resumeData}
+                  onClose={closeModal}
+                  onSave={async (next) => {
+                    await handleSaveSection(next);
+                    closeModal();
+                  }}
+                />,
+              )
+            }
+            action={
+              <Button
+                size='sm'
+                variant='ghost'
+                Icon={Pencil}
+                onClick={() =>
+                  openSectionModal(
+                    'job-review-section-experience',
+                    <ExperienceEditor
+                      data={resumeData}
+                      onClose={closeModal}
+                      onSave={async (next) => {
+                        await handleSaveSection(next);
+                        closeModal();
+                      }}
+                    />,
+                  )
+                }
+              >
+                Edit
+              </Button>
+            }
+          >
+            <div className='space-y-6'>
+              {experienceItems.length ?
+                experienceItems.map((item, index) => (
+                  <article key={`experience-view-${index}`}>
+                    <div className='flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1'>
+                      <h3 className='label text-ink-primary'>
+                        {item.title || 'Role not listed'}
+                      </h3>
+                      <span className='body-sm text-ink-secondary'>
+                        {dateRange(item.start_date, item.end_date)}
+                      </span>
+                    </div>
+                    <p className='body-sm mt-1 text-ink-secondary'>
+                      {[item.company, item.location]
+                        .filter(Boolean)
+                        .join(' · ') || 'Company not listed'}
+                    </p>
+                    {(item.technologies ?? []).length > 0 && (
+                      <div className='mt-2.5'>
+                        <TagList values={item.technologies ?? []} />
+                      </div>
+                    )}
+                    {(item.description ?? []).length > 0 && (
+                      <ul className='body-sm mt-3 list-disc space-y-1.5 pl-4 text-ink-secondary'>
+                        {(item.description ?? []).map((line, lIdx) => (
+                          <li key={`exp-l-${lIdx}`}>{line}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </article>
+                ))
+              : <p className='body-sm text-ink-secondary'>Not listed</p>}
+            </div>
+          </SectionCard>
+
+          <SectionCard
+            title='Projects'
+            layoutId='job-review-section-projects'
+            onClick={() =>
+              openSectionModal(
+                'job-review-section-projects',
+                <ProjectsEditor
+                  data={resumeData}
+                  onClose={closeModal}
+                  onSave={async (next) => {
+                    await handleSaveSection(next);
+                    closeModal();
+                  }}
+                />,
+              )
+            }
+            action={
+              <Button
+                size='sm'
+                variant='ghost'
+                Icon={Pencil}
+                onClick={() =>
+                  openSectionModal(
+                    'job-review-section-projects',
+                    <ProjectsEditor
+                      data={resumeData}
+                      onClose={closeModal}
+                      onSave={async (next) => {
+                        await handleSaveSection(next);
+                        closeModal();
+                      }}
+                    />,
+                  )
+                }
+              >
+                Edit
+              </Button>
+            }
+          >
+            <div className='space-y-6'>
+              {projectItems.length ?
+                projectItems.map((item, index) => (
+                  <article key={`proj-view-${index}`}>
+                    <div className='flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1'>
+                      <h3 className='label text-ink-primary'>
+                        {item.name || 'Project not listed'}
+                      </h3>
+                      <span className='body-sm text-ink-secondary'>
+                        {dateRange(item.start_date, item.end_date)}
+                      </span>
+                    </div>
+                    {item.url && (
+                      <p className='body-sm mt-1'>
+                        <a
+                          href={item.url.startsWith('http') ? item.url : `https://${item.url}`}
+                          target='_blank'
+                          rel='noreferrer'
+                          className='text-primary hover:underline'
+                        >
+                          {item.url.replace(/^https?:\/\//i, '').replace(/\/$/, '')}
+                        </a>
+                      </p>
+                    )}
+                    {(item.technologies ?? []).length > 0 && (
+                      <div className='mt-2.5'>
+                        <TagList values={item.technologies ?? []} />
+                      </div>
+                    )}
+                    {(item.description ?? []).length > 0 && (
+                      <ul className='body-sm mt-3 list-disc space-y-1.5 pl-4 text-ink-secondary'>
+                        {(item.description ?? []).map((line, lIdx) => (
+                          <li key={`proj-l-${lIdx}`}>{line}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </article>
+                ))
+              : <p className='body-sm text-ink-secondary'>Not listed</p>}
+            </div>
+          </SectionCard>
+
+          <SectionCard
+            title='Education'
+            layoutId='job-review-section-education'
+            onClick={() =>
+              openSectionModal(
+                'job-review-section-education',
+                <EducationEditor
+                  data={resumeData}
+                  onClose={closeModal}
+                  onSave={async (next) => {
+                    await handleSaveSection(next);
+                    closeModal();
+                  }}
+                />,
+              )
+            }
+            action={
+              <Button
+                size='sm'
+                variant='ghost'
+                Icon={Pencil}
+                onClick={() =>
+                  openSectionModal(
+                    'job-review-section-education',
+                    <EducationEditor
+                      data={resumeData}
+                      onClose={closeModal}
+                      onSave={async (next) => {
+                        await handleSaveSection(next);
+                        closeModal();
+                      }}
+                    />,
+                  )
+                }
+              >
+                Edit
+              </Button>
+            }
+          >
+            <div className='space-y-5'>
+              {educationItems.length ?
+                educationItems.map((item, index) => (
+                  <div key={`edu-view-${index}`}>
+                    <p className='label text-ink-primary'>
+                      {[item.degree, item.field_of_study]
+                        .filter(Boolean)
+                        .join(' · ') || 'Education'}
+                    </p>
+                    <p className='body-sm mt-0.5 text-ink-secondary'>
+                      {item.institution || 'Institution not listed'}
+                    </p>
+                    <p className='body-sm text-ink-secondary'>
+                      {dateRange(item.start_date, item.end_date)}
+                    </p>
+                    {(item.highlights ?? []).length > 0 && (
+                      <ul className='body-sm mt-2 list-disc space-y-1 pl-4 text-ink-secondary'>
+                        {(item.highlights ?? []).map((h, hIdx) => (
+                          <li key={`edu-h-${hIdx}`}>{h}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                ))
+              : <p className='body-sm text-ink-secondary'>Not listed</p>}
+            </div>
+          </SectionCard>
+
+          {certGroups.length > 0 && (
+            <SectionCard
+              title='Certifications'
+              layoutId='job-review-section-certifications'
+              onClick={() =>
+                openSectionModal(
+                  'job-review-section-certifications',
+                  <CertificationsEditor
+                    data={resumeData}
+                    onClose={closeModal}
+                    onSave={async (next) => {
+                      await handleSaveSection(next);
+                      closeModal();
+                    }}
+                  />,
+                )
+              }
+              action={
+                <Button
+                  size='sm'
+                  variant='ghost'
+                  Icon={Pencil}
+                  onClick={() =>
+                    openSectionModal(
+                      'job-review-section-certifications',
+                      <CertificationsEditor
+                        data={resumeData}
+                        onClose={closeModal}
+                        onSave={async (next) => {
+                          await handleSaveSection(next);
+                          closeModal();
+                        }}
+                      />,
+                    )
+                  }
+                >
+                  Edit
+                </Button>
+              }
+            >
+              <div className='space-y-4'>
+                {certGroups.map((group, groupIndex) => (
+                  <div key={`cert-group-${groupIndex}`}>
+                    <p className='body-sm font-semibold text-ink-primary'>
+                      {group.type || 'Certifications'}
+                    </p>
+                    <div className='mt-2 space-y-2'>
+                      {(group.certifications ?? []).map((cert, certIndex) => (
+                        <div key={`cert-item-${certIndex}`} className='flex flex-wrap items-baseline justify-between gap-2'>
+                          <span className='body-sm text-ink-primary font-medium'>
+                            {[cert.name, cert.issuer].filter(Boolean).join(' · ')}
+                          </span>
+                          {cert.issue_date && (
+                            <span className='body-xs text-ink-secondary'>
+                              {cert.issue_date}
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </SectionCard>
+          )}
+
+          {linkItems.length > 0 && (
+            <SectionCard
+              title='Links'
+              layoutId='job-review-section-links'
+              onClick={() =>
+                openSectionModal(
+                  'job-review-section-links',
+                  <LinksEditor
+                    data={resumeData}
+                    onClose={closeModal}
+                    onSave={async (next) => {
+                      await handleSaveSection(next);
+                      closeModal();
+                    }}
+                  />,
+                )
+              }
+              action={
+                <Button
+                  size='sm'
+                  variant='ghost'
+                  Icon={Pencil}
+                  onClick={() =>
+                    openSectionModal(
+                      'job-review-section-links',
+                      <LinksEditor
+                        data={resumeData}
+                        onClose={closeModal}
+                        onSave={async (next) => {
+                          await handleSaveSection(next);
+                          closeModal();
+                        }}
+                      />,
+                    )
+                  }
+                >
+                  Edit
+                </Button>
+              }
+            >
+              <div className='space-y-3'>
+                {linkItems.map((item, index) => (
+                  <div key={`link-view-${index}`} className='flex items-center gap-3'>
+                    <p className='body-sm min-w-28 font-medium text-ink-primary'>
+                      {item.type || 'Link'}
+                    </p>
+                    <a
+                      href={
+                        item.link ?
+                          item.link.startsWith('http') ?
+                            item.link
+                          : `https://${item.link}`
+                        : '#'
+                      }
+                      target='_blank'
+                      rel='noreferrer'
+                      className='body-sm truncate font-semibold text-primary hover:underline'
+                    >
+                      {item.link ?
+                        item.link.replace(/^https?:\/\//i, '').replace(/\/$/, '')
+                      : 'Not listed'}
+                    </a>
+                  </div>
+                ))}
+              </div>
+            </SectionCard>
+          )}
+
+          {otherItems.length > 0 && (
+            <SectionCard
+              title={otherSectionTitle}
+              layoutId='job-review-section-other'
+              onClick={() =>
+                openSectionModal(
+                  'job-review-section-other',
+                  <OtherEditor
+                    data={resumeData}
+                    onClose={closeModal}
+                    onSave={async (next) => {
+                      await handleSaveSection(next);
+                      closeModal();
+                    }}
+                  />,
+                )
+              }
+              action={
+                <Button
+                  size='sm'
+                  variant='ghost'
+                  Icon={Pencil}
+                  onClick={() =>
+                    openSectionModal(
+                      'job-review-section-other',
+                      <OtherEditor
+                        data={resumeData}
+                        onClose={closeModal}
+                        onSave={async (next) => {
+                          await handleSaveSection(next);
+                          closeModal();
+                        }}
+                      />,
+                    )
+                  }
+                >
+                  Edit
+                </Button>
+              }
+            >
+              <div className='space-y-4'>
+                {otherItems.map((item, index) => (
+                  <div key={`other-view-${index}`}>
+                    <div className='flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1'>
+                      <p className='label text-ink-primary'>
+                        {item.title || item.type || 'Other'}
+                      </p>
+                      {item.date && (
+                        <span className='body-sm text-ink-secondary'>
+                          {item.date}
+                        </span>
+                      )}
+                    </div>
+                    {(item.description ?? []).length > 0 && (
+                      <ul className='body-sm mt-1 list-disc space-y-1 pl-4 text-ink-secondary'>
+                        {(item.description ?? []).map((line, lIdx) => (
+                          <li key={`other-l-${lIdx}`}>{line}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </SectionCard>
+          )}
         </div>
+
+        <aside className='sticky top-6 self-start space-y-5'>
+          <ResumePreviewCard
+            data={resumeData}
+            filename={pdfFilename}
+            badge={currentResume.company || undefined}
+            jobTitle={currentResume.job_title || undefined}
+            coreCompetencies={coreCompetencies}
+            onDownload={handleDownloadPdf}
+          />
+        </aside>
       </div>
     </div>
   );
 }
 
-function prettyMessageContent(content?: string) {
-  if (!content) return '';
-  try {
-    return JSON.stringify(JSON.parse(content), null, 2);
-  } catch {
-    return content;
-  }
-}
-
-function ResultInspector({ result }: { result: JobReviewResult }) {
-  const saved = result.tailored_resume;
+export default function JobReviewPage() {
   return (
-    <section className='rounded-lg border border-border/70 bg-background/70 p-4'>
-      <div className='flex flex-wrap items-center justify-between gap-3'>
-        <div>
-          <p className='text-sm font-semibold text-ink-primary'>
-            已保存的定制结果
-          </p>
-          <p className='mt-1 text-xs text-ink-secondary'>
-            {saved ? `申请草稿已绑定 · ${saved.job_application_id}` : '未保存'}
-          </p>
+    <Suspense
+      fallback={
+        <div className='flex h-[60vh] items-center justify-center'>
+          <Loader2 className='h-8 w-8 animate-spin text-primary' />
         </div>
-        <FileJson className='h-5 w-5 text-primary' />
-      </div>
-      <details className='mt-3'>
-        <summary className='cursor-pointer text-sm font-medium text-primary'>
-          查看原始 AI JSON
-        </summary>
-        <pre className='mt-3 max-h-96 overflow-auto rounded-md bg-zinc-950 p-4 text-xs leading-6 text-zinc-200'>
-          {JSON.stringify(result.raw_ai_response || {}, null, 2)}
-        </pre>
-      </details>
-    </section>
-  );
-}
-
-function ResumeComparison({
-  original,
-  generated,
-  coreCompetencies,
-}: {
-  original: MasterResumeData | null;
-  generated: NonNullable<JobReviewResult['resume_data']>;
-  coreCompetencies: string[];
-}) {
-  const generatedData = (
-    original ?
-      { ...original, ...generated }
-    : generated) as MasterResumeData;
-  return (
-    <section className='grid gap-5 lg:grid-cols-2'>
-      <PdfResumeCard
-        label='原始简历 PDF'
-        data={original}
-        filename='original-resume.pdf'
-      />
-      <PdfResumeCard
-        label='AI 定制版本 PDF'
-        data={generatedData}
-        filename='tailored-resume.pdf'
-        coreCompetencies={coreCompetencies}
-      />
-    </section>
-  );
-}
-
-function PdfResumeCard({
-  label,
-  data,
-  filename,
-  coreCompetencies = [],
-}: {
-  label: string;
-  data: MasterResumeData | null;
-  filename: string;
-  coreCompetencies?: string[];
-}) {
-  if (!data)
-    return (
-      <section className='rounded-xl border border-dashed border-border p-6 text-sm text-ink-secondary'>
-        原始简历尚未加载
-      </section>
-    );
-  return (
-    <section className='rounded-xl border border-border/70 bg-background/70 p-5 shadow-sm'>
-      <h2 className='text-lg font-semibold text-ink-primary'>{label}</h2>
-      <div className='mt-4'>
-        <ResumePdfPreview
-          data={data}
-          filename={filename}
-          coreCompetencies={coreCompetencies}
-        />
-      </div>
-    </section>
+      }
+    >
+      <JobReviewContent />
+    </Suspense>
   );
 }

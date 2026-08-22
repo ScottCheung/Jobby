@@ -7,7 +7,6 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Check, X } from 'lucide-react';
 
-
 import { SearchForm } from '@/components/forms';
 import { cn } from '@/lib/utils';
 import type { JobHuntingProfile, ApplicationSettings } from '@/lib/types';
@@ -51,7 +50,7 @@ function DisplayField({
   return (
     <div
       className={cn(
-        'flex flex-col gap-1 p-3 rounded-xl bg-background-secondary/40 border border-border/40 min-h-[64px]',
+        'flex flex-col gap-1 p-3 rounded-xl bg-background-secondary/40  min-h-[64px]',
         full ? 'col-span-full' : '',
       )}
     >
@@ -86,7 +85,7 @@ function DisplayTagList({
   return (
     <div
       className={cn(
-        'flex flex-col gap-1.5 p-3 rounded-xl bg-background-secondary/40 border border-border/40 min-h-[64px]',
+        'flex flex-col gap-1.5 p-3 rounded-xl bg-background-secondary/40 border border-primary/40 min-h-[64px]',
         full ? 'col-span-full' : '',
       )}
     >
@@ -96,7 +95,7 @@ function DisplayTagList({
           {items.map((item) => (
             <span
               key={item}
-              className='inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-lg bg-panel border border-border/60 text-ink-primary'
+              className='inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-lg bg-panel border border-primary/60 text-ink-primary'
             >
               {item}
             </span>
@@ -432,7 +431,7 @@ export function ApplySettingsModalEditor({
   return (
     <div className='flex max-h-[88vh] min-h-[360px] w-full flex-col'>
       {/* Header */}
-      <header className='flex items-center justify-between pb-4 border-b border-border/40 shrink-0'>
+      <header className='flex items-center justify-between pb-4 border-b border-primary/40 shrink-0'>
         <h2 className='title-card text-ink-primary'>
           {sectionTitles[section]}
         </h2>
@@ -469,7 +468,7 @@ export function ApplySettingsModalEditor({
       </div>
 
       {/* Footer */}
-      <footer className='flex items-center justify-end gap-3 pt-4 border-t border-border/40 shrink-0'>
+      <footer className='flex items-center justify-end gap-3 pt-4 border-t border-primary/40 shrink-0'>
         <Button variant='secondary' onClick={onClose} disabled={isSaving}>
           Cancel
         </Button>

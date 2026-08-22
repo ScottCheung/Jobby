@@ -191,7 +191,7 @@ export default function ProspectsPage() {
   return (
     <div className='flex-1 p-6 md:p-8 overflow-y-auto no-scrollbar space-y-6'>
       {/* Page Title & Main Header */}
-      <div className='flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-border/40 pb-6'>
+      <div className='flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-primary/40 pb-6'>
         <div>
           <div className='flex items-center gap-3'>
             <div className='flex size-11 items-center justify-center rounded-2xl bg-primary-gradient text-white shadow-md'>
@@ -227,7 +227,7 @@ export default function ProspectsPage() {
 
       {/* Metric Cards Dashboard */}
       <div className='grid grid-cols-2 md:grid-cols-4 gap-4'>
-        <div className='rounded-2xl border border-border/60 bg-panel/70 p-4 shadow-xs backdrop-blur-md flex flex-col justify-between'>
+        <div className='rounded-2xl border border-primary/60 bg-panel/70 p-4 shadow-xs backdrop-blur-md flex flex-col justify-between'>
           <div className='flex items-center justify-between text-ink-secondary text-xs font-medium'>
             <span>Total Prospects</span>
             <Users className='size-4 text-primary' />
@@ -237,7 +237,7 @@ export default function ProspectsPage() {
           </p>
         </div>
 
-        <div className='rounded-2xl border border-border/60 bg-panel/70 p-4 shadow-xs backdrop-blur-md flex flex-col justify-between'>
+        <div className='rounded-2xl border border-primary/60 bg-panel/70 p-4 shadow-xs backdrop-blur-md flex flex-col justify-between'>
           <div className='flex items-center justify-between text-ink-secondary text-xs font-medium'>
             <span>Hiring Decision Makers</span>
             <Building2 className='size-4 text-emerald-500' />
@@ -247,7 +247,7 @@ export default function ProspectsPage() {
           </p>
         </div>
 
-        <div className='rounded-2xl border border-border/60 bg-panel/70 p-4 shadow-xs backdrop-blur-md flex flex-col justify-between'>
+        <div className='rounded-2xl border border-primary/60 bg-panel/70 p-4 shadow-xs backdrop-blur-md flex flex-col justify-between'>
           <div className='flex items-center justify-between text-ink-secondary text-xs font-medium'>
             <span>High Priority Matches</span>
             <Sparkles className='size-4 text-amber-500' />
@@ -257,7 +257,7 @@ export default function ProspectsPage() {
           </p>
         </div>
 
-        <div className='rounded-2xl border border-border/60 bg-panel/70 p-4 shadow-xs backdrop-blur-md flex flex-col justify-between'>
+        <div className='rounded-2xl border border-primary/60 bg-panel/70 p-4 shadow-xs backdrop-blur-md flex flex-col justify-between'>
           <div className='flex items-center justify-between text-ink-secondary text-xs font-medium'>
             <span>Outreach Contacted</span>
             <CheckCircle2 className='size-4 text-blue-500' />
@@ -303,14 +303,14 @@ export default function ProspectsPage() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder='Search by name, company, title...'
-              className='w-full rounded-xl border border-border bg-background pl-9 pr-3 py-2 text-xs text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-primary/40'
+              className='w-full rounded-xl border border-primary bg-background pl-9 pr-3 py-2 text-xs text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-primary/40'
             />
           </div>
 
           <button
             onClick={fetchProspects}
             title='Refresh Prospects'
-            className='rounded-xl border border-border bg-background p-2 text-ink-secondary hover:bg-background-secondary hover:text-ink-primary transition-colors'
+            className='rounded-xl border border-primary bg-background p-2 text-ink-secondary hover:bg-background-secondary hover:text-ink-primary transition-colors'
           >
             <RefreshCw className={`size-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
@@ -323,7 +323,7 @@ export default function ProspectsPage() {
           {[1, 2, 3, 4, 5, 6].map((n) => (
             <div
               key={n}
-              className='h-64 rounded-2xl border border-border/40 bg-panel/40 animate-pulse'
+              className='h-64 rounded-2xl border border-primary/40 bg-panel/40 animate-pulse'
             />
           ))}
         </div>
@@ -340,7 +340,7 @@ export default function ProspectsPage() {
           ))}
         </WaterfallLayout>
       : /* Empty State */
-        <div className='flex flex-col items-center justify-center rounded-3xl border border-dashed border-border/80 bg-panel/40 py-16 px-6 text-center space-y-4'>
+        <div className='flex flex-col items-center justify-center rounded-3xl border border-dashed border-primary/80 bg-panel/40 py-16 px-6 text-center space-y-4'>
           <div className='flex size-14 items-center justify-center rounded-2xl bg-primary/10 text-primary'>
             <Compass className='size-7' />
           </div>
@@ -361,7 +361,7 @@ export default function ProspectsPage() {
           <div className='flex items-center gap-3 pt-2'>
             <button
               onClick={handleOpenAddProspect}
-              className='flex items-center gap-2 rounded-xl border border-border bg-background px-4 py-2.5 text-xs font-bold text-ink-primary hover:bg-background-secondary transition-colors cursor-pointer'
+              className='flex items-center gap-2 rounded-xl border border-primary bg-background px-4 py-2.5 text-xs font-bold text-ink-primary hover:bg-background-secondary transition-colors cursor-pointer'
             >
               <UserPlus className='size-4' />
               <span>Add Prospect Manually</span>

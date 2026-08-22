@@ -1,5 +1,15 @@
-import { z } from "/vendor/.vite-deps-zod.js__v--14b8c224.js";
-export const formPlatformSchema = z.enum(["generic", "seek", "linkedin"]);
+import { z } from "/vendor/.vite-deps-zod.js__v--22c5bc1a.js";
+export const formPlatformSchema = z.enum([
+  "generic",
+  "seek",
+  "linkedin",
+  "workday",
+  "greenhouse",
+  "lever",
+  "ashby",
+  "smartrecruiters",
+  "taleo"
+]);
 export const formFieldTypeSchema = z.enum([
   "text",
   "textarea",

@@ -146,7 +146,7 @@ export function QuestionsFilterDrawer({
 
         {/* Tag Filter */}
         {tags.length > 0 && (
-          <div className='flex flex-col gap-2.5 pt-4 border-t border-border/40'>
+          <div className='flex flex-col gap-2.5 pt-4 border-t border-primary/40'>
             <span className='label-overline'>Tag</span>
             <div className='flex flex-wrap gap-1.5'>
               <button
@@ -184,7 +184,7 @@ export function QuestionsFilterDrawer({
         )}
 
         {/* Importance Filter */}
-        <div className='flex flex-col gap-2.5 pt-4 border-t border-border/40'>
+        <div className='flex flex-col gap-2.5 pt-4 border-t border-primary/40'>
           <span className='label-overline'>Importance</span>
           <div className='flex gap-1.5'>
             {[5, 4, 3, 2, 1].map((n) => {
@@ -221,7 +221,7 @@ export function QuestionsFilterDrawer({
         </div>
 
         {/* Frequency Filter */}
-        <div className='flex flex-col gap-2.5 pt-4 border-t border-border/40'>
+        <div className='flex flex-col gap-2.5 pt-4 border-t border-primary/40'>
           <span className='label-overline'>Frequency</span>
           <div className='flex gap-1.5'>
             {['High', 'Medium', 'Low'].map((f) => {

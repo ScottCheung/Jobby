@@ -39,7 +39,7 @@ export default function AdminLayout({
   return (
     <div className='mx-auto flex w-full max-w-7xl flex-col gap-6 px-page py-6'>
       <div className='overflow-x-auto'>
-        <div className='flex min-w-max items-center gap-2 rounded-[28px] border border-border/60 bg-panel/70 p-2 backdrop-blur-xl'>
+        <div className='flex min-w-max items-center gap-2 rounded-[28px] border border-primary/60 bg-panel/70 p-2 backdrop-blur-xl'>
           {adminTabs.map((tab) => {
             const isActive = pathname === tab.href;
             return (
@@ -68,7 +68,7 @@ export default function AdminLayout({
         </div>
       </div>
 
-      <section className='rounded-[32px] border border-border/60 bg-background/80 p-4 shadow-sm backdrop-blur-xl md:p-6'>
+      <section className='rounded-[32px] border border-primary/60 bg-background/80 p-4 shadow-sm backdrop-blur-xl md:p-6'>
         {children}
       </section>
     </div>

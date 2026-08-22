@@ -21,7 +21,7 @@ export function Tabs({ activeTab, onChangeTab }: TabsProps) {
   ];
 
   return (
-    <div className='flex border-t border-border px-6 overflow-x-auto custom-scrollbar-primary'>
+    <div className='flex border-t border-primary px-6 overflow-x-auto custom-scrollbar-primary'>
       {tabsList.map((tab) => {
         const Icon = tab.icon;
         const isActive = activeTab === tab.id;

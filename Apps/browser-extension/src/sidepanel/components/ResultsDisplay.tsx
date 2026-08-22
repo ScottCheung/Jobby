@@ -1,12 +1,14 @@
 /** @format */
 
 import { useEffect, useRef, useState } from 'react';
-import { Check, RotateCw, Circle } from 'lucide-react';
+import { Check, RotateCw, Circle, History } from 'lucide-react';
 import { IPEmotion } from '@jobby/ui/components/UI/IPEmotion';
 import type {
   FormFieldObservation,
   FormInspection,
 } from '../../shared/contracts/form-inspection';
+import type { TailoredResume } from '../../shared/contracts/tailored-resume';
+import { formatRelativeTime } from '../../shared/utils/date-formatter';
 import type { UploadSyncState } from '../hooks/useInspection';
 
 interface ResultsDisplayProps {
@@ -14,12 +16,16 @@ interface ResultsDisplayProps {
   isInspectingForm: boolean;
   onFocusField: (field: FormFieldObservation) => Promise<void>;
   onFillSingleField: (field: FormFieldObservation) => Promise<boolean | void>;
-  onUploadDefaultResume: (field: FormFieldObservation) => Promise<void>;
+  onUploadTailoredResume: (
+    field: FormFieldObservation,
+    resume: TailoredResume,
+  ) => Promise<void>;
   onEditField: (
     field: FormFieldObservation,
     value: string | boolean,
   ) => Promise<void>;
   uploadStates: Record<string, UploadSyncState>;
+  tailoredResumes: TailoredResume[];
   isAutofilling: boolean;
 }
 
@@ -28,9 +34,10 @@ export function ResultsDisplay({
   isInspectingForm,
   onFocusField,
   onFillSingleField,
-  onUploadDefaultResume,
+  onUploadTailoredResume,
   onEditField,
   uploadStates,
+  tailoredResumes = [],
   isAutofilling,
 }: ResultsDisplayProps) {
   const formFields =
@@ -52,9 +59,10 @@ export function ResultsDisplay({
             fields={formFields}
             onFocusField={onFocusField}
             onFillSingleField={onFillSingleField}
-            onUploadDefaultResume={onUploadDefaultResume}
+            onUploadTailoredResume={onUploadTailoredResume}
             onEditField={onEditField}
             uploadStates={uploadStates}
+            tailoredResumes={tailoredResumes}
             isAutofilling={isAutofilling}
           />
         </div>
@@ -90,12 +98,16 @@ interface FormFieldsProps {
   fields: FormFieldObservation[];
   onFocusField: (field: FormFieldObservation) => Promise<void>;
   onFillSingleField: (field: FormFieldObservation) => Promise<boolean | void>;
-  onUploadDefaultResume: (field: FormFieldObservation) => Promise<void>;
+  onUploadTailoredResume: (
+    field: FormFieldObservation,
+    resume: TailoredResume,
+  ) => Promise<void>;
   onEditField: (
     field: FormFieldObservation,
     value: string | boolean,
   ) => Promise<void>;
   uploadStates: Record<string, UploadSyncState>;
+  tailoredResumes: TailoredResume[];
   isAutofilling: boolean;
 }
 
@@ -103,9 +115,10 @@ function FormFields({
   fields,
   onFocusField,
   onFillSingleField,
-  onUploadDefaultResume,
+  onUploadTailoredResume,
   onEditField,
   uploadStates,
+  tailoredResumes,
   isAutofilling,
 }: FormFieldsProps) {
   return (
@@ -116,9 +129,10 @@ function FormFields({
           field={field}
           onFocusField={onFocusField}
           onFillSingleField={onFillSingleField}
-          onUploadDefaultResume={onUploadDefaultResume}
+          onUploadTailoredResume={onUploadTailoredResume}
           onEditField={onEditField}
           uploadState={uploadStates[field.key]}
+          tailoredResumes={tailoredResumes}
           isAutofilling={isAutofilling}
         />
       ))}
@@ -130,12 +144,16 @@ interface FormFieldRowProps {
   field: FormFieldObservation;
   onFocusField: (field: FormFieldObservation) => Promise<void>;
   onFillSingleField: (field: FormFieldObservation) => Promise<boolean | void>;
-  onUploadDefaultResume: (field: FormFieldObservation) => Promise<void>;
+  onUploadTailoredResume: (
+    field: FormFieldObservation,
+    resume: TailoredResume,
+  ) => Promise<void>;
   onEditField: (
     field: FormFieldObservation,
     value: string | boolean,
   ) => Promise<void>;
   uploadState?: UploadSyncState;
+  tailoredResumes: TailoredResume[];
   isAutofilling: boolean;
 }
 
@@ -170,18 +188,58 @@ function displayValue(field: FormFieldObservation): string {
   );
 }
 
+export type FileFieldPurpose =
+  | 'resume'
+  | 'cover_letter'
+  | 'profile_image'
+  | 'portfolio'
+  | 'other';
+
+export function fileFieldPurpose(field: FormFieldObservation): FileFieldPurpose {
+  if (field.type !== 'file') return 'other';
+  const identity = [
+    field.label,
+    field.key,
+    field.id,
+    field.name,
+    ...(field.semanticFeatures || []),
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+  if (/cover[\s_-]*(?:letter|note)|motivation[\s_-]*letter|求职信|自荐信|附言/.test(identity))
+    return 'cover_letter';
+  if (/profile[\s_-]*(?:image|photo)|avatar|headshot|头像/.test(identity))
+    return 'profile_image';
+  if (/portfolio|work[\s_-]*sample|作品集/.test(identity)) return 'portfolio';
+  if (/resume|curriculum[\s_-]*vitae|(?:^|[^a-z])cv(?:[^a-z]|$)|简历|履历/.test(identity))
+    return 'resume';
+  return 'other';
+}
+
+function displayLabel(field: FormFieldObservation): string {
+  const purpose = fileFieldPurpose(field);
+  if (purpose === 'resume') return 'Resume';
+  if (purpose === 'cover_letter') return 'Cover letter';
+  if (purpose === 'profile_image') return 'Profile image';
+  if (purpose === 'portfolio') return 'Portfolio / work sample';
+  return field.label;
+}
+
 function FormFieldRow({
   field,
   onFocusField,
   onFillSingleField,
-  onUploadDefaultResume,
+  onUploadTailoredResume,
   onEditField,
   uploadState,
+  tailoredResumes,
   isAutofilling,
 }: FormFieldRowProps) {
   const [draft, setDraft] = useState(() => formValue(field));
   const [editing, setEditing] = useState(false);
   const [isSingleFilling, setIsSingleFilling] = useState(false);
+  const [selectedResumeId, setSelectedResumeId] = useState('');
   const timer = useRef<number | undefined>(undefined);
 
   const handleSingleFill = async (e: React.MouseEvent) => {
@@ -192,6 +250,7 @@ function FormFieldRow({
     setIsSingleFilling(true);
     try {
       await onFocusField(field);
+      if (field.type === 'file') return;
       await onFillSingleField(field);
     } finally {
       setIsSingleFilling(false);
@@ -203,12 +262,30 @@ function FormFieldRow({
   const pendingValue = useRef<string | boolean | undefined>(undefined);
   const editable =
     !field.sensitive && !['file', 'password', 'unknown'].includes(field.type);
-  const isResumeUpload =
-    field.type === 'file' &&
-    (/resume|curriculum vitae|\bcv\b|简历|履历|document|upload/i.test(
-      field.label,
-    ) ||
-      field.type === 'file');
+  const purpose = fileFieldPurpose(field);
+  const isResumeUpload = purpose === 'resume';
+  const isDocumentUpload =
+    isResumeUpload || purpose === 'cover_letter' || purpose === 'other';
+  const recentTailoredResumes = tailoredResumes.filter(
+    (resume) => !resume.isGenerating && Boolean(resume.resume_data),
+  );
+  const selectedResume = recentTailoredResumes.find(
+    (resume) => resume.id === selectedResumeId,
+  );
+
+  useEffect(() => {
+    if (recentTailoredResumes.length > 0) {
+      const firstId = recentTailoredResumes[0]?.id;
+      if (
+        firstId &&
+        (!selectedResumeId ||
+          !recentTailoredResumes.some((r) => r.id === selectedResumeId))
+      ) {
+        setSelectedResumeId(firstId);
+      }
+    }
+  }, [recentTailoredResumes, selectedResumeId]);
+
   const isUploadInFlight = uploadState?.phase === 'uploading';
   const currentValue = displayValue(field);
 
@@ -300,7 +377,7 @@ function FormFieldRow({
                 : ''
               }`}
             >
-              {field.label}
+              {displayLabel(field)}
               {field.required && (
                 <span className='text-red-500 text-md shrink-0'> *</span>
               )}
@@ -394,27 +471,76 @@ function FormFieldRow({
               ))}
             </div>
           )}
+          {isDocumentUpload && (
+            <div className='form-resume-picker'>
+              <span className='form-resume-picker-title'>
+                <History className='h-3 w-3 text-primary' />
+                Recent Tailor ({recentTailoredResumes.length})
+              </span>
+              <div
+                className='form-resume-card-list no-scrollbar'
+                aria-label='Select from Recent Tailor'
+              >
+                {recentTailoredResumes.length > 0 ?
+                  recentTailoredResumes.map((resume) => {
+                    const isSelected = resume.id === selectedResumeId;
+                    return (
+                      <button
+                        key={resume.id}
+                        type='button'
+                        className={`form-resume-card ${isSelected ? 'is-selected' : ''}`}
+                        disabled={isUploadInFlight}
+                        aria-pressed={isSelected}
+                        onClick={() => setSelectedResumeId(resume.id)}
+                      >
+                        <span className='form-resume-card-topline'>
+                          <span className='form-resume-card-role'>
+                            {resume.job_title || 'Tailored Resume'}
+                          </span>
+                          <span className='form-resume-card-time'>
+                            {formatRelativeTime(resume.created_at)}
+                          </span>
+                        </span>
+                        <span className='form-resume-card-company'>
+                          <span>{resume.company || 'Job Application'}</span>
+                          {isSelected && (
+                            <Check className='h-3 w-3 shrink-0 text-primary' />
+                          )}
+                        </span>
+                      </button>
+                    );
+                  })
+                : <span className='form-resume-empty'>
+                    No tailored resumes available. Create one in Studio first.
+                  </span>
+                }
+              </div>
+            </div>
+          )}
           <button
             type='button'
-            disabled={isUploadInFlight}
+            disabled={
+              isUploadInFlight || (isDocumentUpload && !selectedResume)
+            }
             onClick={() =>
-              void (isResumeUpload ?
-                onUploadDefaultResume(field)
+              void (isDocumentUpload && selectedResume ?
+                onUploadTailoredResume(field, selectedResume)
               : onFocusField(field))
             }
           >
-            {isResumeUpload ?
+            {isDocumentUpload ?
               isUploadInFlight ?
-                'Uploading default Resume...'
+                'Uploading selected Document...'
               : field.filled ?
-                'Reupload default Resume'
-              : 'Upload default Resume'
+                'Reupload selected Resume'
+              : 'Upload selected Resume'
             : 'Go to Upload'}
           </button>
           <UploadState
             field={field}
             state={uploadState}
-            isResumeUpload={isResumeUpload}
+            isResumeUpload={isDocumentUpload}
+            selectedResumeTitle={selectedResume?.job_title || undefined}
           />
         </div>
       : null}
@@ -426,10 +552,12 @@ function UploadState({
   field,
   state,
   isResumeUpload,
+  selectedResumeTitle,
 }: {
   field: FormFieldObservation;
   state?: UploadSyncState;
   isResumeUpload: boolean;
+  selectedResumeTitle?: string;
 }) {
   const phase =
     state?.phase ||
@@ -444,7 +572,10 @@ function UploadState({
       : 'Confirm: file is ready.'
     : field.upload?.state === 'rejected' ?
       field.upload.detail || 'The website rejected the file.'
-    : isResumeUpload ? 'Reading default Resume from Jobby and uploading...'
+    : isResumeUpload ?
+      selectedResumeTitle ?
+        `Ready to upload: ${selectedResumeTitle}`
+      : 'Select a resume from Recent Tailor to upload.'
     : 'Please select a file on the webpage.');
 
   return (

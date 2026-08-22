@@ -4,6 +4,12 @@ import { extractTechnologyKeywords } from "../../technology-keywords";
 import { extractStructuredText } from "../../text-utils";
 
 const JOB_TITLE_SELECTOR = [
+  // SmartRecruiters exposes schema.org microdata, but also mounts an IE11
+  // support overlay whose heading appears first in DOM order. Prefer the
+  // JobPosting title over every generic heading.
+  "main[itemtype*='JobPosting' i] [itemprop='title']",
+  "[itemtype*='JobPosting' i] [itemprop='title']",
+  "[itemprop='title']",
   // Generic data attributes used by many ATSs
   "[data-testid*='job-title' i]",
   "[data-qa*='job-title' i]",
@@ -57,6 +63,7 @@ const JOB_HEADING_PATTERN =
 const APPLY_PATTERN =
   /\b(apply(?:\s+now)?|quick apply|easy apply|submit application|express interest)\b|立即申请|申请职位|投递简历/i;
 const URL_JOB_PATTERN = /(?:^|[/_.-])(job|jobs|career|careers|position|positions|vacancy|vacancies|role|roles|jd|posting|postings|opening|openings|requisition)(?:[/_.?-]|$)/i;
+const INVALID_TITLE_PATTERN = /\b(?:internet explorer|browser (?:is )?not supported|unsupported browser|please (?:enable|update) (?:your )?browser|access denied|page not found|something went wrong|maintenance mode)\b/i;
 
 type QueryRoot = Document | ShadowRoot;
 
@@ -102,6 +109,20 @@ function firstUsefulText(candidates: readonly HTMLElement[], minLength = 2, maxL
   for (const candidate of candidates) {
     const text = cleanText(candidate.textContent);
     if (text.length >= minLength && text.length <= maxLength) return text;
+  }
+  return "";
+}
+
+function isUsefulJobTitle(value: string): boolean {
+  const title = cleanText(value);
+  if (title.length < 3 || title.length > 180) return false;
+  return !INVALID_TITLE_PATTERN.test(title);
+}
+
+function jobTitleFromPage(roots: readonly QueryRoot[]): string {
+  for (const candidate of elements(JOB_TITLE_SELECTOR, roots)) {
+    const title = cleanText(candidate.textContent);
+    if (isUsefulJobTitle(title)) return title;
   }
   return "";
 }
@@ -221,6 +242,59 @@ function jobPostingFromStructuredData(): {
 }
 
 /**
+ * Read schema.org microdata used by SmartRecruiters and several company ATS
+ * pages. Unlike JSON-LD it is rendered alongside the posting, so it remains
+ * available when an ATS has no JSON-LD script at all.
+ */
+function jobPostingFromMicrodata(roots: readonly QueryRoot[]): {
+  title?: string;
+  company?: string;
+  location?: string;
+  description?: string;
+  externalId?: string;
+  datePosted?: string;
+} | null {
+  const posting = elements("[itemscope][itemtype*='JobPosting' i]", roots)[0];
+  if (!posting) return null;
+
+  const propertyValue = (scope: ParentNode, property: string): string => {
+    const element = scope.querySelector<HTMLElement>(`[itemprop='${property}']`);
+    if (!element) return "";
+    return cleanText(
+      element.getAttribute("content") ||
+        element.getAttribute("datetime") ||
+        element.getAttribute("href") ||
+        element.textContent,
+    );
+  };
+  const title = propertyValue(posting, "title");
+  const companyScope = posting.querySelector<HTMLElement>("[itemprop='hiringOrganization']");
+  const locationScope = posting.querySelector<HTMLElement>("[itemprop='jobLocation']");
+  const location = locationScope
+    ? [
+        propertyValue(locationScope, "streetAddress"),
+        propertyValue(locationScope, "addressLocality"),
+        propertyValue(locationScope, "addressRegion"),
+        propertyValue(locationScope, "addressCountry"),
+      ].filter(Boolean).join(", ")
+    : "";
+  const descriptionElement = posting.querySelector<HTMLElement>("[itemprop='description']");
+  const description = extractStructuredText(descriptionElement);
+
+  // A page's URL is only a fallback identifier. It is intentionally kept out
+  // of the title/description source so it cannot make two page variants score
+  // differently when their posting microdata is otherwise identical.
+  return {
+    title: isUsefulJobTitle(title) ? title : undefined,
+    company: companyScope ? propertyValue(companyScope, "name") || undefined : undefined,
+    location: location || undefined,
+    description: description || undefined,
+    externalId: propertyValue(posting, "identifier") || undefined,
+    datePosted: propertyValue(posting, "datePosted") || undefined,
+  };
+}
+
+/**
  * Generic date-posted scraper for ATS pages.
  * Tries <time datetime> first, then looks for spans/divs containing
  * common relative-date patterns.
@@ -296,10 +370,10 @@ function stableId(value: string): string {
 export function readGenericJobPage(): PageInspection {
   const url = window.location.href;
   const roots = queryRoots();
-  const structured = jobPostingFromStructuredData();
+  const structured = jobPostingFromStructuredData() || jobPostingFromMicrodata(roots);
   const title =
     structured?.title ||
-    firstUsefulText(elements(JOB_TITLE_SELECTOR, roots), 3, 180) ||
+    jobTitleFromPage(roots) ||
     "";
   const description = structured?.description || descriptionFromPage(roots);
   const company =

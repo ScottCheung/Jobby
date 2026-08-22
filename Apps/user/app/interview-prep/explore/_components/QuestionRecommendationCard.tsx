@@ -23,7 +23,6 @@ import {
 } from './explore-utils';
 import { div } from 'framer-motion/client';
 
-
 type QuestionRecommendationCardProps = {
   question: InterviewQuestion;
   onSave: (question: InterviewQuestion) => void;
@@ -62,7 +61,7 @@ export function QuestionRecommendationCard({
         'relative flex h-full flex-col justify-between rounded-xl rounded-tr-2xl! rounded-br-3xl! border p-4 transition-colors hover:border-primary/40',
         compact ?
           'min-h-[154px] border-primary/20 bg-primary/5'
-        : 'min-h-[190px] border-border/50 bg-background-secondary/35',
+        : 'min-h-[190px] border-primary/50 bg-background-secondary/35',
       )}
     >
       <button
@@ -74,7 +73,7 @@ export function QuestionRecommendationCard({
           compact ? 'h-7 w-7' : 'h-8 w-8',
           question.is_saved ?
             'border-primary/30 bg-primary/10 text-primary'
-          : 'border-border bg-background-secondary text-ink-secondary hover:border-primary/50 hover:text-primary',
+          : 'border-primary bg-background-secondary text-ink-secondary hover:border-primary/50 hover:text-primary',
         )}
         title={question.is_saved ? 'Saved' : 'Save to Library'}
       >

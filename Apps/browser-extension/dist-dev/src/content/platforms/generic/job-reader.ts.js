@@ -1,6 +1,12 @@
 import { extractTechnologyKeywords } from "/src/content/technology-keywords.ts.js";
 import { extractStructuredText } from "/src/content/text-utils.ts.js";
 const JOB_TITLE_SELECTOR = [
+  // SmartRecruiters exposes schema.org microdata, but also mounts an IE11
+  // support overlay whose heading appears first in DOM order. Prefer the
+  // JobPosting title over every generic heading.
+  "main[itemtype*='JobPosting' i] [itemprop='title']",
+  "[itemtype*='JobPosting' i] [itemprop='title']",
+  "[itemprop='title']",
   // Generic data attributes used by many ATSs
   "[data-testid*='job-title' i]",
   "[data-qa*='job-title' i]",
@@ -50,6 +56,7 @@ const APPLY_SELECTOR = "button, a, input[type='submit'], [role='button']";
 const JOB_HEADING_PATTERN = /\b(job description|about (?:the )?(?:job|role)|position description|role overview|responsibilities|what you(?:'|’)ll do|qualifications|requirements)\b|职位描述|岗位职责|任职要求/i;
 const APPLY_PATTERN = /\b(apply(?:\s+now)?|quick apply|easy apply|submit application|express interest)\b|立即申请|申请职位|投递简历/i;
 const URL_JOB_PATTERN = /(?:^|[/_.-])(job|jobs|career|careers|position|positions|vacancy|vacancies|role|roles|jd|posting|postings|opening|openings|requisition)(?:[/_.?-]|$)/i;
+const INVALID_TITLE_PATTERN = /\b(?:internet explorer|browser (?:is )?not supported|unsupported browser|please (?:enable|update) (?:your )?browser|access denied|page not found|something went wrong|maintenance mode)\b/i;
 function cleanText(value) {
   return (value || "").replace(/\s+/g, " ").trim();
 }
@@ -86,6 +93,18 @@ function firstUsefulText(candidates, minLength = 2, maxLength = 180) {
   for (const candidate of candidates) {
     const text = cleanText(candidate.textContent);
     if (text.length >= minLength && text.length <= maxLength) return text;
+  }
+  return "";
+}
+function isUsefulJobTitle(value) {
+  const title = cleanText(value);
+  if (title.length < 3 || title.length > 180) return false;
+  return !INVALID_TITLE_PATTERN.test(title);
+}
+function jobTitleFromPage(roots) {
+  for (const candidate of elements(JOB_TITLE_SELECTOR, roots)) {
+    const title = cleanText(candidate.textContent);
+    if (isUsefulJobTitle(title)) return title;
   }
   return "";
 }
@@ -178,6 +197,36 @@ function jobPostingFromStructuredData() {
   }
   return null;
 }
+function jobPostingFromMicrodata(roots) {
+  const posting = elements("[itemscope][itemtype*='JobPosting' i]", roots)[0];
+  if (!posting) return null;
+  const propertyValue = (scope, property) => {
+    const element = scope.querySelector(`[itemprop='${property}']`);
+    if (!element) return "";
+    return cleanText(
+      element.getAttribute("content") || element.getAttribute("datetime") || element.getAttribute("href") || element.textContent
+    );
+  };
+  const title = propertyValue(posting, "title");
+  const companyScope = posting.querySelector("[itemprop='hiringOrganization']");
+  const locationScope = posting.querySelector("[itemprop='jobLocation']");
+  const location = locationScope ? [
+    propertyValue(locationScope, "streetAddress"),
+    propertyValue(locationScope, "addressLocality"),
+    propertyValue(locationScope, "addressRegion"),
+    propertyValue(locationScope, "addressCountry")
+  ].filter(Boolean).join(", ") : "";
+  const descriptionElement = posting.querySelector("[itemprop='description']");
+  const description = extractStructuredText(descriptionElement);
+  return {
+    title: isUsefulJobTitle(title) ? title : void 0,
+    company: companyScope ? propertyValue(companyScope, "name") || void 0 : void 0,
+    location: location || void 0,
+    description: description || void 0,
+    externalId: propertyValue(posting, "identifier") || void 0,
+    datePosted: propertyValue(posting, "datePosted") || void 0
+  };
+}
 function datePostedFromDom() {
   const metaSelectors = [
     "meta[property='article:published_time']",
@@ -235,8 +284,8 @@ function stableId(value) {
 export function readGenericJobPage() {
   const url = window.location.href;
   const roots = queryRoots();
-  const structured = jobPostingFromStructuredData();
-  const title = structured?.title || firstUsefulText(elements(JOB_TITLE_SELECTOR, roots), 3, 180) || "";
+  const structured = jobPostingFromStructuredData() || jobPostingFromMicrodata(roots);
+  const title = structured?.title || jobTitleFromPage(roots) || "";
   const description = structured?.description || descriptionFromPage(roots);
   const company = structured?.company || labelledValue(["company", "employer", "organisation", "organization"], roots) || companyFromBranding(roots) || "";
   const location = structured?.location || locationFromPage(roots) || "";

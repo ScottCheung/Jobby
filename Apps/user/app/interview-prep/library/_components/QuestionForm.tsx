@@ -198,7 +198,7 @@ export function QuestionForm({
             </button>
           </div>
 
-          <div className='flex flex-wrap gap-1.5 max-h-28 overflow-y-auto p-1.5 border border-border/40/80 rounded-lg'>
+          <div className='flex flex-wrap gap-1.5 max-h-28 overflow-y-auto p-1.5 border border-primary/40/80 rounded-lg'>
             {tags.length === 0 ?
               <span className='body-sm text-ink-secondary italic p-1'>
                 No tags created yet.
@@ -214,7 +214,7 @@ export function QuestionForm({
                       'body-sm px-2.5 py-1 rounded-lg transition-colors border',
                       active ?
                         'bg-primary border-primary text-primary-foreground font-semibold'
-                      : 'bg-background-secondary/50 border-border hover:bg-background-secondary text-ink-secondary dark:bg-panel dark:border-border dark:hover:bg-background-secondary',
+                      : 'bg-background-secondary/50 border-primary hover:bg-background-secondary text-ink-secondary dark:bg-panel dark:border-primary dark:hover:bg-background-secondary',
                     )}
                   >
                     {cleanName(tag.name)}

@@ -1,4 +1,4 @@
-import { z } from "/vendor/.vite-deps-zod.js__v--14b8c224.js";
+import { z } from "/vendor/.vite-deps-zod.js__v--22c5bc1a.js";
 const jobSnapshotFields = {
   externalId: z.string().min(1),
   url: z.string().url(),

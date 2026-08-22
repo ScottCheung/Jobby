@@ -101,7 +101,7 @@ export default function ExploreLayout({
             </div>
           </div>
 
-          <div className='mt-4 border-t border-border/50 pt-4'>
+          <div className='mt-4 border-t border-primary/50 pt-4'>
             <button
               type='button'
               onClick={() => navigateTo('sets')}

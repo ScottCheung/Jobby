@@ -13,7 +13,7 @@ import type {
 } from '@/lib/types';
 
 import { useGlobalModalStore } from '@/lib/store/global-modal-store';
-import { ResumePdfPreview } from './resume-pdf-preview';
+import { ResumePdfPreview, ResumePreviewCard } from './resume-pdf-preview';
 
 const EVALUATION_DIMENSIONS = {
   factual_completeness: { label: 'Factual completeness', weight: 25 },
@@ -34,7 +34,7 @@ function TagList({ values }: { values: string[] }) {
       {values.map((value) => (
         <span
           key={value}
-          className='rounded-md border border-border bg-background-secondary px-2 py-1 text-xs text-ink-secondary'
+          className='rounded-md bg-background-secondary px-2 py-1 text-xs text-ink-secondary'
         >
           {value}
         </span>
@@ -119,7 +119,7 @@ export function ResumeScoreSidebar({
                 key={dimension.type}
                 className=''
               >
-                <div className='flex flex-col items-center justify-center p-3 text-center rounded-2xl bg-background-secondary/50 border border-border/40'>
+                <div className='flex flex-col items-center justify-center p-3 text-center rounded-2xl bg-background-secondary/50'>
                   <CircularProgress
                     value={dimension.score}
                     size='sm'
@@ -153,22 +153,18 @@ export function ResumeScoreSidebar({
 export function ResumePreviewSidebar({
   data,
   filename,
+  profileName,
 }: {
   data: MasterResumeData;
   filename: string;
+  profileName?: string;
 }) {
   return (
-    <section className='panel-xl col group border border-border'>
-      <div className='header items-start!'>
-        <div className='min-w-0'>
-          <p className='label text-left text-ink-secondary'>Resume preview</p>
-          <p className='mt-1 truncate text-sm font-medium text-ink-primary'>
-            {filename}
-          </p>
-        </div>
-      </div>
-      <ResumePdfPreview data={data} filename={filename} />
-    </section>
+    <ResumePreviewCard
+      data={data}
+      filename={filename}
+      badge={profileName}
+    />
   );
 }
 
@@ -222,14 +218,6 @@ function ScoreDetails({
             </Button>
           )}
         </div>
-        {/* <button
-          type='button'
-          aria-label='Close score details'
-          onClick={onClose}
-          className='flex h-9 w-9 items-center justify-center rounded-full text-ink-secondary hover:bg-background-secondary'
-        >
-          <X className='h-4 w-4' />
-        </button> */}
       </header>
       <div className=''>
         {!evaluation ?
@@ -251,7 +239,7 @@ function ScoreDetails({
                   }}
                   layoutId={config.label}
                   key={dimension.type}
-                  className='panel-lg bg-background-secondary/50! border border-primary/10'
+                  className='panel-lg bg-background-secondary/50!'
                 >
                   <span className='text-3xl font-extrabold text-ink-primary'>
                     {dimension.score}
@@ -267,15 +255,6 @@ function ScoreDetails({
                       style={{
                         width: `${Math.max(0, Math.min(100, dimension.score))}%`,
                       }}
-                      // initial={{ width: 0 }}
-                      // animate={{
-                      //   width: `${Math.max(0, Math.min(100, dimension.score))}%`,
-                      // }}
-                      // transition={{
-                      //   duration: 0.7,
-                      //   delay: index * 0.2,
-                      //   ease: [0.22, 1, 0.36, 1],
-                      // }}
                     />
                   </div>
                   <p className='mt-3 text-sm leading-6 text-ink-secondary'>
@@ -283,7 +262,7 @@ function ScoreDetails({
                   </p>
 
                   {dimension.suggestions.length > 0 && (
-                    <ul className='mt-3 space-y-2 list-disc border-l-4 border-primary/30 pl-8 text-sm leading-6 text-ink-secondary'>
+                    <ul className='mt-3 space-y-2 list-disc pl-8 text-sm leading-6 text-ink-secondary'>
                       {dimension.suggestions.map((suggestion) => (
                         <li key={suggestion} className='text-xs'>
                           {suggestion}
@@ -311,23 +290,16 @@ export function ResumeVersionPreview({
   const snapshot = item.resume_data;
   if (!snapshot) return null;
   const hasEvaluation = Array.isArray(item.evaluation?.evaluation);
-  const basics = snapshot.basics ?? {};
-  const fullName = [basics.first_name, basics.middle_name, basics.last_name]
-    .filter(Boolean)
-    .join(' ');
-  const experiences =
-    Array.isArray(snapshot.experience) ? snapshot.experience : [];
-  const education = Array.isArray(snapshot.education) ? snapshot.education : [];
-  const projects = Array.isArray(snapshot.projects) ? snapshot.projects : [];
-  const skills = Array.isArray(snapshot.skills) ? snapshot.skills : [];
+  const versionTitle =
+    item.resume_version > 0 ? `v${item.resume_version}` : 'Snapshot';
 
   return (
     <div className='flex max-h-[88vh] min-h-[560px] flex-col'>
       <header className='header px-8'>
-        <p className='body-sm  text-ink-secondary'>
+        <p className='body-sm text-ink-secondary'>
           {hasEvaluation ?
-            `Evaluated ${new Date(item.created_at).toLocaleString()} · v${item.resume_version} · Score ${item.evaluation.overall_score}/100`
-          : `Published ${new Date(item.created_at).toLocaleString()} · v${item.resume_version} · Not evaluated`
+            `Evaluated ${new Date(item.created_at).toLocaleString()} · ${versionTitle} · Score ${item.evaluation.overall_score}/100`
+          : `Published ${new Date(item.created_at).toLocaleString()} · ${versionTitle} · Not evaluated`
           }
         </p>
 
@@ -341,8 +313,8 @@ export function ResumeVersionPreview({
           <X className='size-4' />
         </button>
       </header>
-      <div className='body grid flex-1 overflow-y-auto lg:grid-cols-[260px_minmax(0,1fr)]'>
-        <aside className='border-b border-border bg-background-secondary p-5 lg:border-b-0 lg:border-r'>
+      <div className='body grid flex-1 overflow-y-auto lg:grid-cols-[280px_minmax(0,1fr)]'>
+        <aside className='bg-background-secondary p-5 lg:border-r border-border/50 overflow-y-auto custom-scrollbar-primary'>
           <p className='label text-ink-primary'>Evaluation</p>
           <div className='mt-4 space-y-4'>
             {(item.evaluation?.evaluation ?? []).map((dimension) => {
@@ -350,7 +322,9 @@ export function ResumeVersionPreview({
               return (
                 <div key={dimension.type}>
                   <div className='flex justify-between gap-3 text-sm'>
-                    <span className='text-ink-secondary'>{config.label}</span>
+                    <span className='text-ink-secondary'>
+                      {config?.label ?? dimension.type}
+                    </span>
                     <span className='font-semibold text-ink-primary'>
                       {dimension.score}
                     </span>
@@ -366,115 +340,16 @@ export function ResumeVersionPreview({
             })}
           </div>
         </aside>
-        <main className='space-y-6 p-6'>
-          <section>
-            <h3 className='text-xl font-semibold text-ink-primary'>
-              {fullName || 'Name not listed'}
-            </h3>
-            {basics.headline && (
-              <p className='body-sm mt-1 text-ink-secondary'>
-                {basics.headline}
-              </p>
-            )}
-            <p className='mt-2 text-xs text-ink-secondary'>
-              {[basics.email, basics.phone].filter(Boolean).join(' · ') ||
-                'Contact details not listed'}
-            </p>
-          </section>
-          {snapshot.summary && (
-            <section className='border-t border-border pt-5'>
-              <h3 className='label text-ink-primary'>Summary</h3>
-              <p className='body-sm mt-2 whitespace-pre-line text-ink-secondary'>
-                {snapshot.summary}
-              </p>
-            </section>
-          )}
-          {experiences.length > 0 && (
-            <section className='border-t border-border pt-5'>
-              <h3 className='label text-ink-primary'>Experience</h3>
-              <div className='mt-3 space-y-5'>
-                {experiences.map((experience, index) => (
-                  <div
-                    key={`${experience.company}-${experience.title}-${index}`}
-                  >
-                    <div className='flex flex-wrap justify-between gap-2'>
-                      <p className='font-medium text-ink-primary'>
-                        {[experience.title, experience.company]
-                          .filter(Boolean)
-                          .join(' · ') || 'Experience'}
-                      </p>
-                      <p className='text-xs text-ink-secondary'>
-                        {dateRange(experience.start_date, experience.end_date)}
-                      </p>
-                    </div>
-                    {experience.description?.length > 0 && (
-                      <ul className='body-sm mt-2 list-disc space-y-1 pl-5 text-ink-secondary'>
-                        {experience.description.map((line) => (
-                          <li key={line}>{line}</li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
-          {education.length > 0 && (
-            <section className='border-t border-border pt-5'>
-              <h3 className='label text-ink-primary'>Education</h3>
-              <div className='mt-3 space-y-3'>
-                {education.map((entry, index) => (
-                  <div key={`${entry.institution}-${index}`}>
-                    <p className='font-medium text-ink-primary'>
-                      {[entry.degree, entry.field_of_study]
-                        .filter(Boolean)
-                        .join(' in ') || 'Education'}
-                    </p>
-                    <p className='body-sm text-ink-secondary'>
-                      {entry.institution}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
-          {projects.length > 0 && (
-            <section className='border-t border-border pt-5'>
-              <h3 className='label text-ink-primary'>Projects</h3>
-              <div className='mt-3 space-y-3'>
-                {projects.map((project, index) => (
-                  <div key={`${project.name}-${index}`}>
-                    <p className='font-medium text-ink-primary'>
-                      {project.name || 'Project'}
-                    </p>
-                    {project.description?.length > 0 && (
-                      <p className='body-sm mt-1 text-ink-secondary'>
-                        {project.description.join(' ')}
-                      </p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
-          {skills.length > 0 && (
-            <section className='border-t border-border pt-5'>
-              <h3 className='label text-ink-primary'>Skills</h3>
-              <div className='mt-3 space-y-3'>
-                {skills.map((group, index) => (
-                  <div key={`${group.type}-${index}`}>
-                    <p className='text-xs text-ink-secondary'>{group.type}</p>
-                    <TagList values={group.skills ?? []} />
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
+        <main className='p-6 overflow-y-auto custom-scrollbar-primary flex justify-center bg-background-secondary/30'>
+          <div className='w-full max-w-2xl'>
+            <ResumePreviewCard
+              data={snapshot}
+              badge={versionTitle}
+              filename={`resume-${versionTitle.toLowerCase()}`}
+            />
+          </div>
         </main>
       </div>
-      {/* <footer className='footer'>
-        <Button onClick={onClose}>Close preview</Button>
-      </footer> */}
     </div>
   );
 }

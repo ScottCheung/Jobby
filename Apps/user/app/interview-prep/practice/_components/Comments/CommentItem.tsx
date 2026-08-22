@@ -213,7 +213,7 @@ export function CommentItem({
               <MoreHorizontal className='h-4 w-4' />
             </button>
             {reportMenuOpen && (
-              <div className='absolute right-0 top-7 z-50 w-40 rounded-xl border border-border bg-background-primary backdrop-blur-sm p-1 shadow-lg'>
+              <div className='absolute right-0 top-7 z-50 w-40 rounded-xl border border-primary bg-background-primary backdrop-blur-sm p-1 shadow-lg'>
                 <button
                   onClick={() => void copyComment()}
                   className='flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs text-ink-secondary hover:bg-background-secondary'
@@ -244,7 +244,7 @@ export function CommentItem({
                     Delete
                   </button>
                 : <>
-                    <p className='mt-1 border-t border-border/60 px-2 pt-2 text-[9px] font-bold uppercase tracking-wide text-ink-secondary/70'>
+                    <p className='mt-1 border-t border-primary/60 px-2 pt-2 text-[9px] font-bold uppercase tracking-wide text-ink-secondary/70'>
                       Report as
                     </p>
                     {(

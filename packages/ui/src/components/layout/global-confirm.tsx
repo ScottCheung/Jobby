@@ -60,7 +60,7 @@ export function GlobalConfirm() {
             initial={{ opacity: 0, scale: 0.96, y: 8 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 8 }}
-            className='relative w-full max-w-md rounded-3xl border border-border/60 bg-panel p-6 shadow-2xl'
+            className='relative w-full max-w-md rounded-3xl border border-primary/60 bg-panel p-6 shadow-2xl'
           >
             {getIcon()}
             <h3 className='title-card'>{title}</h3>

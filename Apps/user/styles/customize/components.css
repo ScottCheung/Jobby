@@ -61,7 +61,7 @@
 /** Medium Panel (was .module-panel): secondary container nested in panel-lg */
 .panel-md,
 .module-panel {
-  @apply rounded-xl p-4 bg-background-secondary/30 dark:bg-black/30 flex flex-col border border-border/30;
+  @apply rounded-xl p-4 bg-background-secondary/30 dark:bg-black/30 flex flex-col;
 }
 
 /** Small Panel (was .status-panel): tertiary container nested in panel-md */
@@ -70,10 +70,10 @@
   @apply rounded-lg p-2 bg-background-secondary/50 dark:bg-black/30 flex flex-col;
 }
 
-/** Extra Small Panel (was .surface): custom border container */
+/** Extra Small Panel (was .surface): custom container */
 .panel-xs,
 .surface {
-  @apply rounded-md p-2 bg-background-secondary/40 dark:bg-black/20 border border-border/50;
+  @apply rounded-md p-2 bg-background-secondary/40 dark:bg-black/20;
 }
 
 /* ============================================================
@@ -159,7 +159,7 @@
 
 /** Multi-line textarea — aligned to token system */
 .textarea {
-  @apply flex min-h-[300px] w-full  rounded-xl rounded-br-3xl! border border-border
+  @apply flex min-h-[300px] w-full  rounded-xl rounded-br-3xl! border border-primary
     bg-background-secondary/50 p-6 text-sm text-ink-primary
     placeholder:text-ink-secondary/60
     focus:bg-panel focus:border-primary/50
@@ -170,7 +170,7 @@
 
 /** Select dropdown — aligned to token system */
 .select {
-  @apply flex h-11 w-full rounded-xl border border-border
+  @apply flex h-11 w-full rounded-xl border border-primary
     bg-background-secondary/50 px-3.5 py-2 text-sm text-ink-primary
     placeholder:text-ink-secondary/60
     focus:bg-panel focus:border-primary/50
@@ -253,7 +253,7 @@
 }
 
 .select-card {
-  @apply min-h-[112px] rounded-xl border p-4 text-left transition-colors border-border/60 bg-background-secondary/35 text-ink-secondary hover:border-primary/40 hover:text-ink-primary;
+  @apply min-h-[112px] rounded-xl border p-4 text-left transition-colors border-primary/60 bg-background-secondary/35 text-ink-secondary hover:border-primary/40 hover:text-ink-primary;
 }
 
 .select-card-active {

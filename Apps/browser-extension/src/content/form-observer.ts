@@ -154,7 +154,7 @@ async function showFormActionNotice(
   document.getElementById(FORM_ACTION_NOTICE_ID)?.remove();
   const host = document.createElement("div");
   host.id = FORM_ACTION_NOTICE_ID;
-  host.style.cssText = "position:fixed;top:20px;right:20px;z-index:2147483647;";
+  host.style.cssText = "position:fixed !important;top:20px !important;right:20px !important;z-index:2147483647 !important;";
   const shadow = host.attachShadow({ mode: "closed" });
 
   const theme = await getNoticeTheme();
@@ -166,7 +166,11 @@ async function showFormActionNotice(
   shadow.innerHTML = `
     <style>
       :host {
-        all: initial;
+        all: initial !important;
+        position: fixed !important;
+        top: 20px !important;
+        right: 20px !important;
+        z-index: 2147483647 !important;
         font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       }
       .jobby-notice {
@@ -438,10 +442,11 @@ export function watchFormScope(
   const scopeParent = scope instanceof HTMLElement ? scope.parentNode : null;
   let schedule: (waitForStableDom?: boolean) => void;
   const observer = new MutationObserver((records) => {
+    if (!hasRelevantFormMutation(records)) return;
     records.forEach((record) => {
       record.addedNodes.forEach((node) => observeShadowRootsIn(node, observeRoot));
     });
-    if (hasRelevantFormMutation(records)) schedule(true);
+    schedule(true);
   });
 
   const publishForm = (form: FormInspection) => {
@@ -500,16 +505,11 @@ export function watchFormScope(
       }
 
       // Application frameworks often insert the dialog shell and controls in
-      // separate commits. Publish only after the relevant DOM has stayed
-      // quiet and two reads agree, rather than briefly showing a partial form.
-      const firstSignature = signature(form);
+      // separate commits. Recheck once for stability, then publish the latest
+      // verified form rather than recursing infinitely on active dynamic pages.
       stabilityTimer = window.setTimeout(() => {
         if (revision !== scheduledRevision) return;
         const verifiedForm = readForm();
-        if (signature(verifiedForm) !== firstSignature) {
-          schedule(true);
-          return;
-        }
         publishForm(verifiedForm);
       }, FORM_STABILITY_RECHECK_MS);
     }, waitForStableDom ? FORM_SETTLE_MS : FORM_OBSERVER_DEBOUNCE_MS);
@@ -621,6 +621,7 @@ export function watchFormScope(
   };
 
   const listenForValueChanges = (root: Document | HTMLElement | ShadowRoot): void => {
+    if (eventRoots.includes(root)) return;
     root.addEventListener("input", scheduleValueChange, true);
     root.addEventListener("change", scheduleValueChange, true);
     root.addEventListener("focusout", scheduleManualBlur, true);
@@ -699,14 +700,10 @@ export function startFormDiscovery(readForm: () => FormInspection): void {
     timer = window.setTimeout(() => {
       const form = readForm();
       if (!hasObservableFields(form)) return;
-      const firstSignature = signature(form);
       stabilityTimer = window.setTimeout(() => {
         if (revision !== scheduledRevision) return;
         const verifiedForm = readForm();
-        if (!hasObservableFields(verifiedForm) || signature(verifiedForm) !== firstSignature) {
-          scheduleDiscovery();
-          return;
-        }
+        if (!hasObservableFields(verifiedForm)) return;
         const scope = getCurrentFormScope();
         if (!scope) return;
         void chrome.runtime.sendMessage({ type: "content.form-changed", form: verifiedForm }).catch(() => undefined);
@@ -716,8 +713,8 @@ export function startFormDiscovery(readForm: () => FormInspection): void {
   };
 
   const discovery = new MutationObserver((records) => {
-    records.forEach((record) => record.addedNodes.forEach((node) => observeShadowRootsIn(node, observeRoot)));
     if (!records.some(hasDiscoveryMutation)) return;
+    records.forEach((record) => record.addedNodes.forEach((node) => observeShadowRootsIn(node, observeRoot)));
     scheduleDiscovery();
   });
 
@@ -727,19 +724,13 @@ export function startFormDiscovery(readForm: () => FormInspection): void {
     discovery.observe(root, {
       childList: true,
       subtree: true,
-      attributes: true,
-      attributeFilter: ["aria-hidden", "hidden", "style", "class", "disabled"],
     });
-    observeShadowRootsIn(root, observeRoot);
   }
 
   discovery.observe(document, {
     childList: true,
     subtree: true,
-    attributes: true,
-    attributeFilter: ["aria-hidden", "hidden", "style", "class", "disabled"],
   });
-  observeShadowRootsIn(document, observeRoot);
 
   const onFocus = (event: FocusEvent) => {
     const target = event.target;

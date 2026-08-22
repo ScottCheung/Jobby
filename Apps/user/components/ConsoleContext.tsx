@@ -12,6 +12,8 @@ import React, {
 } from 'react';
 import { usePathname } from 'next/navigation';
 import { api } from '@/lib/api';
+import { createClient } from '@/lib/supabase/client';
+import { openGlobalAuthModal } from '@/lib/store/auth-modal-store';
 import { showGlobalToast } from '@/lib/toast';
 import { withMinimumLoadingTime } from '@/lib/loading';
 import type {
@@ -340,6 +342,8 @@ interface ConsoleContextType {
     payload: DesktopConnectionConfig,
   ) => Promise<DesktopConnectionConfigResult>;
   resetDesktopConnectionConfig: () => Promise<DesktopConnectionConfigResult>;
+  isGuest: boolean;
+  requireAuth: (action: () => void | Promise<void>, reason?: string) => void;
   botStates: Record<DesktopBotPlatform, DesktopBotState>;
   startBot: (
     platform: DesktopBotPlatform,
@@ -538,6 +542,21 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
   );
 
   const pathname = usePathname();
+  const isGuest = !user;
+
+  const requireAuth = (action: () => void | Promise<void>, reason?: string) => {
+    if (user) {
+      void action();
+    } else {
+      openGlobalAuthModal({
+        reason: reason || 'Please sign in to continue',
+        onSuccess: () => {
+          void action();
+        },
+      });
+    }
+  };
+
   const [hasLoadedJobApplyData, setHasLoadedJobApplyData] = useState(false);
   const [jobApplyLoading, setJobApplyLoading] = useState(false);
   const hasLoadedJobApplyDataRef = React.useRef(false);
@@ -562,12 +581,12 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
         applicationSettingsConfig,
         statsData,
       ] = await Promise.all([
-        jobHuntingProfilesPromise,
-        api.jobHuntingProfile(),
+        jobHuntingProfilesPromise.catch(() => [] as JobHuntingProfile[]),
+        api.jobHuntingProfile().catch(() => null),
         Promise.resolve([] as QuestionCacheEntry[]),
-        api.applications(),
-        api.runtimeSettings(),
-        api.applicationSettings(),
+        api.applications().catch(() => [] as JobApplication[]),
+        api.runtimeSettings().catch(() => null),
+        api.applicationSettings().catch(() => null),
         api.applicationStats(Intl.DateTimeFormat().resolvedOptions().timeZone).catch(() => null),
       ]);
       const resolvedJobHuntingProfiles =
@@ -593,7 +612,10 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
       hasLoadedJobApplyDataRef.current = true;
     } catch (err) {
       console.error('Failed to load Job Apply data:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load job search data');
+      const msg = err instanceof Error ? err.message : 'Failed to load job search data';
+      if (!msg.toLowerCase().includes('authentication') && !msg.toLowerCase().includes('sign in')) {
+        setError(msg);
+      }
     } finally {
       setJobApplyLoading(false);
       jobApplyLoadingRef.current = false;
@@ -609,29 +631,28 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
           currentProfile,
         ] = await withMinimumLoadingTime(
           Promise.all([
-            api.me(),
-            api.profile(),
+            api.me().catch(() => null),
+            api.profile().catch(() => null),
           ]),
         );
         const profileWithDefaults = currentProfile ?? emptyProfile;
         const migratedProfile = migrateLegacyProfileSettings(profileWithDefaults);
         const resolvedProfile =
-          migratedProfile.changed ?
-            await api.updateProfile(migratedProfile.profile)
+          migratedProfile.changed && me ?
+            await api.updateProfile(migratedProfile.profile).catch(() => profileWithDefaults)
           : profileWithDefaults;
         setUser(me);
         setProfile(resolvedProfile);
         
         // Re-load or refresh job apply data if it was already loaded or in-progress
-        if (hasLoadedJobApplyDataRef.current) {
+        if (hasLoadedJobApplyDataRef.current && me) {
           void loadJobApplyData(true);
         }
       } catch (loadError) {
-        setError(
-          loadError instanceof Error ?
-            loadError.message
-          : 'Failed to load data',
-        );
+        const errorMsg = loadError instanceof Error ? loadError.message : 'Failed to load data';
+        if (!errorMsg.toLowerCase().includes('authentication') && !errorMsg.toLowerCase().includes('sign in')) {
+          setError(errorMsg);
+        }
       } finally {
         setHasLoadedInitialData(true);
       }
@@ -640,6 +661,35 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     loadData();
+
+    const supabase = createClient();
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+        loadData();
+      } else if (event === 'SIGNED_OUT') {
+        setUser(null);
+        setProfile(emptyProfile);
+        setApplications([]);
+        setJobHuntingProfiles([]);
+        setAppStats(null);
+      }
+    });
+
+    const handleUnauthorized = () => {
+      openGlobalAuthModal({
+        reason: '登录状态已失效或需要登录，请登录后继续',
+        next: typeof window !== 'undefined' ? window.location.pathname + window.location.search : undefined,
+      });
+    };
+
+    window.addEventListener('jobby:unauthorized', handleUnauthorized);
+
+    return () => {
+      subscription.unsubscribe();
+      window.removeEventListener('jobby:unauthorized', handleUnauthorized);
+    };
   }, []);
 
   useEffect(() => {
@@ -653,10 +703,10 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
       path.startsWith('/settings') ||
       path.startsWith('/question-cache');
 
-    if (isJobApplyRoute) {
+    if (isJobApplyRoute && user) {
       void loadJobApplyData();
     }
-  }, [pathname, hasLoadedInitialData]);
+  }, [pathname, hasLoadedInitialData, user]);
 
   useEffect(() => {
     let sse: EventSource | null = null;
@@ -1574,6 +1624,8 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
     desktopConnectionConfig,
     saveDesktopConnectionConfig,
     resetDesktopConnectionConfig,
+    isGuest,
+    requireAuth,
     botStates,
     startBot,
     stopBot,

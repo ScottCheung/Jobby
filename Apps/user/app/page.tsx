@@ -1,12 +1,19 @@
 /** @format */
 
 'use client';
-import { Chart, ChartWrapper, CityVectorMap, EmptyPlaceHolder, H2, SegmentedControl, ToggleGroup } from '@jobby/ui';
+import {
+  Chart,
+  ChartWrapper,
+  CityVectorMap,
+  EmptyPlaceHolder,
+  H2,
+  SegmentedControl,
+  ToggleGroup,
+} from '@jobby/ui';
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useConsole } from '@/components/ConsoleContext';
-
 
 import {
   getDisplayApplicationStatus,
@@ -34,9 +41,6 @@ import {
 
 import { cn } from '@/lib/utils';
 import { formatDate } from '@/components/ConsoleUtils';
-
-
-
 
 const PLATFORM_CARDS: Array<{
   key: DesktopBotPlatform;
@@ -80,13 +84,13 @@ function ApplicationQuickStart() {
 
   const hasPersonalDetails = Boolean(
     profile.first_name?.trim() &&
-      profile.last_name?.trim() &&
-      profile.phone_number?.trim(),
+    profile.last_name?.trim() &&
+    profile.phone_number?.trim(),
   );
   const hasSearchTarget = Boolean(jobHuntingProfile.search_terms?.length);
   const hasResume = Boolean(
     jobHuntingProfile.resume_path?.trim() ||
-      String(jobHuntingProfile.extra_data?.default_resume_path ?? '').trim(),
+    String(jobHuntingProfile.extra_data?.default_resume_path ?? '').trim(),
   );
 
   const steps: QuickStartStep[] = [
@@ -125,7 +129,7 @@ function ApplicationQuickStart() {
     <section className='col-span-12 panel-xl relative overflow-hidden'>
       <div className='absolute inset-y-0 left-0 w-1.5 bg-primary/50' />
       <div className='grid gap-6 lg:grid-cols-[minmax(220px,0.8fr)_minmax(0,2.2fr)]'>
-        <div className='border-b border-border/50 pb-5 lg:border-b-0 lg:border-r lg:pb-0 lg:pr-6'>
+        <div className='border-b border-primary/50 pb-5 lg:border-b-0 lg:border-r lg:pb-0 lg:pr-6'>
           <Sparkles className='mb-2 h-7 w-7 text-primary' />
           <h2 className='title-sub text-ink-primary'>2 Min Quick Start</h2>
           <p className='body-sm mt-1 text-ink-secondary'>
@@ -146,9 +150,15 @@ function ApplicationQuickStart() {
                       'border-emerald-500 bg-emerald-500/10 text-emerald-600'
                     : 'border-primary bg-primary/10 text-primary',
                   )}
-                  aria-label={step.complete ? `${step.title} complete` : `Step ${index + 1}`}
+                  aria-label={
+                    step.complete ?
+                      `${step.title} complete`
+                    : `Step ${index + 1}`
+                  }
                 >
-                  {step.complete ? <Check className='h-4 w-4' /> : index + 1}
+                  {step.complete ?
+                    <Check className='h-4 w-4' />
+                  : index + 1}
                 </div>
                 <div className='min-w-0'>
                   <div className='flex items-center gap-1.5'>
@@ -370,7 +380,7 @@ export default function OverviewPage() {
                     environmentName: event.target.value,
                   }))
                 }
-                className='body-md rounded-2xl border border-border bg-panel px-4 py-3 text-ink-primary outline-none transition focus:border-emerald-500 dark:border-border dark:bg-background dark:text-ink-primary'
+                className='body-md rounded-2xl bg-panel px-4 py-3 text-ink-primary outline-none transition focus:border-emerald-500 dark:border-primary dark:bg-background dark:text-ink-primary'
                 placeholder='Production'
               />
             </label>
@@ -385,7 +395,7 @@ export default function OverviewPage() {
                     apiUrl: event.target.value,
                   }))
                 }
-                className='body-md rounded-2xl border border-border bg-panel px-4 py-3 text-ink-primary outline-none transition focus:border-emerald-500 dark:border-border dark:bg-background dark:text-ink-primary'
+                className='body-md rounded-2xl bg-panel px-4 py-3 text-ink-primary outline-none transition focus:border-emerald-500 dark:border-primary dark:bg-background dark:text-ink-primary'
                 placeholder='https://api.example.com'
               />
             </label>
@@ -400,7 +410,7 @@ export default function OverviewPage() {
                     dashboardUrl: event.target.value,
                   }))
                 }
-                className='body-md rounded-2xl border border-border bg-panel px-4 py-3 text-ink-primary outline-none transition focus:border-emerald-500 dark:border-border dark:bg-background dark:text-ink-primary'
+                className='body-md rounded-2xl bg-panel px-4 py-3 text-ink-primary outline-none transition focus:border-emerald-500 dark:border-primary dark:bg-background dark:text-ink-primary'
                 placeholder='https://app.example.com'
               />
             </label>
@@ -415,7 +425,7 @@ export default function OverviewPage() {
             </button>
             <button
               onClick={handleConnectionReset}
-              className='label rounded-full border border-zinc-200 px-4 py-2 transition hover:bg-zinc-100 dark:border-border dark:hover:bg-zinc-900'
+              className='label rounded-full border border-zinc-200 px-4 py-2 transition hover:bg-zinc-100 dark:border-primary dark:hover:bg-zinc-900'
             >
               Reset Defaults
             </button>
@@ -581,7 +591,7 @@ export default function OverviewPage() {
         <div className='overflow-x-auto'>
           <table className='body-md w-full text-left border-collapse'>
             <thead>
-              <tr className='border-b border-border/40 text-[10px] font-bold text-ink-primary0 dark:text-ink-primary0 uppercase tracking-wider'>
+              <tr className='border-b border-primary/40 text-[10px] font-bold text-ink-primary0 dark:text-ink-primary0 uppercase tracking-wider'>
                 <th className='pb-3 pr-4'>Position</th>
                 <th className='pb-3 px-4'>Company</th>
                 <th className='pb-3 px-4'>Workplace Style</th>

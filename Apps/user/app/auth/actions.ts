@@ -11,14 +11,18 @@ function nextPathFromForm(formData: FormData): string {
   if (typeof extensionRedirect === 'string' && isAllowedExtensionRedirect(extensionRedirect)) {
     return extensionCallbackPath(extensionRedirect)
   }
-  return '/interview-prep'
+  const next = formData.get('next')
+  if (typeof next === 'string' && next.startsWith('/') && !next.startsWith('//')) {
+    return next
+  }
+  return '/'
 }
 
 export async function login(formData: FormData) {
   const supabase = await createClient()
 
   const data = {
-    email: formData.get('email') as string,
+    email: (formData.get('email') as string)?.trim().toLowerCase(),
     password: formData.get('password') as string,
   }
   const next = nextPathFromForm(formData)
@@ -26,7 +30,6 @@ export async function login(formData: FormData) {
   const { error } = await supabase.auth.signInWithPassword(data)
 
   if (error) {
-    // You could return the error here to show in the UI, e.g., redirect('/login?message=Could not authenticate user')
     return { error: error.message }
   }
 
@@ -38,20 +41,20 @@ export async function signup(formData: FormData) {
   const supabase = await createClient()
 
   const data = {
-    email: formData.get('email') as string,
+    email: (formData.get('email') as string)?.trim().toLowerCase(),
     password: formData.get('password') as string,
   }
   const next = nextPathFromForm(formData)
 
   // Determine origin for email redirects (e.g. email confirmation)
   const originList = await headers()
-  const origin = originList.get('origin')
+  const origin = originList.get('origin') || ''
 
   const { error } = await supabase.auth.signUp({
     email: data.email,
     password: data.password,
     options: {
-      emailRedirectTo: `${origin}/auth/callback?next=${encodeURIComponent(next)}`,
+      emailRedirectTo: origin ? `${origin}/auth/callback?next=${encodeURIComponent(next)}` : undefined,
     }
   })
 
@@ -60,7 +63,6 @@ export async function signup(formData: FormData) {
   }
 
   revalidatePath('/', 'layout')
-  // Typically after signup, we ask them to check their email, or just redirect if auto-login is enabled
   redirect(next)
 }
 
@@ -70,18 +72,22 @@ export async function logout() {
   redirect('/login')
 }
 
-export async function signInWithGoogle(extensionRedirect?: string) {
+export async function signInWithGoogle(options?: { extensionRedirect?: string; next?: string }) {
   const supabase = await createClient()
   const originList = await headers()
-  const origin = originList.get('origin')
-  const next = extensionRedirect && isAllowedExtensionRedirect(extensionRedirect)
-    ? extensionCallbackPath(extensionRedirect)
-    : '/interview-prep'
+  const origin = originList.get('origin') || ''
+  
+  let next = '/'
+  if (options?.extensionRedirect && isAllowedExtensionRedirect(options.extensionRedirect)) {
+    next = extensionCallbackPath(options.extensionRedirect)
+  } else if (options?.next && options.next.startsWith('/') && !options.next.startsWith('//')) {
+    next = options.next
+  }
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: `${origin}/auth/callback?next=${encodeURIComponent(next)}`,
+      redirectTo: origin ? `${origin}/auth/callback?next=${encodeURIComponent(next)}` : undefined,
       queryParams: {
         prompt: 'select_account',
       },
@@ -90,6 +96,6 @@ export async function signInWithGoogle(extensionRedirect?: string) {
 
   if (error) return { error: error.message }
   if (data.url) {
-    redirect(data.url) // use the redirect API for your server framework
+    redirect(data.url)
   }
 }

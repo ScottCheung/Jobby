@@ -11,7 +11,7 @@ type ExploreHeaderProps = {
 
 export function ExploreHeader({ onCreateSet }: ExploreHeaderProps) {
   return (
-    <header className='shrink-0 border-b border-border/40 px-5 py-5'>
+    <header className='shrink-0 border-b border-primary/40 px-5 py-5'>
       <div className='flex flex-col gap-4'>
         <div className='flex flex-wrap items-center justify-between gap-3'>
           <div>
@@ -28,7 +28,6 @@ export function ExploreHeader({ onCreateSet }: ExploreHeaderProps) {
             Create Question Set
           </Button>
         </div>
-
       </div>
     </header>
   );

@@ -18,6 +18,7 @@ import { useConsole } from '@/components/ConsoleContext';
 import { cn } from '@/lib/utils';
 import { RefreshCw } from 'lucide-react';
 import AutomationPanel from '@/app/_component/AutomationPanel';
+import { GlobalAuthModal } from '@/components/auth/GlobalAuthModal';
 
 export default function ConsoleLayout({
   children,
@@ -34,7 +35,10 @@ export default function ConsoleLayout({
     pathname?.startsWith('/settings') ||
     pathname?.startsWith('/design-system');
 
-  if (pathname?.startsWith('/Resume/Template/')) {
+  if (
+    pathname?.startsWith('/Resume/Template/') ||
+    pathname?.startsWith('/login')
+  ) {
     return <>{children}</>;
   }
 
@@ -49,7 +53,9 @@ export default function ConsoleLayout({
           <div
             className={cn(
               'app-no-drag custom-scrollbar-primary flex-1',
-              isFullHeightRoute ? 'flex flex-col overflow-hidden' : 'overflow-y-auto',
+              isFullHeightRoute ?
+                'flex flex-col overflow-hidden'
+              : 'overflow-y-auto',
             )}
           >
             <div
@@ -70,31 +76,29 @@ export default function ConsoleLayout({
                     <span className='inline-block text-[10px] font-bold uppercase tracking-wider text-emerald-300 mb-2 px-2 py-0.5 rounded-md bg-emerald-500/20'>
                       AI-Powered Job Automation
                     </span>
-                    <h1>
-                      Job Automation Console
-                    </h1>
+                    <h1>Job Automation Console</h1>
                     <p>
-                      Monitor real-time automation status across platforms, access key feature panels instantly, and track applications & interviews.
+                      Monitor real-time automation status across platforms,
+                      access key feature panels instantly, and track
+                      applications & interviews.
                     </p>
                   </header>
                 )}
 
                 {/* Stats Bar */}
-                {pathname === '/' && (
-                  <DashboardStats />
-                )}
+                {pathname === '/' && <DashboardStats />}
 
                 {error && (
                   <div className='label-sm fixed bottom-1/2 flex items-center gap-2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 text-error bg-red-500/30 backdrop-blur-sm py-3 px-card rounded-card animate-in fade-in slide-in-from-bottom-2 duration-300'>
                     <div>{error}</div>
                   </div>
                 )}
-                {isPending && (
+                {/* {isPending && (
                   <div className='label-sm text-white! fixed bottom-1/2 flex items-center left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 bg-black/30 backdrop-blur-sm py-3 pl-3 gap-3 pr-card rounded-card animate-in fade-in slide-in-from-bottom-2 duration-300'>
                     <RefreshCw className='w-4 h-4 animate-spin' />
                     Refreshing data...
                   </div>
-                )}
+                )} */}
 
                 {/* Child Page Content */}
                 {children}
@@ -114,6 +118,9 @@ export default function ConsoleLayout({
 
         {/* Global Modal */}
         <GlobalModal />
+
+        {/* Global Auth Modal */}
+        <GlobalAuthModal />
 
         {/* Global Toaster */}
         <Toaster />

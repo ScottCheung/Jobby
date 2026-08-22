@@ -8,7 +8,7 @@ export async function GET(request: Request) {
   const requestedNext = searchParams.get('next')
   const next = requestedNext && requestedNext.startsWith('/') && !requestedNext.startsWith('//')
     ? requestedNext
-    : '/interview-prep'
+    : '/'
 
   if (code) {
     const supabase = await createClient()

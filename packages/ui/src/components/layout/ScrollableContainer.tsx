@@ -80,7 +80,7 @@ export function ScrollableContainer({
     });
   };
 
-  const buttonStyle = `group border border-border/40 bg-panel/85 text-ink-primary hover:text-primary hover:bg-primary/10 hover:border-primary/20 backdrop-blur-md w-9 h-9 flex rounded-full justify-center items-center transition-all duration-300 shadow-xs active:scale-95 cursor-pointer`;
+  const buttonStyle = `group border border-primary/40 bg-panel/85 text-ink-primary hover:text-primary hover:bg-primary/10 hover:border-primary/20 backdrop-blur-md w-9 h-9 flex rounded-full justify-center items-center transition-all duration-300 shadow-xs active:scale-95 cursor-pointer`;
   const edgeMask =
     isAtStart && isAtEnd ? undefined
     : isAtStart ?

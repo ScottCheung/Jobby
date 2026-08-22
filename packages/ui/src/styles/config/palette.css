@@ -34,6 +34,11 @@
     --primary-foreground: oklch(0.2 0.05 160);
     --border-raw: 30 41 59;
     --panel-raw: 15 23 42;
+    /* 语义色：降低饱和度，提高易读性 */
+    --success: oklch(90.097% 0.16846 155.846);
+    --warning: oklch(81.603% 0.11699 59.226);
+    --error: oklch(72.434% 0.16878 20.894);
+    --info: oklch(78.477% 0.11318 245.85);
   }
 
   /* 品牌配色矩阵：使用 oklch 调整饱和度，避免突兀 */
@@ -135,7 +140,9 @@
 
   --color-background-primary: rgb(var(--background-raw));
 
-  --color-background-secondary: rgb(var(--background-secondary-raw, var(--background-raw)));
+  --color-background-secondary: rgb(
+    var(--background-secondary-raw, var(--background-raw))
+  );
 
   --color-foreground: rgb(var(--foreground-raw));
 
@@ -143,11 +150,15 @@
 
   --color-panel-secondary: rgb(var(--panel-secondary-raw, var(--panel-raw)));
 
-  --color-panel-foreground: rgb(var(--panel-foreground-raw, var(--foreground-raw)));
+  --color-panel-foreground: rgb(
+    var(--panel-foreground-raw, var(--foreground-raw))
+  );
 
   --color-popover: rgb(var(--popover-raw, var(--panel-raw)));
 
-  --color-popover-foreground: rgb(var(--popover-foreground-raw, var(--foreground-raw)));
+  --color-popover-foreground: rgb(
+    var(--popover-foreground-raw, var(--foreground-raw))
+  );
 
   --color-border: rgb(var(--border-raw));
 

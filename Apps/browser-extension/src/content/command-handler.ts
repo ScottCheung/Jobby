@@ -5,27 +5,63 @@ import { linkedinApplicationActionSchema } from "../shared/contracts/linkedin";
 
 import { getCurrentFormScope, readCurrentForm, readCurrentPageWhenReady } from "./page-reader";
 import { startFormDiscovery, watchFormScope } from "./form-observer";
+import { classifyCurrentPage } from "./page-classifier";
 import { fillFormField, fillFormFieldValue, focusFormField, uploadFormFile } from "./dom/form-driver";
 import { linkedinAdapter } from "./platforms/linkedin/adapter";
 import { clickSeekApplicationAction } from "./platforms/seek/adapter";
 import { clickGenericApplicationAction, openGenericApplication } from "./platforms/generic/adapter";
-import { applicationPlanResponseSchema } from "../shared/contracts/backend";
-import { injectInPageScoreCard } from "./dom/score-card-injector";
+import {
+  closeInPageResumePreviewModal,
+  showInPageResumeLibraryModal,
+  showInPageResumePreviewModal,
+} from "./dom/resume-preview-modal-injector";
+import { showInPageToast } from "./dom/in-page-toast";
 
 export async function handleContentCommand(message: unknown): Promise<unknown> {
+  if (isShowToastCommand(message)) {
+    const payload = message as { message: string; toastType?: 'success' | 'error' | 'info' | 'warning'; duration?: number };
+    showInPageToast(payload.message, payload.toastType || 'info', payload.duration);
+    return { ok: true };
+  }
+  if (isShowResumePreviewCommand(message)) {
+    const payload = message as any;
+    showInPageResumePreviewModal({
+      data: payload.data,
+      coreCompetencies: payload.coreCompetencies,
+      keyQualifications: payload.keyQualifications,
+      company: payload.company,
+      jobTitle: payload.jobTitle,
+      filename: payload.filename,
+      pdfDataUrl: payload.pdfDataUrl,
+      pages: payload.pages,
+      fileSize: payload.fileSize,
+      pdfScale: payload.pdfScale,
+      generatedAt: payload.generatedAt,
+      themeColor: payload.themeColor,
+      editUrl: payload.editUrl,
+    });
+    return { ok: true };
+  }
+  if (isShowResumeLibraryCommand(message)) {
+    const payload = message as {
+      resumes: import('../shared/contracts/tailored-resume').TailoredResume[];
+      selectedId?: string;
+    };
+    showInPageResumeLibraryModal({
+      resumes: payload.resumes || [],
+      selectedId: payload.selectedId,
+    });
+    return { ok: true };
+  }
+  if (isCloseResumePreviewCommand(message)) {
+    closeInPageResumePreviewModal();
+    return { ok: true };
+  }
   if (isInspectCommand(message)) {
     const inspection = pageInspectionSchema.parse(await readCurrentPageWhenReady());
-    injectInPageScoreCard(inspection);
     return { inspection };
   }
   if (isRenderScoreCardCommand(message)) {
-    const inspection = (message as { inspection?: unknown }).inspection
-      ? pageInspectionSchema.parse((message as { inspection: unknown }).inspection)
-      : undefined;
-    const plan = (message as { plan?: unknown }).plan
-      ? applicationPlanResponseSchema.parse((message as { plan: unknown }).plan)
-      : undefined;
-    injectInPageScoreCard(inspection, plan);
     return { ok: true };
   }
   if (isInspectFormCommand(message)) {
@@ -34,9 +70,12 @@ export async function handleContentCommand(message: unknown): Promise<unknown> {
       watchFormScope(getCurrentFormScope(), () => readCurrentForm(), form);
     } else {
       // A generic ATS can render the application step after the job page has
-      // already been read. Watch only after an explicit form inspection, then
-      // hand off to the narrower scope watcher once fields appear.
-      startFormDiscovery(() => readCurrentForm());
+      // already been read. Watch only after an explicit form inspection on job pages,
+      // then hand off to the narrower scope watcher once fields appear.
+      const pageClass = classifyCurrentPage();
+      if (pageClass.isJobPage) {
+        startFormDiscovery(() => readCurrentForm());
+      }
     }
     return { form };
   }
@@ -141,5 +180,37 @@ function isRenderScoreCardCommand(message: unknown): boolean {
     typeof message === "object" &&
     message !== null &&
     (message as { type?: unknown }).type === "content.render-score-card"
+  );
+}
+
+function isShowResumePreviewCommand(message: unknown): boolean {
+  return (
+    typeof message === "object" &&
+    message !== null &&
+    (message as { type?: unknown }).type === "content.show-resume-preview"
+  );
+}
+
+function isShowResumeLibraryCommand(message: unknown): boolean {
+  return (
+    typeof message === "object" &&
+    message !== null &&
+    (message as { type?: unknown }).type === "content.show-resume-library"
+  );
+}
+
+function isCloseResumePreviewCommand(message: unknown): boolean {
+  return (
+    typeof message === "object" &&
+    message !== null &&
+    (message as { type?: unknown }).type === "content.close-resume-preview"
+  );
+}
+
+function isShowToastCommand(message: unknown): boolean {
+  return (
+    typeof message === "object" &&
+    message !== null &&
+    (message as { type?: unknown }).type === "content.show-toast"
   );
 }

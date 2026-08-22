@@ -3,6 +3,7 @@
 'use client';
 
 import React from 'react';
+import { SectionHeading } from '@jobby/ui';
 import { parseDescriptionBlocks, cn } from '@/lib/utils';
 
 interface StructuredJobDescriptionProps {
@@ -30,12 +31,11 @@ export function StructuredJobDescription({
           return (
             <div
               key={index}
-              className='pt-3 first:pt-0 pb-1 border-b border-border/40 flex items-center gap-2 mt-3.5 first:mt-0 mb-1.5'
+              className='pt-3 first:pt-0 pb-1.5 border-b border-primary/40 mt-3.5 first:mt-0 mb-1.5'
             >
-              <span className='w-1 h-3.5 rounded-full bg-primary inline-block shrink-0' />
-              <h4 className='font-bold text-xs sm:text-sm capitalize text-ink-primary tracking-tight'>
+              <SectionHeading as='h4' size='sm' className='capitalize'>
                 {block.text}
-              </h4>
+              </SectionHeading>
             </div>
           );
         }

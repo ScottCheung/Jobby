@@ -54,7 +54,7 @@ export const stageConfig: Record<
     icon: Clock,
     colorClass: 'text-white',
     bgColorClass: 'bg-gradient-to-br from-zinc-500 to-slate-500',
-    borderClass: 'border-border',
+    borderClass: 'border-primary',
   },
   processing: {
     label: 'Processing',
@@ -89,6 +89,6 @@ export const stageConfig: Record<
     icon: LogOut,
     colorClass: 'text-white',
     bgColorClass: 'bg-gradient-to-br from-amber-500 to-yellow-600',
-    borderClass: 'border-border',
+    borderClass: 'border-primary',
   },
 };

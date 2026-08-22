@@ -128,7 +128,7 @@ function Line({
   muted?: boolean;
 }) {
   return (
-    <div className='flex items-start justify-between gap-4 border-b border-border/40 py-2.5 last:border-b-0'>
+    <div className='flex items-start justify-between gap-4 border-b border-primary/40 py-2.5 last:border-b-0'>
       <span className='body-sm shrink-0 text-ink-secondary'>{label}</span>
       <span
         className={cn(

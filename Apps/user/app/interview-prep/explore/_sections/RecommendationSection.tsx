@@ -10,7 +10,6 @@ import { cn } from '@/lib/utils';
 import { QuestionRecommendationCard } from '../_components/QuestionRecommendationCard';
 import { QuestionCardSkeleton } from '../_components/ExploreSkeletons';
 
-
 export type RankingMode = 'hot' | 'season' | 'month' | 'week';
 export type RecommendationFeed = 'forYou' | RankingMode;
 
@@ -66,7 +65,10 @@ function RecommendationPanel({
   isLoading: boolean;
 }) {
   return (
-    <div id={panel.anchorId} className='grid scroll-mt-5 gap-3 border-t border-border/40 pt-5 first:border-t-0 first:pt-0'>
+    <div
+      id={panel.anchorId}
+      className='grid scroll-mt-5 gap-3 border-t border-primary/40 pt-5 first:border-t-0 first:pt-0'
+    >
       <div className='flex items-start justify-between gap-3'>
         <div>
           <h3 className='text-sm font-bold text-ink-primary'>{panel.title}</h3>
@@ -78,25 +80,26 @@ function RecommendationPanel({
           disabled={panel.questions.length <= 4}
           aria-label={`Refresh ${panel.title}`}
           title={`Refresh ${panel.title}`}
-          className='inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-background-secondary text-ink-secondary transition-colors hover:border-primary/50 hover:text-primary disabled:cursor-not-allowed disabled:opacity-35'
+          className='inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-primary bg-background-secondary text-ink-secondary transition-colors hover:border-primary/50 hover:text-primary disabled:cursor-not-allowed disabled:opacity-35'
         >
-          <RefreshCw className={cn('h-4 w-4', isRefreshing && 'animate-spin')} />
+          <RefreshCw
+            className={cn('h-4 w-4', isRefreshing && 'animate-spin')}
+          />
         </button>
       </div>
 
-      {isLoading ? (
+      {isLoading ?
         <div className='grid gap-3 sm:grid-cols-2 xl:grid-cols-4'>
           {Array.from({ length: 4 }, (_, index) => (
             <QuestionCardSkeleton key={index} />
           ))}
         </div>
-      ) : panel.questions.length === 0 ? (
+      : panel.questions.length === 0 ?
         <EmptyPlaceHolder
           message='No questions available yet.'
           className='border-dashed py-6'
         />
-      ) : (
-        <div
+      : <div
           className={cn(
             'grid gap-3 sm:grid-cols-2 xl:grid-cols-4',
             isRefreshing && 'opacity-25 transition-opacity duration-200',
@@ -116,7 +119,7 @@ function RecommendationPanel({
             />
           ))}
         </div>
-      )}
+      }
     </div>
   );
 }

@@ -1,7 +1,14 @@
 /** @format */
 
 'use client';
-import { Button, Checkbox, EmptyPlaceHolder, Input, Switch, Modal } from '@jobby/ui';
+import {
+  Button,
+  Checkbox,
+  EmptyPlaceHolder,
+  Input,
+  Switch,
+  Modal,
+} from '@jobby/ui';
 import React, { useState, useEffect } from 'react';
 import { X, Sliders, BookOpen, Clock, Search, Star } from 'lucide-react';
 import type { InterviewQuestion, InterviewCategory } from '@/lib/types';
@@ -273,7 +280,7 @@ export function CustomizePlanModal({
           </div>
 
           {/* 3. Spaced Repetition Toggle */}
-          <div className='flex items-center justify-between py-2 border-t border-b border-border/40'>
+          <div className='flex items-center justify-between py-2 border-t border-b border-primary/40'>
             <div className='flex flex-col gap-1 pr-4'>
               <span className='label'>
                 Spaced Repetition Review (Ebbinghaus curve)
@@ -290,7 +297,7 @@ export function CustomizePlanModal({
           </div>
 
           {/* 4. Total Question Limit */}
-          <div className='flex flex-col gap-2 py-2 border-b border-border/40'>
+          <div className='flex flex-col gap-2 py-2 border-b border-primary/40'>
             <div className='flex items-center justify-between'>
               <div className='flex flex-col gap-1 pr-4'>
                 <span className='label'>Limit Total Questions</span>
@@ -369,7 +376,7 @@ export function CustomizePlanModal({
                         'label-sm px-3 py-1.5 rounded-full transition-all border',
                         isFocused ?
                           'bg-primary/10 text-primary border-primary/20'
-                        : 'bg-background-secondary border-border/50 text-ink-secondary hover:text-ink-primary',
+                        : 'bg-background-secondary border-primary/50 text-ink-secondary hover:text-ink-primary',
                       )}
                     >
                       {cleanName(cat.name)}
@@ -425,7 +432,7 @@ export function CustomizePlanModal({
 
               {/* Collapsible Filter Section */}
               {showManualFilters && (
-                <div className='flex flex-col gap-3 p-3 bg-background-secondary/40 rounded-xl border border-border/50 animate-in fade-in slide-in-from-top-1 duration-150 shrink-0'>
+                <div className='flex flex-col gap-3 p-3 bg-background-secondary/40 rounded-xl border border-primary/50 animate-in fade-in slide-in-from-top-1 duration-150 shrink-0'>
                   {/* Category Filter */}
                   {categories.length > 0 && (
                     <div className='flex flex-col gap-1.5'>
@@ -450,7 +457,7 @@ export function CustomizePlanModal({
                                 'px-2 py-0.5 rounded-full text-[11px] font-semibold border transition-all',
                                 active ?
                                   'bg-primary/10 text-primary border-primary/35 font-bold'
-                                : 'bg-panel border-border text-ink-secondary hover:text-ink-primary',
+                                : 'bg-panel border-primary text-ink-secondary hover:text-ink-primary',
                               )}
                             >
                               {cleanName(cat.name)}
@@ -462,7 +469,7 @@ export function CustomizePlanModal({
                   )}
 
                   {/* Importance + Frequency Row */}
-                  <div className='flex flex-wrap gap-4 pt-1 border-t border-border/40'>
+                  <div className='flex flex-wrap gap-4 pt-1 border-t border-primary/40'>
                     {/* Importance */}
                     <div className='flex flex-col gap-1.5'>
                       <span className='text-[10px] uppercase font-bold text-ink-secondary tracking-wider'>
@@ -486,7 +493,7 @@ export function CustomizePlanModal({
                                 'flex items-center gap-0.5 px-2 py-0.5 rounded-md text-[11px] font-bold border transition-all',
                                 active ?
                                   'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-400/40'
-                                : 'bg-panel border-border text-ink-secondary hover:text-ink-primary',
+                                : 'bg-panel border-primary text-ink-secondary hover:text-ink-primary',
                               )}
                             >
                               {n}
@@ -530,7 +537,7 @@ export function CustomizePlanModal({
                               className={cn(
                                 'px-2 py-0.5 rounded-md text-[11px] font-bold border transition-all',
                                 active ? activeColor : (
-                                  'bg-panel border-border text-ink-secondary hover:text-ink-primary'
+                                  'bg-panel border-primary text-ink-secondary hover:text-ink-primary'
                                 ),
                               )}
                             >
@@ -546,7 +553,7 @@ export function CustomizePlanModal({
                   {(filterCategoryIds.length > 0 ||
                     filterImportances.length > 0 ||
                     filterFrequencies.length > 0) && (
-                    <div className='flex justify-end pt-1.5 border-t border-border/40'>
+                    <div className='flex justify-end pt-1.5 border-t border-primary/40'>
                       <button
                         type='button'
                         onClick={() => {
@@ -574,7 +581,7 @@ export function CustomizePlanModal({
                         'flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all hover:bg-background-secondary/50',
                         isSelected ?
                           'border-primary bg-primary/5'
-                        : 'border-border/50 bg-panel',
+                        : 'border-primary/50 bg-panel',
                       )}
                     >
                       <Checkbox
@@ -652,7 +659,7 @@ export function CustomizePlanModal({
                 </div>
               </div>
 
-              <div className='flex flex-col  leading-relaxed gap-2 border-t border-border/40 pt-3'>
+              <div className='flex flex-col  leading-relaxed gap-2 border-t border-primary/40 pt-3'>
                 <div className='flex justify-between items-center text-ink-primary font-semibold'>
                   <span className='text-meta'>Daily Base Pace:</span>
                   <span className='body-lg'>

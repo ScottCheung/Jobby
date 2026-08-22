@@ -1,6 +1,12 @@
 /** @format */
 
-import { AutoTooltip, Popover, PopoverContent, PopoverTrigger, Tooltip } from '@jobby/ui';
+import {
+  AutoTooltip,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+  Tooltip,
+} from '@jobby/ui';
 import React, { useState, useRef, useEffect } from 'react';
 import {
   Archive,
@@ -21,12 +27,10 @@ import type {
 } from '@/lib/types';
 import { cn, cleanName, formatInterviewDuration } from '@/lib/utils';
 
-
 import { api } from '@/lib/api';
 import { showGlobalToast } from '@/lib/toast';
 import { QuestionFeedbackFormContent } from './QuestionFeedbackModal';
 import { useGlobalModalStore } from '@/lib/store/global-modal-store';
-
 
 interface QuestionRowProps {
   question: InterviewQuestion;
@@ -249,7 +253,7 @@ export function QuestionRow({
                 content={`Tag: ${cleanName(t.name)}`}
                 side='top'
               >
-                <span className='text-[10px] bg-background-secondary/80 text-ink-secondary px-1.5 py-0.5 rounded-full shrink-0 border border-border/50 font-normal'>
+                <span className='text-[10px] bg-background-secondary/80 text-ink-secondary px-1.5 py-0.5 rounded-full shrink-0 border border-primary/50 font-normal'>
                   {cleanName(t.name)}
                 </span>
               </Tooltip>
@@ -339,7 +343,7 @@ export function QuestionRow({
               side='bottom'
               sideOffset={4}
               onClick={(e: React.MouseEvent) => e.stopPropagation()}
-              className='w-44 p-1 rounded-xl border border-border bg-panel dark:bg-background-secondary shadow-2xl z-50'
+              className='w-44 p-1 rounded-xl bg-panel dark:bg-background-secondary shadow-2xl z-50'
             >
               {canEdit && (
                 <button

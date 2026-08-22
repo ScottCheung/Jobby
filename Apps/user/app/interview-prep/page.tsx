@@ -365,7 +365,7 @@ export default function InterviewPrepPage() {
     return (
       <div className='flex flex-col md:flex-row  justify-between gap-6 panel-xl'>
         <div className='absolute left-0 top-0 w-1.5 h-full bg-primary rounded-full/40' />
-        <div className='flex-1 flex flex-col justify-center max-w-sm shrink-0 border-r border-border/40 pr-6 gap-1'>
+        <div className='flex-1 flex flex-col justify-center max-w-sm shrink-0 border-r border-primary/40 pr-6 gap-1'>
           <Sparkles className='w-7 h-7 text-primary mb-2' />
           <h3 className='title-sub flex items-center gap-2'>
             1 Min Quick Start
@@ -426,7 +426,7 @@ export default function InterviewPrepPage() {
                   'bg-emerald-500/10 text-emerald-500 border-emerald-500'
                 : isStep1Done ?
                   'bg-primary/10 text-primary border-primary animate-text-shimmer-primary animate-text-shimmer'
-                : 'bg-background-secondary text-ink-muted border-border dark:bg-background-secondary/40',
+                : 'bg-background-secondary text-ink-muted border-primary dark:bg-background-secondary/40',
               )}
             >
               {isStep2Done ? '✓' : '2'}
@@ -854,7 +854,7 @@ export default function InterviewPrepPage() {
     : 0;
 
   const InActiveCard =
-    'border-ink-secondary/40 dark:border-border/60 bg-background-secondary/10';
+    'border-ink-secondary/40 dark:border-primary/60 bg-background-secondary/10';
   return (
     <div className='flex flex-col gap-6 pb-8 pr-1'>
       {/* Dev Reset Action */}
@@ -879,7 +879,7 @@ export default function InterviewPrepPage() {
       {/* 1. Empty Library State (Curated Collections Grid) */}
       {questions.length === 0 && (
         <div className='panel-xl flex flex-col gap-6 p-6 animate-in fade-in duration-500 text-left'>
-          <div className='flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/40 pb-4'>
+          <div className='flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-primary/40 pb-4'>
             <div>
               <h3 className='title-card flex items-center gap-2'>
                 <Compass className='w-5 h-5 text-primary' />
@@ -897,7 +897,7 @@ export default function InterviewPrepPage() {
                 variant={'outline'}
                 onClick={() => setIsBatchImportOpen(true)}
                 size='md'
-                // className='label flex items-center gap-2 rounded-xl border border-border/60 bg-background px-4! py-2! transition hover:border-primary/30 hover:text-primary'
+                // className='label flex items-center gap-2 rounded-xl border border-primary/60 bg-background px-4! py-2! transition hover:border-primary/30 hover:text-primary'
               >
                 Import Questions
               </Button>
@@ -1124,7 +1124,7 @@ export default function InterviewPrepPage() {
           {/* Column 1 (Span 2): Today's Checklist */}
           <div className='col-span-6 md:col-span-3 lg:col-span-2 flex flex-col gap-6'>
             <div className='panel-xl gap-4 min-h-[350px]'>
-              <div className='flex items-start justify-between border-b border-border/40 pb-3'>
+              <div className='flex items-start justify-between border-b border-primary/40 pb-3'>
                 <div className='flex items-start gap-3'>
                   <div>
                     <h3 className='title-card flex items-center gap-2'>
@@ -1136,7 +1136,7 @@ export default function InterviewPrepPage() {
 
               <div className='flex-1 flex flex-col gap-4 '>
                 {getTodayTasks().length === 0 ?
-                  <div className='flex-1 flex flex-col items-center justify-center text-center p-6 text-ink-primary0 gap-2 border border-dashed border-border/40 rounded-xl bg-background-secondary/20 my-6'>
+                  <div className='flex-1 flex flex-col items-center justify-center text-center p-6 text-ink-primary0 gap-2 border border-dashed border-primary/40 rounded-xl bg-background-secondary/20 my-6'>
                     <CheckCircle2 className='w-10 h-10 text-emerald-500 opacity-80' />
                     <p className='title-card'>Mission Accomplished!</p>
                     <p className='body-md text-ink-secondary'>
@@ -1159,7 +1159,7 @@ export default function InterviewPrepPage() {
                             className={cn(
                               'flex items-center gap-3 p-3 rounded-xl border transition-all',
                               isCompleted ?
-                                'bg-background-secondary/30 border-border/40/40 opacity-60'
+                                'bg-background-secondary/30 border-primary/40/40 opacity-60'
                               : 'bg-panel  ',
                             )}
                           >
@@ -1262,7 +1262,7 @@ export default function InterviewPrepPage() {
                 </div>
               </div>
 
-              <div className='body-md flex flex-col gap-3.5 pt-4 border-t border-border/40'>
+              <div className='body-md flex flex-col gap-3.5 pt-4 border-t border-primary/40'>
                 <div className='flex justify-between items-center'>
                   <span className='body-sm text-ink-secondary'>
                     Schedule Duration
@@ -1312,7 +1312,7 @@ export default function InterviewPrepPage() {
       {activePlan && (
         <div className='grid grid-cols-1 xl:grid-cols-[1.35fr_1fr] gap-6 mb-2'>
           <div className='panel-lg relative overflow-hidden'>
-            <div className='flex flex-col gap-4 border-b border-border/40 pb-4 md:flex-row md:items-start md:justify-between'>
+            <div className='flex flex-col gap-4 border-b border-primary/40 pb-4 md:flex-row md:items-start md:justify-between'>
               <div>
                 <div className='flex items-center gap-2 mb-1'>
                   <Target className='w-5 h-5 text-emerald-500' />
@@ -1424,7 +1424,7 @@ export default function InterviewPrepPage() {
                     {recentAchievements.map((achievement) => (
                       <div
                         key={achievement.badge_id}
-                        className='rounded-xl border border-border/40 bg-background-primary/50 p-3'
+                        className='rounded-xl border border-primary/40 bg-background-primary/50 p-3'
                       >
                         <div className='flex items-center justify-between gap-3'>
                           <div className='flex items-center gap-3'>
@@ -1463,15 +1463,15 @@ export default function InterviewPrepPage() {
                         'rounded-xl border p-3 transition-all',
                         achievement.unlocked ?
                           'border-blue-500/30 bg-blue-500/8 shadow-sm'
-                        : 'border-border/40 bg-background/35 opacity-55 grayscale-[0.35]',
+                        : 'border-primary/40 bg-background/35 opacity-55 grayscale-[0.35]',
                       )}
                     >
                       <div
                         className={cn(
                           'w-11 h-11 rounded-full flex items-center justify-center mb-2 border',
                           achievement.unlocked ?
-                            'bg-gradient-to-br from-blue-400 to-indigo-600 border-white dark:border-border text-white'
-                          : 'bg-background-secondary border-border/50 text-ink-muted',
+                            'bg-gradient-to-br from-blue-400 to-indigo-600 border-white dark:border-primary text-white'
+                          : 'bg-background-secondary border-primary/50 text-ink-muted',
                         )}
                       >
                         <Trophy className='w-5 h-5' />
@@ -1543,7 +1543,7 @@ function DashboardSkeleton() {
       <div className='grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 overflow-hidden'>
         {/* Today's Checklist */}
         <div className='lg:col-span-2 p-6 rounded-2xl bg-panel flex flex-col gap-4 min-h-[300px]'>
-          <div className='flex items-center justify-between border-b border-border/40 pb-3'>
+          <div className='flex items-center justify-between border-b border-primary/40 pb-3'>
             Practice Mode Setting
             <div className='h-6 bg-panel rounded w-1/3'></div>
             <div className='h-6 bg-panel rounded w-1/4'></div>

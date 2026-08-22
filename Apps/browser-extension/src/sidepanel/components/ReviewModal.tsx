@@ -29,10 +29,12 @@ export function ReviewModal({
   const job =
     latestInspection?.kind === 'job' ? latestInspection.snapshot : null;
   const form =
-    latestForm?.kind === 'application_form' ||
-    latestForm?.kind === 'page_input_fields'
-      ? latestForm
-      : null;
+    (
+      latestForm?.kind === 'application_form' ||
+      latestForm?.kind === 'page_input_fields'
+    ) ?
+      latestForm
+    : null;
   const filledCount = form ? form.fields.filter((f) => f.filled).length : 0;
   const unfilledRequired =
     form ? form.fields.filter((f) => f.required && !f.filled) : [];
@@ -109,10 +111,12 @@ export function ReviewModal({
           <section className='review-section'>
             <h3>Form Summary</h3>
             <div className='review-details-grid flex flex-col gap-2.5'>
-              {form ? (
+              {form ?
                 <>
-                  <div className='flex items-center justify-between border-b border-border/50 pb-2'>
-                    <span><strong>Total Fields:</strong> {form.fields.length}</span>
+                  <div className='flex items-center justify-between border-b border-primary/50 pb-2'>
+                    <span>
+                      <strong>Total Fields:</strong> {form.fields.length}
+                    </span>
                     <span className='rounded-full bg-primary/10 px-2 py-0.5 font-bold text-primary'>
                       {filledCount} / {form.fields.length} Filled
                     </span>
@@ -143,28 +147,34 @@ export function ReviewModal({
                     <div className='flex flex-col gap-1 max-h-[180px] overflow-y-auto pr-1'>
                       {form.fields.map((field, idx) => {
                         const isMissing = field.required && !field.filled;
-                        const badgeClass = field.filled
-                          ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
-                          : isMissing
-                          ? 'bg-destructive/10 text-destructive border border-destructive/20 font-bold'
-                          : 'bg-muted/30 text-muted-foreground border border-border/40';
-                        
-                        const statusLabel = field.filled
-                          ? 'Filled'
-                          : isMissing
-                          ? 'Required'
+                        const badgeClass =
+                          field.filled ?
+                            'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                          : isMissing ?
+                            'bg-destructive/10 text-destructive border border-destructive/20 font-bold'
+                          : 'bg-muted/30 text-muted-foreground border border-primary/40';
+
+                        const statusLabel =
+                          field.filled ? 'Filled'
+                          : isMissing ? 'Required'
                           : 'Optional';
 
                         return (
                           <div
                             key={idx}
-                            className='flex items-center justify-between text-[11px] py-1 border-b border-border/30 last:border-b-0'
+                            className='flex items-center justify-between text-[11px] py-1 border-b border-primary/30 last:border-b-0'
                           >
-                            <span className={`truncate max-w-[220px] ${isMissing ? 'text-destructive font-semibold' : ''}`}>
+                            <span
+                              className={`truncate max-w-[220px] ${isMissing ? 'text-destructive font-semibold' : ''}`}
+                            >
                               {field.label}
-                              {field.required && <span className='text-destructive'> *</span>}
+                              {field.required && (
+                                <span className='text-destructive'> *</span>
+                              )}
                             </span>
-                            <span className={`px-1.5 py-0.5 rounded text-[9px] leading-none ${badgeClass}`}>
+                            <span
+                              className={`px-1.5 py-0.5 rounded text-[9px] leading-none ${badgeClass}`}
+                            >
                               {statusLabel}
                             </span>
                           </div>
@@ -173,9 +183,7 @@ export function ReviewModal({
                     </div>
                   </div>
                 </>
-              ) : (
-                <p>No active form fields detected.</p>
-              )}
+              : <p>No active form fields detected.</p>}
             </div>
           </section>
 

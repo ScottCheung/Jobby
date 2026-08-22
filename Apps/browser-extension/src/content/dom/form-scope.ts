@@ -1,5 +1,5 @@
 import type { FormScope } from "./form-inspector";
-import { elementsInScope, inspectVisibleFormFields, isVisibleElement } from "./form-inspector";
+import { inspectVisibleFormFields, isVisibleElement } from "./form-inspector";
 
 const CANDIDATE_SELECTOR = [
   "form",
@@ -24,6 +24,14 @@ const CANDIDATE_SELECTOR = [
   "[data-testid*='wizard' i]",
   "main",
   "section",
+].join(", ");
+
+const CONTROL_SIGNAL_SELECTOR = [
+  "input:not([type='hidden']):not([type='button']):not([type='submit'])",
+  "select",
+  "textarea",
+  "[role='combobox']",
+  "[role='checkbox']",
 ].join(", ");
 
 const ACTION_SELECTOR = [
@@ -64,14 +72,21 @@ const NEXT_ACTION_REGEX = /(?:continue|next|review|proceed|save|继续|下一步
 const PREVIOUS_ACTION_REGEX = /(?:back|previous|返回|上一步)/i;
 
 function hasFormAction(scope: FormScope): boolean {
-  return elementsInScope(scope).some((element) => {
-    if (!element.matches(ACTION_SELECTOR) || !isVisibleElement(element)) return false;
+  const actions = Array.from(scope.querySelectorAll<HTMLElement>(ACTION_SELECTOR));
+  return actions.some((element) => {
+    if (!isVisibleElement(element)) return false;
     const label = actionLabel(element);
     return SUBMIT_ACTION_REGEX.test(label) || NEXT_ACTION_REGEX.test(label);
   });
 }
 
 function scoreCandidate(candidate: HTMLElement): number {
+  // Fast check: avoid expensive inspectVisibleFormFields if candidate has no inputs/controls
+  const hasControls = Boolean(candidate.querySelector(CONTROL_SIGNAL_SELECTOR));
+  if (!hasControls && !candidate.matches("form, dialog, [role='dialog'], [aria-modal='true']")) {
+    return -1;
+  }
+
   const fields = inspectVisibleFormFields(candidate);
   if (fields.length === 0) return -1;
 
@@ -85,9 +100,10 @@ function scoreCandidate(candidate: HTMLElement): number {
 }
 
 export function findActiveFormScope(root: Document | ShadowRoot = document): FormScope | null {
-  const candidates = elementsInScope(root)
-    .filter((element) => element.matches(CANDIDATE_SELECTOR))
-    .slice(-120);
+  const allCandidates = Array.from(root.querySelectorAll<HTMLElement>(CANDIDATE_SELECTOR));
+  const candidates = allCandidates
+    .filter((el) => isVisibleElement(el) && (el.matches("form, dialog, [role='dialog'], [aria-modal='true']") || Boolean(el.querySelector(CONTROL_SIGNAL_SELECTOR))))
+    .slice(-20);
 
   let best: HTMLElement | null = null;
   let bestScore = -1;
@@ -98,16 +114,19 @@ export function findActiveFormScope(root: Document | ShadowRoot = document): For
       bestScore = score;
     }
   }
-  if (!best) {
-    const docFields = inspectVisibleFormFields(root);
-    if (docFields.length > 0) return root;
+  if (!best && root === document) {
+    const hasAnyControls = Boolean(document.querySelector(CONTROL_SIGNAL_SELECTOR));
+    if (hasAnyControls) {
+      const docFields = inspectVisibleFormFields(root);
+      if (docFields.length > 0) return root;
+    }
   }
   return best;
 }
 
 export function readGenericAction(scope: FormScope): { label?: string; action?: "next" | "submit" } {
-  let actions = elementsInScope(scope)
-    .filter((element) => element.matches(ACTION_SELECTOR) && isVisibleElement(element))
+  let actions = Array.from(scope.querySelectorAll<HTMLElement>(ACTION_SELECTOR))
+    .filter((element) => isVisibleElement(element))
     .map(actionLabel)
     .filter(Boolean);
 
@@ -115,8 +134,8 @@ export function readGenericAction(scope: FormScope): { label?: string; action?: 
   if (submit) return { label: submit, action: "submit" };
 
   if (scope !== document) {
-    const docActions = elementsInScope(document)
-      .filter((element) => element.matches(ACTION_SELECTOR) && isVisibleElement(element))
+    const docActions = Array.from(document.querySelectorAll<HTMLElement>(ACTION_SELECTOR))
+      .filter((element) => isVisibleElement(element))
       .map(actionLabel)
       .filter(Boolean);
     submit = docActions.find((label) => SUBMIT_ACTION_REGEX.test(label));
@@ -129,8 +148,8 @@ export function readGenericAction(scope: FormScope): { label?: string; action?: 
 }
 
 export function hasGenericBackAction(scope: FormScope): boolean {
-  const check = (s: FormScope) => elementsInScope(s).some((element) => {
-    if (!element.matches(ACTION_SELECTOR) || !isVisibleElement(element)) return false;
+  const check = (s: FormScope) => Array.from(s.querySelectorAll<HTMLElement>(ACTION_SELECTOR)).some((element) => {
+    if (!isVisibleElement(element)) return false;
     return PREVIOUS_ACTION_REGEX.test(actionLabel(element));
   });
   return check(scope) || (scope !== document ? check(document) : false);

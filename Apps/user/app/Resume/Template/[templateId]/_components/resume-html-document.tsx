@@ -68,14 +68,19 @@ function ContactIcon({ type }: { type: ResumeContactItem['type'] }) {
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="mt-[var(--resume-section-gap)] break-inside-avoid">
+    <section className="mt-[var(--resume-section-gap)]">
       <h2
-        className="flex items-center gap-2 border-[var(--resume-rule)] pb-[var(--resume-section-title-padding)] text-[length:var(--resume-section-title-size)] font-extrabold uppercase tracking-[0.14em]"
-        style={{ borderBottomWidth: "var(--resume-section-rule-width)", borderBottomStyle: "solid" }}
+        className="flex items-center gap-2 border-[var(--resume-rule)] pb-[var(--resume-section-title-padding)] text-[length:var(--resume-section-title-size)] font-extrabold uppercase tracking-[0.14em] leading-none break-inside-avoid break-after-avoid"
+        style={{
+          borderBottomWidth: "var(--resume-section-rule-width)",
+          borderBottomStyle: "solid",
+          breakAfter: "avoid",
+          pageBreakAfter: "avoid",
+        }}
       >
         <svg
           viewBox="0 0 24 24"
-          className="h-[0.88em] w-[0.88em] shrink-0 shadow-xs"
+          className="h-[0.72em] w-[0.72em] shrink-0 rounded-[2.5px] shadow-xs overflow-hidden"
           style={{ display: "inline-block" }}
         >
           <defs>
@@ -88,10 +93,11 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
               <stop offset="100%" stopColor="#8A510A" />
             </linearGradient>
           </defs>
-          <path d="M 0,0 L 16,0 A 8 8 0 0 1 24,8 L 24,24 Z" fill="url(#goldLightGrad)" />
+          <rect width="24" height="24" rx="4.5" fill="url(#goldLightGrad)" />
           <path d="M 0,0 L 24,24 L 0,24 Z" fill="url(#goldDarkGrad)" />
         </svg>
         <span
+          className="leading-none"
           style={{
             backgroundImage: "linear-gradient(135deg, #6E4006 0%, #A86D16 28%, #D4962C 50%, #9E6412 75%, #573103 100%)",
             WebkitBackgroundClip: "text",
@@ -150,7 +156,8 @@ function Bullets({
       {values.map((item, index) => (
         <li
           key={`${item}-${index}`}
-          className="mt-[var(--resume-bullet-gap)] flex text-[var(--resume-body)]"
+          className="mt-[var(--resume-bullet-gap)] flex text-[var(--resume-body)] break-inside-avoid"
+          style={{ breakInside: "avoid", pageBreakInside: "avoid" }}
         >
           <span className="w-[var(--resume-bullet-mark-width)] shrink-0">
             •
@@ -174,7 +181,10 @@ function Technologies({
   const values = stringItems(items);
   if (!values.length) return null;
   return (
-    <p className="mt-[var(--resume-technology-gap)] text-[length:var(--resume-meta-size)] text-[var(--resume-muted)]">
+    <p
+      className="mt-[var(--resume-technology-gap)] text-[length:var(--resume-meta-size)] text-[var(--resume-muted)] break-inside-avoid"
+      style={{ breakInside: "avoid", pageBreakInside: "avoid" }}
+    >
       <span className="text-[var(--resume-body)]">Technologies: </span>
       {values.join(separator)}
     </p>
@@ -237,33 +247,43 @@ export function ResumeHtmlDocument({
         {data.experience.map((item, index) => (
           <article
             key={`${item.company}-${index}`}
-            className="mt-[var(--resume-entry-gap)] break-inside-avoid"
+            className="mt-[var(--resume-entry-gap)]"
           >
-            <div className="flex items-baseline justify-between gap-[var(--resume-row-gap)]">
-              <h3 className="min-w-0 flex-1 text-[length:var(--resume-body-size)]">
-                {item.company && (
-                  <span className="font-bold text-[var(--resume-ink)]">
-                    {item.company}
-                  </span>
-                )}
-                {item.company && item.title && (
-                  <span className="mx-1.5 text-[var(--resume-muted)] font-normal">{inline}</span>
-                )}
-                {item.title && (
-                  <span className="font-normal text-[var(--resume-primary)]">
-                    {item.title}
-                  </span>
-                )}
-              </h3>
-              <span className="shrink-0 text-[length:var(--resume-date-size)] text-[var(--resume-muted)]">
-                {resumeDateRange(item.start_date, item.end_date)}
-              </span>
+            <div
+              className="break-inside-avoid break-after-avoid"
+              style={{
+                breakInside: "avoid",
+                breakAfter: "avoid",
+                pageBreakInside: "avoid",
+                pageBreakAfter: "avoid",
+              }}
+            >
+              <div className="flex items-baseline justify-between gap-[var(--resume-row-gap)]">
+                <h3 className="min-w-0 flex-1 text-[length:var(--resume-body-size)]">
+                  {item.company && (
+                    <span className="font-bold text-[var(--resume-ink)]">
+                      {item.company}
+                    </span>
+                  )}
+                  {item.company && item.title && (
+                    <span className="mx-1.5 text-[var(--resume-muted)] font-normal">{inline}</span>
+                  )}
+                  {item.title && (
+                    <span className="font-normal text-[var(--resume-primary)]">
+                      {item.title}
+                    </span>
+                  )}
+                </h3>
+                <span className="shrink-0 text-[length:var(--resume-date-size)] text-[var(--resume-muted)]">
+                  {resumeDateRange(item.start_date, item.end_date)}
+                </span>
+              </div>
+              {item.location && (
+                <p className="mt-[var(--resume-detail-gap)] text-[length:var(--resume-date-size)] text-[var(--resume-muted)]">
+                  {item.location}
+                </p>
+              )}
             </div>
-            {item.location && (
-              <p className="mt-[var(--resume-detail-gap)] text-[length:var(--resume-date-size)] text-[var(--resume-muted)]">
-                {item.location}
-              </p>
-            )}
             <Bullets items={item.description} rules={highlightRules} />
             <Technologies
               items={item.technologies}
@@ -284,40 +304,50 @@ export function ResumeHtmlDocument({
           return (
             <article
               key={`${item.institution}-${index}`}
-              className="mt-[var(--resume-entry-gap)] break-inside-avoid"
+              className="mt-[var(--resume-entry-gap)]"
             >
-              <div className="flex items-baseline justify-between gap-[var(--resume-row-gap)]">
-                <h3 className="min-w-0 flex-1 text-[length:var(--resume-body-size)]">
-                  {item.degree && (
-                    <span className="font-bold text-[var(--resume-ink)]">
-                      {item.degree}
-                    </span>
-                  )}
-                  {item.degree && item.field_of_study && (
-                    <span className="mx-1.5 font-normal text-[var(--resume-muted)]">
-                      {inline}
-                    </span>
-                  )}
-                  {item.field_of_study && (
-                    <span className="font-medium text-[var(--resume-primary)]">
-                      {item.field_of_study}
-                    </span>
-                  )}
-                  {!hasDegreeInfo && item.institution && (
-                    <span className="font-bold text-[var(--resume-ink)]">
-                      {item.institution}
-                    </span>
-                  )}
-                </h3>
-                <span className="shrink-0 text-[length:var(--resume-date-size)] text-[var(--resume-muted)]">
-                  {resumeDateRange(item.start_date, item.end_date)}
-                </span>
+              <div
+                className="break-inside-avoid break-after-avoid"
+                style={{
+                  breakInside: "avoid",
+                  breakAfter: "avoid",
+                  pageBreakInside: "avoid",
+                  pageBreakAfter: "avoid",
+                }}
+              >
+                <div className="flex items-baseline justify-between gap-[var(--resume-row-gap)]">
+                  <h3 className="min-w-0 flex-1 text-[length:var(--resume-body-size)]">
+                    {item.degree && (
+                      <span className="font-bold text-[var(--resume-ink)]">
+                        {item.degree}
+                      </span>
+                    )}
+                    {item.degree && item.field_of_study && (
+                      <span className="mx-1.5 font-normal text-[var(--resume-muted)]">
+                        {inline}
+                      </span>
+                    )}
+                    {item.field_of_study && (
+                      <span className="font-medium text-[var(--resume-primary)]">
+                        {item.field_of_study}
+                      </span>
+                    )}
+                    {!hasDegreeInfo && item.institution && (
+                      <span className="font-bold text-[var(--resume-ink)]">
+                        {item.institution}
+                      </span>
+                    )}
+                  </h3>
+                  <span className="shrink-0 text-[length:var(--resume-date-size)] text-[var(--resume-muted)]">
+                    {resumeDateRange(item.start_date, item.end_date)}
+                  </span>
+                </div>
+                {subInfo && (
+                  <p className="mt-[var(--resume-detail-gap)] text-[length:var(--resume-date-size)] text-[var(--resume-muted)]">
+                    {subInfo}
+                  </p>
+                )}
               </div>
-              {subInfo && (
-                <p className="mt-[var(--resume-detail-gap)] text-[length:var(--resume-date-size)] text-[var(--resume-muted)]">
-                  {subInfo}
-                </p>
-              )}
               <Bullets items={item.highlights} rules={highlightRules} />
             </article>
           );
@@ -329,26 +359,36 @@ export function ResumeHtmlDocument({
         {data.projects.map((item, index) => (
           <article
             key={`${item.name}-${index}`}
-            className="mt-[var(--resume-entry-gap)] break-inside-avoid"
+            className="mt-[var(--resume-entry-gap)]"
           >
-            <div className="flex items-baseline justify-between gap-[var(--resume-row-gap)]">
-              <h3 className="min-w-0 flex-1 font-bold text-[var(--resume-ink)]">
-                {item.name}
-              </h3>
-              <span className="shrink-0 text-[length:var(--resume-date-size)] text-[var(--resume-muted)]">
-                {resumeDateRange(item.start_date, item.end_date)}
-              </span>
+            <div
+              className="break-inside-avoid break-after-avoid"
+              style={{
+                breakInside: "avoid",
+                breakAfter: "avoid",
+                pageBreakInside: "avoid",
+                pageBreakAfter: "avoid",
+              }}
+            >
+              <div className="flex items-baseline justify-between gap-[var(--resume-row-gap)]">
+                <h3 className="min-w-0 flex-1 font-bold text-[var(--resume-ink)]">
+                  {item.name}
+                </h3>
+                <span className="shrink-0 text-[length:var(--resume-date-size)] text-[var(--resume-muted)]">
+                  {resumeDateRange(item.start_date, item.end_date)}
+                </span>
+              </div>
+              {item.url && (
+                <a
+                  className="mt-[var(--resume-bullet-gap)] block text-[length:var(--resume-url-size)] text-[var(--resume-muted)] hover:text-[var(--resume-ink)]"
+                  href={item.url.startsWith('http') ? item.url : `https://${item.url}`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  {item.url.replace(/^https?:\/\//i, '').replace(/\/$/, '')}
+                </a>
+              )}
             </div>
-            {item.url && (
-              <a
-                className="mt-[var(--resume-bullet-gap)] block text-[length:var(--resume-url-size)] text-[var(--resume-muted)] hover:text-[var(--resume-ink)]"
-                href={item.url.startsWith('http') ? item.url : `https://${item.url}`}
-                target="_blank"
-                rel="noreferrer"
-              >
-                {item.url.replace(/^https?:\/\//i, '').replace(/\/$/, '')}
-              </a>
-            )}
             <Bullets items={item.description} rules={highlightRules} />
             <Technologies
               items={item.technologies}
@@ -364,6 +404,7 @@ export function ResumeHtmlDocument({
           <div
             key={`${group.type}-${index}`}
             className="mt-[var(--resume-skill-gap)] flex items-baseline break-inside-avoid"
+            style={{ breakInside: "avoid", pageBreakInside: "avoid" }}
           >
             {group.type && (
               <span className="w-[var(--resume-skill-label-width)] shrink-0 text-[length:var(--resume-date-size)] font-bold text-[var(--resume-ink)]">
@@ -384,7 +425,8 @@ export function ResumeHtmlDocument({
           .map((item, index) => (
             <p
               key={`${item.name}-${index}`}
-              className="mt-[var(--resume-skill-gap)]"
+              className="mt-[var(--resume-skill-gap)] break-inside-avoid"
+              style={{ breakInside: "avoid", pageBreakInside: "avoid" }}
             >
               {[
                 item.name,
@@ -399,7 +441,10 @@ export function ResumeHtmlDocument({
     ) : null,
     languages: data.languages?.length ? (
       <Section title={config.sectionLabels.languages}>
-        <p className="mt-[var(--resume-skill-gap)]">
+        <p
+          className="mt-[var(--resume-skill-gap)] break-inside-avoid"
+          style={{ breakInside: "avoid", pageBreakInside: "avoid" }}
+        >
           {data.languages
             .map((item) =>
               [item.name, item.proficiency].filter(Boolean).join(" - "),
@@ -413,18 +458,28 @@ export function ResumeHtmlDocument({
         {data.other.map((item, index) => (
           <article
             key={`${item.title}-${index}`}
-            className="mt-[var(--resume-entry-gap)] break-inside-avoid"
+            className="mt-[var(--resume-entry-gap)]"
           >
-            <h3 className="font-bold text-[var(--resume-ink)]">
-              {[item.title, item.organization].filter(Boolean).join(inline) ||
-                item.type ||
-                config.sectionLabels.other}
-            </h3>
-            {(item.location || item.date) && (
-              <p className="mt-[var(--resume-detail-gap)] text-[length:var(--resume-date-size)] text-[var(--resume-muted)]">
-                {[item.location, item.date].filter(Boolean).join(inline)}
-              </p>
-            )}
+            <div
+              className="break-inside-avoid break-after-avoid"
+              style={{
+                breakInside: "avoid",
+                breakAfter: "avoid",
+                pageBreakInside: "avoid",
+                pageBreakAfter: "avoid",
+              }}
+            >
+              <h3 className="font-bold text-[var(--resume-ink)]">
+                {[item.title, item.organization].filter(Boolean).join(inline) ||
+                  item.type ||
+                  config.sectionLabels.other}
+              </h3>
+              {(item.location || item.date) && (
+                <p className="mt-[var(--resume-detail-gap)] text-[length:var(--resume-date-size)] text-[var(--resume-muted)]">
+                  {[item.location, item.date].filter(Boolean).join(inline)}
+                </p>
+              )}
+            </div>
             <Bullets items={item.description} rules={highlightRules} />
           </article>
         ))}

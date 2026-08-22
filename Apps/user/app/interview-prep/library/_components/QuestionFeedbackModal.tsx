@@ -1,3 +1,5 @@
+/** @format */
+
 'use client';
 import { Textarea } from '@jobby/ui';
 
@@ -7,7 +9,6 @@ import type { InterviewQuestion } from '@/lib/types';
 import { api } from '@/lib/api';
 import { showGlobalToast } from '@/lib/toast';
 import { useGlobalModalStore } from '@/lib/store/global-modal-store';
-
 
 interface QuestionFeedbackModalProps {
   isOpen?: boolean;
@@ -68,7 +69,8 @@ export function QuestionFeedbackFormContent({
   question: InterviewQuestion;
   onClose: () => void;
 }) {
-  const [selectedIssueType, setSelectedIssueType] = useState<string>('Answer Error');
+  const [selectedIssueType, setSelectedIssueType] =
+    useState<string>('Answer Error');
   const [feedbackText, setFeedbackText] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -87,7 +89,9 @@ export function QuestionFeedbackFormContent({
         body: fullBody,
       });
 
-      showGlobalToast('Feedback submitted successfully! The author has been notified.');
+      showGlobalToast(
+        'Feedback submitted successfully! The author has been notified.',
+      );
       window.dispatchEvent(
         new CustomEvent('jobby:notification-event', {
           detail: { user_id: question.submitted_by_user_id },
@@ -98,7 +102,9 @@ export function QuestionFeedbackFormContent({
     } catch (err) {
       console.error('Failed to submit question feedback:', err);
       showGlobalToast(
-        err instanceof Error ? err.message : 'Failed to submit feedback. Please try again.',
+        err instanceof Error ?
+          err.message
+        : 'Failed to submit feedback. Please try again.',
       );
     } finally {
       setIsSubmitting(false);
@@ -108,7 +114,7 @@ export function QuestionFeedbackFormContent({
   return (
     <div className='flex flex-col w-full text-ink-primary'>
       {/* Modal Header */}
-      <div className='flex items-center justify-between px-6 py-4 border-b border-border/60 bg-background-secondary/30'>
+      <div className='flex items-center justify-between px-6 py-4 border-b border-primary/60 bg-background-secondary/30'>
         <div className='flex items-center gap-2 text-ink-primary font-bold text-base'>
           <AlertCircle className='w-5 h-5 text-amber-500' />
           <span>Report Issue / Feedback</span>
@@ -125,7 +131,7 @@ export function QuestionFeedbackFormContent({
       {/* Modal Body */}
       <form onSubmit={handleSubmit} className='p-6 space-y-4 flex-1'>
         {/* Question Title Target */}
-        <div className='p-3 rounded-xl bg-background-secondary/50 border border-border/50 text-xs text-ink-secondary space-y-1'>
+        <div className='p-3 rounded-xl bg-background-secondary/50 border border-primary/50 text-xs text-ink-secondary space-y-1'>
           <div className='font-medium text-ink-secondary/70 uppercase tracking-wider text-[10px]'>
             Target Question
           </div>
@@ -150,7 +156,7 @@ export function QuestionFeedbackFormContent({
                   className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer ${
                     isSelected ?
                       'bg-primary text-primary-foreground font-semibold shadow-xs'
-                    : 'bg-background-secondary text-ink-secondary hover:text-ink-primary hover:bg-background-secondary/80 border border-border/50'
+                    : 'bg-background-secondary text-ink-secondary hover:text-ink-primary hover:bg-background-secondary/80 border border-primary/50'
                   }`}
                 >
                   {type}
@@ -172,7 +178,7 @@ export function QuestionFeedbackFormContent({
         />
 
         {/* Modal Footer */}
-        <div className='flex items-center justify-end gap-3 pt-3 border-t border-border/40'>
+        <div className='flex items-center justify-end gap-3 pt-3 border-t border-primary/40'>
           <button
             type='button'
             onClick={onClose}
@@ -202,4 +208,3 @@ export function QuestionFeedbackFormContent({
     </div>
   );
 }
-

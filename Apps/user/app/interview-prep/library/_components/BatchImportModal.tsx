@@ -13,7 +13,6 @@ import type {
 import { cn, cleanName } from '@/lib/utils';
 import { CategorySelector } from './selectors';
 
-
 import { div } from 'framer-motion/client';
 import { Info, List } from 'lucide-react';
 
@@ -224,7 +223,7 @@ export function BatchImportModal({
                     </p>
                   </div>
 
-                  <div className='rounded-xl border border-border/40 bg-background-secondary/40 p-4 font-mono text-sm leading-7'>
+                  <div className='rounded-xl border border-primary/40 bg-background-secondary/40 p-4 font-mono text-sm leading-7'>
                     <div className='text-ink-secondary'>
                       1. Tell me about yourself.
                     </div>
@@ -237,7 +236,7 @@ export function BatchImportModal({
                       3. Describe a challenging project.
                     </div>
 
-                    <div className='my-3 border-t border-dashed border-border/50' />
+                    <div className='my-3 border-t border-dashed border-primary/50' />
 
                     <div className='text-ink-secondary'>
                       • Tell me about yourself.
@@ -304,7 +303,7 @@ export function BatchImportModal({
           </div>
 
           {/* Footer buttons for step 1 */}
-          <div className='flex justify-end gap-2 pt-4 border-t border-border/40 shrink-0'>
+          <div className='flex justify-end gap-2 pt-4 border-t border-primary/40 shrink-0'>
             <Button variant='ghost' onClick={onClose}>
               Cancel
             </Button>
@@ -328,7 +327,7 @@ export function BatchImportModal({
               <select
                 value={batchCategory}
                 onChange={(e) => setBatchCategory(e.target.value)}
-                className='body-sm px-3 py-1.5 rounded-lg dark:border-border text-ink-primary focus:outline-none'
+                className='body-sm px-3 py-1.5 rounded-lg dark:border-primary text-ink-primary focus:outline-none'
               >
                 <option value='keep'>Keep Original Category</option>
                 <option value='none'>Set Classified-free</option>
@@ -341,7 +340,7 @@ export function BatchImportModal({
               <select
                 value={batchFrequency}
                 onChange={(e) => setBatchFrequency(e.target.value)}
-                className='body-sm px-3 py-1.5 rounded-lg dark:border-border text-ink-primary focus:outline-none'
+                className='body-sm px-3 py-1.5 rounded-lg dark:border-primary text-ink-primary focus:outline-none'
               >
                 <option value='keep'>Keep Original Frequency</option>
                 <option value='Low'>Low</option>
@@ -351,7 +350,7 @@ export function BatchImportModal({
               <select
                 value={batchImportance}
                 onChange={(e) => setBatchImportance(e.target.value)}
-                className='body-sm px-3 py-1.5 rounded-lg dark:border-border text-ink-primary focus:outline-none'
+                className='body-sm px-3 py-1.5 rounded-lg dark:border-primary text-ink-primary focus:outline-none'
               >
                 <option value='keep'>Keep Original Importance</option>
                 <option value='1'>1 Star</option>
@@ -374,7 +373,7 @@ export function BatchImportModal({
           </div>
 
           {/* Table Preview header */}
-          <div className='grid grid-cols-[50px_minmax(0,2fr)_minmax(0,1.2fr)_minmax(0,0.8fr)_minmax(0,0.8fr)_minmax(0,2fr)_50px] text-[11px] font-bold text-ink-secondary uppercase tracking-wider px-6 py-3 border-b border-border/40 bg-background-secondary/20 shrink-0'>
+          <div className='grid grid-cols-[50px_minmax(0,2fr)_minmax(0,1.2fr)_minmax(0,0.8fr)_minmax(0,0.8fr)_minmax(0,2fr)_50px] text-[11px] font-bold text-ink-secondary uppercase tracking-wider px-6 py-3 border-b border-primary/40 bg-background-secondary/20 shrink-0'>
             <div className='flex justify-center items-center'>
               <input
                 type='checkbox'
@@ -447,7 +446,7 @@ export function BatchImportModal({
                       }}
                       placeholder='Title is required'
                       required
-                      className='body-sm w-full px-2 py-1 rounded dark:border-border focus:outline-none focus:border-primary/50 text-ink-primary'
+                      className='body-sm w-full px-2 py-1 rounded dark:border-primary focus:outline-none focus:border-primary/50 text-ink-primary'
                     />
                   </div>
 
@@ -465,7 +464,7 @@ export function BatchImportModal({
                           ),
                         );
                       }}
-                      className='body-sm w-full px-2 py-1 rounded dark:border-border focus:outline-none text-ink-primary'
+                      className='body-sm w-full px-2 py-1 rounded dark:border-primary focus:outline-none text-ink-primary'
                     >
                       <option value=''>No Category</option>
                       {categories.map((cat) => (
@@ -490,7 +489,7 @@ export function BatchImportModal({
                           ),
                         );
                       }}
-                      className='body-sm w-full px-2 py-1 rounded dark:border-border focus:outline-none text-ink-primary'
+                      className='body-sm w-full px-2 py-1 rounded dark:border-primary focus:outline-none text-ink-primary'
                     >
                       <option value='Low'>Low</option>
                       <option value='Medium'>Medium</option>
@@ -512,7 +511,7 @@ export function BatchImportModal({
                           ),
                         );
                       }}
-                      className='body-sm w-full px-2 py-1 rounded dark:border-border focus:outline-none text-ink-primary'
+                      className='body-sm w-full px-2 py-1 rounded dark:border-primary focus:outline-none text-ink-primary'
                     >
                       <option value={1}>1 Star</option>
                       <option value={2}>2 Stars</option>

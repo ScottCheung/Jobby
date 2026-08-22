@@ -17,7 +17,6 @@ import { api } from '@/lib/api';
 import type { CommunityInterviewReport } from '@/lib/types';
 import { useLayoutStore } from '@/lib/store/layout-store';
 
-
 export interface QuestionReportsDrawerProps {
   isOpen?: boolean;
   onClose?: () => void;
@@ -195,14 +194,14 @@ export function QuestionReportsContent({
           : reports.length === 0 ?
             <EmptyPlaceHolder
               icon={Building2}
-              title="No interview reports yet"
-              description="Be the first to report seeing this question in an actual interview!"
-              className="border-0 bg-transparent py-10"
+              title='No interview reports yet'
+              description='Be the first to report seeing this question in an actual interview!'
+              className='border-0 bg-transparent py-10'
             />
           : sortedReports.map((report) => (
               <div
                 key={report.id}
-                className='rounded-xl border border-border/60 bg-background/50 p-3.5 transition-colors hover:bg-background-secondary/40'
+                className='rounded-xl border border-primary/60 bg-background/50 p-3.5 transition-colors hover:bg-background-secondary/40'
               >
                 <div className='flex items-center justify-between gap-2'>
                   <div className='flex items-center gap-2 text-sm font-semibold text-ink-primary'>

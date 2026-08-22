@@ -286,7 +286,7 @@ export function FavoritesDrawer() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder='Search favorited items...'
-              className='w-full pl-9 pr-8 py-2 text-xs rounded-xl bg-background-secondary/50 border border-border/50 focus:outline-hidden focus:border-primary/50 transition-all placeholder:text-ink-secondary/60'
+              className='w-full pl-9 pr-8 py-2 text-xs rounded-xl bg-background-secondary/50 border border-primary/50 focus:outline-hidden focus:border-primary/50 transition-all placeholder:text-ink-secondary/60'
             />
             {searchQuery && (
               <button
@@ -300,7 +300,7 @@ export function FavoritesDrawer() {
         </div>
 
         {/* Primary Tabs */}
-        <div className='flex border-b border-border/40 gap-2 pt-2  overflow-x-auto no-scrollbar'>
+        <div className='flex border-b border-primary/40 gap-2 pt-2  overflow-x-auto no-scrollbar'>
           {[
             {
               id: 'questions',
@@ -361,7 +361,7 @@ export function FavoritesDrawer() {
 
         {/* Sub-Filter for Comments */}
         {activeTab === 'comments' && (
-          <div className='flex items-center gap-2 pt-3 pb-1 bg-background-secondary/5 border-b border-border/20 text-xs'>
+          <div className='flex items-center gap-2 pt-3 pb-1 bg-background-secondary/5 border-b border-primary/20 text-xs'>
             {[
               { id: 'liked', label: 'Saved Comments' },
               { id: 'mine', label: 'My Comments' },
@@ -394,7 +394,7 @@ export function FavoritesDrawer() {
               {[1, 2, 3, 4].map((i) => (
                 <div
                   key={i}
-                  className='p-4 rounded-xl border border-border/40 bg-background-secondary/30 space-y-2'
+                  className='p-4 rounded-xl border border-primary/40 bg-background-secondary/30 space-y-2'
                 >
                   <div className='flex items-center justify-between'>
                     <div className='h-3 bg-border/60 rounded-md w-24' />
@@ -431,7 +431,7 @@ export function FavoritesDrawer() {
                             `/interview-prep/practice/${q.display_number || q.id}`,
                           )
                         }
-                        className='group relative p-4 rounded-xl border border-border/40 bg-background-secondary/30 hover:bg-background-secondary/70 hover:border-primary/40 transition-all cursor-pointer shadow-2xs hover:shadow-md'
+                        className='group relative p-4 rounded-xl border border-primary/40 bg-background-secondary/30 hover:bg-background-secondary/70 hover:border-primary/40 transition-all cursor-pointer shadow-2xs hover:shadow-md'
                       >
                         <div className='flex items-start justify-between gap-3'>
                           <div className='space-y-1.5 flex-1 min-w-0'>
@@ -458,7 +458,7 @@ export function FavoritesDrawer() {
                           </button>
                         </div>
 
-                        <div className='flex items-center justify-between pt-3 mt-2 border-t border-border/20 text-[11px] text-ink-secondary'>
+                        <div className='flex items-center justify-between pt-3 mt-2 border-t border-primary/20 text-[11px] text-ink-secondary'>
                           <div className='flex items-center gap-2 overflow-hidden'>
                             {q.tags && q.tags.length > 0 && (
                               <span className='text-[10px] text-ink-secondary/70 truncate'>
@@ -501,7 +501,7 @@ export function FavoritesDrawer() {
                             `/interview-prep/practice/${c.question_id}?mode=free&tab=comment`,
                           )
                         }
-                        className='group p-4 rounded-xl border border-border/40 bg-background-secondary/30 hover:bg-background-secondary/70 hover:border-primary/40 transition-all cursor-pointer space-y-2 shadow-2xs'
+                        className='group p-4 rounded-xl border border-primary/40 bg-background-secondary/30 hover:bg-background-secondary/70 hover:border-primary/40 transition-all cursor-pointer space-y-2 shadow-2xs'
                       >
                         {' '}
                         <span className='font-semibold text-xs text-primary/90 flex items-center gap-1.5 truncate'>
@@ -554,7 +554,7 @@ export function FavoritesDrawer() {
                             `/interview-prep/practice/${a.question_id}`,
                           )
                         }
-                        className='group p-4 rounded-xl border border-border/40 bg-background-secondary/30 hover:bg-background-secondary/70 hover:border-primary/40 transition-all cursor-pointer space-y-2 shadow-2xs'
+                        className='group p-4 rounded-xl border border-primary/40 bg-background-secondary/30 hover:bg-background-secondary/70 hover:border-primary/40 transition-all cursor-pointer space-y-2 shadow-2xs'
                       >
                         <div className='flex items-center justify-between text-[11px]'>
                           <span className='font-semibold text-primary truncate max-w-[220px]'>
@@ -569,7 +569,7 @@ export function FavoritesDrawer() {
                             {a.title}
                           </h5>
                         )}
-                        <p className='text-xs text-ink-secondary leading-relaxed line-clamp-3 bg-background/30 p-2.5 rounded-lg border border-border/20'>
+                        <p className='text-xs text-ink-secondary leading-relaxed line-clamp-3 bg-background/30 p-2.5 rounded-lg border border-primary/20'>
                           {a.body}
                         </p>
                       </div>
@@ -601,7 +601,7 @@ export function FavoritesDrawer() {
                         onClick={() =>
                           navigateTo('/interview-prep/collections')
                         }
-                        className='group p-4 rounded-xl border border-border/40 bg-background-secondary/30 hover:bg-background-secondary/70 hover:border-primary/40 transition-all cursor-pointer flex items-center gap-3 shadow-2xs'
+                        className='group p-4 rounded-xl border border-primary/40 bg-background-secondary/30 hover:bg-background-secondary/70 hover:border-primary/40 transition-all cursor-pointer flex items-center gap-3 shadow-2xs'
                       >
                         <div className='size-12 rounded-lg bg-primary/15 text-primary flex items-center justify-center font-bold text-lg shrink-0 border border-primary/20'>
                           <BookOpen className='size-6' />

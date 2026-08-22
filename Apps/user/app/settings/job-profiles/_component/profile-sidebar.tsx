@@ -20,7 +20,7 @@ export function ProfileSidebar({
   onCreate,
 }: ProfileSidebarProps) {
   return (
-    <aside className='rounded-2xl border border-border/60 bg-panel p-4 flex flex-col min-h-0'>
+    <aside className='rounded-2xl border border-primary/60 bg-panel p-4 flex flex-col min-h-0'>
       <div className='flex items-start justify-between gap-3'>
         <div>
           <h2 className='title-sub'>Job Hunting Profiles</h2>
@@ -44,7 +44,7 @@ export function ProfileSidebar({
                 'w-full rounded-2xl border px-4 py-3 text-left transition-colors cursor-pointer',
                 isSelected ?
                   'border-zinc-900 dark:border-zinc-100 bg-secondary text-white dark:bg-background-secondary dark:text-ink-primary'
-                : 'border-border/60 bg-zinc-50/60 dark:bg-panel/40 text-ink-primary hover:border-zinc-400 dark:hover:border-zinc-700',
+                : 'border-primary/60 bg-zinc-50/60 dark:bg-panel/40 text-ink-primary hover:border-zinc-400 dark:hover:border-zinc-700',
               )}
             >
               <div className='flex items-center justify-between gap-2'>

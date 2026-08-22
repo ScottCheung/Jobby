@@ -50,7 +50,7 @@ export function BatchAssignCategoryModal({
       className='w-[90vw] max-w-md max-h-[85vh] text-ink-primary'
     >
       {/* Header */}
-      <div className='flex items-center justify-between border-b border-border/40 px-6 py-5 shrink-0 bg-background-secondary/5'>
+      <div className='flex items-center justify-between border-b border-primary/40 px-6 py-5 shrink-0 bg-background-secondary/5'>
         <div>
           <h2 className='title-card text-ink-primary'>Assign Category</h2>
           <p className='body-sm text-ink-secondary mt-0.5'>
@@ -77,7 +77,7 @@ export function BatchAssignCategoryModal({
               placeholder='Search categories...'
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className='body-md w-full pl-9 pr-4 py-2 rounded-xl bg-panel dark:bg-background-secondary dark:border-border focus:outline-none focus:border-primary/50 text-ink-primary'
+              className='body-md w-full pl-9 pr-4 py-2 rounded-xl bg-panel dark:bg-background-secondary dark:border-primary focus:outline-none focus:border-primary/50 text-ink-primary'
             />
           </div>
         </div>
@@ -93,7 +93,7 @@ export function BatchAssignCategoryModal({
             'flex items-center justify-between p-3.5 rounded-2xl border transition-all text-left',
             selectedCatId === null ?
               'bg-primary/10 border-primary text-primary font-semibold shadow-sm'
-            : 'border-border/60 hover:border-primary/30 hover:bg-background-secondary/40 text-ink-primary',
+            : 'border-primary/60 hover:border-primary/30 hover:bg-background-secondary/40 text-ink-primary',
           )}
         >
           <div className='flex items-center gap-3 min-w-0'>
@@ -127,7 +127,7 @@ export function BatchAssignCategoryModal({
                 'flex items-center justify-between p-3.5 rounded-2xl border transition-all text-left',
                 isSelected ?
                   'bg-primary/10 border-primary text-primary font-semibold shadow-sm'
-                : 'border-border/60 hover:border-primary/30 hover:bg-background-secondary/40 text-ink-primary',
+                : 'border-primary/60 hover:border-primary/30 hover:bg-background-secondary/40 text-ink-primary',
               )}
             >
               <div className='flex items-center gap-3 min-w-0'>
@@ -147,7 +147,7 @@ export function BatchAssignCategoryModal({
       </div>
 
       {/* Footer */}
-      <div className='flex items-center justify-end gap-3 p-6 border-t border-border/40 bg-background-secondary/5 shrink-0'>
+      <div className='flex items-center justify-end gap-3 p-6 border-t border-primary/40 bg-background-secondary/5 shrink-0'>
         <Button
           variant='outline'
           onClick={onClose}
@@ -164,7 +164,8 @@ export function BatchAssignCategoryModal({
           {isSaving && <Loader2 className='w-4 h-4 animate-spin' />}
           {isSaving ?
             'Updating...'
-          : `Apply to ${selectedCount} Question${selectedCount === 1 ? '' : 's'}`}
+          : `Apply to ${selectedCount} Question${selectedCount === 1 ? '' : 's'}`
+          }
         </Button>
       </div>
     </Modal>

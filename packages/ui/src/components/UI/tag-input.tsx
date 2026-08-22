@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useState, useRef, useEffect, type DragEvent } from 'react';
+import { useState, useRef, useEffect, useMemo, type DragEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GripVertical, Plus, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -12,7 +12,7 @@ import { Button } from './Button';
 type TagInputProps = {
   values: string[];
   onChange: (values: string[]) => void;
-  placeholder?: string;
+  placeholder?: string | string[];
   className?: string;
   disabled?: boolean;
   maxTags?: number;
@@ -68,8 +68,44 @@ export function TagInput({
   const [draft, setDraft] = useState('');
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
-  const [dropPosition, setDropPosition] = useState<'before' | 'after'>('before');
+  const [dropPosition, setDropPosition] = useState<'before' | 'after'>(
+    'before',
+  );
   const canAdd = !disabled && (!maxTags || values.length < maxTags);
+
+  const placeholderList = useMemo(() => {
+    if (Array.isArray(placeholder)) {
+      const list = placeholder.filter(Boolean);
+      return list.length > 0 ? list : ['Add tag(s)...'];
+    }
+    if (typeof placeholder === 'string' && placeholder.trim()) {
+      return [
+        placeholder,
+        'Tip: Type multiple items separated by commas (,)',
+        'Press Enter or comma to add tags',
+      ];
+    }
+    return [
+      'Type skill(s) or tag(s)...',
+      'Tip: Separate multiple items with commas (e.g. React, TypeScript)',
+      'Press Enter or comma to add tags',
+    ];
+  }, [placeholder]);
+
+  const [placeholderIndex, setPlaceholderIndex] = useState(0);
+
+  useEffect(() => {
+    if (placeholderList.length <= 1) return;
+    const timer = setInterval(() => {
+      setPlaceholderIndex((prev) => (prev + 1) % placeholderList.length);
+    }, 3500);
+    return () => clearInterval(timer);
+  }, [placeholderList]);
+
+  const resolvedPlaceholder =
+    maxTags && values.length >= maxTags
+      ? `Maximum ${maxTags} tags`
+      : placeholderList[placeholderIndex] || placeholderList[0] || 'Add tag(s)...';
 
   const [items, setItems] = useState<TagItemWrapper[]>(() =>
     values.map((val) => ({
@@ -179,7 +215,7 @@ export function TagInput({
   return (
     <div
       className={cn(
-        'border border-border bg-background-secondary p-4 rounded-lg',
+        'bg-background-secondary p-4 rounded-xl',
         className,
       )}
     >
@@ -196,22 +232,33 @@ export function TagInput({
                   layout
                   transition={{ type: 'spring', stiffness: 500, damping: 35 }}
                   draggable={!disabled}
-                  onDragStart={(e) => handleDragStart(e as unknown as DragEvent<HTMLSpanElement>, index)}
-                  onDragOver={(e) => handleDragOver(e as unknown as DragEvent<HTMLSpanElement>, index)}
+                  onDragStart={(e) =>
+                    handleDragStart(
+                      e as unknown as DragEvent<HTMLSpanElement>,
+                      index,
+                    )
+                  }
+                  onDragOver={(e) =>
+                    handleDragOver(
+                      e as unknown as DragEvent<HTMLSpanElement>,
+                      index,
+                    )
+                  }
                   onDrop={handleDrop}
                   onDragEnd={resetDragState}
                   style={{ transition: 'none' }}
                   className={cn(
-                    'inline-flex max-w-full items-center gap-1.5 rounded-md px-2 py-1 text-sm text-ink-primary relative select-none border border-border/60 bg-panel transition-all',
+                    'inline-flex max-w-full items-center gap-1.5 rounded-md px-2 py-1 text-sm text-ink-primary relative select-none bg-panel shadow-2xs transition-all',
                     !disabled &&
-                      'cursor-grab active:cursor-grabbing hover:border-border',
-                    isDragged && 'opacity-40 scale-95 border-dashed border-primary/50',
+                      'cursor-grab active:cursor-grabbing hover:bg-panel/80',
+                    isDragged &&
+                      'opacity-40 scale-95',
                     isTarget &&
                       dropPosition === 'before' &&
-                      'border-l-4 border-l-primary shadow-sm',
+                      'ring-2 ring-primary shadow-sm',
                     isTarget &&
                       dropPosition === 'after' &&
-                      'border-r-4 border-r-primary shadow-sm',
+                      'ring-2 ring-primary shadow-sm',
                   )}
                 >
                   <GripVertical
@@ -241,11 +288,7 @@ export function TagInput({
         <Input
           value={draft}
           disabled={!canAdd}
-          placeholder={
-            maxTags && values.length >= maxTags ?
-              `Maximum ${maxTags} tags`
-            : placeholder
-          }
+          placeholder={resolvedPlaceholder}
           onChange={(event) => setDraft(event.target.value)}
           onKeyDown={(event) => {
             if (event.key === 'Enter' || event.key === ',') {

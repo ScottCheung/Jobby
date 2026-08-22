@@ -22,8 +22,6 @@ import type { QuestionComment } from '@/lib/types';
 
 import { showGlobalToast } from '@/lib/toast';
 
-
-
 import { cn } from '@/lib/utils';
 import { useRelativeTime } from '@/lib/use-relative-time';
 import { useConsole } from '@/components/ConsoleContext';
@@ -443,7 +441,7 @@ export function QuestionCommunity({ questionId }: { questionId: string }) {
           <div className='py-3 text-center'>
             <button
               onClick={() => void load(false, false)}
-              className='rounded-full border border-border px-3.5 py-1.5 text-xs font-semibold text-ink-secondary/70 transition-colors hover:border-primary/40 hover:text-primary'
+              className='rounded-full border border-primary px-3.5 py-1.5 text-xs font-semibold text-ink-secondary/70 transition-colors hover:border-primary/40 hover:text-primary'
             >
               Load more comments
             </button>
@@ -482,7 +480,7 @@ export function QuestionCommunity({ questionId }: { questionId: string }) {
         <div
           onClick={() => mainInputRef.current?.focus()}
           className={cn(
-            ' border border-border bg-background-secondary/40  w-full duration-1000  transition-all',
+            ' border border-primary bg-background-secondary/40  w-full duration-1000  transition-all',
             isComposing ?
               'p-2 items-start col rounded-2xl'
             : 'rounded-3xl p-1  row items-center cursor-text',
@@ -716,7 +714,7 @@ function Comment({
                 </button>
               }
               {reportMenuOpen && (
-                <div className='absolute right-0 top-7 z-10 w-32 rounded-xl border border-border bg-panel p-1 shadow-lg'>
+                <div className='absolute right-0 top-7 z-10 w-32 rounded-xl bg-panel p-1 shadow-lg'>
                   <p className='px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-ink-secondary/70'>
                     Report as
                   </p>

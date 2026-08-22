@@ -26,7 +26,7 @@ export function ReadOnlyBlock({
           items.map((item, index) => (
             <span
               key={`${title}-${item}-${index}`}
-              className='body-sm inline-flex items-center rounded-full border border-border/60 bg-background-secondary/50 dark:bg-panel/40 px-3 py-1.5 text-ink-secondary'
+              className='body-sm inline-flex items-center rounded-full border border-primary/60 bg-background-secondary/50 dark:bg-panel/40 px-3 py-1.5 text-ink-secondary'
             >
               {item}
             </span>

@@ -180,7 +180,7 @@ function DetailLine({
   muted?: boolean;
 }) {
   return (
-    <div className='flex items-start justify-between gap-4 border-b border-border/40 py-2.5 last:border-b-0'>
+    <div className='flex items-start justify-between gap-4 border-b border-primary/40 py-2.5 last:border-b-0'>
       <span className='body-sm shrink-0 text-ink-secondary'>{label}</span>
       <span
         className={cn(
@@ -709,7 +709,7 @@ export default function SearchPage() {
   return (
     <div className='flex h-[calc(100vh-64px)] min-h-[640px] flex-col overflow-hidden'>
       <main className='custom-scrollbar-primary min-h-0 flex-1 overflow-y-auto pr-1'>
-        <header className='flex flex-wrap items-start justify-between gap-4 border-b border-border/60 pb-5'>
+        <header className='flex flex-wrap items-start justify-between gap-4 border-b border-primary/60 pb-5'>
           <div>
             <div className='flex flex-wrap items-center gap-2'>
               <BriefcaseBusiness className='h-5 w-5 text-primary' />

@@ -189,7 +189,7 @@ export function ReplyItem({
             <MoreHorizontal className='h-4 w-4' />
           </button>
           {menuOpen && (
-            <div className='absolute right-0 top-7 z-10 w-40 rounded-xl border border-border bg-background-primary p-1 shadow-lg'>
+            <div className='absolute right-0 top-7 z-10 w-40 rounded-xl border border-primary bg-background-primary p-1 shadow-lg'>
               <button
                 onClick={() => void copyReply()}
                 className='flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs text-ink-secondary hover:bg-background-secondary'
@@ -220,7 +220,7 @@ export function ReplyItem({
                   Delete
                 </button>
               : <>
-                  <p className='mt-1 border-t border-border/60 px-2 pt-2 text-[9px] font-bold uppercase tracking-wide text-ink-secondary/70'>
+                  <p className='mt-1 border-t border-primary/60 px-2 pt-2 text-[9px] font-bold uppercase tracking-wide text-ink-secondary/70'>
                     Report as
                   </p>
                   {(

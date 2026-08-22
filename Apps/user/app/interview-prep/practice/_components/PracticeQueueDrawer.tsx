@@ -57,20 +57,18 @@ export function PracticeQueueDrawerContent({
   return (
     <div className='h-full flex flex-col bg-background'>
       {/* Header */}
-      <div className='flex items-center justify-between px-4 py-4 border-b border-border shrink-0'>
+      <div className='flex items-center justify-between px-4 py-4 border-b border-primary shrink-0'>
         <div className='flex flex-col gap-0.5'>
           <div className='flex items-center gap-2'>
             <ModeIcon className='w-3.5 h-3.5 text-primary' />
-            <span className='label'>
-              {modeLabels[practiceMode]}
-            </span>
+            <span className='label'>{modeLabels[practiceMode]}</span>
             {practiceMode !== 'plan' && (
               <span
                 className={cn(
                   'text-[9px] font-bold px-1.5 py-0.5 rounded-full border',
                   isShuffled ?
                     'bg-primary/10 text-primary border-primary/20'
-                  : 'bg-background-secondary text-ink-secondary border-border',
+                  : 'bg-background-secondary text-ink-secondary border-primary',
                 )}
               >
                 {isShuffled ? 'shuffle' : 'sequential'}

@@ -697,7 +697,7 @@ export function InterviewReportModal({
               type='date'
               value={happenedAt}
               onChange={(e) => setHappenedAt(e.target.value)}
-              className=' flex-1 bg-panel px-3 py-2 rounded-full border border-border focus:outline-none focus:border-primary text-ink-primary'
+              className=' flex-1 bg-panel px-3 py-2 rounded-full border border-primary focus:outline-none focus:border-primary text-ink-primary'
               required
             />
           </div>

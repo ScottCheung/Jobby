@@ -3,7 +3,7 @@
  *
  * @format
  */
-
+@import './fonts-inline.css';
 @import './config/palette.css';
 @import './config/backgrounds.css';
 @import './config/text.css';
@@ -17,17 +17,9 @@
 @import './customize/text.css';
 @import './customize/components.css';
 @import './customize/button.css';
+@import './customize/scrollbar.css';
 
 @layer utilities;
-
-@utility custom-scrollbar {
-  scrollbar-width: auto;
-  scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
-
-  .dark & {
-    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
-  }
-}
 
 .animate-text-shimmer {
   color: transparent;
@@ -74,6 +66,3 @@
     0 0 120px -20px color-mix(in srgb, oklch(0.6 0.18 250) 20%, transparent);
 }
 
-.scrollbar-hide::-webkit-scrollbar {
-  display: none;
-}

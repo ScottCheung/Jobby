@@ -32,6 +32,12 @@ function webAppUrl(): string {
   return (import.meta.env.VITE_WEB_APP_URL || "http://localhost:3000").replace(/\/$/, "");
 }
 
+export function extensionRedirectWithState(redirectUri: string, state: string): string {
+  const callback = new URL(redirectUri);
+  callback.searchParams.set("state", state);
+  return callback.toString();
+}
+
 function supabaseConfig(): { url: string; anonKey: string } {
   const url = import.meta.env.VITE_SUPABASE_URL?.trim();
   const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim();
@@ -76,16 +82,26 @@ async function saveSession(payload: SessionPayload, previousUser?: AuthSession["
 export async function openLogin(interactive = true): Promise<AuthStatus> {
   supabaseConfig();
   const state = crypto.randomUUID();
-  const callback = new URL(chrome.identity.getRedirectURL("jobby-auth"));
-  callback.searchParams.set("state", state);
+  const callback = extensionRedirectWithState(
+    chrome.identity.getRedirectURL("jobby-auth"),
+    state,
+  );
 
-  // The web application owns the login page and callback. The extension callback
-  // is carried as a signed-in return target, so password and Google login use
-  // exactly the same Supabase session as the web application.
-  const loginUrl = new URL(`${webAppUrl()}/login`);
-  loginUrl.searchParams.set("extension_redirect", callback.toString());
+  // When interactive = true, load the full login page for user interaction.
+  // When interactive = false (silent restore), directly invoke the extension callback endpoint
+  // so the server immediately 302 redirects back with tokens or error, taking <15ms with 0 persistent memory.
+  const targetUrl = interactive
+    ? new URL(`${webAppUrl()}/login`)
+    : new URL(`${webAppUrl()}/auth/extension-callback`);
+
+  if (interactive) {
+    targetUrl.searchParams.set("extension_redirect", callback);
+  } else {
+    targetUrl.searchParams.set("redirect_uri", callback);
+  }
+
   const responseUrl = await chrome.identity.launchWebAuthFlow({
-    url: loginUrl.toString(),
+    url: targetUrl.toString(),
     interactive,
   });
   if (!responseUrl) throw new Error("The Jobby login window did not return a session.");
@@ -118,17 +134,33 @@ export async function openLogin(interactive = true): Promise<AuthStatus> {
   return getAuthStatus();
 }
 
+let restoreInFlight: Promise<AuthStatus | null> | null = null;
+let lastRestoreAttempt = 0;
+const RESTORE_COOLDOWN_MS = 15_000;
+
 export async function restoreWebSession(): Promise<AuthStatus | null> {
-  try {
-    if (await isExplicitlyDisconnected()) {
-      return null;
-    }
-    return await openLogin(false);
-  } catch {
-    // A non-interactive flow normally fails when the Jobby web session is not
-    // present. That is expected; the panel can then offer the regular login.
+  if (restoreInFlight) return restoreInFlight;
+  if (Date.now() - lastRestoreAttempt < RESTORE_COOLDOWN_MS) {
     return null;
   }
+  lastRestoreAttempt = Date.now();
+
+  restoreInFlight = (async () => {
+    try {
+      if (await isExplicitlyDisconnected()) {
+        return null;
+      }
+      return await openLogin(false);
+    } catch {
+      // A non-interactive flow normally fails when the Jobby web session is not
+      // present. That is expected; the panel can then offer the regular login.
+      return null;
+    } finally {
+      restoreInFlight = null;
+    }
+  })();
+
+  return restoreInFlight;
 }
 
 export async function refreshAuthSession(): Promise<AuthSession | null> {

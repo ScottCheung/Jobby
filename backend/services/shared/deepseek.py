@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 import re
@@ -92,6 +93,52 @@ def _complete(
             )
         content = payload["choices"][0]["message"]["content"]
         return _extract_json_payload(content)
+    except (httpx.HTTPError, KeyError, IndexError, ValueError, TypeError) as exc:
+        raise DeepSeekError("AI could not produce a valid response") from exc
+
+
+async def _complete_async(
+    messages: list[dict[str, str]],
+    temperature: float = 0.35,
+    operation: str = "generic",
+    timeout: float = 45.0,
+) -> dict:
+    """Async completion whose provider connection closes on task cancellation."""
+    settings = get_settings()
+    if not settings.deepseek_api_key:
+        raise DeepSeekError("AI is not configured")
+    try:
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            response = await client.post(
+                f"{settings.deepseek_base_url.rstrip('/')}/chat/completions",
+                headers={"Authorization": f"Bearer {settings.deepseek_api_key}"},
+                json={
+                    "model": settings.deepseek_model,
+                    "messages": messages,
+                    "response_format": {"type": "json_object"},
+                    "temperature": temperature,
+                },
+            )
+        response.raise_for_status()
+        payload = response.json()
+        if not isinstance(payload, dict):
+            raise ValueError("AI returned a non-object response")
+        usage = payload.get("usage")
+        if isinstance(usage, dict):
+            logger.info(
+                "AI token usage operation=%s model=%s prompt=%s completion=%s total=%s cache_hit=%s cache_miss=%s",
+                operation,
+                settings.deepseek_model,
+                usage.get("prompt_tokens"),
+                usage.get("completion_tokens"),
+                usage.get("total_tokens"),
+                usage.get("prompt_cache_hit_tokens"),
+                usage.get("prompt_cache_miss_tokens"),
+            )
+        content = payload["choices"][0]["message"]["content"]
+        return _extract_json_payload(content)
+    except asyncio.CancelledError:
+        raise
     except (httpx.HTTPError, KeyError, IndexError, ValueError, TypeError) as exc:
         raise DeepSeekError("AI could not produce a valid response") from exc
 

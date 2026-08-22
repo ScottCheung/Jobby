@@ -64,6 +64,28 @@ export function ThemeProvider({
   }, [colorStorageKey, hasLoadedInitialData, profile.extra_data, storageKey]);
 
   useEffect(() => {
+    const handleExtensionThemeMessage = (event: MessageEvent) => {
+      if (
+        event.data &&
+        event.data.source === 'jobby-extension' &&
+        event.data.type === 'JOBBY_EXTENSION_THEME_CHANGE'
+      ) {
+        if (event.data.theme) {
+          setTheme(event.data.theme);
+        }
+        if (event.data.themeColor) {
+          setThemeColor(event.data.themeColor);
+        }
+      }
+    };
+
+    window.addEventListener('message', handleExtensionThemeMessage);
+    return () => {
+      window.removeEventListener('message', handleExtensionThemeMessage);
+    };
+  }, []);
+
+  useEffect(() => {
     const root = window.document.documentElement;
 
     const applyTheme = () => {

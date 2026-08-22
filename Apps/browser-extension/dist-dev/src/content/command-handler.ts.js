@@ -4,22 +4,59 @@ import { fieldFillInstructionSchema, fileUploadInstructionSchema, formFieldTarge
 import { linkedinApplicationActionSchema } from "/src/shared/contracts/linkedin.ts.js";
 import { getCurrentFormScope, readCurrentForm, readCurrentPageWhenReady } from "/src/content/page-reader.ts.js";
 import { startFormDiscovery, watchFormScope } from "/src/content/form-observer.ts.js";
+import { classifyCurrentPage } from "/src/content/page-classifier.ts.js";
 import { fillFormField, fillFormFieldValue, focusFormField, uploadFormFile } from "/src/content/dom/form-driver.ts.js";
 import { linkedinAdapter } from "/src/content/platforms/linkedin/adapter.ts.js";
 import { clickSeekApplicationAction } from "/src/content/platforms/seek/adapter.ts.js";
 import { clickGenericApplicationAction, openGenericApplication } from "/src/content/platforms/generic/adapter.ts.js";
-import { applicationPlanResponseSchema } from "/src/shared/contracts/backend.ts.js";
-import { injectInPageScoreCard } from "/src/content/dom/score-card-injector.ts.js";
+import {
+  closeInPageResumePreviewModal,
+  showInPageResumeLibraryModal,
+  showInPageResumePreviewModal
+} from "/src/content/dom/resume-preview-modal-injector.ts.js";
+import { showInPageToast } from "/src/content/dom/in-page-toast.ts.js";
 export async function handleContentCommand(message) {
+  if (isShowToastCommand(message)) {
+    const payload = message;
+    showInPageToast(payload.message, payload.toastType || "info", payload.duration);
+    return { ok: true };
+  }
+  if (isShowResumePreviewCommand(message)) {
+    const payload = message;
+    showInPageResumePreviewModal({
+      data: payload.data,
+      coreCompetencies: payload.coreCompetencies,
+      keyQualifications: payload.keyQualifications,
+      company: payload.company,
+      jobTitle: payload.jobTitle,
+      filename: payload.filename,
+      pdfDataUrl: payload.pdfDataUrl,
+      pages: payload.pages,
+      fileSize: payload.fileSize,
+      pdfScale: payload.pdfScale,
+      generatedAt: payload.generatedAt,
+      themeColor: payload.themeColor,
+      editUrl: payload.editUrl
+    });
+    return { ok: true };
+  }
+  if (isShowResumeLibraryCommand(message)) {
+    const payload = message;
+    showInPageResumeLibraryModal({
+      resumes: payload.resumes || [],
+      selectedId: payload.selectedId
+    });
+    return { ok: true };
+  }
+  if (isCloseResumePreviewCommand(message)) {
+    closeInPageResumePreviewModal();
+    return { ok: true };
+  }
   if (isInspectCommand(message)) {
     const inspection = pageInspectionSchema.parse(await readCurrentPageWhenReady());
-    injectInPageScoreCard(inspection);
     return { inspection };
   }
   if (isRenderScoreCardCommand(message)) {
-    const inspection = message.inspection ? pageInspectionSchema.parse(message.inspection) : void 0;
-    const plan = message.plan ? applicationPlanResponseSchema.parse(message.plan) : void 0;
-    injectInPageScoreCard(inspection, plan);
     return { ok: true };
   }
   if (isInspectFormCommand(message)) {
@@ -27,7 +64,10 @@ export async function handleContentCommand(message) {
     if (hasObservableFields(form)) {
       watchFormScope(getCurrentFormScope(), () => readCurrentForm(), form);
     } else {
-      startFormDiscovery(() => readCurrentForm());
+      const pageClass = classifyCurrentPage();
+      if (pageClass.isJobPage) {
+        startFormDiscovery(() => readCurrentForm());
+      }
     }
     return { form };
   }
@@ -100,4 +140,16 @@ function isLinkedInApplicationActionCommand(message) {
 }
 function isRenderScoreCardCommand(message) {
   return typeof message === "object" && message !== null && message.type === "content.render-score-card";
+}
+function isShowResumePreviewCommand(message) {
+  return typeof message === "object" && message !== null && message.type === "content.show-resume-preview";
+}
+function isShowResumeLibraryCommand(message) {
+  return typeof message === "object" && message !== null && message.type === "content.show-resume-library";
+}
+function isCloseResumePreviewCommand(message) {
+  return typeof message === "object" && message !== null && message.type === "content.close-resume-preview";
+}
+function isShowToastCommand(message) {
+  return typeof message === "object" && message !== null && message.type === "content.show-toast";
 }

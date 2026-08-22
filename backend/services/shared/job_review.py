@@ -7,211 +7,229 @@ import json
 import re
 from typing import Any
 
-from services.shared.deepseek import _complete
+from services.shared.deepseek import _complete, _complete_async
 
 
 
-TAILOR_PROMPT = """You are a senior, domain-neutral resume editor. Tailor the supplied resume to the supplied job description while preserving factual accuracy. This is an evidence-led editorial selection task, not keyword substitution, invention, or a full-resume paraphrase.
-
-Return one valid JSON object only, with no Markdown, explanation, or extra keys:
-
+TAILOR_PROMPT = """你是一位资深、跨行业的简历编辑专家。请根据提供的职位描述(JD)对提供的简历进行定制化改写,同时严格保证事实准确性。这是一项"基于证据的编辑筛选任务"。
+只返回一个合法的 JSON 对象:
 {
   "summary":"",
   "core_competencies":[],
   "skills":[{"type":"","skills":[]}],
   "experience":[{"index":0,"bullets":[]}],
   "projects":[{"name":"","description":[],"technologies":[]}],
-  "targeted_projects":[]
 }
 
-Before writing, silently:
+--------------------------------
+输入格式
+--------------------------------
 
-1. Infer the role's highest-priority hiring signals (the capabilities and outcomes a hiring team needs to verify).
-2. Map each signal to the strongest explicit resume evidence.
-3. Identify clearly transferable evidence only when it is genuinely supported.
-4. Determine the candidate's strongest professional identity for this role.
-5. Prioritize hiring signal over keyword overlap or keyword count.
+你会收到两部分输入:
 
-Optimize in three layers:
+1. "简历"(resume):结构化数据,其中 experience 数组的每一项带有 index 字段,skills 数组的每一项带有 type(分组名)字段。
+2. "职位描述"(job description):纯文本。
 
-1. Direct evidence for JD requirements.
-2. Closely related transferable experience.
-3. Evidence that strengthens the candidate's overall professional profile.
+输出必须严格复用原简历中的 index、type、name 等标识字段,不得重新编号或改名。
 
-Favor breadth across important capability dimensions before repeating similar evidence.
 
-Never:
+--------------------------------
+写作前(默认静默完成,不输出这部分内容)
+--------------------------------
 
-- Invent responsibilities, technologies, metrics, achievements, leadership, or business impact.
-- Infer completed work from recommendations, prototypes, plans, coursework, or experiments.
-- Upgrade familiarity into production experience.
-- Introduce technologies that do not appear in the resume.
-- Rewrite accomplishments into stronger claims than the evidence supports.
-- Turn a JD requirement into candidate experience merely because it appears in the JD.
+1. 推断该职位最高优先级的招聘信号(招聘团队需要验证的能力和成果)。
+2. 将每个信号对应到简历中最有力的明确证据。
+3. 只在合理的情况下,识别可迁移的证据。
+4. 确定候选人在该职位下最有说服力的职业定位。
+5. 招聘信号的优先级高于关键词重合度或关键词数量。
+6. 在最终定稿前,逐条核对每一句生成内容是否能在原简历中找到明确依据;找不到依据的内容一律删除。
 
-Use the natural vocabulary of the target role instead of mechanically copying JD wording.
+按以下三个层次进行优化:
+1. 直接匹配 JD 要求的证据。
+2. 高度相关、可迁移的经验。
+3. 能强化候选人整体职业形象的证据。
 
-A strong bullet should contain:
+在重复使用相似证据之前,优先覆盖不同的重要能力维度。
+使用目标职位的自然表达习惯,而不是机械照搬 JD 原文措辞。
 
-- a clear action,
-- meaningful technical or business context,
-- and a supported outcome whenever available.
+--------------------------------
+语言与时态
+--------------------------------
 
-Avoid cosmetic rewrites that do not improve hiring signal.
+- 输出语言与原始简历保持一致。
+- 当前在职的职位使用现在时描述,已离职的过往职位使用过去时描述。
+- 原简历中出现的具体数字、百分比、日期等必须原样保留,不得四舍五入、估算或改写。
+
+一条优质要点(bullet)应包含:
+
+- 明确的动作,
+- 有意义的技术或业务背景,
+- 以及有证据支撑的结果(如有)。
+
+避免做无助于提升招聘信号的"表面化改写"。
 
 --------------------------------
 SUMMARY
 --------------------------------
 
-Generate a concise, role-specific summary. Do not force a word count; use only as much space as needed to communicate the strongest supported hiring signals.
+生成简洁、贴合该职位的个人简介。不强制字数,只使用足够表达最强招聘信号所需的篇幅。
 
-The summary should communicate:
+个人简介应传达:
 
-- years of experience (if explicitly supported),
-- primary technical or professional focus,
-- strongest business or engineering impact,
-- one distinguishing capability.
+- 工作年限(仅当简历中有明确依据时),
+- 主要技术或专业方向,
+- 最突出的业务或工程影响,
+- 一项区别于他人的核心能力。
 
-Every statement must be directly supported elsewhere in the resume.
+每一句话都必须能在简历其他部分找到直接依据。
 
-Avoid:
+避免:
+- 泛泛而谈的性格描述,
+- 没有证据支撑的流行词,
+- 模糊表达,例如"结果导向""充满热情""团队合作能力强""勤奋""学习能力强"。
 
-- generic personality traits,
-- buzzwords without evidence,
-- vague statements such as
-  "results-driven",
-  "passionate",
-  "team player",
-  "hardworking",
-  "fast learner".
-
-Do not imitate or lightly edit an existing summary.
 
 --------------------------------
-CORE COMPETENCIES
+CORE_COMPETENCIES
 --------------------------------
 
-Return concise recruiter-facing capability phrases ordered by hiring importance. Do not target an arbitrary count. Use the space needed to represent the strongest distinct hiring signals, combining capability and core technology where useful (for example, “C#/.NET & ASP.NET Core Development” or “AWS Cloud & Serverless Architecture”).
+返回简洁、面向招聘方的能力短语,按招聘重要性排序。不设固定数量,用足够的篇幅呈现最强的、彼此不同的招聘信号,可将能力与核心技术结合表达(例如"C#/.NET and ASP.NET Core Development", "AWS Cloud and Serverless Architecture")。
 
-Each qualification must be directly supported by resume evidence.
+每一项能力都必须有简历内容直接支撑。
 
-Prefer capability phrases such as:
+优先使用这类能力短语:
 
 - Backend API Development
 - Cloud Infrastructure
 - Performance Optimization
 - Distributed Systems
 
-Avoid isolated technologies unless they represent a core capability.
+避免罗列孤立的技术名词,除非它本身就代表一项核心能力。
 
-Do not include category labels.
+不要包含分类标签本身。
 
 --------------------------------
 SKILLS
 --------------------------------
 
-Retain every supplied skill that:
+保留每一项满足以下条件的原有技能:
 
-- directly matches the JD,
-- materially supports a core capability,
-- or reinforces evidence shown in work experience or projects.
+- 与 JD 直接匹配,
+- 对某项核心能力有实质支撑,
+- 或在工作经历/项目经历中有对应证据。
 
-Prefer skills demonstrated through actual experience over skills appearing only in the skill list.
+优先保留"在实际经历中被证明过"的技能,而非仅出现在技能列表里的技能。
 
-Remove:
+删除:
 
-- redundant skills,
-- obsolete skills,
-- weakly related technologies,
-- partial matches that contribute little hiring value.
+- 冗余技能,
+- 过时技能,
+- 关联性弱的技术,
+- 对招聘价值贡献很小的部分匹配项。
 
-Keep the original grouped structure.
+保留原有的分组结构,不得打散技能分组。
 
-Never flatten skill groups.
-
-Keep at least one representative skill from every original group that is supported elsewhere in the resume, even if that group is not a primary JD requirement.
+即使某个技能分组不是 JD 的主要要求,只要该分组在简历其他地方有支撑证据,也至少保留其中一项代表性技能。
 
 --------------------------------
 EXPERIENCE
 --------------------------------
 
-Return every supplied experience index exactly once.
+必须原样返回每一个提供的 experience 的 index,且每个只出现一次。
 
-Select the strongest available substantive bullets for every supplied experience index. Do not target an arbitrary bullet count or remove strong evidence solely to make the resume shorter.
+为每段经历筛选出最强的实质性要点(bullets)。不设固定数量, 优先保留和 JD 相关的，删掉相关度低的，ATS 友好，不得仅为缩短篇幅而删除有力证据。
 
-Order bullets by:
+要点排序依据:
 
-1. hiring relevance,
-2. strength of evidence,
-3. diversity of capability.
+1. 与招聘需求的相关性,
+2. 证据的强度,
+3. 能力覆盖的多样性。
 
-Each selected bullet should contribute a different hiring signal. Avoid multiple bullets whose primary evidence is the same technology or activity unless each adds meaningful new evidence. Prefer production delivery, ownership, measurable impact, architecture, collaboration, engineering quality, scalability, reliability, and customer or business outcomes over incidental technology mentions.
+每条要点应体现不同的招聘信号。避免多条要点核心证据都来自同一项技术或同一类活动,除非每条确实补充了不同的实质证据。优先保留体现生产环境交付、责任担当、可衡量成果、架构设计、团队协作、工程质量、可扩展性、可靠性、客户价值或业务成果的内容,而非偶然提及某项技术。
 
-Maximize coverage across areas such as:
+尽量覆盖以下维度:
 
-- architecture,
-- implementation,
-- optimization,
-- cloud,
-- delivery,
-- collaboration,
-- stakeholder communication,
-- reliability,
-- operations,
-- quality,
-- customer impact,
-- business outcomes.
+- 架构设计,
+- 实现落地,
+- 性能优化,
+- 云平台,
+- 交付管理,
+- 团队协作,
+- 干系人沟通,
+- 可靠性,
+- 运维,
+- 质量保障,
+- 客户影响,
+- 业务成果。
 
-Do not remove measurable achievements merely because they are less keyword-aligned.
 
 --------------------------------
 PROJECTS
 --------------------------------
 
-Return every supplied project using its original name.
+在不设固定数量上限的前提下,筛选出最强的相关要点。
 
-Select the strongest relevant bullets without an arbitrary count limit.
+只保留满足以下条件的要点:
 
-Retain only bullets that:
+- 能提升招聘相关性,
+- 能体现重要能力,
+- 或提供了简历其他部分没有的证据。
 
-- strengthen hiring relevance,
-- demonstrate important capabilities,
-- or provide evidence unavailable elsewhere.
+删除对招聘价值贡献很小的实现细节。
 
-Remove implementation details that add little hiring value.
+只保留与之相关的原有技术。
 
-Retain only relevant supplied technologies.
+只有在同时满足以下所有条件时,才可以生成一条项目:
 
---------------------------------
-TARGETED_PROJECTS
---------------------------------
+- JD 中某项重要要求确实缺乏支撑证据,
+- 一个合理的原型项目可以在一定程度上弥补这个缺口,
+- 明确标注为"原型(Prototype)",
+- 不会被误认为是已完成的实际工作经验。
 
-Return [] by default.
-
-targeted_projects: default to [] unless the criteria below are met.
-
-Create at most one item only when ALL of the following are true:
-
-- an important JD requirement is genuinely unsupported,
-- a realistic prototype could reasonably bridge that gap,
-- it is explicitly labeled as "Prototype",
-- it cannot be mistaken for completed work.
-
-Never fabricate production experience.
 
 --------------------------------
-GENERAL PRINCIPLES
+总体原则
 --------------------------------
 
-Maximize hiring signal, not keyword overlap. Preserve distinct, evidence-backed breadth across the resume. Do not assume the role is technical: infer appropriate capability dimensions from the JD. do not assume the role is technical; infer appropriate capability dimensions from the JD. Do not remove strong evidence merely to satisfy an arbitrary count; do not remove strong evidence merely to satisfy an arbitrary count, page, or word target. do not shorten it to meet an arbitrary page or word target. Keep the result concise enough for a practical resume, but let the evidence determine the amount of content. Do not target an arbitrary count.
+最大化招聘信号,而非关键词重合度。在简历各部分保持有证据支撑、彼此不同的广度覆盖。不要预设该职位是技术类岗位,应根据 JD 推断合适的能力维度。
 
-Prefer evidence over coverage.
+不要删除有力证据。当证据支撑的要点数量较多时,优先保留覆盖不同能力维度的证据,而非同一维度下的重复证据,以此在"内容完整"与"篇幅精炼"之间取得平衡。
 
-Prefer impact over implementation detail.
+证据优先于覆盖面。
 
-Prefer distinct capabilities over repetition.
+影响力优先于实现细节。
 
-Keep the result concise, selective, ATS-friendly, recruiter-friendly, and suitable for a two-page resume.
+差异化能力优先于重复内容。
+
+最终结果应保持简洁、精准、对 ATS 友好、对招聘官友好,适合控制在两页以内的简历篇幅。
+"""
+
+COVER_LETTER_PROMPT = """你是一位资深职业顾问与求职信专家。请根据提供的职位描述(JD)和候选人的真实简历背景，为该职位定制撰写一封高说服力、专业且真诚的求职信（Cover Letter）。
+只返回一个合法的 JSON 对象:
+{
+  "cover_letter": "求职信全文内容"
+}
+
+要求：
+1. 结构严谨：包含问候、申请职位与动机、核心能力与项目成果对标、对公司的认同及价值贡献、礼貌的结语行动呼吁。
+2. 基于事实：紧密结合候选人简历中的实际技能与经历，严禁虚构经历。
+3. 专业得体：语言与原始简历一致，语气自信真诚。
+"""
+
+BOTH_PROMPT = """你是一位资深、跨行业的简历与求职信编辑专家。请根据提供的职位描述(JD)对提供的简历进行定制化改写，并同时撰写一封针对该职位的专业求职信(Cover Letter)，严格保证事实准确性。
+只返回一个合法的 JSON 对象:
+{
+  "summary":"",
+  "core_competencies":[],
+  "skills":[{"type":"","skills":[]}],
+  "experience":[{"index":0,"bullets":[]}],
+  "projects":[{"name":"","description":[],"technologies":[]}],
+  "cover_letter":"求职信全文内容"
+}
+
+要求：
+1. 简历改写与求职信创作均严格基于候选人真实经历与技能，精准对标 JD。
+2. 保持语言一致、格式合法。
 """
 
 
@@ -349,20 +367,26 @@ def _freshness(posted_at: str | None) -> tuple[float, str]:
     return 0.25, f"约 {age} 天前发布"
 
 
-def build_tailor_messages(job: dict, resume: dict) -> list[dict[str, str]]:
+def build_tailor_messages(job: dict, resume: dict, doc_type: str = "resume") -> list[dict[str, str]]:
     description = _text(job.get("job_description"))
     context = {
         "skills": resume.get("skills") if isinstance(resume.get("skills"), list) else [],
         "experience": _experience_bullet_context(resume.get("experience")),
         "projects": resume.get("projects") if isinstance(resume.get("projects"), list) else [],
     }
+    prompt = TAILOR_PROMPT
+    if doc_type == "cover_letter":
+        prompt = COVER_LETTER_PROMPT
+    elif doc_type == "both":
+        prompt = BOTH_PROMPT
+
     return [
-        {"role": "system", "content": TAILOR_PROMPT},
+        {"role": "system", "content": prompt},
         {"role": "user", "content": json.dumps({"job_description": description[:18000], "resume": context}, ensure_ascii=False)},
     ]
 
 
-def review_job(job: dict, resume: dict, *, tailor: bool = True, mock: bool = False) -> dict:
+def review_job(job: dict, resume: dict, *, doc_type: str = "resume", tailor: bool = True, mock: bool = False) -> dict:
     description = _text(job.get("job_description"))
     if not description:
         raise ValueError("A job description is required")
@@ -370,40 +394,116 @@ def review_job(job: dict, resume: dict, *, tailor: bool = True, mock: bool = Fal
     key_qualifications: list[str] = []
     targeted_projects: list[dict[str, Any]] = []
     tailor_result: dict[str, Any] = {}
+    cover_letter_text: str | None = None
+
     if tailor:
         if mock:
-            # Token-saving mock mode: return candidate's original resume_data as base with mock competencies
+            # Token-saving mock mode
             mock_competencies = ["Full-Stack Engineering", "Backend Architecture", "System Design", "Agile Project Delivery"]
             tailored = dict(resume)
             if not _text(tailored.get("summary")):
                 tailored["summary"] = f"Experienced candidate tailored for {job.get('title') or 'this position'}."
             key_qualifications = mock_competencies
-            tailor_result = {"mock": True, "note": "Generated in token-saving mock mode"}
+            if doc_type in ("cover_letter", "both"):
+                candidate_name = f"{_text(resume.get('basics', {}).get('first_name'))} {_text(resume.get('basics', {}).get('last_name'))}".strip() or "Candidate"
+                target_role = job.get("title") or "Open Position"
+                target_company = job.get("company") or "your team"
+                cover_letter_text = (
+                    f"Dear Hiring Team at {target_company},\n\n"
+                    f"I am writing to express my strong interest in the {target_role} position. "
+                    f"With my extensive experience in delivering impactful engineering solutions and solving complex technical challenges, "
+                    f"I am excited about the opportunity to contribute to {target_company}.\n\n"
+                    f"Throughout my career, I have consistently focused on building scalable systems, optimizing performance, and collaborating effectively with cross-functional teams. "
+                    f"My technical background and proven track record make me a strong match for your key requirements.\n\n"
+                    f"Thank you for considering my application. I look forward to discussing how my skills and experiences can benefit your upcoming initiatives.\n\n"
+                    f"Sincerely,\n{candidate_name}"
+                )
+            tailor_result = {
+                "mock": True,
+                "note": "Generated in token-saving mock mode",
+                "cover_letter": cover_letter_text,
+            }
         else:
             tailor_result = _complete(
-                build_tailor_messages(job, resume),
+                build_tailor_messages(job, resume, doc_type=doc_type),
                 temperature=0.3,
                 operation="job_review_tailor",
                 timeout=90.0,
             )
+            cover_letter_text = _text(tailor_result.get("cover_letter")) or None
             # The model only edits the targeted sections. Preserve the candidate's
             # identity and record sections so the preview remains a complete resume.
-            tailored = {
-                **{key: value for key, value in resume.items() if key not in {"summary", "skills", "experience", "projects"}},
-                "summary": _text(tailor_result.get("summary")),
-                "core_competencies": _string_list(tailor_result.get("core_competencies") or tailor_result.get("key_qualifications") or tailor_result.get("match_skills"), 20),
-                "skills": _normalize_skill_groups(resume.get("skills"), tailor_result.get("skills")),
-                "experience": _merge_experience_bullets(resume.get("experience"), tailor_result.get("experience")),
-                "projects": tailor_result.get("projects") if isinstance(tailor_result.get("projects"), list) else [],
-            }
-            key_qualifications = _string_list(tailor_result.get("core_competencies") or tailor_result.get("key_qualifications") or tailor_result.get("match_skills"), 20)
-            targeted_projects = _dict_list(tailor_result.get("targeted_projects"), 8)
+            if doc_type == "cover_letter":
+                tailored = dict(resume)
+                key_qualifications = _string_list(resume.get("core_competencies") or [], 20)
+            else:
+                tailored = {
+                    **{key: value for key, value in resume.items() if key not in {"summary", "skills", "experience", "projects"}},
+                    "summary": _text(tailor_result.get("summary")),
+                    "core_competencies": _string_list(tailor_result.get("core_competencies") or tailor_result.get("key_qualifications") or tailor_result.get("match_skills"), 20),
+                    "skills": _normalize_skill_groups(resume.get("skills"), tailor_result.get("skills")),
+                    "experience": _merge_experience_bullets(resume.get("experience"), tailor_result.get("experience")),
+                    "projects": tailor_result.get("projects") if isinstance(tailor_result.get("projects"), list) else [],
+                }
+                key_qualifications = _string_list(tailor_result.get("core_competencies") or tailor_result.get("key_qualifications") or tailor_result.get("match_skills"), 20)
+                targeted_projects = _dict_list(tailor_result.get("targeted_projects"), 8)
+
     return {
         "resume_data": tailored,
         "core_competencies": key_qualifications,
         # Compatibility for clients and records created before the rename.
         "key_qualifications": key_qualifications,
         "targeted_projects": targeted_projects,
+        "cover_letter": cover_letter_text,
+        "raw_ai_response": tailor_result,
+    }
+
+
+async def review_job_async(
+    job: dict,
+    resume: dict,
+    *,
+    doc_type: str = "resume",
+    tailor: bool = True,
+    mock: bool = False,
+) -> dict:
+    """Cancellable async variant used by interactive resume generation."""
+    if mock or not tailor:
+        return review_job(job, resume, doc_type=doc_type, tailor=tailor, mock=mock)
+
+    description = _text(job.get("job_description"))
+    if not description:
+        raise ValueError("A job description is required")
+
+    tailor_result = await _complete_async(
+        build_tailor_messages(job, resume, doc_type=doc_type),
+        temperature=0.3,
+        operation="job_review_tailor",
+        timeout=90.0,
+    )
+    cover_letter_text = _text(tailor_result.get("cover_letter")) or None
+    if doc_type == "cover_letter":
+        tailored = dict(resume)
+        key_qualifications = _string_list(resume.get("core_competencies") or [], 20)
+        targeted_projects: list[dict[str, Any]] = []
+    else:
+        tailored = {
+            **{key: value for key, value in resume.items() if key not in {"summary", "skills", "experience", "projects"}},
+            "summary": _text(tailor_result.get("summary")),
+            "core_competencies": _string_list(tailor_result.get("core_competencies") or tailor_result.get("key_qualifications") or tailor_result.get("match_skills"), 20),
+            "skills": _normalize_skill_groups(resume.get("skills"), tailor_result.get("skills")),
+            "experience": _merge_experience_bullets(resume.get("experience"), tailor_result.get("experience")),
+            "projects": tailor_result.get("projects") if isinstance(tailor_result.get("projects"), list) else [],
+        }
+        key_qualifications = _string_list(tailor_result.get("core_competencies") or tailor_result.get("key_qualifications") or tailor_result.get("match_skills"), 20)
+        targeted_projects = _dict_list(tailor_result.get("targeted_projects"), 8)
+
+    return {
+        "resume_data": tailored,
+        "core_competencies": key_qualifications,
+        "key_qualifications": key_qualifications,
+        "targeted_projects": targeted_projects,
+        "cover_letter": cover_letter_text,
         "raw_ai_response": tailor_result,
     }
 

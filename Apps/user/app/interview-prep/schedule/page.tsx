@@ -1107,7 +1107,7 @@ function FlatDayCard({
             'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-300'
           : canClaim ?
             'bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-300'
-          : 'bg-background-secondary/30 border-border/20 text-ink-secondary',
+          : 'bg-background-secondary/30 border-primary/20 text-ink-secondary',
         )}
       >
         <div className='flex items-center gap-2 min-w-0'>
@@ -1521,7 +1521,7 @@ function Roadmap3DView({
                     'right-full mr-6 sm:mr-10'
                   : 'left-full ml-6 sm:ml-10',
                   isToday &&
-                    'ring-2 ring-primary border-primary/70 bg-primary/95 shadow-primary/20',
+                    'ring-2 ring-primary border-transparent bg-primary/95 shadow-primary/20',
                   dayCompleted &&
                     'ring-2 ring-emerald-500/80 border-emerald-500/40',
                   isDraggedOver &&

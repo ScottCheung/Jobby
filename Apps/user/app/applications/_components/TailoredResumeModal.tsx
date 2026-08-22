@@ -18,6 +18,7 @@ import {
 import { api, type TailoredResume } from '@/lib/api';
 import type { MasterResumeData } from '@/lib/types';
 import { ResumePdfPreview } from '@/app/settings/resume/_component/resume-pdf-preview';
+import { formatResumeFilename } from '@jobby/ui/components/UI/Resume';
 
 interface TailoredResumeModalProps {
   applicationId: string;
@@ -149,7 +150,7 @@ export function TailoredResumeModal({
       const updated = await api.updateTailoredResumeForApplication(
         applicationId,
         {
-          resume_data: updatedResumeData as Record<string, unknown>,
+          resume_data: updatedResumeData,
           core_competencies: updatedCompetencies,
         },
       );
@@ -170,13 +171,10 @@ export function TailoredResumeModal({
     void loadResume();
   }, [applicationId]);
 
-  const pdfFilename = `${title || 'Role'}_${company || 'Company'}_Resume.pdf`
-    .replace(/\s+/g, '_')
-    .replace(/[^a-zA-Z0-9_\-\.]/g, '');
-
   const resumeData = (tailoredResume?.resume_data ||
     fallbackResumeData ||
     {}) as MasterResumeData;
+  const pdfFilename = formatResumeFilename(resumeData, company, title);
   const competencies =
     tailoredResume?.core_competencies ||
     tailoredResume?.key_qualifications ||
@@ -185,9 +183,9 @@ export function TailoredResumeModal({
 
   return (
     <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm animate-in fade-in duration-200'>
-      <div className='flex h-[90vh] w-full max-w-5xl flex-col rounded-2xl border border-border/80 bg-background shadow-2xl overflow-hidden'>
+      <div className='flex h-[90vh] w-full max-w-5xl flex-col rounded-2xl border border-primary/80 bg-background shadow-2xl overflow-hidden'>
         {/* Header */}
-        <header className='flex shrink-0 items-center justify-between border-b border-border/60 px-6 py-4 bg-panel'>
+        <header className='flex shrink-0 items-center justify-between border-b border-primary/60 px-6 py-4 bg-panel'>
           <div className='flex items-center gap-3 min-w-0'>
             <div className='flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary'>
               <FileText className='h-5 w-5' />
@@ -212,7 +210,7 @@ export function TailoredResumeModal({
           <div className='flex items-center gap-3'>
             {/* View Mode Toggle */}
             {!loading && (
-              <div className='inline-flex rounded-xl border border-border/60 p-1 bg-background-secondary'>
+              <div className='inline-flex rounded-xl border border-primary/60 p-1 bg-background-secondary'>
                 <button
                   type='button'
                   onClick={() => setMode('preview')}
@@ -273,7 +271,7 @@ export function TailoredResumeModal({
             <button
               type='button'
               onClick={onClose}
-              className='flex h-9 w-9 items-center justify-center rounded-xl border border-border/60 text-ink-secondary hover:bg-background-secondary transition cursor-pointer'
+              className='flex h-9 w-9 items-center justify-center rounded-xl border border-primary/60 text-ink-secondary hover:bg-background-secondary transition cursor-pointer'
               aria-label='Close modal'
             >
               <X className='h-4 w-4' />
@@ -299,7 +297,7 @@ export function TailoredResumeModal({
               )}
 
               {/* Executive Summary */}
-              <div className='rounded-2xl border border-border/60 bg-panel p-5 space-y-2'>
+              <div className='rounded-2xl border border-primary/60 bg-panel p-5 space-y-2'>
                 <label className='block text-xs font-bold uppercase tracking-wider text-ink-secondary'>
                   Executive Summary
                 </label>
@@ -308,12 +306,12 @@ export function TailoredResumeModal({
                   value={summaryDraft}
                   onChange={(e) => setSummaryDraft(e.target.value)}
                   placeholder='Write professional summary tailored for this position...'
-                  className='w-full rounded-xl border border-border/60 bg-background p-3 text-sm text-ink-primary focus:border-primary focus:outline-none'
+                  className='w-full rounded-xl border border-primary/60 bg-background p-3 text-sm text-ink-primary focus:border-primary focus:outline-none'
                 />
               </div>
 
               {/* Core Competencies / Skills */}
-              <div className='rounded-2xl border border-border/60 bg-panel p-5 space-y-2'>
+              <div className='rounded-2xl border border-primary/60 bg-panel p-5 space-y-2'>
                 <label className='block text-xs font-bold uppercase tracking-wider text-ink-secondary'>
                   Core Competencies & Skills (Comma-Separated)
                 </label>
@@ -322,13 +320,13 @@ export function TailoredResumeModal({
                   value={skillsDraft}
                   onChange={(e) => setSkillsDraft(e.target.value)}
                   placeholder='Python, FastAPI, Next.js, PostgreSQL, Docker, AI Agents...'
-                  className='w-full rounded-xl border border-border/60 bg-background p-3 text-sm text-ink-primary focus:border-primary focus:outline-none'
+                  className='w-full rounded-xl border border-primary/60 bg-background p-3 text-sm text-ink-primary focus:border-primary focus:outline-none'
                 />
               </div>
 
               {/* Work Experience */}
-              <div className='rounded-2xl border border-border/60 bg-panel p-5 space-y-4'>
-                <div className='flex items-center justify-between border-b border-border/40 pb-3'>
+              <div className='rounded-2xl border border-primary/60 bg-panel p-5 space-y-4'>
+                <div className='flex items-center justify-between border-b border-primary/40 pb-3'>
                   <label className='block text-xs font-bold uppercase tracking-wider text-ink-secondary'>
                     Work Experience Highlights
                   </label>
@@ -350,7 +348,7 @@ export function TailoredResumeModal({
                     return (
                       <div
                         key={expIdx}
-                        className='rounded-xl border border-border/40 bg-background/60 p-4 space-y-3'
+                        className='rounded-xl border border-primary/40 bg-background/60 p-4 space-y-3'
                       >
                         <div className='flex items-center justify-between'>
                           <h4 className='text-sm font-bold text-ink-primary'>
@@ -376,7 +374,7 @@ export function TailoredResumeModal({
                                 };
                                 setExperienceDraft(newExp);
                               }}
-                              className='w-full rounded-lg border border-border/60 bg-background p-2.5 text-xs text-ink-primary focus:border-primary focus:outline-none'
+                              className='w-full rounded-lg border border-primary/60 bg-background p-2.5 text-xs text-ink-primary focus:border-primary focus:outline-none'
                             />
                           </div>
                         )}
@@ -404,7 +402,7 @@ export function TailoredResumeModal({
                                   };
                                   setExperienceDraft(newExp);
                                 }}
-                                className='flex-1 rounded-lg border border-border/60 bg-background px-3 py-2 text-xs text-ink-primary focus:border-primary focus:outline-none'
+                                className='flex-1 rounded-lg border border-primary/60 bg-background px-3 py-2 text-xs text-ink-primary focus:border-primary focus:outline-none'
                               />
                               <button
                                 type='button'

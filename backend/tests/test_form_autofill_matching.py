@@ -3,9 +3,11 @@ from types import SimpleNamespace
 from services.api.main import (
     _autofill_answer_category,
     _autofill_intent_key,
+    _autofill_intent_key_for_field,
     _canonical_autofill_intent_key,
     _compatible_form_field_types,
     _coerce_form_value,
+    _inverse_sponsorship_answer,
     _is_phone_country_field,
     _is_single_consent_checkbox,
     _phone_country_code,
@@ -14,6 +16,7 @@ from services.api.main import (
 
 
 def test_form_autofill_classifies_location_salary_and_office_questions() -> None:
+    assert _autofill_intent_key("City") == "employment.current_location"
     assert _autofill_answer_category("Where are you currently based?") == "location"
     assert _autofill_answer_category("Are you able to work at the Perth office twice per week?") == "office_attendance"
     assert _autofill_answer_category("What is your desired annual base salary?") == "salary"
@@ -78,6 +81,21 @@ def test_application_intents_cover_work_rights_and_experience_variants() -> None
     assert _autofill_intent_key("Date Available") == "employment.date_available"
 
 
+def test_work_authorization_without_sponsorship_preserves_question_polarity() -> None:
+    assert _autofill_intent_key(
+        "Are you authorized to work in Australia without visa sponsorship?"
+    ) == "employment.work_authorization_without_sponsorship"
+    assert _inverse_sponsorship_answer("Yes") == "No"
+    assert _inverse_sponsorship_answer("No") == "Yes"
+    assert _inverse_sponsorship_answer("Sponsorship required") == "No"
+
+
+def test_ats_identifier_is_only_a_fallback_when_the_visible_label_is_unknown() -> None:
+    field = SimpleNamespace(label="Eligibility", name="work_authorization", id=None)
+    assert _autofill_intent_key_for_field(field, "workday") == "employment.work_authorization"
+    assert _autofill_intent_key_for_field(field, "generic") is None
+
+
 def test_greenhouse_and_rippling_phone_country_field_detection() -> None:
     assert _is_phone_country_field(SimpleNamespace(id="country", type="select"))
     assert _is_phone_country_field(SimpleNamespace(id="phone_country_code", type="select"))
@@ -124,6 +142,10 @@ def test_pronouns_option_coercion_supports_formatting_variations() -> None:
     val_she, err_she = _coerce_form_value("She/Her", pronouns_field, "identity.pronouns")
     assert val_she == "She / Her / Hers"
     assert err_she is None
+
+    val_female, err_female = _coerce_form_value("Female", pronouns_field, "identity.pronouns")
+    assert val_female == "She / Her / Hers"
+    assert err_female is None
 
 
 def test_required_privacy_consent_checkbox_is_safe_to_accept() -> None:
@@ -174,6 +196,33 @@ def test_work_rights_value_matches_the_specific_rippling_status_option() -> None
     )
 
 
+def test_option_mapper_does_not_choose_an_option_from_one_shared_word() -> None:
+    field = SimpleNamespace(
+        type="select",
+        label="Which option best describes your work rights?",
+        options=[
+            {"label": "Other visa arrangement", "value": "other"},
+            {"label": "Australian citizen", "value": "citizen"},
+        ],
+    )
+    assert _coerce_form_value("Temporary visa", field, "employment.work_authorization") == (
+        None,
+        "Value is not one of the available options.",
+    )
+
+
+def test_option_mapper_does_not_treat_unknown_as_a_negative_answer() -> None:
+    field = SimpleNamespace(
+        type="select",
+        label="Work authorization",
+        options=[{"label": "Requires sponsorship", "value": "no"}],
+    )
+    assert _coerce_form_value("Unknown", field, "employment.work_authorization") == (
+        None,
+        "Value is not one of the available options.",
+    )
+
+
 def test_rippling_custom_questions_matching() -> None:
     assert _autofill_intent_key("Do you have unrestricted work rights within Australia?") == "employment.work_authorization"
     assert _autofill_intent_key("Which option best describes your Australian work rights?") == "employment.work_authorization"
@@ -207,5 +256,3 @@ def test_token_overlap_option_coercion() -> None:
     val_yes, err_yes = _coerce_form_value("Yes", sponsorship_field, "employment.visa_sponsorship")
     assert val_yes == "Yes"
     assert err_yes is None
-
-

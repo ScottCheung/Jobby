@@ -22,7 +22,10 @@ import {
   MessageSquareCode,
   MonitorCog,
   UserCheck,
+  Sparkles,
+  LogIn,
 } from 'lucide-react';
+import { openGlobalAuthModal } from '@/lib/store/auth-modal-store';
 import { cn } from '@/lib/utils';
 import { ModeToggle } from '@/components/mode-toggle';
 import { ColorPicker } from '@/components/color-picker';
@@ -65,6 +68,7 @@ const ChromeIcon = (props: React.SVGProps<SVGSVGElement>) => (
 const navigation = [
   { name: 'Home', href: '/', icon: LayoutGrid },
   { name: 'AI Networking Assistant', href: '/prospects', icon: UserCheck },
+  { name: 'Resume Tailor', href: '/job-review', icon: Sparkles },
   { name: 'Applications', href: '/applications', icon: Briefcase },
   { name: 'Interview Prep', href: '/interview-prep', icon: GraduationCap },
   {
@@ -127,17 +131,20 @@ export function Sidebar() {
   };
 
   const displayName = (() => {
+    if (!user) {
+      return 'Guest Mode';
+    }
     if (user?.display_name && !user.display_name.includes('@')) {
       return user.display_name;
     }
     if (profile?.first_name || profile?.last_name) {
       return `${profile.first_name || ''} ${profile.last_name || ''}`.trim();
     }
-    return user?.email || 'Local Admin';
+    return user?.email || 'User';
   })();
 
   const initials = (() => {
-    if (!displayName || displayName === 'Local Admin') return 'LA';
+    if (!user) return 'G';
     if (displayName.includes('@')) {
       return displayName.slice(0, 2).toUpperCase();
     }
@@ -170,6 +177,7 @@ export function Sidebar() {
     { name: 'Home', href: '/', icon: LayoutGrid },
     { name: 'AI Networking Assistant', href: '/prospects', icon: UserCheck },
     { name: 'Automation Console', href: '/automation', icon: MonitorCog },
+    { name: 'Resume Tailor', href: '/job-review', icon: Sparkles },
     { name: 'Applications', href: '/applications', icon: Briefcase },
     { name: 'Interview Prep', href: '/interview-prep', icon: GraduationCap },
     {
@@ -183,9 +191,9 @@ export function Sidebar() {
 
   const activeNavigation = isDesktopApp ? desktopNavigation : navigation;
   const visibleNavigation =
-    user?.role === 'admin'
-      ? [...activeNavigation, ...adminNavigation]
-      : activeNavigation;
+    user?.role === 'admin' ?
+      [...activeNavigation, ...adminNavigation]
+    : activeNavigation;
 
   return (
     <motion.aside
@@ -300,7 +308,7 @@ export function Sidebar() {
       </div>
 
       {/* Footer Nav */}
-      <div className='shrink-0 pt-4 border-t border-border/40'>
+      <div className='shrink-0 pt-4 border-t border-primary/40'>
         <AnimatePresence mode='popLayout'>
           {!isCollapsed ?
             <motion.div
@@ -388,50 +396,103 @@ export function Sidebar() {
             isCollapsed ? 'justify-center' : 'px-2',
           )}
         >
-          <Link
-            href='/settings/profile'
-            aria-label='Open profile settings'
-            className='relative shrink-0'
-          >
-            <Tooltip
-              content={
-                isCollapsed ? `${displayName} (Open profile settings)` : null
-              }
-              side='right'
-            >
-              <motion.div
-                layout
-                className='size-10 shrink-0 overflow-hidden rounded-full border border-emerald-500/20 shadow-xs transition-transform hover:scale-105'
+          {user ?
+            <>
+              <Link
+                href='/settings/profile'
+                aria-label='Open profile settings'
+                className='relative shrink-0'
               >
-                <div className='label w-full h-full bg-emerald-600/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400 flex items-center justify-center'>
-                  {initials}
-                </div>
-              </motion.div>
-            </Tooltip>
-            <span className='absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-white dark:border-[#181C26] rounded-full'></span>
-          </Link>
-          <AnimatePresence mode='popLayout'>
-            {!isCollapsed && (
-              <motion.div
-                variants={textVariants}
-                initial='hidden'
-                animate='visible'
-                exit='exit'
-                className='flex flex-col flex-1 min-w-0 overflow-hidden'
-              >
-                <p className='label truncate leading-tight' title={displayName}>
-                  {displayName}
-                </p>
-                <button
-                  onClick={handleLogout}
-                  className='app-no-drag flex items-center gap-1.5 mt-0.5 text-[11px] text-ink-secondary hover:text-red-650 dark:text-gray-400 dark:hover:text-red-400 transition-colors whitespace-nowrap'
+                <Tooltip
+                  content={
+                    isCollapsed ?
+                      `${displayName} (Open profile settings)`
+                    : null
+                  }
+                  side='right'
                 >
-                  <LogOut className='size-3' />
-                  Log Out
+                  <motion.div
+                    layout
+                    className='size-10 shrink-0 overflow-hidden rounded-full border border-emerald-500/20 shadow-xs transition-transform hover:scale-105'
+                  >
+                    <div className='label w-full h-full bg-emerald-600/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400 flex items-center justify-center'>
+                      {initials}
+                    </div>
+                  </motion.div>
+                </Tooltip>
+                <span className='absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-white dark:border-[#181C26] rounded-full'></span>
+              </Link>
+              <AnimatePresence mode='popLayout'>
+                {!isCollapsed && (
+                  <motion.div
+                    variants={textVariants}
+                    initial='hidden'
+                    animate='visible'
+                    exit='exit'
+                    className='flex flex-col flex-1 min-w-0 overflow-hidden'
+                  >
+                    <p
+                      className='label truncate leading-tight'
+                      title={displayName}
+                    >
+                      {displayName}
+                    </p>
+                    <button
+                      onClick={handleLogout}
+                      className='app-no-drag flex items-center gap-1.5 mt-0.5 text-[11px] text-ink-secondary hover:text-red-650 dark:text-gray-400 dark:hover:text-red-400 transition-colors whitespace-nowrap'
+                    >
+                      <LogOut className='size-3' />
+                      Log Out
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </>
+          : <>
+              <Tooltip
+                content={isCollapsed ? 'Guest Mode (Click to Sign In)' : null}
+                side='right'
+              >
+                <button
+                  type='button'
+                  onClick={() =>
+                    openGlobalAuthModal({
+                      reason: 'Sign in to access personal features',
+                    })
+                  }
+                  className='relative shrink-0 flex items-center justify-center size-10 rounded-full border border-primary/80 bg-surface-secondary text-ink-secondary hover:text-primary hover:border-primary/40 transition-all cursor-pointer'
+                >
+                  <LogIn className='size-4' />
                 </button>
-              </motion.div>
-            )}
-          </AnimatePresence>
+              </Tooltip>
+              <AnimatePresence mode='popLayout'>
+                {!isCollapsed && (
+                  <motion.div
+                    variants={textVariants}
+                    initial='hidden'
+                    animate='visible'
+                    exit='exit'
+                    className='flex flex-col flex-1 min-w-0 overflow-hidden'
+                  >
+                    <p className='label truncate leading-tight text-ink-secondary'>
+                      Guest Mode
+                    </p>
+                    <button
+                      type='button'
+                      onClick={() =>
+                        openGlobalAuthModal({
+                          reason: 'Sign in to access personal features',
+                        })
+                      }
+                      className='app-no-drag flex items-center gap-1.5 mt-0.5 text-[11px] font-semibold text-primary hover:underline transition-colors whitespace-nowrap cursor-pointer'
+                    >
+                      Sign In / Register
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </>
+          }
         </div>
       </div>
     </motion.aside>

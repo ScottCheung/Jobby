@@ -58,6 +58,7 @@ import type {
   ProspectAgentLog,
   ProspectDiscoveryRequest,
   ProspectDiscoveryResponse,
+  MasterResumeData,
 } from "./types";
 import {
   getLocalProspects,
@@ -69,14 +70,7 @@ import { createClient } from "./supabase/client";
 import { dedup } from "./request-dedup";
 
 export type JobReviewResult = {
-  resume_data?: {
-    summary?: string;
-    core_competencies?: string[];
-    key_qualifications?: string[];
-    skills?: Array<{ type?: string; skills?: string[] }>;
-    experience?: Array<Record<string, unknown>>;
-    projects?: Array<Record<string, unknown>>;
-  } | null;
+  resume_data?: MasterResumeData | null;
   key_qualifications?: string[];
   core_competencies?: string[];
   targeted_projects?: Array<Record<string, unknown>>;
@@ -94,12 +88,12 @@ export type TailoredResume = {
   company?: string | null;
   job_description: string;
   source_resume_data: Record<string, unknown>;
-  resume_data: NonNullable<JobReviewResult['resume_data']>;
+  resume_data: MasterResumeData;
   raw_ai_response: Record<string, unknown>;
   key_qualifications: string[];
   core_competencies: string[];
   targeted_projects: Array<Record<string, unknown>>;
-  prompt_version: string;
+  prompt_version?: string;
   created_at: string;
   updated_at: string;
 };
@@ -178,6 +172,16 @@ async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
     cache: "no-store",
   });
 
+  if (response.status === 401) {
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("jobby:unauthorized", {
+          detail: { path },
+        }),
+      );
+    }
+  }
+
   if (response.status === 204) {
     return undefined as T;
   }
@@ -204,6 +208,18 @@ export const api = {
     apiRequest<TailoredResume[]>(`/api/tailored-resumes?limit=${limit}`),
   tailoredResume: (id: string) =>
     apiRequest<TailoredResume>(`/api/tailored-resumes/${id}`),
+  updateTailoredResume: (
+    id: string,
+    payload: Partial<TailoredResume> | Record<string, unknown>,
+  ) =>
+    apiRequest<TailoredResume>(`/api/tailored-resumes/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    }),
+  deleteTailoredResume: (id: string) =>
+    apiRequest<{ success: boolean; id: string }>(`/api/tailored-resumes/${id}`, {
+      method: 'DELETE',
+    }),
   me: () => dedup("me", () => apiRequest<User>("/api/me")),
   uploadAvatar: async (file: File) => {
     const apiBaseUrl = await resolveApiBaseUrl();
@@ -581,7 +597,7 @@ export const api = {
     }),
   updateTailoredResumeForApplication: (
     applicationId: string,
-    payload: Partial<TailoredResume>,
+    payload: Partial<TailoredResume> | Record<string, unknown>,
   ) =>
     apiRequest<TailoredResume>(`/api/applications/${applicationId}/tailored-resume`, {
       method: "PUT",

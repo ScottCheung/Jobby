@@ -6,6 +6,11 @@ const DISMISS_KEY = 'jobby-floating-ball-dismissed';
 const DISABLED_DOMAINS_KEY = 'jobby_disabled_domains';
 const DISABLE_ALL_PAGES_KEY = 'jobby_disabled_all_pages';
 const PANEL_WIDTH = 380;
+const PANEL_TRANSITION_MS = 800;
+const PANEL_TRANSITION_EASING = 'cubic-bezier(0.16, 1, 0.3, 1)';
+const PANEL_TRANSITION = `${PANEL_TRANSITION_MS}ms ${PANEL_TRANSITION_EASING}`;
+const FIXED_PANEL_HOST_STYLE =
+  'position: fixed !important; top: 0 !important; right: 0 !important; width: 0 !important; height: 0 !important; border: none !important; margin: 0 !important; padding: 0 !important; z-index: 2147483647 !important; pointer-events: none !important; overflow: visible !important; transform: none !important; filter: none !important;';
 
 // ─── State ────────────────────────────────────────────────────────────────────
 
@@ -18,12 +23,26 @@ const PANEL_WIDTH = 380;
 type PanelState = 'idle' | 'native' | 'iframe';
 
 let panelState: PanelState = 'idle';
+let openIframeAfterNativeClose = false;
 
 let ballRoot: HTMLDivElement | null = null;
 let iframeRoot: HTMLDivElement | null = null;
 let disabledDomains: string[] = [];
 let disableAllPages: boolean = false;
 let currentDocumentClickHandler: ((e: MouseEvent) => void) | null = null;
+
+// Keep extension UI in body. Adding arbitrary elements to <html> is invalid
+// document structure and can interfere with sites that manage their own root.
+function mountOverlay(element: HTMLElement): void {
+  const parent = document.body;
+  if (!parent) return;
+  // Only append if not already in the correct parent.
+  // Do NOT re-append just because it's not the last child — that would pull
+  // ballRoot on top of iframeRoot whenever the iframe is mounted after the ball.
+  if (element.parentElement !== parent) {
+    parent.appendChild(element);
+  }
+}
 
 // Whether this window can host the native Chrome side panel.
 // Heuristic: if window.opener is set, Chrome typically disallows native side
@@ -32,12 +51,81 @@ let currentDocumentClickHandler: ((e: MouseEvent) => void) | null = null;
 const likelyPopup = window.opener !== null;
 let windowCanHostSidepanel = !likelyPopup;
 
-// Track the in-flight sidepanel.open request to avoid duplicate fallbacks.
-let openRequestPending = false;
+function isLinkedInPage(): boolean {
+  const hostname = window.location.hostname.toLowerCase();
+  return hostname === 'linkedin.com' || hostname.endsWith('.linkedin.com');
+}
 
 // ─── Theme Sync ───────────────────────────────────────────────────────────────
 
 let currentThemeMode: 'light' | 'dark' | 'system' = 'system';
+let currentThemeColor: string = 'green';
+
+// Maps theme color names to their light/dark shadow RGBA values
+const THEME_SHADOW_MAP: Record<
+  string,
+  { light: string; dark: string; glow: string; glowDark: string }
+> = {
+  green: {
+    light: 'rgba(13, 148, 136, 0.32)',
+    dark: 'rgba(20, 184, 166, 0.4)',
+    glow: 'rgba(20, 184, 166, 0.55)',
+    glowDark: 'rgba(45, 212, 191, 0.65)',
+  },
+  blue: {
+    light: 'rgba(37, 99, 235, 0.3)',
+    dark: 'rgba(96, 165, 250, 0.4)',
+    glow: 'rgba(59, 130, 246, 0.55)',
+    glowDark: 'rgba(147, 197, 253, 0.65)',
+  },
+  purple: {
+    light: 'rgba(109, 40, 217, 0.3)',
+    dark: 'rgba(167, 139, 250, 0.4)',
+    glow: 'rgba(139, 92, 246, 0.55)',
+    glowDark: 'rgba(196, 181, 253, 0.65)',
+  },
+  orange: {
+    light: 'rgba(194, 65, 12, 0.28)',
+    dark: 'rgba(251, 146, 60, 0.4)',
+    glow: 'rgba(249, 115, 22, 0.55)',
+    glowDark: 'rgba(253, 186, 116, 0.65)',
+  },
+  rose: {
+    light: 'rgba(190, 18, 60, 0.28)',
+    dark: 'rgba(251, 113, 133, 0.4)',
+    glow: 'rgba(244, 63, 94, 0.55)',
+    glowDark: 'rgba(253, 164, 175, 0.65)',
+  },
+};
+
+function applyThemeShadowVars(root: ShadowRoot | null) {
+  if (!root) return;
+  const isDark =
+    currentThemeMode === 'dark' ||
+    (currentThemeMode === 'system' &&
+      window.matchMedia('(prefers-color-scheme: dark)').matches);
+  const colors =
+    THEME_SHADOW_MAP[currentThemeColor] ?? THEME_SHADOW_MAP['green']!;
+  const host = root.host as HTMLElement;
+  host.style.setProperty(
+    '--primary-shadow',
+    isDark ? colors.dark : colors.light,
+  );
+  host.style.setProperty(
+    '--primary-glow',
+    isDark ? colors.glowDark : colors.glow,
+  );
+  host.style.setProperty('--panel-shadow', isDark ? colors.dark : colors.light);
+  host.style.setProperty(
+    '--panel-glow',
+    isDark ? colors.glowDark : colors.glow,
+  );
+}
+
+function updateThemeShadows() {
+  applyThemeShadowVars(ballRoot?.shadowRoot ?? null);
+  applyThemeShadowVars(iframeRoot?.shadowRoot ?? null);
+}
 
 function updateThemeClasses() {
   const isDark =
@@ -52,39 +140,9 @@ function updateThemeClasses() {
     if (isDark) ballRoot.classList.add('dark');
     else ballRoot.classList.remove('dark');
   }
+  updateThemeShadows();
 }
 
-// ─── Body offset helpers ──────────────────────────────────────────────────────
-
-/**
- * Record and inject the body offset used to make room for the iframe sidebar.
- * We track the original *inline* marginRight so we can restore it exactly.
- * The transition is applied temporarily and cleaned up after the animation.
- */
-let _savedBodyMarginRight: string | null = null;
-
-function pushBodyRight() {
-  if (_savedBodyMarginRight !== null) return; // already pushed
-  _savedBodyMarginRight = document.body.style.marginRight;
-  document.body.style.transition =
-    'margin-right 1s cubic-bezier(0.4, 0, 0.2, 1)';
-  document.body.style.marginRight = `${PANEL_WIDTH}px`;
-}
-
-function restoreBodyRight() {
-  if (_savedBodyMarginRight === null) return; // nothing to restore
-  document.body.style.transition =
-    'margin-right 1s cubic-bezier(0.4, 0, 0.2, 1)';
-  document.body.style.marginRight = _savedBodyMarginRight;
-  _savedBodyMarginRight = null;
-  // Remove the temporary transition after animation completes.
-  setTimeout(() => {
-    // Only clean up transition if no other push has started in the meantime.
-    if (_savedBodyMarginRight === null) {
-      document.body.style.transition = '';
-    }
-  }, 320);
-}
 // ─── Floating Ball ────────────────────────────────────────────────────────────
 
 const POSITION_KEY = 'jobby-floating-ball-position';
@@ -143,7 +201,9 @@ function shouldShowBall(): boolean {
   if (isDismissed()) return false;
   if (disableAllPages) return false;
   if (isDomainDisabled()) return false;
-  return panelState === 'idle';
+  // Keep the in-page entry point available while the native panel is open so
+  // the user can switch modes without first hunting for Chrome's close button.
+  return panelState === 'idle' || panelState === 'native';
 }
 
 function updateBallVisibility() {
@@ -178,6 +238,8 @@ function createFloatingBall() {
 
   ballRoot = document.createElement('div');
   ballRoot.id = BALL_CONTAINER_ID;
+  ballRoot.style.cssText =
+    'position: fixed !important; top: 0 !important; left: 0 !important; width: 0 !important; height: 0 !important; border: none !important; margin: 0 !important; padding: 0 !important; z-index: 2147483647 !important; pointer-events: none !important; overflow: visible !important; transform: none !important; filter: none !important;';
   updateThemeClasses();
 
   const shadow = ballRoot.attachShadow({ mode: 'open' });
@@ -197,15 +259,30 @@ function createFloatingBall() {
   const style = document.createElement('style');
   style.textContent = `
     :host {
-      all: initial;
+      all: initial !important;
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      z-index: 2147483647 !important;
+      pointer-events: none !important;
+      width: 0 !important;
+      height: 0 !important;
+      overflow: visible !important;
+      --primary-shadow: rgba(13, 148, 136, 0.32);
+      --primary-glow: rgba(20, 184, 166, 0.55);
+    }
+    :host(.dark) {
+      --primary-shadow: rgba(20, 184, 166, 0.42);
+      --primary-glow: rgba(45, 212, 191, 0.65);
     }
     #jobby-ball-wrapper {
-      position: fixed;
+      position: fixed !important;
       ${initialPos.edge === 'right' ? `right: ${EDGE_MARGIN}px; left: auto;` : `left: ${EDGE_MARGIN}px; right: auto;`}
       top: ${boundedTop}px;
-      width: ${SIZE}px;
-      height: ${SIZE}px;
-      z-index: 2147483646;
+      width: ${SIZE}px !important;
+      height: ${SIZE}px !important;
+      z-index: 2147483647 !important;
+      pointer-events: auto !important;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -223,7 +300,7 @@ function createFloatingBall() {
       transition: none;
     }
     #jobby-ball-wrapper:not(.is-dragging):hover .jobby-logo-img {
-      filter: drop-shadow(0 0 10px rgba(20, 184, 166, 0.85)) drop-shadow(0 2px 10px rgba(0, 0, 0, 0.3));
+      filter: drop-shadow(0 0 16px var(--primary-glow)) drop-shadow(0 4px 14px var(--primary-shadow));
       transform: scale(1.12);
     }
     #jobby-ball-wrapper:not(.is-dragging):active .jobby-logo-img {
@@ -235,7 +312,7 @@ function createFloatingBall() {
       object-fit: contain;
       user-select: none;
       pointer-events: none;
-      filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.25));
+      filter: drop-shadow(0 4px 14px var(--primary-shadow)) drop-shadow(0 2px 6px rgba(0, 0, 0, 0.2));
       transition: filter 0.2s ease, transform 0.2s ease;
       -webkit-user-drag: none;
     }
@@ -350,7 +427,9 @@ function createFloatingBall() {
 
   const wrapper = document.createElement('div');
   wrapper.id = 'jobby-ball-wrapper';
-  wrapper.classList.add(initialPos.edge === 'right' ? 'edge-right' : 'edge-left');
+  wrapper.classList.add(
+    initialPos.edge === 'right' ? 'edge-right' : 'edge-left',
+  );
 
   const logo = document.createElement('img');
   logo.src = logoUrl;
@@ -377,8 +456,9 @@ function createFloatingBall() {
       const host = window.location.hostname;
       if (host) {
         chrome.storage.local.get([DISABLED_DOMAINS_KEY], (res) => {
-          const list: string[] = Array.isArray(res[DISABLED_DOMAINS_KEY])
-            ? res[DISABLED_DOMAINS_KEY]
+          const list: string[] =
+            Array.isArray(res[DISABLED_DOMAINS_KEY]) ?
+              res[DISABLED_DOMAINS_KEY]
             : [];
           if (!list.includes(host)) {
             list.push(host);
@@ -401,7 +481,10 @@ function createFloatingBall() {
     }
   };
 
-  const options: Array<{ label: string; action: 'session' | 'domain' | 'all' }> = [
+  const options: Array<{
+    label: string;
+    action: 'session' | 'domain' | 'all';
+  }> = [
     { label: 'Hide until next visit', action: 'session' },
     { label: 'Disable on this domain', action: 'domain' },
     { label: 'Disable on all pages', action: 'all' },
@@ -515,7 +598,11 @@ function createFloatingBall() {
   window.addEventListener('resize', handleWindowResize);
 
   wrapper.addEventListener('pointerdown', (e: PointerEvent) => {
-    if ((e.target as HTMLElement).id === 'close-btn' || (e.target as HTMLElement).classList.contains('jobby-menu-item')) return;
+    if (
+      (e.target as HTMLElement).id === 'close-btn' ||
+      (e.target as HTMLElement).classList.contains('jobby-menu-item')
+    )
+      return;
     dismissMenu.classList.remove('is-open');
     wrapper.classList.remove('menu-open');
     if (snapTimer) clearTimeout(snapTimer);
@@ -573,48 +660,33 @@ function createFloatingBall() {
 
   shadow.appendChild(style);
   shadow.appendChild(wrapper);
-  // Inject BEFORE body's first child so it sits outside the page's stacking
-  // context and is unaffected by body transforms/overflow changes.
-  document.body.insertBefore(ballRoot, document.body.firstChild);
+  mountOverlay(ballRoot);
 }
 
 // ─── Ball click handler ───────────────────────────────────────────────────────
 
 function handleBallClick() {
-  // Guard: don't double-fire if a panel is already up.
-  if (panelState !== 'idle') return;
+  if (panelState === 'iframe') return;
 
-  // Popup windows can't host the native side panel — go straight to iframe.
-  if (!windowCanHostSidepanel) {
-    showSidepanelIframe();
+  if (panelState === 'native') {
+    // Switching from Chrome's Side Panel to the page-embedded panel is a
+    // two-step operation: request native close, then wait for its authoritative
+    // close broadcast before showing the iframe. This prevents any overlap.
+    if (openIframeAfterNativeClose) return;
+    openIframeAfterNativeClose = true;
+    chrome.runtime.sendMessage({ type: 'sidepanel.close' }, (response) => {
+      if (chrome.runtime.lastError || response?.ok === false) {
+        openIframeAfterNativeClose = false;
+      }
+    });
     return;
   }
 
-  if (openRequestPending) return;
-  openRequestPending = true;
-
-  // Ask the background to open the native side panel.
-  // Give it 600 ms to confirm; if no confirmation arrives, fall back to iframe.
-  const fallbackTimer = window.setTimeout(() => {
-    openRequestPending = false;
-    if (panelState === 'idle') {
-      showSidepanelIframe();
-    }
-  }, 600);
-
-  chrome.runtime.sendMessage({ type: 'sidepanel.open' }, (response) => {
-    openRequestPending = false;
-    window.clearTimeout(fallbackTimer);
-
-    if (chrome.runtime.lastError || response?.ok === false) {
-      // Native side panel rejected — fall back to iframe.
-      if (panelState === 'idle') {
-        showSidepanelIframe();
-      }
-    }
-    // If response.ok === true, the background will broadcast sidepanel.state-changed
-    // with isOpen=true, which our listener handles below.
-  });
+  // The floating ball and the toolbar icon are deliberately different entry
+  // points: the ball opens the 380px in-page panel, while Chrome's toolbar
+  // action opens the native Side Panel.  The native panel's state broadcast
+  // below tears this iframe down when the user switches entry points.
+  showSidepanelIframe();
 }
 
 // ─── Iframe sidepanel ─────────────────────────────────────────────────────────
@@ -629,17 +701,29 @@ function preloadSidepanelIframe() {
 
   iframeRoot = document.createElement('div');
   iframeRoot.id = IFRAME_CONTAINER_ID;
+  iframeRoot.style.cssText = FIXED_PANEL_HOST_STYLE;
 
   const shadow = iframeRoot.attachShadow({ mode: 'open' });
 
   const style = document.createElement('style');
   style.textContent = `
     :host {
+      all: initial !important;
+      position: fixed !important;
+      top: 0 !important;
+      right: 0 !important;
+      z-index: 2147483647 !important;
+      pointer-events: none !important;
+      width: 0 !important;
+      height: 0 !important;
+      overflow: visible !important;
       --panel-bg: #f8fafc;
       --tab-x: #94a3b8;
       --tab-x-hover: #334155;
       --tab-x-bg-hover: rgba(15, 23, 42, 0.08);
       --tab-x-bg-active: rgba(15, 23, 42, 0.16);
+      --panel-shadow: rgba(13, 148, 136, 0.32);
+      --panel-glow: rgba(20, 184, 166, 0.5);
     }
     :host(.dark) {
       --panel-bg: #0f172a;
@@ -647,82 +731,129 @@ function preloadSidepanelIframe() {
       --tab-x-hover: #f1f5f9;
       --tab-x-bg-hover: rgba(255, 255, 255, 0.12);
       --tab-x-bg-active: rgba(255, 255, 255, 0.22);
+      --panel-shadow: rgba(20, 184, 166, 0.4);
+      --panel-glow: rgba(45, 212, 191, 0.6);
     }
     #jobby-iframe-wrapper {
-      position: fixed;
-      right: 0;
-      top: 0;
-      width: ${PANEL_WIDTH}px;
-      height: 100vh;
-      z-index: 2147483647;
-      box-shadow: -4px 0 16px rgba(0, 0, 0, 0.15);
-      border: none;
-      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      display: flex;
-      flex-direction: column;
-      /* Off-screen by default — React loads silently here */
+      position: fixed !important;
+      right: 0 !important;
+      top: 0 !important;
+      width: ${PANEL_WIDTH}px !important;
+      height: 100vh !important;
+      z-index: 2147483647 !important;
+      pointer-events: auto !important;
+      border-radius: 20px 0 0 20px !important;
+      overflow: visible !important;
+      box-shadow: -10px 0 36px var(--panel-shadow), -2px 0 12px rgba(0, 0, 0, 0.1) !important;
+      border: none !important;
+      /* Transition both transform AND opacity so shadow fully fades out when hidden */
+      transition: transform ${PANEL_TRANSITION}, opacity ${PANEL_TRANSITION} !important;
+      display: flex !important;
+      flex-direction: column !important;
+      /* Off-screen + invisible by default — React loads silently here */
       transform: translateX(100%);
-      background-color: var(--panel-bg);
+      opacity: 0;
+      background-color: var(--panel-bg) !important;
+    }
+    #jobby-iframe-wrapper.is-visible {
+      transform: translateX(0) !important;
+      opacity: 1 !important;
     }
     iframe {
-      width: 100%;
-      height: 100%;
-      border: none;
-      flex: 1;
-      background-color: transparent;
+      width: 100% !important;
+      height: 100% !important;
+      border: none !important;
+      flex: 1 !important;
+      border-radius: 20px 0 0 20px !important;
+      overflow: hidden !important;
+      background-color: transparent !important;
     }
     #close-tab {
-      position: absolute;
-      left: -80px;
-      top: 50%;
-      transform: translateY(-50%);
-      width: 80px;
-      height: 120px;
-      visibility: hidden;
-      cursor: pointer;
-      display: block;
-      background: none;
-      border: none;
-      padding: 0;
+      position: absolute !important;
+      left: -80px !important;
+      top: 50% !important;
+      transform: translateY(-50%) !important;
+      width: 80px !important;
+      height: 120px !important;
+      visibility: hidden !important;
+      cursor: pointer !important;
+      display: block !important;
+      background: none !important;
+      border: none !important;
+      padding: 0 !important;
+      z-index: 2147483647 !important;
+      pointer-events: auto !important;
       /* Clip shadow bleed on the right edge so it seamlessly joins the iframe container */
-      clip-path: inset(-30px 0px -30px -40px);
+      clip-path: inset(-30px 0px -30px -40px) !important;
     }
     #jobby-iframe-wrapper.is-visible #close-tab {
-      visibility: visible;
+      visibility: visible !important;
     }
-    #close-tab svg {
-      display: block;
-      width: 100%;
-      height: 100%;
-      filter: drop-shadow(-4px 0 12px rgba(0, 0, 0, 0.15));
+    #close-tab .tab-bg-svg {
+      position: absolute !important;
+      inset: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
+      display: block !important;
+      pointer-events: none !important;
+      filter: drop-shadow(-8px 0 16px var(--panel-shadow));
+      contain: paint !important;
+    }
+    #close-tab .tab-icon-wrapper {
+      position: absolute !important;
+      left: 24px !important;
+      top: 36px !important;
+      width: 48px !important;
+      height: 48px !important;
+      border-radius: 16px !important;
+      overflow: hidden !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      pointer-events: none !important;
+      transform: translateZ(0) !important;
     }
     #close-tab .tab-logo {
-      opacity: 1;
-      transform-origin: 48px 60px;
-      transition: opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1), transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+      position: absolute !important;
+      width: 44px !important;
+      height: 44px !important;
+      object-fit: contain !important;
+      opacity: 1 !important;
+      transform: scale(1) translateZ(0) !important;
+      transform-origin: center center !important;
+      will-change: opacity, transform !important;
+      transition: opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1), transform 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
     }
     #close-tab:hover .tab-logo {
-      opacity: 0;
-      transform: scale(0.75);
+      opacity: 0 !important;
+      transform: scale(0.75) translateZ(0) !important;
     }
-    #close-tab .tab-x-group {
-      opacity: 0;
-      transform-origin: 48px 60px;
-      transform: scale(0.75);
-      transition: opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1), transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    #close-tab .tab-arrow-box {
+      position: absolute !important;
+      inset: 0 !important;
+      border-radius: 16px !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      background-color: var(--tab-x-bg-hover) !important;
+      color: var(--tab-x-hover) !important;
+      opacity: 0 !important;
+      transform: scale(0.75) translateZ(0) !important;
+      transform-origin: center center !important;
+      will-change: opacity, transform !important;
+      transition: opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1), transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.15s ease !important;
     }
-    #close-tab:hover .tab-x-group {
-      opacity: 1;
-      transform: scale(1);
+    #close-tab:hover .tab-arrow-box {
+      opacity: 1 !important;
+      transform: scale(1) translateZ(0) !important;
     }
-    #close-tab .tab-x-bg {
-      fill: var(--tab-x-bg-hover);
+    #close-tab:active .tab-arrow-box {
+      background-color: var(--tab-x-bg-active) !important;
     }
-    #close-tab:active .tab-x-bg {
-      fill: var(--tab-x-bg-active);
-    }
-    #close-tab .tab-x-line {
-      stroke: var(--tab-x-hover);
+    #close-tab .tab-arrow-svg {
+      width: 22px !important;
+      height: 22px !important;
+      display: block !important;
     }
   `;
 
@@ -735,10 +866,10 @@ function preloadSidepanelIframe() {
   closeTab.id = 'close-tab';
   closeTab.title = 'Close Jobby Panel';
   closeTab.setAttribute('aria-label', 'Close Jobby Panel');
-  // Mathematically uniform 8px edge margin on all 4 sides with concentric R24/rx16 squircle geometry.
-  // Default displays 40px Jobby logo, hover scales to 48px close X icon.
+  // Concentric R24/rx16 squircle geometry ensures visually and mathematically uniform 8px gap
+  // from every point of the inner SVG logo / close button to the outer border.
   closeTab.innerHTML = `
-<svg viewBox="0 0 80 120" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<svg class="tab-bg-svg" viewBox="0 0 80 120" xmlns="http://www.w3.org/2000/svg">
   <path style="fill: var(--panel-bg);" d="
     M 80 0
     C 80 14, 66 28, 52 28
@@ -751,29 +882,16 @@ function preloadSidepanelIframe() {
     L 80 0
     Z
   " />
-
-  <image
-    class="tab-logo"
-    href="${logoUrl}"
-    x="28"
-    y="40"
-    width="40"
-    height="40"
-  />
-
-  <g class="tab-x-group">
-    <rect
-      class="tab-x-bg"
-      x="24"
-      y="36"
-      width="48"
-      height="48"
-      rx="16"
-    />
-    <line x1="37" y1="49" x2="59" y2="71" stroke-width="4.5" stroke-linecap="round" class="tab-x-line" />
-    <line x1="59" y1="49" x2="37" y2="71" stroke-width="4.5" stroke-linecap="round" class="tab-x-line" />
-  </g>
 </svg>
+<div class="tab-icon-wrapper">
+  <img class="tab-logo" src="${logoUrl}" alt="Jobby" />
+  <div class="tab-arrow-box">
+    <svg class="tab-arrow-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="7 17 12 12 7 7"></polyline>
+      <polyline points="13 17 18 12 13 7"></polyline>
+    </svg>
+  </div>
+</div>
   `;
   closeTab.addEventListener('click', hideSidepanelIframe);
 
@@ -784,12 +902,86 @@ function preloadSidepanelIframe() {
   wrapper.appendChild(iframe);
   shadow.appendChild(style);
   shadow.appendChild(wrapper);
-  // Same as floating ball: inject before body's first child to avoid
-  // interference with host-page layout shifts.
-  document.body.insertBefore(iframeRoot, document.body.firstChild);
+  mountOverlay(iframeRoot);
 
   // Apply the current theme immediately
   updateThemeClasses();
+}
+
+// ─── Page padding (reserves room without shifting the viewport) ──────────────
+const PAGE_SHRINK_STYLE_ID = 'jobby-page-shrink-style';
+const PAGE_SHRINK_OPEN_CLASS = 'jobby-panel-open';
+let pageShrinkCleanupTimer: number | null = null;
+
+function clearPageShrinkCleanupTimer() {
+  if (pageShrinkCleanupTimer !== null) {
+    window.clearTimeout(pageShrinkCleanupTimer);
+    pageShrinkCleanupTimer = null;
+  }
+}
+
+function pushBodyRight() {
+  clearPageShrinkCleanupTimer();
+
+  if (!document.getElementById(PAGE_SHRINK_STYLE_ID)) {
+    const linkedInRootRule = isLinkedInPage() ? `
+      /* LinkedIn uses a 100vw root, which ignores body padding. Restrict only
+       * that root so its detail pane ends exactly before the Jobby panel. */
+      html.${PAGE_SHRINK_OPEN_CLASS} #app__container {
+        width: calc(100vw - ${PANEL_WIDTH}px) !important;
+        max-width: calc(100vw - ${PANEL_WIDTH}px) !important;
+        transition: width ${PANEL_TRANSITION}, max-width ${PANEL_TRANSITION} !important;
+      }
+      html.${PAGE_SHRINK_OPEN_CLASS} #global-nav,
+      html.${PAGE_SHRINK_OPEN_CLASS} .global-nav,
+      html.${PAGE_SHRINK_OPEN_CLASS} .global-nav__header {
+        right: ${PANEL_WIDTH}px !important;
+        width: auto !important;
+        max-width: calc(100vw - ${PANEL_WIDTH}px) !important;
+        transition: right ${PANEL_TRANSITION}, max-width ${PANEL_TRANSITION} !important;
+      }
+    ` : '';
+    const style = document.createElement('style');
+    style.id = PAGE_SHRINK_STYLE_ID;
+    style.textContent = `
+      body {
+        box-sizing: border-box !important;
+        padding-right: 0 !important;
+        transition: padding-right ${PANEL_TRANSITION} !important;
+      }
+      html.${PAGE_SHRINK_OPEN_CLASS} > body {
+        padding-right: ${PANEL_WIDTH}px !important;
+      }
+      ${linkedInRootRule}
+    `;
+    (document.head ?? document.documentElement).appendChild(style);
+  }
+
+  // Give the browser one frame to establish the zero-padding state before
+  // changing it, otherwise style injection can appear as an instant jump.
+  requestAnimationFrame(() => {
+    if (panelState === 'iframe') {
+      document.documentElement.classList.add(PAGE_SHRINK_OPEN_CLASS);
+    }
+  });
+}
+
+function restoreBodyRight(immediate = false) {
+  clearPageShrinkCleanupTimer();
+  document.documentElement.classList.remove(PAGE_SHRINK_OPEN_CLASS);
+
+  if (immediate) {
+    document.getElementById(PAGE_SHRINK_STYLE_ID)?.remove();
+    return;
+  }
+
+  // Keep the transition rule installed until the closing animation ends.
+  pageShrinkCleanupTimer = window.setTimeout(() => {
+    if (panelState !== 'iframe') {
+      document.getElementById(PAGE_SHRINK_STYLE_ID)?.remove();
+    }
+    pageShrinkCleanupTimer = null;
+  }, PANEL_TRANSITION_MS);
 }
 
 /**
@@ -802,18 +994,20 @@ function showSidepanelIframe() {
     preloadSidepanelIframe();
   }
 
-  const wrapper = iframeRoot!.shadowRoot!.getElementById(
+  const wrapper = iframeRoot?.shadowRoot?.getElementById(
     'jobby-iframe-wrapper',
   );
-  if (!wrapper) return;
+  if (!wrapper || !iframeRoot) return;
 
   panelState = 'iframe';
   removeFloatingBall();
+  mountOverlay(iframeRoot);
   pushBodyRight();
 
   requestAnimationFrame(() => {
     wrapper.classList.add('is-visible');
     wrapper.style.transform = 'translateX(0)';
+    wrapper.style.opacity = '1';
   });
 }
 
@@ -828,32 +1022,55 @@ function hideSidepanelIframe() {
   if (!wrapper) return;
 
   panelState = 'idle';
-  wrapper.classList.remove('is-visible');
-  wrapper.style.transform = 'translateX(100%)';
   restoreBodyRight();
-  updateBallVisibility();
+
+  requestAnimationFrame(() => {
+    wrapper.classList.remove('is-visible');
+    wrapper.style.transform = 'translateX(100%)';
+    wrapper.style.opacity = '0';
+  });
+
+  setTimeout(() => {
+    if (panelState === 'idle') {
+      updateBallVisibility();
+    }
+  }, PANEL_TRANSITION_MS);
 }
 
 /**
  * Fully remove the iframe from the DOM (used when native side panel takes over).
  */
-function removeSidepanelIframe() {
+function removeSidepanelIframe(immediate = false) {
   if (!iframeRoot) return;
 
   const wrapper = iframeRoot.shadowRoot?.getElementById('jobby-iframe-wrapper');
 
+  if (immediate) {
+    iframeRoot.remove();
+    iframeRoot = null;
+    restoreBodyRight(true);
+    return;
+  }
+
   const cleanup = () => {
     iframeRoot?.remove();
     iframeRoot = null;
-    restoreBodyRight();
-    updateBallVisibility();
+    if (panelState === 'idle') {
+      updateBallVisibility();
+    }
   };
 
   if (wrapper && panelState === 'iframe') {
-    wrapper.classList.remove('is-visible');
-    wrapper.style.transform = 'translateX(100%)';
+    panelState = 'idle';
+    restoreBodyRight();
+    requestAnimationFrame(() => {
+      wrapper.classList.remove('is-visible');
+      wrapper.style.transform = 'translateX(100%)';
+      wrapper.style.opacity = '0';
+    });
     wrapper.addEventListener('transitionend', cleanup, { once: true });
   } else {
+    restoreBodyRight();
     cleanup();
   }
 }
@@ -870,10 +1087,21 @@ export function initializeFloatingBall() {
 
   // Initialize theme and disabled settings from storage
   chrome.storage.local.get(
-    ['auto-job-ui-theme', DISABLED_DOMAINS_KEY, DISABLE_ALL_PAGES_KEY],
+    [
+      'auto-job-ui-theme',
+      'auto-job-ui-theme-color',
+      DISABLED_DOMAINS_KEY,
+      DISABLE_ALL_PAGES_KEY,
+    ],
     (res) => {
       if (res['auto-job-ui-theme']) {
         currentThemeMode = res['auto-job-ui-theme'];
+      }
+      if (
+        typeof res['auto-job-ui-theme-color'] === 'string' &&
+        res['auto-job-ui-theme-color']
+      ) {
+        currentThemeColor = res['auto-job-ui-theme-color'];
       }
       if (Array.isArray(res[DISABLED_DOMAINS_KEY])) {
         disabledDomains = res[DISABLED_DOMAINS_KEY];
@@ -893,9 +1121,15 @@ export function initializeFloatingBall() {
         currentThemeMode = changes['auto-job-ui-theme'].newValue;
         updateThemeClasses();
       }
+      if (changes['auto-job-ui-theme-color']) {
+        currentThemeColor = changes['auto-job-ui-theme-color']
+          .newValue as string;
+        updateThemeShadows();
+      }
       if (changes[DISABLED_DOMAINS_KEY]) {
-        disabledDomains = Array.isArray(changes[DISABLED_DOMAINS_KEY].newValue)
-          ? changes[DISABLED_DOMAINS_KEY].newValue
+        disabledDomains =
+          Array.isArray(changes[DISABLED_DOMAINS_KEY].newValue) ?
+            changes[DISABLED_DOMAINS_KEY].newValue
           : [];
         stateChanged = true;
       }
@@ -927,7 +1161,6 @@ export function initializeFloatingBall() {
   }
 
   // Ask the background for the authoritative window + side-panel state.
-  // This overrides our opener heuristic once the response arrives.
   chrome.runtime.sendMessage({ type: 'sidepanel.query-state' }, (response) => {
     if (response?.ok) {
       if (typeof response.canHostSidepanel === 'boolean') {
@@ -936,8 +1169,12 @@ export function initializeFloatingBall() {
 
       if (windowCanHostSidepanel) {
         panelState = response.isOpen ? 'native' : 'idle';
+        // Native Chrome side panel manages viewport resizing automatically;
+        // do not add page padding. Ensure any leftover fallback shrink style is restored.
+        if (panelState === 'native') {
+          restoreBodyRight();
+        }
       } else {
-        // Popup: native side panel is never available.
         panelState = 'idle';
         if (!iframeRoot) preloadSidepanelIframe();
       }
@@ -952,18 +1189,28 @@ export function initializeFloatingBall() {
     if (!windowCanHostSidepanel) return;
 
     if (message.isOpen) {
+      openIframeAfterNativeClose = false;
       // Native side panel just opened.
-      openRequestPending = false;
       // Tear down the iframe if it was showing.
       if (panelState === 'iframe') {
-        removeSidepanelIframe();
+        // The two entry points are mutually exclusive: do not leave the
+        // 380px in-page panel visible while Chrome opens its native panel.
+        removeSidepanelIframe(true);
       }
       panelState = 'native';
+      // Native sidepanel does NOT need page padding.
+      restoreBodyRight();
       updateBallVisibility();
     } else {
       // Native side panel just closed.
       panelState = 'idle';
-      updateBallVisibility();
+      restoreBodyRight();
+      if (openIframeAfterNativeClose) {
+        openIframeAfterNativeClose = false;
+        showSidepanelIframe();
+      } else {
+        updateBallVisibility();
+      }
     }
   });
 }

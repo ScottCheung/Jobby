@@ -67,7 +67,7 @@ function CopyButton({
       onClick={handleCopy}
       title={`Copy: ${value}`}
       className={cn(
-        'inline-flex items-center justify-center rounded-lg border border-border/40 bg-background-secondary/40',
+        'inline-flex items-center justify-center rounded-lg border border-primary/40 bg-background-secondary/40',
         'text-ink-secondary hover:text-primary hover:border-primary/30 hover:bg-primary/5',
         'transition-all active:scale-95 cursor-pointer shrink-0',
         size === 'xs' ? 'p-1' : 'p-1.5',
@@ -229,10 +229,7 @@ function ButtonPreview({
 }) {
   return (
     <button
-      className={cn(
-        classes,
-        'label px-4 py-2 rounded-xl cursor-pointer',
-      )}
+      className={cn(classes, 'label px-4 py-2 rounded-xl cursor-pointer')}
     >
       {sample}
     </button>
@@ -330,7 +327,7 @@ function TokenCard({ item }: { item: Item }) {
 
       {/* Full class string */}
       {hasClasses && (
-        <div className='flex items-start gap-2 pt-1 border-t border-border/30'>
+        <div className='flex items-start gap-2 pt-1 border-t border-primary/30'>
           <code className='flex-1 text-[10px] font-mono text-ink-muted leading-relaxed break-all'>
             {item.classes}
           </code>
@@ -350,7 +347,7 @@ function GroupBlock({ group }: { group: Group }) {
         <h3 className='title-card'>{group.title}</h3>
       </div>
       {'description' in group && group.description && (
-        <p className='text-meta bg-background-secondary/40 px-3 py-2 rounded-lg border border-border/30'>
+        <p className='text-meta bg-background-secondary/40 px-3 py-2 rounded-lg border border-primary/30'>
           {group.description as string}
         </p>
       )}
@@ -401,9 +398,7 @@ function RulesPanel() {
         {config.rules.map((rule) => (
           <div key={rule.id} className='panel-xs p-4 col gap-1.5'>
             <span className='label-overline'>{rule.title}</span>
-            <p className='body-md text-ink-secondary'>
-              {rule.rule}
-            </p>
+            <p className='body-md text-ink-secondary'>{rule.rule}</p>
           </div>
         ))}
       </div>
@@ -467,16 +462,14 @@ export default function DesignSystemPage() {
   return (
     <div className='min-h-screen flex flex-col'>
       {/* Page Header */}
-      <div className='sticky top-0 z-20 bg-background/80 backdrop-blur-md border-b border-border/40 px-page py-4'>
+      <div className='sticky top-0 z-20 bg-background/80 backdrop-blur-md border-b border-primary/40 px-page py-4'>
         <div className='row-between max-w-screen-2xl mx-auto'>
           <div className='row-md'>
             <div className='w-8 h-8 rounded-xl bg-primary-gradient flex items-center justify-center'>
               <Palette className='w-4 h-4 text-primary-foreground' />
             </div>
             <div className='stack gap-0'>
-              <h1 className='title-sub leading-tight'>
-                {config.meta.title}
-              </h1>
+              <h1 className='title-sub leading-tight'>{config.meta.title}</h1>
               <span className='text-meta'>
                 v{config.meta.version} · JSON-driven
               </span>

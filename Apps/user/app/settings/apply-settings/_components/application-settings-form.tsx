@@ -16,10 +16,6 @@ import {
 } from 'lucide-react';
 import type { ApplicationSettings } from '@/lib/types';
 
-
-
-
-
 import { cn } from '@/lib/utils';
 
 type SettingsSection = 'policy' | 'automation' | 'ai_resume';
@@ -59,10 +55,10 @@ function ToggleCard({
         }
       }}
       className={cn(
-        'flex items-start justify-between gap-4 p-4 rounded-xl border border-border/50 bg-background-secondary/40 transition-all select-none',
-        disabled
-          ? 'cursor-not-allowed opacity-75'
-          : 'cursor-pointer hover:border-primary/40 hover:bg-background-secondary/70',
+        'flex items-start justify-between gap-4 p-4 rounded-xl border border-primary/50 bg-background-secondary/40 transition-all select-none',
+        disabled ?
+          'cursor-not-allowed opacity-75'
+        : 'cursor-pointer hover:border-primary/40 hover:bg-background-secondary/70',
         checked && 'border-primary/30 bg-primary/5',
       )}
     >
@@ -71,9 +67,9 @@ function ToggleCard({
           <div
             className={cn(
               'flex size-8 shrink-0 items-center justify-center rounded-lg mt-0.5',
-              checked
-                ? 'bg-primary/10 text-primary'
-                : 'bg-background-secondary text-ink-secondary',
+              checked ?
+                'bg-primary/10 text-primary'
+              : 'bg-background-secondary text-ink-secondary',
             )}
           >
             <Icon className='size-4' />
@@ -158,7 +154,8 @@ export function ApplicationSettingsForm({
               Blacklisted Companies
             </label>
             <p className='text-xs text-ink-secondary mb-2'>
-              Applications for these companies will be automatically skipped during job search.
+              Applications for these companies will be automatically skipped
+              during job search.
             </p>
             <TagInput
               values={policy.blacklisted_companies}
@@ -174,7 +171,8 @@ export function ApplicationSettingsForm({
               Blacklisted Job Terms
             </label>
             <p className='text-xs text-ink-secondary mb-2'>
-              Jobs containing any of these terms in title or description will be skipped.
+              Jobs containing any of these terms in title or description will be
+              skipped.
             </p>
             <TagInput
               values={policy.blacklisted_job_terms}
@@ -190,7 +188,8 @@ export function ApplicationSettingsForm({
               Preferred / Whitelisted Companies
             </label>
             <p className='text-xs text-ink-secondary mb-2'>
-              Prioritize and keep track of applications for these target companies.
+              Prioritize and keep track of applications for these target
+              companies.
             </p>
             <TagInput
               values={policy.whitelisted_companies}
@@ -213,7 +212,8 @@ export function ApplicationSettingsForm({
               onChange={(e) =>
                 update('automation', {
                   ...automation,
-                  execution_mode: e.target.value as typeof automation.execution_mode,
+                  execution_mode: e.target
+                    .value as typeof automation.execution_mode,
                 })
               }
               helpTextShort='Human confirmation is required before final submission.'
@@ -230,7 +230,8 @@ export function ApplicationSettingsForm({
               onChange={(e) =>
                 update('automation', {
                   ...automation,
-                  review_channel: e.target.value as typeof automation.review_channel,
+                  review_channel: e.target
+                    .value as typeof automation.review_channel,
                 })
               }
               helpTextShort='Choose where final confirmation occurs before submission.'
@@ -299,7 +300,8 @@ export function ApplicationSettingsForm({
             <div>
               <p className='font-semibold text-xs'>Safety Guard Active</p>
               <p className='mt-0.5 text-amber-700/80 dark:text-amber-300/80'>
-                Applications will pause at the review step whenever an unverified required question is encountered.
+                Applications will pause at the review step whenever an
+                unverified required question is encountered.
               </p>
             </div>
           </div>
@@ -321,7 +323,9 @@ export function ApplicationSettingsForm({
             <InputField
               label='AI Provider'
               value={ai.provider}
-              onChange={(e) => update('ai', { ...ai, provider: e.target.value })}
+              onChange={(e) =>
+                update('ai', { ...ai, provider: e.target.value })
+              }
               placeholder='openai'
               helpTextShort='LLM service provider (e.g. openai, anthropic, gemini).'
             />
@@ -382,7 +386,9 @@ export function ApplicationSettingsForm({
             checked={ai.allow_tailored_resume}
             hint='Generate role-customized resumes for high-match opportunities.'
             icon={Sparkles}
-            onChange={(next) => update('ai', { ...ai, allow_tailored_resume: next })}
+            onChange={(next) =>
+              update('ai', { ...ai, allow_tailored_resume: next })
+            }
           />
 
           <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
@@ -429,13 +435,8 @@ export function ApplicationSettingsForm({
 
       {/* Optional Card Bottom Action */}
       {onSave && (
-        <div className='mt-8 pt-4 border-t border-border/40 flex items-center justify-end'>
-          <Button
-            onClick={onSave}
-            isLoading={isSaving}
-            Icon={Check}
-            size='md'
-          >
+        <div className='mt-8 pt-4 border-t border-primary/40 flex items-center justify-end'>
+          <Button onClick={onSave} isLoading={isSaving} Icon={Check} size='md'>
             Save Settings
           </Button>
         </div>

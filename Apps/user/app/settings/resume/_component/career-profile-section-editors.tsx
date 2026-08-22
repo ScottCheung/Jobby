@@ -21,6 +21,7 @@ import {
   ChevronUp,
   ChevronDown,
   GripVertical,
+  Sparkles,
 } from 'lucide-react';
 
 import type {
@@ -49,19 +50,23 @@ function ModalHeader({
   onClose,
 }: {
   title: string;
-  description: string;
-  icon: React.ElementType;
+  description?: string;
+  icon?: React.ElementType;
   onClose: () => void;
 }) {
   return (
     <header className='header'>
       <div className='flex min-w-0 items-start gap-3'>
-        <div className='flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary'>
-          <Icon className='h-5 w-5' />
-        </div>
+        {Icon && (
+          <div className='flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary'>
+            <Icon className='h-5 w-5' />
+          </div>
+        )}
         <div>
           <h2 className='title-section text-ink-primary'>{title}</h2>
-          <p className='body-md mt-1 text-ink-secondary'>{description}</p>
+          {description && (
+            <p className='body-md mt-1 text-ink-secondary'>{description}</p>
+          )}
         </div>
       </div>
       <button
@@ -279,9 +284,7 @@ export function BasicsEditor({
               className='font-semibold text-ink-primary'
               value={draft.website}
               placeholder='https://...'
-              onChange={(e) =>
-                setDraft({ ...draft, website: e.target.value })
-              }
+              onChange={(e) => setDraft({ ...draft, website: e.target.value })}
             />
           </div>
           <div className='md:col-span-2'>
@@ -420,9 +423,9 @@ export function ExperienceEditor({
         {items.map((item, index) => (
           <div
             key={`exp-${index}`}
-            className='rounded-xl border border-border bg-panel p-4 md:p-5 space-y-4 shadow-xs'
+            className='rounded-xl bg-panel p-4 md:p-5 space-y-4 shadow-xs'
           >
-            <div className='flex items-center justify-between gap-3 border-b border-border/40 pb-3'>
+            <div className='flex items-center justify-between gap-3 pb-3'>
               <div className='flex items-center gap-2 min-w-0'>
                 <span className='inline-flex h-5 min-w-5 items-center justify-center rounded-md bg-primary/10 px-1.5 text-[11px] font-bold text-primary shrink-0'>
                   {index + 1}
@@ -534,7 +537,10 @@ export function ExperienceEditor({
 
             <div>
               <label className='text-xs font-semibold text-ink-secondary mb-1 block'>
-                Key Achievements / Responsibilities <span className='text-ink-secondary/70 font-normal'>(Drag to reorder)</span>
+                Key Achievements / Responsibilities{' '}
+                <span className='text-ink-secondary/70 font-normal'>
+                  (Drag to reorder)
+                </span>
               </label>
               <BulletListInput
                 values={item.description ?? []}
@@ -549,7 +555,11 @@ export function ExperienceEditor({
               </label>
               <TagInput
                 values={item.technologies ?? []}
-                placeholder='Add technology'
+                placeholder={[
+                  'Add technologies (e.g. Next.js, GraphQL, Redis)',
+                  'Tip: Type multiple items separated by commas (,)',
+                  'Press Enter or comma to add tags',
+                ]}
                 onChange={(techs) => updateItem(index, { technologies: techs })}
               />
             </div>
@@ -633,9 +643,9 @@ export function ProjectsEditor({
         {items.map((item, index) => (
           <div
             key={`project-item-${index}`}
-            className='rounded-xl border border-border bg-panel p-4 md:p-5 space-y-4'
+            className='rounded-xl bg-panel p-4 md:p-5 space-y-4'
           >
-            <div className='flex items-center justify-between gap-3 border-b border-border/40 pb-3'>
+            <div className='flex items-center justify-between gap-3 pb-3'>
               <h3 className='font-semibold text-ink-primary'>
                 {item.name || `Project #${index + 1}`}
               </h3>
@@ -719,7 +729,11 @@ export function ProjectsEditor({
               </label>
               <TagInput
                 values={item.technologies ?? []}
-                placeholder='Add technology tag'
+                placeholder={[
+                  'Add technologies (e.g. React, TailwindCSS, AWS)',
+                  'Tip: Type multiple items separated by commas (,)',
+                  'Press Enter or comma to add tags',
+                ]}
                 onChange={(techs) => updateItem(index, { technologies: techs })}
               />
             </div>
@@ -748,11 +762,22 @@ export function SkillsEditor({
   data,
   onSave,
   onClose,
+  initialCoreCompetencies,
 }: {
   data: MasterResumeData;
-  onSave: (next: MasterResumeData) => Promise<void>;
+  onSave: (
+    next: MasterResumeData,
+    nextCoreCompetencies?: string[],
+  ) => Promise<void>;
   onClose: () => void;
+  initialCoreCompetencies?: string[];
 }) {
+  const [coreCompetencies, setCoreCompetencies] = useState<string[]>(
+    initialCoreCompetencies ??
+      data.core_competencies ??
+      (data as unknown as Record<string, string[]>).key_qualifications ??
+      [],
+  );
   const [groups, setGroups] = useState<ResumeSkillGroup[]>(
     Array.isArray(data.skills) ? data.skills : [],
   );
@@ -775,7 +800,10 @@ export function SkillsEditor({
   const handleSave = async () => {
     setSaving(true);
     try {
-      await onSave({ ...data, skills: groups });
+      await onSave(
+        { ...data, skills: groups, core_competencies: coreCompetencies },
+        coreCompetencies,
+      );
     } finally {
       setSaving(false);
     }
@@ -783,65 +811,109 @@ export function SkillsEditor({
 
   return (
     <div className='flex max-h-[88vh] min-h-[440px] flex-col'>
-      <ModalHeader
-        title='Skills'
-        description='Organize your technical and professional skills into categories.'
-        icon={Wrench}
-        onClose={onClose}
-      />
-      <div className='body'>
-        {groups.map((group, index) => (
-          <div
-            key={`skill-group-${index}`}
-            className='rounded-lg border border-border bg-panel p-4 md:p-5 space-y-3'
-          >
-            <div className='flex items-center justify-between gap-3'>
-              <div className='flex-1 max-w-sm'>
-                <label className='body-sm mb-1 block text-ink-secondary'>
-                  Category Name
-                </label>
-                <Input
-                  value={asValue(group.type)}
-                  placeholder='e.g. Programming Languages'
-                  onChange={(e) =>
-                    updateGroup(index, { type: e.target.value || 'Other' })
-                  }
-                />
-              </div>
+      <ModalHeader title='Skills & Core Competencies' onClose={onClose} />
+      <div className='body space-y-6'>
+        {/* 1. Core Competencies */}
+        <div className='rounded-xl bg-primary/5 p-4 md:p-5 space-y-3'>
+          <div className='flex items-center justify-between gap-3'>
+            <div>
+              <label className='body-sm font-bold text-ink-primary flex items-center gap-2'>
+                <Sparkles className='h-4 w-4 text-primary' />
+                Core Competencies (Drag to reorder)
+              </label>
+              <p className='text-xs text-ink-secondary mt-0.5'>
+                Recruiter-facing capability phrases and specializations.
+              </p>
+            </div>
+            {coreCompetencies.length > 0 && (
               <Button
                 type='button'
                 size='sm'
                 variant='ghost'
-                className='text-red-500 hover:bg-red-500/10 hover:text-red-600 self-end'
+                className='text-red-500 hover:bg-red-500/10 hover:text-red-600 self-start'
                 Icon={Trash2}
-                onClick={() => removeGroup(index)}
+                onClick={() => setCoreCompetencies([])}
               >
-                Remove All
+                Clear All
               </Button>
-            </div>
-
-            <div>
-              <label className='body-sm mb-1 block font-medium text-ink-primary'>
-                Skills (Drag to reorder)
-              </label>
-              <TagInput
-                values={group.skills ?? []}
-                placeholder='Add a skill tag'
-                onChange={(skills) => updateGroup(index, { skills })}
-              />
-            </div>
+            )}
           </div>
-        ))}
+          <TagInput
+            values={coreCompetencies}
+            placeholder={[
+              'Add core competencies (e.g. AWS Cloud & Serverless Architecture)',
+              'Tip: Type or paste multiple competencies separated by commas (,)',
+              'Press Enter or comma to add tags',
+            ]}
+            onChange={setCoreCompetencies}
+          />
+        </div>
 
-        <Button
-          type='button'
-          variant='ghost'
-          className='w-full'
-          Icon={Plus}
-          onClick={addGroup}
-        >
-          Add Skill Category
-        </Button>
+        {/* 2. Skill Categories */}
+        <div className='space-y-4'>
+          <div className='flex items-center justify-between'>
+            <h4 className='text-sm font-bold text-ink-primary'>
+              Skill Categories
+            </h4>
+          </div>
+
+          {groups.map((group, index) => (
+            <div
+              key={`skill-group-${index}`}
+              className='rounded-xl bg-panel p-4 md:p-5 space-y-3'
+            >
+              <div className='flex items-center justify-between gap-3'>
+                <div className='flex-1 max-w-sm'>
+                  <label className='body-sm mb-1 block text-ink-secondary font-medium'>
+                    Category Name
+                  </label>
+                  <Input
+                    value={asValue(group.type)}
+                    placeholder='e.g. Programming Languages'
+                    onChange={(e) =>
+                      updateGroup(index, { type: e.target.value || 'Other' })
+                    }
+                  />
+                </div>
+                <Button
+                  type='button'
+                  size='sm'
+                  variant='ghost'
+                  className='text-red-500 hover:bg-red-500/10 hover:text-red-600 self-end'
+                  Icon={Trash2}
+                  onClick={() => removeGroup(index)}
+                >
+                  Remove Category
+                </Button>
+              </div>
+
+              <div>
+                <label className='body-sm mb-1 block font-medium text-ink-primary'>
+                  Skills (Drag to reorder)
+                </label>
+                <TagInput
+                  values={group.skills ?? []}
+                  placeholder={[
+                    'Add skills (e.g. React, TypeScript, Python, Docker)',
+                    'Tip: Type or paste multiple skills separated by commas (,)',
+                    'Press Enter or comma to add tags in bulk',
+                  ]}
+                  onChange={(skills) => updateGroup(index, { skills })}
+                />
+              </div>
+            </div>
+          ))}
+
+          <Button
+            type='button'
+            variant='ghost'
+            className='w-full bg-primary/10 hover:bg-primary/20 text-primary'
+            Icon={Plus}
+            onClick={addGroup}
+          >
+            Add Skill Category
+          </Button>
+        </div>
       </div>
       <ModalFooter onClose={onClose} onSave={handleSave} saving={saving} />
     </div>
@@ -911,9 +983,9 @@ export function EducationEditor({
         {items.map((item, index) => (
           <div
             key={`edu-${index}`}
-            className='rounded-xl border border-border bg-panel p-4 md:p-5 space-y-4'
+            className='rounded-xl bg-panel p-4 md:p-5 space-y-4'
           >
-            <div className='flex items-center justify-between gap-3 border-b border-border/40 pb-3'>
+            <div className='flex items-center justify-between gap-3 pb-3'>
               <h3 className='font-semibold text-ink-primary'>
                 {item.degree || item.institution ?
                   `${item.degree || 'Education'} - ${item.institution || 'School'}`
@@ -1131,7 +1203,7 @@ export function CertificationsEditor({
         {groups.map((group, groupIndex) => (
           <div
             key={`cert-group-${groupIndex}`}
-            className='rounded-xl border border-border bg-panel p-4 md:p-5 space-y-4'
+            className='rounded-xl bg-panel p-4 md:p-5 space-y-4'
           >
             <div className='flex items-center justify-between gap-3'>
               <div className='flex-1 max-w-sm'>
@@ -1162,7 +1234,7 @@ export function CertificationsEditor({
               {(group.certifications ?? []).map((cert, certIndex) => (
                 <div
                   key={`cert-${groupIndex}-${certIndex}`}
-                  className='rounded-md border border-border/80 bg-background-secondary p-3 space-y-3'
+                  className='rounded-md bg-background-secondary p-3 space-y-3'
                 >
                   <div className='flex items-center justify-between gap-2'>
                     <span className='body-sm font-medium text-ink-primary'>
@@ -1308,7 +1380,7 @@ export function LinksEditor({
         {items.map((item, index) => (
           <div
             key={`link-${index}`}
-            className='flex items-center gap-3 rounded-lg border border-border bg-panel p-3'
+            className='flex items-center gap-3 rounded-lg bg-panel p-3'
           >
             <div className='w-1/3'>
               <Input
@@ -1416,9 +1488,9 @@ export function OtherEditor({
         {items.map((item, index) => (
           <div
             key={`other-${index}`}
-            className='rounded-xl border border-border bg-panel p-4 md:p-5 space-y-4'
+            className='rounded-xl bg-panel p-4 md:p-5 space-y-4'
           >
-            <div className='flex items-center justify-between gap-3 border-b border-border/40 pb-3'>
+            <div className='flex items-center justify-between gap-3 pb-3'>
               <h3 className='font-semibold text-ink-primary'>
                 {item.title || item.type || `Entry #${index + 1}`}
               </h3>

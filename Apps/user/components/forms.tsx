@@ -1,7 +1,17 @@
 /** @format */
 
 'use client';
-import { Button, CardWithNorth, Checkbox, Input, InputField, Select, Switch, TagInput, Textarea } from '@jobby/ui';
+import {
+  Button,
+  CardWithNorth,
+  Checkbox,
+  Input,
+  InputField,
+  Select,
+  Switch,
+  TagInput,
+  Textarea,
+} from '@jobby/ui';
 
 import { useMemo, useState } from 'react';
 import {
@@ -28,13 +38,6 @@ import type {
   JobHuntingProfile,
   UserProfile,
 } from '@/lib/types';
-
-
-
-
-
-
-
 
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
@@ -223,7 +226,7 @@ export function Field({
         containerClassName={full ? 'col-span-full' : ''}
         showCharCount={false}
         required={required}
-        optional={!required}
+        optional={false}
       />
     );
   }
@@ -238,7 +241,7 @@ export function Field({
       containerClassName={full ? 'col-span-full' : ''}
       showCharCount={false}
       required={required}
-      optional={!required}
+      optional={false}
     />
   );
 }
@@ -534,7 +537,7 @@ export function DisplayField({
   return (
     <div
       className={cn(
-        'flex flex-col gap-1 p-3 rounded-xl bg-background-secondary/40 border border-border/40 min-h-[64px]',
+        'flex flex-col gap-1 p-3 rounded-xl bg-background-secondary/40  min-h-[64px]',
         full ? 'col-span-full' : '',
       )}
     >
@@ -576,7 +579,7 @@ function DisplayBadgeField({
   return (
     <div
       className={cn(
-        'flex flex-col gap-1.5 p-3 rounded-xl bg-background-secondary/40 border border-border/40 min-h-[64px]',
+        'flex flex-col gap-1.5 p-3 rounded-xl bg-background-secondary/40 border border-primary/40 min-h-[64px]',
         full ? 'col-span-full' : '',
       )}
     >
@@ -1327,7 +1330,7 @@ export function SearchForm({
                   Required
                 </span>
               </div>
-              <div className='mt-2 flex items-center justify-between gap-3 rounded-md border border-border bg-background-secondary p-3'>
+              <div className='mt-2 flex items-center justify-between gap-3 rounded-md border border-primary bg-background-secondary p-3'>
                 <div className='flex min-w-0 items-center gap-3'>
                   <div className='flex size-10 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary'>
                     <FileText className='size-5' />

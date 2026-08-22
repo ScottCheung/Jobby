@@ -14,6 +14,29 @@ export function isSidepanelOpenForWindow(windowId: number): boolean {
   return Array.from(activeSidepanelPorts.values()).includes(windowId);
 }
 
+type SidePanelWithClose = typeof chrome.sidePanel & {
+  close?: (options: { windowId: number }) => Promise<void>;
+};
+
+/** Close the native panel before the page-embedded panel is shown. */
+export async function closeSidepanelForWindow(windowId: number): Promise<boolean> {
+  const sidePanel = chrome.sidePanel as SidePanelWithClose;
+  if (typeof sidePanel.close === "function") {
+    await sidePanel.close({ windowId });
+    return true;
+  }
+
+  // Chrome 140 and older have no sidePanel.close(). Ask the side-panel page
+  // itself to close, retaining the same mutual-exclusion contract.
+  const ports = Array.from(activeSidepanelPorts.entries()).filter(
+    ([, portWindowId]) => portWindowId === windowId,
+  );
+  for (const [port] of ports) {
+    port.postMessage({ type: "sidepanel.close" });
+  }
+  return ports.length > 0;
+}
+
 chrome.runtime.onConnect.addListener((port) => {
   if (port.name === "jobby-sidepanel") {
     port.onMessage.addListener((message: unknown) => {

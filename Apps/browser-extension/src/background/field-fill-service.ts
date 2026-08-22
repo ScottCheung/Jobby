@@ -22,10 +22,27 @@ function makeCommandId(prefix: string, key?: string): string {
   return raw.slice(0, 64);
 }
 
-function isResumeField(field: { type: string; label: string }, platform?: string): boolean {
+function isResumeField(
+  field: {
+    type: string;
+    label: string;
+    key?: string;
+    id?: string;
+    name?: string;
+    semanticFeatures?: string[];
+  },
+  platform?: string,
+): boolean {
   if (field.type !== "file") return false;
   if (platform === "linkedin") return true;
-  return /resume|curriculum vitae|\bcv\b|简历|履历|document|upload/i.test(field.label);
+  const identity = [
+    field.label,
+    field.key,
+    field.id,
+    field.name,
+    ...(field.semanticFeatures || []),
+  ].filter(Boolean).join(" ");
+  return /resume|curriculum vitae|\bcv\b|简历|履历|upload.*resume|attach.*resume/i.test(identity);
 }
 
 function isReactiveAddressCountryField(
@@ -103,6 +120,41 @@ export async function uploadDefaultResumeToActiveTab(target: FormFieldTarget): P
     });
     return result;
   }
+}
+
+export async function uploadPreparedFileToActiveTab(
+  target: FormFieldTarget,
+  file: { filename: string; mimeType: string; contentBase64: string },
+): Promise<FieldFillResult> {
+  const commandId = makeCommandId("selected-resume", target.key);
+  if (target.type !== "file") {
+    return {
+      commandId,
+      key: target.key,
+      status: "rejected",
+      message: "Automatic upload is only available for file fields.",
+    };
+  }
+  const result = await uploadActiveTabFile({
+    type: "content.upload-file",
+    commandId,
+    target,
+    ...file,
+  });
+  await logDiagnostic(
+    result.status === "filled" || result.status === "already_filled" ? "info" : "warn",
+    "upload",
+    "Selected tailored resume upload command completed.",
+    {
+      commandId,
+      fieldKey: target.key,
+      fieldLabel: target.label,
+      filename: file.filename,
+      status: result.status,
+      message: result.message,
+    },
+  );
+  return result;
 }
 
 async function fillFormWithReactiveConvergence<T extends { instructions: Array<{ target: { key: string; type: string; label?: string } }>; unanswered_fields: Array<{ key: string; label: string; reason: string }> }>(
@@ -225,23 +277,7 @@ async function fillFormWithReactiveConvergence<T extends { instructions: Array<{
     }
   }
 
-  const finalFields = form.kind === "application_form" || form.kind === "page_input_fields" ? form.fields : [];
-  const platform = form.kind === "application_form" || form.kind === "page_input_fields" ? form.platform : undefined;
   const results = Array.from(resultsMap.values());
-  const resumeFile = finalFields.find((field) => isResumeField(field, platform));
-  if (resumeFile && !resumeFile.filled) {
-    results.push(
-      await uploadDefaultResumeToActiveTab({
-        key: resumeFile.key,
-        frameId: resumeFile.frameId,
-        id: resumeFile.id,
-        name: resumeFile.name,
-        label: resumeFile.label,
-        type: resumeFile.type,
-      }),
-    );
-  }
-
   return { results, unansweredFields: instructions.unanswered_fields };
 }
 
@@ -454,7 +490,12 @@ export async function autofillSingleFieldForActiveTab(
   }
 
   if (isResumeField(field, form.platform)) {
-    return uploadDefaultResumeToActiveTab(target);
+    return {
+      commandId: makeCommandId("select-resume", target.key),
+      key: target.key,
+      status: "requires_user_action",
+      message: "Select a resume from Recent Tailor in the Jobby form panel.",
+    };
   }
 
   const page = await inspectActiveTab().catch(() => null);

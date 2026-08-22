@@ -49,7 +49,7 @@ function isIndeedHost(hostname: string): boolean {
   return hostname === "indeed.com" || /\.indeed\.com$/.test(hostname);
 }
 
-export function readCurrentPage(): PageInspection {
+export function readCurrentPage(apiData?: import('./platforms/linkedin/api-client').LinkedInJobApiData | null): PageInspection {
   const url = window.location.href;
   const hostname = window.location.hostname;
 
@@ -69,7 +69,7 @@ export function readCurrentPage(): PageInspection {
     return readSeekPage();
   }
   if (isLinkedInHost(hostname)) {
-    return readLinkedInPage();
+    return readLinkedInPage(apiData);
   }
   if (isIndeedHost(hostname)) {
     const inspection = readIndeedJobPage();
@@ -83,10 +83,10 @@ export async function readCurrentPageWhenReady(): Promise<PageInspection> {
 
   let inspection = readCurrentPage();
 
-  // Job boards and ATS pages often render their content asynchronously.
-  // If a job page is identified but datePosted is missing, retry briefly (up to 400ms) for the date DOM element to render.
-  for (let attempt = 0; attempt < 4; attempt += 1) {
-    if (inspection.kind === "job" && inspection.snapshot.datePosted) {
+  // Job boards (like SEEK) and ATS pages often render their content asynchronously.
+  // Retry briefly (up to 600ms) if the page isn't ready or datePosted is missing.
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    if (inspection.kind === "job" && inspection.snapshot.title && inspection.snapshot.datePosted) {
       return inspection;
     }
     await new Promise<void>((resolve) => window.setTimeout(resolve, 100));
@@ -123,13 +123,24 @@ async function readLinkedInPageWhenReady(): Promise<PageInspection> {
   // The Voyager API returns an exact posting timestamp, making the fragile DOM
   // date extraction unnecessary for logged-in users.
   const jobIdNow = linkedinAdapter.jobIdFromUrl(observedUrl);
-  // Import is deferred to avoid increasing the synchronous parse cost.
+  let cachedApiData: import('./platforms/linkedin/api-client').LinkedInJobApiData | null = null;
+  let apiResolved = false;
+
   const apiDataPromise: Promise<import('./platforms/linkedin/api-client').LinkedInJobApiData | null> =
     jobIdNow
       ? import('./platforms/linkedin/api-client').then(({ fetchLinkedInJobPosting }) =>
           fetchLinkedInJobPosting(jobIdNow),
         )
       : Promise.resolve(null);
+
+  apiDataPromise
+    .then((data) => {
+      cachedApiData = data;
+      apiResolved = true;
+    })
+    .catch(() => {
+      apiResolved = true;
+    });
 
   let inspection = readCurrentPage();
 
@@ -142,7 +153,7 @@ async function readLinkedInPageWhenReady(): Promise<PageInspection> {
       previousSnapshotSignature = "";
     }
 
-    inspection = readCurrentPage();
+    inspection = readCurrentPage(apiResolved ? cachedApiData : undefined);
     if (inspection.kind === "job") {
       const snapshotSignature = [
         inspection.snapshot.externalId,
@@ -152,21 +163,9 @@ async function readLinkedInPageWhenReady(): Promise<PageInspection> {
       ].join(":");
       const descriptionReady = Boolean(inspection.snapshot.description);
 
-      // When the API data has already resolved, merge it in immediately.
-      // We use Promise.race-style "already settled" check via a flag so we
-      // don't await (which would block the current iteration).
-      let apiData: import('./platforms/linkedin/api-client').LinkedInJobApiData | null = null;
-      let apiResolved = false;
-      void apiDataPromise.then((data) => {
-        apiData = data;
-        apiResolved = true;
-      });
-
-      if (apiResolved && apiData) {
+      if (apiResolved && cachedApiData) {
         // API data is available — merge and return immediately.
-        // The API's listedAt is an exact ISO date, so we don't need to wait
-        // for the DOM date element to appear.
-        const enriched = readLinkedInPage(apiData);
+        const enriched = readLinkedInPage(cachedApiData);
         if (enriched.kind === "job" && enriched.snapshot.description) {
           return enriched;
         }
@@ -174,13 +173,8 @@ async function readLinkedInPageWhenReady(): Promise<PageInspection> {
 
       const dateReady = Boolean(inspection.snapshot.datePosted);
       const metadataReady = dateReady || attempt >= 19;
-      // LinkedIn replaces the selected card asynchronously while leaving
-      // result-list cards in the DOM. Require two identical reads of the
-      // identity and posting date before exposing the snapshot to the panel.
       const snapshotStable = snapshotSignature === previousSnapshotSignature;
       if (descriptionReady && metadataReady && (snapshotStable || attempt >= 19)) {
-        // DOM settled — wait for the API one final time (up to 0 ms, already resolved
-        // or near-resolved) before returning, so the caller gets the richest data.
         const resolvedApiData = await apiDataPromise.catch(() => null);
         if (resolvedApiData) {
           const enriched = readLinkedInPage(resolvedApiData);

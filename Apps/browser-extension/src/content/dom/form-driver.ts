@@ -19,11 +19,15 @@ import {
   inspectVisibleFormFields,
   isSelectableCombobox,
   isAutofillResumeInput,
+  jobAdderPhoneCountryControls,
   labelFor,
   visibleControlsInScope,
   type FormScope,
 } from './form-inspector';
-import { selectPageCombobox } from './combobox-bridge';
+import {
+  inspectPageCombobox,
+  selectPageCombobox,
+} from './combobox-bridge';
 
 type FormControl = HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
 
@@ -58,6 +62,7 @@ function fieldType(element: FormControl): FormFieldType {
   if (element instanceof HTMLTextAreaElement) return 'textarea';
   if (isSelectableCombobox(element)) return 'select';
   const type = element.type.toLowerCase();
+  if (type === 'text' && element.hasAttribute('data-val-phone')) return 'tel';
   if (type === 'text' || type === 'search') return 'text';
   if (
     [
@@ -462,6 +467,59 @@ function setValue(
   else element.value = formattedValue;
 }
 
+function findJobAdderPhoneCountryControl(
+  target: FormFieldTarget,
+  scope: FormScope,
+) {
+  return jobAdderPhoneCountryControls(scope).find((control) =>
+    target.key === control.countryCode.id ||
+    target.key === control.countryCode.name ||
+    (target.id && target.id === control.countryCode.id) ||
+    (target.name && target.name === control.countryCode.name),
+  ) || null;
+}
+
+function fillJobAdderPhoneCountry(
+  instruction: FieldFillInstruction,
+  scope: FormScope,
+): FieldFillResult | null {
+  if (instruction.target.type !== 'select' || typeof instruction.value !== 'string') return null;
+  const control = findJobAdderPhoneCountryControl(instruction.target, scope);
+  if (!control) return null;
+
+  const requestedValue = instruction.value;
+  const requested = requestedValue.trim().toUpperCase();
+  const option = control.options.find((candidate) =>
+    candidate.value.toUpperCase() === requested ||
+    normalized(candidate.label) === normalized(requestedValue),
+  );
+  if (!option && requestedValue !== '') {
+    return result(instruction, 'rejected', 'The requested phone country is unavailable.');
+  }
+  const nextValue = option?.value || '';
+  if (normalized(control.countryCode.value) === normalized(nextValue)) {
+    return result(instruction, 'already_filled', 'Phone country already has the requested value.');
+  }
+
+  markAutofillWrite(control.countryList, instruction.source);
+  setValue(control.countryList, nextValue);
+  emitChange(control.countryList);
+  // The JobAdder Select2 handler updates this hidden field itself. Set it as
+  // a fallback as well, so a delayed widget initialisation cannot leave the
+  // phone number with an empty country code.
+  if (normalized(control.countryCode.value) !== normalized(nextValue)) {
+    setValue(control.countryCode, nextValue);
+    emitChange(control.countryCode);
+  }
+  return result(
+    instruction,
+    normalized(control.countryCode.value) === normalized(nextValue) ? 'filled' : 'rejected',
+    normalized(control.countryCode.value) === normalized(nextValue)
+      ? 'Phone country updated.'
+      : 'The webpage did not accept the phone country update.',
+  );
+}
+
 function emitChange(element: FormControl): void {
   const eventOptions = { bubbles: true, composed: true };
   try {
@@ -783,11 +841,19 @@ function visibleOptionMatch(
   value: string,
 ): HTMLElement | null {
   const targetValue = normalized(value);
-  const candidates = Array.from(
-    root.querySelectorAll<HTMLElement>(
-      "[role='option'], [role='listbox'] button, [role='listbox'] li, [data-value], [data-option-value], [class*='t1-' i], [class*='option' i], [class*='item' i], [class*='suggestion' i], [class*='result' i], [class*='row' i]",
-    ),
-  );
+  const selector = "[role='option'], [role='listbox'] button, [role='listbox'] li, [data-value], [data-option-value], [class*='t1-' i], [class*='option' i], [class*='item' i], [class*='suggestion' i], [class*='result' i], [class*='row' i]";
+  // Listboxes on modern ATS pages are frequently rendered in a sibling or
+  // child shadow root. `querySelectorAll` stops at a shadow boundary, while
+  // `elementsInScope` deliberately follows open shadow roots.
+  const candidates =
+    root instanceof Document || root instanceof HTMLElement || root instanceof ShadowRoot
+      ? elementsInScope(root).filter(
+          (element) =>
+            element.matches(selector) ||
+            element.tagName.toLowerCase().endsWith('-option') ||
+            element.parentElement?.getAttribute('role') === 'listbox',
+        )
+      : Array.from(root.querySelectorAll<HTMLElement>(selector));
   return (
     candidates.find((candidate) => {
       if (
@@ -801,7 +867,9 @@ function visibleOptionMatch(
         candidate.getAttribute('data-value') ||
           candidate.getAttribute('data-option-value') ||
           candidate.getAttribute('aria-label') ||
-          candidate.textContent,
+          candidate.textContent ||
+          candidate.getAttribute('value') ||
+          '',
       );
       return (
         candidateValue === targetValue ||
@@ -810,6 +878,14 @@ function visibleOptionMatch(
             targetValue.includes(candidateValue)))
       );
     }) || null
+  );
+}
+
+function optionInteractionTarget(option: HTMLElement): HTMLElement {
+  return (
+    option.shadowRoot?.querySelector<HTMLElement>(
+      "[role='option'], button, [role='button']",
+    ) || option
   );
 }
 
@@ -840,7 +916,7 @@ async function clickVisualSelectOption(
     if (!option) await new Promise<void>((resolve) => window.setTimeout(resolve, 40));
   }
   if (!option) return false;
-  clickControl(option);
+  clickControl(optionInteractionTarget(option));
   return true;
 }
 
@@ -853,11 +929,22 @@ function comboboxListbox(
     root instanceof Document || root instanceof ShadowRoot ? root : scope;
   const id = cleanText(element.getAttribute('aria-controls'));
   if (!id) return null;
-  return (
+  const localMatch =
     queryScope.querySelector<HTMLElement>(`#${CSS.escape(id)}`) ||
     (queryScope !== document ?
       document.querySelector<HTMLElement>(`#${CSS.escape(id)}`)
-    : null)
+    : null);
+  if (localMatch) return localMatch;
+
+  // The controlled input and its listbox can be siblings in different shadow
+  // roots (SmartRecruiters' location autocomplete is one example). Search
+  // the inspected form, then the whole document, without leaving the page.
+  return (
+    elementsInScope(scope).find((candidate) => candidate.id === id) ||
+    (scope !== document
+      ? elementsInScope(document).find((candidate) => candidate.id === id)
+      : null) ||
+    null
   );
 }
 
@@ -903,6 +990,86 @@ function comboboxSelectionMatches(
   );
 }
 
+const COMBOBOX_OPTION_WAIT_MS = 2_500;
+const COMBOBOX_COMMIT_WAIT_MS = 1_200;
+
+function comboboxHasCommittedSelection(
+  element: HTMLInputElement,
+  scope: FormScope,
+  value: string,
+  typedQuery: string,
+): boolean {
+  const expected = normalized(value);
+  const bridgedValue = normalized(inspectPageCombobox(element)?.currentValue || '');
+  if (
+    bridgedValue &&
+    (bridgedValue === expected ||
+      bridgedValue.includes(expected) ||
+      expected.includes(bridgedValue))
+  ) {
+    return true;
+  }
+
+  const listbox = comboboxListbox(element, scope);
+  const selectedOption = listbox ?
+      elementsInScope(listbox).find(
+        (candidate) =>
+          candidate.getAttribute('aria-selected') === 'true' ||
+          candidate.getAttribute('aria-checked') === 'true' ||
+          candidate.getAttribute('data-state') === 'selected' ||
+          candidate.getAttribute('data-state') === 'checked',
+      )
+    : undefined;
+  if (selectedOption) {
+    const selectedValue = normalized(
+      selectedOption.getAttribute('data-value') ||
+        selectedOption.getAttribute('data-option-value') ||
+        selectedOption.getAttribute('aria-label') ||
+        selectedOption.textContent,
+    );
+    if (
+      selectedValue === expected ||
+      selectedValue.includes(expected) ||
+      expected.includes(selectedValue)
+    ) {
+      return true;
+    }
+  }
+
+  if (!comboboxSelectionMatches(element, value)) return false;
+  const valueChangedAfterChoice =
+    normalized(element.value) !== normalized(typedQuery);
+  const listboxClosed =
+    element.getAttribute('aria-expanded') === 'false' ||
+    !listbox ||
+    !isVisible(listbox);
+  return valueChangedAfterChoice || listboxClosed;
+}
+
+function waitForComboboxCommit(
+  element: HTMLInputElement,
+  scope: FormScope,
+  value: string,
+  typedQuery: string,
+  timeoutMs = COMBOBOX_COMMIT_WAIT_MS,
+): Promise<boolean> {
+  return new Promise((resolve) => {
+    const startedAt = Date.now();
+    const verify = () => {
+      if (comboboxHasCommittedSelection(element, scope, value, typedQuery)) {
+        resolve(true);
+        return;
+      }
+      if (Date.now() - startedAt >= timeoutMs) {
+        resolve(false);
+        return;
+      }
+      window.setTimeout(verify, 40);
+    };
+    verify();
+  });
+}
+
 function waitForComboboxOption(
   element: HTMLInputElement,
   scope: FormScope,
@@ -919,7 +1086,7 @@ function waitForComboboxOption(
         resolve(option);
         return;
       }
-      if (Date.now() - startedAt >= 800) {
+      if (Date.now() - startedAt >= COMBOBOX_OPTION_WAIT_MS) {
         resolve(null);
         return;
       }
@@ -946,10 +1113,20 @@ async function fillCombobox(
   if (element.getAttribute('aria-expanded') !== 'true') clickControl(element);
   setValue(element, label);
   emitInput(element);
+  const typedQuery = element.value;
 
   const option = await waitForComboboxOption(element, scope, label);
   if (option) {
-    clickControl(option);
+    // Custom option hosts (including SmartRecruiters' spl-select-option)
+    // keep the click handler on an interactive node inside their shadow root.
+    // Clicking the host programmatically does not activate that inner node.
+    clickControl(optionInteractionTarget(option));
+    // A successful option click is the commit. Do not immediately send
+    // ArrowDown/Enter afterwards: on many async location controls that moves
+    // the selection away from the option we just chose.
+    if (await waitForComboboxCommit(element, scope, label, typedQuery)) {
+      return true;
+    }
   }
 
   const dispatchKey = (key: string, keyCode: number) => {
@@ -958,32 +1135,14 @@ async function fillCombobox(
     element.dispatchEvent(new KeyboardEvent('keyup', keyOptions));
   };
 
+  // Keyboard selection is a fallback for controls that expose no clickable
+  // option nodes. It is deliberately skipped when a click was confirmed.
   dispatchKey('ArrowDown', 40);
   dispatchKey('Enter', 13);
 
-  return new Promise((resolve) => {
-    const startedAt = Date.now();
-    let tabSent = false;
-    const verify = () => {
-      if (comboboxSelectionMatches(element, label)) {
-        resolve(true);
-        return;
-      }
-      if (!tabSent && Date.now() - startedAt >= 150) {
-        tabSent = true;
-        dispatchKey('Tab', 9);
-      }
-      if (Date.now() - startedAt >= 800) {
-        const current = normalized(comboboxCurrentValue(element) || element.value);
-        const expected = normalized(label);
-        const matched = Boolean(current && (current === expected || current.includes(expected) || expected.includes(current)));
-        resolve(matched);
-        return;
-      }
-      window.setTimeout(verify, 40);
-    };
-    verify();
-  });
+  if (await waitForComboboxCommit(element, scope, label, typedQuery)) return true;
+  dispatchKey('Tab', 9);
+  return waitForComboboxCommit(element, scope, label, typedQuery, 500);
 }
 
 async function fillAriaCombobox(
@@ -999,7 +1158,7 @@ async function fillAriaCombobox(
     if (!option) await new Promise<void>((resolve) => window.setTimeout(resolve, 40));
   }
   if (!option) return false;
-  clickControl(option);
+  clickControl(optionInteractionTarget(option));
   await new Promise<void>((resolve) => window.setTimeout(resolve, 150));
   const after = normalized(element.textContent || '');
   const expected = normalized(value);
@@ -1252,6 +1411,9 @@ export async function fillFormField(
       'not_found',
       'No supported application form is open.',
     );
+
+  const jobAdderCountryResult = fillJobAdderPhoneCountry(instruction, scope);
+  if (jobAdderCountryResult) return jobAdderCountryResult;
 
   if (instruction.target.type === 'file') {
     const input = findFileInput(instruction.target, scope);

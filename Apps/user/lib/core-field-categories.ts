@@ -19,22 +19,27 @@ export const coreFieldCategories = [
   {
     id: 'eligibility',
     label: 'Work eligibility',
-    description: '',
+    description: 'Visa and work authorizations',
   },
   {
     id: 'career',
     label: 'Career preferences',
-    description: '',
+    description: 'Notice period, salary and preferences',
   },
   {
     id: 'links',
     label: 'Links',
-    description: '',
+    description: 'Online portfolio and social links',
+  },
+  {
+    id: 'demographics',
+    label: 'Demographics',
+    description: 'Equal opportunity details',
   },
   {
     id: 'other',
     label: 'Other details',
-    description: '',
+    description: 'Custom user-defined fields',
   },
 ] as const;
 
@@ -46,17 +51,19 @@ export const coreFieldOptions: Record<Exclude<CoreFieldCategoryId, 'other'>, Arr
     { key: 'identity.first_name', label: 'First name' },
     { key: 'identity.middle_name', label: 'Middle name' },
     { key: 'identity.last_name', label: 'Last name' },
-    { key: 'identity.title', label: 'Title' },
+    { key: 'identity.title', label: 'Title / Salutation' },
     { key: 'identity.pronouns', label: 'Pronouns' },
     { key: 'identity.legal_full_name', label: 'Legal full name' },
   ],
   contact: [
     { key: 'identity.email', label: 'Email' },
     { key: 'identity.phone', label: 'Phone number' },
+    { key: 'identity.phone_type', label: 'Phone type' },
+    { key: 'identity.phone_country_code', label: 'Country code' },
   ],
   location: [
     { key: 'address.street', label: 'Address Line 1' },
-    { key: 'address.suburb', label: 'Suburb' },
+    { key: 'address.suburb', label: 'Suburb / County' },
     { key: 'address.city', label: 'City' },
     { key: 'address.state', label: 'State / province' },
     { key: 'address.postal_code', label: 'Postcode' },
@@ -91,13 +98,28 @@ export const coreFieldOptions: Record<Exclude<CoreFieldCategoryId, 'other'>, Arr
     { key: 'employment.portfolio_url', label: 'Portfolio URL' },
     { key: 'employment.github_url', label: 'GitHub URL' },
   ],
+  demographics: [
+    { key: 'demographic.gender', label: 'Gender' },
+    { key: 'demographic.gender_identity', label: 'Gender identity' },
+    { key: 'demographic.ethnicity', label: 'Ethnicity' },
+    { key: 'demographic.disability_status', label: 'Disability status' },
+    { key: 'demographic.veteran_status', label: 'Veteran status' },
+  ],
 };
 
 export function coreFieldCategoryForKey(coreFieldKey: string): CoreFieldCategoryId {
   const key = coreFieldKey.trim().toLowerCase();
 
-  if (key === 'identity.email' || key === 'identity.phone') return 'contact';
-  if (key.startsWith('identity.') || key.startsWith('demographic.')) return 'identity';
+  if (
+    key === 'identity.email' ||
+    key === 'identity.phone' ||
+    key === 'identity.phone_type' ||
+    key === 'identity.phone_country_code'
+  ) {
+    return 'contact';
+  }
+  if (key.startsWith('demographic.')) return 'demographics';
+  if (key.startsWith('identity.')) return 'identity';
   if (key.startsWith('address.') || key === 'employment.current_location') return 'location';
   if (['employment.linkedin_url', 'employment.website', 'employment.portfolio_url', 'employment.github_url'].includes(key)) return 'links';
   if ([
@@ -145,3 +167,4 @@ export function groupCoreFields(fields: CoreProfileField[]): Record<CoreFieldCat
 
   return grouped;
 }
+

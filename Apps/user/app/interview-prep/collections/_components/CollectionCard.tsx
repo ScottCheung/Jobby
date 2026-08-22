@@ -63,10 +63,10 @@ export function CollectionCard({
   );
 
   return (
-    <div className='group/card relative flex h-full flex-col justify-between rounded-2xl border border-border/40 bg-panel/60 p-4 shadow-xs transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-md hover:shadow-primary/5 dark:bg-panel/40 overflow-hidden'>
+    <div className='group/card relative flex h-full flex-col justify-between rounded-2xl border border-primary/40 bg-panel/60 p-4 shadow-xs transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-md hover:shadow-primary/5 dark:bg-panel/40 overflow-hidden'>
       <div className='flex flex-col gap-3'>
         {/* Cover Banner (Matches interview-prep/ page aesthetic) */}
-        <div className='relative aspect-[16/9] w-full overflow-hidden rounded-xl border border-border/40 bg-gradient-to-br from-primary/15 via-primary/5 to-emerald-500/10'>
+        <div className='relative aspect-[16/9] w-full overflow-hidden rounded-xl border border-primary/40 bg-gradient-to-br from-primary/15 via-primary/5 to-emerald-500/10'>
           {collection.cover_url ?
             <img
               src={`${collection.cover_url}?t=${collection.last_updated_at ? new Date(collection.last_updated_at).getTime() : ''}`}
@@ -87,11 +87,11 @@ export function CollectionCard({
                 Official
               </span>
             : collection.status === 'draft' ?
-              <span className='inline-flex items-center gap-1 rounded-full bg-background/80 backdrop-blur-md border border-border/40 px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-ink-secondary shadow-xs'>
+              <span className='inline-flex items-center gap-1 rounded-full bg-background/80 backdrop-blur-md border border-primary/40 px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-ink-secondary shadow-xs'>
                 <Lock className='h-3 w-3' />
                 My Personal
               </span>
-            : <span className='inline-flex items-center gap-1 rounded-full bg-background/80 backdrop-blur-md border border-border/40 px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-ink-secondary shadow-xs'>
+            : <span className='inline-flex items-center gap-1 rounded-full bg-background/80 backdrop-blur-md border border-primary/40 px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-ink-secondary shadow-xs'>
                 <Users className='h-3 w-3' />
                 Community
               </span>
@@ -179,7 +179,7 @@ export function CollectionCard({
       </div>
 
       {/* Footer Actions */}
-      <div className='mt-4 pt-3 border-t border-border/40 flex items-center justify-between gap-2'>
+      <div className='mt-4 pt-3 border-t border-primary/40 flex items-center justify-between gap-2'>
         {/* Author Actions */}
         {isAuthor && (
           <div className='flex items-center gap-1.5'>

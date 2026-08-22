@@ -113,14 +113,18 @@ async function showFormActionNotice(message, options = {}) {
   document.getElementById(FORM_ACTION_NOTICE_ID)?.remove();
   const host = document.createElement("div");
   host.id = FORM_ACTION_NOTICE_ID;
-  host.style.cssText = "position:fixed;top:20px;right:20px;z-index:2147483647;";
+  host.style.cssText = "position:fixed !important;top:20px !important;right:20px !important;z-index:2147483647 !important;";
   const shadow = host.attachShadow({ mode: "closed" });
   const theme = await getNoticeTheme();
   const countText = pendingCount === void 0 ? "" : `<span class="jobby-notice-count">${pendingCount} field${pendingCount === 1 ? "" : "s"} changed</span>`;
   shadow.innerHTML = `
     <style>
       :host {
-        all: initial;
+        all: initial !important;
+        position: fixed !important;
+        top: 20px !important;
+        right: 20px !important;
+        z-index: 2147483647 !important;
         font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       }
       .jobby-notice {
@@ -373,10 +377,11 @@ export function watchFormScope(scope, readForm, initialForm) {
   const scopeParent = scope instanceof HTMLElement ? scope.parentNode : null;
   let schedule;
   const observer = new MutationObserver((records) => {
+    if (!hasRelevantFormMutation(records)) return;
     records.forEach((record) => {
       record.addedNodes.forEach((node) => observeShadowRootsIn(node, observeRoot));
     });
-    if (hasRelevantFormMutation(records)) schedule(true);
+    schedule(true);
   });
   const publishForm = (form) => {
     const currentScope = getCurrentFormScope();
@@ -425,14 +430,9 @@ export function watchFormScope(scope, readForm, initialForm) {
         publishForm(form);
         return;
       }
-      const firstSignature = signature(form);
       stabilityTimer = window.setTimeout(() => {
         if (revision !== scheduledRevision) return;
         const verifiedForm = readForm();
-        if (signature(verifiedForm) !== firstSignature) {
-          schedule(true);
-          return;
-        }
         publishForm(verifiedForm);
       }, FORM_STABILITY_RECHECK_MS);
     }, waitForStableDom ? FORM_SETTLE_MS : FORM_OBSERVER_DEBOUNCE_MS);
@@ -536,6 +536,7 @@ export function watchFormScope(scope, readForm, initialForm) {
     }
   };
   const listenForValueChanges = (root) => {
+    if (eventRoots.includes(root)) return;
     root.addEventListener("input", scheduleValueChange, true);
     root.addEventListener("change", scheduleValueChange, true);
     root.addEventListener("focusout", scheduleManualBlur, true);
@@ -606,14 +607,10 @@ export function startFormDiscovery(readForm) {
     timer = window.setTimeout(() => {
       const form = readForm();
       if (!hasObservableFields(form)) return;
-      const firstSignature = signature(form);
       stabilityTimer = window.setTimeout(() => {
         if (revision !== scheduledRevision) return;
         const verifiedForm = readForm();
-        if (!hasObservableFields(verifiedForm) || signature(verifiedForm) !== firstSignature) {
-          scheduleDiscovery();
-          return;
-        }
+        if (!hasObservableFields(verifiedForm)) return;
         const scope = getCurrentFormScope();
         if (!scope) return;
         void chrome.runtime.sendMessage({ type: "content.form-changed", form: verifiedForm }).catch(() => void 0);
@@ -622,8 +619,8 @@ export function startFormDiscovery(readForm) {
     }, FORM_SETTLE_MS);
   };
   const discovery = new MutationObserver((records) => {
-    records.forEach((record) => record.addedNodes.forEach((node) => observeShadowRootsIn(node, observeRoot)));
     if (!records.some(hasDiscoveryMutation)) return;
+    records.forEach((record) => record.addedNodes.forEach((node) => observeShadowRootsIn(node, observeRoot)));
     scheduleDiscovery();
   });
   function observeRoot(root) {
@@ -631,19 +628,13 @@ export function startFormDiscovery(readForm) {
     observedRoots.add(root);
     discovery.observe(root, {
       childList: true,
-      subtree: true,
-      attributes: true,
-      attributeFilter: ["aria-hidden", "hidden", "style", "class", "disabled"]
+      subtree: true
     });
-    observeShadowRootsIn(root, observeRoot);
   }
   discovery.observe(document, {
     childList: true,
-    subtree: true,
-    attributes: true,
-    attributeFilter: ["aria-hidden", "hidden", "style", "class", "disabled"]
+    subtree: true
   });
-  observeShadowRootsIn(document, observeRoot);
   const onFocus = (event) => {
     const target = event.target;
     if (!(target instanceof HTMLElement) || !target.matches("input, select, textarea, [contenteditable='true']")) return;

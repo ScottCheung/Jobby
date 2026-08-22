@@ -8,12 +8,11 @@ import * as TooltipPrimitive from '@radix-ui/react-tooltip';
 import { cn } from '@/lib/utils';
 
 const TooltipProvider = TooltipPrimitive.Provider;
-
 const TooltipRoot = TooltipPrimitive.Root;
-
 const TooltipTrigger = TooltipPrimitive.Trigger;
+
 const style =
-  'z-50  break-words  rounded-xl bg-white/90 dark:bg-black/90 backdrop-blur-xl px-3 py-2 text-sm border-3 border-primary/20 text-ink-primary  shadow-lg pointer-events-none dark:border-border dark:bg-background dark:text-zinc-100';
+  'z-[9999] break-words rounded-xl bg-panel/95 text-foreground backdrop-blur-xl px-3 py-2 text-xs border border-primary/80 shadow-xl pointer-events-none animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95';
 const TooltipContent = React.forwardRef<
   React.ElementRef<typeof TooltipPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof TooltipPrimitive.Content>
@@ -83,7 +82,7 @@ export function Kbd({
   return (
     <kbd
       className={cn(
-        'inline-flex items-center justify-center cursor-help rounded border border-border/80 bg-background-secondary/80 px-1 py-0.5 font-mono text-[9px] font-bold text-ink-primary shadow-xs leading-none select-none ml-1',
+        'inline-flex items-center justify-center cursor-help rounded border border-primary/80 bg-background-secondary/80 px-1 py-0.5 font-mono text-[9px] font-bold text-ink-primary shadow-xs leading-none select-none ml-1',
         size === 'sm' && 'text-[8px] px-0.5',
         size === 'lg' && 'text-[10px] px-1.5',
         size === 'xl' && 'text-xs px-2',

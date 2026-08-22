@@ -3,7 +3,14 @@
 'use client';
 
 import React from 'react';
-import { Settings, Trash2, ExternalLink, ChevronLeft, ChevronRight, FileText } from 'lucide-react';
+import {
+  Settings,
+  Trash2,
+  ExternalLink,
+  ChevronLeft,
+  ChevronRight,
+  FileText,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { JobApplication } from '@/lib/types';
 
@@ -88,7 +95,7 @@ export function IconButton({
       aria-label={label}
       title={label}
       className={cn(
-        'p-2 rounded-xl transition-all border border-border/50 bg-panel hover:bg-zinc-50 text-ink-primary0 hover:text-zinc-900 dark:hover:bg-background-secondary/40 dark:text-zinc-400 dark:hover:text-zinc-100 flex items-center justify-center shrink-0 disabled:opacity-40 disabled:pointer-events-none active:scale-[0.96] shadow-xs cursor-pointer',
+        'p-2 rounded-xl transition-all border border-primary/50 bg-panel hover:bg-zinc-50 text-ink-primary0 hover:text-zinc-900 dark:hover:bg-background-secondary/40 dark:text-zinc-400 dark:hover:text-zinc-100 flex items-center justify-center shrink-0 disabled:opacity-40 disabled:pointer-events-none active:scale-[0.96] shadow-xs cursor-pointer',
         danger &&
           'text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-955/20 border-red-100 dark:border-red-900/30',
       )}
@@ -111,7 +118,7 @@ export function renderPagination(
   const endIdx = Math.min(currentPage * itemsPerPage, totalItems);
 
   return (
-    <div className='flex items-center justify-between border-t border-border/50 pt-4 mt-4'>
+    <div className='flex items-center justify-between border-t border-primary/50 pt-4 mt-4'>
       <span className='text-meta text-ink-primary0'>
         Showing <span className='font-semibold'>{startIdx}</span> to{' '}
         <span className='font-semibold'>{endIdx}</span> of{' '}
@@ -121,7 +128,7 @@ export function renderPagination(
         <button
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1}
-          className='p-1.5 rounded-lg border border-border hover:bg-background-secondary text-ink-primary0 disabled:opacity-40 disabled:hover:bg-transparent cursor-pointer'
+          className='p-1.5 rounded-lg border border-primary hover:bg-background-secondary text-ink-primary0 disabled:opacity-40 disabled:hover:bg-transparent cursor-pointer'
         >
           <ChevronLeft className='w-4 h-4' />
         </button>
@@ -131,7 +138,7 @@ export function renderPagination(
         <button
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
-          className='p-1.5 rounded-lg border border-border hover:bg-background-secondary text-ink-primary0 disabled:opacity-40 disabled:hover:bg-transparent cursor-pointer'
+          className='p-1.5 rounded-lg border border-primary hover:bg-background-secondary text-ink-primary0 disabled:opacity-40 disabled:hover:bg-transparent cursor-pointer'
         >
           <ChevronRight className='w-4 h-4' />
         </button>

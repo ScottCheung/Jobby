@@ -9,10 +9,14 @@ import {
   inspectVisibleFormFields,
   isSelectableCombobox,
   isAutofillResumeInput,
+  jobAdderPhoneCountryControls,
   labelFor,
   visibleControlsInScope
 } from "/src/content/dom/form-inspector.ts.js";
-import { selectPageCombobox } from "/src/content/dom/combobox-bridge.ts.js";
+import {
+  inspectPageCombobox,
+  selectPageCombobox
+} from "/src/content/dom/combobox-bridge.ts.js";
 function markAutofillWrite(element, _source) {
   element.dataset.jobbyAutofillUntil = String(Date.now() + 3e3);
   window.setTimeout(() => delete element.dataset.jobbyAutofillUntil, 3100);
@@ -36,6 +40,7 @@ function fieldType(element) {
   if (element instanceof HTMLTextAreaElement) return "textarea";
   if (isSelectableCombobox(element)) return "select";
   const type = element.type.toLowerCase();
+  if (type === "text" && element.hasAttribute("data-val-phone")) return "tel";
   if (type === "text" || type === "search") return "text";
   if ([
     "checkbox",
@@ -268,6 +273,40 @@ function setValue(element, value) {
   const setter = Object.getOwnPropertyDescriptor(prototype, "value")?.set;
   if (setter) setter.call(element, formattedValue);
   else element.value = formattedValue;
+}
+function findJobAdderPhoneCountryControl(target, scope) {
+  return jobAdderPhoneCountryControls(scope).find(
+    (control) => target.key === control.countryCode.id || target.key === control.countryCode.name || target.id && target.id === control.countryCode.id || target.name && target.name === control.countryCode.name
+  ) || null;
+}
+function fillJobAdderPhoneCountry(instruction, scope) {
+  if (instruction.target.type !== "select" || typeof instruction.value !== "string") return null;
+  const control = findJobAdderPhoneCountryControl(instruction.target, scope);
+  if (!control) return null;
+  const requestedValue = instruction.value;
+  const requested = requestedValue.trim().toUpperCase();
+  const option = control.options.find(
+    (candidate) => candidate.value.toUpperCase() === requested || normalized(candidate.label) === normalized(requestedValue)
+  );
+  if (!option && requestedValue !== "") {
+    return result(instruction, "rejected", "The requested phone country is unavailable.");
+  }
+  const nextValue = option?.value || "";
+  if (normalized(control.countryCode.value) === normalized(nextValue)) {
+    return result(instruction, "already_filled", "Phone country already has the requested value.");
+  }
+  markAutofillWrite(control.countryList, instruction.source);
+  setValue(control.countryList, nextValue);
+  emitChange(control.countryList);
+  if (normalized(control.countryCode.value) !== normalized(nextValue)) {
+    setValue(control.countryCode, nextValue);
+    emitChange(control.countryCode);
+  }
+  return result(
+    instruction,
+    normalized(control.countryCode.value) === normalized(nextValue) ? "filled" : "rejected",
+    normalized(control.countryCode.value) === normalized(nextValue) ? "Phone country updated." : "The webpage did not accept the phone country update."
+  );
 }
 function emitChange(element) {
   const eventOptions = { bubbles: true, composed: true };
@@ -512,19 +551,23 @@ function updateCheckbox(checkbox, checked, scope) {
 }
 function visibleOptionMatch(root, value) {
   const targetValue = normalized(value);
-  const candidates = Array.from(
-    root.querySelectorAll(
-      "[role='option'], [role='listbox'] button, [role='listbox'] li, [data-value], [data-option-value], [class*='t1-' i], [class*='option' i], [class*='item' i], [class*='suggestion' i], [class*='result' i], [class*='row' i]"
-    )
-  );
+  const selector = "[role='option'], [role='listbox'] button, [role='listbox'] li, [data-value], [data-option-value], [class*='t1-' i], [class*='option' i], [class*='item' i], [class*='suggestion' i], [class*='result' i], [class*='row' i]";
+  const candidates = root instanceof Document || root instanceof HTMLElement || root instanceof ShadowRoot ? elementsInScope(root).filter(
+    (element) => element.matches(selector) || element.tagName.toLowerCase().endsWith("-option") || element.parentElement?.getAttribute("role") === "listbox"
+  ) : Array.from(root.querySelectorAll(selector));
   return candidates.find((candidate) => {
     if (!isVisible(candidate) || candidate.getAttribute("aria-disabled") === "true" || candidate instanceof HTMLInputElement || candidate instanceof HTMLSelectElement)
       return false;
     const candidateValue = normalized(
-      candidate.getAttribute("data-value") || candidate.getAttribute("data-option-value") || candidate.getAttribute("aria-label") || candidate.textContent
+      candidate.getAttribute("data-value") || candidate.getAttribute("data-option-value") || candidate.getAttribute("aria-label") || candidate.textContent || candidate.getAttribute("value") || ""
     );
     return candidateValue === targetValue || targetValue.length > 1 && (candidateValue.includes(targetValue) || targetValue.includes(candidateValue));
   }) || null;
+}
+function optionInteractionTarget(option) {
+  return option.shadowRoot?.querySelector(
+    "[role='option'], button, [role='button']"
+  ) || option;
 }
 async function clickVisualSelectOption(element, value, scope) {
   const root = element.getRootNode();
@@ -544,7 +587,7 @@ async function clickVisualSelectOption(element, value, scope) {
     if (!option) await new Promise((resolve) => window.setTimeout(resolve, 40));
   }
   if (!option) return false;
-  clickControl(option);
+  clickControl(optionInteractionTarget(option));
   return true;
 }
 function comboboxListbox(element, scope) {
@@ -552,7 +595,9 @@ function comboboxListbox(element, scope) {
   const queryScope = root instanceof Document || root instanceof ShadowRoot ? root : scope;
   const id = cleanText(element.getAttribute("aria-controls"));
   if (!id) return null;
-  return queryScope.querySelector(`#${CSS.escape(id)}`) || (queryScope !== document ? document.querySelector(`#${CSS.escape(id)}`) : null);
+  const localMatch = queryScope.querySelector(`#${CSS.escape(id)}`) || (queryScope !== document ? document.querySelector(`#${CSS.escape(id)}`) : null);
+  if (localMatch) return localMatch;
+  return elementsInScope(scope).find((candidate) => candidate.id === id) || (scope !== document ? elementsInScope(document).find((candidate) => candidate.id === id) : null) || null;
 }
 function matchingComboboxLabel(element, value, scope) {
   const targetValue = normalized(value);
@@ -574,6 +619,48 @@ function comboboxSelectionMatches(element, value) {
     selected && (selected === expected || expected.length > 1 && (selected.includes(expected) || expected.includes(selected)))
   );
 }
+const COMBOBOX_OPTION_WAIT_MS = 2500;
+const COMBOBOX_COMMIT_WAIT_MS = 1200;
+function comboboxHasCommittedSelection(element, scope, value, typedQuery) {
+  const expected = normalized(value);
+  const bridgedValue = normalized(inspectPageCombobox(element)?.currentValue || "");
+  if (bridgedValue && (bridgedValue === expected || bridgedValue.includes(expected) || expected.includes(bridgedValue))) {
+    return true;
+  }
+  const listbox = comboboxListbox(element, scope);
+  const selectedOption = listbox ? elementsInScope(listbox).find(
+    (candidate) => candidate.getAttribute("aria-selected") === "true" || candidate.getAttribute("aria-checked") === "true" || candidate.getAttribute("data-state") === "selected" || candidate.getAttribute("data-state") === "checked"
+  ) : void 0;
+  if (selectedOption) {
+    const selectedValue = normalized(
+      selectedOption.getAttribute("data-value") || selectedOption.getAttribute("data-option-value") || selectedOption.getAttribute("aria-label") || selectedOption.textContent
+    );
+    if (selectedValue === expected || selectedValue.includes(expected) || expected.includes(selectedValue)) {
+      return true;
+    }
+  }
+  if (!comboboxSelectionMatches(element, value)) return false;
+  const valueChangedAfterChoice = normalized(element.value) !== normalized(typedQuery);
+  const listboxClosed = element.getAttribute("aria-expanded") === "false" || !listbox || !isVisible(listbox);
+  return valueChangedAfterChoice || listboxClosed;
+}
+function waitForComboboxCommit(element, scope, value, typedQuery, timeoutMs = COMBOBOX_COMMIT_WAIT_MS) {
+  return new Promise((resolve) => {
+    const startedAt = Date.now();
+    const verify = () => {
+      if (comboboxHasCommittedSelection(element, scope, value, typedQuery)) {
+        resolve(true);
+        return;
+      }
+      if (Date.now() - startedAt >= timeoutMs) {
+        resolve(false);
+        return;
+      }
+      window.setTimeout(verify, 40);
+    };
+    verify();
+  });
+}
 function waitForComboboxOption(element, scope, value) {
   return new Promise((resolve) => {
     const startedAt = Date.now();
@@ -584,7 +671,7 @@ function waitForComboboxOption(element, scope, value) {
         resolve(option);
         return;
       }
-      if (Date.now() - startedAt >= 800) {
+      if (Date.now() - startedAt >= COMBOBOX_OPTION_WAIT_MS) {
         resolve(null);
         return;
       }
@@ -605,9 +692,13 @@ async function fillCombobox(element, value, scope) {
   if (element.getAttribute("aria-expanded") !== "true") clickControl(element);
   setValue(element, label);
   emitInput(element);
+  const typedQuery = element.value;
   const option = await waitForComboboxOption(element, scope, label);
   if (option) {
-    clickControl(option);
+    clickControl(optionInteractionTarget(option));
+    if (await waitForComboboxCommit(element, scope, label, typedQuery)) {
+      return true;
+    }
   }
   const dispatchKey = (key, keyCode) => {
     const keyOptions = { key, code: key, keyCode, which: keyCode, bubbles: true, cancelable: true };
@@ -616,29 +707,9 @@ async function fillCombobox(element, value, scope) {
   };
   dispatchKey("ArrowDown", 40);
   dispatchKey("Enter", 13);
-  return new Promise((resolve) => {
-    const startedAt = Date.now();
-    let tabSent = false;
-    const verify = () => {
-      if (comboboxSelectionMatches(element, label)) {
-        resolve(true);
-        return;
-      }
-      if (!tabSent && Date.now() - startedAt >= 150) {
-        tabSent = true;
-        dispatchKey("Tab", 9);
-      }
-      if (Date.now() - startedAt >= 800) {
-        const current = normalized(comboboxCurrentValue(element) || element.value);
-        const expected = normalized(label);
-        const matched = Boolean(current && (current === expected || current.includes(expected) || expected.includes(current)));
-        resolve(matched);
-        return;
-      }
-      window.setTimeout(verify, 40);
-    };
-    verify();
-  });
+  if (await waitForComboboxCommit(element, scope, label, typedQuery)) return true;
+  dispatchKey("Tab", 9);
+  return waitForComboboxCommit(element, scope, label, typedQuery, 500);
 }
 async function fillAriaCombobox(element, value) {
   const before = normalized(element.textContent || "");
@@ -650,7 +721,7 @@ async function fillAriaCombobox(element, value) {
     if (!option) await new Promise((resolve) => window.setTimeout(resolve, 40));
   }
   if (!option) return false;
-  clickControl(option);
+  clickControl(optionInteractionTarget(option));
   await new Promise((resolve) => window.setTimeout(resolve, 150));
   const after = normalized(element.textContent || "");
   const expected = normalized(value);
@@ -814,6 +885,8 @@ export async function fillFormField(instruction, scope = document) {
       "not_found",
       "No supported application form is open."
     );
+  const jobAdderCountryResult = fillJobAdderPhoneCountry(instruction, scope);
+  if (jobAdderCountryResult) return jobAdderCountryResult;
   if (instruction.target.type === "file") {
     const input = findFileInput(instruction.target, scope);
     if (!input)

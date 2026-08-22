@@ -4,35 +4,19 @@
 
 import * as React from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { AlertTriangle, CheckCircle, Info, XCircle } from 'lucide-react';
+import { useToast, removeToast } from './toast-store';
 
-import { useLayoutStore } from '@/lib/store/layout-store';
-import { cn } from '@/lib/utils';
-
-const icons = {
-  success: CheckCircle,
-  error: XCircle,
-  info: Info,
-  warning: AlertTriangle,
-};
-
-export function Toaster() {
-  const notification = useLayoutStore((state) => state.notification);
-  const removeNotification = useLayoutStore(
-    (state) => state.actions.removeNotification,
-  );
-  const Icon =
-    notification && notification.type !== 'info' ?
-      icons[notification.type]
-    : null;
+export function Toaster({ className }: { className?: string }) {
+  const notification = useToast();
 
   React.useEffect(() => {
     if (!notification) return;
+    const duration = notification.duration ?? 2500;
     const timeout = window.setTimeout(() => {
-      removeNotification(notification.id);
-    }, notification.duration ?? 1500);
+      removeToast(notification.id);
+    }, duration);
     return () => window.clearTimeout(timeout);
-  }, [notification, removeNotification]);
+  }, [notification]);
 
   return (
     <AnimatePresence>
@@ -41,27 +25,108 @@ export function Toaster() {
           key={notification.id}
           initial={{
             opacity: 0,
-            y: 10,
-            scale: 0.99,
-            backdropFilter: 'blur(0px)',
+            scale: 0.9,
+            y: 8,
           }}
-          animate={{ opacity: 1, y: 0, scale: 1, backdropFilter: 'blur(8px)' }}
-          exit={{ opacity: 0, y: 10, scale: 0.99, backdropFilter: 'blur(0px)' }}
-          transition={{ duration: 0.18 }}
-          className='fixed bottom-1/2 left-1/2 z-50 -translate-x-1/2 rounded-card -translate-y-1/2 overflow-hidden'
+          animate={{
+            opacity: 1,
+            scale: 1,
+            y: 0,
+          }}
+          exit={{
+            opacity: 0,
+            scale: 0.9,
+            y: -6,
+          }}
+          transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
+          className={className}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 2147483647,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            pointerEvents: 'none',
+            padding: '16px',
+            boxSizing: 'border-box',
+          }}
         >
           <div
-            className={cn(
-              'label-sm flex items-center gap-3 px-card py-3',
-              'bg-black/50 text-white',
-              // notification.type === 'error' && 'bg-red-500/30 text-error',
-              // notification.type === 'success' && 'bg-emerald-500/25 text-white',
-              // notification.type === 'warning' && 'bg-amber-500/25 text-white',
-              // notification.type === 'info' && 'bg-black/50 text-white',
-            )}
+            style={{
+              pointerEvents: 'auto',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '10px',
+              padding: '12px 24px',
+              minHeight: '44px',
+              boxSizing: 'border-box',
+              backgroundColor: '#09090b',
+              color: '#ffffff',
+              borderRadius: '9999px',
+              border: '1px solid rgba(255, 255, 255, 0.18)',
+              boxShadow:
+                '0 20px 40px -8px rgba(0, 0, 0, 0.85), 0 6px 16px rgba(0, 0, 0, 0.6)',
+              maxWidth: 'calc(100vw - 32px)',
+              width: 'max-content',
+              userSelect: 'none',
+            }}
           >
-            {/* {Icon && <Icon className='h-4 w-4 shrink-0' />} */}
-            <span className='max-w-[70vw] whitespace-pre-wrap text-center text-white'>
+            {/* {notification.type === 'success' && (
+              <CheckCircle2
+                style={{
+                  width: '18px',
+                  height: '18px',
+                  color: '#10b981',
+                  flexShrink: 0,
+                }}
+              />
+            )}
+            {notification.type === 'error' && (
+              <XCircle
+                style={{
+                  width: '18px',
+                  height: '18px',
+                  color: '#ef4444',
+                  flexShrink: 0,
+                }}
+              />
+            )}
+            {notification.type === 'warning' && (
+              <AlertTriangle
+                style={{
+                  width: '18px',
+                  height: '18px',
+                  color: '#f59e0b',
+                  flexShrink: 0,
+                }}
+              />
+            )}
+            {notification.type === 'info' && (
+              <Info
+                style={{
+                  width: '18px',
+                  height: '18px',
+                  color: '#38bdf8',
+                  flexShrink: 0,
+                }}
+              />
+            )} */}
+            <span
+              style={{
+                fontSize: '13px',
+                fontWeight: 600,
+                fontFamily:
+                  'Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                color: '#ffffff',
+                lineHeight: '1.4',
+                letterSpacing: '-0.01em',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
               {notification.message}
             </span>
           </div>

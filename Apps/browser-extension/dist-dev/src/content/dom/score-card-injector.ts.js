@@ -55,12 +55,15 @@ export function findPrimaryHeading() {
 export function renderScoreCard() {
   const heading = findPrimaryHeading();
   if (!heading) return;
-  let container = document.getElementById(CONTAINER_ID);
-  if (!container) {
-    container = document.createElement("div");
-    container.id = CONTAINER_ID;
-    heading.insertAdjacentElement("afterend", container);
+  let host = document.getElementById(CONTAINER_ID);
+  if (!host) {
+    host = document.createElement("div");
+    host.id = CONTAINER_ID;
+    host.attachShadow({ mode: "open" });
+    heading.insertAdjacentElement("afterend", host);
   }
+  const shadow = host.shadowRoot;
+  if (!shadow) return;
   const decision = currentPlan?.plan?.decision;
   const candidate = currentPlan?.plan?.candidate;
   const score = decision?.score ?? candidate?.priority_score ?? candidate?.match_score;
@@ -72,96 +75,97 @@ export function renderScoreCard() {
   const defaultExplanation = hasScore ? "Match evaluation completed." : "Analyzing job skills and requirements...";
   const displayExplanation = explanation || defaultExplanation;
   const actionStyle = action === "apply" ? "background: rgba(16, 185, 129, 0.15); color: #059669; border: 1px solid rgba(16, 185, 129, 0.3);" : action === "review" ? "background: rgba(245, 158, 11, 0.15); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.3);" : "background: rgba(239, 68, 68, 0.15); color: #dc2626; border: 1px solid rgba(239, 68, 68, 0.3);";
-  container.innerHTML = `
+  const isDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+  shadow.innerHTML = `
     <style>
-      #jobby-in-page-score-card {
+      :host {
+        display: block;
+        all: initial;
+        font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      }
+      .score-card {
         margin: 10px 0 14px 0;
         padding: 12px 14px;
         border-radius: 12px;
-        background: var(--jobby-card-bg, rgba(255, 255, 255, 0.96));
-        border: 1px solid var(--primary, oklch(0.45 0.15 160));
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-        font-family: Inter, system-ui, -apple-system, sans-serif;
-        color: #0f172a;
+        background: ${isDark ? "#0f172a" : "rgba(255, 255, 255, 0.98)"};
+        border: 1px solid ${isDark ? "rgba(255, 255, 255, 0.12)" : "rgba(15, 23, 42, 0.1)"};
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        color: ${isDark ? "#f8fafc" : "#0f172a"};
         display: flex;
         align-items: center;
         gap: 12px;
         box-sizing: border-box;
         max-width: 100%;
-        z-index: 10;
         position: relative;
+        z-index: 10;
+        backdrop-filter: blur(8px);
       }
-      .dark #jobby-in-page-score-card {
-        background: #0f172a;
-        color: #f8fafc;
-      }
-      #jobby-in-page-score-card .jobby-score-circle {
+      .jobby-score-circle {
         width: 44px;
         height: 44px;
         border-radius: 9999px;
-        background: var(--primary, oklch(0.45 0.15 160));
-        color: var(--primary-foreground, #ffffff);
+        background: #0d9488;
+        color: #ffffff;
         display: flex;
         align-items: center;
         justify-content: center;
         font-weight: 700;
-        font-size: 12px;
+        font-size: 13px;
         flex-shrink: 0;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+        box-shadow: 0 2px 6px rgba(13, 148, 136, 0.35);
       }
-      #jobby-in-page-score-card .jobby-info {
+      .jobby-info {
         display: flex;
         flex-direction: column;
-        gap: 2px;
+        gap: 3px;
         flex: 1;
         min-width: 0;
       }
-      #jobby-in-page-score-card .jobby-header-row {
+      .jobby-header-row {
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 8px;
       }
-      #jobby-in-page-score-card .jobby-match-title {
+      .jobby-match-title {
         font-weight: 700;
-        font-size: 12px;
+        font-size: 13px;
         color: currentColor;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
       }
-      #jobby-in-page-score-card .jobby-action-badge {
+      .jobby-action-badge {
         font-size: 10px;
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.05em;
-        padding: 2px 6px;
-        border-radius: 4px;
+        padding: 2px 8px;
+        border-radius: 6px;
         line-height: 1.2;
       }
-      #jobby-in-page-score-card .jobby-explanation {
-        font-size: 11px;
+      .jobby-explanation {
+        font-size: 11.5px;
         line-height: 1.4;
-        color: #64748b;
+        color: ${isDark ? "#94a3b8" : "#64748b"};
         margin: 0;
         display: -webkit-box;
         -webkit-line-clamp: 2;
         -webkit-box-orient: vertical;
         overflow: hidden;
       }
-      .dark #jobby-in-page-score-card .jobby-explanation {
-        color: #94a3b8;
-      }
     </style>
-    <div class="jobby-score-circle">
-      ${hasScore ? `${percentage}%` : "..."}
-    </div>
-    <div class="jobby-info">
-      <div class="jobby-header-row">
-        <span class="jobby-match-title">${matchLabel}</span>
-        ${action ? `<span class="jobby-action-badge" style="${actionStyle}">${action}</span>` : ""}
+    <div class="score-card">
+      <div class="jobby-score-circle">
+        ${hasScore ? `${percentage}%` : "..."}
       </div>
-      <p class="jobby-explanation">${displayExplanation}</p>
+      <div class="jobby-info">
+        <div class="jobby-header-row">
+          <span class="jobby-match-title">${matchLabel}</span>
+          ${action ? `<span class="jobby-action-badge" style="${actionStyle}">${action}</span>` : ""}
+        </div>
+        <p class="jobby-explanation">${displayExplanation}</p>
+      </div>
     </div>
   `;
 }

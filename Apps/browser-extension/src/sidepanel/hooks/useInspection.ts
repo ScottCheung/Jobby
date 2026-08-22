@@ -1,10 +1,11 @@
-/** @format */
-
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { notify } from '@jobby/ui/components/UI/toast/toast-store';
 import { formInspectionSchema } from '../../shared/contracts/form-inspection';
 import type { FormInspection } from '../../shared/contracts/form-inspection';
 import type { FormFieldObservation } from '../../shared/contracts/form-inspection';
 import type { PageInspection } from '../../shared/contracts/page-inspection';
+import type { TailoredResume } from '../../shared/contracts/tailored-resume';
+import { canonicalizeFormFields } from '../../shared/utils/form-field-resolution';
 import { getActiveTab, send, wait } from '../services/messaging';
 
 export type UploadSyncState = {
@@ -78,6 +79,18 @@ function reconcileUploadStates(
   return changed ? next : previous;
 }
 
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  const chunks: string[] = [];
+  const chunkSize = 0x8000;
+  for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+    chunks.push(
+      String.fromCharCode(...bytes.subarray(offset, offset + chunkSize)),
+    );
+  }
+  return btoa(chunks.join(''));
+}
+
 function sameJob(left: PageInspection | null, right: PageInspection): boolean {
   return Boolean(
     left?.kind === 'job' &&
@@ -85,6 +98,11 @@ function sameJob(left: PageInspection | null, right: PageInspection): boolean {
     left.snapshot.platform === right.snapshot.platform &&
     left.snapshot.externalId === right.snapshot.externalId,
   );
+}
+
+function hasResolvedCompany(company: string | undefined): boolean {
+  const normalized = company?.trim().toLowerCase();
+  return Boolean(normalized && normalized !== 'unknown' && normalized !== 'unknown company');
 }
 
 function mergePageInspection(
@@ -104,6 +122,9 @@ function mergePageInspection(
     ...next,
     snapshot: {
       ...next.snapshot,
+      company: hasResolvedCompany(next.snapshot.company)
+        ? next.snapshot.company
+        : previous.snapshot.company,
       location: next.snapshot.location || previous.snapshot.location,
       description: next.snapshot.description || previous.snapshot.description,
       datePosted: next.snapshot.datePosted || previous.snapshot.datePosted,
@@ -198,14 +219,18 @@ function retainUploadedFileFields(
   previous: FormInspection | null,
   next: FormInspection,
 ): FormInspection {
+  // Deduplicate the fresh observation first. On a first scan there is no
+  // previous inspection, so doing this only in the retention path allowed
+  // re-mounted file inputs to appear as repeated Resume cards.
+  const dedupedNext = dedupeFileFields(next);
   if (
     !previous ||
     (previous.kind !== 'application_form' &&
       previous.kind !== 'page_input_fields') ||
-    (next.kind !== 'application_form' && next.kind !== 'page_input_fields') ||
-    previous.url !== next.url
+    (dedupedNext.kind !== 'application_form' && dedupedNext.kind !== 'page_input_fields') ||
+    previous.url !== dedupedNext.url
   ) {
-    return next;
+    return dedupedNext;
   }
 
   // Some ATSs replace the hidden file input with an uploaded-file card. The
@@ -215,10 +240,21 @@ function retainUploadedFileFields(
     (field) =>
       field.type === 'file' &&
       (field.filled || field.upload?.state === 'ready') &&
-      !next.fields.some((candidate) => isSameField(candidate, field)),
+      !dedupedNext.fields.some((candidate) => isSameField(candidate, field)),
   );
-  if (retained.length === 0) return next;
-  return { ...next, fields: [...next.fields, ...retained] };
+  if (retained.length === 0) return dedupedNext;
+  return {
+    ...dedupedNext,
+    fields: canonicalizeFormFields([...dedupedNext.fields, ...retained]),
+  };
+}
+
+function dedupeFileFields(form: FormInspection): FormInspection {
+  if (form.kind !== 'application_form' && form.kind !== 'page_input_fields') {
+    return form;
+  }
+  const fields = canonicalizeFormFields(form.fields);
+  return fields.length === form.fields.length ? form : { ...form, fields };
 }
 
 function isLinkedInTransientEmptyForm(form: FormInspection): boolean {
@@ -457,20 +493,67 @@ export function useInspection(onJobChanged?: () => void) {
     [inspectForm],
   );
 
-  const uploadDefaultResume = useCallback(
-    async (field: FormFieldObservation) => {
+  const uploadTailoredResume = useCallback(
+    async (field: FormFieldObservation, resume: TailoredResume) => {
+      const resumeName =
+        [resume.company, resume.job_title].filter(Boolean).join(' · ') ||
+        'Tailored Resume';
       setUploadStates((previous) => ({
         ...previous,
         [field.key]: {
           phase: 'uploading',
-          message: 'Uploading default resume, awaiting webpage confirmation.',
+          message: `Preparing ${resumeName} for upload...`,
           updatedAt: Date.now(),
         },
       }));
-      const response = await send({
-        type: 'content.upload-default-resume-active',
-        target: targetFor(field),
-      });
+      let response;
+      let filename = 'Tailored-Resume.pdf';
+      try {
+        const { formatResumeFilename, renderResumePdfOnce } = await import(
+          '@jobby/ui/components/UI/Resume'
+        );
+        const { blob } = await renderResumePdfOnce(
+          resume.resume_data,
+          1,
+          resume.core_competencies || [],
+          resume.key_qualifications || [],
+        );
+        if (blob.size > 10 * 1024 * 1024) {
+          throw new Error(
+            'The selected tailored resume is larger than the 10 MB upload limit.',
+          );
+        }
+        filename = formatResumeFilename(
+          resume.resume_data,
+          resume.company || undefined,
+          resume.job_title || undefined,
+        );
+        if (filename.length > 255) {
+          filename = `${filename.slice(0, 251).replace(/\.?$/, '')}.pdf`;
+        }
+        response = await send({
+          type: 'content.upload-file-active',
+          target: targetFor(field),
+          filename,
+          mimeType: blob.type || 'application/pdf',
+          contentBase64: arrayBufferToBase64(await blob.arrayBuffer()),
+        });
+      } catch (error) {
+        const message =
+          error instanceof Error ?
+            error.message
+          : 'Could not prepare the selected tailored resume.';
+        setUploadStates((previous) => ({
+          ...previous,
+          [field.key]: {
+            phase: 'failed',
+            message,
+            updatedAt: Date.now(),
+          },
+        }));
+        setInspectionError(message);
+        return;
+      }
       if (!response.ok) {
         setUploadStates((previous) => ({
           ...previous,
@@ -518,7 +601,7 @@ export function useInspection(onJobChanged?: () => void) {
               message:
                 upload.filename ?
                   `Confirmed: ${upload.filename}`
-                : 'Confirmed: Default resume ready',
+                : `Confirmed: ${filename}`,
               updatedAt: Date.now(),
             },
           }));
@@ -616,6 +699,7 @@ export function useInspection(onJobChanged?: () => void) {
           ),
       );
       await inspectForm(true);
+      notify.success('All form fields cleared.');
     } finally {
       setIsClearingForm(false);
     }
@@ -686,9 +770,23 @@ export function useInspection(onJobChanged?: () => void) {
     };
   }, [inspectForm, setFormIfChanged]);
 
+  const updateJobTechnologies = useCallback((technologies: string[]) => {
+    setLatestInspection((prev) => {
+      if (!prev || prev.kind !== 'job') return prev;
+      return {
+        ...prev,
+        snapshot: {
+          ...prev.snapshot,
+          technologies,
+        },
+      };
+    });
+  }, []);
+
   return {
     latestInspection,
     setLatestInspection,
+    updateJobTechnologies,
     latestForm,
     setLatestForm,
     inspectionError,
@@ -703,7 +801,7 @@ export function useInspection(onJobChanged?: () => void) {
     applyAutofillResults,
     focusFormField,
     autofillSingleField,
-    uploadDefaultResume,
+    uploadTailoredResume,
     editFormField,
     clearAllFormFields,
     uploadStates,

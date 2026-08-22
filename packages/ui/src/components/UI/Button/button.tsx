@@ -1,3 +1,5 @@
+/** @format */
+
 'use client';
 /** @format */
 
@@ -27,7 +29,7 @@ const buttonVariants = cva(
         iconActive:
           'hover:bg-glass text-ink-secondary bg-primary-gradient hover:text-primary-foreground rounded-full ',
         ghost:
-          'text-ink-primary bg-[#dad9de] dark:bg-[#2f2e32] hover:bg-primary-gradient hover:text-primary-foreground',
+          'text-ink-primary bg-ink-secondary/50 hover:bg-primary-gradient hover:text-primary-foreground',
         link: 'text-primary underline-offset-4 hover:underline',
         toolbar:
           'text-ink-secondary hover:text-ink-primary hover:bg-primary/10  rounded-full   active:scale-95 disabled:opacity-40 disabled:scale-100 disabled:cursor-not-allowed',
@@ -58,7 +60,17 @@ export interface ButtonProps
     React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
   asChild?: boolean;
-  Icon?: LucideIcon;
+  Icon?:
+    | LucideIcon
+    | React.ComponentType<{ className?: string }>
+    | React.ReactNode;
+  icon?:
+    | LucideIcon
+    | React.ComponentType<{ className?: string }>
+    | React.ReactNode;
+  iconPosition?: 'left' | 'right';
+  iconPlacement?: 'left' | 'right';
+  iconClassName?: string;
   isLoading?: boolean;
   layoutId?: string;
 }
@@ -71,6 +83,10 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       size,
       asChild = false,
       Icon,
+      icon,
+      iconPosition,
+      iconPlacement,
+      iconClassName,
       children,
       isLoading = false,
       layoutId,
@@ -78,8 +94,16 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     },
     ref,
   ) => {
-    const resolvedVariant = variant || (Icon && !children ? 'icon' : undefined);
-    const resolvedSize = size || (Icon && !children ? 'icon' : undefined);
+    const rawIcon = Icon ?? icon;
+    const effectiveIconPosition = iconPosition || iconPlacement || 'left';
+
+    const hasIcon = Boolean(rawIcon);
+    const hasChildren =
+      children !== undefined && children !== null && children !== '';
+
+    const resolvedVariant =
+      variant || (hasIcon && !hasChildren ? 'icon' : undefined);
+    const resolvedSize = size || (hasIcon && !hasChildren ? 'icon' : undefined);
 
     const [latch, setLatch] = React.useState(false);
     const timerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -100,6 +124,25 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 
     const displayLoading = isLoading || latch;
 
+    const renderIconNode = () => {
+      if (!rawIcon) return null;
+      if (React.isValidElement(rawIcon)) {
+        return rawIcon;
+      }
+      if (
+        typeof rawIcon === 'function' ||
+        (typeof rawIcon === 'object' && rawIcon !== null)
+      ) {
+        const IconComponent = rawIcon as React.ComponentType<{
+          className?: string;
+        }>;
+        return (
+          <IconComponent className={cn('size-4 shrink-0', iconClassName)} />
+        );
+      }
+      return null;
+    };
+
     return (
       <motion.button
         layoutId={layoutId}
@@ -115,7 +158,8 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
             size: resolvedSize,
             className,
           }),
-          displayLoading && 'cursor-not-allowed  opacity-50',
+          'relative',
+          displayLoading && 'cursor-not-allowed opacity-50',
         )}
         style={
           layoutId ?
@@ -127,11 +171,19 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref as any}
         {...(props as any)}
       >
-        {Icon && <Icon className={cn('size-4')} />}
-        {variant !== 'icon' && 'iconActive' && (
-          <div className={displayLoading ? 'opacity-0' : ''}>{children}</div>
-        )}
-        {displayLoading && <Loader2 className='size-6 animate-spin absolute' />}
+        <span
+          className={cn(
+            'inline-flex items-center justify-center gap-2',
+            displayLoading && 'opacity-0',
+          )}
+        >
+          {effectiveIconPosition === 'left' && renderIconNode()}
+          {resolvedVariant !== 'icon' &&
+            resolvedVariant !== 'iconActive' &&
+            children}
+          {effectiveIconPosition === 'right' && renderIconNode()}
+        </span>
+        {displayLoading && <Loader2 className='size-5 animate-spin absolute' />}
       </motion.button>
     );
   },

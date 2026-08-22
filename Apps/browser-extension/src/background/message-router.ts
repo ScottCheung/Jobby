@@ -1,7 +1,14 @@
-import type { RuntimeMessageResponse } from "../shared/contracts/messages";
-import { runtimeMessageSchema } from "../shared/contracts/messages";
+/** @format */
 
-import { disconnect, getAuthStatus, openLogin, restoreWebSession } from "./auth-service";
+import type { RuntimeMessageResponse } from '../shared/contracts/messages';
+import { runtimeMessageSchema } from '../shared/contracts/messages';
+
+import {
+  disconnect,
+  getAuthStatus,
+  openLogin,
+  restoreWebSession,
+} from './auth-service';
 import {
   clickLinkedInApplicationAction,
   editActiveTabField,
@@ -11,89 +18,130 @@ import {
   openLinkedInApplicationActiveTab,
   renderScoreCardActiveTab,
   setTargetedTabId,
-} from "./content-bridge";
-import { logDiagnostic } from "./diagnostics";
-import { createApplicationPlanFromActiveTab } from "./plan-service";
-import { applyApplicationPlanAction } from "./plan-action-service";
-import { autofillDetectedFormForActiveTab, autofillSingleFieldForActiveTab, fillAndNextForActiveTab, fillKnownFieldsForActiveTab, uploadDefaultResumeToActiveTab } from "./field-fill-service";
-import { submitLinkedInApplication } from "./linkedin-application-service";
-import { runLinkedInAutoApplication } from "./linkedin-automation-service";
+} from './content-bridge';
+import { logDiagnostic } from './diagnostics';
+import { createApplicationPlanFromActiveTab } from './plan-service';
+import { applyApplicationPlanAction } from './plan-action-service';
+import {
+  autofillDetectedFormForActiveTab,
+  autofillSingleFieldForActiveTab,
+  fillAndNextForActiveTab,
+  fillKnownFieldsForActiveTab,
+  uploadDefaultResumeToActiveTab,
+  uploadPreparedFileToActiveTab,
+} from './field-fill-service';
+import { submitLinkedInApplication } from './linkedin-application-service';
+import { runLinkedInAutoApplication } from './linkedin-automation-service';
 import {
   clearDiagnostics,
   getRuntimeSnapshot,
   listDiagnostics,
-} from "./session-store";
-import { controlRun } from "./run-controller";
-import { isSidepanelOpenForWindow } from "./service-worker";
+} from './session-store';
+import { controlRun } from './run-controller';
+import { closeSidepanelForWindow, isSidepanelOpenForWindow } from './service-worker';
 
 export async function handleRuntimeMessage(
   rawMessage: unknown,
   sender?: chrome.runtime.MessageSender,
 ): Promise<RuntimeMessageResponse> {
   const parsed = runtimeMessageSchema.safeParse(rawMessage);
-  if (!parsed.success) return { ok: false, error: "Unsupported extension message." };
+  if (!parsed.success)
+    return { ok: false, error: 'Unsupported extension message.' };
 
   setTargetedTabId(readTargetedTabId(rawMessage));
 
   try {
     switch (parsed.data.type) {
-      case "runtime.get":
+      case 'runtime.get':
         return { ok: true, snapshot: await getRuntimeSnapshot() };
-      case "runtime.pause":
-        return { ok: true, snapshot: await controlRun("paused") };
-      case "runtime.resume":
-        return { ok: true, snapshot: await controlRun("running") };
-      case "runtime.stop":
-        return { ok: true, snapshot: await controlRun("stopped") };
-      case "diagnostics.list":
+      case 'runtime.pause':
+        return { ok: true, snapshot: await controlRun('paused') };
+      case 'runtime.resume':
+        return { ok: true, snapshot: await controlRun('running') };
+      case 'runtime.stop':
+        return { ok: true, snapshot: await controlRun('stopped') };
+      case 'diagnostics.list':
         return {
           ok: true,
           snapshot: await getRuntimeSnapshot(),
           diagnostics: await listDiagnostics(),
         };
-      case "diagnostics.clear":
+      case 'diagnostics.clear':
         await clearDiagnostics();
-        return { ok: true, snapshot: await getRuntimeSnapshot(), diagnostics: [] };
-      case "auth.status":
-        return { ok: true, snapshot: await getRuntimeSnapshot(), auth: await getAuthStatus() };
-      case "auth.restore-web-session":
-        if (!isExtensionUiSender(sender)) return { ok: false, error: "Only the extension UI can restore a session." };
+        return {
+          ok: true,
+          snapshot: await getRuntimeSnapshot(),
+          diagnostics: [],
+        };
+      case 'auth.status':
+        return {
+          ok: true,
+          snapshot: await getRuntimeSnapshot(),
+          auth: await getAuthStatus(),
+        };
+      case 'auth.restore-web-session':
+        if (!isExtensionUiSender(sender))
+          return {
+            ok: false,
+            error: 'Only the extension UI can restore a session.',
+          };
         return {
           ok: true,
           snapshot: await getRuntimeSnapshot(),
           auth: (await restoreWebSession()) ?? { connected: false },
         };
-      case "auth.disconnect":
-        if (!isExtensionUiSender(sender)) return { ok: false, error: "Only the extension UI can disconnect." };
+      case 'auth.disconnect':
+        if (!isExtensionUiSender(sender))
+          return { ok: false, error: 'Only the extension UI can disconnect.' };
         await disconnect();
-        await logDiagnostic("info", "auth", "Extension disconnected.");
-        return { ok: true, snapshot: await getRuntimeSnapshot(), auth: { connected: false } };
-      case "auth.open-login":
-        if (!isExtensionUiSender(sender)) return { ok: false, error: "Only the extension UI can connect." };
+        await logDiagnostic('info', 'auth', 'Extension disconnected.');
+        return {
+          ok: true,
+          snapshot: await getRuntimeSnapshot(),
+          auth: { connected: false },
+        };
+      case 'auth.open-login':
+        if (!isExtensionUiSender(sender))
+          return { ok: false, error: 'Only the extension UI can connect.' };
         return {
           ok: true,
           snapshot: await getRuntimeSnapshot(),
           auth: await openLogin(),
         };
-      case "content.inspect-active":
-        if (!isExtensionUiSender(sender)) return { ok: false, error: "Only the extension UI can inspect a page." };
+      case 'content.inspect-active':
+        if (!isExtensionUiSender(sender))
+          return {
+            ok: false,
+            error: 'Only the extension UI can inspect a page.',
+          };
         return {
           ok: true,
           snapshot: await getRuntimeSnapshot(),
           inspection: await inspectActiveTab(),
         };
-      case "content.inspect-form-active":
-        if (!isExtensionUiSender(sender)) return { ok: false, error: "Only the extension UI can inspect a form." };
+      case 'content.inspect-form-active':
+        if (!isExtensionUiSender(sender))
+          return {
+            ok: false,
+            error: 'Only the extension UI can inspect a form.',
+          };
         return {
           ok: true,
           snapshot: await getRuntimeSnapshot(),
           form: await inspectFormActiveTab(),
         };
-      case "content.render-score-card":
-        await renderScoreCardActiveTab(parsed.data.inspection, parsed.data.plan);
+      case 'content.render-score-card':
+        await renderScoreCardActiveTab(
+          parsed.data.inspection,
+          parsed.data.plan,
+        );
         return { ok: true, snapshot: await getRuntimeSnapshot() };
-      case "form.autofill-active":
-        if (!isExtensionUiSender(sender)) return { ok: false, error: "Only the extension UI can autofill forms." };
+      case 'form.autofill-active':
+        if (!isExtensionUiSender(sender))
+          return {
+            ok: false,
+            error: 'Only the extension UI can autofill forms.',
+          };
         {
           const result = await autofillDetectedFormForActiveTab();
           // Return a fresh post-fill snapshot with the command result. The
@@ -107,56 +155,111 @@ export async function handleRuntimeMessage(
             ...(form ? { form } : {}),
           };
         }
-      case "content.focus-form-field-active":
-        if (!isExtensionUiSender(sender)) return { ok: false, error: "Only the extension UI can focus form fields." };
+      case 'content.focus-form-field-active':
+        if (!isExtensionUiSender(sender))
+          return {
+            ok: false,
+            error: 'Only the extension UI can focus form fields.',
+          };
         return {
           ok: true,
           snapshot: await getRuntimeSnapshot(),
           focusResult: await focusActiveTabField(parsed.data.target),
         };
-      case "content.autofill-single-field-active":
-        if (!isExtensionUiSender(sender)) return { ok: false, error: "Only the extension UI can autofill form fields." };
+      case 'content.autofill-single-field-active':
+        if (!isExtensionUiSender(sender))
+          return {
+            ok: false,
+            error: 'Only the extension UI can autofill form fields.',
+          };
         return {
           ok: true,
           snapshot: await getRuntimeSnapshot(),
           fillResult: await autofillSingleFieldForActiveTab(parsed.data.target),
         };
-      case "content.upload-default-resume-active":
-        if (!isExtensionUiSender(sender)) return { ok: false, error: "Only the extension UI can upload resumes." };
+      case 'content.upload-default-resume-active':
+        if (!isExtensionUiSender(sender))
+          return {
+            ok: false,
+            error: 'Only the extension UI can upload resumes.',
+          };
         return {
           ok: true,
           snapshot: await getRuntimeSnapshot(),
           fillResult: await uploadDefaultResumeToActiveTab(parsed.data.target),
         };
-      case "content.edit-form-field-active":
-        if (!isExtensionUiSender(sender)) return { ok: false, error: "Only the extension UI can edit form fields." };
+      case 'content.upload-file-active':
+        if (!isExtensionUiSender(sender))
+          return {
+            ok: false,
+            error: 'Only the extension UI can upload files.',
+          };
         return {
           ok: true,
           snapshot: await getRuntimeSnapshot(),
-          fillResult: await editActiveTabField(parsed.data.target, parsed.data.value),
+          fillResult: await uploadPreparedFileToActiveTab(parsed.data.target, {
+            filename: parsed.data.filename,
+            mimeType: parsed.data.mimeType,
+            contentBase64: parsed.data.contentBase64,
+          }),
         };
-      case "application.open-linkedin-active":
-        if (!isExtensionUiSender(sender)) return { ok: false, error: "Only the extension UI can open a LinkedIn application." };
+      case 'content.edit-form-field-active':
+        if (!isExtensionUiSender(sender))
+          return {
+            ok: false,
+            error: 'Only the extension UI can edit form fields.',
+          };
+        return {
+          ok: true,
+          snapshot: await getRuntimeSnapshot(),
+          fillResult: await editActiveTabField(
+            parsed.data.target,
+            parsed.data.value,
+          ),
+        };
+      case 'application.open-linkedin-active':
+        if (!isExtensionUiSender(sender))
+          return {
+            ok: false,
+            error: 'Only the extension UI can open a LinkedIn application.',
+          };
         return {
           ok: true,
           snapshot: await getRuntimeSnapshot(),
           linkedinApplication: await openLinkedInApplicationActiveTab(),
         };
-      case "application.linkedin-action-active":
-        if (!isExtensionUiSender(sender)) return { ok: false, error: "Only the extension UI can control a LinkedIn application." };
+      case 'application.linkedin-action-active':
+        if (!isExtensionUiSender(sender))
+          return {
+            ok: false,
+            error: 'Only the extension UI can control a LinkedIn application.',
+          };
         return {
           ok: true,
           snapshot: await getRuntimeSnapshot(),
-          linkedinApplication: await clickLinkedInApplicationAction(parsed.data.action),
+          linkedinApplication: await clickLinkedInApplicationAction(
+            parsed.data.action,
+          ),
         };
-      case "application.create-plan-active":
-        if (!isExtensionUiSender(sender)) return { ok: false, error: "Only the extension UI can create an application plan." };
+      case 'application.create-plan-active':
+        if (!isExtensionUiSender(sender))
+          return {
+            ok: false,
+            error: 'Only the extension UI can create an application plan.',
+          };
         {
-          const result = await createApplicationPlanFromActiveTab(parsed.data.inspection);
-          await logDiagnostic("info", "application-plan", "Application plan created.", {
-            applicationId: result.plan.application_id,
-            state: result.plan.plan.state,
-          });
+          const result = await createApplicationPlanFromActiveTab(
+            parsed.data.inspection,
+          );
+          await logDiagnostic(
+            'info',
+            'application-plan',
+            'Application plan created.',
+            {
+              applicationId: result.plan.application_id,
+              state: result.plan.plan.state,
+            },
+          );
           return {
             ok: true,
             snapshot: await getRuntimeSnapshot(),
@@ -164,35 +267,54 @@ export async function handleRuntimeMessage(
             plan: result.plan,
           };
         }
-      case "application.plan-action-active":
-        if (!isExtensionUiSender(sender)) return { ok: false, error: "Only the extension UI can change an application plan." };
+      case 'application.plan-action-active':
+        if (!isExtensionUiSender(sender))
+          return {
+            ok: false,
+            error: 'Only the extension UI can change an application plan.',
+          };
         {
           const result = await applyApplicationPlanAction(
             parsed.data.applicationId,
             parsed.data.action,
             parsed.data.reason,
           );
-          await logDiagnostic("info", "application-plan", "Application plan action applied.", {
-            applicationId: result.application_id,
-            action: parsed.data.action,
-            state: result.plan.state,
-          });
+          await logDiagnostic(
+            'info',
+            'application-plan',
+            'Application plan action applied.',
+            {
+              applicationId: result.application_id,
+              action: parsed.data.action,
+              state: result.plan.state,
+            },
+          );
           return {
             ok: true,
             snapshot: await getRuntimeSnapshot(),
             plan: result,
           };
         }
-      case "application.fill-known-fields-active":
-        if (!isExtensionUiSender(sender)) return { ok: false, error: "Only the extension UI can fill fields." };
+      case 'application.fill-known-fields-active':
+        if (!isExtensionUiSender(sender))
+          return { ok: false, error: 'Only the extension UI can fill fields.' };
         {
-          const result = await fillKnownFieldsForActiveTab(parsed.data.applicationId);
-          await logDiagnostic("info", "form-driver", "Backend field instructions applied.", {
-            filled: result.results.filter((item) => item.status === "filled").length,
-            skipped: result.results.filter((item) => item.status !== "filled").length,
-            unanswered: result.instructions.unanswered_fields.length,
-            reviewRequested: Boolean(result.plan),
-          });
+          const result = await fillKnownFieldsForActiveTab(
+            parsed.data.applicationId,
+          );
+          await logDiagnostic(
+            'info',
+            'form-driver',
+            'Backend field instructions applied.',
+            {
+              filled: result.results.filter((item) => item.status === 'filled')
+                .length,
+              skipped: result.results.filter((item) => item.status !== 'filled')
+                .length,
+              unanswered: result.instructions.unanswered_fields.length,
+              reviewRequested: Boolean(result.plan),
+            },
+          );
           return {
             ok: true,
             snapshot: await getRuntimeSnapshot(),
@@ -201,15 +323,24 @@ export async function handleRuntimeMessage(
             unansweredFields: result.instructions.unanswered_fields,
           };
         }
-      case "application.fill-and-next-active":
-        if (!isExtensionUiSender(sender)) return { ok: false, error: "Only the extension UI can fill fields." };
+      case 'application.fill-and-next-active':
+        if (!isExtensionUiSender(sender))
+          return { ok: false, error: 'Only the extension UI can fill fields.' };
         {
-          const result = await fillAndNextForActiveTab(parsed.data.applicationId);
-          await logDiagnostic("info", "form-driver", "Form filled & next action executed.", {
-            filled: result.results.filter((item) => item.status === "filled").length,
-            stepAdvanced: result.stepAdvanced,
-            actionLabel: result.actionLabel,
-          });
+          const result = await fillAndNextForActiveTab(
+            parsed.data.applicationId,
+          );
+          await logDiagnostic(
+            'info',
+            'form-driver',
+            'Form filled & next action executed.',
+            {
+              filled: result.results.filter((item) => item.status === 'filled')
+                .length,
+              stepAdvanced: result.stepAdvanced,
+              actionLabel: result.actionLabel,
+            },
+          );
           return {
             ok: true,
             snapshot: await getRuntimeSnapshot(),
@@ -218,18 +349,31 @@ export async function handleRuntimeMessage(
             unansweredFields: result.instructions.unanswered_fields,
             stepAdvanced: result.stepAdvanced,
             actionLabel: result.actionLabel,
-            ...(result.unfilledRequiredLabels ? { unfilledRequiredLabels: result.unfilledRequiredLabels } : {}),
+            ...(result.unfilledRequiredLabels ?
+              { unfilledRequiredLabels: result.unfilledRequiredLabels }
+            : {}),
           };
         }
-      case "application.submit-linkedin-active":
-        if (!isExtensionUiSender(sender)) return { ok: false, error: "Only the extension UI can submit a LinkedIn application." };
+      case 'application.submit-linkedin-active':
+        if (!isExtensionUiSender(sender))
+          return {
+            ok: false,
+            error: 'Only the extension UI can submit a LinkedIn application.',
+          };
         {
-          const result = await submitLinkedInApplication(parsed.data.applicationId);
-          await logDiagnostic("info", "linkedin-application", "LinkedIn application submitted.", {
-            applicationId: parsed.data.applicationId,
-            action: "submit",
-            state: result.plan.plan.state,
-          });
+          const result = await submitLinkedInApplication(
+            parsed.data.applicationId,
+          );
+          await logDiagnostic(
+            'info',
+            'linkedin-application',
+            'LinkedIn application submitted.',
+            {
+              applicationId: parsed.data.applicationId,
+              action: 'submit',
+              state: result.plan.plan.state,
+            },
+          );
           return {
             ok: true,
             snapshot: await getRuntimeSnapshot(),
@@ -237,11 +381,17 @@ export async function handleRuntimeMessage(
             plan: result.plan,
           };
         }
-      case "application.auto-run-linkedin-active":
-        if (!isExtensionUiSender(sender)) return { ok: false, error: "Only the extension UI can auto-run LinkedIn applications." };
+      case 'application.auto-run-linkedin-active':
+        if (!isExtensionUiSender(sender))
+          return {
+            ok: false,
+            error: 'Only the extension UI can auto-run LinkedIn applications.',
+          };
         {
-          const autoRes = await runLinkedInAutoApplication(parsed.data.applicationId);
-          await logDiagnostic("info", "linkedin-automation", autoRes.message, {
+          const autoRes = await runLinkedInAutoApplication(
+            parsed.data.applicationId,
+          );
+          await logDiagnostic('info', 'linkedin-automation', autoRes.message, {
             step: autoRes.step,
             status: autoRes.status,
           });
@@ -257,38 +407,76 @@ export async function handleRuntimeMessage(
             autoMessage: autoRes.message,
           };
         }
-      case "sidepanel.query-state":
+      case 'sidepanel.query-state':
         if (sender?.tab?.windowId !== undefined) {
           try {
             const win = await chrome.windows.get(sender.tab.windowId);
-            if (win.type === "popup") {
-              return { ok: true, snapshot: await getRuntimeSnapshot(), isOpen: false, canHostSidepanel: false };
+            if (win.type === 'popup') {
+              return {
+                ok: true,
+                snapshot: await getRuntimeSnapshot(),
+                isOpen: false,
+                canHostSidepanel: false,
+              };
             }
           } catch {
             // Ignore error and fall back
           }
-          return { ok: true, snapshot: await getRuntimeSnapshot(), isOpen: isSidepanelOpenForWindow(sender.tab.windowId), canHostSidepanel: true };
+          return {
+            ok: true,
+            snapshot: await getRuntimeSnapshot(),
+            isOpen: isSidepanelOpenForWindow(sender.tab.windowId),
+            canHostSidepanel: true,
+          };
         }
-        return { ok: true, snapshot: await getRuntimeSnapshot(), isOpen: false, canHostSidepanel: false };
-      case "sidepanel.open":
-        if (sender?.tab?.id !== undefined && sender?.tab?.windowId !== undefined) {
+        return {
+          ok: true,
+          snapshot: await getRuntimeSnapshot(),
+          isOpen: false,
+          canHostSidepanel: false,
+        };
+      case 'sidepanel.open':
+        if (sender?.tab?.id !== undefined && sender.tab.windowId !== undefined) {
           try {
-            const win = await chrome.windows.get(sender.tab.windowId);
-            if (win.type === "popup") {
-              return { ok: false, error: "Side panel not supported in popup windows" };
+            const window = await chrome.windows.get(sender.tab.windowId);
+            if (window.type === 'popup') {
+              return {
+                ok: false,
+                error: 'Chrome Side Panel is unavailable in popup windows.',
+              };
             }
-            await chrome.sidePanel.open({ tabId: sender.tab.id });
+            await chrome.sidePanel.setOptions({
+              tabId: sender.tab.id,
+              path: 'src/sidepanel/index.html',
+              enabled: true,
+            });
+            await chrome.sidePanel.open({ windowId: sender.tab.windowId });
             return { ok: true, snapshot: await getRuntimeSnapshot() };
           } catch (error: unknown) {
             const msg = error instanceof Error ? error.message : String(error);
             return { ok: false, error: msg };
           }
         }
-        return { ok: false, error: "No sender tab" };
+        return { ok: false, error: 'No sender tab' };
+      case 'sidepanel.close':
+        if (sender?.tab?.windowId !== undefined) {
+          try {
+            const closed = await closeSidepanelForWindow(sender.tab.windowId);
+            if (!closed) {
+              return { ok: false, error: 'The Chrome Side Panel is not open.' };
+            }
+            return { ok: true, snapshot: await getRuntimeSnapshot() };
+          } catch (error: unknown) {
+            const msg = error instanceof Error ? error.message : String(error);
+            return { ok: false, error: msg };
+          }
+        }
+        return { ok: false, error: 'No sender window' };
     }
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unexpected extension error.";
-    await logDiagnostic("error", "message-router", message);
+    const message =
+      error instanceof Error ? error.message : 'Unexpected extension error.';
+    await logDiagnostic('error', 'message-router', message);
     return { ok: false, error: message };
   }
 }
@@ -296,14 +484,14 @@ export async function handleRuntimeMessage(
 function isExtensionUiSender(sender?: chrome.runtime.MessageSender): boolean {
   return Boolean(
     sender?.id === chrome.runtime.id &&
-      sender.url?.startsWith(`chrome-extension://${chrome.runtime.id}/`),
+    sender.url?.startsWith(`chrome-extension://${chrome.runtime.id}/`),
   );
 }
 
 function readTargetedTabId(message: unknown): number | undefined {
-  if (typeof message !== "object" || message === null) return undefined;
+  if (typeof message !== 'object' || message === null) return undefined;
   const tabId = (message as { activeTabId?: unknown }).activeTabId;
-  return typeof tabId === "number" && Number.isInteger(tabId) && tabId >= 0
-    ? tabId
+  return typeof tabId === 'number' && Number.isInteger(tabId) && tabId >= 0 ?
+      tabId
     : undefined;
 }

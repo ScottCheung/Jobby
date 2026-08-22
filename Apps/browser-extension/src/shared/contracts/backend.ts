@@ -27,10 +27,10 @@ export type ApplicationPlanCreatePayload = {
 };
 
 const applicationCandidateSchema = z.object({
-  platform: z.string().min(1),
-  external_id: z.string().min(1),
-  title: z.string().min(1),
-  company: z.string().min(1),
+  platform: z.string(),
+  external_id: z.string(),
+  title: z.string(),
+  company: z.string(),
   description: z.string().nullable().optional(),
   match_score: z.number().nullable().optional(),
   priority_score: z.number().nullable().optional(),
@@ -48,20 +48,20 @@ const applicationCandidateSchema = z.object({
 const applicationDecisionSchema = z.object({
   action: z.enum(["skip", "review", "apply"]),
   reason_codes: z.array(z.string()),
-  explanation: z.string().min(1),
+  explanation: z.string().optional().default(""),
   score: z.number().nullable().optional(),
   resume_strategy: z.enum(["master", "tailored"]).nullable().optional(),
-  requires_submit_confirmation: z.boolean(),
-  matched_terms: z.array(z.string()).optional(),
+  requires_submit_confirmation: z.boolean().optional().default(false),
+  matched_terms: z.array(z.string()).optional().default([]),
 });
 
 export const applicationPlanResponseSchema = z.object({
-  application_id: z.string().min(1),
+  application_id: z.string(),
   plan: z.object({
     candidate: applicationCandidateSchema,
     decision: applicationDecisionSchema,
-    idempotency_key: z.string().min(1),
-    state: z.string().min(1),
+    idempotency_key: z.string(),
+    state: z.string(),
     review_reason: z.string().nullable().optional(),
   }),
 });

@@ -12,7 +12,7 @@ export function QuestionCardSkeleton({
   return (
     <div
       className={cn(
-        'animate-pulse rounded-xl border border-border/50 bg-background-secondary/35 p-4',
+        'animate-pulse rounded-xl border border-primary/50 bg-background-secondary/35 p-4',
         compact ? 'min-h-[154px]' : 'min-h-[190px]',
       )}
     >
@@ -29,7 +29,7 @@ export function QuestionCardSkeleton({
 
 export function CollectionCardSkeleton() {
   return (
-    <div className='min-h-[360px] animate-pulse rounded-2xl border border-border/50 bg-background-secondary/35 p-4'>
+    <div className='min-h-[360px] animate-pulse rounded-2xl border border-primary/50 bg-background-secondary/35 p-4'>
       <div className='aspect-[16/9] rounded-xl bg-border/60' />
       <div className='mt-4 h-4 w-3/4 rounded bg-border/60' />
       <div className='mt-3 h-3 w-full rounded bg-border/60' />

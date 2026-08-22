@@ -3,7 +3,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { CheckCircle2, ExternalLink, FileText, Trash2, UploadCloud, X } from 'lucide-react';
+import {
+  CheckCircle2,
+  ExternalLink,
+  FileText,
+  Trash2,
+  UploadCloud,
+  X,
+} from 'lucide-react';
 import { api } from '@/lib/api';
 import { showGlobalToast } from '@/lib/toast';
 import type { MasterResume, ResumeAsset } from '@/lib/types';
@@ -30,7 +37,9 @@ export function ActiveResumeModal({
   useEffect(() => {
     void loadAssets()
       .catch((error) =>
-        showGlobalToast(error instanceof Error ? error.message : 'Could not load resumes.'),
+        showGlobalToast(
+          error instanceof Error ? error.message : 'Could not load resumes.',
+        ),
       )
       .finally(() => setLoading(false));
   }, []);
@@ -44,21 +53,30 @@ export function ActiveResumeModal({
       showGlobalToast('Resume and job profile switched.');
       onClose();
     } catch (error) {
-      showGlobalToast(error instanceof Error ? error.message : 'Could not switch profile.');
+      showGlobalToast(
+        error instanceof Error ? error.message : 'Could not switch profile.',
+      );
     } finally {
       setSelectingId('');
     }
   };
 
   const deleteAsset = async (asset: ResumeAsset) => {
-    if (!window.confirm(`Delete ${asset.filename}? The PDF will also be removed from storage.`)) return;
+    if (
+      !window.confirm(
+        `Delete ${asset.filename}? The PDF will also be removed from storage.`,
+      )
+    )
+      return;
     setDeletingId(asset.profile_id);
     try {
       await api.deleteResumeAsset(asset.profile_id);
       await loadAssets();
       showGlobalToast('Resume deleted and storage released.');
     } catch (error) {
-      showGlobalToast(error instanceof Error ? error.message : 'Could not delete the resume.');
+      showGlobalToast(
+        error instanceof Error ? error.message : 'Could not delete the resume.',
+      );
     } finally {
       setDeletingId('');
     }
@@ -66,12 +84,13 @@ export function ActiveResumeModal({
 
   return (
     <div className='flex max-h-[82vh] min-h-[420px] flex-col'>
-      <header className='flex items-start justify-between gap-5 border-b border-border/60 px-6 py-5'>
+      <header className='flex items-start justify-between gap-5 px-6 py-5'>
         <div>
           <h2 className='title-section text-ink-primary'>Active Resume</h2>
           <p className='body-sm mt-1 max-w-xl text-ink-secondary'>
             Each resume has its own job targets and application settings.
-            Switching resumes switches the complete profile used for applications.
+            Switching resumes switches the complete profile used for
+            applications.
           </p>
         </div>
         <button
@@ -95,16 +114,19 @@ export function ActiveResumeModal({
               return (
                 <article
                   key={asset.profile_id}
-                  className={`border p-4 ${isCurrent ? 'border-primary bg-primary/5' : 'border-border bg-panel'}`}
+                  className={`p-4 rounded-xl ${isCurrent ? 'bg-primary/10' : 'bg-background-secondary/60'}`}
                 >
                   <div className='flex flex-wrap items-start justify-between gap-3'>
                     <div className='min-w-0'>
                       <div className='flex items-center gap-2'>
                         <FileText className='size-4 shrink-0 text-primary' />
-                        <h3 className='truncate label text-ink-primary'>{asset.filename}</h3>
+                        <h3 className='truncate label text-ink-primary'>
+                          {asset.filename}
+                        </h3>
                       </div>
                       <p className='body-sm mt-1 text-ink-secondary'>
-                        Updated {new Date(asset.updated_at).toLocaleDateString()}
+                        Updated{' '}
+                        {new Date(asset.updated_at).toLocaleDateString()}
                       </p>
                     </div>
                     {isCurrent && (
@@ -125,7 +147,9 @@ export function ActiveResumeModal({
                       {isCurrent ? 'Current profile' : 'Switch profile'}
                     </Button>
                     <a href={asset.url} target='_blank' rel='noreferrer'>
-                      <Button size='sm' variant='secondary' Icon={ExternalLink}>View PDF</Button>
+                      <Button size='sm' variant='secondary' Icon={ExternalLink}>
+                        View PDF
+                      </Button>
                     </a>
                     {!isCurrent && (
                       <Button
@@ -143,12 +167,19 @@ export function ActiveResumeModal({
               );
             })}
           </div>
-        : <p className='body-sm text-ink-secondary'>No saved resume versions.</p>}
+        : <p className='body-sm text-ink-secondary'>
+            No saved resume versions.
+          </p>
+        }
       </div>
 
       <footer className='footer'>
-        <Button variant='secondary' onClick={onClose}>Close</Button>
-        <Button Icon={UploadCloud} onClick={onUpload}>Upload new resume</Button>
+        <Button variant='secondary' onClick={onClose}>
+          Close
+        </Button>
+        <Button Icon={UploadCloud} onClick={onUpload}>
+          Upload new resume
+        </Button>
       </footer>
     </div>
   );

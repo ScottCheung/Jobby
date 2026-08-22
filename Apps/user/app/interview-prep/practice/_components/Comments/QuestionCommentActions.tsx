@@ -22,7 +22,6 @@ import type { InterviewQuestion, QuestionCommunitySummary } from '@/lib/types';
 import { showGlobalToast } from '@/lib/toast';
 import { cn } from '@/lib/utils';
 
-
 import { div } from 'framer-motion/client';
 
 export function QuestionCommentActions({
@@ -359,7 +358,7 @@ export function QuestionCommentActions({
   }
 
   return (
-    <div className='mt-3 space-y-2.5 border-t border-border/50 pt-3'>
+    <div className='mt-3 space-y-2.5 border-t border-primary/50 pt-3'>
       <div className='flex flex-wrap items-center gap-1.5'>
         <button
           onClick={() => void react('up')}

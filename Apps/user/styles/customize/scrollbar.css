@@ -1,1 +1,243 @@
-/* Scrollbar styles are now defined in tailwind.config.js to allow usage with @apply */
+/**
+ * Global & Custom Scrollbar Styles
+ * Provides consistent, sleek, translucent scrollbar styling matching the Web App design.
+ *
+ * @format
+ */
+
+@layer base {
+  /* 1. Global scrollbars applied across all scrollable containers */
+  *,
+  *::before,
+  *::after {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(100, 116, 139, 0.25) transparent;
+  }
+
+  .dark *,
+  .dark *::before,
+  .dark *::after {
+    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+  }
+
+  /* WebKit / Chromium / Safari */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background-color: rgba(100, 116, 139, 0.25);
+    border-radius: 9999px;
+    border: 1px solid transparent;
+    background-clip: content-box;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(100, 116, 139, 0.45);
+  }
+
+  .dark ::-webkit-scrollbar-thumb,
+  [data-theme='dark'] ::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.2);
+  }
+
+  .dark ::-webkit-scrollbar-thumb:hover,
+  [data-theme='dark'] ::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(255, 255, 255, 0.35);
+  }
+
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+}
+
+@layer utilities {
+  /* 2. Custom Scrollbar Utility */
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(100, 116, 139, 0.25) transparent;
+
+    &::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+
+    &::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      background-color: rgba(100, 116, 139, 0.25);
+      border-radius: 9999px;
+      border: 1px solid transparent;
+      background-clip: content-box;
+    }
+
+    &::-webkit-scrollbar-thumb:hover {
+      background-color: rgba(100, 116, 139, 0.45);
+    }
+
+    .dark & {
+      scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+    }
+
+    .dark &::-webkit-scrollbar-thumb,
+    [data-theme='dark'] &::-webkit-scrollbar-thumb {
+      background-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .dark &::-webkit-scrollbar-thumb:hover,
+    [data-theme='dark'] &::-webkit-scrollbar-thumb:hover {
+      background-color: rgba(255, 255, 255, 0.35);
+    }
+
+    &::-webkit-scrollbar-corner {
+      background: transparent;
+    }
+  }
+
+  /* 3. Primary Color Accent Scrollbar Utility */
+  .custom-scrollbar-primary {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--primary) 28%, transparent) transparent;
+
+    &::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+
+    &::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      background-color: color-mix(in srgb, var(--primary) 28%, transparent);
+      border-radius: 9999px;
+      border: 1px solid transparent;
+      background-clip: content-box;
+    }
+
+    &::-webkit-scrollbar-thumb:hover {
+      background-color: color-mix(in srgb, var(--primary) 50%, transparent);
+    }
+
+    &::-webkit-scrollbar-corner {
+      background: transparent;
+    }
+  }
+
+  /* 4. Hide Scrollbar Utility */
+  .no-scrollbar,
+  .scrollbar-hide {
+    -ms-overflow-style: none !important;
+    scrollbar-width: none !important;
+
+    &::-webkit-scrollbar {
+      display: none !important;
+      width: 0 !important;
+      height: 0 !important;
+      background: transparent;
+    }
+  }
+}
+
+@utility custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(100, 116, 139, 0.25) transparent;
+
+  &::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background-color: rgba(100, 116, 139, 0.25);
+    border-radius: 9999px;
+    border: 1px solid transparent;
+    background-clip: content-box;
+  }
+
+  &::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(100, 116, 139, 0.45);
+  }
+
+  .dark & {
+    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+  }
+
+  .dark &::-webkit-scrollbar-thumb,
+  [data-theme='dark'] &::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.2);
+  }
+
+  .dark &::-webkit-scrollbar-thumb:hover,
+  [data-theme='dark'] &::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(255, 255, 255, 0.35);
+  }
+
+  &::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+}
+
+@utility custom-scrollbar-primary {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--primary) 28%, transparent) transparent;
+
+  &::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background-color: color-mix(in srgb, var(--primary) 28%, transparent);
+    border-radius: 9999px;
+    border: 1px solid transparent;
+    background-clip: content-box;
+  }
+
+  &::-webkit-scrollbar-thumb:hover {
+    background-color: color-mix(in srgb, var(--primary) 50%, transparent);
+  }
+
+  &::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+}
+
+@utility no-scrollbar {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
+
+  &::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    background: transparent;
+  }
+}
+
+@utility scrollbar-hide {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
+
+  &::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    background: transparent;
+  }
+}

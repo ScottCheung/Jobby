@@ -1227,7 +1227,7 @@ export default function QuestionsLibraryPage() {
                 placeholder='Search questions...'
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className='body-md w-full pl-9 pr-4 py-2 rounded-xl bg-panel dark:bg-background-secondary dark:border-border focus:outline-none focus:border-primary/50 dark:focus:border-primary/50 focus:ring-1 focus:ring-primary/20 dark:focus:ring-primary/20 text-ink-primary'
+                className='body-md w-full pl-9 pr-4 py-2 rounded-xl bg-panel dark:bg-background-secondary dark:border-primary focus:outline-none focus:border-primary/50 dark:focus:border-primary/50 focus:ring-1 focus:ring-primary/20 dark:focus:ring-primary/20 text-ink-primary'
               />
             </div>
 
@@ -1280,7 +1280,7 @@ export default function QuestionsLibraryPage() {
                       setSelectedIds([]);
                     }}
                     disabled={isSaving}
-                    className='flex items-center justify-center w-9 h-9 text-ink-primary bg-background-secondary hover:bg-background-secondary/80 dark:bg-panel dark:hover:bg-panel rounded-xl transition-colors border border-border'
+                    className='flex items-center justify-center w-9 h-9 text-ink-primary bg-background-secondary hover:bg-background-secondary/80 dark:bg-panel dark:hover:bg-panel rounded-xl transition-colors border border-primary'
                   >
                     <X className='w-4 h-4' />
                   </button>
@@ -1334,7 +1334,7 @@ export default function QuestionsLibraryPage() {
                 <button
                   onClick={() => setIsSelectionMode(true)}
                   disabled={isSaving}
-                  className='flex items-center justify-center w-9 h-9 text-ink-primary bg-background-secondary hover:bg-background-secondary/80 dark:bg-panel dark:hover:bg-panel rounded-xl transition-colors border border-border'
+                  className='flex items-center justify-center w-9 h-9 text-ink-primary bg-background-secondary hover:bg-background-secondary/80 dark:bg-panel dark:hover:bg-panel rounded-xl transition-colors border border-primary'
                 >
                   <MousePointer2 className='w-4 h-4' />
                 </button>
@@ -1649,7 +1649,7 @@ function QuestionListSkeleton() {
       {Array.from({ length: 25 }).map((_, i) => (
         <div
           key={i}
-          className='grid grid-cols-[minmax(0,3.2fr)_minmax(0,0.9fr)_minmax(0,2.2fr)_minmax(0,1fr)_minmax(0,0.8fr)_88px] items-center py-4 border-b border-border/50'
+          className='grid grid-cols-[minmax(0,3.2fr)_minmax(0,0.9fr)_minmax(0,2.2fr)_minmax(0,1fr)_minmax(0,0.8fr)_88px] items-center py-4 border-b border-primary/50'
         >
           <div className='h-4 bg-muted rounded w-3/4'></div>
           <div className='h-4 bg-muted rounded w-1/2'></div>

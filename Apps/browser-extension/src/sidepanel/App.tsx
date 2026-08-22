@@ -1,10 +1,15 @@
 /** @format */
 
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { Sparkles } from 'lucide-react';
+import { Button } from '@jobby/ui/components/UI/Button';
+import type { DocType } from '../shared/contracts/tailored-resume';
 import { AuthCard } from './components/AuthCard';
+import { AuthGuardBanner } from './components/AuthGuardBanner';
 import { BottomNav, type TabType } from './components/BottomNav';
 import { DebugDrawer } from './components/DebugDrawer';
 import { DiagnosticsCard } from './components/DiagnosticsCard';
+import { HeaderQuickActions } from './components/HeaderQuickActions';
 import { JobScoreCard } from './components/JobScoreCard';
 import { PageClassBanner } from './components/PageClassBanner';
 import { ResultsDisplay } from './components/ResultsDisplay';
@@ -14,18 +19,29 @@ import { useApplicationPlan } from './hooks/useApplicationPlan';
 import { useAuth } from './hooks/useAuth';
 import { useDiagnostics } from './hooks/useDiagnostics';
 import { useInspection } from './hooks/useInspection';
+import { useTailoredResumeStudio } from './hooks/useTailoredResumeStudio';
 import { useThemeSync } from './hooks/useThemeSync';
-import { EmptyPlaceHolder } from '@jobby/ui/components/UI/EmptyPlaceHolder';
 import { getActiveTab } from './services/messaging';
 import { IPEmotion } from '@jobby/ui/components/UI/IPEmotion';
+import { Toaster } from '@jobby/ui/components/UI/toast/toaster';
 import { cn } from '@jobby/ui/lib/utils';
 
 const PAGE_READY_DELAY_MS = 150;
-const LINKEDIN_CARD_RECOVERY_MS = 10_000;
+const TailorStudioCard = lazy(() =>
+  import('./components/TailorStudioCard').then((module) => ({
+    default: module.TailorStudioCard,
+  })),
+);
 
 export function App() {
   const [isReviewOpen, setIsReviewOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('home');
+  const [generationDraft, setGenerationDraft] = useState<{
+    type: DocType;
+    jobTitle: string;
+    company: string;
+    jobDescription: string;
+  } | null>(null);
 
   const { diagnostics, errorMessage, refresh, clearLogs } = useDiagnostics();
   const {
@@ -36,7 +52,8 @@ export function App() {
     disconnect,
     isSigningIn,
   } = useAuth();
-  useThemeSync(authStatus);
+  const { themeColor, themeMode, toggleThemeColor, toggleThemeMode } =
+    useThemeSync(authStatus);
   const {
     latestInspection,
     latestForm,
@@ -51,7 +68,7 @@ export function App() {
     inspectForm,
     focusFormField,
     autofillSingleField,
-    uploadDefaultResume,
+    uploadTailoredResume,
     editFormField,
     clearAllFormFields,
     uploadStates,
@@ -81,7 +98,19 @@ export function App() {
 
       void registerWindow();
 
+      const closePanel = (message: unknown) => {
+        if (
+          typeof message === 'object' &&
+          message !== null &&
+          (message as { type?: unknown }).type === 'sidepanel.close'
+        ) {
+          window.close();
+        }
+      };
+      port.onMessage.addListener(closePanel);
+
       return () => {
+        port.onMessage.removeListener(closePanel);
         port.disconnect();
       };
     }
@@ -89,6 +118,8 @@ export function App() {
 
   const {
     latestPlan,
+    planError,
+    retryPlan,
     loadingButton,
     createPlan,
     applyPlanAction,
@@ -100,6 +131,9 @@ export function App() {
     submitApplication,
     recordApplication,
     autoRunLinkedIn,
+    activeProfile,
+    claimSkill,
+    unclaimSkill,
   } = useApplicationPlan(
     latestInspection,
     latestForm,
@@ -107,9 +141,42 @@ export function App() {
     inspectForm,
     setInspectionError,
     applyAutofillResults,
+    authStatus?.connected,
+    signIn,
   );
 
-  // Inspection results are intentionally kept out of the event effect's
+  const handleReDetectPage = async () => {
+    await inspectPage();
+    void inspectForm(true);
+  };
+
+  const tailorStudio = useTailoredResumeStudio(
+    latestInspection,
+    authStatus?.connected,
+    true,
+    handleReDetectPage,
+    signIn,
+  );
+
+  const openGenerationConfirmation = (type: DocType) => {
+    setGenerationDraft({
+      type,
+      jobTitle: tailorStudio.jobTitle || tailorStudio.detectedJob?.title || '',
+      company: tailorStudio.company || tailorStudio.detectedJob?.company || '',
+      jobDescription: tailorStudio.jobDescription || tailorStudio.detectedJob?.jobDescription || '',
+    });
+  };
+
+  const confirmGeneration = () => {
+    if (!generationDraft) return;
+    const draft = generationDraft;
+    setGenerationDraft(null);
+    void tailorStudio.generateTailoredResume(draft.type, draft);
+  };
+
+  useEffect(() => {
+    if (activeTab === 'studio') tailorStudio.markDocumentsSeen();
+  }, [activeTab, tailorStudio.markDocumentsSeen]);
   // dependencies. Including them there created a loop: inspect → state update
   // → effect restart → forced inspect, which made the panel and some dynamic
   // pages visibly jump.
@@ -124,8 +191,10 @@ export function App() {
     refresh();
     refreshAuth();
     const inspectCurrentPage = (showLoading: boolean) => {
-      void autoInspectActivePage(true, showLoading).then(() => {
-        void inspectForm(true);
+      void autoInspectActivePage(false, showLoading).then((isJob) => {
+        if (isJob) {
+          void inspectForm(true);
+        }
       });
     };
     let scheduledInspection: number | undefined;
@@ -152,6 +221,16 @@ export function App() {
       });
     };
 
+    const onRuntimeMessage = (message: unknown) => {
+      if (
+        typeof message === 'object' &&
+        message !== null &&
+        (message as { type?: unknown }).type === 'content.page-changed'
+      ) {
+        scheduleInspection(false);
+      }
+    };
+
     if (
       typeof chrome !== 'undefined' &&
       chrome.tabs?.onActivated &&
@@ -160,24 +239,9 @@ export function App() {
       chrome.tabs.onActivated.addListener(onTabActivated);
       chrome.tabs.onUpdated.addListener(onTabUpdated);
     }
-
-    // LinkedIn can replace the selected job card without changing its URL.
-    // Keep one quiet, low-frequency recovery read for that special case.
-    const linkedInRecovery = window.setInterval(() => {
-      const inspection = latestInspectionRef.current;
-      const form = latestFormRef.current;
-      if (inspection === null) {
-        inspectCurrentPage(false);
-        return;
-      }
-      if (
-        inspection.kind === 'job' &&
-        inspection.snapshot.platform === 'linkedin' &&
-        form?.kind !== 'application_form'
-      ) {
-        inspectCurrentPage(false);
-      }
-    }, LINKEDIN_CARD_RECOVERY_MS);
+    if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
+      chrome.runtime.onMessage.addListener(onRuntimeMessage);
+    }
 
     return () => {
       if (scheduledInspection !== undefined)
@@ -190,7 +254,9 @@ export function App() {
         chrome.tabs.onActivated.removeListener(onTabActivated);
         chrome.tabs.onUpdated.removeListener(onTabUpdated);
       }
-      window.clearInterval(linkedInRecovery);
+      if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
+        chrome.runtime.onMessage.removeListener(onRuntimeMessage);
+      }
     };
   }, [refresh, refreshAuth, autoInspectActivePage, inspectForm]);
 
@@ -269,16 +335,33 @@ export function App() {
           />
           <span className='sidepanel-title'>Jobby</span>
         </div>
-        <AuthCard
-          authStatus={authStatus}
-          authError={authError}
-          onSignIn={signIn}
-          onDisconnect={disconnect}
-          isSigningIn={isSigningIn}
-        />
+        <div className='flex items-center gap-1.5'>
+          <HeaderQuickActions
+            themeColor={themeColor}
+            themeMode={themeMode}
+            onToggleThemeColor={toggleThemeColor}
+            onToggleThemeMode={toggleThemeMode}
+          />
+          <AuthCard
+            authStatus={authStatus}
+            authError={authError}
+            onSignIn={signIn}
+            onDisconnect={disconnect}
+            isSigningIn={isSigningIn}
+          />
+        </div>
       </header>
 
       <div className='sidepanel-content'>
+        {!authStatus?.connected && (
+          <div className='px-4 pt-3 pb-1'>
+            <AuthGuardBanner
+              onSignIn={signIn}
+              isSigningIn={isSigningIn}
+            />
+          </div>
+        )}
+
         {activeTab === 'home' && (
           <>
             <section
@@ -298,7 +381,7 @@ export function App() {
                   return (
                     <div className='relative rounded-2xl overflow-hidden min-h-[340px] flex flex-col gap-2 transition-all duration-200  p-1 bg-primary/30'>
                       {/* Overlay Mask */}
-                      <div className='absolute inset-0 z-10 flex flex-col items-center justify-center bg-background/85 backdrop-blur-md p-4 rounded-2xl '>
+                      <div className='absolute inset-0 z-0 flex flex-col items-center justify-center bg-background/85 backdrop-blur-md p-4 rounded-2xl '>
                         <div className='bg-background-50  w-full h-full justify-center items-center flex flex-col'>
                           <IPEmotion
                             emotionId={1}
@@ -332,12 +415,22 @@ export function App() {
                       latestInspection={latestInspection}
                       latestPlan={latestPlan}
                       isInspecting={isInspectingPage}
+                      onTailor={openGenerationConfirmation}
+                      authConnected={authStatus?.connected}
+                      onSignIn={signIn}
                     />
                     <PageClassBanner
                       latestInspection={latestInspection}
                       latestPlan={latestPlan}
                       isInspecting={isInspectingPage}
-                      error={inspectionError}
+                      error={planError}
+                      onRetryPlan={retryPlan}
+                      onClaimSkill={claimSkill}
+                      onUnclaimSkill={unclaimSkill}
+                      activeProfile={activeProfile}
+                      onReDetect={handleReDetectPage}
+                      authConnected={authStatus?.connected}
+                      onSignIn={signIn}
                     />
                   </>
                 );
@@ -366,14 +459,39 @@ export function App() {
                 onOpenReviewModal={() => setIsReviewOpen(true)}
                 onRecordApplication={recordApplication}
                 hideAutofill
+                authConnected={authStatus?.connected}
+                onSignIn={signIn}
               />
             </section>
           </>
         )}
 
+        {activeTab === 'studio' && (
+          <section
+            id='panel-studio'
+            className='sidebar-menu sidebar-menu--studio panel-section w-full min-w-0 max-w-full overflow-hidden'
+            aria-label='Resume & Document Studio'
+          >
+            <Suspense fallback={null}>
+              <TailorStudioCard
+                studio={tailorStudio}
+                latestInspection={latestInspection}
+                managementOnly
+                authConnected={authStatus?.connected}
+                onSignIn={signIn}
+              />
+            </Suspense>
+          </section>
+        )}
+
         {activeTab === 'form' && (
           <div className='panel-form-area'>
-            <div className='sticky-autofill' aria-label='Form autofill'>
+            <div
+              className={`sticky-autofill ${
+                navVisible ? 'top-[44px]' : 'top-0'
+              }`}
+              aria-label='Form autofill'
+            >
               <WorkflowSection
                 latestInspection={latestInspection}
                 latestForm={latestForm}
@@ -389,6 +507,8 @@ export function App() {
                 onFillAndNext={fillAndNext}
                 onOpenReviewModal={() => setIsReviewOpen(true)}
                 autofillOnly
+                authConnected={authStatus?.connected}
+                onSignIn={signIn}
               />
             </div>
 
@@ -402,9 +522,10 @@ export function App() {
                 isInspectingForm={isInspectingForm}
                 onFocusField={focusFormField}
                 onFillSingleField={autofillSingleField}
-                onUploadDefaultResume={uploadDefaultResume}
+                onUploadTailoredResume={uploadTailoredResume}
                 onEditField={editFormField}
                 uploadStates={uploadStates}
+                tailoredResumes={tailorStudio.savedResumes}
                 isAutofilling={loadingButton === 'autofill'}
               />
             </section>
@@ -442,6 +563,7 @@ export function App() {
         activeTab={activeTab}
         onChange={setActiveTab}
         visible={navVisible}
+        hasNewDocuments={tailorStudio.hasNewDocuments}
       />
 
       <ReviewModal
@@ -453,6 +575,34 @@ export function App() {
         onClose={() => setIsReviewOpen(false)}
         onConfirmSubmit={handleConfirmSubmit}
       />
+
+      {generationDraft && (
+        <div className='modal-backdrop' onClick={() => setGenerationDraft(null)}>
+          <div className='modal-card max-w-[520px]' onClick={(event) => event.stopPropagation()}>
+            <div className='modal-header'>
+              <div>
+                <span className='modal-badge bg-primary text-primary-foreground'>Confirm generation</span>
+                <h3 className='text-sm font-bold text-foreground'>
+                  {generationDraft.type === 'both' ? 'Resume + Cover Letter' : generationDraft.type === 'cover_letter' ? 'Generate Cover Letter' : 'Tailor Resume'}
+                </h3>
+              </div>
+              <button type='button' className='close-btn' onClick={() => setGenerationDraft(null)} aria-label='Close'>&times;</button>
+            </div>
+            <div className='modal-body flex flex-col gap-3'>
+              <p className='text-[11px] text-muted-foreground'>Review or edit the job details before the background task starts.</p>
+              <input value={generationDraft.jobTitle} onChange={(event) => setGenerationDraft({ ...generationDraft, jobTitle: event.target.value })} placeholder='Job title' className='w-full rounded-lg border border-primary/20 bg-background px-3 py-2 text-xs text-foreground' />
+              <input value={generationDraft.company} onChange={(event) => setGenerationDraft({ ...generationDraft, company: event.target.value })} placeholder='Company' className='w-full rounded-lg border border-primary/20 bg-background px-3 py-2 text-xs text-foreground' />
+              <textarea value={generationDraft.jobDescription} onChange={(event) => setGenerationDraft({ ...generationDraft, jobDescription: event.target.value })} placeholder='Job description' className='min-h-32 w-full resize-y rounded-lg border border-primary/20 bg-background px-3 py-2 text-xs leading-relaxed text-foreground' />
+            </div>
+            <div className='modal-footer'>
+              <Button variant='ghost' size='sm' onClick={() => setGenerationDraft(null)}>Cancel</Button>
+              <Button size='sm' Icon={Sparkles} onClick={confirmGeneration} disabled={!generationDraft.jobDescription.trim()}>Confirm & start</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <Toaster />
     </main>
   );
 }

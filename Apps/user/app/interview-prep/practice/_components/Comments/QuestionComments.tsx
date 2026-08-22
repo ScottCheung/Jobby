@@ -1003,7 +1003,7 @@ export function QuestionComments({ questionId }: { questionId: string }) {
             mainInputRef.current?.focus();
           }}
           className={cn(
-            ' border border-border bg-background-secondary/40  w-full  transition-all',
+            ' border border-primary bg-background-secondary/40  w-full  transition-all',
             isComposing ?
               'p-2 items-start col rounded-2xl'
             : 'rounded-3xl p-1.5  row items-center cursor-text',
@@ -1512,7 +1512,7 @@ function ExampleAnswerCard({
               <MoreHorizontal className='h-4 w-4' />
             </button>
             {menuOpen && (
-              <div className='absolute right-0 top-7 z-20 w-40 rounded-xl border border-border bg-background-primary p-1 shadow-lg'>
+              <div className='absolute right-0 top-7 z-20 w-40 rounded-xl border border-primary bg-background-primary p-1 shadow-lg'>
                 <button
                   onClick={() => void copyAnswer()}
                   className='flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs text-ink-secondary hover:bg-background-secondary'
@@ -1545,7 +1545,7 @@ function ExampleAnswerCard({
                 )}
                 {!answer.can_manage && (
                   <>
-                    <p className='mt-1 border-t border-border/60 px-2 pt-2 text-[9px] font-bold uppercase tracking-wide text-ink-secondary/70'>
+                    <p className='mt-1 border-t border-primary/60 px-2 pt-2 text-[9px] font-bold uppercase tracking-wide text-ink-secondary/70'>
                       Report as
                     </p>
                     {(

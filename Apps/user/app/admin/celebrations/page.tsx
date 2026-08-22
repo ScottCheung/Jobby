@@ -19,7 +19,7 @@ import {
 import { previewCelebrationStyle } from '@/lib/celebration';
 
 function inputClassName() {
-  return 'body-md w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-ink-primary outline-none transition focus:border-primary/50';
+  return 'body-md w-full rounded-xl border border-primary/60 bg-background px-3 py-2 text-ink-primary outline-none transition focus:border-primary/50';
 }
 
 function labelClassName() {
@@ -69,7 +69,11 @@ export default function CelebrationStylesPage() {
       setConfig(await saveCelebrationConfig(config));
       setHasSaved(true);
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : 'Failed to save celebration styles.');
+      setError(
+        saveError instanceof Error ?
+          saveError.message
+        : 'Failed to save celebration styles.',
+      );
     } finally {
       setIsSaving(false);
     }
@@ -82,7 +86,11 @@ export default function CelebrationStylesPage() {
       setConfig(await resetCelebrationConfig());
       setHasSaved(false);
     } catch (resetError) {
-      setError(resetError instanceof Error ? resetError.message : 'Failed to reset celebration styles.');
+      setError(
+        resetError instanceof Error ?
+          resetError.message
+        : 'Failed to reset celebration styles.',
+      );
     } finally {
       setIsSaving(false);
     }
@@ -110,7 +118,7 @@ export default function CelebrationStylesPage() {
             type='button'
             onClick={handleReset}
             disabled={isSaving}
-            className='label inline-flex items-center gap-2 rounded-xl border border-border/60 bg-background px-3 py-2 transition hover:border-primary/40 hover:text-primary'
+            className='label inline-flex items-center gap-2 rounded-xl border border-primary/60 bg-background px-3 py-2 transition hover:border-primary/40 hover:text-primary'
           >
             <RotateCcw className='h-4 w-4' />
             Reset Defaults
@@ -141,13 +149,13 @@ export default function CelebrationStylesPage() {
       <div className='grid gap-4 xl:grid-cols-2'>
         {CELEBRATION_STYLE_ORDER.map((type) => {
           const style = config.styles[type];
-          const linkedEvents = CELEBRATION_EVENT_ORDER
-            .map((eventKey) => config.events[eventKey])
-            .filter((event) => event.styleType === type);
+          const linkedEvents = CELEBRATION_EVENT_ORDER.map(
+            (eventKey) => config.events[eventKey],
+          ).filter((event) => event.styleType === type);
           return (
             <div
               key={type}
-              className='rounded-[28px] border border-border/60 bg-panel/60 p-5'
+              className='rounded-[28px] border border-primary/60 bg-panel/60 p-5'
             >
               <div className='mb-5 flex items-start justify-between gap-4'>
                 <div>
@@ -170,7 +178,7 @@ export default function CelebrationStylesPage() {
                 </button>
               </div>
 
-              <div className='mb-5 rounded-2xl border border-border/60 bg-background/70 p-4'>
+              <div className='mb-5 rounded-2xl border border-primary/60 bg-background/70 p-4'>
                 <div className='flex items-center justify-between gap-3'>
                   <div>
                     <div className='label-sm uppercase tracking-wide text-ink-primary'>
@@ -194,7 +202,7 @@ export default function CelebrationStylesPage() {
                     {linkedEvents.map((event) => (
                       <span
                         key={event.key}
-                        className='rounded-full border border-border/60 bg-panel px-3 py-1 text-xs font-medium text-ink-secondary'
+                        className='rounded-full border border-primary/60 bg-panel px-3 py-1 text-xs font-medium text-ink-secondary'
                       >
                         {event.label}
                       </span>
@@ -211,7 +219,9 @@ export default function CelebrationStylesPage() {
                     value={style.label}
                     onChange={(event) =>
                       setConfig((current) =>
-                        updateStyle(current, type, { label: event.target.value }),
+                        updateStyle(current, type, {
+                          label: event.target.value,
+                        }),
                       )
                     }
                   />
@@ -248,9 +258,7 @@ export default function CelebrationStylesPage() {
                   />
                 </div>
                 <div>
-                  <label className={labelClassName()}>
-                    Particle Strength
-                  </label>
+                  <label className={labelClassName()}>Particle Strength</label>
                   <input
                     type='range'
                     min={0.3}
@@ -271,7 +279,9 @@ export default function CelebrationStylesPage() {
                   </div>
                 </div>
                 <div>
-                  <label className={labelClassName()}>Message Panel Opacity</label>
+                  <label className={labelClassName()}>
+                    Message Panel Opacity
+                  </label>
                   <input
                     type='range'
                     min={35}
@@ -290,7 +300,7 @@ export default function CelebrationStylesPage() {
                     {style.panelOpacity}%
                   </div>
                 </div>
-                <label className='flex items-center gap-3 rounded-2xl border border-border/60 bg-background/70 px-4 py-3 md:col-span-2'>
+                <label className='flex items-center gap-3 rounded-2xl border border-primary/60 bg-background/70 px-4 py-3 md:col-span-2'>
                   <input
                     type='checkbox'
                     checked={style.panelEnabled}

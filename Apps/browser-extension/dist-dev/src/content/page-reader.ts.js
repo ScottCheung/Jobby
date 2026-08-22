@@ -25,7 +25,7 @@ function isSeekHost(hostname) {
 function isIndeedHost(hostname) {
   return hostname === "indeed.com" || /\.indeed\.com$/.test(hostname);
 }
-export function readCurrentPage() {
+export function readCurrentPage(apiData) {
   const url = window.location.href;
   const hostname = window.location.hostname;
   lastPageClass = classifyCurrentPage();
@@ -40,7 +40,7 @@ export function readCurrentPage() {
     return readSeekPage();
   }
   if (isLinkedInHost(hostname)) {
-    return readLinkedInPage();
+    return readLinkedInPage(apiData);
   }
   if (isIndeedHost(hostname)) {
     const inspection = readIndeedJobPage();
@@ -51,8 +51,8 @@ export function readCurrentPage() {
 export async function readCurrentPageWhenReady() {
   if (isLinkedInHost(window.location.hostname)) return readLinkedInPageWhenReady();
   let inspection = readCurrentPage();
-  for (let attempt = 0; attempt < 4; attempt += 1) {
-    if (inspection.kind === "job" && inspection.snapshot.datePosted) {
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    if (inspection.kind === "job" && inspection.snapshot.title && inspection.snapshot.datePosted) {
       return inspection;
     }
     await new Promise((resolve) => window.setTimeout(resolve, 100));
@@ -75,9 +75,17 @@ async function readLinkedInPageWhenReady() {
   let observedUrl = window.location.href;
   let previousSnapshotSignature = "";
   const jobIdNow = linkedinAdapter.jobIdFromUrl(observedUrl);
+  let cachedApiData = null;
+  let apiResolved = false;
   const apiDataPromise = jobIdNow ? import("/src/content/platforms/linkedin/api-client.ts.js").then(
     ({ fetchLinkedInJobPosting }) => fetchLinkedInJobPosting(jobIdNow)
   ) : Promise.resolve(null);
+  apiDataPromise.then((data) => {
+    cachedApiData = data;
+    apiResolved = true;
+  }).catch(() => {
+    apiResolved = true;
+  });
   let inspection = readCurrentPage();
   for (let attempt = 0; attempt < 20; attempt += 1) {
     const currentUrl = window.location.href;
@@ -85,7 +93,7 @@ async function readLinkedInPageWhenReady() {
       observedUrl = currentUrl;
       previousSnapshotSignature = "";
     }
-    inspection = readCurrentPage();
+    inspection = readCurrentPage(apiResolved ? cachedApiData : void 0);
     if (inspection.kind === "job") {
       const snapshotSignature = [
         inspection.snapshot.externalId,
@@ -94,14 +102,8 @@ async function readLinkedInPageWhenReady() {
         inspection.snapshot.datePosted || ""
       ].join(":");
       const descriptionReady = Boolean(inspection.snapshot.description);
-      let apiData = null;
-      let apiResolved = false;
-      void apiDataPromise.then((data) => {
-        apiData = data;
-        apiResolved = true;
-      });
-      if (apiResolved && apiData) {
-        const enriched = readLinkedInPage(apiData);
+      if (apiResolved && cachedApiData) {
+        const enriched = readLinkedInPage(cachedApiData);
         if (enriched.kind === "job" && enriched.snapshot.description) {
           return enriched;
         }

@@ -214,7 +214,7 @@ export function PracticeHistory({
               </div>
             )}
             {attempt.my_answer && (
-              <div className='mt-3 border-t border-border/60 pt-3'>
+              <div className='mt-3 border-t border-primary/60 pt-3'>
                 {evaluations[attempt.id] ?
                   (() => {
                     const evalData = evaluations[attempt.id];
@@ -228,7 +228,7 @@ export function PracticeHistory({
                       : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20';
 
                     return (
-                      <div className='rounded-xl border border-border/80 bg-background/50 p-3.5 space-y-3 shadow-xs'>
+                      <div className='rounded-xl border border-primary/80 bg-background/50 p-3.5 space-y-3 shadow-xs'>
                         {/* Header: Score & Badge */}
                         <div className='flex items-center justify-between'>
                           <div className='flex items-center gap-2'>
@@ -319,7 +319,7 @@ export function PracticeHistory({
                         )}
 
                         {res.gold_rewrite && (
-                          <div className='bg-background-secondary/50 border border-border/70 rounded-lg p-2.5 space-y-1'>
+                          <div className='bg-background-secondary/50 border border-transparent rounded-lg p-2.5 space-y-1'>
                             <div className='font-bold text-[10px] uppercase text-primary flex items-center gap-1'>
                               <Sparkles className='w-3 h-3' />
                               Stronger Sample Line
@@ -366,7 +366,7 @@ export function PracticeHistory({
                         </div>
 
                         {res.next_steps && res.next_steps.length > 0 && (
-                          <div className='bg-background-secondary/50 border border-border/70 rounded-lg p-2.5 space-y-1.5'>
+                          <div className='bg-background-secondary/50 border border-transparent rounded-lg p-2.5 space-y-1.5'>
                             <div className='font-bold text-[10px] uppercase text-ink-primary flex items-center gap-1'>
                               <Lightbulb className='w-3 h-3 text-primary' />
                               Next Practice Actions
@@ -383,7 +383,7 @@ export function PracticeHistory({
                         )}
 
                         {res.score_basis && res.score_basis.length > 0 && (
-                          <div className='bg-background-secondary/50 border border-border/70 rounded-lg p-3 space-y-2'>
+                          <div className='bg-background-secondary/50 border border-transparent rounded-lg p-3 space-y-2'>
                             <div className='font-bold text-[10px] uppercase text-ink-primary flex items-center gap-1.5'>
                               <ClipboardList className='w-3.5 h-3.5 text-primary' />
                               Why This Score

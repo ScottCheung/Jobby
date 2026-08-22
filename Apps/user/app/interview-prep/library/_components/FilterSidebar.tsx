@@ -347,7 +347,7 @@ export function FilterSidebar({
       {/* Collections Section */}
       <div
         className={cn(
-          'flex flex-col gap-1 w-full pt-4 border-t border-border/40',
+          'flex flex-col gap-1 w-full pt-4 border-t border-primary/40',
           isSidebarCollapsed && 'items-center',
         )}
       >
@@ -436,7 +436,7 @@ export function FilterSidebar({
       {/* Tags Section
       <div
         className={cn(
-          'flex flex-col gap-1 pt-4 border-t border-border/40 w-full',
+          'flex flex-col gap-1 pt-4 border-t border-primary/40 w-full',
           isSidebarCollapsed && 'items-center',
         )}
       >

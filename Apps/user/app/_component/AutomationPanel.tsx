@@ -197,7 +197,7 @@ export default function AutomationPanel() {
         {isAnyBotActive && (
           <span className='absolute -top-1 -right-1 flex h-4 w-4 pointer-events-none'>
             <span className='animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75'></span>
-            <span className='relative inline-flex rounded-full h-4 w-4 bg-green-500 border-2 border-white dark:border-border'></span>
+            <span className='relative inline-flex rounded-full h-4 w-4 bg-green-500 border-2 border-white dark:border-primary'></span>
           </span>
         )}
         <Bot
@@ -245,7 +245,8 @@ export default function AutomationPanel() {
               const isStarting = status === 'starting';
               const isWaiting = status === 'waiting';
               const isStopping = status === 'stopping';
-              const isActive = isRunning || isStarting || isWaiting || isStopping;
+              const isActive =
+                isRunning || isStarting || isWaiting || isStopping;
               const stats = state.stats || {
                 submitted: 0,
                 skipped: 0,
@@ -263,7 +264,7 @@ export default function AutomationPanel() {
                   className={cn(
                     'group/btn w-72 h-20 rounded-2xl flex items-center justify-between p-3.5 border transition-all duration-300 relative overflow-hidden backdrop-blur-xl shadow-xl',
                     isLocked ?
-                      'bg-background-secondary/50 border-border/40 opacity-70 cursor-not-allowed'
+                      'bg-background-secondary/50 border-primary/40 opacity-70 cursor-not-allowed'
                     : isRunning ?
                       'bg-emerald-500/5 dark:bg-emerald-500/10 border-emerald-500/30 dark:border-emerald-500/20 shadow-emerald-500/5 cursor-pointer hover:border-emerald-500/50 hover:bg-emerald-500/10'
                     : isStarting || isStopping ?
@@ -271,7 +272,7 @@ export default function AutomationPanel() {
                     : isWaiting ?
                       'bg-amber-500/5 dark:bg-amber-500/10 border-amber-500/30 dark:border-amber-500/20 shadow-amber-500/5 cursor-pointer hover:border-amber-500/50 hover:bg-amber-500/10'
                     : cn(
-                        'bg-white/90 dark:bg-[#0f1219]/90 border-border/60 cursor-pointer',
+                        'bg-white/90 dark:bg-[#0f1219]/90 border-primary/60 cursor-pointer',
                         platform.brandHoverClass,
                         platform.brandShadowClass,
                       ),
@@ -283,7 +284,7 @@ export default function AutomationPanel() {
                 >
                   {/* Left Side: Logo */}
                   <div className='flex items-center gap-3 min-w-0'>
-                    <div className='w-11 h-11 rounded-xl bg-white border border-border/50 flex items-center justify-center shadow-sm shrink-0'>
+                    <div className='w-11 h-11 rounded-xl bg-white border border-primary/50 flex items-center justify-center shadow-sm shrink-0'>
                       {platform.icon}
                     </div>
 
@@ -359,7 +360,7 @@ export default function AutomationPanel() {
                   </div>
 
                   {/* Right Side: Stats Panel */}
-                  <div className='flex flex-col items-end text-[10px] font-bold font-mono bg-background-secondary/60 border border-border/40 rounded-xl px-2 py-1 select-none leading-tight shrink-0 gap-0.5 min-w-[52px]'>
+                  <div className='flex flex-col items-end text-[10px] font-bold font-mono bg-background-secondary/60 border border-primary/40 rounded-xl px-2 py-1 select-none leading-tight shrink-0 gap-0.5 min-w-[52px]'>
                     <span className='text-emerald-600 dark:text-emerald-400 flex items-center justify-end gap-1'>
                       {stats.submitted}{' '}
                       <span className='text-[8px] font-sans'>✔</span>

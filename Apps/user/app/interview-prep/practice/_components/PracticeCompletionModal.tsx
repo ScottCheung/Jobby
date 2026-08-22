@@ -1,3 +1,5 @@
+/** @format */
+
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -42,8 +44,9 @@ export function PracticeCompletionModal({
 }) {
   const { profile, updateProfileExtra } = useConsole();
   const quickRatingLocked =
-    (profile.extra_data?.practiceQuickRatingLocked as Record<string, true> | undefined) ??
-    {};
+    (profile.extra_data?.practiceQuickRatingLocked as
+      | Record<string, true>
+      | undefined) ?? {};
   const surveyLocked = useMemo(
     () => isOpen && Boolean(quickRatingLocked[questionId]),
     [isOpen, questionId, quickRatingLocked],
@@ -115,7 +118,10 @@ export function PracticeCompletionModal({
         showGlobalToast('Could not save rating.');
       }
     } finally {
-      pendingSaveCountRef.current = Math.max(0, pendingSaveCountRef.current - 1);
+      pendingSaveCountRef.current = Math.max(
+        0,
+        pendingSaveCountRef.current - 1,
+      );
       if (pendingSaveCountRef.current === 0) {
         setIsSaving(false);
       }
@@ -199,7 +205,7 @@ export function PracticeCompletionModal({
         </div>
 
         {!surveyLocked && (
-          <div className='mt-5 border-t border-border/60 pt-5'>
+          <div className='mt-5 border-t border-primary/60 pt-5'>
             <div className='flex items-center justify-between'>
               <p className='text-sm font-semibold text-ink-primary'>
                 Quick rating
@@ -227,9 +233,9 @@ export function PracticeCompletionModal({
                         onClick={() => handlePriorityPick(option.value)}
                         className={cn(
                           'flex cursor-pointer flex-col items-center rounded-2xl border p-3 text-center transition-all',
-                          active
-                            ? 'border-primary bg-primary/10 text-primary'
-                            : 'border-border bg-background-secondary/40 text-ink-secondary hover:border-primary/30 hover:text-ink-primary',
+                          active ?
+                            'border-primary bg-primary/10 text-primary'
+                          : 'border-primary bg-background-secondary/40 text-ink-secondary hover:border-primary/30 hover:text-ink-primary',
                         )}
                       >
                         <div className='flex items-center gap-0.5'>
@@ -238,11 +244,10 @@ export function PracticeCompletionModal({
                               key={index}
                               className={cn(
                                 'h-4 w-4 transition-colors',
-                                index < option.value
-                                  ? active
-                                    ? 'fill-primary text-primary'
-                                    : 'fill-amber-400 text-amber-400'
-                                  : 'text-border',
+                                index < option.value ?
+                                  active ? 'fill-primary text-primary'
+                                  : 'fill-amber-400 text-amber-400'
+                                : 'text-border',
                               )}
                             />
                           ))}
@@ -273,9 +278,9 @@ export function PracticeCompletionModal({
                         onClick={() => handleDifficultyPick(option.value)}
                         className={cn(
                           'rounded-2xl border p-3 text-left transition-all',
-                          active
-                            ? 'border-primary bg-primary/10 text-primary'
-                            : 'border-border bg-background-secondary/40 text-ink-secondary hover:border-primary/30 hover:text-ink-primary',
+                          active ?
+                            'border-primary bg-primary/10 text-primary'
+                          : 'border-primary bg-background-secondary/40 text-ink-secondary hover:border-primary/30 hover:text-ink-primary',
                         )}
                       >
                         <p className='text-sm font-semibold'>{option.label}</p>
@@ -298,7 +303,7 @@ export function PracticeCompletionModal({
           <button
             type='button'
             onClick={handleRedo}
-            className='flex cursor-pointer flex-col items-center gap-1 rounded-xl border border-border p-3 text-xs font-semibold text-ink-secondary hover:text-primary'
+            className='flex cursor-pointer flex-col items-center gap-1 rounded-xl border border-primary p-3 text-xs font-semibold text-ink-secondary hover:text-primary'
           >
             <RotateCcw className='h-4 w-4' />
             Redo

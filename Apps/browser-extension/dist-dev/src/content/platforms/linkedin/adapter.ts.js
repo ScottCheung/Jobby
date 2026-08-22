@@ -11,6 +11,9 @@ const SELECTORS = {
     "main h1 a[href*='/jobs/view/']",
     "main h1",
     "h1.t-24",
+    "h1[class*='job-title']",
+    "h1[class*='topcard']",
+    "h1",
     ".jobs-details__main-content p",
     "[data-display-contents='true'] p",
     "[data-display-contents='true']"
@@ -20,15 +23,23 @@ const SELECTORS = {
     ".job-details-jobs-unified-top-card__company-name",
     ".jobs-unified-top-card__company-name a",
     ".jobs-unified-top-card__company-name",
+    "[class*='company-name'] a",
+    "[class*='company-name']",
+    "[class*='employer-name']",
     "a[href*='/company/']",
-    "[aria-label^='Company,']"
+    "[aria-label^='Company,']",
+    "[data-tracking-control-name*='company']"
   ],
   location: [
     ".job-details-jobs-unified-top-card__primary-description-container",
     ".jobs-unified-top-card__primary-description-container",
-    ".job-details-jobs-unified-top-card__bullet"
+    ".job-details-jobs-unified-top-card__bullet",
+    "[class*='job-details'] [class*='primary-description']",
+    "[class*='job-details'] [class*='location']",
+    "[class*='topcard'] [class*='location']"
   ],
   description: [
+    "#job-details",
     ".jobs-description__content .jobs-box__html-content",
     ".jobs-description__container .jobs-box__html-content",
     ".jobs-description__container .jobs-description-content__text",
@@ -38,7 +49,9 @@ const SELECTORS = {
     ".jobs-description__content",
     "[data-test-id='job-details-description']",
     "[data-testid='job-details-description']",
-    "[data-testid='expandable-text-box']"
+    "[data-testid='expandable-text-box']",
+    "[class*='job-details__description']",
+    "[class*='jobs-box__html-content']"
   ],
   easyApply: [
     "button.jobs-apply-button",
@@ -147,13 +160,46 @@ function cleanText(value) {
 export function canonicalLinkedInJobUrl(jobId) {
   return `https://www.linkedin.com/jobs/view/${jobId}/`;
 }
+const NOISY_ELEMENT_TAGS = /* @__PURE__ */ new Set([
+  "BUTTON",
+  "SCRIPT",
+  "STYLE",
+  "SVG",
+  "NOSCRIPT"
+]);
+function extractNodeText(node) {
+  if (node.nodeType === Node.TEXT_NODE) {
+    return node.textContent || "";
+  }
+  if (node.nodeType !== Node.ELEMENT_NODE) {
+    return "";
+  }
+  const el = node;
+  if (NOISY_ELEMENT_TAGS.has(el.tagName)) {
+    return "";
+  }
+  if (el.getAttribute("role") === "img") {
+    return "";
+  }
+  if (el.tagName === "A" && el.getAttribute("aria-label")?.includes("Verified")) {
+    return "";
+  }
+  const className = typeof el.className === "string" ? el.className.toLowerCase() : "";
+  if (className.includes("visually-hidden") || className.includes("sr-only")) {
+    return "";
+  }
+  let text = "";
+  for (let child = el.firstChild; child; child = child.nextSibling) {
+    text += extractNodeText(child);
+  }
+  return text;
+}
 function extractCleanElementText(element) {
-  const clone = element.cloneNode(true);
-  const noisyNodes = clone.querySelectorAll(
-    "button, script, style, svg, [role='img'], a[aria-label*='Verified'], .visually-hidden, .sr-only, [aria-hidden='true']"
-  );
-  noisyNodes.forEach((node) => node.remove());
-  const rawText = cleanText(clone.textContent);
+  if (!element) return "";
+  let rawText = cleanText(extractNodeText(element));
+  if (!rawText) {
+    rawText = cleanText(element.textContent);
+  }
   return rawText.replace(
     /\b(?:show\s+(?:all|more|less)|see\s+(?:all|more)|view\s+(?:all|more)|read\s+more)\b/gi,
     ""
@@ -161,8 +207,12 @@ function extractCleanElementText(element) {
 }
 function isVisible(element) {
   const style = window.getComputedStyle(element);
+  if (style.display === "none" || style.visibility === "hidden") return false;
   const rect = element.getBoundingClientRect();
-  return style.display !== "none" && style.visibility !== "hidden" && rect.width > 0 && rect.height > 0;
+  if (rect.width === 0 && rect.height === 0) {
+    return true;
+  }
+  return rect.width > 0 && rect.height > 0;
 }
 function isEnabled(element) {
   return !(element instanceof HTMLButtonElement && element.disabled) && element.getAttribute("aria-disabled") !== "true";
@@ -429,11 +479,26 @@ export class LinkedInAdapter {
     const match = url.match(/\/jobs\/view\/(\d+)/i);
     if (match?.[1]) return match[1];
     try {
-      const currentJobId = new URL(url).searchParams.get("currentJobId");
-      return currentJobId && /^\d+$/.test(currentJobId) ? currentJobId : "";
+      const parsed = new URL(url);
+      const currentJobId = parsed.searchParams.get("currentJobId") || parsed.searchParams.get("jobId");
+      if (currentJobId && /^\d+$/.test(currentJobId)) return currentJobId;
     } catch {
-      return "";
     }
+    const selectedEl = document.querySelector(
+      ".jobs-search-results-list__list-item--active [data-job-id], .jobs-search-results-list__list-item--active [data-occludable-job-id], .job-card-container--clickable[data-job-id], [data-occludable-job-id], [data-job-id], [data-current-job-id]"
+    );
+    if (selectedEl) {
+      const domJobId = selectedEl.getAttribute("data-job-id") || selectedEl.getAttribute("data-occludable-job-id") || selectedEl.getAttribute("data-current-job-id");
+      if (domJobId && /^\d+$/.test(domJobId)) return domJobId;
+    }
+    const detailPanelLink = document.querySelector(
+      ".jobs-search__job-details a[href*='/jobs/view/'], .job-details-jobs-unified-top-card a[href*='/jobs/view/'], main a[href*='/jobs/view/']"
+    );
+    if (detailPanelLink) {
+      const linkMatch = (detailPanelLink.getAttribute("href") || "").match(/\/jobs\/view\/(\d+)/i);
+      if (linkMatch?.[1]) return linkMatch[1];
+    }
+    return "";
   }
   isJobPageUrl(url) {
     return Boolean(this.jobIdFromUrl(url));
@@ -462,6 +527,14 @@ export class LinkedInAdapter {
     };
   }
   getApplicationRoot() {
+    const headingRoot = this.findApplicationRootFromHeading();
+    if (headingRoot) {
+      if (this.applicationRootCache !== headingRoot) {
+        this.applicationActionCache.clear();
+      }
+      this.applicationRootCache = headingRoot;
+      return headingRoot;
+    }
     if (this.applicationRootCache && this.applicationRootCache.isConnected && isVisible(this.applicationRootCache)) {
       return this.applicationRootCache;
     }
@@ -481,7 +554,7 @@ export class LinkedInAdapter {
       this.applicationRootCache = modalRoot;
       return modalRoot;
     }
-    this.applicationRootCache = this.findApplicationRootFromHeading() || this.findFullPageApplicationRoot();
+    this.applicationRootCache = this.findFullPageApplicationRoot();
     return this.applicationRootCache;
   }
   invalidateApplicationRootCache() {
@@ -799,6 +872,12 @@ export class LinkedInAdapter {
       return /^apply\s+to\s+.+/i.test(text) || /^申请(?:职位|工作)?\s*.+/.test(text);
     });
     if (!heading) return null;
+    const semanticModal = heading.closest(
+      '[role="dialog"], [aria-modal="true"], .jobs-easy-apply-modal, .artdeco-modal, [data-test-modal], [data-test-modal-container]'
+    );
+    if (semanticModal && isVisible(semanticModal) && !this.hasHiddenModalAncestor(semanticModal) && this.hasVisibleApplicationField(semanticModal) && this.hasApplicationAction(semanticModal)) {
+      return semanticModal;
+    }
     let candidate = heading;
     for (let depth = 0; candidate && depth < 9; depth += 1) {
       if (isVisible(candidate) && this.hasVisibleApplicationField(candidate) && this.hasApplicationAction(candidate)) {

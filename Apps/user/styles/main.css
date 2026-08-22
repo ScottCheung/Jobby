@@ -17,17 +17,9 @@
 @import './customize/text.css';
 @import './customize/components.css';
 @import './customize/button.css';
+@import './customize/scrollbar.css';
 
 @layer utilities;
-
-@utility custom-scrollbar {
-  scrollbar-width: auto;
-  scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
-
-  .dark & {
-    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
-  }
-}
 
 .animate-text-shimmer {
   color: transparent;
@@ -72,8 +64,4 @@
     0 0 40px 0px color-mix(in srgb, var(--primary) 40%, transparent),
     0 0 80px -10px color-mix(in srgb, oklch(0.65 0.2 300) 30%, transparent),
     0 0 120px -20px color-mix(in srgb, oklch(0.6 0.18 250) 20%, transparent);
-}
-
-.scrollbar-hide::-webkit-scrollbar {
-  display: none;
 }

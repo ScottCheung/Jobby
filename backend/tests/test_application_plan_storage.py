@@ -161,6 +161,37 @@ def test_plan_reevaluation_updates_candidate_posted_date_when_present() -> None:
     assert existing.date_posted == "14 hours ago"
 
 
+def test_existing_rejected_plan_is_returned_without_a_server_error() -> None:
+    rejected_plan = reject_review(
+        mark_prepared(begin_preparation(make_plan())),
+        "User rejected this application",
+    )
+    existing = SimpleNamespace(
+        id="application-42",
+        raw_data={"application_plan": plan_to_dict(rejected_plan)},
+    )
+    db = MagicMock()
+    db.scalar.side_effect = [None, None, existing]
+    payload = ApplicationPlanCreateRequest(
+        candidate={
+            "platform": "linkedin",
+            "external_id": "job-42",
+            "title": "Engineer",
+            "company": "Example Co",
+        },
+    )
+
+    with patch.object(main, "_application_plan_response", return_value={"ok": True}) as response:
+        result = main.create_application_plan_endpoint(
+            payload,
+            db=db,
+            current_user=SimpleNamespace(id="user-1"),
+        )
+
+    assert result == {"ok": True}
+    response.assert_called_once_with(existing, rejected_plan)
+
+
 def test_form_instructions_omit_unavailable_optional_field_identifiers() -> None:
     target = ApplicationFormFieldInput(
         key="email",

@@ -56,7 +56,7 @@ export function NewForYouSection({
               onClick={onRefresh}
               disabled={!canRefresh}
               aria-label='Show more new questions'
-              className='inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-background-secondary text-ink-secondary transition-colors hover:border-primary/50 hover:text-primary disabled:cursor-not-allowed disabled:opacity-35'
+              className='inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-primary bg-background-secondary text-ink-secondary transition-colors hover:border-primary/50 hover:text-primary disabled:cursor-not-allowed disabled:opacity-35'
               title='Show more new questions'
             >
               <RefreshCw
@@ -65,20 +65,23 @@ export function NewForYouSection({
             </button>
           </div>
 
-          {isLoading ? (
+          {isLoading ?
             <div className='grid grid-flow-col auto-cols-[280px] gap-4 overflow-hidden sm:auto-cols-[320px] lg:auto-cols-[300px]'>
               {Array.from({ length: 4 }, (_, index) => (
                 <QuestionCardSkeleton key={index} compact />
               ))}
             </div>
-          ) : questions.length > 0 ? (
+          : questions.length > 0 ?
             <ScrollableContainer itemClassName='lg:w-[300px]'>
               {questions.map((question) => (
                 <QuestionRecommendationCard
                   key={question.id}
                   question={question}
                   compact
-                  activityBadge={getQuestionActivityBadge(question, lastLoginAt)}
+                  activityBadge={getQuestionActivityBadge(
+                    question,
+                    lastLoginAt,
+                  )}
                   isSaving={activeId === question.id}
                   onSave={onSaveQuestion}
                   onPractice={onPracticeQuestion}
@@ -87,12 +90,10 @@ export function NewForYouSection({
                 />
               ))}
             </ScrollableContainer>
-          ) : (
-            <div className='rounded-xl border border-dashed border-border/60 bg-background/30 px-4 py-6 text-sm text-ink-secondary'>
+          : <div className='rounded-xl border border-dashed border-primary/60 bg-background/30 px-4 py-6 text-sm text-ink-secondary'>
               No new questions since your last visit.
             </div>
-          )}
-
+          }
         </div>
       </CardWithNorth>
     </section>

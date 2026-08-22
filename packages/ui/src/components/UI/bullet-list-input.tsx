@@ -106,8 +106,8 @@ function ReorderableBulletItem({
       }}
       style={{ transition: 'none' }}
       className={cn(
-        'group flex items-start gap-2 rounded-xl border border-border/80 bg-panel p-2 relative select-none',
-        !disabled && 'hover:border-border',
+        'group flex items-start gap-2 rounded-xl bg-panel shadow-xs p-2 relative select-none',
+        !disabled && 'hover:bg-panel/90',
       )}
     >
       <div className='flex flex-col items-center gap-1 shrink-0 select-none pt-1'>
@@ -231,7 +231,7 @@ export function BulletListInput({
   return (
     <div
       className={cn(
-        'border border-border bg-background-secondary p-2.5 rounded-xl space-y-2',
+        'bg-background-secondary p-2.5 rounded-xl space-y-2',
         className,
       )}
     >
@@ -268,7 +268,7 @@ export function BulletListInput({
                 handleAdd();
               }
             }}
-            className='bg-panel border border-border rounded-xl pr-11 py-2 px-3.5'
+            className='bg-panel shadow-2xs rounded-xl pr-11 py-2 px-3.5'
           />
           <Button
             variant='icon'

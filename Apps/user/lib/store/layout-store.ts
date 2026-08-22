@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { ReactNode } from 'react';
+import { showToast, removeToast } from '@jobby/ui';
 import type {
   CelebrationEventKey,
   CelebrationStyleConfig,
@@ -60,17 +61,21 @@ export const useLayoutStore = create<LayoutState>()((set) => ({
   actions: {
     toggleSidebar: () =>
       set((state) => ({ isSidebarCollapsed: !state.isSidebarCollapsed })),
-    addNotification: (notification) =>
+    addNotification: (notification) => {
+      showToast(notification);
       set(() => ({
         notification: {
           ...notification,
           id: Math.random().toString(36).substring(7),
         },
-      })),
-    removeNotification: (id) =>
+      }));
+    },
+    removeNotification: (id) => {
+      removeToast(id);
       set((state) => ({
         notification: state.notification?.id === id ? null : state.notification,
-      })),
+      }));
+    },
     triggerCelebration: (celebration) =>
       set(() => ({
         celebration: {

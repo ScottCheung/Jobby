@@ -2,12 +2,12 @@
 
 'use client';
 
-import { useLayoutStore } from '@/lib/store/layout-store';
-
-export function showGlobalToast(message: string, duration = 4000) {
-  useLayoutStore.getState().actions.addNotification({
-    type: 'info',
-    message,
-    duration,
-  });
-}
+export {
+  showGlobalToast,
+  showToast,
+  removeToast,
+  notify,
+  useToast,
+  type ToastItem,
+  type ToastType,
+} from '@jobby/ui';

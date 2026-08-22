@@ -1,3 +1,5 @@
+/** @format */
+
 'use client';
 /** @format */
 
@@ -34,18 +36,13 @@ export const LabelWithHelp: React.FC<LabelWithHelpProps> = ({
 
   return (
     <div className={cn('col', className)}>
-      <div className='row'>
-        <label className='label'>
+      <div className='flex items-center gap-1.5'>
+        <label className='text-xs font-semibold text-ink-primary select-none'>
           {label}
-          {required && <span className='text-red-500 ml-1'>*</span>}
+          {required && <span className='text-rose-500 font-bold ml-0.5'>*</span>}
         </label>
-        {required && (
-          <span className='rounded-sm bg-red-500/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-red-500'>
-            Required
-          </span>
-        )}
-        {!required && optional && (
-          <span className='rounded-sm bg-background-secondary px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-ink-secondary'>
+        {optional && (
+          <span className='rounded-sm bg-background-secondary px-1 py-0.2 text-[8px] font-semibold uppercase tracking-wide text-ink-secondary'>
             Optional
           </span>
         )}

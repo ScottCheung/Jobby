@@ -202,7 +202,7 @@ export function PlanSetupSection({
                   {template.description}
                 </p>
               </div>
-              <div className='body-sm mt-auto pt-3 border-t border-border/40 transition-colors flex flex-col gap-1.5'>
+              <div className='body-sm mt-auto pt-3 border-t border-primary/40 transition-colors flex flex-col gap-1.5'>
                 <div className='flex justify-between text-ink-secondary/80'>
                   <span>Daily Base Pace:</span>
                   <span className='font-semibold text-ink-primary'>
@@ -222,7 +222,7 @@ export function PlanSetupSection({
                     ~{avgTotalTasksPerDay} Qs / day
                   </span>
                 </div>
-                <div className='flex justify-between items-center text-[10px] text-ink-secondary/50 pt-1 border-t border-dashed border-border/40 mt-0.5'>
+                <div className='flex justify-between items-center text-[10px] text-ink-secondary/50 pt-1 border-t border-dashed border-primary/40 mt-0.5'>
                   <span>{template.strategyLabel}</span>
                   <span>incl. reviews</span>
                 </div>

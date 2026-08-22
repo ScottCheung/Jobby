@@ -35,11 +35,33 @@ function respond(requestId, payload) {
     })
   );
 }
-document.addEventListener(REQUEST_EVENT, (event) => {
+window.__jobbyMainWorldBridge?.dispose();
+const onBridgeRequest = (event) => {
   if (!(event instanceof CustomEvent)) return;
   const request = event.detail;
-  if (typeof request.requestId !== "string" || typeof request.elementId !== "string") return;
+  if (typeof request.requestId !== "string") return;
   const requestId = request.requestId;
+  if (request.action === "create-pdf-blob-url") {
+    if (typeof request.dataUrl !== "string") {
+      respond(requestId, { ok: false });
+      return;
+    }
+    try {
+      const base64 = request.dataUrl.split(",")[1] || request.dataUrl;
+      const bytes = atob(base64);
+      const buffer = new Uint8Array(bytes.length);
+      for (let index = 0; index < bytes.length; index += 1)
+        buffer[index] = bytes.charCodeAt(index);
+      respond(requestId, {
+        ok: true,
+        blobUrl: URL.createObjectURL(new Blob([buffer], { type: "application/pdf" }))
+      });
+    } catch {
+      respond(requestId, { ok: false });
+    }
+    return;
+  }
+  if (typeof request.elementId !== "string") return;
   const element = document.getElementById(request.elementId);
   if (!(element instanceof HTMLInputElement) || element.getAttribute("role") !== "combobox") {
     respond(requestId, { ok: false });
@@ -83,53 +105,45 @@ document.addEventListener(REQUEST_EVENT, (event) => {
       currentValue
     });
   }, 0);
-});
-const CASCADE_EVENT = "jobby.network-cascade-complete";
-(function setupNetworkCascadeInterception() {
+};
+document.addEventListener(REQUEST_EVENT, onBridgeRequest);
+const hostname = window.location.hostname.toLowerCase();
+const shouldTrackSpaNavigation = window.top === window && (hostname === "linkedin.com" || hostname.endsWith(".linkedin.com") || hostname === "seek.com" || hostname.endsWith(".seek.com") || hostname === "seek.com.au" || hostname.endsWith(".seek.com.au") || hostname === "indeed.com" || hostname.endsWith(".indeed.com"));
+const rawPushState = shouldTrackSpaNavigation ? window.history.pushState : void 0;
+const rawReplaceState = shouldTrackSpaNavigation ? window.history.replaceState : void 0;
+const dispatchUrlChanged = () => {
   try {
-    const rawFetch = window.fetch;
-    if (typeof rawFetch === "function") {
-      window.fetch = async function(...args) {
-        const response = await rawFetch.apply(this, args);
-        try {
-          if (response && (response.ok || response.status >= 200 && response.status < 300)) {
-            const url = typeof args[0] === "string" ? args[0] : args[0] instanceof Request ? args[0].url : "";
-            document.dispatchEvent(
-              new CustomEvent(CASCADE_EVENT, {
-                detail: { url, status: response.status, timestamp: Date.now() }
-              })
-            );
-          }
-        } catch {
-        }
-        return response;
-      };
-    }
-    const RawXHR = window.XMLHttpRequest;
-    if (RawXHR && RawXHR.prototype) {
-      const rawOpen = RawXHR.prototype.open;
-      const rawSend = RawXHR.prototype.send;
-      RawXHR.prototype.open = function(method, url, ...rest) {
-        this._jobbyUrl = String(url);
-        return rawOpen.apply(this, [method, url, ...rest]);
-      };
-      RawXHR.prototype.send = function(...args) {
-        this.addEventListener("load", () => {
-          try {
-            if (this.status >= 200 && this.status < 300) {
-              const url = this._jobbyUrl || "";
-              document.dispatchEvent(
-                new CustomEvent(CASCADE_EVENT, {
-                  detail: { url, status: this.status, timestamp: Date.now() }
-                })
-              );
-            }
-          } catch {
-          }
-        });
-        return rawSend.apply(this, args);
-      };
-    }
+    document.dispatchEvent(new CustomEvent("jobby.url-changed", { detail: { url: window.location.href } }));
   } catch {
   }
-})();
+};
+const onPopState = () => dispatchUrlChanged();
+let patchedPushState;
+let patchedReplaceState;
+if (rawPushState && rawReplaceState) {
+  patchedPushState = function(...args) {
+    const result = rawPushState.apply(this, args);
+    dispatchUrlChanged();
+    return result;
+  };
+  patchedReplaceState = function(...args) {
+    const result = rawReplaceState.apply(this, args);
+    dispatchUrlChanged();
+    return result;
+  };
+  window.history.pushState = patchedPushState;
+  window.history.replaceState = patchedReplaceState;
+  window.addEventListener("popstate", onPopState);
+}
+window.__jobbyMainWorldBridge = {
+  dispose: () => {
+    document.removeEventListener(REQUEST_EVENT, onBridgeRequest);
+    if (rawPushState && patchedPushState && window.history.pushState === patchedPushState) {
+      window.history.pushState = rawPushState;
+    }
+    if (rawReplaceState && patchedReplaceState && window.history.replaceState === patchedReplaceState) {
+      window.history.replaceState = rawReplaceState;
+    }
+    window.removeEventListener("popstate", onPopState);
+  }
+};

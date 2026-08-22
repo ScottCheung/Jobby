@@ -113,6 +113,7 @@ from services.shared.autofill_profile import (
     transformed_core_value,
     upsert_core_profile_value,
 )
+from services.shared.autofill_memory import fallback_mapping_scenes, platform_mapping_scene
 from services.shared.storage import StorageError, get_object_storage
 from services.shared.application_settings import (
     application_settings_from_storage,
@@ -1980,6 +1981,8 @@ def tailored_resume_response(resume: TailoredResume) -> dict:
     result = TailoredResumeRead.model_validate(resume).model_dump(mode="json")
     if not result.get("core_competencies"):
         result["core_competencies"] = result.get("key_qualifications") or []
+    if (resume.raw_ai_response or {}).get("cover_letter"):
+        result["cover_letter"] = resume.raw_ai_response["cover_letter"]
     return result
 
 
@@ -2011,6 +2014,49 @@ def read_tailored_resume(
     return tailored_resume
 
 
+@app.put("/api/tailored-resumes/{tailored_resume_id}", response_model=TailoredResumeRead)
+def update_tailored_resume(
+    tailored_resume_id: UUID,
+    payload: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_or_create_current_user),
+) -> TailoredResume:
+    tailored = db.get(TailoredResume, tailored_resume_id)
+    if not tailored or tailored.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Tailored resume not found")
+    if "resume_data" in payload and isinstance(payload["resume_data"], dict):
+        tailored.resume_data = payload["resume_data"]
+    if "core_competencies" in payload and isinstance(payload["core_competencies"], list):
+        tailored.core_competencies = payload["core_competencies"]
+    if "key_qualifications" in payload and isinstance(payload["key_qualifications"], list):
+        tailored.key_qualifications = payload["key_qualifications"]
+    if "targeted_projects" in payload and isinstance(payload["targeted_projects"], list):
+        tailored.targeted_projects = payload["targeted_projects"]
+    if "job_title" in payload and payload["job_title"] is not None:
+        tailored.job_title = str(payload["job_title"])
+    if "company" in payload and payload["company"] is not None:
+        tailored.company = str(payload["company"])
+    tailored.updated_at = utc_now()
+    db.commit()
+    db.refresh(tailored)
+    return tailored
+
+
+@app.delete("/api/tailored-resumes/{tailored_resume_id}")
+def delete_tailored_resume(
+    tailored_resume_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_or_create_current_user),
+) -> dict:
+    tailored = db.get(TailoredResume, tailored_resume_id)
+    if not tailored or tailored.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Tailored resume not found")
+    db.delete(tailored)
+    db.commit()
+    return {"success": True, "id": str(tailored_resume_id)}
+
+
+
 @app.post("/api/job-review/preview")
 def preview_job_review(
     payload: dict,
@@ -2020,9 +2066,10 @@ def preview_job_review(
     description = str(payload.get("job_description") or "").strip()
     if not description:
         raise HTTPException(status_code=400, detail="A job description is required")
+    doc_type = str(payload.get("doc_type") or "resume").strip().lower()
     resume = _default_career_profile_resume(db, current_user)
     job = {"job_description": description}
-    return {"messages": build_tailor_messages(job, resume)}
+    return {"messages": build_tailor_messages(job, resume, doc_type=doc_type)}
 
 
 @app.post("/api/job-review")
@@ -2037,6 +2084,7 @@ def review_job_from_jd(
         raise HTTPException(status_code=400, detail="A job description is required")
     career_profile = _default_career_profile(db, current_user)
     profile_resume = dict((career_profile.extra_data or {}).get("resume_data") or {})
+    doc_type = str(payload.get("doc_type") or "resume").strip().lower()
     try:
         job = {
             "job_description": description,
@@ -2044,7 +2092,8 @@ def review_job_from_jd(
             "company": str(payload.get("company") or "").strip() or None,
             "date_posted": str(payload.get("date_posted") or "").strip() or None,
         }
-        result = review_job(job, profile_resume)
+        mock = bool(payload.get("mock"))
+        result = review_job(job, profile_resume, doc_type=doc_type, mock=mock)
     except DeepSeekError as exc:
         logger.exception("Job review failed for pasted JD")
         raise HTTPException(
@@ -2054,36 +2103,86 @@ def review_job_from_jd(
     except Exception as exc:
         logger.exception("Job review failed for pasted JD")
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
-    application = JobApplication(
-        user_id=current_user.id,
-        title=job["title"],
-        company=job["company"],
-        job_description=description,
-        date_posted=job["date_posted"],
-        status="draft",
-        raw_data={"pipeline_stage": "draft", "created_from": "job_review"},
+    # A resume and a cover letter are two documents for one job, not two
+    # independent "recent tailor" versions. Reuse the existing record when the
+    # same captured job is tailored again, preserving the other document.
+    def _job_key(value: str | None) -> str:
+        return " ".join((value or "").casefold().split())
+
+    existing_records = db.scalars(
+        select(TailoredResume)
+        .where(TailoredResume.user_id == current_user.id)
+        .order_by(TailoredResume.updated_at.desc())
+    ).all()
+    tailored_resume = next(
+        (
+            record
+            for record in existing_records
+            if _job_key(record.job_title) == _job_key(job["title"])
+            and _job_key(record.company) == _job_key(job["company"])
+            and _job_key(record.job_description) == _job_key(description)
+        ),
+        None,
     )
-    db.add(application)
-    db.flush()
-    tailored_resume = TailoredResume(
-        user_id=current_user.id,
-        career_profile_id=career_profile.id,
-        job_application_id=application.id,
-        job_title=job["title"],
-        company=job["company"],
-        job_description=description,
-        source_resume_data=profile_resume,
-        resume_data=result.get("resume_data") or {},
-        raw_ai_response=result.get("raw_ai_response") or {},
-        core_competencies=result.get("core_competencies") or result.get("key_qualifications") or [],
-        key_qualifications=result.get("key_qualifications") or [],
-        targeted_projects=result.get("targeted_projects") or [],
-    )
-    db.add(tailored_resume)
+
+    if tailored_resume is None:
+        application = JobApplication(
+            user_id=current_user.id,
+            title=job["title"],
+            company=job["company"],
+            job_description=description,
+            date_posted=job["date_posted"],
+            status="draft",
+            raw_data={"pipeline_stage": "draft", "created_from": "job_review"},
+        )
+        db.add(application)
+        db.flush()
+        tailored_resume = TailoredResume(
+            user_id=current_user.id,
+            career_profile_id=career_profile.id,
+            job_application_id=application.id,
+            job_title=job["title"],
+            company=job["company"],
+            job_description=description,
+            source_resume_data=profile_resume,
+            resume_data=result.get("resume_data") or {},
+            raw_ai_response={},
+            core_competencies=result.get("core_competencies") or result.get("key_qualifications") or [],
+            key_qualifications=result.get("key_qualifications") or [],
+            targeted_projects=result.get("targeted_projects") or [],
+        )
+        db.add(tailored_resume)
+    elif doc_type != "cover_letter":
+        tailored_resume.resume_data = result.get("resume_data") or tailored_resume.resume_data
+        tailored_resume.core_competencies = result.get("core_competencies") or result.get("key_qualifications") or []
+        tailored_resume.key_qualifications = result.get("key_qualifications") or []
+        tailored_resume.targeted_projects = result.get("targeted_projects") or []
+
+    raw_ai_resp = dict(result.get("raw_ai_response") or {})
+    previous_raw_ai_resp = dict(tailored_resume.raw_ai_response or {})
+    if previous_raw_ai_resp.get("cover_letter") and not result.get("cover_letter"):
+        raw_ai_resp["cover_letter"] = previous_raw_ai_resp["cover_letter"]
+    if result.get("cover_letter"):
+        raw_ai_resp["cover_letter"] = result.get("cover_letter")
+    generated_documents = dict(previous_raw_ai_resp.get("generated_documents") or {})
+    if doc_type in {"resume", "both"}:
+        generated_documents["resume"] = True
+    if doc_type in {"cover_letter", "both"}:
+        generated_documents["cover_letter"] = True
+    raw_ai_resp["generated_documents"] = generated_documents
+    tailored_resume.raw_ai_response = raw_ai_resp
     db.commit()
     db.refresh(tailored_resume)
-    result["tailored_resume"] = tailored_resume_response(tailored_resume)
+    tailored_dict = tailored_resume_response(tailored_resume)
+    # Return the combined document set as well, so the client preview remains
+    # complete when Resume and Cover Letter were generated in separate runs.
+    combined_cover_letter = raw_ai_resp.get("cover_letter")
+    if combined_cover_letter:
+        tailored_dict["cover_letter"] = combined_cover_letter
+        result["cover_letter"] = combined_cover_letter
+    result["tailored_resume"] = tailored_dict
     return result
+
 
 
 def create_tailored_resume_for_application(
@@ -3125,8 +3224,12 @@ def create_application_plan_endpoint(
         stored_plan = (existing.raw_data or {}).get("application_plan")
         if stored_plan:
             previous_plan = plan_from_dict(stored_plan)
-            has_new_scores = previous_plan.candidate.priority_score is not None and previous_plan.candidate.recency_factor is not None
-            if previous_plan.decision.matched_terms and has_new_scores and not plan_can_be_reevaluated(previous_plan):
+            if previous_plan.state in (
+                ApplicationState.SUBMITTED,
+                ApplicationState.PREPARING,
+                ApplicationState.READY_TO_SUBMIT,
+                ApplicationState.REJECTED,
+            ):
                 return _application_plan_response(existing, previous_plan)
         else:
             candidate_payload["already_applied"] = True
@@ -3282,6 +3385,15 @@ def _autofill_intent_key(label: str) -> str | None:
         return "identity.phone"
     if any(term in norm for term in ["day rate", "daily rate", "per day", "aud/day", "期望日薪"]):
         return "compensation.desired_day_rate"
+    # This is not the same question as ordinary work authorization. A
+    # candidate who may work only with sponsorship is authorized to work, but
+    # must answer "No" to "without sponsorship". Keep the polarity in the
+    # intent so it cannot be lost during option mapping.
+    if (
+        any(term in norm for term in ["authorized to work", "right to work", "work rights", "eligible to work"])
+        and any(term in norm for term in ["without sponsorship", "without visa sponsorship", "no sponsorship"])
+    ):
+        return "employment.work_authorization_without_sponsorship"
     category = _autofill_answer_category(label)
     return {
         "location": "employment.current_location",
@@ -3305,6 +3417,44 @@ def _autofill_intent_key(label: str) -> str | None:
         "notice_period": "employment.notice_period",
         "sms_opt_in": "consent.sms",
     }.get(category)
+
+
+_ATS_PLATFORMS = {"workday", "greenhouse", "lever", "ashby", "smartrecruiters", "taleo"}
+
+
+def _autofill_intent_key_for_field(field: Any, platform: str = "generic") -> str | None:
+    """Classify a field from its clean label, then conservative machine hints.
+
+    The DOM label remains authoritative. ATS identifiers are only a fallback
+    when the label itself cannot be classified, which avoids an opaque id
+    overriding a human-readable question.
+    """
+    intent = _autofill_intent_key(str(getattr(field, "label", "") or ""))
+    if intent:
+        return intent
+    if platform not in _ATS_PLATFORMS:
+        return None
+    for hint in (getattr(field, "name", None), getattr(field, "id", None)):
+        normalized_hint = str(hint or "").replace("_", " ").replace("-", " ")
+        intent = _autofill_intent_key(normalized_hint)
+        if intent:
+            return intent
+    return None
+
+
+def _inverse_sponsorship_answer(value: str | None) -> str | None:
+    """Return the answer to an explicit *without sponsorship* question."""
+    normalized = _normalize_form_label(str(value or ""))
+    if normalized in {"yes", "true", "1", "required", "require", "needed", "need"}:
+        return "No"
+    if normalized in {"no", "false", "0", "not required", "none", "not needed"}:
+        return "Yes"
+    if "sponsor" in normalized or "visa" in normalized:
+        if any(term in normalized for term in {"not required", "not needed", "no sponsorship", "without sponsorship"}):
+            return "Yes"
+        if any(term in normalized for term in {"required", "require", "needed", "need"}):
+            return "No"
+    return None
 
 
 def _canonical_autofill_intent_key(value: str) -> str:
@@ -3339,6 +3489,30 @@ def _compatible_form_field_types(left: str, right: str) -> bool:
 def _field_semantic_features(field: Any) -> list[str]:
     explicit = list(getattr(field, "semantic_features", None) or [])
     return explicit or extract_semantic_features(field.label, getattr(field, "name", None) or "", getattr(field, "id", None) or "")
+
+
+def _match_form_mapping_rule(
+    db: Session,
+    *,
+    user_id: UUID,
+    field: Any,
+    platform: str,
+    scene: str,
+    semantic_features: list[str],
+) -> Any | None:
+    """Prefer a user correction for this ATS, then reuse generic memory."""
+    for mapping_scene in fallback_mapping_scenes(platform, scene):
+        match = match_mapping_rule(
+            db,
+            user_id=user_id,
+            alias=field.label,
+            scene=mapping_scene,
+            semantic_features=semantic_features,
+            field_type=field.type,
+        )
+        if match:
+            return match
+    return None
 
 
 def _is_single_consent_checkbox(field: Any) -> bool:
@@ -3653,7 +3827,10 @@ def _coerce_form_value(
             if normalized_candidates & {normalized_value, normalized_label}:
                 return option_value, None
 
-        # Multi-token overlap scoring for best candidate option matching
+        # Conservative phrase matching for the remaining options. A single
+        # shared word (for example "visa" or "other") is not evidence that
+        # an option represents the user's answer, so never use it as a
+        # fallback. Exact matching above still handles terse Yes/No values.
         best_option = None
         best_score = 0
         for option in field.options:
@@ -3664,14 +3841,16 @@ def _coerce_form_value(
             
             option_tokens = set(norm_label.split())
             for cand in normalized_candidates:
-                if len(cand) < 2:
-                    continue
                 cand_tokens = set(cand.split())
+                if len(cand_tokens) < 2:
+                    continue
                 overlap = len(cand_tokens & option_tokens)
                 if cand in norm_label or norm_label in cand:
                     score = 10 + overlap
-                else:
+                elif overlap >= 2 and overlap / len(cand_tokens) >= 0.75:
                     score = overlap
+                else:
+                    continue
                 if score > best_score and score >= 1:
                     best_score = score
                     best_option = option_value
@@ -3699,6 +3878,18 @@ def _coerce_form_value(
                 pass
 
     return raw_answer, None
+
+
+# Keep these re-exports stable while endpoint code is gradually moved out of
+# this legacy module. New logic lives in the small, independently testable
+# modules instead of adding further responsibilities to `main.py`.
+from services.shared.autofill_intents import (
+    _autofill_answer_category,
+    _autofill_intent_key,
+    _autofill_intent_key_for_field,
+    _inverse_sponsorship_answer,
+)
+from services.shared.form_option_mapper import coerce_form_value as _coerce_form_value
 
 
 def _build_form_autofill_instructions(
@@ -3785,19 +3976,19 @@ def _build_form_autofill_instructions(
                 "value": True,
             })
             continue
-        match = None if _is_phone_country_field(field) else match_mapping_rule(
+        match = None if _is_phone_country_field(field) else _match_form_mapping_rule(
             db,
             user_id=current_user.id,
-            alias=field.label,
+            field=field,
+            platform=platform,
             scene=scene,
             semantic_features=features,
-            field_type=field.type,
         )
         # High-confidence canonical questions (for example TechnologyOne's
         # work-rights and work-visa questions) must not depend on a user's
         # learned mapping rows. A stale or missing row otherwise leaves an
         # otherwise answerable radio field as `None` in the side panel.
-        intent_key = _autofill_intent_key(field.label)
+        intent_key = _autofill_intent_key_for_field(field, platform)
         core_field_key = intent_key or (match.rule.core_field_key if match else None)
         if not core_field_key:
             reason = "No mapping rule matched this alias and form scene."
@@ -3805,6 +3996,10 @@ def _build_form_autofill_instructions(
             traces.append({"key": field.key, "label": field.label, "intent_key": None, "core_field_key": None, "scene": scene, "semantic_features": features, "source": "none", "status": "unanswered", "reason": reason})
             continue
         raw_answer = values.get(core_field_key)
+        coercion_key = core_field_key
+        if core_field_key == "employment.work_authorization_without_sponsorship":
+            raw_answer = _inverse_sponsorship_answer(values.get("employment.visa_sponsorship"))
+            coercion_key = "employment.work_authorization"
         if match and not intent_key:
             raw_answer = transformed_core_value(match.rule, values)
         elif not raw_answer and intent_key in {"identity.full_name", "identity.legal_full_name"}:
@@ -3882,7 +4077,7 @@ def _build_form_autofill_instructions(
             unanswered.append({"key": field.key, "label": field.label, "reason": reason})
             traces.append({"key": field.key, "label": field.label, "intent_key": core_field_key, "core_field_key": core_field_key, "scene": scene, "semantic_features": features, "source": "core_profile", "status": "unanswered", "reason": reason})
             continue
-        value, reason = _coerce_form_value(str(raw_answer), field, core_field_key)
+        value, reason = _coerce_form_value(str(raw_answer), field, coercion_key)
         if reason or value is None:
             unanswered.append({"key": field.key, "label": field.label, "reason": reason or "Value could not be used in this control."})
             traces.append({"key": field.key, "label": field.label, "intent_key": core_field_key, "core_field_key": core_field_key, "scene": scene, "semantic_features": features, "source": "core_profile", "status": "unanswered", "reason": reason})
@@ -3964,15 +4159,15 @@ def _upsert_form_temp_change(
         if existing:
             db.delete(existing)
         return None
-    scene = normalize_scene(payload.scene)
+    scene = platform_mapping_scene(payload.platform, payload.scene)
     features = _field_semantic_features(field)
-    match = None if _is_phone_country_field(field) else match_mapping_rule(
+    match = None if _is_phone_country_field(field) else _match_form_mapping_rule(
         db,
         user_id=current_user.id,
-        alias=field.label,
-        scene=scene,
+        field=field,
+        platform=payload.platform,
+        scene=payload.scene,
         semantic_features=features,
-        field_type=field.type,
     )
     if existing is None:
         existing = FormTempChange(

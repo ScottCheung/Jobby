@@ -1,7 +1,14 @@
 /** @format */
 
 'use client';
-import { Button, EmptyPlaceHolder, Input, TagInput, Textarea } from '@jobby/ui';
+import {
+  Button,
+  EmptyPlaceHolder,
+  Input,
+  SectionHeading,
+  TagInput,
+  Textarea,
+} from '@jobby/ui';
 import {
   ChangeEvent,
   useEffect,
@@ -34,7 +41,15 @@ import {
 
 function LinkedinIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
-    <svg viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round' {...props}>
+    <svg
+      viewBox='0 0 24 24'
+      fill='none'
+      stroke='currentColor'
+      strokeWidth='2'
+      strokeLinecap='round'
+      strokeLinejoin='round'
+      {...props}
+    >
       <path d='M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z' />
       <rect x='2' y='9' width='4' height='12' />
       <circle cx='4' cy='4' r='2' />
@@ -140,7 +155,7 @@ function TagList({ values }: { values: string[] }) {
       {values.map((value) => (
         <span
           key={value}
-          className='inline-flex items-center rounded-lg border border-border/80 bg-background-secondary/60 px-3 py-1 text-xs font-medium text-ink-primary shadow-2xs transition-colors hover:border-primary/40'
+          className='inline-flex items-center rounded-lg bg-background-secondary/60 px-3 py-1 text-xs font-medium text-ink-primary shadow-2xs transition-colors'
         >
           {value}
         </span>
@@ -173,19 +188,15 @@ function SectionCard({
         ease: [0.22, 1, 0.36, 1],
       }}
       className={cn(
-        'border border-border bg-panel group rounded-2xl relative',
+        'bg-panel group rounded-2xl relative',
         onClick && 'cursor-pointer ',
       )}
     >
       <div className='sticky top-0 z-20 flex items-center justify-between gap-3 pt-4 pb-3 px-5'>
         <div className='relative flex items-center'>
-          <h2 className='text-base font-bold pl-7 text-ink-primary z-10'>
-            <div className='z-30'>{title}</div>
-            <div className='opacity-100'>
-              <div className='w-2.5 -z-10 h-full bg-primary-gradient absolute -translate-x-5 top-1/2 -translate-y-1/2 rounded-br-full rounded-tl-full' />
-            </div>
-          </h2>
-          <div className='w-full h-full bg-background-primary absolute blur-sm scale-105' />
+          <SectionHeading as='h2' size='md' withBackdrop>
+            {title}
+          </SectionHeading>
         </div>
         {action && (
           <div
@@ -416,7 +427,7 @@ export default function ResumePage() {
             {careerProfiles.map((profile) => (
               <div
                 key={profile.id}
-                className='flex items-center justify-between gap-3 rounded-lg border border-border p-3'
+                className='flex items-center justify-between gap-3 rounded-lg bg-background-secondary/60 p-3'
               >
                 <div className='min-w-0'>
                   <p className='truncate text-sm font-medium text-ink-primary'>
@@ -522,7 +533,7 @@ export default function ResumePage() {
               history.map((item) => (
                 <button
                   key={item.id}
-                  className='flex w-full items-center justify-between rounded-lg border border-border p-3 text-left hover:bg-background-secondary'
+                  className='flex w-full items-center justify-between rounded-lg bg-background-secondary/70 p-3 text-left hover:bg-background-secondary'
                   onClick={() =>
                     previewResumeVersion({
                       id: item.id,
@@ -1175,7 +1186,7 @@ export default function ResumePage() {
         <section className='flex col panel-xl justify-center items-center w-full h-full'>
           <div
             onClick={() => inputRef.current?.click()}
-            className='flex gap-6 col items-center cursor-pointer border-dashed w-max-xl rounded-2xl  p-12 border-2 border-ink-secondary/30'
+            className='flex gap-6 col items-center cursor-pointer w-max-xl rounded-2xl p-12 bg-background-secondary/50 hover:bg-background-secondary transition-colors'
           >
             <div className='flex size-14 items-center justify-center rounded-full bg-primary/10 text-primary'>
               <UploadCloud className='size-7' />
@@ -1286,7 +1297,7 @@ export default function ResumePage() {
             Source PDF: {resume.original_filename}
           </a>
         </div>
-        <div className='flex shrink-0 border-b border-border'>
+        <div className='flex shrink-0 gap-1 bg-background-secondary/40 p-1 rounded-xl'>
           {[
             ['resume', 'Resume'],
             ['scores', 'Score History'],
@@ -1294,7 +1305,7 @@ export default function ResumePage() {
           ].map(([id, label]) => (
             <button
               key={id}
-              className={`border-b-2 px-4 py-2 text-sm font-medium transition-colors ${activeTab === id ? 'border-primary text-primary' : 'border-transparent text-ink-secondary hover:text-ink-primary'}`}
+              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${activeTab === id ? 'bg-panel text-primary font-semibold shadow-xs' : 'text-ink-secondary hover:text-ink-primary'}`}
               onClick={() => selectTab(id as 'resume' | 'scores' | 'settings')}
             >
               {label}
@@ -1462,7 +1473,9 @@ export default function ResumePage() {
                           rel='noreferrer'
                           className='font-semibold text-ink-primary hover:text-primary'
                         >
-                          {basics.portfolio_url.replace(/^https?:\/\//i, '').replace(/\/$/, '')}
+                          {basics.portfolio_url
+                            .replace(/^https?:\/\//i, '')
+                            .replace(/\/$/, '')}
                         </a>
                       </div>
                     )}
@@ -1483,7 +1496,9 @@ export default function ResumePage() {
                           rel='noreferrer'
                           className='font-semibold text-ink-primary hover:text-primary'
                         >
-                          {basics.website.replace(/^https?:\/\//i, '').replace(/\/$/, '')}
+                          {basics.website
+                            .replace(/^https?:\/\//i, '')
+                            .replace(/\/$/, '')}
                         </a>
                       </div>
                     )}
@@ -1597,7 +1612,7 @@ export default function ResumePage() {
                                 <TagList values={item.technologies ?? []} />
                               </div>
                             )}
-                            <div className='border-l-2 border-primary/20 ml-2 pl-4'>
+                            <div className='ml-2 pl-4'>
                               {(item.description ?? []).length > 0 && (
                                 <ul className='body-sm mt-3 list-disc space-y-1 pl-4 text-ink-secondary'>
                                   {(item.description ?? []).map(
@@ -1671,12 +1686,18 @@ export default function ResumePage() {
                             {item.url && (
                               <p className='body-sm mt-1 text-ink-secondary'>
                                 <a
-                                  href={item.url.startsWith('http') ? item.url : `https://${item.url}`}
+                                  href={
+                                    item.url.startsWith('http') ?
+                                      item.url
+                                    : `https://${item.url}`
+                                  }
                                   target='_blank'
                                   rel='noreferrer'
                                   className='text-primary hover:text-primary/80 break-all'
                                 >
-                                  {item.url.replace(/^https?:\/\//i, '').replace(/\/$/, '')}
+                                  {item.url
+                                    .replace(/^https?:\/\//i, '')
+                                    .replace(/\/$/, '')}
                                 </a>
                               </p>
                             )}
@@ -1685,7 +1706,7 @@ export default function ResumePage() {
                                 <TagList values={item.technologies ?? []} />
                               </div>
                             )}
-                            <div className='border-l-2 border-primary/20 ml-2 pl-4'>
+                            <div className='ml-2 pl-4'>
                               {(item.description ?? []).length > 0 && (
                                 <ul className='body-sm mt-3 list-disc space-y-1 pl-4 text-ink-secondary'>
                                   {(item.description ?? []).map(
@@ -1766,7 +1787,11 @@ export default function ResumePage() {
                             rel='noreferrer'
                             className='body-sm text-primary hover:text-primary/80 truncate font-semibold'
                           >
-                            {item.link ? item.link.replace(/^https?:\/\//i, '').replace(/\/$/, '') : 'Not listed'}
+                            {item.link ?
+                              item.link
+                                .replace(/^https?:\/\//i, '')
+                                .replace(/\/$/, '')
+                            : 'Not listed'}
                           </a>
                         </div>
                       ))
@@ -2068,6 +2093,7 @@ export default function ResumePage() {
               <ResumePreviewSidebar
                 data={data}
                 filename={resume.original_filename}
+                profileName={careerProfile?.name || undefined}
               />
               <ResumeScoreSidebar
                 evaluation={sidebarEvaluation}
@@ -2107,7 +2133,7 @@ export default function ResumePage() {
             {scoreHistory.map((item) => (
               <button
                 key={item.id}
-                className='flex w-full items-center justify-between gap-4 rounded-lg border border-border p-4 text-left hover:bg-background-secondary'
+                className='flex w-full items-center justify-between gap-4 rounded-lg bg-background-secondary/60 p-4 text-left hover:bg-background-secondary'
                 onClick={() =>
                   previewResumeVersion({
                     id: item.id,

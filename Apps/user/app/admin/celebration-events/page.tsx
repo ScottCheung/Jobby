@@ -18,7 +18,7 @@ import {
 import { previewCelebrationEvent } from '@/lib/celebration';
 
 function inputClassName() {
-  return 'body-md w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-ink-primary outline-none transition focus:border-primary/50';
+  return 'body-md w-full rounded-xl border border-primary/60 bg-background px-3 py-2 text-ink-primary outline-none transition focus:border-primary/50';
 }
 
 function updateEvent(
@@ -69,7 +69,11 @@ export default function CelebrationEventsPage() {
       setSavedConfig(next);
       setHasSaved(true);
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : 'Failed to save celebration mapping.');
+      setError(
+        saveError instanceof Error ?
+          saveError.message
+        : 'Failed to save celebration mapping.',
+      );
     } finally {
       setIsSaving(false);
     }
@@ -84,7 +88,11 @@ export default function CelebrationEventsPage() {
       setSavedConfig(defaults);
       setHasSaved(false);
     } catch (resetError) {
-      setError(resetError instanceof Error ? resetError.message : 'Failed to reset celebration mapping.');
+      setError(
+        resetError instanceof Error ?
+          resetError.message
+        : 'Failed to reset celebration mapping.',
+      );
     } finally {
       setIsSaving(false);
     }
@@ -111,7 +119,7 @@ export default function CelebrationEventsPage() {
             type='button'
             onClick={handleReset}
             disabled={isSaving}
-            className='label inline-flex items-center gap-2 rounded-xl border border-border/60 bg-background px-3 py-2 transition hover:border-primary/40 hover:text-primary'
+            className='label inline-flex items-center gap-2 rounded-xl border border-primary/60 bg-background px-3 py-2 transition hover:border-primary/40 hover:text-primary'
           >
             <RotateCcw className='h-4 w-4' />
             Reset Defaults
@@ -148,7 +156,7 @@ export default function CelebrationEventsPage() {
           return (
             <div
               key={key}
-              className='rounded-[28px] border border-border/60 bg-panel/60 p-5'
+              className='rounded-[28px] border border-primary/60 bg-panel/60 p-5'
             >
               <div className='mb-4 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between'>
                 <div>
@@ -163,7 +171,7 @@ export default function CelebrationEventsPage() {
                     <span className='rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 font-medium text-emerald-700'>
                       Active now: {savedStyle.label}
                     </span>
-                    <span className='rounded-full border border-border/60 bg-background/70 px-3 py-1 font-medium text-ink-secondary'>
+                    <span className='rounded-full border border-primary/60 bg-background/70 px-3 py-1 font-medium text-ink-secondary'>
                       Engine key: {savedEvent.styleType}
                     </span>
                     {savedEvent.styleType !== event.styleType && (
@@ -192,7 +200,9 @@ export default function CelebrationEventsPage() {
                     value={event.label}
                     onChange={(entry) =>
                       setConfig((current) =>
-                        updateEvent(current, key, { label: entry.target.value }),
+                        updateEvent(current, key, {
+                          label: entry.target.value,
+                        }),
                       )
                     }
                   />
@@ -207,7 +217,8 @@ export default function CelebrationEventsPage() {
                     onChange={(entry) =>
                       setConfig((current) =>
                         updateEvent(current, key, {
-                          styleType: entry.target.value as CelebrationEventConfig['styleType'],
+                          styleType: entry.target
+                            .value as CelebrationEventConfig['styleType'],
                         }),
                       )
                     }
@@ -242,7 +253,7 @@ export default function CelebrationEventsPage() {
                     }
                   />
                 </div>
-                <label className='flex items-center gap-3 rounded-2xl border border-border/60 bg-background/70 px-4 py-3'>
+                <label className='flex items-center gap-3 rounded-2xl border border-primary/60 bg-background/70 px-4 py-3'>
                   <input
                     type='checkbox'
                     checked={event.enabled}

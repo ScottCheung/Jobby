@@ -4,16 +4,87 @@ const DISMISS_KEY = "jobby-floating-ball-dismissed";
 const DISABLED_DOMAINS_KEY = "jobby_disabled_domains";
 const DISABLE_ALL_PAGES_KEY = "jobby_disabled_all_pages";
 const PANEL_WIDTH = 380;
+const PANEL_TRANSITION_MS = 800;
+const PANEL_TRANSITION_EASING = "cubic-bezier(0.16, 1, 0.3, 1)";
+const PANEL_TRANSITION = `${PANEL_TRANSITION_MS}ms ${PANEL_TRANSITION_EASING}`;
+const FIXED_PANEL_HOST_STYLE = "position: fixed !important; top: 0 !important; right: 0 !important; width: 0 !important; height: 0 !important; border: none !important; margin: 0 !important; padding: 0 !important; z-index: 2147483647 !important; pointer-events: none !important; overflow: visible !important; transform: none !important; filter: none !important;";
 let panelState = "idle";
+let openIframeAfterNativeClose = false;
 let ballRoot = null;
 let iframeRoot = null;
 let disabledDomains = [];
 let disableAllPages = false;
 let currentDocumentClickHandler = null;
+function mountOverlay(element) {
+  const parent = document.body;
+  if (!parent) return;
+  if (element.parentElement !== parent) {
+    parent.appendChild(element);
+  }
+}
 const likelyPopup = window.opener !== null;
 let windowCanHostSidepanel = !likelyPopup;
-let openRequestPending = false;
+function isLinkedInPage() {
+  const hostname = window.location.hostname.toLowerCase();
+  return hostname === "linkedin.com" || hostname.endsWith(".linkedin.com");
+}
 let currentThemeMode = "system";
+let currentThemeColor = "green";
+const THEME_SHADOW_MAP = {
+  green: {
+    light: "rgba(13, 148, 136, 0.32)",
+    dark: "rgba(20, 184, 166, 0.4)",
+    glow: "rgba(20, 184, 166, 0.55)",
+    glowDark: "rgba(45, 212, 191, 0.65)"
+  },
+  blue: {
+    light: "rgba(37, 99, 235, 0.3)",
+    dark: "rgba(96, 165, 250, 0.4)",
+    glow: "rgba(59, 130, 246, 0.55)",
+    glowDark: "rgba(147, 197, 253, 0.65)"
+  },
+  purple: {
+    light: "rgba(109, 40, 217, 0.3)",
+    dark: "rgba(167, 139, 250, 0.4)",
+    glow: "rgba(139, 92, 246, 0.55)",
+    glowDark: "rgba(196, 181, 253, 0.65)"
+  },
+  orange: {
+    light: "rgba(194, 65, 12, 0.28)",
+    dark: "rgba(251, 146, 60, 0.4)",
+    glow: "rgba(249, 115, 22, 0.55)",
+    glowDark: "rgba(253, 186, 116, 0.65)"
+  },
+  rose: {
+    light: "rgba(190, 18, 60, 0.28)",
+    dark: "rgba(251, 113, 133, 0.4)",
+    glow: "rgba(244, 63, 94, 0.55)",
+    glowDark: "rgba(253, 164, 175, 0.65)"
+  }
+};
+function applyThemeShadowVars(root) {
+  if (!root) return;
+  const isDark = currentThemeMode === "dark" || currentThemeMode === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches;
+  const colors = THEME_SHADOW_MAP[currentThemeColor] ?? THEME_SHADOW_MAP["green"];
+  const host = root.host;
+  host.style.setProperty(
+    "--primary-shadow",
+    isDark ? colors.dark : colors.light
+  );
+  host.style.setProperty(
+    "--primary-glow",
+    isDark ? colors.glowDark : colors.glow
+  );
+  host.style.setProperty("--panel-shadow", isDark ? colors.dark : colors.light);
+  host.style.setProperty(
+    "--panel-glow",
+    isDark ? colors.glowDark : colors.glow
+  );
+}
+function updateThemeShadows() {
+  applyThemeShadowVars(ballRoot?.shadowRoot ?? null);
+  applyThemeShadowVars(iframeRoot?.shadowRoot ?? null);
+}
 function updateThemeClasses() {
   const isDark = currentThemeMode === "dark" || currentThemeMode === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches;
   if (iframeRoot) {
@@ -24,24 +95,7 @@ function updateThemeClasses() {
     if (isDark) ballRoot.classList.add("dark");
     else ballRoot.classList.remove("dark");
   }
-}
-let _savedBodyMarginRight = null;
-function pushBodyRight() {
-  if (_savedBodyMarginRight !== null) return;
-  _savedBodyMarginRight = document.body.style.marginRight;
-  document.body.style.transition = "margin-right 1s cubic-bezier(0.4, 0, 0.2, 1)";
-  document.body.style.marginRight = `${PANEL_WIDTH}px`;
-}
-function restoreBodyRight() {
-  if (_savedBodyMarginRight === null) return;
-  document.body.style.transition = "margin-right 1s cubic-bezier(0.4, 0, 0.2, 1)";
-  document.body.style.marginRight = _savedBodyMarginRight;
-  _savedBodyMarginRight = null;
-  setTimeout(() => {
-    if (_savedBodyMarginRight === null) {
-      document.body.style.transition = "";
-    }
-  }, 320);
+  updateThemeShadows();
 }
 const POSITION_KEY = "jobby-floating-ball-position";
 function getSavedBallPosition() {
@@ -82,7 +136,7 @@ function shouldShowBall() {
   if (isDismissed()) return false;
   if (disableAllPages) return false;
   if (isDomainDisabled()) return false;
-  return panelState === "idle";
+  return panelState === "idle" || panelState === "native";
 }
 function updateBallVisibility() {
   if (shouldShowBall()) {
@@ -113,6 +167,7 @@ function createFloatingBall() {
   }
   ballRoot = document.createElement("div");
   ballRoot.id = BALL_CONTAINER_ID;
+  ballRoot.style.cssText = "position: fixed !important; top: 0 !important; left: 0 !important; width: 0 !important; height: 0 !important; border: none !important; margin: 0 !important; padding: 0 !important; z-index: 2147483647 !important; pointer-events: none !important; overflow: visible !important; transform: none !important; filter: none !important;";
   updateThemeClasses();
   const shadow = ballRoot.attachShadow({ mode: "open" });
   const logoUrl = chrome.runtime.getURL("favicon.svg");
@@ -128,15 +183,30 @@ function createFloatingBall() {
   const style = document.createElement("style");
   style.textContent = `
     :host {
-      all: initial;
+      all: initial !important;
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      z-index: 2147483647 !important;
+      pointer-events: none !important;
+      width: 0 !important;
+      height: 0 !important;
+      overflow: visible !important;
+      --primary-shadow: rgba(13, 148, 136, 0.32);
+      --primary-glow: rgba(20, 184, 166, 0.55);
+    }
+    :host(.dark) {
+      --primary-shadow: rgba(20, 184, 166, 0.42);
+      --primary-glow: rgba(45, 212, 191, 0.65);
     }
     #jobby-ball-wrapper {
-      position: fixed;
+      position: fixed !important;
       ${initialPos.edge === "right" ? `right: ${EDGE_MARGIN}px; left: auto;` : `left: ${EDGE_MARGIN}px; right: auto;`}
       top: ${boundedTop}px;
-      width: ${SIZE}px;
-      height: ${SIZE}px;
-      z-index: 2147483646;
+      width: ${SIZE}px !important;
+      height: ${SIZE}px !important;
+      z-index: 2147483647 !important;
+      pointer-events: auto !important;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -154,7 +224,7 @@ function createFloatingBall() {
       transition: none;
     }
     #jobby-ball-wrapper:not(.is-dragging):hover .jobby-logo-img {
-      filter: drop-shadow(0 0 10px rgba(20, 184, 166, 0.85)) drop-shadow(0 2px 10px rgba(0, 0, 0, 0.3));
+      filter: drop-shadow(0 0 16px var(--primary-glow)) drop-shadow(0 4px 14px var(--primary-shadow));
       transform: scale(1.12);
     }
     #jobby-ball-wrapper:not(.is-dragging):active .jobby-logo-img {
@@ -166,7 +236,7 @@ function createFloatingBall() {
       object-fit: contain;
       user-select: none;
       pointer-events: none;
-      filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.25));
+      filter: drop-shadow(0 4px 14px var(--primary-shadow)) drop-shadow(0 2px 6px rgba(0, 0, 0, 0.2));
       transition: filter 0.2s ease, transform 0.2s ease;
       -webkit-user-drag: none;
     }
@@ -280,7 +350,9 @@ function createFloatingBall() {
   `;
   const wrapper = document.createElement("div");
   wrapper.id = "jobby-ball-wrapper";
-  wrapper.classList.add(initialPos.edge === "right" ? "edge-right" : "edge-left");
+  wrapper.classList.add(
+    initialPos.edge === "right" ? "edge-right" : "edge-left"
+  );
   const logo = document.createElement("img");
   logo.src = logoUrl;
   logo.className = "jobby-logo-img";
@@ -425,7 +497,8 @@ function createFloatingBall() {
   };
   window.addEventListener("resize", handleWindowResize);
   wrapper.addEventListener("pointerdown", (e) => {
-    if (e.target.id === "close-btn" || e.target.classList.contains("jobby-menu-item")) return;
+    if (e.target.id === "close-btn" || e.target.classList.contains("jobby-menu-item"))
+      return;
     dismissMenu.classList.remove("is-open");
     wrapper.classList.remove("menu-open");
     if (snapTimer) clearTimeout(snapTimer);
@@ -478,45 +551,47 @@ function createFloatingBall() {
   });
   shadow.appendChild(style);
   shadow.appendChild(wrapper);
-  document.body.insertBefore(ballRoot, document.body.firstChild);
+  mountOverlay(ballRoot);
 }
 function handleBallClick() {
-  if (panelState !== "idle") return;
-  if (!windowCanHostSidepanel) {
-    showSidepanelIframe();
+  if (panelState === "iframe") return;
+  if (panelState === "native") {
+    if (openIframeAfterNativeClose) return;
+    openIframeAfterNativeClose = true;
+    chrome.runtime.sendMessage({ type: "sidepanel.close" }, (response) => {
+      if (chrome.runtime.lastError || response?.ok === false) {
+        openIframeAfterNativeClose = false;
+      }
+    });
     return;
   }
-  if (openRequestPending) return;
-  openRequestPending = true;
-  const fallbackTimer = window.setTimeout(() => {
-    openRequestPending = false;
-    if (panelState === "idle") {
-      showSidepanelIframe();
-    }
-  }, 600);
-  chrome.runtime.sendMessage({ type: "sidepanel.open" }, (response) => {
-    openRequestPending = false;
-    window.clearTimeout(fallbackTimer);
-    if (chrome.runtime.lastError || response?.ok === false) {
-      if (panelState === "idle") {
-        showSidepanelIframe();
-      }
-    }
-  });
+  showSidepanelIframe();
 }
 function preloadSidepanelIframe() {
   if (iframeRoot || document.getElementById(IFRAME_CONTAINER_ID)) return;
   iframeRoot = document.createElement("div");
   iframeRoot.id = IFRAME_CONTAINER_ID;
+  iframeRoot.style.cssText = FIXED_PANEL_HOST_STYLE;
   const shadow = iframeRoot.attachShadow({ mode: "open" });
   const style = document.createElement("style");
   style.textContent = `
     :host {
+      all: initial !important;
+      position: fixed !important;
+      top: 0 !important;
+      right: 0 !important;
+      z-index: 2147483647 !important;
+      pointer-events: none !important;
+      width: 0 !important;
+      height: 0 !important;
+      overflow: visible !important;
       --panel-bg: #f8fafc;
       --tab-x: #94a3b8;
       --tab-x-hover: #334155;
       --tab-x-bg-hover: rgba(15, 23, 42, 0.08);
       --tab-x-bg-active: rgba(15, 23, 42, 0.16);
+      --panel-shadow: rgba(13, 148, 136, 0.32);
+      --panel-glow: rgba(20, 184, 166, 0.5);
     }
     :host(.dark) {
       --panel-bg: #0f172a;
@@ -524,82 +599,129 @@ function preloadSidepanelIframe() {
       --tab-x-hover: #f1f5f9;
       --tab-x-bg-hover: rgba(255, 255, 255, 0.12);
       --tab-x-bg-active: rgba(255, 255, 255, 0.22);
+      --panel-shadow: rgba(20, 184, 166, 0.4);
+      --panel-glow: rgba(45, 212, 191, 0.6);
     }
     #jobby-iframe-wrapper {
-      position: fixed;
-      right: 0;
-      top: 0;
-      width: ${PANEL_WIDTH}px;
-      height: 100vh;
-      z-index: 2147483647;
-      box-shadow: -4px 0 16px rgba(0, 0, 0, 0.15);
-      border: none;
-      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      display: flex;
-      flex-direction: column;
-      /* Off-screen by default — React loads silently here */
+      position: fixed !important;
+      right: 0 !important;
+      top: 0 !important;
+      width: ${PANEL_WIDTH}px !important;
+      height: 100vh !important;
+      z-index: 2147483647 !important;
+      pointer-events: auto !important;
+      border-radius: 20px 0 0 20px !important;
+      overflow: visible !important;
+      box-shadow: -10px 0 36px var(--panel-shadow), -2px 0 12px rgba(0, 0, 0, 0.1) !important;
+      border: none !important;
+      /* Transition both transform AND opacity so shadow fully fades out when hidden */
+      transition: transform ${PANEL_TRANSITION}, opacity ${PANEL_TRANSITION} !important;
+      display: flex !important;
+      flex-direction: column !important;
+      /* Off-screen + invisible by default — React loads silently here */
       transform: translateX(100%);
-      background-color: var(--panel-bg);
+      opacity: 0;
+      background-color: var(--panel-bg) !important;
+    }
+    #jobby-iframe-wrapper.is-visible {
+      transform: translateX(0) !important;
+      opacity: 1 !important;
     }
     iframe {
-      width: 100%;
-      height: 100%;
-      border: none;
-      flex: 1;
-      background-color: transparent;
+      width: 100% !important;
+      height: 100% !important;
+      border: none !important;
+      flex: 1 !important;
+      border-radius: 20px 0 0 20px !important;
+      overflow: hidden !important;
+      background-color: transparent !important;
     }
     #close-tab {
-      position: absolute;
-      left: -80px;
-      top: 50%;
-      transform: translateY(-50%);
-      width: 80px;
-      height: 120px;
-      visibility: hidden;
-      cursor: pointer;
-      display: block;
-      background: none;
-      border: none;
-      padding: 0;
+      position: absolute !important;
+      left: -80px !important;
+      top: 50% !important;
+      transform: translateY(-50%) !important;
+      width: 80px !important;
+      height: 120px !important;
+      visibility: hidden !important;
+      cursor: pointer !important;
+      display: block !important;
+      background: none !important;
+      border: none !important;
+      padding: 0 !important;
+      z-index: 2147483647 !important;
+      pointer-events: auto !important;
       /* Clip shadow bleed on the right edge so it seamlessly joins the iframe container */
-      clip-path: inset(-30px 0px -30px -40px);
+      clip-path: inset(-30px 0px -30px -40px) !important;
     }
     #jobby-iframe-wrapper.is-visible #close-tab {
-      visibility: visible;
+      visibility: visible !important;
     }
-    #close-tab svg {
-      display: block;
-      width: 100%;
-      height: 100%;
-      filter: drop-shadow(-4px 0 12px rgba(0, 0, 0, 0.15));
+    #close-tab .tab-bg-svg {
+      position: absolute !important;
+      inset: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
+      display: block !important;
+      pointer-events: none !important;
+      filter: drop-shadow(-8px 0 16px var(--panel-shadow));
+      contain: paint !important;
+    }
+    #close-tab .tab-icon-wrapper {
+      position: absolute !important;
+      left: 24px !important;
+      top: 36px !important;
+      width: 48px !important;
+      height: 48px !important;
+      border-radius: 16px !important;
+      overflow: hidden !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      pointer-events: none !important;
+      transform: translateZ(0) !important;
     }
     #close-tab .tab-logo {
-      opacity: 1;
-      transform-origin: 48px 60px;
-      transition: opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1), transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+      position: absolute !important;
+      width: 44px !important;
+      height: 44px !important;
+      object-fit: contain !important;
+      opacity: 1 !important;
+      transform: scale(1) translateZ(0) !important;
+      transform-origin: center center !important;
+      will-change: opacity, transform !important;
+      transition: opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1), transform 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
     }
     #close-tab:hover .tab-logo {
-      opacity: 0;
-      transform: scale(0.75);
+      opacity: 0 !important;
+      transform: scale(0.75) translateZ(0) !important;
     }
-    #close-tab .tab-x-group {
-      opacity: 0;
-      transform-origin: 48px 60px;
-      transform: scale(0.75);
-      transition: opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1), transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    #close-tab .tab-arrow-box {
+      position: absolute !important;
+      inset: 0 !important;
+      border-radius: 16px !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      background-color: var(--tab-x-bg-hover) !important;
+      color: var(--tab-x-hover) !important;
+      opacity: 0 !important;
+      transform: scale(0.75) translateZ(0) !important;
+      transform-origin: center center !important;
+      will-change: opacity, transform !important;
+      transition: opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1), transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.15s ease !important;
     }
-    #close-tab:hover .tab-x-group {
-      opacity: 1;
-      transform: scale(1);
+    #close-tab:hover .tab-arrow-box {
+      opacity: 1 !important;
+      transform: scale(1) translateZ(0) !important;
     }
-    #close-tab .tab-x-bg {
-      fill: var(--tab-x-bg-hover);
+    #close-tab:active .tab-arrow-box {
+      background-color: var(--tab-x-bg-active) !important;
     }
-    #close-tab:active .tab-x-bg {
-      fill: var(--tab-x-bg-active);
-    }
-    #close-tab .tab-x-line {
-      stroke: var(--tab-x-hover);
+    #close-tab .tab-arrow-svg {
+      width: 22px !important;
+      height: 22px !important;
+      display: block !important;
     }
   `;
   const wrapper = document.createElement("div");
@@ -610,7 +732,7 @@ function preloadSidepanelIframe() {
   closeTab.title = "Close Jobby Panel";
   closeTab.setAttribute("aria-label", "Close Jobby Panel");
   closeTab.innerHTML = `
-<svg viewBox="0 0 80 120" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<svg class="tab-bg-svg" viewBox="0 0 80 120" xmlns="http://www.w3.org/2000/svg">
   <path style="fill: var(--panel-bg);" d="
     M 80 0
     C 80 14, 66 28, 52 28
@@ -623,29 +745,16 @@ function preloadSidepanelIframe() {
     L 80 0
     Z
   " />
-
-  <image
-    class="tab-logo"
-    href="${logoUrl}"
-    x="28"
-    y="40"
-    width="40"
-    height="40"
-  />
-
-  <g class="tab-x-group">
-    <rect
-      class="tab-x-bg"
-      x="24"
-      y="36"
-      width="48"
-      height="48"
-      rx="16"
-    />
-    <line x1="37" y1="49" x2="59" y2="71" stroke-width="4.5" stroke-linecap="round" class="tab-x-line" />
-    <line x1="59" y1="49" x2="37" y2="71" stroke-width="4.5" stroke-linecap="round" class="tab-x-line" />
-  </g>
 </svg>
+<div class="tab-icon-wrapper">
+  <img class="tab-logo" src="${logoUrl}" alt="Jobby" />
+  <div class="tab-arrow-box">
+    <svg class="tab-arrow-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="7 17 12 12 7 7"></polyline>
+      <polyline points="13 17 18 12 13 7"></polyline>
+    </svg>
+  </div>
+</div>
   `;
   closeTab.addEventListener("click", hideSidepanelIframe);
   const iframe = document.createElement("iframe");
@@ -654,24 +763,90 @@ function preloadSidepanelIframe() {
   wrapper.appendChild(iframe);
   shadow.appendChild(style);
   shadow.appendChild(wrapper);
-  document.body.insertBefore(iframeRoot, document.body.firstChild);
+  mountOverlay(iframeRoot);
   updateThemeClasses();
+}
+const PAGE_SHRINK_STYLE_ID = "jobby-page-shrink-style";
+const PAGE_SHRINK_OPEN_CLASS = "jobby-panel-open";
+let pageShrinkCleanupTimer = null;
+function clearPageShrinkCleanupTimer() {
+  if (pageShrinkCleanupTimer !== null) {
+    window.clearTimeout(pageShrinkCleanupTimer);
+    pageShrinkCleanupTimer = null;
+  }
+}
+function pushBodyRight() {
+  clearPageShrinkCleanupTimer();
+  if (!document.getElementById(PAGE_SHRINK_STYLE_ID)) {
+    const linkedInRootRule = isLinkedInPage() ? `
+      /* LinkedIn uses a 100vw root, which ignores body padding. Restrict only
+       * that root so its detail pane ends exactly before the Jobby panel. */
+      html.${PAGE_SHRINK_OPEN_CLASS} #app__container {
+        width: calc(100vw - ${PANEL_WIDTH}px) !important;
+        max-width: calc(100vw - ${PANEL_WIDTH}px) !important;
+        transition: width ${PANEL_TRANSITION}, max-width ${PANEL_TRANSITION} !important;
+      }
+      html.${PAGE_SHRINK_OPEN_CLASS} #global-nav,
+      html.${PAGE_SHRINK_OPEN_CLASS} .global-nav,
+      html.${PAGE_SHRINK_OPEN_CLASS} .global-nav__header {
+        right: ${PANEL_WIDTH}px !important;
+        width: auto !important;
+        max-width: calc(100vw - ${PANEL_WIDTH}px) !important;
+        transition: right ${PANEL_TRANSITION}, max-width ${PANEL_TRANSITION} !important;
+      }
+    ` : "";
+    const style = document.createElement("style");
+    style.id = PAGE_SHRINK_STYLE_ID;
+    style.textContent = `
+      body {
+        box-sizing: border-box !important;
+        padding-right: 0 !important;
+        transition: padding-right ${PANEL_TRANSITION} !important;
+      }
+      html.${PAGE_SHRINK_OPEN_CLASS} > body {
+        padding-right: ${PANEL_WIDTH}px !important;
+      }
+      ${linkedInRootRule}
+    `;
+    (document.head ?? document.documentElement).appendChild(style);
+  }
+  requestAnimationFrame(() => {
+    if (panelState === "iframe") {
+      document.documentElement.classList.add(PAGE_SHRINK_OPEN_CLASS);
+    }
+  });
+}
+function restoreBodyRight(immediate = false) {
+  clearPageShrinkCleanupTimer();
+  document.documentElement.classList.remove(PAGE_SHRINK_OPEN_CLASS);
+  if (immediate) {
+    document.getElementById(PAGE_SHRINK_STYLE_ID)?.remove();
+    return;
+  }
+  pageShrinkCleanupTimer = window.setTimeout(() => {
+    if (panelState !== "iframe") {
+      document.getElementById(PAGE_SHRINK_STYLE_ID)?.remove();
+    }
+    pageShrinkCleanupTimer = null;
+  }, PANEL_TRANSITION_MS);
 }
 function showSidepanelIframe() {
   if (panelState === "iframe") return;
   if (!iframeRoot) {
     preloadSidepanelIframe();
   }
-  const wrapper = iframeRoot.shadowRoot.getElementById(
+  const wrapper = iframeRoot?.shadowRoot?.getElementById(
     "jobby-iframe-wrapper"
   );
-  if (!wrapper) return;
+  if (!wrapper || !iframeRoot) return;
   panelState = "iframe";
   removeFloatingBall();
+  mountOverlay(iframeRoot);
   pushBodyRight();
   requestAnimationFrame(() => {
     wrapper.classList.add("is-visible");
     wrapper.style.transform = "translateX(0)";
+    wrapper.style.opacity = "1";
   });
 }
 function hideSidepanelIframe() {
@@ -679,25 +854,45 @@ function hideSidepanelIframe() {
   const wrapper = iframeRoot.shadowRoot?.getElementById("jobby-iframe-wrapper");
   if (!wrapper) return;
   panelState = "idle";
-  wrapper.classList.remove("is-visible");
-  wrapper.style.transform = "translateX(100%)";
   restoreBodyRight();
-  updateBallVisibility();
+  requestAnimationFrame(() => {
+    wrapper.classList.remove("is-visible");
+    wrapper.style.transform = "translateX(100%)";
+    wrapper.style.opacity = "0";
+  });
+  setTimeout(() => {
+    if (panelState === "idle") {
+      updateBallVisibility();
+    }
+  }, PANEL_TRANSITION_MS);
 }
-function removeSidepanelIframe() {
+function removeSidepanelIframe(immediate = false) {
   if (!iframeRoot) return;
   const wrapper = iframeRoot.shadowRoot?.getElementById("jobby-iframe-wrapper");
+  if (immediate) {
+    iframeRoot.remove();
+    iframeRoot = null;
+    restoreBodyRight(true);
+    return;
+  }
   const cleanup = () => {
     iframeRoot?.remove();
     iframeRoot = null;
-    restoreBodyRight();
-    updateBallVisibility();
+    if (panelState === "idle") {
+      updateBallVisibility();
+    }
   };
   if (wrapper && panelState === "iframe") {
-    wrapper.classList.remove("is-visible");
-    wrapper.style.transform = "translateX(100%)";
+    panelState = "idle";
+    restoreBodyRight();
+    requestAnimationFrame(() => {
+      wrapper.classList.remove("is-visible");
+      wrapper.style.transform = "translateX(100%)";
+      wrapper.style.opacity = "0";
+    });
     wrapper.addEventListener("transitionend", cleanup, { once: true });
   } else {
+    restoreBodyRight();
     cleanup();
   }
 }
@@ -705,10 +900,18 @@ export function initializeFloatingBall() {
   if (typeof chrome === "undefined" || !chrome.runtime || !chrome.runtime.onMessage)
     return;
   chrome.storage.local.get(
-    ["auto-job-ui-theme", DISABLED_DOMAINS_KEY, DISABLE_ALL_PAGES_KEY],
+    [
+      "auto-job-ui-theme",
+      "auto-job-ui-theme-color",
+      DISABLED_DOMAINS_KEY,
+      DISABLE_ALL_PAGES_KEY
+    ],
     (res) => {
       if (res["auto-job-ui-theme"]) {
         currentThemeMode = res["auto-job-ui-theme"];
+      }
+      if (typeof res["auto-job-ui-theme-color"] === "string" && res["auto-job-ui-theme-color"]) {
+        currentThemeColor = res["auto-job-ui-theme-color"];
       }
       if (Array.isArray(res[DISABLED_DOMAINS_KEY])) {
         disabledDomains = res[DISABLED_DOMAINS_KEY];
@@ -726,6 +929,10 @@ export function initializeFloatingBall() {
       if (changes["auto-job-ui-theme"]) {
         currentThemeMode = changes["auto-job-ui-theme"].newValue;
         updateThemeClasses();
+      }
+      if (changes["auto-job-ui-theme-color"]) {
+        currentThemeColor = changes["auto-job-ui-theme-color"].newValue;
+        updateThemeShadows();
       }
       if (changes[DISABLED_DOMAINS_KEY]) {
         disabledDomains = Array.isArray(changes[DISABLED_DOMAINS_KEY].newValue) ? changes[DISABLED_DOMAINS_KEY].newValue : [];
@@ -756,6 +963,9 @@ export function initializeFloatingBall() {
       }
       if (windowCanHostSidepanel) {
         panelState = response.isOpen ? "native" : "idle";
+        if (panelState === "native") {
+          restoreBodyRight();
+        }
       } else {
         panelState = "idle";
         if (!iframeRoot) preloadSidepanelIframe();
@@ -767,15 +977,22 @@ export function initializeFloatingBall() {
     if (message?.type !== "sidepanel.state-changed") return;
     if (!windowCanHostSidepanel) return;
     if (message.isOpen) {
-      openRequestPending = false;
+      openIframeAfterNativeClose = false;
       if (panelState === "iframe") {
-        removeSidepanelIframe();
+        removeSidepanelIframe(true);
       }
       panelState = "native";
+      restoreBodyRight();
       updateBallVisibility();
     } else {
       panelState = "idle";
-      updateBallVisibility();
+      restoreBodyRight();
+      if (openIframeAfterNativeClose) {
+        openIframeAfterNativeClose = false;
+        showSidepanelIframe();
+      } else {
+        updateBallVisibility();
+      }
     }
   });
 }

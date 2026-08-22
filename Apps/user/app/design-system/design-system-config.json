@@ -107,7 +107,7 @@
               "description": "浮层、卡片、面板背景（半透明）",
               "preview": {
                 "type": "swatch",
-                "bg": "bg-panel border border-border/40"
+                "bg": "bg-panel border border-primary/40"
               }
             },
             {
@@ -137,27 +137,27 @@
           "title": "边框色",
           "items": [
             {
-              "token": "border-border",
+              "token": "border-primary",
               "description": "标准边框",
               "preview": {
                 "type": "border",
-                "border": "border border-border bg-border"
+                "border": "border border-primary bg-border"
               }
             },
             {
-              "token": "border-border/60",
+              "token": "border-primary/60",
               "description": "轻量边框（sticky header 等）",
               "preview": {
                 "type": "border",
-                "border": "border border-border/60 bg-border/60"
+                "border": "border border-primary/60 bg-border/60"
               }
             },
             {
-              "token": "border-border/40",
+              "token": "border-primary/40",
               "description": "极轻边框（分割线）",
               "preview": {
                 "type": "border",
-                "border": "border border-border/40 bg-border/40"
+                "border": "border border-primary/40 bg-border/40"
               }
             },
             {
@@ -192,7 +192,7 @@
           "items": [
             {
               "token": ".panel-xl",
-              "classes": "rounded-[24px] p-6 bg-panel flex flex-col gap-6 border border-border/40",
+              "classes": "rounded-[24px] p-6 bg-panel flex flex-col gap-6 border border-primary/40",
               "description": "超大面板（原 .card），最外层容器，大圆角",
               "preview": { "type": "container", "classes": "panel-xl" }
             },
@@ -214,7 +214,7 @@
             },
             {
               "token": ".panel-md",
-              "classes": "rounded-[12px] p-3.5 bg-background-secondary/30 dark:bg-black/30 flex flex-col border border-border/30",
+              "classes": "rounded-[12px] p-3.5 bg-background-secondary/30 dark:bg-black/30 flex flex-col border border-primary/30",
               "description": "中面板（原 .module-panel），内嵌模块",
               "preview": { "type": "container", "classes": "panel-md" }
             },
@@ -226,7 +226,7 @@
             },
             {
               "token": ".panel-xs",
-              "classes": "rounded-[6px] p-2 bg-background-secondary/40 dark:bg-black/20 border border-border/50",
+              "classes": "rounded-[6px] p-2 bg-background-secondary/40 dark:bg-black/20 border border-primary/50",
               "description": "极小内容区（原 .surface），带轻量边框",
               "preview": { "type": "container", "classes": "panel-xs" }
             }
@@ -461,7 +461,7 @@
             },
             {
               "token": ".textarea",
-              "classes": "flex min-h-[100px] w-full rounded-xl border border-border bg-background-secondary/50 px-3.5 py-2.5 text-sm text-ink-primary placeholder:text-ink-secondary/60 focus:bg-panel focus:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/10 disabled:cursor-not-allowed disabled:opacity-50 transition-all dark:bg-black/20 dark:focus:bg-panel",
+              "classes": "flex min-h-[100px] w-full rounded-xl border border-primary bg-background-secondary/50 px-3.5 py-2.5 text-sm text-ink-primary placeholder:text-ink-secondary/60 focus:bg-panel focus:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/10 disabled:cursor-not-allowed disabled:opacity-50 transition-all dark:bg-black/20 dark:focus:bg-panel",
               "description": "多行文本域（rounded-xl，使用 token 背景/边框）",
               "preview": {
                 "type": "textarea",
@@ -470,7 +470,7 @@
             },
             {
               "token": ".select",
-              "classes": "flex h-11 w-full rounded-xl border border-border bg-background-secondary/50 px-3.5 py-2 text-sm text-ink-primary placeholder:text-ink-secondary/60 focus:bg-panel focus:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/10 disabled:cursor-not-allowed disabled:opacity-50 transition-all dark:bg-black/20 dark:focus:bg-panel",
+              "classes": "flex h-11 w-full rounded-xl border border-primary bg-background-secondary/50 px-3.5 py-2 text-sm text-ink-primary placeholder:text-ink-secondary/60 focus:bg-panel focus:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/10 disabled:cursor-not-allowed disabled:opacity-50 transition-all dark:bg-black/20 dark:focus:bg-panel",
               "description": "下拉选择（rounded-xl，与 textarea 保持一致）",
               "preview": { "type": "select" }
             }
@@ -628,7 +628,7 @@
               "description": "响应式圆角（xl → 2xl → 3xl）",
               "preview": {
                 "type": "border",
-                "border": "rounded-card border border-border bg-background-secondary/40 p-4"
+                "border": "rounded-card border border-primary bg-background-secondary/40 p-4"
               }
             },
             {
@@ -680,7 +680,7 @@
     {
       "id": "colors",
       "title": "颜色规范",
-      "rule": "只用 token（text-ink-primary、bg-panel、border-border），禁止 zinc-*、slate-*、gray-* 等硬编码颜色"
+      "rule": "只用 token（text-ink-primary、bg-panel、border-primary），禁止 zinc-*、slate-*、gray-* 等硬编码颜色"
     },
     {
       "id": "spacing",

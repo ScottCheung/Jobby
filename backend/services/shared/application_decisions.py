@@ -49,13 +49,18 @@ def evaluate_candidate(
 ) -> CandidateEvaluation:
     candidate_payload = dict(payload)
     match_result = None
-    if candidate_payload.get("description") and resume_data:
+    # The page reader can identify technologies even when a platform exposes
+    # no usable description. Those explicit requirements are sufficient for
+    # an item-by-item resume match.
+    if resume_data and (
+        candidate_payload.get("description") or candidate_payload.get("technologies")
+    ):
         user_years = (
             candidate_payload.get("user_years_experience")
             or (resume_data.get("years_of_experience") if isinstance(resume_data, dict) else None)
         )
         match_result = score_job_match(
-            str(candidate_payload["description"]),
+            str(candidate_payload.get("description") or ""),
             dict(resume_data),
             job_title=str(candidate_payload.get("title") or ""),
             date_posted=candidate_payload.get("posted_at") or candidate_payload.get("date_posted"),

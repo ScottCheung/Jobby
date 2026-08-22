@@ -43,7 +43,7 @@ const memoryDefinitions = {
   },
   'compensation.desired_base_salary': {
     label: 'Desired base salary',
-      description: 'Usually managed in Profile.',
+    description: 'Usually managed in Profile.',
     category: 'compensation' as const,
     icon: CircleDollarSign,
   },
@@ -204,7 +204,7 @@ export default function AiMemoryPage() {
 
   return (
     <main className='mx-auto flex w-full max-w-6xl flex-col gap-6 pb-10'>
-      <header className='border-b border-border/60 pb-5'>
+      <header className='border-b border-primary/60 pb-5'>
         <div className='flex items-start justify-between gap-4'>
           <div>
             <div className='flex items-center gap-2 text-ink-primary'>
@@ -212,7 +212,8 @@ export default function AiMemoryPage() {
               <h1 className='title-section'>AI Memory</h1>
             </div>
             <p className='mt-1 max-w-2xl text-sm text-ink-secondary'>
-              Save the answers that need your judgement. Profile remains the trusted source for personal details and preferences.
+              Save the answers that need your judgement. Profile remains the
+              trusted source for personal details and preferences.
             </p>
           </div>
         </div>
@@ -240,20 +241,30 @@ export default function AiMemoryPage() {
 
       <button
         type='button'
-        onClick={() => document.getElementById('needs-review')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+        onClick={() =>
+          document
+            .getElementById('needs-review')
+            ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        }
         className='flex items-center justify-between gap-4 border border-amber-300/70 bg-amber-50/40 px-4 py-3 text-left hover:bg-amber-50/70'
       >
         <span className='flex min-w-0 items-center gap-2'>
           <CircleAlert className='size-4 shrink-0 text-amber-600' />
           <span>
-            <span className='block text-sm font-medium text-ink-primary'>Needs review</span>
-            <span className='mt-0.5 block text-xs text-ink-secondary'>Check answers recently captured from inspected forms.</span>
+            <span className='block text-sm font-medium text-ink-primary'>
+              Needs review
+            </span>
+            <span className='mt-0.5 block text-xs text-ink-secondary'>
+              Check answers recently captured from inspected forms.
+            </span>
           </span>
         </span>
-        <span className='shrink-0 text-xs text-ink-secondary'>{observations.length} pending</span>
+        <span className='shrink-0 text-xs text-ink-secondary'>
+          {observations.length} pending
+        </span>
       </button>
 
-      <section className='border border-border/70 bg-panel p-4'>
+      <section className='border border-transparent bg-panel p-4'>
         <div className='mb-3'>
           <h2 className='text-sm font-semibold text-ink-primary'>
             Remember an answer
@@ -269,7 +280,7 @@ export default function AiMemoryPage() {
           <select
             value={selectedKey}
             onChange={(event) => setSelectedKey(event.target.value)}
-            className='h-10 border border-border bg-background px-3 text-sm text-ink-primary outline-none focus:border-primary'
+            className='h-10 border border-primary bg-background px-3 text-sm text-ink-primary outline-none focus:border-primary'
           >
             {Object.entries(memoryDefinitions).map(([key, definition]) => (
               <option key={key} value={key}>
@@ -281,7 +292,7 @@ export default function AiMemoryPage() {
             value={answerValue}
             onChange={(event) => setAnswerValue(event.target.value)}
             placeholder='Your answer'
-            className='h-10 min-w-0 border border-border bg-background px-3 text-sm text-ink-primary outline-none focus:border-primary'
+            className='h-10 min-w-0 border border-primary bg-background px-3 text-sm text-ink-primary outline-none focus:border-primary'
           />
           <button
             type='submit'
@@ -304,7 +315,7 @@ export default function AiMemoryPage() {
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder='Search memories'
-            className='h-9 w-full border border-border bg-background pl-9 pr-3 text-sm text-ink-primary outline-none focus:border-primary'
+            className='h-9 w-full border border-primary bg-background pl-9 pr-3 text-sm text-ink-primary outline-none focus:border-primary'
           />
         </div>
       </div>
@@ -317,7 +328,7 @@ export default function AiMemoryPage() {
           return (
             <article
               key={answer.id}
-              className={`border p-4 ${answer.active ? 'border-border bg-panel' : 'border-border/50 bg-background-secondary/40 opacity-65'}`}
+              className={`border p-4 ${answer.active ? 'border-primary bg-panel' : 'border-primary/50 bg-background-secondary/40 opacity-65'}`}
             >
               <div className='flex items-start justify-between gap-3'>
                 <div className='flex min-w-0 items-start gap-2'>
@@ -349,7 +360,7 @@ export default function AiMemoryPage() {
                   event.target.value !== answer.value &&
                   void update(answer, { value: event.target.value })
                 }
-                className='mt-4 h-10 w-full border border-border bg-background px-3 text-sm text-ink-primary outline-none focus:border-primary'
+                className='mt-4 h-10 w-full border border-primary bg-background px-3 text-sm text-ink-primary outline-none focus:border-primary'
               />
               <div className='mt-3 flex items-center justify-between text-xs text-ink-secondary'>
                 <span>
@@ -375,7 +386,7 @@ export default function AiMemoryPage() {
           );
         })}
         {!visible.length && (
-          <div className='col-span-full border border-dashed border-border px-4 py-12 text-center'>
+          <div className='col-span-full border border-dashed border-primary px-4 py-12 text-center'>
             <LibraryBig className='mx-auto size-5 text-ink-secondary' />
             <p className='mt-2 text-sm font-medium text-ink-primary'>
               No memories here yet
@@ -388,7 +399,10 @@ export default function AiMemoryPage() {
         )}
       </section>
 
-      <section id='needs-review' className='scroll-mt-5 border-t border-border/60 pt-6'>
+      <section
+        id='needs-review'
+        className='scroll-mt-5 border-t border-primary/60 pt-6'
+      >
         <div className='mb-3 flex items-start justify-between gap-4'>
           <div>
             <div className='flex items-center gap-2'>
@@ -398,7 +412,8 @@ export default function AiMemoryPage() {
               </h2>
             </div>
             <p className='mt-1 text-xs text-ink-secondary'>
-              Recent answers captured from inspected forms. Matching answers are promoted to AI Memory automatically; conflicts are never used.
+              Recent answers captured from inspected forms. Matching answers are
+              promoted to AI Memory automatically; conflicts are never used.
             </p>
           </div>
           <div className='flex items-center gap-2'>
@@ -423,12 +438,14 @@ export default function AiMemoryPage() {
             return (
               <article
                 key={observation.id}
-                className={`border p-4 ${hasConflict ? 'border-amber-400/70 bg-amber-50/30' : 'border-border bg-panel'}`}
+                className={`border p-4 ${hasConflict ? 'border-amber-400/70 bg-amber-50/30' : 'border-primary bg-panel'}`}
               >
                 <div className='flex items-start justify-between gap-3'>
                   <div className='min-w-0'>
                     <p className='text-[10px] font-medium uppercase text-ink-secondary'>
-                      {hasConflict ? 'Conflict - not used for autofill' : 'Observed - waiting for a matching question'}
+                      {hasConflict ?
+                        'Conflict - not used for autofill'
+                      : 'Observed - waiting for a matching question'}
                     </p>
                     <h3 className='mt-1 text-sm font-semibold text-ink-primary'>
                       {observation.original_label}
@@ -437,9 +454,15 @@ export default function AiMemoryPage() {
                   <button
                     title='Delete observation'
                     onClick={() =>
-                      void api.deleteFormAutofillObservation(observation.id).then(() =>
-                        setObservations((current) => current.filter((item) => item.id !== observation.id)),
-                      )
+                      void api
+                        .deleteFormAutofillObservation(observation.id)
+                        .then(() =>
+                          setObservations((current) =>
+                            current.filter(
+                              (item) => item.id !== observation.id,
+                            ),
+                          ),
+                        )
                     }
                     className='shrink-0 p-1 text-ink-secondary hover:text-red-600'
                   >
@@ -451,18 +474,28 @@ export default function AiMemoryPage() {
                 </p>
                 <div className='mt-3 flex flex-wrap gap-x-3 gap-y-1 text-xs text-ink-secondary'>
                   <span>{observation.platform}</span>
-                  {observation.company_scope && <span>{observation.company_scope}</span>}
-                  <span>Seen {observation.times_seen} time{observation.times_seen === 1 ? '' : 's'}</span>
-                  <span>{new Date(observation.last_seen_at).toLocaleDateString()}</span>
+                  {observation.company_scope && (
+                    <span>{observation.company_scope}</span>
+                  )}
+                  <span>
+                    Seen {observation.times_seen} time
+                    {observation.times_seen === 1 ? '' : 's'}
+                  </span>
+                  <span>
+                    {new Date(observation.last_seen_at).toLocaleDateString()}
+                  </span>
                 </div>
               </article>
             );
           })}
           {!observations.length && (
-            <div className='col-span-full border border-dashed border-border px-4 py-8 text-center'>
-              <p className='text-sm font-medium text-ink-primary'>Nothing needs review</p>
+            <div className='col-span-full border border-dashed border-primary px-4 py-8 text-center'>
+              <p className='text-sm font-medium text-ink-primary'>
+                Nothing needs review
+              </p>
               <p className='mt-1 text-xs text-ink-secondary'>
-                Enter an answer in an inspected form and it will appear here within a moment.
+                Enter an answer in an inspected form and it will appear here
+                within a moment.
               </p>
             </div>
           )}

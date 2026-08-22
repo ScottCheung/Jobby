@@ -32,6 +32,7 @@ const DEDICATED_ATS_HOSTS: ReadonlyArray<RegExp> = [
   /^(?:[a-z0-9-]+\.)+bamboohr\.com$/,
   /^(?:www\.)?recruitee\.com$/,
   /^(?:www\.)?breezy\.hr$/,
+  /^(?:www\.)?jobs\.smartrecruiters\.com$/,
   /^ats\.rippling\.com$/,
   /^(?:www\.)?recruitcrm\.io$/,
   /^app\.vbench\.com\.au$/,
@@ -69,11 +70,14 @@ export const MAJOR_PLATFORM_RULES: ReadonlyArray<MajorPlatformRule> = [
       /^\/pulse(?:\/|$)/i,
       /^\/groups(?:\/|$)/i,
       /^\/events(?:\/|$)/i,
-      /^\/search(?:\/|$)/i,
       /^\/company\/(?:[^/]+\/?$|[^/]+\/(?:about|life|people|posts|videos|insights)\/?$)/i,
     ],
     jobPatterns: [
+      /\/jobs\//i,
+      /\/jobs$/i,
       /\/jobs\/view\//i,
+      /\/jobs\/search\//i,
+      /\/jobs\/collections\//i,
       /[?&](?:currentJobId|jobId)=\d+/i,
     ],
     nonJobDescription: (pathname) =>
@@ -102,6 +106,8 @@ export const MAJOR_PLATFORM_RULES: ReadonlyArray<MajorPlatformRule> = [
     ],
     jobPatterns: [
       /\/job\/\d+/i,
+      /\/jobs(?:\/|\?|$)/i,
+      /-jobs(?:\/|\?|$)/i,
       /[?&]jobId=\d+/i,
     ],
     nonJobDescription: (pathname) =>
@@ -272,18 +278,15 @@ export function classifyCurrentPage(): PageClass {
   // --- 2. Major platform specific rules ---
   const matchedPlatform = MAJOR_PLATFORM_RULES.find((rule) => rule.hostRegex.test(hostname));
   if (matchedPlatform) {
-    const isExplicitNonJob = matchedPlatform.nonJobPatterns.some((pattern) => pattern.test(pathname));
-    if (isExplicitNonJob && !hasJobPosting) {
-      const skipReason = matchedPlatform.nonJobDescription(pathname);
-      return {
-        isJobPage: false,
-        confidence: 0,
-        reasons: [`Explicit non-job path on ${matchedPlatform.name}: ${pathname}`],
-        skipReason,
-      };
-    }
-
     const isJobUrl = matchedPlatform.jobPatterns.some((pattern) => pattern.test(pathname) || pattern.test(url));
+    const platformDomSelectors: Record<string, string> = {
+      LinkedIn: "[class*='jobs-unified-top-card'], [class*='job-details'], [data-occludable-job-id], #job-details, .jobs-search__job-details",
+      SEEK: "[data-automation='job-detail-title'], [data-automation='jobDetails'], [data-automation='jobAdDetails'], h1[data-automation='job-detail-title']",
+      Indeed: "#jobDescriptionText, [class*='jobsearch-jobDescriptionText'], [data-testid='jobsearch-JobInfoHeader-title'], .jobsearch-JobInfoHeader-title, #viewJobSSRRoot, [data-jk], [data-testid='inlineHeader-companyName']",
+    };
+    const selector = platformDomSelectors[matchedPlatform.name];
+    const hasPlatformDomSignal = Boolean(selector && document.querySelector(selector));
+
     if (isJobUrl) {
       reasons.push(`Job posting URL pattern on ${matchedPlatform.name}: ${pathname}`);
       confidence += 5;
@@ -292,13 +295,19 @@ export function classifyCurrentPage(): PageClass {
       reasons.push(`Page on ${matchedPlatform.name} contains JSON-LD JobPosting structured data`);
       confidence += 5;
       autoQualify = true;
+    } else if (hasPlatformDomSignal) {
+      reasons.push(`DOM contains ${matchedPlatform.name} job detail elements`);
+      confidence += 5;
+      autoQualify = true;
     } else {
-      // For major platforms, if the URL is neither an explicit non-job path nor a job posting URL and has no JobPosting JSON-LD, skip parsing.
-      const skipReason = `${matchedPlatform.name} page (${pathname}) does not match an identified job listing URL pattern`;
+      const isExplicitNonJob = matchedPlatform.nonJobPatterns.some((pattern) => pattern.test(pathname));
+      const skipReason = isExplicitNonJob
+        ? matchedPlatform.nonJobDescription(pathname)
+        : `${matchedPlatform.name} page (${pathname}) does not match an identified job listing URL pattern or content structure`;
       return {
         isJobPage: false,
         confidence: 0,
-        reasons: [`Not a job listing URL pattern on ${matchedPlatform.name}: ${pathname}`],
+        reasons: [`${isExplicitNonJob ? "Explicit non-job path" : "Not a job listing"} on ${matchedPlatform.name}: ${pathname}`],
         skipReason,
       };
     }

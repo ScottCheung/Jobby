@@ -83,7 +83,16 @@ export const CircularProgress = React.memo<CircularProgressProps>(
       : 96;
     const normalizedRadius = Math.max(0, radius - thickness / 2);
     const circumference = 2 * Math.PI * normalizedRadius;
-    const strokeDashoffset = circumference - (percentage / 100) * circumference;
+    // A round cap extends half a stroke width beyond each end of the SVG dash.
+    // Without accounting for that extension, a near-complete value such as 97%
+    // visually closes its ~6px gap with an 8px stroke and becomes indistinguishable
+    // from 100%. Shorten non-complete dashes by one stroke width so the visible arc
+    // accurately represents the displayed percentage; 100% remains a true closed ring.
+    const visibleDashLength =
+      percentage >= 100 ?
+        circumference
+      : Math.max(0, (percentage / 100) * circumference - thickness);
+    const strokeDashoffset = circumference - visibleDashLength;
 
     const dashArray =
       isIndeterminate ?

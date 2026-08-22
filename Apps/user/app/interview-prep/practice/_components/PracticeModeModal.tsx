@@ -225,7 +225,7 @@ export function PracticeModeModal({
 
         {/* ── Custom Set Configuration ── */}
         {localMode === 'custom' && (
-          <div className='flex flex-col gap-4 border border-border rounded-2xl p-4 bg-background-secondary/10'>
+          <div className='flex flex-col gap-4 border border-primary rounded-2xl p-4 bg-background-secondary/10'>
             {/* Category filter */}
             {categories.length > 0 && (
               <div className='flex flex-col gap-2'>
@@ -242,7 +242,7 @@ export function PracticeModeModal({
                           'label-sm px-2.5 py-1 rounded-full border transition-all',
                           active ?
                             'bg-primary/10 text-primary border-primary/30'
-                          : 'border-border text-ink-secondary hover:text-ink-primary hover:border-primary/30',
+                          : 'border-primary text-ink-secondary hover:text-ink-primary hover:border-primary/30',
                         )}
                       >
                         {cleanName(cat.name)}
@@ -270,7 +270,7 @@ export function PracticeModeModal({
                           'label-sm flex items-center gap-0.5 px-2 py-1 rounded-lg border transition-all',
                           active ?
                             'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-400/40'
-                          : 'border-border text-ink-secondary hover:text-ink-primary',
+                          : 'border-primary text-ink-secondary hover:text-ink-primary',
                         )}
                       >
                         {n}
@@ -306,7 +306,7 @@ export function PracticeModeModal({
                         className={cn(
                           'label-sm px-2.5 py-1 rounded-lg border transition-all',
                           active ? activeColor : (
-                            'border-border text-ink-secondary hover:text-ink-primary'
+                            'border-primary text-ink-secondary hover:text-ink-primary'
                           ),
                         )}
                       >
@@ -320,7 +320,7 @@ export function PracticeModeModal({
 
             {/* Search + Bulk select toolbar */}
             <div className='flex items-center gap-2'>
-              <div className='flex items-center gap-2 flex-1 bg-panel px-3 py-2 rounded-lg border border-border'>
+              <div className='flex items-center gap-2 flex-1 bg-panel px-3 py-2 rounded-lg border border-primary'>
                 <Search className='w-3.5 h-3.5 text-ink-secondary shrink-0' />
                 <input
                   type='text'
@@ -346,7 +346,7 @@ export function PracticeModeModal({
                     'bg-primary/10 text-primary border-primary/30'
                   : someFilteredSelected ?
                     'bg-primary/5 text-primary border-primary/20'
-                  : 'border-border text-ink-secondary hover:text-ink-primary hover:border-primary/30',
+                  : 'border-primary text-ink-secondary hover:text-ink-primary hover:border-primary/30',
                 )}
               >
                 {allFilteredSelected ?
@@ -356,7 +356,7 @@ export function PracticeModeModal({
             </div>
 
             {/* Question checklist */}
-            <div className='border border-border rounded-xl overflow-hidden'>
+            <div className='border border-primary rounded-xl overflow-hidden'>
               <div className='max-h-60 overflow-y-auto custom-scrollbar-primary divide-y divide-border/50'>
                 {filteredQuestions.map((q) => {
                   const checked = localCustomIds.includes(q.id);
@@ -434,7 +434,7 @@ export function PracticeModeModal({
               </div>
 
               {/* Checklist footer */}
-              <div className='flex items-center justify-between px-3 py-2 bg-background-secondary/20 border-t border-border/50'>
+              <div className='flex items-center justify-between px-3 py-2 bg-background-secondary/20 border-t border-primary/50'>
                 <span className='label-sm'>
                   {localCustomIds.length === 0 ?
                     'No selection — all questions will be used'
@@ -457,7 +457,7 @@ export function PracticeModeModal({
 
         {/* Plan Mode info */}
         {localMode === 'plan' && activePlan && (
-          <div className='flex flex-col gap-2 border border-border rounded-2xl p-4 bg-background-secondary/10'>
+          <div className='flex flex-col gap-2 border border-primary rounded-2xl p-4 bg-background-secondary/10'>
             <p className='label-overline'>Active Plan</p>
             <p className='label'>{activePlan.name}</p>
             <p className='body-sm text-ink-secondary'>

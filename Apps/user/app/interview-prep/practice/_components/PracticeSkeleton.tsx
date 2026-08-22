@@ -9,7 +9,7 @@ export function PracticeSkeleton() {
       {/* ── Left Column ── */}
       <div className='flex-1 w-full transition-all panel-xl pb-0!  flex flex-col gap-4 relative h-full pt-4!'>
         {/* Header Skeleton */}
-        <div className='flex items-center justify-between  dark:border-border/60  shrink-0'>
+        <div className='flex items-center justify-between  dark:border-primary/60  shrink-0'>
           <div className='h-3 skeleton rounded w-1/3 '></div>
 
           <div className='flex gap-2'>

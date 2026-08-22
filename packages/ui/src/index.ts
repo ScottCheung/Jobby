@@ -15,6 +15,7 @@ export * from './components/UI/InfiniteScroll';
 export * from './components/UI/VirtualList';
 export * from './components/UI/bullet-list-input';
 export * from './components/UI/tag-input';
+export * from './components/UI/Resume';
 
 export * from './components/UI/Accordion/Accordion';
 export * from './components/UI/AutoScroll/AutoScroll';
@@ -52,7 +53,9 @@ export * from './components/UI/switch';
 export * from './components/UI/table';
 export * from './components/UI/table/data-table';
 export * from './components/UI/text/typography';
+export * from './components/UI/text/section-heading';
 export * from './components/UI/textarea';
+export * from './components/UI/toast/toast-store';
 export * from './components/UI/toast/toaster';
 export * from './components/UI/toggle-group';
 export * from './components/UI/tooltip';

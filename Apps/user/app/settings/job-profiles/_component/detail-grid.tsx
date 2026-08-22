@@ -19,7 +19,7 @@ export function DetailGrid({ title, icon, items }: DetailGridProps) {
         {items.map((item) => (
           <div
             key={item.label}
-            className='rounded-xl border border-border/60 bg-background-secondary/40 dark:bg-panel/30 px-4 py-3'
+            className='rounded-xl border border-primary/60 bg-background-secondary/40 dark:bg-panel/30 px-4 py-3'
           >
             <div className='text-[11px] uppercase tracking-wider text-ink-secondary/70'>
               {item.label}

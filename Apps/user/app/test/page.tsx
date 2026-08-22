@@ -93,12 +93,14 @@ const MOCK_ITEMS: JobCardItem[] = [
 export default function StickyCardTestPage() {
   const [fixCorners, setFixCorners] = useState(true);
   const [blurEffect, setBlurEffect] = useState(true);
-  const [activeTab, setActiveTab] = useState<'shrink_page' | 'internal'>('shrink_page');
+  const [activeTab, setActiveTab] = useState<'shrink_page' | 'internal'>(
+    'shrink_page',
+  );
 
   return (
     <div className='max-w-5xl mx-auto space-y-8 pb-32'>
       {/* Page Header */}
-      <div className='flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/40 pb-6'>
+      <div className='flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-primary/40 pb-6'>
         <div>
           <div className='flex items-center gap-2 text-primary text-xs font-bold uppercase tracking-wider mb-1'>
             <Sparkles className='w-4 h-4' /> Long Page Sticky Card Demo
@@ -107,12 +109,13 @@ export default function StickyCardTestPage() {
             整页滚动吸顶卡片（容器动态高度收缩 + 圆角无缝保留）
           </h1>
           <p className='body-md text-ink-secondary mt-1'>
-            解决外部非固定高度、超长卡片在页面滑动时标题 Sticky 吸顶，且容器随着向上滑动呈现高度收缩与圆角全流程保持的极致效果。
+            解决外部非固定高度、超长卡片在页面滑动时标题 Sticky
+            吸顶，且容器随着向上滑动呈现高度收缩与圆角全流程保持的极致效果。
           </p>
         </div>
 
         {/* Interactive Controls Bar */}
-        <div className='flex flex-wrap items-center gap-3 bg-panel p-2 rounded-2xl border border-border/60 shadow-sm'>
+        <div className='flex flex-wrap items-center gap-3 bg-panel p-2 rounded-2xl border border-primary/60 shadow-sm'>
           <button
             onClick={() => setFixCorners(!fixCorners)}
             className={cn(
@@ -132,7 +135,7 @@ export default function StickyCardTestPage() {
               'label-sm px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer',
               blurEffect ?
                 'bg-primary/15 text-primary border border-primary/30'
-              : 'bg-background-secondary text-ink-secondary border border-border/40',
+              : 'bg-background-secondary text-ink-secondary border border-primary/40',
             )}
           >
             <Sliders className='w-4 h-4' />
@@ -150,20 +153,40 @@ export default function StickyCardTestPage() {
           </p>
           <ul className='list-disc pl-5 space-y-1 text-xs'>
             <li>
-              <strong>卡片外框</strong>：<code className='bg-background px-1.5 py-0.5 rounded text-primary font-mono'>rounded-3xl border border-border bg-panel overflow-hidden isolate relative</code>。
+              <strong>卡片外框</strong>：
+              <code className='bg-background px-1.5 py-0.5 rounded text-primary font-mono'>
+                rounded-3xl bg-panel overflow-hidden isolate relative
+              </code>
+              。
             </li>
             <li>
-              <strong>Sticky Header 顶部保持圆角</strong>：标题栏使用 <code className='bg-background px-1.5 py-0.5 rounded text-primary font-mono'>sticky top-0 z-10 rounded-t-3xl bg-panel/90 backdrop-blur-md border-b border-border/40</code>。当整页滚动时，标题栏顶入屏幕最上方，其自身带有 <code className='bg-background px-1.5 py-0.5 rounded text-primary font-mono'>rounded-t-3xl</code>，因此顶部圆角永远不会消失。
+              <strong>Sticky Header 顶部保持圆角</strong>：标题栏使用{' '}
+              <code className='bg-background px-1.5 py-0.5 rounded text-primary font-mono'>
+                sticky top-0 z-10 rounded-t-3xl bg-panel/90 backdrop-blur-md
+                border-b border-primary/40
+              </code>
+              。当整页滚动时，标题栏顶入屏幕最上方，其自身带有{' '}
+              <code className='bg-background px-1.5 py-0.5 rounded text-primary font-mono'>
+                rounded-t-3xl
+              </code>
+              ，因此顶部圆角永远不会消失。
             </li>
             <li>
-              <strong>高度收缩视觉感 (Visual Shrink Effect)</strong>：由于标题吸附在顶部 <code className='bg-background px-1.5 py-0.5 rounded text-primary font-mono'>top-0</code>，而卡片的底边（带底部圆角）随着整页向上滑动不断逼近顶部标题栏，视觉上就会产生<strong>“卡片容器高度正在随着滑动逐渐变低/收缩”</strong>的超流畅体验！
+              <strong>高度收缩视觉感 (Visual Shrink Effect)</strong>
+              ：由于标题吸附在顶部{' '}
+              <code className='bg-background px-1.5 py-0.5 rounded text-primary font-mono'>
+                top-0
+              </code>
+              ，而卡片的底边（带底部圆角）随着整页向上滑动不断逼近顶部标题栏，视觉上就会产生
+              <strong>“卡片容器高度正在随着滑动逐渐变低/收缩”</strong>
+              的超流畅体验！
             </li>
           </ul>
         </div>
       </div>
 
       {/* Navigation Mode Switcher */}
-      <div className='flex items-center gap-2 border-b border-border/40 pb-2'>
+      <div className='flex items-center gap-2 border-b border-primary/40 pb-2'>
         <button
           onClick={() => setActiveTab('shrink_page')}
           className={cn(
@@ -193,11 +216,12 @@ export default function StickyCardTestPage() {
       {/* MODE 1: LONG PAGE SCROLL CARDS WITH SHRINKING CONTAINER EFFECT */}
       {activeTab === 'shrink_page' && (
         <div className='space-y-12'>
-          <div className='p-4 rounded-2xl bg-panel border border-border/60 flex items-center justify-between text-sm text-ink-primary shadow-sm'>
+          <div className='p-4 rounded-2xl bg-panel border border-primary/60 flex items-center justify-between text-sm text-ink-primary shadow-sm'>
             <div className='flex items-center gap-2'>
               <ArrowDown className='w-4 h-4 text-primary animate-bounce' />
               <span>
-                <strong>滑动试一试：</strong> 向下滑动页面，观察下方多个超长卡片标题吸顶后，卡片底部向上靠近、容器高度逐渐“收缩变低”的过程：
+                <strong>滑动试一试：</strong>{' '}
+                向下滑动页面，观察下方多个超长卡片标题吸顶后，卡片底部向上靠近、容器高度逐渐“收缩变低”的过程：
               </span>
             </div>
           </div>
@@ -205,13 +229,13 @@ export default function StickyCardTestPage() {
           {/* CARD 1: Work Experience / Job Profile */}
           <section
             className={cn(
-              'border border-border bg-panel group rounded-3xl relative transition-all shadow-lg',
+              'bg-panel group rounded-3xl relative transition-all shadow-lg',
             )}
           >
             {/* Sticky Title Bar */}
             <div
               className={cn(
-                'sticky top-0 z-20 flex items-center justify-between gap-3 px-6 py-4 border-b border-border/40 transition-all',
+                'sticky top-0 z-20 flex items-center justify-between gap-3 px-6 py-4 border-b border-primary/40 transition-all',
                 blurEffect ?
                   'backdrop-blur-md bg-panel/90 dark:bg-panel/85'
                 : 'bg-panel',
@@ -227,7 +251,8 @@ export default function StickyCardTestPage() {
                     1. 个人履历与工作经历 (Work Experience)
                   </h2>
                   <p className='text-meta text-ink-secondary'>
-                    Sticky header pins at top-0 with rounded top corners while outer page scrolls
+                    Sticky header pins at top-0 with rounded top corners while
+                    outer page scrolls
                   </p>
                 </div>
               </div>
@@ -246,14 +271,14 @@ export default function StickyCardTestPage() {
 
             {/* Long Card Body Content */}
             <div className='p-8 space-y-6'>
-              <div className='p-4 rounded-2xl bg-background-secondary/40 border border-border/40 text-xs text-ink-secondary'>
+              <div className='p-4 rounded-2xl bg-background-secondary/40 border border-primary/40 text-xs text-ink-secondary'>
                 继续向下滑动，这个卡片底部向上靠近标题时，容器看起来就像在自动收缩变矮！
               </div>
 
               {MOCK_ITEMS.map((item, idx) => (
                 <div
                   key={`card1-${item.id}`}
-                  className='p-5 rounded-2xl border border-border/40 bg-background-secondary/20 hover:bg-background-secondary/50 transition-all space-y-3'
+                  className='p-5 rounded-2xl border border-primary/40 bg-background-secondary/20 hover:bg-background-secondary/50 transition-all space-y-3'
                 >
                   <div className='flex items-start justify-between'>
                     <div>
@@ -261,7 +286,8 @@ export default function StickyCardTestPage() {
                         Role #{idx + 1}: {item.title}
                       </h4>
                       <p className='text-xs text-ink-secondary mt-1 flex items-center gap-2'>
-                        <Building2 className='w-3.5 h-3.5' /> {item.company} • {item.location}
+                        <Building2 className='w-3.5 h-3.5' /> {item.company} •{' '}
+                        {item.location}
                       </p>
                     </div>
                     <span className='text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full'>
@@ -269,7 +295,9 @@ export default function StickyCardTestPage() {
                     </span>
                   </div>
                   <p className='body-sm text-ink-secondary'>
-                    Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam.
+                    Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed
+                    do eiusmod tempor incididunt ut labore et dolore magna
+                    aliqua. Ut enim ad minim veniam.
                   </p>
                 </div>
               ))}
@@ -279,13 +307,13 @@ export default function StickyCardTestPage() {
           {/* CARD 2: Education & Skills */}
           <section
             className={cn(
-              'border border-border bg-panel group rounded-3xl relative transition-all shadow-lg',
+              'bg-panel group rounded-3xl relative transition-all shadow-lg',
             )}
           >
             {/* Sticky Title Bar */}
             <div
               className={cn(
-                'sticky top-0 z-20 flex items-center justify-between gap-3 px-6 py-4 border-b border-border/40 transition-all',
+                'sticky top-0 z-20 flex items-center justify-between gap-3 px-6 py-4 border-b border-primary/40 transition-all',
                 blurEffect ?
                   'backdrop-blur-md bg-panel/90 dark:bg-panel/85'
                 : 'bg-panel',
@@ -301,7 +329,8 @@ export default function StickyCardTestPage() {
                     2. 教育背景与技能评估 (Education & Core Skills)
                   </h2>
                   <p className='text-meta text-ink-secondary'>
-                    Second card sticky header smoothly replaces the previous one during scroll
+                    Second card sticky header smoothly replaces the previous one
+                    during scroll
                   </p>
                 </div>
               </div>
@@ -316,7 +345,7 @@ export default function StickyCardTestPage() {
               {MOCK_ITEMS.concat(MOCK_ITEMS).map((item, idx) => (
                 <div
                   key={`card2-${item.id}-${idx}`}
-                  className='p-5 rounded-2xl border border-border/40 bg-background-secondary/20 hover:bg-background-secondary/50 transition-all space-y-3'
+                  className='p-5 rounded-2xl border border-primary/40 bg-background-secondary/20 hover:bg-background-secondary/50 transition-all space-y-3'
                 >
                   <div className='flex items-start justify-between'>
                     <div>
@@ -329,7 +358,8 @@ export default function StickyCardTestPage() {
                     </div>
                   </div>
                   <p className='body-sm text-ink-secondary'>
-                    Detailing technical proficiencies, frameworks, and architecture capabilities applied across software products.
+                    Detailing technical proficiencies, frameworks, and
+                    architecture capabilities applied across software products.
                   </p>
                 </div>
               ))}
@@ -339,13 +369,13 @@ export default function StickyCardTestPage() {
           {/* CARD 3: Certifications & Projects */}
           <section
             className={cn(
-              'border border-border bg-panel group rounded-3xl relative transition-all shadow-lg',
+              'bg-panel group rounded-3xl relative transition-all shadow-lg',
             )}
           >
             {/* Sticky Title Bar */}
             <div
               className={cn(
-                'sticky top-0 z-20 flex items-center justify-between gap-3 px-6 py-4 border-b border-border/40 transition-all',
+                'sticky top-0 z-20 flex items-center justify-between gap-3 px-6 py-4 border-b border-primary/40 transition-all',
                 blurEffect ?
                   'backdrop-blur-md bg-panel/90 dark:bg-panel/85'
                 : 'bg-panel',
@@ -376,13 +406,14 @@ export default function StickyCardTestPage() {
               {MOCK_ITEMS.map((item, idx) => (
                 <div
                   key={`card3-${item.id}-${idx}`}
-                  className='p-5 rounded-2xl border border-border/40 bg-background-secondary/20 hover:bg-background-secondary/50 transition-all space-y-3'
+                  className='p-5 rounded-2xl border border-primary/40 bg-background-secondary/20 hover:bg-background-secondary/50 transition-all space-y-3'
                 >
                   <h4 className='font-semibold text-ink-primary'>
                     Project #{idx + 1}: {item.title}
                   </h4>
                   <p className='body-sm text-ink-secondary'>
-                    Demonstrates autonomous application flows, clean UI design systems, and fast client-side performance.
+                    Demonstrates autonomous application flows, clean UI design
+                    systems, and fast client-side performance.
                   </p>
                 </div>
               ))}
@@ -397,13 +428,13 @@ export default function StickyCardTestPage() {
           <div className='lg:col-span-8 space-y-4'>
             <div
               className={cn(
-                'relative w-full h-[520px] bg-panel border border-border/60 shadow-xl transition-all flex flex-col',
+                'relative w-full h-[520px] bg-panel border border-primary/60 shadow-xl transition-all flex flex-col',
                 'rounded-3xl overflow-hidden isolate',
               )}
             >
               <div
                 className={cn(
-                  'sticky top-0 z-20 px-6 py-4 border-b border-border/40 transition-all flex items-center justify-between',
+                  'sticky top-0 z-20 px-6 py-4 border-b border-primary/40 transition-all flex items-center justify-between',
                   blurEffect ?
                     'backdrop-blur-md bg-panel/85 dark:bg-panel/80'
                   : 'bg-panel',
@@ -426,10 +457,14 @@ export default function StickyCardTestPage() {
                 {MOCK_ITEMS.map((item) => (
                   <div
                     key={item.id}
-                    className='p-5 rounded-2xl border border-border/50 bg-background-secondary/20 space-y-2'
+                    className='p-5 rounded-2xl border border-primary/50 bg-background-secondary/20 space-y-2'
                   >
-                    <h4 className='font-semibold text-ink-primary'>{item.title}</h4>
-                    <p className='body-sm text-ink-secondary'>{item.company} • {item.salary}</p>
+                    <h4 className='font-semibold text-ink-primary'>
+                      {item.title}
+                    </h4>
+                    <p className='body-sm text-ink-secondary'>
+                      {item.company} • {item.salary}
+                    </p>
                   </div>
                 ))}
               </div>

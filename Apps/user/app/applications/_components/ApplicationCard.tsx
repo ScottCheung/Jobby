@@ -108,7 +108,7 @@ export function ApplicationCard({
       }}
       onClick={() => onOpenDetails(entry.id)}
       className={cn(
-        'group relative flex flex-col justify-between rounded-tl-3xl! rounded-2xl border border-border/60 bg-panel/70 p-5  hover:border-primary/40 hover:shadow-md cursor-pointer',
+        'group relative flex flex-col justify-between rounded-tl-3xl! rounded-2xl border border-primary/60 bg-panel/70 p-5  hover:border-primary/40 hover:shadow-md cursor-pointer',
         entry.isLiveProcessing &&
           'bg-amber-500/5 border-amber-500/40 border-l-4 border-l-amber-500',
         isSelected && 'bg-primary/10 border-primary/50 ring-1 ring-primary/30',
@@ -148,7 +148,7 @@ export function ApplicationCard({
         </div>
 
         {/* Job Posting Info & Requisition Details */}
-        <div className='mt-4 flex flex-col gap-2 rounded-xl border border-border/40 bg-background-secondary/30 p-3 text-xs text-ink-secondary'>
+        <div className='mt-4 flex flex-col gap-2 rounded-xl border border-primary/40 bg-background-secondary/30 p-3 text-xs text-ink-secondary'>
           <div className='flex items-center justify-between gap-2 flex-wrap'>
             {/* Job Posted Info Field */}
             <div className='flex items-center gap-1.5 text-primary font-medium'>
@@ -170,7 +170,7 @@ export function ApplicationCard({
             )}
           </div>
 
-          <div className='flex items-center justify-between gap-2 border-t border-border/30 pt-2 flex-wrap text-[11px]'>
+          <div className='flex items-center justify-between gap-2 border-t border-primary/30 pt-2 flex-wrap text-[11px]'>
             {/* Location & Work Style */}
             <div className='flex items-center gap-2 flex-wrap'>
               {entry.workLocation && (
@@ -219,7 +219,7 @@ export function ApplicationCard({
             delay={150}
             content={
               <div className='max-h-[350px] max-w-[460px] overflow-y-auto custom-scrollbar-primary p-2 space-y-1 text-xs'>
-                <div className='font-bold text-primary text-[11px] uppercase tracking-wider border-b border-border/40 pb-1 mb-2'>
+                <div className='font-bold text-primary text-[11px] uppercase tracking-wider border-b border-primary/40 pb-1 mb-2'>
                   Full Job Description ({entry.company})
                 </div>
                 <StructuredJobDescription content={entry.jobDescription} />
@@ -231,7 +231,7 @@ export function ApplicationCard({
                 e.stopPropagation();
                 onOpenDetails(entry.id, 'description');
               }}
-              className='mt-3.5 rounded-xl border border-border/40 bg-background-secondary/40 p-3 text-xs text-ink-secondary hover:border-primary/30 transition-colors cursor-pointer group/jdp'
+              className='mt-3.5 rounded-xl border border-primary/40 bg-background-secondary/40 p-3 text-xs text-ink-secondary hover:border-primary/30 transition-colors cursor-pointer group/jdp'
             >
               <div className='flex items-center justify-between mb-1'>
                 <span className='text-[10px] font-bold text-ink-secondary/70 uppercase tracking-wider group-hover/jdp:text-primary transition-colors'>
@@ -250,7 +250,7 @@ export function ApplicationCard({
       </div>
 
       {/* Card Footer Actions */}
-      <div className='mt-4 flex items-center justify-between border-t border-border/40 pt-3 text-xs gap-2'>
+      <div className='mt-4 flex items-center justify-between border-t border-primary/40 pt-3 text-xs gap-2'>
         <div
           className='flex items-center gap-1.5'
           onClick={(e) => e.stopPropagation()}

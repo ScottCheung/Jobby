@@ -147,9 +147,86 @@ export function useThemeSync(authStatus?: AuthStatus) {
     };
   }, [applyThemeToDOM, themeColor, themeMode]);
 
-  useEffect(() => {
-    applyThemeToDOM(themeColor, themeMode);
-  }, [applyThemeToDOM, themeColor, themeMode]);
+  const THEME_COLORS: ThemeColor[] = ['green', 'blue', 'purple', 'orange', 'rose'];
 
-  return { themeColor, themeMode };
+  const setThemeColorWithPersistence = useCallback(
+    (newColor: ThemeColor) => {
+      setThemeColor(newColor);
+      applyThemeToDOM(newColor, themeMode);
+      if (typeof chrome !== 'undefined' && chrome.storage?.local) {
+        void chrome.storage.local.set({ [COLOR_STORAGE_KEY]: newColor });
+      }
+      if (authStatus?.connected) {
+        void apiClient
+          .request<{ extra_data?: Record<string, unknown> }>('/api/profile')
+          .then((profile) => {
+            const extra = profile?.extra_data ?? {};
+            return apiClient.request('/api/profile', {
+              method: 'PUT',
+              body: JSON.stringify({
+                extra_data: { ...extra, [COLOR_STORAGE_KEY]: newColor },
+              }),
+            });
+          })
+          .catch(() => {});
+      }
+    },
+    [applyThemeToDOM, authStatus?.connected, themeMode],
+  );
+
+  const setThemeModeWithPersistence = useCallback(
+    (newMode: ThemeMode) => {
+      setThemeMode(newMode);
+      applyThemeToDOM(themeColor, newMode);
+      if (typeof chrome !== 'undefined' && chrome.storage?.local) {
+        void chrome.storage.local.set({ [MODE_STORAGE_KEY]: newMode });
+      }
+      if (authStatus?.connected) {
+        void apiClient
+          .request<{ extra_data?: Record<string, unknown> }>('/api/profile')
+          .then((profile) => {
+            const extra = profile?.extra_data ?? {};
+            return apiClient.request('/api/profile', {
+              method: 'PUT',
+              body: JSON.stringify({
+                extra_data: { ...extra, [MODE_STORAGE_KEY]: newMode },
+              }),
+            });
+          })
+          .catch(() => {});
+      }
+    },
+    [applyThemeToDOM, authStatus?.connected, themeColor],
+  );
+
+  const toggleThemeColor = useCallback(() => {
+    const currentIndex = THEME_COLORS.indexOf(themeColor);
+    const nextIndex = (currentIndex + 1) % THEME_COLORS.length;
+    const nextColor = THEME_COLORS[nextIndex] ?? 'green';
+    setThemeColorWithPersistence(nextColor);
+  }, [setThemeColorWithPersistence, themeColor]);
+
+  const toggleThemeMode = useCallback(() => {
+    let nextMode: ThemeMode = 'light';
+    if (themeMode === 'light') {
+      nextMode = 'dark';
+    } else if (themeMode === 'dark') {
+      nextMode = 'light';
+    } else {
+      const isSystemDark =
+        typeof window !== 'undefined' &&
+        window.matchMedia('(prefers-color-scheme: dark)').matches;
+      nextMode = isSystemDark ? 'light' : 'dark';
+    }
+    setThemeModeWithPersistence(nextMode);
+  }, [setThemeModeWithPersistence, themeMode]);
+
+  return {
+    themeColor,
+    themeMode,
+    setThemeColor: setThemeColorWithPersistence,
+    setThemeMode: setThemeModeWithPersistence,
+    toggleThemeColor,
+    toggleThemeMode,
+  };
 }

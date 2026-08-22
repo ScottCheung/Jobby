@@ -209,7 +209,7 @@ export function AddQuestionsToCollectionModal({
       className='w-[92vw] max-w-4xl max-h-[88vh] text-ink-primary'
     >
       {/* Header */}
-      <div className='flex items-center justify-between border-b border-border/40 px-6 py-5 shrink-0 bg-background-secondary/5'>
+      <div className='flex items-center justify-between border-b border-primary/40 px-6 py-5 shrink-0 bg-background-secondary/5'>
         <div className='flex items-center gap-3'>
           <div className='w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shrink-0'>
             <FolderPlus className='w-5 h-5' />
@@ -233,7 +233,7 @@ export function AddQuestionsToCollectionModal({
       </div>
 
       {/* Filter Bar */}
-      <div className='px-6 pt-4 pb-3 border-b border-border/40 flex flex-col gap-3 shrink-0 bg-panel'>
+      <div className='px-6 pt-4 pb-3 border-b border-primary/40 flex flex-col gap-3 shrink-0 bg-panel'>
         <div className='flex items-center gap-2'>
           <div className='relative flex-1'>
             <Search className='absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-secondary' />
@@ -242,7 +242,7 @@ export function AddQuestionsToCollectionModal({
               placeholder='Search candidate questions...'
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className='body-md w-full pl-9 pr-8 py-2 rounded-xl bg-background-secondary/40 dark:bg-background-secondary border border-border/50 focus:outline-none focus:border-primary/50 text-ink-primary'
+              className='body-md w-full pl-9 pr-8 py-2 rounded-xl bg-background-secondary/40 dark:bg-background-secondary border border-primary/50 focus:outline-none focus:border-primary/50 text-ink-primary'
             />
             {search && (
               <button
@@ -384,14 +384,14 @@ export function AddQuestionsToCollectionModal({
       </div>
 
       {/* Master Select Bar */}
-      <div className='flex items-center justify-between px-6 py-3 bg-background-secondary/10 border-b border-border/40 shrink-0'>
+      <div className='flex items-center justify-between px-6 py-3 bg-background-secondary/10 border-b border-primary/40 shrink-0'>
         <label className='flex items-center gap-3 cursor-pointer select-none'>
           <input
             type='checkbox'
             checked={allFilteredSelected}
             onChange={toggleSelectAllFiltered}
             disabled={filteredCandidates.length === 0}
-            className='w-4 h-4 rounded border-border text-primary focus:ring-primary accent-primary cursor-pointer'
+            className='w-4 h-4 rounded border-primary text-primary focus:ring-primary accent-primary cursor-pointer'
           />
           <span className='text-xs font-semibold text-ink-primary'>
             {allFilteredSelected ?
@@ -437,14 +437,14 @@ export function AddQuestionsToCollectionModal({
                   'flex items-center gap-3.5 p-4 rounded-2xl border transition-all cursor-pointer select-none',
                   isChecked ?
                     'bg-primary/5 border-primary/40 shadow-xs'
-                  : 'border-border/60 hover:border-primary/30 hover:bg-background-secondary/30',
+                  : 'border-primary/60 hover:border-primary/30 hover:bg-background-secondary/30',
                 )}
               >
                 <input
                   type='checkbox'
                   checked={isChecked}
                   onChange={() => {}} // Handled by container click
-                  className='w-4 h-4 rounded border-border text-primary focus:ring-primary accent-primary shrink-0 cursor-pointer'
+                  className='w-4 h-4 rounded border-primary text-primary focus:ring-primary accent-primary shrink-0 cursor-pointer'
                 />
 
                 <div className='flex-1 min-w-0 flex flex-col gap-1.5'>
@@ -497,7 +497,7 @@ export function AddQuestionsToCollectionModal({
       </div>
 
       {/* Footer */}
-      <div className='flex items-center justify-between p-6 border-t border-border/40 bg-background-secondary/5 shrink-0'>
+      <div className='flex items-center justify-between p-6 border-t border-primary/40 bg-background-secondary/5 shrink-0'>
         <div className='text-xs text-ink-secondary'>
           {selectedIds.length > 0 ?
             <span className='text-primary font-semibold'>

@@ -409,13 +409,13 @@ export default function ApplicationsPage() {
                   placeholder='Search title, company, job id...'
                   value={searchText}
                   onChange={(event) => setSearchText(event.target.value)}
-                  className='body-md pl-9 pr-4 py-1.5 w-full rounded-xl border border-zinc-200 bg-panel dark:bg-zinc-955 dark:border-border focus:outline-none focus:border-primary/50 dark:focus:border-primary/50 focus:ring-1 focus:ring-primary/20 dark:focus:ring-zinc-750 text-ink-primary'
+                  className='body-md pl-9 pr-4 py-1.5 w-full rounded-xl border border-zinc-200 bg-panel dark:bg-zinc-955 dark:border-primary focus:outline-none focus:border-primary/50 dark:focus:border-primary/50 focus:ring-1 focus:ring-primary/20 dark:focus:ring-zinc-750 text-ink-primary'
                 />
               </div>
               <select
                 value={statusFilter}
                 onChange={(event) => setStatusFilter(event.target.value)}
-                className='body-md h-9 rounded-xl border border-zinc-200 bg-panel px-3 outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 dark:border-border dark:bg-zinc-955 dark:focus:border-primary/50 dark:focus:ring-zinc-750'
+                className='body-md h-9 rounded-xl border border-zinc-200 bg-panel px-3 outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 dark:border-primary dark:bg-zinc-955 dark:focus:border-primary/50 dark:focus:ring-zinc-750'
               >
                 <option value=''>All statuses</option>
                 <option value='submitted'>Submitted</option>
@@ -437,10 +437,7 @@ export default function ApplicationsPage() {
           onScroll={handleCardScroll}
           className='flex-1 body overflow-y-auto custom-scrollbar-primary p-page relative'
         >
-          <WaterfallLayout
-            minColumnWidth={340}
-            gap={20}
-          >
+          <WaterfallLayout minColumnWidth={340} gap={20}>
             {isLoading &&
               items.length === 0 &&
               [1, 2, 3, 4, 5, 6].map((n, index) => (
@@ -449,7 +446,7 @@ export default function ApplicationsPage() {
                   style={{
                     height: `${SKELETON_HEIGHTS[index % SKELETON_HEIGHTS.length]}px`,
                   }}
-                  className='rounded-2xl rounded-tl-3xl! border border-border/40 bg-background-secondary animate-pulse'
+                  className='rounded-2xl rounded-tl-3xl! border border-primary/40 bg-background-secondary animate-pulse'
                 />
               ))}
             {rowItems.map((item) => (
@@ -473,7 +470,7 @@ export default function ApplicationsPage() {
                   style={{
                     height: `${SKELETON_HEIGHTS[(index + 3) % SKELETON_HEIGHTS.length]}px`,
                   }}
-                  className='rounded-2xl rounded-tl-3xl! border border-border/40 bg-background-secondary animate-pulse'
+                  className='rounded-2xl rounded-tl-3xl! border border-primary/40 bg-background-secondary animate-pulse'
                 />
               ))}
           </WaterfallLayout>

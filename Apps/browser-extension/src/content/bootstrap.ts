@@ -1,23 +1,30 @@
 import { handleContentCommand, startContentFormDiscovery } from "./command-handler";
-import { readCurrentPageWhenReady } from "./page-reader";
-import { injectInPageScoreCard } from "./dom/score-card-injector";
 import { initializeFloatingBall } from "./dom/floating-ball";
+import { classifyCurrentPage } from "./page-classifier";
 
 type ContentMessageListener = Parameters<typeof chrome.runtime.onMessage.addListener>[0];
 
 declare global {
   interface Window {
     __jobbyContentMessageListener?: ContentMessageListener;
+    __jobbyContentBootstrapCleanup?: () => void;
     __jobbyFormObserverCleanup?: () => void;
     __jobbyFormDiscoveryCleanup?: () => void;
   }
 }
 
+window.__jobbyContentBootstrapCleanup?.();
+window.__jobbyContentBootstrapCleanup = undefined;
+
+// Backward-compatible cleanup for a page that was injected by an older build
+// before the unified teardown hook existed.
 if (window.__jobbyContentMessageListener) {
   chrome.runtime.onMessage.removeListener(window.__jobbyContentMessageListener);
 }
 window.__jobbyFormObserverCleanup?.();
 window.__jobbyFormDiscoveryCleanup?.();
+
+const cleanupCallbacks: Array<() => void> = [];
 
 const listener: ContentMessageListener = (message, _sender, sendResponse) => {
   void handleContentCommand(message)
@@ -33,9 +40,10 @@ const listener: ContentMessageListener = (message, _sender, sendResponse) => {
 
 window.__jobbyContentMessageListener = listener;
 chrome.runtime.onMessage.addListener(listener);
+cleanupCallbacks.push(() => chrome.runtime.onMessage.removeListener(listener));
 
 // Listen for theme changes from the Jobby web app and update chrome.storage.local
-window.addEventListener("message", (event) => {
+const onThemeMessage = (event: MessageEvent) => {
   if (
     event.source === window &&
     event.data &&
@@ -50,7 +58,31 @@ window.addEventListener("message", (event) => {
       void chrome.storage.local.set(updatePayload);
     }
   }
-});
+};
+window.addEventListener("message", onThemeMessage);
+cleanupCallbacks.push(() => window.removeEventListener("message", onThemeMessage));
+
+// Broadcast extension theme changes to web app window in real-time
+if (typeof chrome !== "undefined" && chrome.storage?.onChanged) {
+  const onStorageChanged = (changes: Record<string, chrome.storage.StorageChange>, areaName: string) => {
+    if (areaName !== "local") return;
+    const newTheme = changes["auto-job-ui-theme"]?.newValue;
+    const newColor = changes["auto-job-ui-theme-color"]?.newValue;
+    if (newTheme !== undefined || newColor !== undefined) {
+      window.postMessage(
+        {
+          source: "jobby-extension",
+          type: "JOBBY_EXTENSION_THEME_CHANGE",
+          theme: newTheme,
+          themeColor: newColor,
+        },
+        "*"
+      );
+    }
+  };
+  chrome.storage.onChanged.addListener(onStorageChanged);
+  cleanupCallbacks.push(() => chrome.storage.onChanged.removeListener(onStorageChanged));
+}
 
 // LinkedIn and SEEK are the only sites where Jobby continuously drives an
 // application flow. Other pages still support on-demand generic inspection,
@@ -64,16 +96,65 @@ const isAutoObservedHost =
   hostname === "seek.com" ||
   hostname.endsWith(".seek.com") ||
   hostname === "seek.com.au" ||
-  hostname.endsWith(".seek.com.au");
+  hostname.endsWith(".seek.com.au") ||
+  hostname === "indeed.com" ||
+  hostname.endsWith(".indeed.com");
 
 if (isTopLevelFrame) {
   initializeFloatingBall();
-  if (isAutoObservedHost) startContentFormDiscovery();
-  void readCurrentPageWhenReady()
-    .then((inspection) => {
-      if (inspection.kind === "job") {
-        injectInPageScoreCard(inspection);
+  if (isAutoObservedHost) {
+    const syncDiscoveryState = () => {
+      const pageClass = classifyCurrentPage();
+      if (pageClass.isJobPage) {
+        startContentFormDiscovery();
+      } else {
+        window.__jobbyFormDiscoveryCleanup?.();
+        window.__jobbyFormObserverCleanup?.();
       }
-    })
-    .catch(() => undefined);
+    };
+
+    syncDiscoveryState();
+
+    let pageChangeTimer: number | undefined;
+    const notifyPageChanged = () => {
+      if (pageChangeTimer !== undefined) window.clearTimeout(pageChangeTimer);
+      pageChangeTimer = window.setTimeout(() => {
+        pageChangeTimer = undefined;
+        syncDiscoveryState();
+        if (typeof chrome !== "undefined" && chrome.runtime?.sendMessage) {
+          chrome.runtime.sendMessage({ type: "content.page-changed" }).catch(() => undefined);
+        }
+      }, 100);
+    };
+
+    document.addEventListener("jobby.url-changed", notifyPageChanged);
+    window.addEventListener("popstate", notifyPageChanged);
+    cleanupCallbacks.push(() => {
+      document.removeEventListener("jobby.url-changed", notifyPageChanged);
+      window.removeEventListener("popstate", notifyPageChanged);
+      if (pageChangeTimer !== undefined) window.clearTimeout(pageChangeTimer);
+    });
+
+    // Also observe clicks on job listing cards/links on SEEK, LinkedIn, and Indeed
+    const onJobCardClick = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (!target) return;
+      const isJobClick = Boolean(
+        target.closest(
+          "a[href*='/job/'], a[href*='/jobs/view/'], [data-automation='job-card'], .job-card-container, [data-occludable-job-id], a[href*='vjk='], a[href*='jk='], .job_seen_beacon, [data-jk], [data-mobtk]"
+        )
+      );
+      if (isJobClick) {
+        notifyPageChanged();
+      }
+    };
+    document.addEventListener("click", onJobCardClick, { capture: true, passive: true });
+    cleanupCallbacks.push(() => document.removeEventListener("click", onJobCardClick, true));
+  }
 }
+
+window.__jobbyContentBootstrapCleanup = () => {
+  cleanupCallbacks.forEach((cleanup) => cleanup());
+  window.__jobbyFormObserverCleanup?.();
+  window.__jobbyFormDiscoveryCleanup?.();
+};

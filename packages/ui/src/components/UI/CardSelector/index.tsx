@@ -97,7 +97,7 @@ export function CardSelector<T extends string>({
                   'flex h-6 w-6 items-center justify-center rounded-full border transition-colors',
                   selected ?
                     cn(accentBorder, accentBg, accentText)
-                  : 'border-border bg-background',
+                  : 'border-primary bg-background',
                 )}
               >
                 {selected && (

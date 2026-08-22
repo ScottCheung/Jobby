@@ -364,7 +364,7 @@ function NotificationRow({
     <div
       onClick={onOpenViewComment}
       className={cn(
-        'group relative flex w-full cursor-pointer gap-3 border-b rounded-tl-2xl! rounded-br-2xl! rounded-lg border-border/50 p-3 pr-4 text-left transition hover:bg-background-secondary/50',
+        'group relative flex w-full cursor-pointer gap-3 border-b rounded-tl-2xl! rounded-br-2xl! rounded-lg border-primary/50 p-3 pr-4 text-left transition hover:bg-background-secondary/50',
         !item.read_at && 'bg-primary/5',
       )}
     >
@@ -416,7 +416,7 @@ function NotificationRow({
             · {relative}
           </p>
           {(commentBody || item.message) && (
-            <p className='mt-2 text-xs font-medium leading-relaxed text-ink-primary bg-background-secondary/40 p-2 rounded-lg border border-border/40'>
+            <p className='mt-2 text-xs font-medium leading-relaxed text-ink-primary bg-background-secondary/40 p-2 rounded-lg border border-primary/40'>
               {commentBody || item.message}
             </p>
           )}
@@ -435,7 +435,7 @@ function NotificationRow({
 
         {/* Action Buttons Row */}
         {item.question_id && (
-          <div className='mt-3 flex items-center gap-2 pt-2 border-t border-border/30'>
+          <div className='mt-3 flex items-center gap-2 pt-2 border-t border-primary/30'>
             <button
               type='button'
               onClick={(e) => {

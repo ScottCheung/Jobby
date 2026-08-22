@@ -1,7 +1,13 @@
 /** @format */
 
 'use client';
-import { Button, CardSelector, ImageCropper, Textarea, type CardSelectorOption } from '@jobby/ui';
+import {
+  Button,
+  CardSelector,
+  ImageCropper,
+  Textarea,
+  type CardSelectorOption,
+} from '@jobby/ui';
 
 import React, { useEffect, useId, useState } from 'react';
 import {
@@ -19,11 +25,8 @@ import {
 } from 'lucide-react';
 import type { InterviewCategory, InterviewCollection } from '@/lib/types';
 
-
-
 import { showGlobalToast } from '@/lib/toast';
 import { useGlobalModalStore } from '@/lib/store/global-modal-store';
-
 
 interface Props {
   collection?: InterviewCollection | null;
@@ -216,7 +219,7 @@ function CollectionFormContent({
             placeholder='e.g., Senior React Interview Questions'
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className='body-md w-full px-4 py-2.5 rounded-xl border border-border bg-background-secondary/50 text-ink-primary focus:outline-none focus:bg-background-primary/50'
+            className='body-md w-full px-4 py-2.5 rounded-xl border border-primary bg-background-secondary/50 text-ink-primary focus:outline-none focus:bg-background-primary/50'
           />
         </div>
 
@@ -234,7 +237,7 @@ function CollectionFormContent({
                 }}
                 onCancel={() => setPendingCoverFile(null)}
               />
-            : <div className='flex items-center gap-3 rounded-2xl border border-dashed border-border bg-background-secondary/50 p-3'>
+            : <div className='flex items-center gap-3 rounded-2xl border border-dashed border-primary bg-background-secondary/50 p-3'>
                 <div className='flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-primary/15 to-emerald-500/15 text-primary'>
                   {coverPreview ?
                     <img
@@ -303,7 +306,7 @@ function CollectionFormContent({
               onChange={(e) =>
                 setPriceCoins(Math.max(0, parseInt(e.target.value) || 0))
               }
-              className='body-md w-32 px-4 py-2 rounded-xl border border-border bg-background-primary/50 text-ink-primary focus:outline-none focus:border-primary/50'
+              className='body-md w-32 px-4 py-2 rounded-xl border border-primary bg-background-primary/50 text-ink-primary focus:outline-none focus:border-primary/50'
             />
             <span className='body-sm text-ink-secondary'>
               Setting this higher than 0 requires users to pay coins to unlock

@@ -1,6 +1,19 @@
 import { z } from "zod";
 
-export const formPlatformSchema = z.enum(["generic", "seek", "linkedin"]);
+// ATS names are deliberately part of the inspection payload.  They are not a
+// promise that every control has a dedicated driver; they let the backend use
+// a narrowly-scoped adapter before it falls back to the generic matcher.
+export const formPlatformSchema = z.enum([
+  "generic",
+  "seek",
+  "linkedin",
+  "workday",
+  "greenhouse",
+  "lever",
+  "ashby",
+  "smartrecruiters",
+  "taleo",
+]);
 export type FormPlatform = z.infer<typeof formPlatformSchema>;
 
 export const formFieldTypeSchema = z.enum([

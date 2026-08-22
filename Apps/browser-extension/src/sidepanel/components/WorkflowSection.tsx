@@ -25,6 +25,8 @@ interface WorkflowSectionProps {
   onRecordApplication?: () => void;
   hideAutofill?: boolean;
   autofillOnly?: boolean;
+  authConnected?: boolean;
+  onSignIn?: () => void;
 }
 
 export function WorkflowSection({
@@ -44,15 +46,24 @@ export function WorkflowSection({
   onRecordApplication,
   hideAutofill = false,
   autofillOnly = false,
+  authConnected = true,
+  onSignIn,
 }: WorkflowSectionProps) {
+  const handleAction = (action: () => void) => {
+    if (!authConnected && onSignIn) {
+      onSignIn();
+      return;
+    }
+    action();
+  };
+
   const isLinkedInJob =
     latestInspection?.kind === 'job' &&
     latestInspection.snapshot.platform === 'linkedin';
   const isLinkedInForm =
     latestForm?.kind === 'application_form' &&
     latestForm.platform === 'linkedin';
-  const appForm =
-    latestForm?.kind === 'application_form' ? latestForm : null;
+  const appForm = latestForm?.kind === 'application_form' ? latestForm : null;
   const isActionableForm =
     latestForm?.kind === 'application_form' ||
     latestForm?.kind === 'page_input_fields';
@@ -87,10 +98,10 @@ export function WorkflowSection({
     (!appForm?.canGoBack && latestForm?.platform !== 'linkedin');
   const disableNext =
     !isActionableForm ||
-    (appForm?.action === 'submit' || Boolean(appForm?.hasSubmitAction));
+    appForm?.action === 'submit' ||
+    Boolean(appForm?.hasSubmitAction);
   const disableFillAndNext = !(
-    latestPlan?.plan.state === 'preparing' &&
-    isActionableForm
+    latestPlan?.plan.state === 'preparing' && isActionableForm
   );
   // Reaching the final submit step is the source of truth for whether the
   // page can submit. A manually-debugged flow may not have advanced Jobby's
@@ -100,8 +111,11 @@ export function WorkflowSection({
   const disableAutofill = loadingButton !== null || isClearingForm;
   const disableAutoApply = planIsTerminal || (!isJobPage && !isLinkedInForm);
   const autofillFields = isFillableForm ? latestForm?.fields || [] : [];
-  const autofillTotal = autofillFields.length;
-  const autofillCompleted = autofillFields.filter(
+  const requiredAutofillFields = autofillFields.filter(
+    (field) => field.required,
+  );
+  const autofillTotal = requiredAutofillFields.length;
+  const autofillCompleted = requiredAutofillFields.filter(
     (field) => field.filled,
   ).length;
   const autofillPercentage =
@@ -111,10 +125,10 @@ export function WorkflowSection({
     <div className='autofill-actions'>
       <Button
         type='button'
-        variant={'secondary'}
-        className='autofill-btn-fill'
+        // variant={'secondary'}
+        className='w-full'
         disabled={disableAutofill}
-        onClick={onAutofill}
+        onClick={() => handleAction(onAutofill)}
       >
         {loadingButton === 'autofill' ?
           isFillableForm && autofillTotal > 0 ?
@@ -122,8 +136,7 @@ export function WorkflowSection({
           : 'Autofilling...'
         : isFillableForm && autofillTotal > 0 ?
           `Autofill Form ${autofillCompleted}/${autofillTotal} (${autofillPercentage}%)`
-        : 'Autofill Form'
-        }
+        : 'Autofill Form'}
       </Button>
       <Button
         type='button'
@@ -150,7 +163,7 @@ export function WorkflowSection({
           type='button'
           className={`hero-button ${loadingButton === 'autoRun' ? 'is-loading' : ''}`}
           disabled={disableAutoApply || loadingButton !== null}
-          onClick={onAutoApply}
+          onClick={() => handleAction(onAutoApply)}
         >
           {loadingButton === 'autoRun' ? 'Applying...' : 'One-Click Auto Apply'}
         </button>
@@ -183,12 +196,12 @@ export function WorkflowSection({
           <div className='grid grid-cols-3 gap-1.5'>
             <button
               type='button'
-              className={`text-[10px] font-bold px-1 py-2 rounded-full border border-border bg-panel hover:bg-muted/30 truncate ${
+              className={`text-[10px] font-bold px-1 py-2 rounded-full bg-panel hover:bg-muted/30 truncate ${
                 loadingButton === 'open' ? 'is-loading' : ''
               }`}
               disabled={disableOpen || loadingButton !== null}
               onClick={onOpenLinkedIn}
-              title="Open Application"
+              title='Open Application'
             >
               {loadingButton === 'open' ? 'Opening...' : 'Open App'}
             </button>
@@ -199,26 +212,26 @@ export function WorkflowSection({
                 loadingButton === 'fillAndNext' ? 'is-loading' : ''
               }`}
               disabled={disableFillAndNext || loadingButton !== null}
-              onClick={onFillAndNext}
-              title="Fill & Next"
+              onClick={() => handleAction(onFillAndNext)}
+              title='Fill & Next'
             >
               {loadingButton === 'fillAndNext' ? 'Filling...' : 'Fill & Next'}
             </button>
 
             <button
               type='button'
-              className={`text-[10px] font-bold px-1 py-2 rounded-full border border-border bg-panel hover:bg-muted/30 truncate ${
+              className={`text-[10px] font-bold px-1 py-2 rounded-full bg-panel hover:bg-muted/30 truncate ${
                 loadingButton === 'record' ? 'is-loading' : ''
               }`}
               disabled={disableRecord || loadingButton !== null}
-              onClick={onRecordApplication}
-              title={isAlreadyRecorded ? "Recorded" : "Record Application"}
+              onClick={() => handleAction(onRecordApplication || (() => {}))}
+              title={isAlreadyRecorded ? 'Recorded' : 'Record Application'}
             >
-              {loadingButton === 'record'
-                ? 'Recording...'
-                : isAlreadyRecorded
-                  ? 'Recorded'
-                  : 'Record App'}
+              {loadingButton === 'record' ?
+                'Recording...'
+              : isAlreadyRecorded ?
+                'Recorded'
+              : 'Record App'}
             </button>
           </div>
 
@@ -228,7 +241,7 @@ export function WorkflowSection({
               loadingButton === 'submit' ? 'is-loading' : ''
             }`}
             disabled={disableSubmit || loadingButton !== null}
-            onClick={onOpenReviewModal}
+            onClick={() => handleAction(onOpenReviewModal)}
           >
             Submit Application
           </button>

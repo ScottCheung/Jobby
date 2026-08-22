@@ -112,6 +112,21 @@ def test_missing_score_is_derived_before_policy_evaluation_when_resume_is_availa
     assert result.decision.action is ApplicationAction.APPLY
 
 
+def test_extracted_technologies_are_matched_without_a_job_description() -> None:
+    result = evaluate_candidate(
+        candidate_payload(
+            match_score=None,
+            technologies=["Python", "React", "TypeScript", "PostgreSQL", "TDD"],
+        ),
+        settings=settings(ai_enabled=False),
+        resume_data={"skills": ["Python", "React", "TypeScript", "PostgreSQL"]},
+    )
+
+    assert result.candidate.match_score is not None
+    assert {"python", "react", "typescript", "postgresql"} <= set(result.matched_terms)
+    assert "tdd" not in result.matched_terms
+
+
 def test_decision_request_keeps_candidate_as_a_nested_contract() -> None:
     request = ApplicationDecisionRequest(candidate=candidate_payload())
 

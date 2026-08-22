@@ -12,12 +12,29 @@ function isVisible(element) {
   const style = window.getComputedStyle(html);
   return style.display !== "none" && style.visibility !== "hidden";
 }
+function getIndeedDetailRoot() {
+  const pane = document.querySelector(
+    ".jobsearch-RightPane, .jobsearch-ViewJobPaneWrapper, #jobsearch-ViewjobPane, #viewJobSSRRoot, .jobsearch-JobComponent, .fastviewjob, main"
+  );
+  if (pane) return pane;
+  return document;
+}
 function firstText(...selectors) {
+  const root = getIndeedDetailRoot();
   for (const selector of selectors) {
-    const el = document.querySelector(selector);
+    const el = root.querySelector(selector);
     if (el && isVisible(el)) {
       const text = cleanText(el.textContent);
       if (text) return text;
+    }
+  }
+  if (root !== document) {
+    for (const selector of selectors) {
+      const el = document.querySelector(selector);
+      if (el && isVisible(el)) {
+        const text = cleanText(el.textContent);
+        if (text) return text;
+      }
     }
   }
   return "";
@@ -75,58 +92,41 @@ function structuredJobPosting() {
   }
   return null;
 }
-function datePostedFromDom(jobKey) {
-  const timeEl = document.querySelector(
-    "time[datetime], [data-testid*='date'] time, [class*='date'] time"
-  );
+function datePostedFromDom(_jobKey) {
+  const root = getIndeedDetailRoot();
+  const timeEl = root.querySelector("time[datetime]") || document.querySelector("time[datetime]");
   if (timeEl) {
     const dt = timeEl.getAttribute("datetime");
     if (dt) return cleanText(dt);
     const text = cleanText(timeEl.textContent);
     if (text) return text;
   }
+  const datePattern = /\b(?:posted\s+)?(?:\d+\s*\+?\s*(?:minutes?|mins?|hours?|hrs?|days?|weeks?|wks?|months?|mos?|years?|yrs?|[dhwmy]|mo)\s*(?:ago)?|today|yesterday|just\s+(?:now|posted))\b/i;
   const selectors = [
     "[data-testid='jobsearch-JobMetadataFooter-item']",
     "[data-testid='myJobsStateDate']",
-    "[class*='PostedDate']",
-    "[class*='posted-date']",
-    "[class*='postedDate']",
-    "[class*='date-posted']",
-    "[class*='job-age']",
-    "span[class*='date']",
-    "span[class*='posted']"
+    "[class*='jobsearch-JobMetadataFooter']",
+    "[class*='jobsearch-HiringInsights-date']",
+    "span[class*='date' i]",
+    "span[class*='posted' i]"
   ];
-  const candidates = Array.from(
-    document.querySelectorAll(selectors.join(", "))
-  );
-  const datePattern = /\b(?:(?:posted|reposted|over|active)\s+)*(?:\d+\s*\+?\s*(?:minutes?|mins?|hours?|hrs?|days?|weeks?|wks?|months?|mos?|years?|yrs?|[dhwmy]|mo)\s*(?:ago)?|today|yesterday|just\s+(?:now|posted)|recently\s+posted)\b/i;
-  const zhPattern = /(?:(?:发布于|重新发布于)\s*)?(?:\d+\s*\+?\s*(?:个?月|周|天|小时|分钟)前|刚刚|今天|昨天)/;
-  for (const el of candidates) {
-    if (!isVisible(el)) continue;
-    const text = cleanText(el.textContent);
-    if (text.length > 60) continue;
-    const match = text.match(datePattern) || text.match(zhPattern);
-    if (match?.[0]) {
-      return match[0].trim();
+  for (const selector of selectors) {
+    const elements = Array.from(root.querySelectorAll(selector));
+    for (const element of elements) {
+      const text = cleanText(element.textContent);
+      if (text && datePattern.test(text)) {
+        return text;
+      }
     }
   }
-  if (jobKey) {
-    const links = Array.from(document.querySelectorAll(`a[href*='jk=${jobKey}'], [data-jk='${jobKey}']`));
-    for (const link of links) {
-      let container = link;
-      for (let depth = 0; container && depth < 5; depth += 1) {
-        const dateSpan = container.querySelector("span.date, [class*='date'], time");
-        if (dateSpan) {
-          const dt = dateSpan.getAttribute("datetime");
-          if (dt) return cleanText(dt);
-          const txt = cleanText(dateSpan.textContent);
-          const match2 = txt.match(datePattern) || txt.match(zhPattern);
-          if (match2?.[0]) return match2[0].trim();
+  if (root !== document) {
+    for (const selector of selectors) {
+      const elements = Array.from(document.querySelectorAll(selector));
+      for (const element of elements) {
+        const text = cleanText(element.textContent);
+        if (text && datePattern.test(text)) {
+          return text;
         }
-        const containerText = cleanText(container.textContent);
-        const match = containerText.match(datePattern) || containerText.match(zhPattern);
-        if (match?.[0]) return match[0].trim();
-        container = container.parentElement;
       }
     }
   }
@@ -142,47 +142,53 @@ function stableId(value) {
 }
 export function readIndeedJobPage() {
   const url = window.location.href;
+  const root = getIndeedDetailRoot();
   const structured = structuredJobPosting();
   const title = structured?.title || firstText(
     "[data-testid='jobsearch-JobInfoHeader-title']",
     ".jobsearch-JobInfoHeader-title",
+    "h1[class*='jobsearch-JobInfoHeader-title']",
+    "h2[class*='jobsearch-JobInfoHeader-title']",
     "[class*='jobsearch-JobInfoHeader-title']",
     "h1[class*='job-title']",
+    ".jobsearch-RightPane h1",
     "h1"
   );
   const company = structured?.company || firstText(
     "[data-testid='inlineHeader-companyName'] a",
     "[data-testid='inlineHeader-companyName']",
     ".jobsearch-InlineCompanyRating-companyHeader a",
+    ".jobsearch-InlineCompanyRating-companyHeader",
+    "[data-company-name='true']",
     "[class*='jobsearch-CompanyInfoContainer'] a",
     "[class*='companyName']"
   );
   const location = structured?.location || firstText(
-    // New layout (2024+)
     "[data-testid='job-location']",
     "[data-testid='inlineHeader-companyLocation']",
     "[class*='inlineHeader-companyLocation']",
-    // Classic layout subtitle row
     "[data-testid='jobsearch-JobInfoHeader-subtitle'] > div:last-child",
     "[class*='jobsearch-JobInfoHeader-subtitle'] > div:last-child",
     "[class*='companyLocation']",
-    // Fallback divs/spans within the subtitle row
     "[data-testid='jobsearch-JobInfoHeader-subtitle'] div",
     "[class*='jobsearch-JobInfoHeader-subtitle'] div"
   ) || void 0;
   let description = structured?.description || "";
   if (!description) {
-    const descEl = document.querySelector("#jobDescriptionText") || document.querySelector("[class*='jobsearch-jobDescriptionText']") || document.querySelector("[data-testid='jobsearch-jobDescriptionText']");
+    const descEl = root.querySelector("#jobDescriptionText") || root.querySelector("[class*='jobsearch-jobDescriptionText']") || root.querySelector("[data-testid='jobsearch-jobDescriptionText']") || root.querySelector("#jobDescriptionSection") || root.querySelector("[data-testid='jobDescriptionText']") || document.querySelector("#jobDescriptionText") || document.querySelector("[class*='jobsearch-jobDescriptionText']");
     if (descEl) {
       description = truncate(extractStructuredText(descEl), 18e3);
     }
   }
   const externalId = structured?.externalId || (() => {
-    const match = url.match(/[?&]jk=([a-z0-9]+)/i);
-    return match?.[1] || stableId(`${url}|${title}|${company}`);
+    const match = url.match(/[?&](?:jk|vjk|jobkey)=([a-z0-9]+)/i);
+    if (match?.[1]) return match[1];
+    const domKey = document.querySelector("[data-jk]")?.getAttribute("data-jk") || document.querySelector("[data-mobtk]")?.getAttribute("data-mobtk");
+    if (domKey) return domKey;
+    return stableId(`${url}|${title}|${company}`);
   })();
   const datePosted = structured?.datePosted || datePostedFromDom(externalId);
-  const enoughEvidence = Boolean(title) && (Boolean(structured) || description.length >= 90);
+  const enoughEvidence = Boolean(title) && (Boolean(structured) || description.length >= 10 || Boolean(company));
   if (!enoughEvidence) {
     return {
       kind: "unsupported_page",
@@ -200,7 +206,7 @@ export function readIndeedJobPage() {
     datePosted: datePosted || void 0,
     description: description || void 0,
     technologies: extractTechnologyKeywords(description),
-    easyApply: Boolean(document.querySelector("[id*='indeedApplyButton'], [class*='indeed-apply-button']")) || Boolean(document.querySelector("[data-indeed-apply]"))
+    easyApply: Boolean(document.querySelector("[id*='indeedApplyButton'], [class*='indeed-apply-button'], [data-testid='indeedApplyButton'], [aria-label*='Apply with Indeed' i], button.ia-IndeedApplyButton")) || Boolean(document.querySelector("[data-indeed-apply]"))
   };
   return { kind: "job", snapshot };
 }

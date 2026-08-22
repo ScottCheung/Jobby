@@ -317,13 +317,13 @@ const Select = React.forwardRef<HTMLDivElement, SelectProps>(
         )}
 
         <div className={cn('relative w-full transition-none', label && 'mt-2')}>
-          {/* 当未打开时挂载 layoutId 背景壳；打开后转移至 Portal 下拉框 */}
+          {/* Background shell */}
           <AnimatePresence>
             {!isOpen && (
               <motion.div
                 layoutId={selectLayoutId}
                 transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-                className='absolute inset-0 bg-glass dark:bg-black/20 rounded-2xl border border-border/60 group-hover:border-primary/40 -z-10'
+                className='absolute inset-0 bg-glass dark:bg-black/20 rounded-full -z-10'
               />
             )}
           </AnimatePresence>
@@ -350,14 +350,14 @@ const Select = React.forwardRef<HTMLDivElement, SelectProps>(
             aria-haspopup='listbox'
             id={id}
             className={cn(
-              'relative flex w-full items-center justify-between h-11 p-1 pl-4 text-sm select-none',
-              'rounded-2xl border transition-all duration-200 outline-none cursor-pointer',
-              'bg-transparent hover:bg-panel/50 focus:bg-panel/50',
-              'border-border/60 hover:border-primary/40 focus:border-primary focus:ring-2 focus:ring-primary/20',
-              isOpen &&
-                'border-primary ring-2 ring-primary/20 bg-panel shadow-sm',
+              'relative flex w-full items-center justify-between h-11 p-1 pl-4 pr-1 text-sm select-none',
+              'rounded-full border border-transparent transition-all duration-200 outline-none cursor-pointer',
+              'bg-transparent hover:bg-panel/50 focus:bg-background-primary',
+              'border-transparent hover:border-primary/50 focus:border-primary',
+              isOpen && 'border-primary bg-panel',
               disabled && 'opacity-50 cursor-not-allowed pointer-events-none',
-              error && 'border-red-500 focus:ring-red-500/20',
+              error &&
+                'border-red-500 focus:border-red-500 text-red-600 dark:text-red-400',
               Icon && '!pl-11',
               className,
             )}
@@ -373,7 +373,7 @@ const Select = React.forwardRef<HTMLDivElement, SelectProps>(
               {selectedOption ? selectedOption.label : placeholder}
             </span>
 
-            <div className='flex items-center justify-center p-2 rounded-full bg-background-secondary/60 dark:bg-white/5 text-ink-secondary group-hover:text-ink-primary transition-colors shrink-0'>
+            <div className='flex items-center justify-center size-9 rounded-full bg-background-secondary/60 hover:bg-background-secondary dark:bg-white/5 text-ink-secondary group-hover:text-ink-primary transition-colors shrink-0'>
               <ChevronDown
                 className={cn(
                   'h-4 w-4 transition-transform duration-200 ease-out',
@@ -406,7 +406,7 @@ const Select = React.forwardRef<HTMLDivElement, SelectProps>(
                     zIndex: 9999,
                   }}
                   className={cn(
-                    'overflow-hidden rounded-2xl p-1.5 border border-border/80 shadow-xl shadow-black/10 dark:shadow-black/40',
+                    'overflow-hidden rounded-2xl p-1.5 border border-primary/80 shadow-xl shadow-black/10 dark:shadow-black/40',
                     'bg-panel/95 dark:bg-panel/90 backdrop-blur-xl',
                   )}
                 >

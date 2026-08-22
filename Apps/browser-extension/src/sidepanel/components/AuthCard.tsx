@@ -1,3 +1,5 @@
+/** @format */
+
 import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import type { AuthStatus } from '../../shared/contracts/auth';
@@ -42,8 +44,8 @@ export function AuthCard({
 
   return (
     <div className='account-control' aria-label='Jobby account'>
-      {authStatus.connected ? (
-        <div 
+      {authStatus.connected ?
+        <div
           className='flex items-center gap-1 min-h-[28px]'
           onMouseLeave={() => {
             if (isConfirming && !isMerging) {
@@ -51,12 +53,14 @@ export function AuthCard({
             }
           }}
         >
-          {isConfirming ? (
+          {isConfirming ?
             <>
               <button
                 type='button'
                 className={`account-state border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/20 hover:border-destructive/50 transition-colors ${
-                  isMerging ? 'animate-bubble-merge-left' : 'animate-bubble-left'
+                  isMerging ?
+                    'animate-bubble-merge-left'
+                  : 'animate-bubble-left'
                 }`}
                 onClick={handleDisconnectClick}
               >
@@ -64,16 +68,17 @@ export function AuthCard({
               </button>
               <button
                 type='button'
-                className={`account-state hover:bg-muted/25 hover:border-border/80 transition-colors ${
-                  isMerging ? 'animate-bubble-merge-right' : 'animate-bubble-right'
+                className={`account-state hover:bg-muted/25 hover:border-primary/80 transition-colors ${
+                  isMerging ?
+                    'animate-bubble-merge-right'
+                  : 'animate-bubble-right'
                 }`}
                 onClick={handleCancel}
               >
                 Cancel
               </button>
             </>
-          ) : (
-            <button
+          : <button
               type='button'
               className='account-state is-connected animate-bubble-pop hover:bg-primary/20 hover:border-primary/60 transition-colors'
               onClick={handleDisconnectClick}
@@ -82,27 +87,23 @@ export function AuthCard({
               <span className='account-dot' />
               <span>{authStatus.user?.email.split('@')[0]}</span>
             </button>
-          )}
+          }
         </div>
-      ) : (
-        <button 
-          type='button' 
-          className={`account-state animate-bubble-pop hover:bg-muted/25 hover:border-border/80 transition-colors ${isSigningIn ? 'is-loading' : ''}`} 
+      : <button
+          type='button'
+          className={`account-state animate-bubble-pop hover:bg-muted/25 hover:border-primary/80 transition-colors ${isSigningIn ? 'is-loading' : ''}`}
           onClick={onSignIn}
           disabled={isSigningIn}
         >
-          {isSigningIn ? (
+          {isSigningIn ?
             <>
-              <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />
+              <Loader2 className='w-3 h-3 animate-spin text-muted-foreground' />
               <span>Connecting...</span>
             </>
-          ) : (
-            <span>Connect account</span>
-          )}
+          : <span>Connect account</span>}
         </button>
-      )}
+      }
       {authError && <p className='account-error'>{authError}</p>}
     </div>
   );
 }
-

@@ -5,7 +5,14 @@ import { H3, H4 } from '@jobby/ui';
 
 import React, { useState } from 'react';
 import { useConsole } from '@/components/ConsoleContext';
-import { Bell, BellOff, MessageSquare, Heart, Settings, Save } from 'lucide-react';
+import {
+  Bell,
+  BellOff,
+  MessageSquare,
+  Heart,
+  Settings,
+  Save,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 import { showGlobalToast } from '@/lib/toast';
@@ -17,10 +24,14 @@ export default function SettingsPage() {
   // Parse existing preferences
   const prefs: any = profile?.extra_data?.notification_preferences || {};
   const dnd = Boolean(prefs.dnd);
-  
+
   // By default, if enabled_kinds is undefined, everything is enabled.
-  const enabledKinds: string[] = prefs.enabled_kinds || ['comment_like', 'comment_reply', 'system'];
-  
+  const enabledKinds: string[] = prefs.enabled_kinds || [
+    'comment_like',
+    'comment_reply',
+    'system',
+  ];
+
   const hasKind = (kind: string) => enabledKinds.includes(kind);
 
   const updatePrefs = (newPrefs: any) => {
@@ -32,8 +43,8 @@ export default function SettingsPage() {
         notification_preferences: {
           ...prefs,
           ...newPrefs,
-        }
-      }
+        },
+      },
     });
   };
 
@@ -64,35 +75,50 @@ export default function SettingsPage() {
     <div className='flex flex-col gap-8 max-w-3xl p-6'>
       <div>
         <H3 className='mb-2'>Settings</H3>
-        <p className='text-ink-secondary'>Manage your account preferences and notifications.</p>
+        <p className='text-ink-secondary'>
+          Manage your account preferences and notifications.
+        </p>
       </div>
 
       <div className='panel-lg flex flex-col gap-6 p-6'>
-        <div className='flex items-center gap-3 border-b border-border pb-4'>
+        <div className='flex items-center gap-3 border-b border-primary pb-4'>
           <div className='flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary'>
             <Bell className='h-5 w-5' />
           </div>
           <div>
             <H4>Notification Preferences</H4>
-            <p className='label-sm text-ink-secondary'>Control how and when you receive notifications.</p>
+            <p className='label-sm text-ink-secondary'>
+              Control how and when you receive notifications.
+            </p>
           </div>
         </div>
 
         {/* Do Not Disturb Toggle */}
         <div className='flex items-center justify-between rounded-xl bg-background-secondary p-4'>
           <div className='flex items-center gap-4'>
-            <div className={cn('flex h-10 w-10 items-center justify-center rounded-full', dnd ? 'bg-rose-500/10 text-rose-500' : 'bg-ink-secondary/10 text-ink-secondary')}>
-              {dnd ? <BellOff className='h-5 w-5' /> : <Bell className='h-5 w-5' />}
+            <div
+              className={cn(
+                'flex h-10 w-10 items-center justify-center rounded-full',
+                dnd ?
+                  'bg-rose-500/10 text-rose-500'
+                : 'bg-ink-secondary/10 text-ink-secondary',
+              )}
+            >
+              {dnd ?
+                <BellOff className='h-5 w-5' />
+              : <Bell className='h-5 w-5' />}
             </div>
             <div>
               <p className='font-bold text-ink-primary'>Do Not Disturb</p>
-              <p className='text-sm text-ink-secondary'>Mute all incoming notifications</p>
+              <p className='text-sm text-ink-secondary'>
+                Mute all incoming notifications
+              </p>
             </div>
           </div>
           <label className='relative inline-flex cursor-pointer items-center'>
-            <input 
-              type='checkbox' 
-              className='peer sr-only' 
+            <input
+              type='checkbox'
+              className='peer sr-only'
               checked={dnd}
               onChange={(e) => updatePrefs({ dnd: e.target.checked })}
             />
@@ -101,22 +127,31 @@ export default function SettingsPage() {
         </div>
 
         {/* Granular Toggles */}
-        <div className={cn('flex flex-col gap-4 transition-opacity duration-300', dnd && 'pointer-events-none opacity-50')}>
-          <p className='label-sm mt-2 text-ink-secondary'>SELECTIVE NOTIFICATIONS</p>
-          
+        <div
+          className={cn(
+            'flex flex-col gap-4 transition-opacity duration-300',
+            dnd && 'pointer-events-none opacity-50',
+          )}
+        >
+          <p className='label-sm mt-2 text-ink-secondary'>
+            SELECTIVE NOTIFICATIONS
+          </p>
+
           {/* Likes */}
           <div className='flex items-center justify-between'>
             <div className='flex items-center gap-3'>
               <Heart className='h-5 w-5 text-rose-500' />
               <div>
                 <p className='font-medium text-ink-primary'>Likes</p>
-                <p className='text-xs text-ink-secondary'>Notify when someone likes your comments</p>
+                <p className='text-xs text-ink-secondary'>
+                  Notify when someone likes your comments
+                </p>
               </div>
             </div>
             <label className='relative inline-flex cursor-pointer items-center'>
-              <input 
-                type='checkbox' 
-                className='peer sr-only' 
+              <input
+                type='checkbox'
+                className='peer sr-only'
                 checked={hasKind('comment_like')}
                 onChange={(e) => toggleKind('comment_like', e.target.checked)}
               />
@@ -129,14 +164,18 @@ export default function SettingsPage() {
             <div className='flex items-center gap-3'>
               <MessageSquare className='h-5 w-5 text-blue-500' />
               <div>
-                <p className='font-medium text-ink-primary'>Comments & Replies</p>
-                <p className='text-xs text-ink-secondary'>Notify when someone replies to you</p>
+                <p className='font-medium text-ink-primary'>
+                  Comments & Replies
+                </p>
+                <p className='text-xs text-ink-secondary'>
+                  Notify when someone replies to you
+                </p>
               </div>
             </div>
             <label className='relative inline-flex cursor-pointer items-center'>
-              <input 
-                type='checkbox' 
-                className='peer sr-only' 
+              <input
+                type='checkbox'
+                className='peer sr-only'
                 checked={hasKind('comment_reply')}
                 onChange={(e) => toggleKind('comment_reply', e.target.checked)}
               />
@@ -149,14 +188,18 @@ export default function SettingsPage() {
             <div className='flex items-center gap-3'>
               <Settings className='h-5 w-5 text-emerald-500' />
               <div>
-                <p className='font-medium text-ink-primary'>System Notifications</p>
-                <p className='text-xs text-ink-secondary'>Important updates from the platform</p>
+                <p className='font-medium text-ink-primary'>
+                  System Notifications
+                </p>
+                <p className='text-xs text-ink-secondary'>
+                  Important updates from the platform
+                </p>
               </div>
             </div>
             <label className='relative inline-flex cursor-pointer items-center'>
-              <input 
-                type='checkbox' 
-                className='peer sr-only' 
+              <input
+                type='checkbox'
+                className='peer sr-only'
                 checked={hasKind('system')}
                 onChange={(e) => toggleKind('system', e.target.checked)}
               />

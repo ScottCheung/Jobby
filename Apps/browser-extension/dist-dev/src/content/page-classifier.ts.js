@@ -14,6 +14,7 @@ const DEDICATED_ATS_HOSTS = [
   /^(?:[a-z0-9-]+\.)+bamboohr\.com$/,
   /^(?:www\.)?recruitee\.com$/,
   /^(?:www\.)?breezy\.hr$/,
+  /^(?:www\.)?jobs\.smartrecruiters\.com$/,
   /^ats\.rippling\.com$/,
   /^(?:www\.)?recruitcrm\.io$/,
   /^app\.vbench\.com\.au$/,
@@ -39,11 +40,14 @@ export const MAJOR_PLATFORM_RULES = [
       /^\/pulse(?:\/|$)/i,
       /^\/groups(?:\/|$)/i,
       /^\/events(?:\/|$)/i,
-      /^\/search(?:\/|$)/i,
       /^\/company\/(?:[^/]+\/?$|[^/]+\/(?:about|life|people|posts|videos|insights)\/?$)/i
     ],
     jobPatterns: [
+      /\/jobs\//i,
+      /\/jobs$/i,
       /\/jobs\/view\//i,
+      /\/jobs\/search\//i,
+      /\/jobs\/collections\//i,
       /[?&](?:currentJobId|jobId)=\d+/i
     ],
     nonJobDescription: (pathname) => /^\/help/i.test(pathname) ? "LinkedIn Help page is not a job listing" : /^\/feed/i.test(pathname) ? "LinkedIn Feed is not a job listing" : /^\/in\//i.test(pathname) ? "LinkedIn Profile page is not a job listing" : `LinkedIn non-job page (${pathname}) is not a job listing`
@@ -65,6 +69,8 @@ export const MAJOR_PLATFORM_RULES = [
     ],
     jobPatterns: [
       /\/job\/\d+/i,
+      /\/jobs(?:\/|\?|$)/i,
+      /-jobs(?:\/|\?|$)/i,
       /[?&]jobId=\d+/i
     ],
     nonJobDescription: (pathname) => /^\/profile/i.test(pathname) ? "SEEK Profile page is not a job listing" : /^\/career-advice/i.test(pathname) ? "SEEK Career Advice article is not a job listing" : `SEEK non-job page (${pathname}) is not a job listing`
@@ -200,17 +206,14 @@ export function classifyCurrentPage() {
   }
   const matchedPlatform = MAJOR_PLATFORM_RULES.find((rule) => rule.hostRegex.test(hostname));
   if (matchedPlatform) {
-    const isExplicitNonJob = matchedPlatform.nonJobPatterns.some((pattern) => pattern.test(pathname));
-    if (isExplicitNonJob && !hasJobPosting) {
-      const skipReason2 = matchedPlatform.nonJobDescription(pathname);
-      return {
-        isJobPage: false,
-        confidence: 0,
-        reasons: [`Explicit non-job path on ${matchedPlatform.name}: ${pathname}`],
-        skipReason: skipReason2
-      };
-    }
     const isJobUrl = matchedPlatform.jobPatterns.some((pattern) => pattern.test(pathname) || pattern.test(url));
+    const platformDomSelectors = {
+      LinkedIn: "[class*='jobs-unified-top-card'], [class*='job-details'], [data-occludable-job-id], #job-details, .jobs-search__job-details",
+      SEEK: "[data-automation='job-detail-title'], [data-automation='jobDetails'], [data-automation='jobAdDetails'], h1[data-automation='job-detail-title']",
+      Indeed: "#jobDescriptionText, [class*='jobsearch-jobDescriptionText'], [data-testid='jobsearch-JobInfoHeader-title'], .jobsearch-JobInfoHeader-title, #viewJobSSRRoot, [data-jk], [data-testid='inlineHeader-companyName']"
+    };
+    const selector = platformDomSelectors[matchedPlatform.name];
+    const hasPlatformDomSignal = Boolean(selector && document.querySelector(selector));
     if (isJobUrl) {
       reasons.push(`Job posting URL pattern on ${matchedPlatform.name}: ${pathname}`);
       confidence += 5;
@@ -219,12 +222,17 @@ export function classifyCurrentPage() {
       reasons.push(`Page on ${matchedPlatform.name} contains JSON-LD JobPosting structured data`);
       confidence += 5;
       autoQualify = true;
+    } else if (hasPlatformDomSignal) {
+      reasons.push(`DOM contains ${matchedPlatform.name} job detail elements`);
+      confidence += 5;
+      autoQualify = true;
     } else {
-      const skipReason2 = `${matchedPlatform.name} page (${pathname}) does not match an identified job listing URL pattern`;
+      const isExplicitNonJob = matchedPlatform.nonJobPatterns.some((pattern) => pattern.test(pathname));
+      const skipReason2 = isExplicitNonJob ? matchedPlatform.nonJobDescription(pathname) : `${matchedPlatform.name} page (${pathname}) does not match an identified job listing URL pattern or content structure`;
       return {
         isJobPage: false,
         confidence: 0,
-        reasons: [`Not a job listing URL pattern on ${matchedPlatform.name}: ${pathname}`],
+        reasons: [`${isExplicitNonJob ? "Explicit non-job path" : "Not a job listing"} on ${matchedPlatform.name}: ${pathname}`],
         skipReason: skipReason2
       };
     }

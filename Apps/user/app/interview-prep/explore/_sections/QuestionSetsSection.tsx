@@ -1,7 +1,11 @@
 /** @format */
 
 'use client';
-import { CardWithNorth, EmptyPlaceHolder, ScrollableContainer } from '@jobby/ui';
+import {
+  CardWithNorth,
+  EmptyPlaceHolder,
+  ScrollableContainer,
+} from '@jobby/ui';
 import { BookOpen, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import type { InterviewCategory, InterviewCollection } from '@/lib/types';
@@ -100,7 +104,7 @@ export function QuestionSetsSection({
             <div
               role='tablist'
               aria-label='Question Set source'
-              className='inline-flex self-start  rounded-lg border border-border/60 bg-background-secondary/60 p-0.5'
+              className='inline-flex self-start  rounded-lg border border-primary/60 bg-background-secondary/60 p-0.5'
             >
               {sources.map((item) => (
                 <button
@@ -122,7 +126,7 @@ export function QuestionSetsSection({
             </div>
           </div>
 
-          <div className='grid grid-cols-2 gap-3 border-y border-border/40 py-4 sm:grid-cols-3 xl:grid-cols-5'>
+          <div className='grid grid-cols-2 gap-3 border-y border-primary/40 py-4 sm:grid-cols-3 xl:grid-cols-5'>
             {categories.map((category) => {
               const theme = getInterviewCategoryLabel(category);
               const Icon = getInterviewCategoryIcon(category, BookOpen);

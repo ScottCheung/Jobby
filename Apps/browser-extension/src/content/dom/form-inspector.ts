@@ -6,6 +6,7 @@ import type {
   FormPlatform,
 } from "../../shared/contracts/form-inspection";
 import { inspectPageCombobox } from "./combobox-bridge";
+import { canonicalizeFormFields } from "../../shared/utils/form-field-resolution";
 
 const CONTROL_SELECTOR = [
   "input:not([type='hidden']):not([type='button']):not([type='submit']):not([type='reset']):not([type='image'])",
@@ -52,6 +53,15 @@ export type FormScope = Document | HTMLElement | ShadowRoot;
 type QueryScope = FormScope | ShadowRoot;
 type FormOption = { label: string; value: string };
 
+export type JobAdderPhoneCountryControl = {
+  countryList: HTMLInputElement;
+  countryCode: HTMLInputElement;
+  numberInput: HTMLInputElement;
+  label: string;
+  required: boolean;
+  options: FormOption[];
+};
+
 function cleanText(value: string | null | undefined): string {
   return (value || "").replace(/\s+/g, " ").trim();
 }
@@ -64,13 +74,27 @@ function cleanLabel(value: string): string {
     .trim();
 }
 
+function isAuxiliaryFieldLabel(label: string): boolean {
+  return /^(?:autofill|apply[-\s]?later|quick[-\s]?apply|resume[-\s]?autofill)$/i.test(
+    cleanLabel(label),
+  );
+}
+
+/** Help/error copy is useful to the page, but is not part of a field's intent. */
+function isLikelyHelperText(value: string): boolean {
+  const text = cleanText(value);
+  if (!text) return true;
+  return /^(?:optional|required|please (?:enter|select|choose)|this field is|required|invalid|error:|must be|we(?:'| a)ll use|your information will|by continuing|learn more|privacy (?:policy|notice)|character limit)/i.test(text) ||
+    /^(?:accepted formats?|supported formats?|maximum file size|format:|e\.g\.?)/i.test(text);
+}
+
 function precedingQuestionLabel(element: HTMLElement): string {
   let container: HTMLElement | null = element.closest<HTMLElement>("[data-testid='field'], [data-testid*='field' i]") || element.parentElement;
   for (let depth = 0; container && depth < 4; depth += 1) {
     let sibling = container.previousElementSibling as HTMLElement | null;
     while (sibling) {
       const text = cleanText(sibling.textContent);
-      if (text.length >= 8 && text.length <= 500 && !/^(?:search|select|choose)$/i.test(text)) {
+      if (text.length >= 8 && text.length <= 500 && !isLikelyHelperText(text) && !/^(?:search|select|choose)$/i.test(text)) {
         return cleanLabel(text);
       }
       sibling = sibling.previousElementSibling as HTMLElement | null;
@@ -81,13 +105,50 @@ function precedingQuestionLabel(element: HTMLElement): string {
 }
 
 
+const NOISY_LABEL_TAGS = new Set([
+  "INPUT", "SELECT", "TEXTAREA", "BUTTON", "IMG", "SVG", "NOSCRIPT", "SCRIPT", "STYLE"
+]);
+
+function extractTextWithoutControls(node: Node): string {
+  if (node.nodeType === Node.TEXT_NODE) {
+    return node.textContent || "";
+  }
+  if (node.nodeType !== Node.ELEMENT_NODE) {
+    return "";
+  }
+  const el = node as HTMLElement;
+  if (NOISY_LABEL_TAGS.has(el.tagName)) {
+    return "";
+  }
+  const className = typeof el.className === "string" ? el.className.toLowerCase() : "";
+  if (
+    className.includes("helper-text") ||
+    className.includes("help-block") ||
+    className.includes("field-hint") ||
+    className.includes("helper") ||
+    className.includes("tooltip") ||
+    className.includes("error") ||
+    className.includes("hint") ||
+    className.includes("screen-reader") ||
+    className.includes("sr-only") ||
+    className.includes("visually-hidden")
+  ) {
+    return "";
+  }
+  const role = el.getAttribute("role");
+  if (role === "alert" || el.hasAttribute("aria-live")) {
+    return "";
+  }
+  let text = "";
+  for (let child = el.firstChild; child; child = child.nextSibling) {
+    text += extractTextWithoutControls(child);
+  }
+  return text;
+}
+
 function labelTextWithoutControl(label: HTMLElement | null | undefined): string {
   if (!label) return "";
-  const copy = label.cloneNode(true) as HTMLLabelElement;
-  copy.querySelectorAll(
-    "input, select, textarea, button, img, svg, noscript, script, style, .helper-text, .help-block, .field-hint, [class*='helper' i], [class*='tooltip' i], [class*='error' i], [class*='hint' i]"
-  ).forEach((node) => node.remove());
-  return cleanLabel(copy.textContent || "");
+  return cleanLabel(extractTextWithoutControls(label));
 }
 
 function normalizedOptionLabel(value: string): string {
@@ -115,31 +176,27 @@ function observedOptionValue(value: string): string {
 export function isVisibleElement(element: HTMLElement): boolean {
   if (element.hidden || element.getAttribute("aria-hidden") === "true") return false;
 
+  // Fast path for Chromium / modern browser engines: native checkVisibility
+  if (typeof (element as any).checkVisibility === "function") {
+    if ((element as any).checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })) {
+      const rect = element.getBoundingClientRect();
+      if (rect.right < -3000 || rect.left < -3000) return false;
+      return true;
+    }
+  }
+
   const style = window.getComputedStyle(element);
-  if (style.display === "none" || style.visibility === "hidden" || style.visibility === "collapse") {
+  if (style.display === "none" || style.visibility === "hidden" || style.visibility === "collapse" || style.opacity === "0") {
     return false;
   }
 
-  for (
-    let candidate: HTMLElement | null = element.parentElement;
-    candidate && candidate !== document.body && candidate !== document.documentElement;
-    candidate = candidate.parentElement
-  ) {
-    if (candidate.hidden || candidate.getAttribute("aria-hidden") === "true") return false;
-    const ancestorStyle = window.getComputedStyle(candidate);
-    if (
-      ancestorStyle.display === "none" ||
-      ancestorStyle.visibility === "hidden" ||
-      ancestorStyle.visibility === "collapse"
-    ) {
-      return false;
-    }
-    const cRect = candidate.getBoundingClientRect();
-    if (cRect.width > 0 || cRect.height > 0) {
-      if (cRect.right < -3000 || cRect.left < -3000) {
-        return false;
-      }
-    }
+  const rect = element.getBoundingClientRect();
+  const hasSize =
+    (rect.width > 0 && rect.height > 0) ||
+    (element.offsetWidth > 0 && element.offsetHeight > 0);
+
+  if (hasSize && rect.right >= -3000 && rect.left >= -3000) {
+    return true;
   }
 
   const isFormInput =
@@ -147,32 +204,30 @@ export function isVisibleElement(element: HTMLElement): boolean {
     element instanceof HTMLSelectElement ||
     element instanceof HTMLTextAreaElement;
 
-  const rect = element.getBoundingClientRect();
-  const hasSize =
-    (rect.width > 0 && rect.height > 0) ||
-    (element.offsetWidth > 0 && element.offsetHeight > 0);
-
-  if (hasSize && style.opacity !== "0" && rect.right >= -3000 && rect.left >= -3000) {
-    return true;
-  }
-
   if (isFormInput) {
     const container = (element.closest(
       "label, fieldset, form, .form-group, .form-item, .form-field, .field-wrapper, [class*='control' i], [class*='field' i], [class*='radio' i], [class*='checkbox' i], [class*='select' i], [class*='t1-' i], [class*='jobwizard' i], [class*='question' i], [class*='component' i], [class*='item' i], [class*='container' i], [data-testid*='field' i], [data-testid*='question' i], [jobwizard_question_title_id]",
     ) || element.parentElement) as HTMLElement | null;
     if (container) {
-      const containerStyle = window.getComputedStyle(container);
-      const containerRect = container.getBoundingClientRect();
-      const containerHasSize =
-        (containerRect.width > 0 && containerRect.height > 0) ||
-        (container.offsetWidth > 0 && container.offsetHeight > 0);
-      if (
-        containerStyle.display !== "none" &&
-        containerStyle.visibility !== "hidden" &&
-        containerHasSize &&
-        containerRect.left >= -3000
-      ) {
-        return true;
+      if (typeof (container as any).checkVisibility === "function") {
+        if ((container as any).checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })) {
+          const cRect = container.getBoundingClientRect();
+          if (cRect.left >= -3000) return true;
+        }
+      } else {
+        const containerStyle = window.getComputedStyle(container);
+        const containerRect = container.getBoundingClientRect();
+        const containerHasSize =
+          (containerRect.width > 0 && containerRect.height > 0) ||
+          (container.offsetWidth > 0 && container.offsetHeight > 0);
+        if (
+          containerStyle.display !== "none" &&
+          containerStyle.visibility !== "hidden" &&
+          containerHasSize &&
+          containerRect.left >= -3000
+        ) {
+          return true;
+        }
       }
     }
   }
@@ -180,17 +235,118 @@ export function isVisibleElement(element: HTMLElement): boolean {
   return false;
 }
 
+function isDropdownSearchFilter(element: HTMLElement): boolean {
+  if (!(element instanceof HTMLInputElement)) return false;
+  // Select2 v3 keeps an off-screen focus proxy and a transient search input
+  // next to the real application field. JobAdder uses those proxies for its
+  // phone-country picker; neither control stores a candidate answer.
+  if (
+    element.classList.contains("select2-focusser") ||
+    element.classList.contains("select2-input") ||
+    element.classList.contains("select2-offscreen")
+  ) {
+    return true;
+  }
+  if (
+    element.classList.contains("iti__search-input") ||
+    Boolean(
+      element.closest(
+        ".iti__dropdown-content, .iti__country-list, .select2-search, .select2-dropdown, .iti__search, [class*='iti__dropdown' i], [class*='iti__search' i]",
+      ),
+    )
+  ) {
+    return true;
+  }
+  const role = element.getAttribute("role");
+  if (
+    role === "searchbox" &&
+    Boolean(
+      element.closest(
+        "[role='listbox'], [role='menu'], [class*='dropdown' i], [class*='select' i]",
+      ),
+    )
+  ) {
+    return true;
+  }
+  if (
+    Boolean(
+      element.closest(
+        "[role='listbox'], [role='menu'], ul[class*='country-list' i]",
+      ),
+    )
+  ) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Application pages commonly keep alternate "apply later" or resume
+ * autofill controls mounted beside the active form. They are implementation
+ * affordances, not questions the candidate should answer. Filtering them at
+ * candidate collection time prevents the panel and backend from learning a
+ * bogus field just because a site uses a different class name.
+ */
+function isAuxiliaryApplicationControl(
+  element: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement,
+): boolean {
+  const identifier = [
+    element.id,
+    element.getAttribute("name"),
+    typeof element.className === "string" ? element.className : "",
+    element.getAttribute("data-testid"),
+    element.getAttribute("data-automation-id"),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  // A real user-facing field may describe an autofill preference, but it
+  // will normally have an explicit label. The controls matched here are the
+  // hidden/alternate form implementation itself.
+  const hasExplicitQuestion = Boolean(
+    element.getAttribute("aria-label") ||
+      element.getAttribute("aria-labelledby") ||
+      (element.id && element.ownerDocument.querySelector(`label[for='${CSS.escape(element.id)}']`)),
+  );
+  return (
+    !hasExplicitQuestion &&
+    /(?:autofill|apply[-_]?later|quick[-_]?apply)/.test(identifier)
+  );
+}
+
 function isInspectableControl(element: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement): boolean {
   return (
     !element.disabled &&
     element.getAttribute("aria-disabled") !== "true" &&
-    element.getAttribute("aria-hidden") !== "true"
+    element.getAttribute("aria-hidden") !== "true" &&
+    !isDropdownSearchFilter(element) &&
+    !isAuxiliaryApplicationControl(element)
   );
 }
 
+export function queryAllInScope<T extends HTMLElement>(scope: FormScope, selector: string): T[] {
+  const results: T[] = [];
+  const visitedRoots = new Set<Document | HTMLElement | ShadowRoot>();
+
+  const visit = (root: Document | HTMLElement | ShadowRoot) => {
+    if (visitedRoots.has(root)) return;
+    visitedRoots.add(root);
+    results.push(...Array.from(root.querySelectorAll<T>(selector)));
+    const hosts = root.querySelectorAll<HTMLElement>("*");
+    for (let i = 0; i < hosts.length; i++) {
+      const el = hosts[i];
+      if (el && el.shadowRoot) visit(el.shadowRoot);
+    }
+  };
+
+  visit(scope);
+  return results;
+}
+
 function ariaCheckboxElementsInScope(scope: FormScope): HTMLElement[] {
-  return elementsInScope(scope).filter((element) => {
-    if (!element.matches("[role='checkbox']")) return false;
+  const elements = queryAllInScope<HTMLElement>(scope, "[role='checkbox']");
+  return elements.filter((element) => {
     if (element.getAttribute("aria-disabled") === "true" || element.getAttribute("aria-hidden") === "true") return false;
     return isVisibleElement(element);
   });
@@ -235,6 +391,9 @@ function fieldType(element: HTMLElement): FormFieldType {
   if (element.getAttribute("role") === "combobox" || isSelectableCombobox(element)) return "select";
   if (element instanceof HTMLInputElement) {
     const type = element.type.toLowerCase();
+    // JobAdder validates telephone fields with `data-val-phone` while
+    // rendering them as type=text. Keep their actual semantic type.
+    if (type === "text" && element.hasAttribute("data-val-phone")) return "tel";
     if (type === "text" || type === "search") return "text";
     if (type === "checkbox" || type === "radio" || type === "file") return type;
     if (["number", "email", "tel", "url", "date", "password"].includes(type)) return type as FormFieldType;
@@ -277,6 +436,48 @@ export function isSelectableCombobox(element: HTMLElement): boolean {
 function scopeFor(element: HTMLElement, fallback: FormScope): QueryScope {
   const root = element.getRootNode();
   return root instanceof Document || root instanceof ShadowRoot ? root : fallback;
+}
+
+function composedParent(element: HTMLElement): HTMLElement | null {
+  if (element.parentElement) return element.parentElement;
+  const root = element.getRootNode();
+  return root instanceof ShadowRoot && root.host instanceof HTMLElement ?
+      root.host
+    : null;
+}
+
+function closestComposed(
+  element: HTMLElement,
+  selector: string,
+  maxDepth = 32,
+): HTMLElement | null {
+  let candidate: HTMLElement | null = element;
+  for (let depth = 0; candidate && depth < maxDepth; depth += 1) {
+    if (candidate.matches(selector)) return candidate;
+    candidate = composedParent(candidate);
+  }
+  return null;
+}
+
+function smartRecruitersAutocompleteHost(
+  element: HTMLElement,
+): HTMLElement | null {
+  return closestComposed(
+    element,
+    "spl-autocomplete[data-test='location-autocomplete'], spl-autocomplete[data-sr-id*='location-autocomplete' i]",
+  );
+}
+
+function smartRecruitersAutocompleteIsCommitted(
+  element: HTMLElement,
+): boolean | undefined {
+  const host = smartRecruitersAutocompleteHost(element);
+  if (!host) return undefined;
+  const className = host.getAttribute('class') || '';
+  if (/\bng-invalid\b/.test(className)) return false;
+  return Boolean(
+    cleanText(host.getAttribute('value')) || /\bng-valid\b/.test(className),
+  );
 }
 
 export function checkboxPresentationElements(
@@ -362,6 +563,11 @@ export function isPhoneCountryElement(element: HTMLElement): boolean {
 }
 
 export function comboboxCurrentValue(element: HTMLElement): string {
+  // SmartRecruiters keeps the committed location object on the outer
+  // spl-autocomplete host. Text in the nested input is only a search query
+  // and must not be reported as a selected City until that host is valid.
+  if (smartRecruitersAutocompleteIsCommitted(element) === false) return "";
+
   const bridgedValue = observedOptionValue(inspectPageCombobox(element)?.currentValue || "");
   if (bridgedValue) return bridgedValue;
 
@@ -500,6 +706,65 @@ function countryOptions(element: HTMLInputElement): FormOption[] {
     .sort((left, right) => left.label.localeCompare(right.label));
 }
 
+function jobAdderCountryOptions(
+  numberInput: HTMLInputElement,
+  scope: FormScope,
+): FormOption[] {
+  const localField = numberInput.closest<HTMLElement>(".form-field");
+  const lists = [
+    ...(localField ? Array.from(localField.querySelectorAll<HTMLLIElement>(".phone-number-country-list li")) : []),
+    ...queryAllInScope<HTMLLIElement>(scope, ".phone-number-country-list li"),
+  ];
+  const seen = new Set<string>();
+  const options: FormOption[] = [];
+  for (const item of lists) {
+    try {
+      const parsed = JSON.parse(cleanText(item.textContent)) as { id?: unknown; text?: unknown };
+      const value = cleanText(typeof parsed.id === "string" ? parsed.id : "");
+      const label = cleanText(typeof parsed.text === "string" ? parsed.text : "");
+      if (!value || !label || seen.has(value)) continue;
+      seen.add(value);
+      options.push({ label, value });
+    } catch {
+      // JobAdder embeds JSON text in each country option. Ignore unrelated
+      // list items rather than turning them into selectable answers.
+    }
+  }
+  return options;
+}
+
+/**
+ * JobAdder's phone-country picker is a Select2 widget backed by hidden
+ * inputs. The visible focus proxy is not fillable, but the backing fields are
+ * stable and can be driven by the widget's native change handler.
+ */
+export function jobAdderPhoneCountryControls(
+  scope: FormScope = document,
+): JobAdderPhoneCountryControl[] {
+  const controls: JobAdderPhoneCountryControl[] = [];
+  const numbers = queryAllInScope<HTMLInputElement>(scope, "input[data-val-phone]");
+  for (const numberInput of numbers) {
+    const row = numberInput.closest<HTMLElement>(".flex-row") || numberInput.parentElement;
+    const countryList = row?.querySelector<HTMLInputElement>("input.country-list");
+    const countryCode = row?.querySelector<HTMLInputElement>("input[name$='CountryCode'], input[id$='_CountryCode']");
+    if (!countryList || !countryCode) continue;
+
+    const identifier = `${numberInput.id} ${numberInput.name}`.toLowerCase();
+    const label = /(?:candidate)?mobile(?:[._-]|$)/.test(identifier)
+      ? "Mobile country code"
+      : "Phone country code";
+    controls.push({
+      countryList,
+      countryCode,
+      numberInput,
+      label,
+      required: requiredFor(numberInput),
+      options: jobAdderCountryOptions(numberInput, scope),
+    });
+  }
+  return controls;
+}
+
 function greenhouseChoiceOptions(
   element: HTMLInputElement,
   scope: QueryScope,
@@ -601,6 +866,9 @@ export function containerLabelFor(element: HTMLElement): string {
   let current: HTMLElement | null = element.parentElement;
   for (let depth = 0; current && depth < 6; depth += 1) {
     if (current.matches("body, html")) break;
+    // A form contains labels for every question. Once the local wrapper has
+    // been exhausted, choosing the first label in the whole form is unsafe.
+    if (current.matches("form, [role='form']")) break;
 
     const labelCandidates = Array.from(
       current.querySelectorAll<HTMLElement>(
@@ -612,7 +880,7 @@ export function containerLabelFor(element: HTMLElement): string {
       if (isOptionLabelElement(candidate, element)) continue;
 
       const text = labelTextWithoutControl(candidate);
-      if (text && text.length >= 2 && text.length <= 400) {
+      if (text && text.length >= 2 && text.length <= 400 && !isLikelyHelperText(text)) {
         if (!BUTTON_CHOICE_VALUE.test(text)) {
           return cleanLabel(text);
         }
@@ -623,7 +891,7 @@ export function containerLabelFor(element: HTMLElement): string {
     while (sibling) {
       if (!sibling.matches("input, select, textarea, button")) {
         const text = cleanText(sibling.textContent);
-        if (text && text.length >= 2 && text.length <= 400 && !BUTTON_CHOICE_VALUE.test(text)) {
+        if (text && text.length >= 2 && text.length <= 400 && !isLikelyHelperText(text) && !BUTTON_CHOICE_VALUE.test(text)) {
           return cleanLabel(text);
         }
       }
@@ -643,6 +911,40 @@ export function cleanPlaceholderLabel(placeholder: string): string {
     .replace(/^(?:e\.g\.?|eg|example|enter|please enter|type|please type|select|please select|choose|please choose)\s+/i, "")
     .replace(/^[.:\s]+|[.:\s]+$/g, "");
   return cleanLabel(stripped || cleaned);
+}
+
+/**
+ * Web components commonly keep the native input in a shadow root and put its
+ * human label on the host element (for example SmartRecruiters'
+ * `<spl-input label="City">`). The input cannot see that label through its
+ * own root, so walk out through shadow hosts before falling back to an ID or
+ * an anonymous field name.
+ */
+function shadowHostLabelFor(element: HTMLElement): string {
+  let current: HTMLElement = element;
+  for (let depth = 0; depth < 4; depth += 1) {
+    const root = current.getRootNode();
+    if (!(root instanceof ShadowRoot)) break;
+    const host = root.host as HTMLElement;
+    const label = cleanText(
+      host.getAttribute("aria-label") ||
+        host.getAttribute("label") ||
+        host.getAttribute("data-label") ||
+        host.getAttribute("data-prompt") ||
+        host.getAttribute("title"),
+    );
+    if (label) return cleanLabel(label);
+
+    const hostId = cleanText(host.id);
+    const hostRoot = host.getRootNode();
+    if (hostId && (hostRoot instanceof Document || hostRoot instanceof ShadowRoot)) {
+      const externalLabel = hostRoot.querySelector<HTMLLabelElement>(`label[for='${CSS.escape(hostId)}']`);
+      const externalLabelText = labelTextWithoutControl(externalLabel);
+      if (externalLabelText) return cleanLabel(externalLabelText);
+    }
+    current = host;
+  }
+  return "";
 }
 
 export function labelFor(element: HTMLElement, scope: QueryScope): string {
@@ -689,6 +991,9 @@ export function labelFor(element: HTMLElement, scope: QueryScope): string {
   const dataLabel = cleanText(element.getAttribute("data-label") || element.getAttribute("data-prompt") || element.getAttribute("title"));
   if (dataLabel && !isGenericActionLabel(dataLabel)) return cleanLabel(dataLabel);
 
+  const shadowHostLabel = shadowHostLabelFor(element);
+  if (shadowHostLabel && !isGenericActionLabel(shadowHostLabel)) return shadowHostLabel;
+
   if (!isRadio) {
     const id = cleanText(element.id);
     if (id) {
@@ -705,6 +1010,15 @@ export function labelFor(element: HTMLElement, scope: QueryScope): string {
   const fieldset = element.closest("fieldset");
   const legend = cleanText(fieldset?.querySelector("legend")?.textContent);
   if (legend) return cleanLabel(legend);
+
+  // JobAdder nests its Phone/Mobile fields without associating a label to the
+  // real input. Use its stable rendered-number identifiers before the broad
+  // container fallback can inherit another question's label.
+  if (element instanceof HTMLInputElement && element.hasAttribute("data-val-phone")) {
+    const identifier = `${element.id} ${element.name}`.toLowerCase();
+    if (/(?:candidate)?mobile(?:[._-]|$)/.test(identifier)) return "Mobile";
+    if (/(?:candidate)?phone(?:[._-]|$)/.test(identifier)) return "Phone";
+  }
 
   const questionLabel = precedingQuestionLabel(element);
   if (questionLabel) return questionLabel;
@@ -827,6 +1141,7 @@ function isFilled(element: HTMLInputElement | HTMLSelectElement | HTMLTextAreaEl
     return group.some((r) => r.checked);
   }
   if (element instanceof HTMLInputElement && type === "checkbox") return checkboxIsChecked(element, scope);
+  if (type === "select" && smartRecruitersAutocompleteIsCommitted(element) === false) return false;
   return Boolean(currentValue(element, type, scope));
 }
 
@@ -836,7 +1151,61 @@ function labelledByText(element: HTMLElement, scope: QueryScope): string {
 }
 
 function fileUploadGroupFor(element: HTMLInputElement): HTMLElement | null {
-  return element.closest<HTMLElement>("[role='group'][aria-labelledby], .file-upload, [class*='file-upload' i]");
+  return closestComposed(
+    element,
+    [
+      "[role='group'][aria-labelledby]",
+      ".file-upload",
+      "[class*='file-upload' i]",
+      "[data-test='resume-upload-container']",
+      "[data-test='resume-upload']",
+      "[data-testid*='resume-upload' i]",
+    ].join(', '),
+  );
+}
+
+function composedUploadAttributeHint(element: HTMLInputElement): string {
+  let candidate: HTMLElement | null = element;
+  for (let depth = 0; candidate && depth < 24; depth += 1) {
+    for (const attribute of ['data-test', 'data-testid', 'data-sr-id', 'id', 'name']) {
+      const hint = labelFromAttribute(candidate.getAttribute(attribute));
+      if (hint) return hint;
+    }
+    candidate = composedParent(candidate);
+  }
+  return '';
+}
+
+function composedUploadContainer(element: HTMLInputElement): HTMLElement | null {
+  return closestComposed(
+    element,
+    [
+      "[data-test='resume-upload-container']",
+      "[data-testid*='resume-upload' i]",
+      "[data-testid*='cover-letter' i]",
+      "[data-test*='document-upload' i]",
+      "section",
+      "fieldset",
+    ].join(', '),
+  );
+}
+
+function semanticFileKey(element: HTMLInputElement): string {
+  let candidate: HTMLElement | null = element;
+  for (let depth = 0; candidate && depth < 24; depth += 1) {
+    for (const attribute of ['data-test', 'data-testid', 'data-sr-id']) {
+      const value = cleanText(candidate.getAttribute(attribute));
+      if (!value || !/(?:resume|cv|cover|document|attachment|upload)/i.test(value)) continue;
+      const slug = value
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .slice(0, 80);
+      if (slug) return `file-${slug}`;
+    }
+    candidate = composedParent(candidate);
+  }
+  return '';
 }
 
 function isUploadHelperText(text: string): boolean {
@@ -879,6 +1248,19 @@ function labelFromAttribute(val: string | null | undefined): string {
 function fileUploadLabelFor(element: HTMLInputElement, scope: FormScope): string {
   const root = scopeFor(element, scope);
   const uploadGroup = fileUploadGroupFor(element);
+  const composedAttributeHint = composedUploadAttributeHint(element);
+  const composedContainer = composedUploadContainer(element);
+  const composedHeading = cleanText(
+    composedContainer?.querySelector<HTMLElement>(
+      "[data-test='section-title'], h1, h2, h3, h4, legend, label",
+    )?.textContent,
+  );
+  if (/resume|curriculum vitae|\bcv\b|简历|履历/i.test(composedHeading)) {
+    return 'Resume';
+  }
+  if (/cover[\s_-]*(?:letter|note)|motivation[\s_-]*letter|求职信|自荐信|附言/i.test(composedHeading)) {
+    return 'Cover Letter';
+  }
   const groupLabel = uploadGroup ? labelledByText(uploadGroup, root) : "";
   const explicitLabel = element.id
     ? root.querySelector<HTMLLabelElement>(`label[for='${CSS.escape(element.id)}']`)
@@ -896,15 +1278,32 @@ function fileUploadLabelFor(element: HTMLInputElement, scope: FormScope): string
       "div[data-testid='field'], [class*='field' i], section, fieldset, [class*='upload' i], [class*='file' i], [class*='drop' i]",
     ) || element.parentElement?.parentElement;
     if (!parent) return "";
-    const copy = parent.cloneNode(true) as HTMLElement;
-    copy.querySelectorAll("input, button, svg, script, style, [data-testid*='screen-reader' i], [class*='screen-reader' i], [class*='sr-only' i]").forEach((n) => n.remove());
-    const candidates = Array.from(copy.querySelectorAll("h1, h2, h3, h4, h5, legend, label, p, span, div"))
-      .map((el) => cleanText(el.textContent))
-      .filter((txt) => txt.length >= 2 && txt.length <= 100 && !isUploadHelperText(txt));
-    return candidates[0] || "";
+    const directHeading = parent.querySelector<HTMLElement>("h1, h2, h3, h4, h5, legend, label");
+    if (directHeading) {
+      const txt = cleanLabel(extractTextWithoutControls(directHeading));
+      if (txt.length >= 2 && txt.length <= 100 && !isUploadHelperText(txt)) return txt;
+    }
+    const txt = cleanLabel(extractTextWithoutControls(parent));
+    return txt.length >= 2 && txt.length <= 100 && !isUploadHelperText(txt) ? txt : "";
+  })();
+
+  const nearbyButtonText = (() => {
+    let parent = element.parentElement;
+    for (let depth = 0; parent && depth < 5; depth += 1) {
+      const btn = parent.querySelector<HTMLElement>(
+        "button, [role='button'], label, a, .btn, [class*='btn' i]",
+      );
+      if (btn && isVisibleElement(btn)) {
+        const btnText = cleanLabel(extractTextWithoutControls(btn));
+        if (btnText && !isUploadHelperText(btnText)) return btnText;
+      }
+      parent = parent.parentElement;
+    }
+    return "";
   })();
 
   const attributeHint =
+    composedAttributeHint ||
     labelFromAttribute(element.id) ||
     labelFromAttribute(element.name) ||
     labelFromAttribute(element.getAttribute("data-testid")) ||
@@ -916,6 +1315,7 @@ function fileUploadLabelFor(element: HTMLInputElement, scope: FormScope): string
     ariaLabelledByText,
     explicitLabel?.textContent,
     labelTextWithoutControl(parentLabel),
+    nearbyButtonText,
     controller?.getAttribute("aria-label"),
     controller?.textContent,
     element.getAttribute("aria-label"),
@@ -927,8 +1327,8 @@ function fileUploadLabelFor(element: HTMLInputElement, scope: FormScope): string
 
   const text = candidates[0] || "";
 
-  if (/resume|cv|履历|简历/i.test(text)) return "Resume";
-  if (/cover\s*letter|求职信|自荐信/i.test(text)) return "Cover Letter";
+  if (/resume|curriculum vitae|\bcv\b|履历|简历/i.test(text)) return "Resume";
+  if (/cover[\s_-]*(?:letter|note)|motivation[\s_-]*letter|求职信|自荐信|附言/i.test(text)) return "Cover Letter";
   if (text) return cleanLabel(text);
 
   if (attributeHint) return attributeHint;
@@ -1011,6 +1411,18 @@ function documentOptionsFor(element: HTMLInputElement, scope: FormScope): Array<
 
 function fileRequiredFor(element: HTMLInputElement, scope: FormScope): boolean {
   if (requiredFor(element)) return true;
+  const composedContainer = composedUploadContainer(element);
+  if (
+    composedContainer?.querySelector(
+      "[data-test='section-required-mark'], [data-testid*='required-mark' i]",
+    )
+  ) {
+    return true;
+  }
+  const composedText = cleanText(composedContainer?.textContent);
+  if (/(?:resume|curriculum vitae|\bcv\b|cover\s*letter)[\s\S]{0,80}\*/i.test(composedText)) {
+    return true;
+  }
   const root = scopeFor(element, scope);
   const uploadGroup = fileUploadGroupFor(element);
   if (uploadGroup?.getAttribute("aria-required") === "true" || uploadGroup?.hasAttribute("required")) return true;
@@ -1034,6 +1446,12 @@ function isPresentedFileInput(element: HTMLInputElement, scope: FormScope): bool
   const parentLabel = element.closest<HTMLElement>("label");
   if (parentLabel && isVisibleElement(parentLabel)) return true;
 
+  const composedUploader = closestComposed(
+    element,
+    "[data-test='resume-upload'], [data-test='resume-upload-container'], [data-testid*='resume-upload' i], [data-testid*='cover-letter' i]",
+  );
+  if (composedUploader && isVisibleElement(composedUploader)) return true;
+
   const fieldContainer = element.closest<HTMLElement>("[data-testid='field'], [data-testid*='field' i]");
   if (fieldContainer && isVisibleElement(fieldContainer)) return true;
 
@@ -1042,18 +1460,12 @@ function isPresentedFileInput(element: HTMLInputElement, scope: FormScope): bool
     : null;
   if (controller && isVisibleElement(controller)) return true;
 
-  // Some React application forms keep the actual file input hidden inside a
-  // visible drop zone. The required Resume field in those forms has no
-  // upload-specific class, only a `role=button` or label wrapper.
   const dropZone = element.closest<HTMLElement>("[role='button'], button, label");
   if (dropZone) {
     const acceptsDocument = /(?:\.pdf|\.docx|\.doc|application\/pdf|wordprocessingml)/i.test(element.accept || "");
     if (isVisibleElement(dropZone) || acceptsDocument) return true;
   }
 
-  // Native file inputs are often visually hidden by design. Treat them as a
-  // real field only when their visible uploader UI is present in the same
-  // component. This filters LinkedIn's dormant global attachment inputs.
   const uploader = element.closest<HTMLElement>(
     [
       "[class*='file-upload' i]",
@@ -1072,12 +1484,56 @@ function isPresentedFileInput(element: HTMLInputElement, scope: FormScope): bool
       "[data-test-form-element]",
     ].join(", "),
   );
-  if (!uploader || !isVisibleElement(uploader)) return false;
-  return Array.from(uploader.querySelectorAll<HTMLElement>("button, [role='button'], label, input"))
-    .some((control) => isVisibleElement(control));
+  if (uploader && isVisibleElement(uploader)) {
+    const controls = Array.from(
+      uploader.querySelectorAll<HTMLElement>(
+        "button, [role='button'], label, input, a, span, div",
+      ),
+    );
+    if (controls.some((control) => isVisibleElement(control))) return true;
+  }
+
+  let parent = element.parentElement;
+  for (let depth = 0; parent && depth < 6; depth += 1) {
+    if (parent.matches("body, html")) break;
+    if (isVisibleElement(parent)) {
+      const controls = Array.from(
+        parent.querySelectorAll<HTMLElement>(
+          "button, [role='button'], label, a, [class*='btn' i], input",
+        ),
+      );
+      const hasVisibleControl = controls.some((c) => isVisibleElement(c));
+      const text = cleanText(parent.textContent).toLowerCase();
+      const hasUploadIntent =
+        /(?:resume|cv|upload|file|attach|choose|browse|document|cover|apply|简历|履历|求职)/i.test(
+          text,
+        );
+      if (hasVisibleControl && hasUploadIntent) {
+        return true;
+      }
+      const acceptsDocument =
+        /(?:\.pdf|\.docx|\.doc|application\/pdf|wordprocessingml)/i.test(
+          element.accept || "",
+        );
+      if (acceptsDocument && hasVisibleControl) {
+        return true;
+      }
+    }
+    parent = parent.parentElement;
+  }
+
+  return false;
 }
 
 export function isAutofillResumeInput(element: HTMLInputElement): boolean {
+  if (
+    closestComposed(
+      element,
+      "spl-dropzone[data-test='apply-with-resume-container'], oc-apply-with-resume",
+    )
+  ) {
+    return true;
+  }
   // Dover keeps both file inputs in one <form>. Looking beyond the input's
   // own drop zone makes the required Resume field inherit the text from the
   // separate top-level "Autofill from resume" helper and get filtered out.
@@ -1104,10 +1560,7 @@ export function elementsInScope(scope: FormScope): HTMLElement[] {
 }
 
 export function controlsInScope(scope: FormScope): Array<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement> {
-  return elementsInScope(scope).filter(
-    (element): element is HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement =>
-      element.matches(CONTROL_SELECTOR),
-  );
+  return queryAllInScope<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(scope, CONTROL_SELECTOR);
 }
 
 export function visibleControlsInScope(scope: FormScope): Array<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement> {
@@ -1115,6 +1568,10 @@ export function visibleControlsInScope(scope: FormScope): Array<HTMLInputElement
 }
 
 export function fieldKeyFor(element: HTMLElement, index: number, scope?: FormScope): string {
+  if (element instanceof HTMLInputElement && element.type.toLowerCase() === 'file') {
+    const semanticKey = semanticFileKey(element);
+    if (semanticKey) return semanticKey;
+  }
   const explicit = cleanText(element.id) || cleanText(element.getAttribute("name"));
   if (explicit) return explicit;
   const label = cleanText(labelFor(element, scope || document));
@@ -1214,7 +1671,7 @@ function choiceGroupLabel(container: HTMLElement): string {
   let sibling = container.previousElementSibling as HTMLElement | null;
   while (sibling) {
     const text = cleanText(sibling.textContent);
-    if (text.length >= 3 && text.length <= 280) return cleanLabel(text);
+    if (text.length >= 3 && text.length <= 280 && !isLikelyHelperText(text)) return cleanLabel(text);
     sibling = sibling.previousElementSibling as HTMLElement | null;
   }
 
@@ -1223,7 +1680,7 @@ function choiceGroupLabel(container: HTMLElement): string {
     const label = Array.from(parent.children)
       .slice(0, Array.from(parent.children).indexOf(container))
       .map((child) => cleanText(child.textContent))
-      .find((text) => text.length >= 3 && text.length <= 280);
+      .find((text) => text.length >= 3 && text.length <= 280 && !isLikelyHelperText(text));
     if (label) return cleanLabel(label);
   }
   return "";
@@ -1232,8 +1689,9 @@ function choiceGroupLabel(container: HTMLElement): string {
 function buttonChoiceGroups(scope: FormScope): ButtonChoiceGroup[] {
   const groups: ButtonChoiceGroup[] = [];
   const seen = new Set<HTMLElement>();
+  const buttons = queryAllInScope<HTMLElement>(scope, "button, [role='radio'], [role='button']");
 
-  for (const button of elementsInScope(scope)) {
+  for (const button of buttons) {
     if (!isVisibleElement(button) || !BUTTON_CHOICE_VALUE.test(cleanText(button.textContent || button.getAttribute("aria-label")))) continue;
     const container = choiceGroupContainer(button);
     if (!container || seen.has(container)) continue;
@@ -1293,6 +1751,9 @@ export function inspectVisibleFormFields(scope: FormScope = document): FormField
     const type = fieldType(element);
 
     if (element instanceof HTMLInputElement && isDocumentSelectionRadio(element)) continue;
+    // File controls need composed-tree label, required-state, and upload
+    // inspection. Always handle them in the dedicated file pass below.
+    if (type === "file") continue;
 
     if (element instanceof HTMLInputElement) {
       const checkboxGroup = checkboxChoiceGroupFor(element, scope);
@@ -1331,24 +1792,46 @@ export function inspectVisibleFormFields(scope: FormScope = document): FormField
 
     const elementScope = scopeFor(element, scope);
     const val = currentValue(element, type, elementScope);
+    const label = labelFor(element, elementScope);
+    if (isAuxiliaryFieldLabel(label)) continue;
     result.push({
       key: fieldKeyFor(element, index),
       id: cleanText(element.id) || undefined,
       name: cleanText(element.getAttribute("name")) || undefined,
       type,
-      label: labelFor(element, elementScope),
+      label,
       required: requiredFor(element),
       filled: isFilled(element, type, elementScope),
-      sensitive: type === "password" || type === "file",
+      sensitive: type === "password",
       options: optionsFor(element, elementScope),
       ...(val ? { currentValue: val } : {}),
     });
   }
 
+  // JobAdder's country selector is not a native visible control. Expose its
+  // backing value as a regular select field so the backend can infer AU/NZ
+  // from the phone number before the number itself is written.
+  for (const control of jobAdderPhoneCountryControls(scope)) {
+    if (result.length >= 200) break;
+    const key = cleanText(control.countryCode.id) || cleanText(control.countryCode.name);
+    if (!key || result.some((field) => field.key === key || field.id === control.countryCode.id)) continue;
+    const currentValue = cleanText(control.countryCode.value);
+    result.push({
+      key,
+      id: cleanText(control.countryCode.id) || undefined,
+      name: cleanText(control.countryCode.name) || undefined,
+      type: "select",
+      label: control.label,
+      required: control.required,
+      filled: Boolean(currentValue),
+      sensitive: false,
+      options: control.options,
+      ...(currentValue ? { currentValue } : {}),
+    });
+  }
+
   const keys = new Set(result.map((field) => field.key));
-  const fileInputs = elementsInScope(scope).filter(
-    (element): element is HTMLInputElement => element instanceof HTMLInputElement && element.type.toLowerCase() === "file",
-  );
+  const fileInputs = queryAllInScope<HTMLInputElement>(scope, "input[type='file']");
   for (let index = 0; index < fileInputs.length && result.length < 200; index += 1) {
     const input = fileInputs[index];
     if (!input || input.disabled || input.getAttribute("aria-disabled") === "true") continue;
@@ -1358,12 +1841,14 @@ export function inspectVisibleFormFields(scope: FormScope = document): FormField
     const selectedDocument = selectedDocumentFor(input, scope);
     const selectedFile = input.files?.[0];
     const upload = uploadObservationFor(input, scope, selectedDocument);
+    const label = fileUploadLabelFor(input, scope);
+    if (isAuxiliaryFieldLabel(label)) continue;
     result.push({
       key,
       id: cleanText(input.id) || undefined,
       name: cleanText(input.getAttribute("name")) || undefined,
       type: "file",
-      label: fileUploadLabelFor(input, scope),
+      label,
       required: fileRequiredFor(input, scope),
       filled: Boolean((selectedFile && selectedFile.size > 0) || selectedDocument?.accepted),
       sensitive: true,
@@ -1380,7 +1865,8 @@ export function inspectVisibleFormFields(scope: FormScope = document): FormField
   // Rippling renders required selects such as work-rights questions as a
   // focusable div rather than a native select or input. Treat those ARIA
   // comboboxes as normal select fields so the backend can classify them.
-  for (const combobox of elementsInScope(scope)) {
+  const ariaComboboxes = queryAllInScope<HTMLElement>(scope, "[role='combobox']");
+  for (const combobox of ariaComboboxes) {
     if (result.length >= 200) break;
     if (combobox instanceof HTMLInputElement || combobox.getAttribute("role") !== "combobox") continue;
     if (!isVisibleElement(combobox) || combobox.getAttribute("aria-disabled") === "true") continue;
@@ -1458,7 +1944,7 @@ export function inspectVisibleFormFields(scope: FormScope = document): FormField
     });
   }
 
-  return result;
+  return canonicalizeFormFields(result);
 }
 
 export function readApplicationForm(
@@ -1469,8 +1955,10 @@ export function readApplicationForm(
   scope: FormScope | null = document,
   action?: "next" | "submit",
   canGoBack = false,
+  adaptFields?: (fields: FormFieldObservation[]) => FormFieldObservation[],
 ): FormInspection {
-  const fields = scope ? inspectVisibleFormFields(scope) : [];
+  const inspectedFields = scope ? inspectVisibleFormFields(scope) : [];
+  const fields = adaptFields ? adaptFields(inspectedFields) : inspectedFields;
   // Some application steps are review/confirmation screens: they have a
   // valid application container and a Next/Back action, but no editable
   // controls at all. Keep them actionable instead of classifying them as
@@ -1495,8 +1983,13 @@ export function readApplicationForm(
   };
 }
 
-export function readPageInputFields(url: string, platform: FormPlatform): FormInspection | null {
-  const fields = inspectVisibleFormFields(document);
+export function readPageInputFields(
+  url: string,
+  platform: FormPlatform,
+  adaptFields?: (fields: FormFieldObservation[]) => FormFieldObservation[],
+): FormInspection | null {
+  const inspectedFields = inspectVisibleFormFields(document);
+  const fields = adaptFields ? adaptFields(inspectedFields) : inspectedFields;
   if (fields.length === 0) return null;
   return {
     kind: "page_input_fields",

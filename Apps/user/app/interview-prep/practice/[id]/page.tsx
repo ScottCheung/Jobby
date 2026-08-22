@@ -55,7 +55,6 @@ import { PracticeSkeleton } from '../_components/PracticeSkeleton';
 import { usePracticeData } from '../_hook/usePracticeData';
 import { QuestionComments } from '../_components/Comments/QuestionComments';
 
-
 function PracticeModeQuestionPageInner() {
   const router = useRouter();
   const confirm = useConfirmStore((state) => state.confirm);
@@ -311,7 +310,7 @@ function PracticeModeQuestionPageInner() {
             {!hasScheduledTasks && (
               <button
                 onClick={() => router.push('/interview-prep')}
-                className='label-sm rounded-lg border border-border px-4 py-2 text-ink-primary transition-colors hover:bg-background-secondary'
+                className='label-sm rounded-lg border border-primary px-4 py-2 text-ink-primary transition-colors hover:bg-background-secondary'
               >
                 Set Up Plan
               </button>

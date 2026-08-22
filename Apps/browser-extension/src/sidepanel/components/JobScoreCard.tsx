@@ -2,50 +2,96 @@
 
 import { CircularProgress } from '@jobby/ui/components/UI/Progress/CircularProgress';
 import { Number } from '@jobby/ui/components/UI/Number/Number';
+import { FileText, Layers, Sparkles } from 'lucide-react';
+import type { DocType } from '../../shared/contracts/tailored-resume';
 import type { ValidatedApplicationPlanResponse } from '../../shared/contracts/backend';
 import type { PageInspection } from '../../shared/contracts/page-inspection';
+import { parseAndFormatJobDate } from '../../shared/utils/date-formatter';
 import { cn } from '@jobby/ui/lib/utils';
 
 interface JobScoreCardProps {
   latestInspection: PageInspection | null;
   latestPlan: ValidatedApplicationPlanResponse | null;
   isInspecting?: boolean;
+  onTailor?: (type: DocType) => void;
+  authConnected?: boolean;
+  onSignIn?: () => void;
 }
 
 export function JobScoreCard({
   latestInspection,
   latestPlan,
-  isInspecting = false,
+  isInspecting: _isInspecting = false,
+  onTailor,
+  authConnected = true,
+  onSignIn,
 }: JobScoreCardProps) {
   const isJob = latestInspection?.kind === 'job';
 
   const decision = latestPlan?.plan?.decision;
   const candidate = latestPlan?.plan?.candidate;
-  const score =
-    decision?.score ?? candidate?.priority_score ?? candidate?.match_score;
-  const action = decision?.action;
+
+  // Live date on screen (latestInspection.snapshot.datePosted) is the authoritative ground truth
+  const snapshot =
+    latestInspection?.kind === 'job' ? latestInspection.snapshot : null;
+  const derivedRecency = (() => {
+    if (snapshot?.datePosted) {
+      const info = parseAndFormatJobDate(snapshot.datePosted);
+      if (info.ageInDays != null) {
+        const d = Math.max(0, info.ageInDays);
+        if (d <= 4.0) return Math.round((1.0 - 0.04 * d) * 10000) / 10000;
+        return (
+          Math.round(0.84 * Math.pow(2.0, -(d - 4.0) / 5.0) * 10000) / 10000
+        );
+      }
+    }
+    return (
+      candidate?.recency_factor ??
+      ((
+        candidate?.priority_score != null &&
+        candidate?.match_score != null &&
+        candidate.match_score > 0
+      ) ?
+        candidate.priority_score / candidate.match_score
+      : 0.5)
+    );
+  })();
+
+  const optimisticSkillScore = (() => {
+    if (!snapshot) return null;
+    const techs = snapshot.technologies || [];
+    if (techs.length > 0) return 0.88;
+    return 0.75;
+  })();
+
+  const rawMatchScore =
+    candidate?.match_score ??
+    candidate?.skill_score ??
+    (candidate?.priority_score != null && derivedRecency > 0 ?
+      candidate.priority_score / derivedRecency
+    : optimisticSkillScore);
+
+  // Overall Score strictly incorporates the time penalty
+  const overallScore =
+    rawMatchScore != null ?
+      rawMatchScore * derivedRecency
+    : (candidate?.priority_score ?? decision?.score ?? null);
+
   const explanation = decision?.explanation;
 
-  const hasScore = isJob && !isInspecting && typeof score === 'number' && !isNaN(score);
-  const percentage = hasScore ? Math.round(score * 100) : 0;
+  const hasScore =
+    authConnected &&
+    isJob &&
+    typeof overallScore === 'number' &&
+    !isNaN(overallScore);
+  const percentage = hasScore ? Math.round(overallScore * 100) : 0;
 
   const matchLabel =
-    !hasScore ? 'Calculating Score...'
-    : percentage >= 75 ? 'Highly Recommended'
-    : percentage >= 50 ? 'Recommended'
+    !authConnected ? 'Sign In for Match Score'
+    : !hasScore ? 'Calculating Score...'
+    : percentage >= 70 ? 'Highly Recommended'
+    : percentage >= 45 ? 'Recommended'
     : 'Not Recommended';
-
-  const derivedRecency =
-    candidate?.recency_factor ??
-    ((
-      candidate?.priority_score != null &&
-      candidate?.match_score != null &&
-      candidate.match_score > 0
-    ) ?
-      candidate.priority_score / candidate.match_score
-    : hasScore && candidate?.match_score != null && candidate.match_score > 0 ?
-      score / candidate.match_score
-    : 1.0);
 
   const skillPct = Math.min(
     100,
@@ -53,6 +99,7 @@ export function JobScoreCard({
       0,
       candidate?.skill_score != null ? Math.round(candidate.skill_score * 100)
       : candidate?.match_score != null ? Math.round(candidate.match_score * 100)
+      : optimisticSkillScore != null ? Math.round(optimisticSkillScore * 100)
       : percentage,
     ),
   );
@@ -71,7 +118,7 @@ export function JobScoreCard({
       0,
       candidate?.exp_score != null ? Math.round(candidate.exp_score * 100)
       : candidate?.match_score != null ? Math.round(candidate.match_score * 100)
-      : percentage,
+      : 85,
     ),
   );
   const recencyPct = Math.min(
@@ -89,7 +136,9 @@ export function JobScoreCard({
             size='sm'
             variant='gradient'
             color={
-              !hasScore ? 'primary'
+              !authConnected ? 'primary'
+              : !hasScore ?
+                'primary'
               : percentage >= 75 ?
                 'primary'
               : percentage >= 50 ?
@@ -97,13 +146,18 @@ export function JobScoreCard({
               : 'danger'
             }
             showValue={false}
-            isIndeterminate={!hasScore}
+            isIndeterminate={authConnected && !hasScore}
             thickness={8}
           />
 
           <Number
             className='absolute inset-0 flex items-center justify-center font-extrabold text-xl text-foreground'
-            value={hasScore ? percentage : '..'}
+            value={
+              hasScore ? percentage
+              : !authConnected ?
+                '--'
+              : '..'
+            }
           />
         </div>
 
@@ -113,26 +167,40 @@ export function JobScoreCard({
             <span
               className={cn(
                 'font-bold text-xs text-foreground truncate',
-                hasScore ? '' : (
+                hasScore || !authConnected ? '' : (
                   'animate-text-shimmer-primary animate-text-shimmer'
                 ),
               )}
             >
               {matchLabel}
             </span>
-            {action && hasScore && (
-              <span
-                className={`rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
-                  action === 'apply' ?
-                    'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
-                  : action === 'review' ?
-                    'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30'
-                  : 'bg-destructive/15 text-destructive border border-destructive/30'
-                }`}
+            {hasScore ?
+              <button
+                type='button'
+                onClick={() => onTailor?.('resume')}
+                className={cn(
+                  'inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold tracking-wide transition-all select-none shrink-0',
+                  'bg-primary/15 text-primary border border-primary/30',
+                  onTailor ?
+                    'hover:bg-primary/25 cursor-pointer active:scale-95'
+                  : 'cursor-default',
+                )}
+                title='Tailor CV & CL for this job'
               >
-                {action}
-              </span>
-            )}
+                <Sparkles className='w-2.5 h-2.5 shrink-0 text-primary' />
+                <span>Tailor Resume</span>
+              </button>
+            : !authConnected && onSignIn ?
+              <button
+                type='button'
+                onClick={onSignIn}
+                className='inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold tracking-wide transition-all select-none shrink-0 bg-primary/15 text-primary border border-primary/30 hover:bg-primary/25 cursor-pointer active:scale-95'
+                title='Sign in to calculate match score'
+              >
+                <Sparkles className='w-2.5 h-2.5 shrink-0 text-primary' />
+                <span>Sign In</span>
+              </button>
+            : null}
           </div>
 
           {/* Sub-score Mini Bars */}
@@ -154,9 +222,10 @@ export function JobScoreCard({
                     }}
                   />
                 </div>
-                <span className='w-4 shrink-0 text-right font-mono font-semibold text-foreground/80'>
-                  {skillPct}
-                </span>
+                <Number
+                  className='shrink-0 text-right font-mono font-semibold text-foreground/80'
+                  value={skillPct}
+                />
               </div>
 
               {/* Title Bar */}
@@ -172,9 +241,10 @@ export function JobScoreCard({
                     }}
                   />
                 </div>
-                <span className='w-4 shrink-0 text-right font-mono font-semibold text-foreground/80'>
-                  {titlePct}
-                </span>
+                <Number
+                  className='shrink-0 text-right font-mono font-semibold text-foreground/80'
+                  value={titlePct}
+                />
               </div>
 
               {/* Exp Bar */}
@@ -188,9 +258,10 @@ export function JobScoreCard({
                     style={{ width: `${Math.min(100, Math.max(0, expPct))}%` }}
                   />
                 </div>
-                <span className='w-4 shrink-0 text-right font-mono font-semibold text-foreground/80'>
-                  {expPct}
-                </span>
+                <Number
+                  className='shrink-0 text-right font-mono font-semibold text-foreground/80'
+                  value={expPct}
+                />
               </div>
 
               {/* Recency / Freshness Bar */}
@@ -206,9 +277,41 @@ export function JobScoreCard({
                     }}
                   />
                 </div>
-                <span className='w-4 shrink-0 text-right font-mono font-semibold text-foreground/80'>
-                  {recencyPct}
+                <Number
+                  className='shrink-0 text-right font-mono font-semibold text-foreground/80'
+                  value={recencyPct}
+                />
+              </div>
+            </div>
+          : !authConnected ?
+            <div className='grid grid-cols-2 mr-4 gap-x-3 gap-y-1 mt-0.5 text-[10px] select-none text-muted-foreground/70'>
+              <div className='flex items-center gap-1.5 min-w-0'>
+                <span className='w-7 shrink-0 text-muted-foreground font-medium truncate'>
+                  Skill
                 </span>
+                <div className='h-1.5 flex-1 rounded-full bg-muted/40 overflow-hidden' />
+                <span className='shrink-0 font-mono text-[9px]'>--</span>
+              </div>
+              <div className='flex items-center gap-1.5 min-w-0'>
+                <span className='w-7 shrink-0 text-muted-foreground font-medium truncate'>
+                  Title
+                </span>
+                <div className='h-1.5 flex-1 rounded-full bg-muted/40 overflow-hidden' />
+                <span className='shrink-0 font-mono text-[9px]'>--</span>
+              </div>
+              <div className='flex items-center gap-1.5 min-w-0'>
+                <span className='w-7 shrink-0 text-muted-foreground font-medium truncate'>
+                  Exp
+                </span>
+                <div className='h-1.5 flex-1 rounded-full bg-muted/40 overflow-hidden' />
+                <span className='shrink-0 font-mono text-[9px]'>--</span>
+              </div>
+              <div className='flex items-center gap-1.5 min-w-0'>
+                <span className='w-7 shrink-0 text-muted-foreground font-medium truncate'>
+                  Fresh
+                </span>
+                <div className='h-1.5 flex-1 rounded-full bg-muted/40 overflow-hidden' />
+                <span className='shrink-0 font-mono text-[9px]'>--</span>
               </div>
             </div>
           : <div className='grid grid-cols-2 mr-4 gap-x-3 gap-y-1.5 mt-0.5 text-[10px] select-none'>
@@ -240,6 +343,31 @@ export function JobScoreCard({
           }
         </div>
       </div>
+      {isJob && authConnected && onTailor && (
+        <div className='mt-3 grid grid-cols-3  gap-1.5 border-t border-primary/15 pt-2.5'>
+          <button
+            type='button'
+            onClick={() => onTailor('resume')}
+            className='inline-flex items-center justify-center gap-1 rounded-lg bg-primary px-2 py-2 text-[10px] font-bold text-primary-foreground transition-opacity hover:opacity-90'
+          >
+            <Sparkles className='h-3 w-3' /> Tailor Resume
+          </button>
+          <button
+            type='button'
+            onClick={() => onTailor('cover_letter')}
+            className='inline-flex items-center justify-center gap-1 rounded-lg border border-primary/25 bg-primary/8 px-2 py-2 text-[10px] font-bold text-primary hover:bg-primary/15'
+          >
+            <FileText className='h-3 w-3' /> Generate CL
+          </button>
+          <button
+            type='button'
+            onClick={() => onTailor('both')}
+            className='inline-flex items-center rounded-br-[5em] justify-center gap-1 rounded-lg border border-primary/25 bg-primary/8 px-2 py-2 text-[10px] font-bold text-primary hover:bg-primary/15'
+          >
+            <Layers className='h-3 w-3' /> Get Both
+          </button>
+        </div>
+      )}
     </div>
   );
 }

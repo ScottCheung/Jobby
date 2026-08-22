@@ -32,9 +32,6 @@ import {
 import { cn, formatInterviewDuration } from '@/lib/utils';
 import type { InterviewQuestion, QuestionAnswer } from '@/lib/types';
 
-
-
-
 import { div } from 'framer-motion/client';
 
 export type AnswerTypeTab = 'ai' | 'author' | 'community' | 'mine';
@@ -303,7 +300,7 @@ function SectionCard({
           </span>
         </div>
         {section.duration_hint && (
-          <span className='shrink-0 inline-flex items-center gap-1 rounded-full bg-background-secondary/60 border border-border/40 px-2 py-0.5 text-[10px] font-semibold text-ink-secondary'>
+          <span className='shrink-0 inline-flex items-center gap-1 rounded-full bg-background-secondary/60 border border-primary/40 px-2 py-0.5 text-[10px] font-semibold text-ink-secondary'>
             <Clock className='h-2.5 w-2.5' />
             {section.duration_hint}
           </span>
@@ -801,7 +798,7 @@ export function StandardAnswerCard({
               <button
                 onClick={handleCancel}
                 disabled={isSavingAnswer}
-                className='px-3 py-1.5 rounded-lg border border-border text-ink-secondary text-xs font-bold hover:bg-background-secondary transition-colors active:scale-95'
+                className='px-3 py-1.5 rounded-lg border border-primary text-ink-secondary text-xs font-bold hover:bg-background-secondary transition-colors active:scale-95'
               >
                 Cancel
               </button>
@@ -820,7 +817,7 @@ export function StandardAnswerCard({
               <div className='space-y-3' onClick={(e) => e.stopPropagation()}>
                 {/* Answers Loading Skeleton (quiet placeholder during question switch) */}
                 {isAnswersLoading ?
-                  <div className='rounded-xl border border-border/40 bg-background-secondary/30 p-4 space-y-3 min-h-[300px] animate-text-shimmer-primary animate-text-shimmer'>
+                  <div className='rounded-xl border border-primary/40 bg-background-secondary/30 p-4 space-y-3 min-h-[300px] animate-text-shimmer-primary animate-text-shimmer'>
                     <div className='flex items-center gap-2'>
                       <div className='h-4 w-28 bg-muted/60 rounded-md' />
                     </div>
@@ -889,7 +886,7 @@ export function StandardAnswerCard({
                               'shrink-0 rounded-lg border px-3 py-1 text-xs font-semibold transition-all',
                               selectedAiAnswer?.id === a.id ?
                                 'border-violet-500 bg-violet-600 text-white shadow-sm'
-                              : 'border-border text-ink-secondary hover:border-violet-400 hover:bg-background-secondary',
+                              : 'border-primary text-ink-secondary hover:border-violet-400 hover:bg-background-secondary',
                             )}
                           >
                             Version {idx + 1}
@@ -981,7 +978,7 @@ export function StandardAnswerCard({
                                   />
                                   {displayDifficulty.label}
                                 </span>
-                                <span className='inline-flex items-center gap-1 rounded-full bg-background-secondary/60 border border-border/40 px-2 py-0.5 text-[10px] font-semibold text-ink-secondary'>
+                                <span className='inline-flex items-center gap-1 rounded-full bg-background-secondary/60 border border-primary/40 px-2 py-0.5 text-[10px] font-semibold text-ink-secondary'>
                                   <Clock className='h-2.5 w-2.5' />
                                   {displayDurationLabel}
                                 </span>
@@ -1067,7 +1064,7 @@ export function StandardAnswerCard({
                             setIsCreatingContributorAnswer(false);
                           }}
                           disabled={isSavingAnswer}
-                          className='px-3 py-1.5 rounded-lg border border-border text-ink-secondary text-xs font-bold hover:bg-background-secondary transition-colors'
+                          className='px-3 py-1.5 rounded-lg border border-primary text-ink-secondary text-xs font-bold hover:bg-background-secondary transition-colors'
                         >
                           Cancel
                         </button>
@@ -1166,7 +1163,7 @@ export function StandardAnswerCard({
                                   setEditingContributorAnswerText('');
                                 }}
                                 disabled={isSavingAnswer}
-                                className='px-3 py-1.5 rounded-lg border border-border text-ink-secondary text-xs font-bold hover:bg-background-secondary transition-colors'
+                                className='px-3 py-1.5 rounded-lg border border-primary text-ink-secondary text-xs font-bold hover:bg-background-secondary transition-colors'
                               >
                                 Cancel
                               </button>
@@ -1225,10 +1222,10 @@ export function StandardAnswerCard({
                             'rounded-xl border p-3.5 space-y-2.5 transition-all',
                             isRec ?
                               'border-amber-500/25 bg-amber-500/[0.04]'
-                            : 'border-border bg-panel hover:border-amber-500/20',
+                            : 'border-primary bg-panel hover:border-amber-500/20',
                           )}
                         >
-                          <div className='flex items-center justify-between gap-2 pb-2 border-b border-border/40'>
+                          <div className='flex items-center justify-between gap-2 pb-2 border-b border-primary/40'>
                             <div className='flex items-center gap-1.5'>
                               <Crown
                                 className={cn(
@@ -1284,7 +1281,7 @@ export function StandardAnswerCard({
                       );
                     })}
                   </div>
-                : <div className='flex flex-col items-center gap-2.5 rounded-xl border border-dashed border-border bg-background-secondary/20 px-4 py-8 text-center'>
+                : <div className='flex flex-col items-center gap-2.5 rounded-xl border border-dashed border-primary bg-background-secondary/20 px-4 py-8 text-center'>
                     <span className='flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/10'>
                       <Users className='h-4.5 w-4.5 text-amber-400' />
                     </span>

@@ -43,7 +43,7 @@ export function ProfileHeader({
   ];
 
   return (
-    <div className='sticky top-0 z-10 border-b border-border/60 bg-panel/95 backdrop-blur-md px-6 py-5'>
+    <div className='sticky top-0 z-10 border-b border-primary/60 bg-panel/95 backdrop-blur-md px-6 py-5'>
       <div className='flex flex-col gap-4'>
         <div className='flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between'>
           <div>
@@ -67,7 +67,7 @@ export function ProfileHeader({
             {!profile?.is_default && profile?.id && (
               <button
                 type='button'
-                className='label inline-flex items-center gap-2 rounded-xl border border-border/60 px-3.5 py-2 hover:bg-background-secondary cursor-pointer'
+                className='label inline-flex items-center gap-2 rounded-xl border border-primary/60 px-3.5 py-2 hover:bg-background-secondary cursor-pointer'
                 onClick={() => void onActivate()}
               >
                 <Play className='h-4 w-4' />
@@ -78,7 +78,7 @@ export function ProfileHeader({
             {profile?.id && profilesCount > 1 && !isEditing && (
               <button
                 type='button'
-                className='label inline-flex items-center gap-2 rounded-xl border border-border/60 px-3.5 py-2 hover:bg-background-secondary cursor-pointer'
+                className='label inline-flex items-center gap-2 rounded-xl border border-primary/60 px-3.5 py-2 hover:bg-background-secondary cursor-pointer'
                 onClick={() => void onDelete()}
               >
                 <Trash2 className='h-4 w-4' />
@@ -90,7 +90,7 @@ export function ProfileHeader({
               <>
                 <button
                   type='button'
-                  className='label inline-flex items-center gap-2 rounded-xl border border-border/60 px-3.5 py-2 hover:bg-background-secondary cursor-pointer'
+                  className='label inline-flex items-center gap-2 rounded-xl border border-primary/60 px-3.5 py-2 hover:bg-background-secondary cursor-pointer'
                   onClick={onCancel}
                 >
                   <X className='h-4 w-4' />

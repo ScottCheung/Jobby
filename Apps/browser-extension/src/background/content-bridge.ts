@@ -48,12 +48,6 @@ export function setTargetedTabId(tabId: number | undefined): void {
 
 export async function inspectActiveTab(): Promise<PageInspection> {
   const activeTab = await findActiveTab().catch(() => undefined);
-  if (activeTab?.id && !isLinkedInUrl(activeTab.url)) {
-    const inherited = getTabJobInspection(activeTab.id, activeTab.url);
-    if (inherited) {
-      return inherited;
-    }
-  }
 
   const rawResponse = await sendToActiveTab({ type: "content.inspect" });
   const parsed = contentResponseSchema.safeParse(rawResponse);
@@ -63,7 +57,18 @@ export async function inspectActiveTab(): Promise<PageInspection> {
   const inspection = parsed.data.inspection;
   if (activeTab?.id && inspection.kind === "job") {
     bindTabJobInspection(activeTab.id, inspection);
+    return inspection;
   }
+
+  // If the active page does not identify a job directly (e.g. an external ATS
+  // child tab opened from a job posting), check if this tab inherited a job binding.
+  if (activeTab?.id) {
+    const inherited = getTabJobInspection(activeTab.id, activeTab.url);
+    if (inherited) {
+      return inherited;
+    }
+  }
+
   return inspection;
 }
 

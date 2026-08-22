@@ -1,10 +1,19 @@
-import type { FormInspection } from "../../../shared/contracts/form-inspection";
+import type { FormFieldObservation, FormInspection } from "../../../shared/contracts/form-inspection";
 
 import { findActiveFormScope, readGenericAction } from "../../dom/form-scope";
 import { inspectVisibleFormFields, readApplicationForm, readPageInputFields } from "../../dom/form-inspector";
+import { detectAtsPlatform } from './ats-platform';
+import { adaptAtsFormFields } from './ats-field-adapter';
+import { ensureSmartRecruitersResumeField } from './smartrecruiters-file-adapter';
 
 export function readGenericFormPage(): FormInspection {
   const url = window.location.href;
+  const platform = detectAtsPlatform();
+  const adaptFields = (fields: FormFieldObservation[]) =>
+    ensureSmartRecruitersResumeField(
+      platform,
+      adaptAtsFormFields(platform, fields),
+    );
   const activeScope = findActiveFormScope();
   // Some ATSs place the required privacy/terms checkbox in a sibling panel
   // while the question fields live in the active wizard container. Inspecting
@@ -27,11 +36,11 @@ export function readGenericFormPage(): FormInspection {
     documentFields.some((field) => field.type === "file" && !activeFields.some((scoped) => scoped.key === field.key));
   const scope = hasConsentOutsideScope || hasFileOutsideScope ? document : activeScope;
   if (!scope) {
-    const pageInputs = readPageInputFields(url, "generic");
+    const pageInputs = readPageInputFields(url, platform, adaptFields);
     if (pageInputs) return pageInputs;
     return {
       kind: "not_application_form",
-      platform: "generic",
+      platform,
       url,
       reason: "No visible form dialog or form fields were found.",
     };
@@ -40,11 +49,12 @@ export function readGenericFormPage(): FormInspection {
   const action = readGenericAction(scope);
   return readApplicationForm(
     url,
-    "generic",
+    platform,
     true,
     action.label,
     scope,
     action.action,
     false,
+    adaptFields,
   );
 }

@@ -28,7 +28,7 @@ export function NavBarContainer({
   return (
     <div
       className={cn(
-        'relative overflow-hidden rounded-[28px] border border-border/60 bg-panel/95 px-5 shadow-[0px_12px_32px_rgba(15,23,42,0.08)] backdrop-blur-md dark:border-border/80',
+        'relative overflow-hidden rounded-[28px] border border-primary/60 bg-panel/95 px-5 shadow-[0px_12px_32px_rgba(15,23,42,0.08)] backdrop-blur-md dark:border-primary/80',
         className,
       )}
     >
@@ -52,13 +52,9 @@ export function NavBarContainer({
           )}
         >
           <div className='min-w-0'>
-            <h2 className='title-section tracking-tight'>
-              {title}
-            </h2>
+            <h2 className='title-section tracking-tight'>{title}</h2>
             {description && (
-              <p className='body-md mt-1 text-ink-primary0'>
-                {description}
-              </p>
+              <p className='body-md mt-1 text-ink-primary0'>{description}</p>
             )}
           </div>
           <div className='flex w-full items-center gap-3'>{children}</div>
@@ -71,13 +67,9 @@ export function NavBarContainer({
           )}
         >
           <div className='min-w-0 shrink-0'>
-            <h2 className='title-card tracking-tight'>
-              {title}
-            </h2>
+            <h2 className='title-card tracking-tight'>{title}</h2>
           </div>
-          <div className='min-w-0 flex-1'>
-            {compactChildren ?? children}
-          </div>
+          <div className='min-w-0 flex-1'>{compactChildren ?? children}</div>
         </div>
       </div>
     </div>

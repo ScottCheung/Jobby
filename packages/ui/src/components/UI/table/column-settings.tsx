@@ -1,3 +1,5 @@
+/** @format */
+
 'use client';
 /** @format */
 
@@ -153,10 +155,8 @@ export function ColumnSettingsDialog<TData>({
 
       <div className='p-6 space-y-6'>
         {enableTextTruncationToggle && onTextExpandedChange && (
-          <div className='flex items-center justify-between p-3 border rounded-full bg-background border-border'>
-            <span className='label'>
-              Wrap Text
-            </span>
+          <div className='flex items-center justify-between p-3 border rounded-full bg-background border-primary'>
+            <span className='label'>Wrap Text</span>
             <Switch
               checked={!!internalTextExpanded}
               onCheckedChange={handleTextExpandedChange}
@@ -165,9 +165,7 @@ export function ColumnSettingsDialog<TData>({
         )}
 
         <div className='space-y-4'>
-          <H3 className='label'>
-            Visible Columns
-          </H3>
+          <H3 className='label'>Visible Columns</H3>
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
