@@ -28,7 +28,6 @@ import {
   formatResumeFilename,
   formatResumeAsPlainText as formatResumeAsPlainTextImpl,
   CoverLetterPdfPreview,
-  renderCoverLetterPdfOnce,
   formatCoverLetterFilename,
   defaultMasterResumeData,
 } from '@jobby/ui/components/UI/Resume';
@@ -42,6 +41,7 @@ import {
   closeFloatingResumePreview,
   openStandaloneResumePreview,
 } from '../services/resume-floating-preview';
+import { renderCoverLetterPdfInWorker } from '../services/cover-letter-pdf-renderer';
 import type { useTailoredResumeStudio } from '../hooks/useTailoredResumeStudio';
 import { AiGeneratingCard } from './AiGeneratingCard';
 import { AuthGuardBanner } from './AuthGuardBanner';
@@ -94,6 +94,13 @@ export function TailorStudioCard({
   );
   const [isDeleting, setIsDeleting] = useState(false);
   const historyRailRef = useRef<HTMLDivElement>(null);
+  const [coverLetterFileSize, setCoverLetterFileSize] = useState<number | null>(
+    null,
+  );
+  const coverLetterPdfCacheRef = useRef<{
+    key: string;
+    promise: ReturnType<typeof renderCoverLetterPdfInWorker>;
+  } | null>(null);
 
   const {
     jobTitle,
@@ -238,12 +245,7 @@ export function TailorStudioCard({
   const handleDownloadCoverLetter = async () => {
     if (!effectiveCoverLetter) return;
     try {
-      const { blob } = await renderCoverLetterPdfOnce(
-        effectiveCoverLetter,
-        effectiveResume || undefined,
-        company || detectedJob?.company,
-        jobTitle || detectedJob?.title,
-      );
+      const { blob } = await renderTailoredCoverLetterPdf();
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
@@ -271,13 +273,59 @@ export function TailorStudioCard({
 
   const renderTailoredCoverLetterPdf = () => {
     if (!effectiveCoverLetter) throw new Error('No cover letter is available.');
-    return renderCoverLetterPdfOnce(
+    const candidateData = effectiveResume || undefined;
+    const resolvedCompany = company || detectedJob?.company;
+    const resolvedJobTitle = jobTitle || detectedJob?.title;
+    const key = JSON.stringify([
       effectiveCoverLetter,
-      effectiveResume || undefined,
-      company || detectedJob?.company,
-      jobTitle || detectedJob?.title,
+      candidateData,
+      resolvedCompany,
+      resolvedJobTitle,
+    ]);
+    if (coverLetterPdfCacheRef.current?.key === key) {
+      return coverLetterPdfCacheRef.current.promise;
+    }
+    const promise = renderCoverLetterPdfInWorker(
+      effectiveCoverLetter,
+      candidateData,
+      resolvedCompany,
+      resolvedJobTitle,
     );
+    coverLetterPdfCacheRef.current = { key, promise };
+    void promise.catch(() => {
+      if (coverLetterPdfCacheRef.current?.promise === promise) {
+        coverLetterPdfCacheRef.current = null;
+      }
+    });
+    return promise;
   };
+
+  useEffect(() => {
+    if (!effectiveCoverLetter) {
+      setCoverLetterFileSize(null);
+      coverLetterPdfCacheRef.current = null;
+      return;
+    }
+    let cancelled = false;
+    setCoverLetterFileSize(null);
+    void renderTailoredCoverLetterPdf()
+      .then(({ blob }) => {
+        if (!cancelled) setCoverLetterFileSize(blob.size);
+      })
+      .catch(() => {
+        if (!cancelled) setCoverLetterFileSize(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    effectiveCoverLetter,
+    effectiveResume,
+    company,
+    detectedJob?.company,
+    jobTitle,
+    detectedJob?.title,
+  ]);
 
   const handleOpenInPageCoverLetterPreview = async () => {
     if (!effectiveCoverLetter) return;
@@ -559,7 +607,7 @@ export function TailorStudioCard({
           let pages: number;
           let pdfScale: number | undefined;
           if (isCoverLetter) {
-            const rendered = await renderCoverLetterPdfOnce(
+            const rendered = await renderCoverLetterPdfInWorker(
               coverLetter!,
               saved.resume_data,
               saved.company || undefined,
@@ -1130,7 +1178,7 @@ export function TailorStudioCard({
                 onClick={() => void handleCopyResume()}
                 title='Copy formatted resume text'
               >
-                {/* {copiedResume ? 'Copied' : 'Copy'} */}
+                {copiedResume ? 'Copied' : 'Copy'}
               </Button>
 
               <Button
@@ -1167,8 +1215,18 @@ export function TailorStudioCard({
           <div className='flex items-center justify-between gap-2 border-b border-primary/40 pb-2.5 w-full min-w-0'>
             <div className='min-w-0 flex-1 flex items-center gap-1.5'>
               <Sparkles className='w-3.5 h-3.5 text-primary shrink-0' />
-              <strong className='text-xs font-bold text-foreground truncate'>
+              <strong
+                className='text-xs font-bold text-foreground truncate'
+                title={
+                  jobTitle || detectedJob?.title ?
+                    `Cover Letter (${jobTitle || detectedJob?.title})`
+                  : 'Cover Letter'
+                }
+              >
                 Cover Letter
+                {jobTitle || detectedJob?.title ?
+                  ` (${jobTitle || detectedJob?.title})`
+                : ''}
               </strong>
             </div>
 
@@ -1179,7 +1237,9 @@ export function TailorStudioCard({
                 Icon={copiedCoverLetter ? Check : Copy}
                 onClick={handleCopyCoverLetter}
                 title='Copy cover letter text'
-              ></Button>
+              >
+                {copiedCoverLetter ? 'Copied' : 'Copy'}
+              </Button>
 
               <Button
                 size='sm'
@@ -1199,6 +1259,7 @@ export function TailorStudioCard({
               candidateData={effectiveResume || undefined}
               company={company || detectedJob?.company}
               jobTitle={jobTitle || detectedJob?.title}
+              fileSize={coverLetterFileSize}
               onPreview={() => void handleOpenInPageCoverLetterPreview()}
               onNewWindow={() => void handleOpenFloatingCoverLetterPreview()}
               onEdit={handleOpenWebEditor}

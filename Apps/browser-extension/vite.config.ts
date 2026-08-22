@@ -18,10 +18,10 @@ function stripCrossorigin(): Plugin {
 
 import manifest from "./manifest.config";
 
-export default defineConfig(({ mode, command }) => {
+export default defineConfig(({ mode }) => {
   const extensionEnv = loadEnv(mode, ".", "");
   const webAppEnv = loadEnv(mode, "../user", "");
-  const isDevServer = command === "serve";
+  const isDevelopment = mode === "development";
 
   return {
     define: {
@@ -57,7 +57,10 @@ export default defineConfig(({ mode, command }) => {
       },
     },
     build: {
-      outDir: isDevServer ? "dist-dev" : "dist",
+      outDir: isDevelopment ? "dist-dev" : "dist",
+    },
+    worker: {
+      format: "es",
     },
     plugins: [
       react(),

@@ -3,6 +3,9 @@
   "name": "Jobby",
   "version": "0.2.4",
   "description": "The browser execution layer for Jobby job applications.",
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';"
+  },
   "background": {
     "service_worker": "service-worker-loader.js",
     "type": "module"
@@ -12,24 +15,24 @@
   },
   "content_scripts": [
     {
+      "js": [
+        "assets/main-world-bridge.ts-DB7fX7v4.js"
+      ],
       "matches": [
         "http://*/*",
         "https://*/*"
-      ],
-      "js": [
-        "src/content/main-world-bridge.ts-loader.js"
       ],
       "all_frames": true,
       "run_at": "document_idle",
       "world": "MAIN"
     },
     {
+      "js": [
+        "assets/bootstrap.ts-loader-BBaCIa8z.js"
+      ],
       "matches": [
         "http://*/*",
         "https://*/*"
-      ],
-      "js": [
-        "src/content/bootstrap.ts-loader.js"
       ],
       "all_frames": true,
       "run_at": "document_idle"
@@ -82,23 +85,19 @@
   },
   "web_accessible_resources": [
     {
-      "resources": [
-        "src/sidepanel/index.html",
-        "favicon.svg",
-        "assets/*"
-      ],
       "matches": [
         "http://*/*",
         "https://*/*"
-      ]
-    },
-    {
-      "matches": [
-        "<all_urls>"
       ],
       "resources": [
-        "**/*",
-        "*"
+        "src/sidepanel/index.html",
+        "favicon.svg",
+        "assets/*",
+        "assets/main-world-bridge.ts-DB7fX7v4.js",
+        "assets/linkedin-r06Kst4s.js",
+        "assets/date-formatter-B0Rcg2sb.js",
+        "assets/api-client-C0qVo5f3.js",
+        "assets/bootstrap.ts-BZUbvSAA.js"
       ],
       "use_dynamic_url": false
     }

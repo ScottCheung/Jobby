@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import {
   Document,
+  Font,
   Link as PdfLink,
   Page,
   Path as PdfPath,
@@ -37,6 +38,7 @@ import {
   CLBG_MAIN_PATH_D,
   COVER_LETTER_GOLD_SVG_DATA_URI,
 } from './cover-letter-contour';
+import { SACRAMENTO_FONT_DATA_URI } from './cover-letter-font';
 
 export type CoverLetterPdfPreviewProps = {
   coverLetter: string;
@@ -44,6 +46,7 @@ export type CoverLetterPdfPreviewProps = {
   company?: string;
   jobTitle?: string;
   filename?: string;
+  fileSize?: number | null;
   onOpenModal?: (content: ReactNode) => void;
   onPreview?: () => void;
   onNewWindow?: () => void;
@@ -51,12 +54,17 @@ export type CoverLetterPdfPreviewProps = {
   onDownload?: () => void;
 };
 
-// The extension preview must not depend on downloadable or data-URI fonts.
-// Match the PDF's built-in Times-Italic face with a locally available stack.
+// Register commercial-use free handwriting font (SIL Open Font License 1.1)
+Font.register({
+  family: 'Sacramento',
+  src: SACRAMENTO_FONT_DATA_URI,
+});
+
 export const COVER_LETTER_SIGNATURE_STYLE = {
-  fontFamily: "'Times New Roman', Times, serif",
-  fontStyle: 'italic',
-  fontWeight: 600,
+  fontFamily:
+    "'Sacramento', 'Dancing Script', 'Caveat', 'Brush Script MT', 'Segoe Script', cursive",
+  fontStyle: 'normal',
+  fontWeight: 400,
 } as const;
 
 interface CoverLetterMetrics {
@@ -615,10 +623,10 @@ export function CoverLetterPdfDocument({
           </Text>
           <Text
             style={{
-              fontSize: 22,
-              fontFamily: 'Times-Italic',
+              fontSize: 26,
+              fontFamily: 'Sacramento',
               color: '#784508',
-              transform: 'rotate(-2deg)',
+              transform: 'rotate(-4deg)',
             }}
           >
             {signoffName}
@@ -903,7 +911,7 @@ export function CoverLetterHtmlDocument({
   );
 }
 
-function formatBytes(bytes: number): string {
+export function formatCoverLetterPdfFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
@@ -915,6 +923,7 @@ export function CoverLetterPdfPreview({
   company,
   jobTitle,
   filename,
+  fileSize: suppliedFileSize,
   onOpenModal,
   onPreview,
   onNewWindow,
@@ -923,13 +932,16 @@ export function CoverLetterPdfPreview({
 }: CoverLetterPdfPreviewProps) {
   const activeUrlRef = useRef<string | null>(null);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
-  const [fileSize, setFileSize] = useState<number | null>(null);
+  const [generatedFileSize, setGeneratedFileSize] = useState<number | null>(
+    null,
+  );
   const [error, setError] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
+  const fileSize = generatedFileSize ?? suppliedFileSize ?? null;
 
   useEffect(() => {
     const el = containerRef.current;
@@ -986,7 +998,7 @@ export function CoverLetterPdfPreview({
       if (activeUrlRef.current) URL.revokeObjectURL(activeUrlRef.current);
       activeUrlRef.current = nextUrl;
       setPdfUrl(nextUrl);
-      setFileSize(blob.size);
+      setGeneratedFileSize(blob.size);
       setIsGenerating(false);
       return nextUrl;
     } catch {
@@ -1041,7 +1053,7 @@ export function CoverLetterPdfPreview({
                   {fileSize ?
                     <>
                       <span className='opacity-40'>•</span>
-                      <span>{formatBytes(fileSize)}</span>
+                      <span>{formatCoverLetterPdfFileSize(fileSize)}</span>
                     </>
                   : null}
                 </div>
@@ -1133,8 +1145,8 @@ export function CoverLetterPdfPreview({
             type='button'
             title='In-Page Preview'
             aria-label='Preview Cover Letter PDF'
-            onClick={(e) => {
-              e.stopPropagation();
+            onClick={(event) => {
+              event.stopPropagation();
               openPreview();
             }}
             className='flex h-8 w-8 items-center justify-center rounded-lg bg-white/95 dark:bg-slate-900/95 text-slate-800 dark:text-slate-100 hover:scale-110 hover:text-primary hover:border-primary/40 border border-black/[0.06] dark:border-white/[0.1] cursor-pointer shadow-md transition-all'
@@ -1146,8 +1158,8 @@ export function CoverLetterPdfPreview({
             type='button'
             title='Open in New Window'
             aria-label='Open in new window'
-            onClick={(e) => {
-              e.stopPropagation();
+            onClick={(event) => {
+              event.stopPropagation();
               if (onNewWindow) {
                 onNewWindow();
               } else if (pdfUrl) {
@@ -1166,8 +1178,8 @@ export function CoverLetterPdfPreview({
               type='button'
               title='Edit on Web'
               aria-label='Edit cover letter'
-              onClick={(e) => {
-                e.stopPropagation();
+              onClick={(event) => {
+                event.stopPropagation();
                 onEdit();
               }}
               className='flex h-8 w-8 items-center justify-center rounded-lg bg-white/95 dark:bg-slate-900/95 text-slate-800 dark:text-slate-100 hover:scale-110 hover:text-primary hover:border-primary/40 border border-black/[0.06] dark:border-white/[0.1] cursor-pointer shadow-md transition-all'
@@ -1180,8 +1192,8 @@ export function CoverLetterPdfPreview({
             type='button'
             title='Download PDF'
             aria-label='Download cover letter PDF'
-            onClick={(e) => {
-              e.stopPropagation();
+            onClick={(event) => {
+              event.stopPropagation();
               if (onDownload) {
                 onDownload();
               } else {
@@ -1199,7 +1211,8 @@ export function CoverLetterPdfPreview({
         <div className='absolute bottom-1.5 left-1.5 z-10 flex items-center gap-1 rounded-md bg-panel/60 backdrop-blur-xs px-1.5 py-0.5 text-[9.5px] font-medium text-ink-primary'>
           <FileText className='h-3 w-3 text-primary shrink-0' />
           <span>
-            1 page · PDF {fileSize ? `· ${formatBytes(fileSize)}` : ''}
+            1 page ·
+            {fileSize ? `· ${formatCoverLetterPdfFileSize(fileSize)}` : ''}
           </span>
         </div>
       </div>
@@ -1231,7 +1244,7 @@ export function CoverLetterPdfPreview({
                       {fileSize && (
                         <>
                           <span className='opacity-40'>•</span>
-                          <span>{formatBytes(fileSize)}</span>
+                          <span>{formatCoverLetterPdfFileSize(fileSize)}</span>
                         </>
                       )}
                     </div>

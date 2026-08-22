@@ -1164,7 +1164,7 @@ export function ResumePdfPreview({
       <div
         ref={containerRef}
         onClick={openPreview}
-        className='group relative h-36 sm:h-40 w-full cursor-zoom-in overflow-hidden rounded-xl border border-black/[0.06] dark:border-white/[0.08] bg-background-secondary/80 flex items-center justify-center p-1.5 shadow-xs transition-all hover:border-primary/40'
+        className='group relative h-36 sm:h-40 w-full cursor-zoom-in bg-background-secondary overflow-hidden rounded-lg p-1.5'
       >
         <div className='pointer-events-none flex items-center justify-center'>
           <div

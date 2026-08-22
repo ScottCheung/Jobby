@@ -398,13 +398,11 @@ describe('Document Studio & Resume Tailoring (Zero-Token Mock Mode)', () => {
       await import('@jobby/ui/components/UI/Resume');
 
     expect(COVER_LETTER_SIGNATURE_STYLE).toEqual({
-      fontFamily: "'Times New Roman', Times, serif",
-      fontStyle: 'italic',
-      fontWeight: 600,
+      fontFamily:
+        "'Sacramento', 'Dancing Script', 'Caveat', 'Brush Script MT', 'Segoe Script', cursive",
+      fontStyle: 'normal',
+      fontWeight: 400,
     });
-    expect(JSON.stringify(COVER_LETTER_SIGNATURE_STYLE)).not.toMatch(
-      /Dancing Script|Caveat|https?:|data:/,
-    );
 
     const sampleLetter = `Dear Hiring Team,\n\nI am writing to express my enthusiasm for the Senior Frontend Engineer position at Acme Corp. With extensive experience in React, TypeScript, and modern design systems, I have delivered robust user interfaces and high-performance web applications.\n\nThank you for considering my application.\n\nSincerely,\nScott Zhang`;
 
@@ -421,6 +419,14 @@ describe('Document Studio & Resume Tailoring (Zero-Token Mock Mode)', () => {
     expect(blob.size).toBeGreaterThan(100);
     expect(pages).toBe(1);
     expect(duration).toBeLessThan(3000);
+  });
+
+  it('shows the worker-generated cover letter PDF size in preview metadata', async () => {
+    const { formatCoverLetterPdfFileSize } = await import(
+      '@jobby/ui/components/UI/Resume'
+    );
+
+    expect(formatCoverLetterPdfFileSize(24_576)).toBe('24.0 KB');
   });
 
   it('guards tailoring actions when unauthenticated', async () => {

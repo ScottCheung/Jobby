@@ -195,7 +195,9 @@ export type FileFieldPurpose =
   | 'portfolio'
   | 'other';
 
-export function fileFieldPurpose(field: FormFieldObservation): FileFieldPurpose {
+export function fileFieldPurpose(
+  field: FormFieldObservation,
+): FileFieldPurpose {
   if (field.type !== 'file') return 'other';
   const identity = [
     field.label,
@@ -207,12 +209,20 @@ export function fileFieldPurpose(field: FormFieldObservation): FileFieldPurpose 
     .filter(Boolean)
     .join(' ')
     .toLowerCase();
-  if (/cover[\s_-]*(?:letter|note)|motivation[\s_-]*letter|求职信|自荐信|附言/.test(identity))
+  if (
+    /cover[\s_-]*(?:letter|note)|motivation[\s_-]*letter|求职信|自荐信|附言/.test(
+      identity,
+    )
+  )
     return 'cover_letter';
   if (/profile[\s_-]*(?:image|photo)|avatar|headshot|头像/.test(identity))
     return 'profile_image';
   if (/portfolio|work[\s_-]*sample|作品集/.test(identity)) return 'portfolio';
-  if (/resume|curriculum[\s_-]*vitae|(?:^|[^a-z])cv(?:[^a-z]|$)|简历|履历/.test(identity))
+  if (
+    /resume|curriculum[\s_-]*vitae|(?:^|[^a-z])cv(?:[^a-z]|$)|简历|履历/.test(
+      identity,
+    )
+  )
     return 'resume';
   return 'other';
 }
@@ -266,20 +276,18 @@ function FormFieldRow({
   const isResumeUpload = purpose === 'resume';
   const isDocumentUpload =
     isResumeUpload || purpose === 'cover_letter' || purpose === 'other';
-  const recentTailoredResumes = tailoredResumes.filter(
-    (resume) => {
-      const generated = resume.raw_ai_response?.generated_documents as
-        | { resume?: boolean; cover_letter?: boolean }
-        | undefined;
-      // Cover-letter-only records retain base resume data so the letter can
-      // include candidate details. They are not CVs available for upload.
-      const hasGeneratedResume =
-        generated && ("resume" in generated || "cover_letter" in generated)
-          ? generated.resume === true
-          : Boolean(resume.resume_data);
-      return !resume.isGenerating && hasGeneratedResume;
-    },
-  );
+  const recentTailoredResumes = tailoredResumes.filter((resume) => {
+    const generated = resume.raw_ai_response?.generated_documents as
+      | { resume?: boolean; cover_letter?: boolean }
+      | undefined;
+    // Cover-letter-only records retain base resume data so the letter can
+    // include candidate details. They are not CVs available for upload.
+    const hasGeneratedResume =
+      generated && ('resume' in generated || 'cover_letter' in generated) ?
+        generated.resume === true
+      : Boolean(resume.resume_data);
+    return !resume.isGenerating && hasGeneratedResume;
+  });
   const selectedResume = recentTailoredResumes.find(
     (resume) => resume.id === selectedResumeId,
   );
@@ -530,9 +538,7 @@ function FormFieldRow({
           )}
           <button
             type='button'
-            disabled={
-              isUploadInFlight || (isDocumentUpload && !selectedResume)
-            }
+            disabled={isUploadInFlight || (isDocumentUpload && !selectedResume)}
             onClick={() =>
               void (isDocumentUpload && selectedResume ?
                 onUploadTailoredResume(field, selectedResume)
@@ -584,8 +590,7 @@ function UploadState({
     : field.upload?.state === 'rejected' ?
       field.upload.detail || 'The website rejected the file.'
     : isResumeUpload ?
-      selectedResumeTitle ?
-        `Ready to upload: ${selectedResumeTitle}`
+      selectedResumeTitle ? `Ready to upload: ${selectedResumeTitle}`
       : 'Select a resume from Recent Tailor to upload.'
     : 'Please select a file on the webpage.');
 

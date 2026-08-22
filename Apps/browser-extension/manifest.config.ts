@@ -7,6 +7,9 @@ export default defineManifest({
   name: 'Jobby',
   version: '0.2.4',
   description: 'The browser execution layer for Jobby job applications.',
+  content_security_policy: {
+    extension_pages: "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';",
+  },
   background: {
     service_worker: 'src/background/service-worker.ts',
     type: 'module',
