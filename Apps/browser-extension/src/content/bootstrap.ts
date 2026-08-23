@@ -16,9 +16,17 @@ declare global {
 window.__jobbyContentBootstrapCleanup?.();
 window.__jobbyContentBootstrapCleanup = undefined;
 
+function isExtensionContextValid(): boolean {
+  try {
+    return typeof chrome !== "undefined" && Boolean(chrome.runtime?.id);
+  } catch {
+    return false;
+  }
+}
+
 // Backward-compatible cleanup for a page that was injected by an older build
 // before the unified teardown hook existed.
-if (window.__jobbyContentMessageListener && typeof chrome !== "undefined" && chrome.runtime?.id && chrome.runtime?.onMessage) {
+if (window.__jobbyContentMessageListener && isExtensionContextValid() && chrome.runtime?.onMessage) {
   try {
     chrome.runtime.onMessage.removeListener(window.__jobbyContentMessageListener);
   } catch {
@@ -31,6 +39,7 @@ window.__jobbyFormDiscoveryCleanup?.();
 const cleanupCallbacks: Array<() => void> = [];
 
 const listener: ContentMessageListener = (message, _sender, sendResponse) => {
+  if (!isExtensionContextValid()) return false;
   void handleContentCommand(message)
     .then((response) => {
       if (response !== undefined) sendResponse({ ok: true, ...response });
@@ -43,17 +52,21 @@ const listener: ContentMessageListener = (message, _sender, sendResponse) => {
 };
 
 window.__jobbyContentMessageListener = listener;
-if (typeof chrome !== "undefined" && chrome.runtime?.id && chrome.runtime?.onMessage) {
-  chrome.runtime.onMessage.addListener(listener);
-  cleanupCallbacks.push(() => {
-    try {
-      if (chrome.runtime?.id) {
-        chrome.runtime.onMessage.removeListener(listener);
+if (isExtensionContextValid() && chrome.runtime?.onMessage) {
+  try {
+    chrome.runtime.onMessage.addListener(listener);
+    cleanupCallbacks.push(() => {
+      try {
+        if (isExtensionContextValid()) {
+          chrome.runtime.onMessage.removeListener(listener);
+        }
+      } catch {
+        // Ignore
       }
-    } catch {
-      // Ignore
-    }
-  });
+    });
+  } catch {
+    // Ignore
+  }
 }
 
 // Listen for theme changes from the Jobby web app and update chrome.storage.local
@@ -64,12 +77,17 @@ const onThemeMessage = (event: MessageEvent) => {
     event.data.source === "jobby-web-app" &&
     event.data.type === "JOBBY_THEME_CHANGE"
   ) {
+    if (!isExtensionContextValid()) return;
     const { theme, themeColor } = event.data;
     const updatePayload: Record<string, string> = {};
     if (theme) updatePayload["auto-job-ui-theme"] = theme;
     if (themeColor) updatePayload["auto-job-ui-theme-color"] = themeColor;
-    if (Object.keys(updatePayload).length > 0 && typeof chrome !== "undefined" && chrome.storage?.local) {
-      void chrome.storage.local.set(updatePayload);
+    if (Object.keys(updatePayload).length > 0 && chrome.storage?.local) {
+      try {
+        void chrome.storage.local.set(updatePayload);
+      } catch {
+        // Ignore
+      }
     }
   }
 };
@@ -77,8 +95,9 @@ window.addEventListener("message", onThemeMessage);
 cleanupCallbacks.push(() => window.removeEventListener("message", onThemeMessage));
 
 // Broadcast extension theme changes to web app window in real-time
-if (typeof chrome !== "undefined" && chrome.storage?.onChanged) {
+if (isExtensionContextValid() && chrome.storage?.onChanged) {
   const onStorageChanged = (changes: Record<string, chrome.storage.StorageChange>, areaName: string) => {
+    if (!isExtensionContextValid()) return;
     if (areaName !== "local") return;
     const newTheme = changes["auto-job-ui-theme"]?.newValue;
     const newColor = changes["auto-job-ui-theme-color"]?.newValue;
@@ -94,8 +113,18 @@ if (typeof chrome !== "undefined" && chrome.storage?.onChanged) {
       );
     }
   };
-  chrome.storage.onChanged.addListener(onStorageChanged);
-  cleanupCallbacks.push(() => chrome.storage.onChanged.removeListener(onStorageChanged));
+  try {
+    chrome.storage.onChanged.addListener(onStorageChanged);
+    cleanupCallbacks.push(() => {
+      try {
+        if (isExtensionContextValid()) chrome.storage.onChanged.removeListener(onStorageChanged);
+      } catch {
+        // Ignore
+      }
+    });
+  } catch {
+    // Ignore
+  }
 }
 
 // LinkedIn and SEEK are the only sites where Jobby continuously drives an
@@ -114,16 +143,24 @@ const isAutoObservedHost =
   hostname === "indeed.com" ||
   hostname.endsWith(".indeed.com");
 
-if (isTopLevelFrame) {
+if (isTopLevelFrame && isExtensionContextValid()) {
   cleanupCallbacks.push(initializeFloatingBall());
   if (isAutoObservedHost) {
     const syncDiscoveryState = () => {
-      const pageClass = classifyCurrentPage();
-      if (pageClass.isJobPage) {
-        startContentFormDiscovery();
-      } else {
-        window.__jobbyFormDiscoveryCleanup?.();
-        window.__jobbyFormObserverCleanup?.();
+      try {
+        if (!isExtensionContextValid()) {
+          window.__jobbyContentBootstrapCleanup?.();
+          return;
+        }
+        const pageClass = classifyCurrentPage();
+        if (pageClass.isJobPage) {
+          startContentFormDiscovery();
+        } else {
+          window.__jobbyFormDiscoveryCleanup?.();
+          window.__jobbyFormObserverCleanup?.();
+        }
+      } catch {
+        window.__jobbyContentBootstrapCleanup?.();
       }
     };
 
@@ -134,13 +171,17 @@ if (isTopLevelFrame) {
       if (pageChangeTimer !== undefined) window.clearTimeout(pageChangeTimer);
       pageChangeTimer = window.setTimeout(() => {
         pageChangeTimer = undefined;
-        syncDiscoveryState();
-        if (typeof chrome !== "undefined" && chrome.runtime?.id && chrome.runtime?.sendMessage) {
-          try {
-            chrome.runtime.sendMessage({ type: "content.page-changed" }).catch(() => undefined);
-          } catch {
-            // Ignore context invalidation on reload
+        try {
+          if (!isExtensionContextValid()) {
+            window.__jobbyContentBootstrapCleanup?.();
+            return;
           }
+          syncDiscoveryState();
+          if (chrome.runtime?.id && chrome.runtime?.sendMessage) {
+            chrome.runtime.sendMessage({ type: "content.page-changed" }).catch(() => undefined);
+          }
+        } catch {
+          // Ignore context invalidation on reload
         }
       }, 100);
     };
@@ -155,15 +196,23 @@ if (isTopLevelFrame) {
 
     // Also observe clicks on job listing cards/links on SEEK, LinkedIn, and Indeed
     const onJobCardClick = (event: MouseEvent) => {
-      const target = event.target as HTMLElement | null;
-      if (!target) return;
-      const isJobClick = Boolean(
-        target.closest(
-          "a[href*='/job/'], a[href*='/jobs/view/'], [data-automation='job-card'], .job-card-container, [data-occludable-job-id], a[href*='vjk='], a[href*='jk='], .job_seen_beacon, [data-jk], [data-mobtk]"
-        )
-      );
-      if (isJobClick) {
-        notifyPageChanged();
+      try {
+        if (!isExtensionContextValid()) {
+          window.__jobbyContentBootstrapCleanup?.();
+          return;
+        }
+        const target = event.target as HTMLElement | null;
+        if (!target) return;
+        const isJobClick = Boolean(
+          target.closest(
+            "a[href*='/job/'], a[href*='/jobs/view/'], [data-automation='job-card'], .job-card-container, [data-occludable-job-id], a[href*='vjk='], a[href*='jk='], .job_seen_beacon, [data-jk], [data-mobtk]"
+          )
+        );
+        if (isJobClick) {
+          notifyPageChanged();
+        }
+      } catch {
+        // Ignore
       }
     };
     document.addEventListener("click", onJobCardClick, { capture: true, passive: true });
@@ -172,7 +221,13 @@ if (isTopLevelFrame) {
 }
 
 window.__jobbyContentBootstrapCleanup = () => {
-  cleanupCallbacks.forEach((cleanup) => cleanup());
+  cleanupCallbacks.forEach((cleanup) => {
+    try {
+      cleanup();
+    } catch {
+      // Ignore
+    }
+  });
   window.__jobbyFormObserverCleanup?.();
   window.__jobbyFormDiscoveryCleanup?.();
 };

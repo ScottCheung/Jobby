@@ -24,17 +24,6 @@ export type TailorGenerationTask = {
   startedAt: number;
 };
 
-function hasGeneratedResume(item: TailoredResume): boolean {
-  const generated = item.raw_ai_response?.generated_documents as
-    | { resume?: boolean; cover_letter?: boolean }
-    | undefined;
-
-  // Records from before document-type tracking only contained resumes.
-  return generated && ("resume" in generated || "cover_letter" in generated)
-    ? generated.resume === true
-    : Boolean(item.resume_data);
-}
-
 export function tailorGenerationFingerprint(
   type: DocType,
   jobTitle: string,
@@ -63,6 +52,8 @@ export function useTailoredResumeStudio(
   const generationControllers = useRef(
     new Map<string, { controller: AbortController; fingerprint: string; optimisticId: string }>(),
   );
+  const refreshInFlightRef = useRef(false);
+  const refreshEpochRef = useRef(0);
 
   const [preview, setPreview] = useState<JobReviewPreview | null>(null);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
@@ -91,12 +82,35 @@ export function useTailoredResumeStudio(
 
   // Load initial career profile & saved resumes
   const refreshSavedResumes = useCallback(async () => {
-    if (!authConnected || !enabled) return;
+    if (!authConnected || !enabled || refreshInFlightRef.current) return;
+    const requestEpoch = refreshEpochRef.current;
+    refreshInFlightRef.current = true;
     try {
       const [profiles, saved] = await Promise.all([
         apiClient.getCareerProfiles().catch(() => [] as CareerProfile[]),
-        apiClient.getTailoredResumes().catch(() => [] as TailoredResume[]),
+        apiClient.getTailoredResumes(),
       ]);
+      if (requestEpoch !== refreshEpochRef.current) return;
+      const restoredGeneratingItems = saved
+        .filter((item) => item.status === 'processing')
+        .map((item) => ({
+          ...item,
+          isGenerating: true,
+          generatingDocType:
+            (item.raw_ai_response?.generation_doc_type as DocType | undefined) ||
+            'resume',
+        }));
+      const restoredGenerationIds = new Set(
+        restoredGeneratingItems
+          .map((item) => item.raw_ai_response?.generation_id)
+          .filter((value): value is string => typeof value === 'string'),
+      );
+      const normalizedSaved = saved.map((item) => {
+        const restored = restoredGeneratingItems.find(
+          (candidate) => candidate.id === item.id,
+        );
+        return restored || item;
+      });
       setCareerProfiles(profiles);
       const defaultProfile =
         profiles.find((p) => p.is_default) ?? profiles[0];
@@ -107,19 +121,76 @@ export function useTailoredResumeStudio(
         }
       }
       setSavedResumes((current) => {
-        // Keep any active optimistic generating items
-        const generatingItems = current.filter((item) => item.isGenerating);
-        const serverIds = new Set(saved.map((s) => s.id));
+        const generatingItems = current.filter(
+          (item) =>
+            item.isGenerating &&
+            !Array.from(restoredGenerationIds).some((generationId) =>
+              item.id.includes(generationId),
+            ),
+        );
+        const serverIds = new Set(normalizedSaved.map((s) => s.id));
         return [
           ...generatingItems.filter((item) => !serverIds.has(item.id)),
-          ...saved,
+          ...normalizedSaved,
         ];
       });
+      setGenerationTasks((current) => {
+        const localTasks = current.filter((task) =>
+          generationControllers.current.has(task.id),
+        );
+        const localIds = new Set(localTasks.map((task) => task.id));
+        const restoredTasks = restoredGeneratingItems
+          .map((item) => {
+            const generationId = String(
+              item.raw_ai_response?.generation_id || `server-${item.id}`,
+            );
+            return {
+              id: generationId,
+              optimisticId: item.id,
+              docType: item.generatingDocType || 'resume',
+              jobTitle: item.job_title || 'Target Role',
+              company: item.company || 'Target Company',
+              fingerprint: tailorGenerationFingerprint(
+                item.generatingDocType || 'resume',
+                item.job_title || 'Target Role',
+                item.company || 'Target Company',
+                item.job_description,
+              ),
+              startedAt: Date.parse(item.updated_at || item.created_at),
+            } satisfies TailorGenerationTask;
+          })
+          .filter((task) => !localIds.has(task.id));
+        return [...localTasks, ...restoredTasks];
+      });
+      if (restoredGeneratingItems.length > 0) {
+        setActiveOptimisticId((current) => {
+          const matchingServerItem = restoredGeneratingItems.find((item) => {
+            const generationId = item.raw_ai_response?.generation_id;
+            return (
+              typeof generationId === 'string' &&
+              current?.includes(generationId)
+            );
+          });
+          return (
+            matchingServerItem?.id ||
+            current ||
+            restoredGeneratingItems[0]?.id ||
+            null
+          );
+        });
+      } else {
+        setActiveOptimisticId((current) =>
+          current?.startsWith('optimistic-') ||
+          current?.startsWith('dev-optimistic-') ?
+            current
+          : null,
+        );
+      }
 
-      // A cover-letter-only record keeps base resume data for the letter's
-      // candidate details, but it must not be selected as a generated CV.
-      // Default to the first actual tailored resume instead.
-      const first = saved.find(hasGeneratedResume);
+      // Default to the first ready tailored document record (CV, CL, or both).
+      const first = normalizedSaved.find(
+        (item) => item.status !== 'processing',
+      );
       if (first) {
         if (!first.isGenerating) {
           setResult((prev) => {
@@ -142,12 +213,23 @@ export function useTailoredResumeStudio(
       }
     } catch {
       // Background load failures are quiet
+    } finally {
+      refreshInFlightRef.current = false;
     }
   }, [authConnected, enabled]);
 
   useEffect(() => {
     void refreshSavedResumes();
   }, [refreshSavedResumes]);
+
+  useEffect(() => {
+    const hasRestoredGeneration = generationTasks.some(
+      (task) => !generationControllers.current.has(task.id),
+    );
+    if (!hasRestoredGeneration) return;
+    const timer = window.setInterval(() => void refreshSavedResumes(), 5_000);
+    return () => window.clearInterval(timer);
+  }, [generationTasks, refreshSavedResumes]);
 
   const switchProfile = useCallback(
     (profileId: string) => {
@@ -361,6 +443,8 @@ export function useTailoredResumeStudio(
     // result when it completes. A later history click can still opt out while
     // this request is running.
     userSelectedVersionRef.current = false;
+    refreshEpochRef.current += 1;
+    setResult(null);
     generationControllers.current.set(generationId, {
       controller,
       fingerprint,
@@ -418,13 +502,17 @@ export function useTailoredResumeStudio(
       }, controller.signal);
 
       if (controller.signal.aborted) return;
+      refreshEpochRef.current += 1;
 
       // A background completion must never pull someone away from a version
       // they are currently inspecting. With no explicit selection, newest wins.
       if (!userSelectedVersionRef.current) setResult(nextResult);
       setDocType(chosenType);
       setActiveOptimisticId((current) =>
-        current === optimisticId ? null : current,
+        current === optimisticId ||
+        current === nextResult.tailored_resume?.id ?
+          null
+        : current,
       );
 
       // 2. Replace optimistic record with the real server response
@@ -455,6 +543,7 @@ export function useTailoredResumeStudio(
         : successText;
       notify.success(msg);
     } catch (err) {
+      refreshEpochRef.current += 1;
       // 3. Rollback optimistic record on error
       setSavedResumes((current) =>
         current.filter((item) => item.id !== optimisticId),
@@ -625,14 +714,6 @@ export function useTailoredResumeStudio(
       }
     },
     [refreshSavedResumes],
-  );
-
-  useEffect(
-    () => () => {
-      generationControllers.current.forEach(({ controller }) => controller.abort());
-      generationControllers.current.clear();
-    },
-    [],
   );
 
   const makeDefaultProfile = useCallback(

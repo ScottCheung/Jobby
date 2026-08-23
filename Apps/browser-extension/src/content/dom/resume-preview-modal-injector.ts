@@ -27,6 +27,14 @@ export interface ShowResumePreviewOptions {
   editUrl?: string;
 }
 
+function isExtensionContextValid(): boolean {
+  try {
+    return typeof chrome !== "undefined" && Boolean(chrome.runtime?.id);
+  } catch {
+    return false;
+  }
+}
+
 let activeEscListener: ((e: KeyboardEvent) => void) | null = null;
 let activePdfBlobUrl: string | null = null;
 let activeLibraryInputRoot: Root | null = null;
@@ -72,10 +80,14 @@ export interface ShowResumeLibraryOptions {
 export function closeInPageResumeLibraryModal(): void {
   activeLibraryInputRoot?.unmount();
   activeLibraryInputRoot = null;
-  if (activeLibraryThemeListener && chrome.storage?.onChanged) {
-    chrome.storage.onChanged.removeListener(activeLibraryThemeListener);
-    activeLibraryThemeListener = null;
+  if (activeLibraryThemeListener && isExtensionContextValid() && chrome.storage?.onChanged) {
+    try {
+      chrome.storage.onChanged.removeListener(activeLibraryThemeListener);
+    } catch {
+      // Ignore
+    }
   }
+  activeLibraryThemeListener = null;
   document.getElementById(LIBRARY_ROOT_ID)?.remove();
 }
 
@@ -98,26 +110,35 @@ function applyLibraryTheme(container: HTMLElement): void {
     container.style.setProperty("--jobby-library-primary-foreground", "#fff");
   };
 
-  if (!chrome.storage?.local) {
+  if (!isExtensionContextValid() || !chrome.storage?.local) {
     updateTheme({});
     return;
   }
-  chrome.storage.local.get(
-    ["auto-job-ui-theme-color", "auto-job-ui-theme"],
-    (stored) => updateTheme((stored as Record<string, unknown>) || {}),
-  );
-  activeLibraryThemeListener = (changes, area) => {
-    if (
-      area === "local" &&
-      (changes["auto-job-ui-theme-color"] || changes["auto-job-ui-theme"])
-    ) {
-      chrome.storage.local.get(
-        ["auto-job-ui-theme-color", "auto-job-ui-theme"],
-        (stored) => updateTheme((stored as Record<string, unknown>) || {}),
-      );
-    }
-  };
-  chrome.storage.onChanged.addListener(activeLibraryThemeListener);
+  try {
+    chrome.storage.local.get(
+      ["auto-job-ui-theme-color", "auto-job-ui-theme"],
+      (stored) => updateTheme((stored as Record<string, unknown>) || {}),
+    );
+    activeLibraryThemeListener = (changes, area) => {
+      if (!isExtensionContextValid()) return;
+      if (
+        area === "local" &&
+        (changes["auto-job-ui-theme-color"] || changes["auto-job-ui-theme"])
+      ) {
+        try {
+          chrome.storage.local.get(
+            ["auto-job-ui-theme-color", "auto-job-ui-theme"],
+            (stored) => updateTheme((stored as Record<string, unknown>) || {}),
+          );
+        } catch {
+          // Ignore
+        }
+      }
+    };
+    chrome.storage.onChanged.addListener(activeLibraryThemeListener);
+  } catch {
+    updateTheme({});
+  }
 }
 
 export function showInPageResumeLibraryModal({
@@ -218,6 +239,7 @@ export function showInPageResumeLibraryModal({
           (documentType !== "resume" && documentType !== "cover_letter")
         )
           return;
+        if (!isExtensionContextValid()) return;
         shadow
           .querySelectorAll(".resume-card.selected")
           .forEach((card) => card.classList.remove("selected"));
@@ -225,11 +247,15 @@ export function showInPageResumeLibraryModal({
         // Rendering @react-pdf in a content script fails because its WASM runtime
         // cannot be instantiated there. The side panel owns PDF generation; keep
         // this library open underneath the document preview for a quick return.
-        void chrome.runtime.sendMessage({
-          type: "tailor.preview-library-document",
-          id: item.dataset.id,
-          documentType,
-        });
+        try {
+          void chrome.runtime.sendMessage({
+            type: "tailor.preview-library-document",
+            id: item.dataset.id,
+            documentType,
+          });
+        } catch {
+          // Ignore
+        }
       }),
     );
   shadow
@@ -242,23 +268,28 @@ export function showInPageResumeLibraryModal({
           !window.confirm("Delete this tailored resume? This cannot be undone.")
         )
           return;
+        if (!isExtensionContextValid()) return;
         button.disabled = true;
-        void chrome.runtime
-          .sendMessage({
-            type: "tailor.delete-library-resume",
-            id: item.dataset.id,
-          })
-          .then((response: { ok?: boolean } | undefined) => {
-            if (response?.ok) {
-              item.remove();
-              updateList();
-              return;
-            }
-            button.disabled = false;
-          })
-          .catch(() => {
-            button.disabled = false;
-          });
+        try {
+          void chrome.runtime
+            .sendMessage({
+              type: "tailor.delete-library-resume",
+              id: item.dataset.id,
+            })
+            .then((response: { ok?: boolean } | undefined) => {
+              if (response?.ok) {
+                item.remove();
+                updateList();
+                return;
+              }
+              button.disabled = false;
+            })
+            .catch(() => {
+              button.disabled = false;
+            });
+        } catch {
+          button.disabled = false;
+        }
       }),
     );
   document.documentElement.appendChild(container);
@@ -340,7 +371,7 @@ export async function showInPageResumePreviewModal(
     typeof window !== "undefined" &&
     window.matchMedia("(prefers-color-scheme: dark)").matches;
 
-  if (typeof chrome !== "undefined" && chrome.storage?.local) {
+  if (isExtensionContextValid() && chrome.storage?.local) {
     try {
       const stored = await new Promise<Record<string, unknown>>((resolve) => {
         chrome.storage.local.get(

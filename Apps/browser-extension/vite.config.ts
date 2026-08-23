@@ -21,7 +21,7 @@ import manifest from "./manifest.config";
 export default defineConfig(({ command, mode }) => {
   if (command === "serve" && process.env.VITEST !== "true") {
     throw new Error(
-      "Browser-extension dev mode uses `vite build --watch` because MAIN-world IIFE content scripts are not supported by the Vite dev server.",
+      "Browser-extension dev mode uses `vite build --watch --mode development` because the extension content scripts cannot use the CRX/Vite HMR client.",
     );
   }
 
@@ -31,6 +31,9 @@ export default defineConfig(({ command, mode }) => {
 
   return {
     define: {
+      "process.env.NODE_ENV": JSON.stringify(
+        isDevelopment ? "development" : "production",
+      ),
       "import.meta.env.VITE_WEB_APP_URL": JSON.stringify(
         extensionEnv.VITE_WEB_APP_URL || "http://localhost:3000",
       ),
@@ -76,10 +79,10 @@ export default defineConfig(({ command, mode }) => {
         manifest,
         liveReload: false,
         contentScripts: {
-          // MAIN-world scripts cannot safely run CRXJS's ESM/HMR loader: it
-          // depends on extension APIs and a React Refresh `window` preamble.
-          // Emit the page bridge as a self-contained classic script instead.
-          standaloneFiles: ["src/content/main-world-bridge.ts"],
+          standaloneFiles: [
+            "src/content/main-world-bridge.ts",
+            "src/content/bootstrap.ts",
+          ],
         },
       }),
     ],

@@ -12,6 +12,23 @@ type PendingChange = {
 };
 
 const pendingChangesByTab = new Map<number, Map<string, PendingChange>>();
+const PENDING_FORM_ACTION_KEY_PREFIX = "jobby.form-action.pending.";
+
+export type PendingManualFormAction = {
+  tabId: number;
+  pendingCount: number;
+};
+
+function pendingFormActionKey(tabId: number): string {
+  return `${PENDING_FORM_ACTION_KEY_PREFIX}${tabId}`;
+}
+
+export async function getPendingManualFormAction(tabId: number): Promise<PendingManualFormAction | null> {
+  const key = pendingFormActionKey(tabId);
+  const stored = await chrome.storage.session.get(key);
+  const pendingCount = (stored[key] as { pendingCount?: unknown } | undefined)?.pendingCount;
+  return typeof pendingCount === "number" && pendingCount > 0 ? { tabId, pendingCount } : null;
+}
 
 function inferScene(form: FormInspection): string {
   if (form.kind !== "application_form" && form.kind !== "page_input_fields") return "generic";
@@ -55,7 +72,9 @@ export async function prepareManualFormAction(
   tabId: number,
 ): Promise<number> {
   await recordManualFormObservations(form, fields, tabId);
-  return pendingChangesByTab.get(tabId)?.size || 0;
+  const pendingCount = pendingChangesByTab.get(tabId)?.size || fields.length;
+  await chrome.storage.session.set({ [pendingFormActionKey(tabId)]: { pendingCount } });
+  return pendingCount;
 }
 
 export async function finalizeManualFormAction(tabId: number, save: boolean): Promise<void> {
@@ -63,5 +82,6 @@ export async function finalizeManualFormAction(tabId: number, save: boolean): Pr
   const changes = [...(pendingChangesByTab.get(tabId)?.values() || [])];
   await apiClient.finalizeFormTempChanges(sessionId, save, changes);
   pendingChangesByTab.delete(tabId);
+  await chrome.storage.session.remove(pendingFormActionKey(tabId));
   await clearAutofillSession(tabId);
 }

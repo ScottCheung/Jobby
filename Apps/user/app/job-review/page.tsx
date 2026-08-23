@@ -203,6 +203,47 @@ function JobReviewContent() {
     };
   }, [targetId]);
 
+  useEffect(() => {
+    if (!currentResume || currentResume.status !== 'processing') return;
+
+    let refreshing = false;
+    const refreshResume = async () => {
+      if (refreshing) return;
+      refreshing = true;
+      try {
+        const updated = await api.tailoredResume(currentResume.id);
+        setCurrentResume(updated);
+        setTailoredResumes((previous) =>
+          previous.map((item) =>
+            item.id === updated.id ? updated : item,
+          ),
+        );
+      } catch {
+        // Polling is a fallback for transient API and realtime interruptions.
+      } finally {
+        refreshing = false;
+      }
+    };
+
+    const onResumeProcessed = (event: Event) => {
+      const detail = (event as CustomEvent<{ id?: string }>).detail;
+      if (detail?.id === currentResume.id) void refreshResume();
+    };
+
+    window.addEventListener(
+      'jobby:tailored-resume-event',
+      onResumeProcessed,
+    );
+    const pollTimer = window.setInterval(() => void refreshResume(), 5_000);
+    return () => {
+      window.clearInterval(pollTimer);
+      window.removeEventListener(
+        'jobby:tailored-resume-event',
+        onResumeProcessed,
+      );
+    };
+  }, [currentResume?.id, currentResume?.status]);
+
   const selectTailoredResume = (resume: TailoredResume) => {
     setCurrentResume(resume);
     router.replace(`/job-review?id=${resume.id}`);
@@ -365,6 +406,38 @@ function JobReviewContent() {
           <Loader2 className='h-8 w-8 animate-spin text-primary' />
           <p className='text-sm font-medium'>Loading tailored resume...</p>
         </div>
+      </div>
+    );
+  }
+
+  if (currentResume?.status === 'processing') {
+    return (
+      <div className='flex h-[60vh] items-center justify-center px-6 text-center'>
+        <div className='flex max-w-md flex-col items-center gap-3 text-ink-secondary'>
+          <Loader2 className='h-9 w-9 animate-spin text-primary' />
+          <p className='text-base font-semibold text-ink-primary'>
+            Generating your tailored CV
+          </p>
+          <p className='text-sm'>
+            You can leave this page. Generation will continue and this page will
+            restore the result when you return.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (currentResume?.status === 'failed') {
+    return (
+      <div className='mx-auto flex w-full max-w-4xl flex-col gap-6 p-6 lg:p-10'>
+        <EmptyPlaceHolder
+          title='Tailored CV Generation Failed'
+          message={
+            currentResume.error_message ||
+            'Return to Applications to retry this CV generation.'
+          }
+          className='py-16'
+        />
       </div>
     );
   }

@@ -352,11 +352,8 @@ export function useInspection(onJobChanged?: () => void) {
       const tabOrUrlChanged =
         tabId !== lastObservedActiveTabId.current ||
         url !== lastObservedActiveUrl.current;
-      const missingDateOnJob =
-        latestInspection?.kind === 'job' &&
-        !latestInspection.snapshot.datePosted;
 
-      if (!force && !tabOrUrlChanged && !missingDateOnJob) return false;
+      if (!force && !tabOrUrlChanged) return false;
 
       pageInspectionInFlight.current = true;
       if (showLoading) {

@@ -94,6 +94,8 @@ export type TailoredResume = {
   core_competencies: string[];
   targeted_projects: Array<Record<string, unknown>>;
   prompt_version?: string;
+  status: 'processing' | 'ready' | 'failed';
+  error_message?: string | null;
   created_at: string;
   updated_at: string;
 };

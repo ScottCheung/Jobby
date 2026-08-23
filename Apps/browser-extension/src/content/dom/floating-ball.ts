@@ -31,6 +31,14 @@ let disabledDomains: string[] = [];
 let disableAllPages: boolean = false;
 let currentDocumentClickHandler: ((e: MouseEvent) => void) | null = null;
 
+function isExtensionContextValid(): boolean {
+  try {
+    return typeof chrome !== 'undefined' && Boolean(chrome.runtime?.id);
+  } catch {
+    return false;
+  }
+}
+
 // Keep extension UI in body. Adding arbitrary elements to <html> is invalid
 // document structure and can interfere with sites that manage their own root.
 function mountOverlay(element: HTMLElement): void {
@@ -230,6 +238,7 @@ function removeFloatingBall() {
 }
 
 function createFloatingBall() {
+  if (!isExtensionContextValid()) return;
   if (ballRoot?.isConnected) return;
   // SPA navigations and development HMR can replace the page body without
   // updating our module-level reference. Drop that stale reference so the
@@ -240,6 +249,13 @@ function createFloatingBall() {
     existing.remove();
   }
 
+  let logoUrl = '';
+  try {
+    logoUrl = chrome.runtime.getURL('favicon.svg');
+  } catch {
+    return;
+  }
+
   ballRoot = document.createElement('div');
   ballRoot.id = BALL_CONTAINER_ID;
   ballRoot.style.cssText =
@@ -247,7 +263,6 @@ function createFloatingBall() {
   updateThemeClasses();
 
   const shadow = ballRoot.attachShadow({ mode: 'open' });
-  const logoUrl = chrome.runtime.getURL('favicon.svg');
 
   const SIZE = 60;
   const EDGE_MARGIN = 20;
@@ -453,35 +468,52 @@ function createFloatingBall() {
     dismissMenu.classList.remove('is-open');
     wrapper.classList.remove('menu-open');
 
+    if (!isExtensionContextValid()) {
+      removeFloatingBall();
+      return;
+    }
+
     if (action === 'session') {
       sessionStorage.setItem(DISMISS_KEY, 'true');
       removeFloatingBall();
     } else if (action === 'domain') {
       const host = window.location.hostname;
-      if (host) {
-        chrome.storage.local.get([DISABLED_DOMAINS_KEY], (res) => {
-          const list: string[] =
-            Array.isArray(res[DISABLED_DOMAINS_KEY]) ?
-              res[DISABLED_DOMAINS_KEY]
-            : [];
-          if (!list.includes(host)) {
-            list.push(host);
-            chrome.storage.local.set({ [DISABLED_DOMAINS_KEY]: list }, () => {
-              disabledDomains = list;
+      if (host && chrome.storage?.local) {
+        try {
+          chrome.storage.local.get([DISABLED_DOMAINS_KEY], (res) => {
+            const list: string[] =
+              Array.isArray(res[DISABLED_DOMAINS_KEY]) ?
+                res[DISABLED_DOMAINS_KEY]
+              : [];
+            if (!list.includes(host)) {
+              list.push(host);
+              chrome.storage.local.set({ [DISABLED_DOMAINS_KEY]: list }, () => {
+                disabledDomains = list;
+                removeFloatingBall();
+              });
+            } else {
               removeFloatingBall();
-            });
-          } else {
-            removeFloatingBall();
-          }
-        });
+            }
+          });
+        } catch {
+          removeFloatingBall();
+        }
       } else {
         removeFloatingBall();
       }
     } else if (action === 'all') {
-      chrome.storage.local.set({ [DISABLE_ALL_PAGES_KEY]: true }, () => {
-        disableAllPages = true;
+      if (chrome.storage?.local) {
+        try {
+          chrome.storage.local.set({ [DISABLE_ALL_PAGES_KEY]: true }, () => {
+            disableAllPages = true;
+            removeFloatingBall();
+          });
+        } catch {
+          removeFloatingBall();
+        }
+      } else {
         removeFloatingBall();
-      });
+      }
     }
   };
 
@@ -670,6 +702,7 @@ function createFloatingBall() {
 // ─── Ball click handler ───────────────────────────────────────────────────────
 
 function handleBallClick() {
+  if (!isExtensionContextValid()) return;
   if (panelState === 'iframe') return;
 
   if (panelState === 'native') {
@@ -678,11 +711,15 @@ function handleBallClick() {
     // close broadcast before showing the iframe. This prevents any overlap.
     if (openIframeAfterNativeClose) return;
     openIframeAfterNativeClose = true;
-    chrome.runtime.sendMessage({ type: 'sidepanel.close' }, (response) => {
-      if (chrome.runtime.lastError || response?.ok === false) {
-        openIframeAfterNativeClose = false;
-      }
-    });
+    try {
+      chrome.runtime.sendMessage({ type: 'sidepanel.close' }, (response) => {
+        if (chrome.runtime.lastError || response?.ok === false) {
+          openIframeAfterNativeClose = false;
+        }
+      });
+    } catch {
+      openIframeAfterNativeClose = false;
+    }
     return;
   }
 
@@ -701,6 +738,7 @@ function handleBallClick() {
  * the panel with just a CSS transition (zero extra load time).
  */
 function preloadSidepanelIframe() {
+  if (!isExtensionContextValid()) return;
   if (iframeRoot || document.getElementById(IFRAME_CONTAINER_ID)) return;
 
   iframeRoot = document.createElement('div');
@@ -861,10 +899,17 @@ function preloadSidepanelIframe() {
     }
   `;
 
+  let logoUrl = '';
+  let iframeSrc = '';
+  try {
+    logoUrl = chrome.runtime.getURL('favicon.svg');
+    iframeSrc = chrome.runtime.getURL('src/sidepanel/index.html');
+  } catch {
+    return;
+  }
+
   const wrapper = document.createElement('div');
   wrapper.id = 'jobby-iframe-wrapper';
-
-  const logoUrl = chrome.runtime.getURL('favicon.svg');
 
   const closeTab = document.createElement('button');
   closeTab.id = 'close-tab';
@@ -900,7 +945,7 @@ function preloadSidepanelIframe() {
   closeTab.addEventListener('click', hideSidepanelIframe);
 
   const iframe = document.createElement('iframe');
-  iframe.src = chrome.runtime.getURL('src/sidepanel/index.html');
+  iframe.src = iframeSrc;
 
   wrapper.appendChild(closeTab);
   wrapper.appendChild(iframe);
@@ -1083,7 +1128,7 @@ function removeSidepanelIframe(immediate = false) {
 
 export function initializeFloatingBall(): () => void {
   if (
-    typeof chrome === 'undefined' ||
+    !isExtensionContextValid() ||
     !chrome.runtime ||
     !chrome.runtime.onMessage
   )
@@ -1093,76 +1138,112 @@ export function initializeFloatingBall(): () => void {
   // client-side navigation. Recover the floating ball if the host page removes
   // it, instead of retaining a disconnected ballRoot forever.
   const recoveryTimer = window.setInterval(() => {
-    if (shouldShowBall() && !ballRoot?.isConnected) {
-      createFloatingBall();
+    try {
+      if (!isExtensionContextValid()) {
+        window.clearInterval(recoveryTimer);
+        removeFloatingBall();
+        removeSidepanelIframe(true);
+        return;
+      }
+      if (shouldShowBall() && !ballRoot?.isConnected) {
+        createFloatingBall();
+      }
+    } catch {
+      window.clearInterval(recoveryTimer);
     }
   }, 1_000);
 
   // Initialize theme and disabled settings from storage
-  chrome.storage.local.get(
-    [
-      'auto-job-ui-theme',
-      'auto-job-ui-theme-color',
-      DISABLED_DOMAINS_KEY,
-      DISABLE_ALL_PAGES_KEY,
-    ],
-    (res) => {
-      if (res['auto-job-ui-theme']) {
-        currentThemeMode = res['auto-job-ui-theme'];
-      }
-      if (
-        typeof res['auto-job-ui-theme-color'] === 'string' &&
-        res['auto-job-ui-theme-color']
-      ) {
-        currentThemeColor = res['auto-job-ui-theme-color'];
-      }
-      if (Array.isArray(res[DISABLED_DOMAINS_KEY])) {
-        disabledDomains = res[DISABLED_DOMAINS_KEY];
-      }
-      if (typeof res[DISABLE_ALL_PAGES_KEY] === 'boolean') {
-        disableAllPages = res[DISABLE_ALL_PAGES_KEY];
-      }
-      updateThemeClasses();
-      updateBallVisibility();
-    },
-  );
-
-  chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === 'local') {
-      let stateChanged = false;
-      if (changes['auto-job-ui-theme']) {
-        currentThemeMode = changes['auto-job-ui-theme'].newValue;
-        updateThemeClasses();
-      }
-      if (changes['auto-job-ui-theme-color']) {
-        currentThemeColor = changes['auto-job-ui-theme-color']
-          .newValue as string;
-        updateThemeShadows();
-      }
-      if (changes[DISABLED_DOMAINS_KEY]) {
-        disabledDomains =
-          Array.isArray(changes[DISABLED_DOMAINS_KEY].newValue) ?
-            changes[DISABLED_DOMAINS_KEY].newValue
-          : [];
-        stateChanged = true;
-      }
-      if (changes[DISABLE_ALL_PAGES_KEY] !== undefined) {
-        disableAllPages = !!changes[DISABLE_ALL_PAGES_KEY].newValue;
-        stateChanged = true;
-      }
-      if (stateChanged) {
-        updateBallVisibility();
-      }
+  if (chrome.storage?.local) {
+    try {
+      chrome.storage.local.get(
+        [
+          'auto-job-ui-theme',
+          'auto-job-ui-theme-color',
+          DISABLED_DOMAINS_KEY,
+          DISABLE_ALL_PAGES_KEY,
+        ],
+        (res) => {
+          if (!isExtensionContextValid() || !res) return;
+          if (res['auto-job-ui-theme']) {
+            currentThemeMode = res['auto-job-ui-theme'];
+          }
+          if (
+            typeof res['auto-job-ui-theme-color'] === 'string' &&
+            res['auto-job-ui-theme-color']
+          ) {
+            currentThemeColor = res['auto-job-ui-theme-color'];
+          }
+          if (Array.isArray(res[DISABLED_DOMAINS_KEY])) {
+            disabledDomains = res[DISABLED_DOMAINS_KEY];
+          }
+          if (typeof res[DISABLE_ALL_PAGES_KEY] === 'boolean') {
+            disableAllPages = res[DISABLE_ALL_PAGES_KEY];
+          }
+          updateThemeClasses();
+          updateBallVisibility();
+        },
+      );
+    } catch {
+      // Ignore
     }
-  });
+  }
 
-  window
-    .matchMedia('(prefers-color-scheme: dark)')
-    .addEventListener('change', () => {
+  const onStorageChanged = (changes: Record<string, chrome.storage.StorageChange>, area: string) => {
+    try {
+      if (!isExtensionContextValid()) return;
+      if (area === 'local') {
+        let stateChanged = false;
+        if (changes['auto-job-ui-theme']) {
+          currentThemeMode = changes['auto-job-ui-theme'].newValue;
+          updateThemeClasses();
+        }
+        if (changes['auto-job-ui-theme-color']) {
+          currentThemeColor = changes['auto-job-ui-theme-color']
+            .newValue as string;
+          updateThemeShadows();
+        }
+        if (changes[DISABLED_DOMAINS_KEY]) {
+          disabledDomains =
+            Array.isArray(changes[DISABLED_DOMAINS_KEY].newValue) ?
+              changes[DISABLED_DOMAINS_KEY].newValue
+            : [];
+          stateChanged = true;
+        }
+        if (changes[DISABLE_ALL_PAGES_KEY] !== undefined) {
+          disableAllPages = !!changes[DISABLE_ALL_PAGES_KEY].newValue;
+          stateChanged = true;
+        }
+        if (stateChanged) {
+          updateBallVisibility();
+        }
+      }
+    } catch {
+      // Ignore
+    }
+  };
+
+  if (chrome.storage?.onChanged) {
+    try {
+      chrome.storage.onChanged.addListener(onStorageChanged);
+    } catch {
+      // Ignore
+    }
+  }
+
+  const onMediaChange = () => {
+    try {
+      if (!isExtensionContextValid()) return;
       if (currentThemeMode === 'system') {
         updateThemeClasses();
       }
-    });
+    } catch {
+      // Ignore
+    }
+  };
+
+  const darkModeMedia = window.matchMedia('(prefers-color-scheme: dark)');
+  darkModeMedia.addEventListener('change', onMediaChange);
 
   // Show the ball immediately based on initial state.
   updateBallVisibility();
@@ -1175,9 +1256,9 @@ export function initializeFloatingBall(): () => void {
 
   // Ask the background for the authoritative window + side-panel state.
   try {
-    if (chrome.runtime?.id) {
+    if (isExtensionContextValid()) {
       chrome.runtime.sendMessage({ type: 'sidepanel.query-state' }, (response) => {
-        if (chrome.runtime.lastError) return;
+        if (chrome.runtime.lastError || !isExtensionContextValid()) return;
         if (response?.ok) {
           if (typeof response.canHostSidepanel === 'boolean') {
             windowCanHostSidepanel = response.canHostSidepanel;
@@ -1204,35 +1285,63 @@ export function initializeFloatingBall(): () => void {
   }
 
   // Listen for native side panel open/close broadcasts from the background.
-  chrome.runtime.onMessage.addListener((message) => {
-    if (message?.type !== 'sidepanel.state-changed') return;
-    if (!windowCanHostSidepanel) return;
+  const onRuntimeMessage = (message: any) => {
+    try {
+      if (!isExtensionContextValid()) return;
+      if (message?.type !== 'sidepanel.state-changed') return;
+      if (!windowCanHostSidepanel) return;
 
-    if (message.isOpen) {
-      openIframeAfterNativeClose = false;
-      // Native side panel just opened.
-      // Tear down the iframe if it was showing.
-      if (panelState === 'iframe') {
-        // The two entry points are mutually exclusive: do not leave the
-        // 380px in-page panel visible while Chrome opens its native panel.
-        removeSidepanelIframe(true);
-      }
-      panelState = 'native';
-      // Native sidepanel does NOT need page padding.
-      restoreBodyRight();
-      updateBallVisibility();
-    } else {
-      // Native side panel just closed.
-      panelState = 'idle';
-      restoreBodyRight();
-      if (openIframeAfterNativeClose) {
+      if (message.isOpen) {
         openIframeAfterNativeClose = false;
-        showSidepanelIframe();
-      } else {
+        // Native side panel just opened.
+        // Tear down the iframe if it was showing.
+        if (panelState === 'iframe') {
+          // The two entry points are mutually exclusive: do not leave the
+          // 380px in-page panel visible while Chrome opens its native panel.
+          removeSidepanelIframe(true);
+        }
+        panelState = 'native';
+        // Native sidepanel does NOT need page padding.
+        restoreBodyRight();
         updateBallVisibility();
+      } else {
+        // Native side panel just closed.
+        panelState = 'idle';
+        restoreBodyRight();
+        if (openIframeAfterNativeClose) {
+          openIframeAfterNativeClose = false;
+          showSidepanelIframe();
+        } else {
+          updateBallVisibility();
+        }
       }
+    } catch {
+      // Ignore
     }
-  });
+  };
 
-  return () => window.clearInterval(recoveryTimer);
+  try {
+    chrome.runtime.onMessage.addListener(onRuntimeMessage);
+  } catch {
+    // Ignore
+  }
+
+  return () => {
+    window.clearInterval(recoveryTimer);
+    darkModeMedia.removeEventListener('change', onMediaChange);
+    try {
+      if (isExtensionContextValid()) {
+        if (chrome.storage?.onChanged) {
+          chrome.storage.onChanged.removeListener(onStorageChanged);
+        }
+        if (chrome.runtime?.onMessage) {
+          chrome.runtime.onMessage.removeListener(onRuntimeMessage);
+        }
+      }
+    } catch {
+      // Ignore
+    }
+    removeFloatingBall();
+    removeSidepanelIframe(true);
+  };
 }

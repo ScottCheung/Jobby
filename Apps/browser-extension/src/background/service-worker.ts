@@ -3,7 +3,12 @@ import { logDiagnostic } from "./diagnostics";
 import { handleRuntimeMessage } from "./message-router";
 import { getRuntimeSnapshot } from "./session-store";
 import { acceptsFormChange } from "./content-bridge";
-import { finalizeManualFormAction, prepareManualFormAction, recordManualFormObservations } from "./observation-service";
+import {
+  finalizeManualFormAction,
+  getPendingManualFormAction,
+  prepareManualFormAction,
+  recordManualFormObservations,
+} from "./observation-service";
 import { formFieldObservationSchema, formInspectionSchema } from "../shared/contracts/form-inspection";
 
 initializeJobBindingListeners();
@@ -73,7 +78,7 @@ function broadcastSidepanelState(windowId: number, isOpen: boolean) {
   // the floating ball (which is the only way to open the iframe sidepanel in a
   // popup) would be hidden whenever the native sidepanel is open in the parent window.
   chrome.windows.get(windowId, (win) => {
-    if (chrome.runtime.lastError || win.type !== "normal") return;
+    if (chrome.runtime.lastError || !win || win.type !== "normal") return;
     chrome.tabs.query({ windowId }, (tabs) => {
       for (const tab of tabs) {
         if (tab.id !== undefined) {
@@ -103,10 +108,12 @@ chrome.runtime.onStartup.addListener(() => {
   void logDiagnostic("info", "service-worker", "Chrome started the Jobby extension.");
 });
 
-chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch((error: unknown) => {
-  const message = error instanceof Error ? error.message : "Could not configure the side panel.";
-  void logDiagnostic("error", "service-worker", message);
-});
+if (typeof chrome.sidePanel?.setPanelBehavior === "function") {
+  chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch((error: unknown) => {
+    const message = error instanceof Error ? error.message : "Could not configure the side panel.";
+    void logDiagnostic("error", "service-worker", message);
+  });
+}
 
 chrome.runtime.onMessage.addListener((message: unknown, sender, sendResponse) => {
   if (
@@ -117,27 +124,56 @@ chrome.runtime.onMessage.addListener((message: unknown, sender, sendResponse) =>
     const candidate = message as { form?: unknown; fields?: unknown };
     const form = formInspectionSchema.safeParse(candidate.form);
     const fields = formFieldObservationSchema.array().safeParse(candidate.fields);
-    if (sender.tab?.id === undefined || !form.success || !fields.success) {
+    const tabId = sender.tab?.id;
+    if (tabId === undefined || !form.success || !fields.success) {
       sendResponse({ ok: false, error: "Could not prepare the form changes." });
       return false;
     }
-    void prepareManualFormAction(form.data, fields.data, sender.tab.id)
-      .then((pendingCount) => sendResponse({ ok: true, pendingCount }))
+    void prepareManualFormAction(form.data, fields.data, tabId)
+      .then((pendingCount) => {
+        void chrome.runtime.sendMessage({
+          type: "sidepanel.form-action-pending",
+          tabId,
+          pendingCount,
+        }).catch(() => undefined);
+        sendResponse({ ok: true, pendingCount });
+      })
       .catch((error: unknown) => sendResponse({ ok: false, error: error instanceof Error ? error.message : "Could not store form changes." }));
     return true;
   }
   if (
     typeof message === "object" &&
     message !== null &&
-    (message as { type?: unknown }).type === "content.form-action-finalize"
+    (message as { type?: unknown }).type === "sidepanel.form-action-get-pending"
   ) {
-    const save = (message as { save?: unknown }).save;
-    if (sender.tab?.id === undefined || typeof save !== "boolean") {
+    const tabId = (message as { tabId?: unknown }).tabId;
+    if (typeof tabId !== "number") {
+      sendResponse({ ok: false, error: "Could not load pending form changes." });
+      return false;
+    }
+    void getPendingManualFormAction(tabId)
+      .then((pending) => sendResponse({ ok: true, pending }))
+      .catch((error: unknown) => sendResponse({ ok: false, error: error instanceof Error ? error.message : "Could not load pending form changes." }));
+    return true;
+  }
+  if (
+    typeof message === "object" &&
+    message !== null &&
+    (message as { type?: unknown }).type === "sidepanel.form-action-finalize"
+  ) {
+    const candidate = message as { tabId?: unknown; save?: unknown };
+    if (typeof candidate.tabId !== "number" || typeof candidate.save !== "boolean") {
       sendResponse({ ok: false, error: "Could not finalize the form changes." });
       return false;
     }
-    void finalizeManualFormAction(sender.tab.id, save)
-      .then(() => sendResponse({ ok: true }))
+    void finalizeManualFormAction(candidate.tabId, candidate.save)
+      .then(() => {
+        void chrome.runtime.sendMessage({
+          type: "sidepanel.form-action-resolved",
+          tabId: candidate.tabId,
+        }).catch(() => undefined);
+        sendResponse({ ok: true });
+      })
       .catch((error: unknown) => sendResponse({ ok: false, error: error instanceof Error ? error.message : "Could not finalize form changes." }));
     return true;
   }
@@ -197,6 +233,24 @@ chrome.runtime.onMessage.addListener((message: unknown, sender, sendResponse) =>
       ...(formWithFrameId ? { form: formWithFrameId } : {}),
     }).catch(() => undefined);
     sendResponse({ ok: true });
+    return false;
+  }
+  if (
+    typeof message === "object" &&
+    message !== null &&
+    (message as { type?: unknown }).type === "content.page-changed"
+  ) {
+    sendResponse({ ok: true });
+    return false;
+  }
+  if (
+    typeof message === "object" &&
+    message !== null &&
+    (
+      (message as { type?: unknown }).type === "sidepanel.form-changed" ||
+      (message as { type?: unknown }).type === "sidepanel.state-changed"
+    )
+  ) {
     return false;
   }
   void handleRuntimeMessage(message, sender).then(sendResponse);

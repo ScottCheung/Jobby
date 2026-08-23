@@ -56,6 +56,8 @@ export type TailoredResume = {
   targeted_projects?: Array<Record<string, unknown>>;
   cover_letter?: string | null;
   prompt_version?: string;
+  status?: 'processing' | 'ready' | 'failed';
+  error_message?: string | null;
   created_at: string;
   updated_at: string;
   isGenerating?: boolean;

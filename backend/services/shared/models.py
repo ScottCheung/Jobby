@@ -587,6 +587,8 @@ class TailoredResume(Base, TimestampMixin):
     key_qualifications: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     targeted_projects: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     prompt_version: Mapped[str] = mapped_column(String(50), nullable=False, default="job-review-v3")
+    status: Mapped[str] = mapped_column(String(30), nullable=False, default="ready", server_default="ready", index=True)
+    error_message: Mapped[str | None] = mapped_column(Text)
 
 
 class Skill(Base, TimestampMixin):

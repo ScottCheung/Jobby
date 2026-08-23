@@ -2,7 +2,7 @@
 
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   FileText,
   Loader2,
@@ -50,6 +50,21 @@ export function TailoredResumeModal({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [experienceDraft, setExperienceDraft] = useState<any[]>([]);
 
+  const initFormState = useCallback(
+    (resData: MasterResumeData, comps: string[]) => {
+      setSummaryDraft(resData?.summary || '');
+      const fallbackComps =
+        (resData as unknown as Record<string, string[]>)?.core_competencies ||
+        [];
+      setSkillsDraft((comps.length > 0 ? comps : fallbackComps).join(', '));
+      setExperienceDraft(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (resData?.experience as any[]) || [],
+      );
+    },
+    [],
+  );
+
   const loadResume = async () => {
     setLoading(true);
     setError('');
@@ -95,17 +110,6 @@ export function TailoredResumeModal({
     }
   };
 
-  const initFormState = (resData: MasterResumeData, comps: string[]) => {
-    setSummaryDraft(resData?.summary || '');
-    const fallbackComps =
-      (resData as unknown as Record<string, string[]>)?.core_competencies || [];
-    setSkillsDraft((comps.length > 0 ? comps : fallbackComps).join(', '));
-    setExperienceDraft(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (resData?.experience as any[]) || [],
-    );
-  };
-
   const handleGenerate = async () => {
     setGenerating(true);
     setError('');
@@ -113,11 +117,13 @@ export function TailoredResumeModal({
       const data =
         await api.generateTailoredResumeForApplication(applicationId);
       setTailoredResume(data);
-      setFallbackResumeData(null);
-      initFormState(
-        data.resume_data as MasterResumeData,
-        data.core_competencies,
-      );
+      if (data.status === 'ready') {
+        setFallbackResumeData(null);
+        initFormState(
+          data.resume_data as MasterResumeData,
+          data.core_competencies,
+        );
+      }
     } catch (err) {
       console.error('Failed to generate tailored resume', err);
       setError(
@@ -171,6 +177,55 @@ export function TailoredResumeModal({
     void loadResume();
   }, [applicationId]);
 
+  useEffect(() => {
+    if (tailoredResume?.status !== 'processing') return;
+
+    let refreshing = false;
+    const refreshResume = async () => {
+      if (refreshing) return;
+      refreshing = true;
+      try {
+        const data = await api.getTailoredResumeForApplication(applicationId);
+        setTailoredResume(data);
+        if (data.status === 'ready') {
+          setFallbackResumeData(null);
+          initFormState(
+            data.resume_data as MasterResumeData,
+            data.core_competencies,
+          );
+        } else if (data.status === 'failed') {
+          setError(
+            data.error_message || 'Failed to generate tailored resume.',
+          );
+        }
+      } catch {
+        // Keep polling through transient API or network interruptions.
+      } finally {
+        refreshing = false;
+      }
+    };
+
+    const onResumeProcessed = (event: Event) => {
+      const detail = (
+        event as CustomEvent<{ application_id?: string }>
+      ).detail;
+      if (detail?.application_id === applicationId) void refreshResume();
+    };
+
+    window.addEventListener(
+      'jobby:tailored-resume-event',
+      onResumeProcessed,
+    );
+    const pollTimer = window.setInterval(() => void refreshResume(), 5_000);
+    return () => {
+      window.clearInterval(pollTimer);
+      window.removeEventListener(
+        'jobby:tailored-resume-event',
+        onResumeProcessed,
+      );
+    };
+  }, [applicationId, initFormState, tailoredResume?.status]);
+
   const resumeData = (tailoredResume?.resume_data ||
     fallbackResumeData ||
     {}) as MasterResumeData;
@@ -179,7 +234,10 @@ export function TailoredResumeModal({
     tailoredResume?.core_competencies ||
     tailoredResume?.key_qualifications ||
     [];
-  const isTailored = Boolean(tailoredResume);
+  const generationStatus = tailoredResume?.status;
+  const isGenerating = generating || generationStatus === 'processing';
+  const generationFailed = generationStatus === 'failed';
+  const isTailored = generationStatus === 'ready';
 
   return (
     <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm animate-in fade-in duration-200'>
@@ -196,7 +254,13 @@ export function TailoredResumeModal({
               </h3>
               <p className='text-xs text-ink-secondary flex items-center gap-2'>
                 <span>
-                  {isTailored ? 'Tailored Resume' : 'Default Candidate Resume'}
+                  {isGenerating ?
+                    'Generating Tailored CV'
+                  : generationFailed ?
+                    'Tailored CV Generation Failed'
+                  : isTailored ?
+                    'Tailored Resume'
+                  : 'Default Candidate Resume'}
                 </span>
                 {tailoredResume?.created_at && (
                   <span>
@@ -209,7 +273,7 @@ export function TailoredResumeModal({
 
           <div className='flex items-center gap-3'>
             {/* View Mode Toggle */}
-            {!loading && (
+            {!loading && !isGenerating && !generationFailed && (
               <div className='inline-flex rounded-xl border border-primary/60 p-1 bg-background-secondary'>
                 <button
                   type='button'
@@ -251,18 +315,21 @@ export function TailoredResumeModal({
                 {saving ? 'Saving...' : 'Save Changes'}
               </button>
             : !isTailored &&
+              !generationFailed &&
               !loading && (
                 <button
                   type='button'
                   onClick={handleGenerate}
-                  disabled={generating}
+                  disabled={isGenerating}
                   className='inline-flex items-center gap-2 rounded-xl bg-primary px-3.5 py-1.5 text-xs font-semibold text-white transition hover:opacity-90 disabled:opacity-60 cursor-pointer'
                 >
-                  {generating ?
+                  {isGenerating ?
                     <Loader2 className='h-3.5 w-3.5 animate-spin' />
                   : <RefreshCw className='h-3.5 w-3.5' />}
-                  {generating ?
+                  {isGenerating ?
                     'Generating AI Resume...'
+                  : generationFailed ?
+                    'Retry Generation'
                   : 'Generate Tailored Resume'}
                 </button>
               )
@@ -285,6 +352,40 @@ export function TailoredResumeModal({
             <div className='flex h-full flex-col items-center justify-center gap-3 text-ink-secondary'>
               <Loader2 className='h-8 w-8 animate-spin text-primary' />
               <p className='text-sm font-medium'>Loading resume...</p>
+            </div>
+          : isGenerating ?
+            <div className='flex h-full flex-col items-center justify-center gap-4 text-center'>
+              <Loader2 className='h-10 w-10 animate-spin text-primary' />
+              <div>
+                <p className='text-base font-semibold text-ink-primary'>
+                  Generating your tailored CV
+                </p>
+                <p className='mt-1 max-w-md text-sm text-ink-secondary'>
+                  You can close this window or leave the page. Generation will
+                  continue, and the result will be restored when you return.
+                </p>
+              </div>
+            </div>
+          : generationFailed ?
+            <div className='flex h-full flex-col items-center justify-center gap-4 text-center'>
+              <AlertCircle className='h-10 w-10 text-rose-500' />
+              <div>
+                <p className='text-base font-semibold text-ink-primary'>
+                  CV generation failed
+                </p>
+                <p className='mt-1 max-w-md text-sm text-ink-secondary'>
+                  {tailoredResume?.error_message ||
+                    'The tailored CV could not be generated. You can try again.'}
+                </p>
+              </div>
+              <button
+                type='button'
+                onClick={handleGenerate}
+                className='inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90'
+              >
+                <RefreshCw className='h-4 w-4' />
+                Retry Generation
+              </button>
             </div>
           : mode === 'edit' ?
             /* Edit Form View */

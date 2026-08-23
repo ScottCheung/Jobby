@@ -44,6 +44,12 @@ export function App() {
     company: string;
     jobDescription: string;
   } | null>(null);
+  const [pendingFormAction, setPendingFormAction] = useState<{
+    tabId: number;
+    pendingCount: number;
+  } | null>(null);
+  const [isFinalizingFormAction, setIsFinalizingFormAction] = useState(false);
+  const [formActionError, setFormActionError] = useState<string | null>(null);
 
   const { diagnostics, errorMessage, refresh, clearLogs } = useDiagnostics();
   const {
@@ -118,6 +124,74 @@ export function App() {
     }
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadPendingFormAction = async () => {
+      const tab = await getActiveTab();
+      if (cancelled) return;
+      if (tab?.id === undefined) {
+        setPendingFormAction(null);
+        return;
+      }
+      try {
+        const response = (await chrome.runtime.sendMessage({
+          type: 'sidepanel.form-action-get-pending',
+          tabId: tab.id,
+        })) as {
+          ok?: boolean;
+          pending?: { tabId: number; pendingCount: number } | null;
+        };
+        if (!cancelled && response?.ok) {
+          setPendingFormAction(response.pending || null);
+          setFormActionError(null);
+        }
+      } catch {
+        // The side panel can mount before the service worker is ready.
+      }
+    };
+
+    const onRuntimeMessage = (message: unknown) => {
+      if (typeof message !== 'object' || message === null) return;
+      const candidate = message as {
+        type?: unknown;
+        tabId?: unknown;
+        pendingCount?: unknown;
+      };
+      if (
+        candidate.type === 'sidepanel.form-action-pending' &&
+        typeof candidate.tabId === 'number' &&
+        typeof candidate.pendingCount === 'number'
+      ) {
+        void getActiveTab().then((tab) => {
+          if (!cancelled && tab?.id === candidate.tabId) {
+            setPendingFormAction({
+              tabId: candidate.tabId as number,
+              pendingCount: candidate.pendingCount as number,
+            });
+            setFormActionError(null);
+          }
+        });
+      } else if (
+        candidate.type === 'sidepanel.form-action-resolved' &&
+        typeof candidate.tabId === 'number'
+      ) {
+        setPendingFormAction((current) =>
+          current?.tabId === candidate.tabId ? null : current,
+        );
+      }
+    };
+
+    void loadPendingFormAction();
+    chrome.tabs?.onActivated?.addListener(loadPendingFormAction);
+    chrome.runtime?.onMessage?.addListener(onRuntimeMessage);
+    return () => {
+      cancelled = true;
+      chrome.tabs?.onActivated?.removeListener(loadPendingFormAction);
+      chrome.runtime?.onMessage?.removeListener(onRuntimeMessage);
+    };
+  }, []);
+
   const {
     latestPlan,
     planError,
@@ -181,6 +255,9 @@ export function App() {
   };
 
   const generationCoinCost = generationDraft?.type === 'both' ? 18 : 10;
+  const activeTailorGeneration =
+    tailorStudio.generationTasks[tailorStudio.generationTasks.length - 1] ||
+    null;
 
   useEffect(() => {
     if (activeTab === 'studio') tailorStudio.markDocumentsSeen();
@@ -322,6 +399,34 @@ export function App() {
     await submitApplication();
   };
 
+  const finalizePendingFormAction = async (save: boolean) => {
+    if (!pendingFormAction || isFinalizingFormAction) return;
+    setIsFinalizingFormAction(true);
+    setFormActionError(null);
+    try {
+      const response = (await chrome.runtime.sendMessage({
+        type: 'sidepanel.form-action-finalize',
+        tabId: pendingFormAction.tabId,
+        save,
+      })) as { ok?: boolean; error?: string };
+      if (!response?.ok) {
+        setFormActionError(
+          response?.error || 'Could not update your saved form answers.',
+        );
+        return;
+      }
+      setPendingFormAction(null);
+    } catch (error) {
+      setFormActionError(
+        error instanceof Error ?
+          error.message
+        : 'Could not update your saved form answers.',
+      );
+    } finally {
+      setIsFinalizingFormAction(false);
+    }
+  };
+
   return (
     <main className='sidepanel-shell'>
       <header
@@ -421,6 +526,7 @@ export function App() {
                       latestPlan={latestPlan}
                       isInspecting={isInspectingPage}
                       onTailor={openGenerationConfirmation}
+                      activeGeneration={activeTailorGeneration}
                       authConnected={authStatus?.connected}
                       onSignIn={signIn}
                     />
@@ -660,6 +766,62 @@ export function App() {
                 disabled={!generationDraft.jobDescription.trim()}
               >
                 Confirm & start · {generationCoinCost}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {pendingFormAction && (
+        <div className='modal-backdrop'>
+          <div
+            className='modal-card max-w-[420px] !border-0'
+            role='dialog'
+            aria-modal='true'
+            aria-labelledby='form-action-title'
+          >
+            <div className='modal-header !border-0'>
+              <div>
+                <span className='modal-badge bg-primary text-primary-foreground'>
+                  Form answers
+                </span>
+                <h2
+                  id='form-action-title'
+                  className='mt-2 text-sm font-semibold text-foreground'
+                >
+                  Save your form changes?
+                </h2>
+              </div>
+            </div>
+            <div className='modal-body flex flex-col gap-3'>
+              <p className='text-xs leading-relaxed text-muted-foreground'>
+                Your application has continued. Save the{' '}
+                {pendingFormAction.pendingCount}{' '}
+                {pendingFormAction.pendingCount === 1 ? 'answer' : 'answers'}
+                {' '}you entered so Jobby can reuse them next time.
+              </p>
+              {formActionError && (
+                <p className='rounded-xl bg-destructive/10 p-3 text-xs text-destructive'>
+                  {formActionError}
+                </p>
+              )}
+            </div>
+            <div className='modal-footer !border-0'>
+              <Button
+                variant='ghost'
+                size='sm'
+                disabled={isFinalizingFormAction}
+                onClick={() => void finalizePendingFormAction(false)}
+              >
+                Don&apos;t save
+              </Button>
+              <Button
+                size='sm'
+                className='w-full'
+                disabled={isFinalizingFormAction}
+                onClick={() => void finalizePendingFormAction(true)}
+              >
+                {isFinalizingFormAction ? 'Updating…' : 'Save changes'}
               </Button>
             </div>
           </div>

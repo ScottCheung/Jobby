@@ -34,11 +34,10 @@ npm run dev
 ```
 
 During development, keep the Vite process running and load `dist-dev/` as an
-unpacked extension once. CRXJS watches source files and automatically reloads
-the extension when the background or manifest changes; it hot-updates the side
-panel and content scripts on open SEEK and LinkedIn tabs. Do not load `dist/`
-for development: it is the production build and has no connection to the Vite
-dev server.
+unpacked extension. The watcher rebuilds the extension after each saved change.
+After a successful rebuild, reload the extension from `chrome://extensions`
+and refresh the page being tested. Do not load `dist/` for development: it is
+the production build.
 
 `dist-dev/` and `dist/` are deliberately separate. Restart `npm run dev` after
 changing Vite configuration. A browser refresh is only needed when Chrome
@@ -49,6 +48,9 @@ Create `.env.local` beside this package (copy `.env.example`) and set the same
 Supabase URL and anon key used by `Apps/user/.env.local`. Set
 `VITE_WEB_APP_URL` to the running Jobby web app, normally
 `http://localhost:3000` (or the port where the web app is running).
+
+The MAIN-world bridge and the bootstrap content script are intentionally
+standalone scripts and cannot use the CRXJS HMR client.
 
 For a production build:
 

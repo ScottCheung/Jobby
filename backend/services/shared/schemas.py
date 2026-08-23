@@ -3,7 +3,7 @@ from decimal import Decimal
 from typing import Any, Literal
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class OrmModel(BaseModel):
@@ -229,8 +229,19 @@ class TailoredResumeRead(OrmModel):
     key_qualifications: list[str] = Field(default_factory=list)
     targeted_projects: list[dict] = Field(default_factory=list)
     prompt_version: str
+    status: str = "ready"
+    error_message: str | None = None
+    cover_letter: str | None = None
     created_at: datetime
     updated_at: datetime
+
+    @model_validator(mode="after")
+    def _populate_derived_fields(self) -> "TailoredResumeRead":
+        if not self.cover_letter and isinstance(self.raw_ai_response, dict):
+            self.cover_letter = self.raw_ai_response.get("cover_letter")
+        if not self.core_competencies:
+            self.core_competencies = self.key_qualifications or []
+        return self
 
 
 class RuntimeSettingsBase(BaseModel):

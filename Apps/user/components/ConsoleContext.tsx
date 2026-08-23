@@ -793,6 +793,10 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
         try { window.dispatchEvent(new CustomEvent('jobby:career-profile-event', { detail: JSON.parse(event.data) })); }
         catch { /* Ignore malformed optional realtime events. */ }
       });
+      connection.addEventListener('tailored_resume.processed', (event) => {
+        try { window.dispatchEvent(new CustomEvent('jobby:tailored-resume-event', { detail: JSON.parse(event.data) })); }
+        catch { /* Ignore malformed optional realtime events. */ }
+      });
 
       connection.addEventListener('application_created', (event) => {
         try {

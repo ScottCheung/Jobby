@@ -147,7 +147,6 @@ export function useApplicationPlan(
       function schedulePlanRetry(message: string) {
         if (autoPlanCreatedRef.current !== currentJobKey) return;
 
-        autoPlanCreatedRef.current = null;
         autoPlanAttemptsRef.current += 1;
         if (autoPlanAttemptsRef.current >= MAX_AUTO_PLAN_ATTEMPTS) {
           setPlanError(
@@ -156,6 +155,7 @@ export function useApplicationPlan(
           return;
         }
 
+        autoPlanCreatedRef.current = null;
         setPlanError(
           `Technology evaluation failed. Retrying (${autoPlanAttemptsRef.current}/${MAX_AUTO_PLAN_ATTEMPTS})...`,
         );

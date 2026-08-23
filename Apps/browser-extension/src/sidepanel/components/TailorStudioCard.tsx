@@ -13,6 +13,7 @@ import {
   FileText,
   History,
   Layers,
+  Loader2,
   RefreshCw,
   SlidersHorizontal,
   Sparkles,
@@ -184,6 +185,15 @@ export function TailorStudioCard({
   const confirmTypeBusy = Boolean(
     confirmModalType && isGeneratingType(confirmModalType),
   );
+  const resumeGenerating = isGeneratingType('resume');
+  const coverLetterGenerating = isGeneratingType('cover_letter');
+  const bothGenerating = isGeneratingType('both');
+  const activeGeneration = generationTasks[generationTasks.length - 1];
+  const hasActiveGeneration = Boolean(activeGeneration);
+  const activeGenerationLabel =
+    activeGeneration?.docType === 'cover_letter' ? 'cover letter'
+    : activeGeneration?.docType === 'both' ? 'CV and cover letter'
+    : 'CV';
 
   const activeProfile = careerProfiles.find((p) => p.id === selectedProfileId);
   const baseProfileName =
@@ -908,12 +918,16 @@ export function TailorStudioCard({
               <Button
                 variant='default'
                 // size='md'
-                Icon={Sparkles}
-                isLoading={isGeneratingType('resume')}
+                Icon={resumeGenerating ? Loader2 : Sparkles}
+                iconClassName={resumeGenerating ? 'animate-spin' : undefined}
                 onClick={() => handleOpenConfirm('resume')}
-                disabled={isGeneratingType('resume') || !jobDescription.trim()}
+                disabled={hasActiveGeneration || !jobDescription.trim()}
               >
-                {mockMode ? 'Mock Tailor Resume' : 'Tailor Resume'}
+                {resumeGenerating ?
+                  'Generating CV...'
+                : mockMode ?
+                  'Mock Tailor Resume'
+                : 'Tailor Resume'}
               </Button>
 
               {/* Row 2: Cover Letter & Both (Half row each, 2 columns) */}
@@ -921,27 +935,56 @@ export function TailorStudioCard({
                 <Button
                   variant='outline'
                   // size='sm'
-                  Icon={FileText}
-                  isLoading={isGeneratingType('cover_letter')}
+                  Icon={coverLetterGenerating ? Loader2 : FileText}
+                  iconClassName={
+                    coverLetterGenerating ? 'animate-spin' : undefined
+                  }
                   onClick={() => handleOpenConfirm('cover_letter')}
                   disabled={
-                    isGeneratingType('cover_letter') || !jobDescription.trim()
+                    hasActiveGeneration || !jobDescription.trim()
                   }
                 >
-                  {mockMode ? 'Mock Letter' : 'Generate CL'}
+                  {coverLetterGenerating ?
+                    'Generating CL...'
+                  : mockMode ?
+                    'Mock Letter'
+                  : 'Generate CL'}
                 </Button>
 
                 <Button
                   variant='outline'
                   // size='sm'
-                  Icon={Layers}
-                  isLoading={isGeneratingType('both')}
+                  Icon={bothGenerating ? Loader2 : Layers}
+                  iconClassName={bothGenerating ? 'animate-spin' : undefined}
                   onClick={() => handleOpenConfirm('both')}
-                  disabled={isGeneratingType('both') || !jobDescription.trim()}
+                  disabled={hasActiveGeneration || !jobDescription.trim()}
                 >
-                  {mockMode ? 'Mock Both' : 'Get Both'}
+                  {bothGenerating ?
+                    'Generating Both...'
+                  : mockMode ?
+                    'Mock Both'
+                  : 'Get Both'}
                 </Button>
               </div>
+
+              {hasActiveGeneration && (
+                <div
+                  role='status'
+                  aria-live='polite'
+                  className='flex items-start gap-2 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-primary'
+                >
+                  <Loader2 className='mt-0.5 h-3.5 w-3.5 shrink-0 animate-spin' />
+                  <div className='min-w-0'>
+                    <p className='text-[10px] font-bold'>
+                      Your {activeGenerationLabel} generation has started
+                    </p>
+                    <p className='mt-0.5 text-[9px] leading-relaxed text-muted-foreground'>
+                      You can continue browsing. This action is disabled until
+                      the current generation finishes.
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </>
@@ -1612,10 +1655,10 @@ export function TailorStudioCard({
                 Icon={Sparkles}
                 isLoading={confirmTypeBusy}
                 disabled={confirmTypeBusy}
-                onClick={async () => {
+                onClick={() => {
                   const type = confirmModalType;
                   setConfirmModalType(null);
-                  await generateTailoredResume(type);
+                  void generateTailoredResume(type);
                 }}
               >
                 Confirm & Tailor (
