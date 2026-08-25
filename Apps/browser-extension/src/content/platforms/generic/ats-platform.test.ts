@@ -18,6 +18,11 @@ describe('ATS platform detection', () => {
     ['jobs.lever.co', '/company/role', 'lever'],
     ['jobs.ashbyhq.com', '/company/role', 'ashby'],
     ['jobs.taleo.net', '/careersection/2/jobdetail.ftl', 'taleo'],
+    ['careers-acme.icims.com', '/jobs/101', 'icims'],
+    ['career4.successfactors.com', '/career', 'successfactors'],
+    ['fa.ocs.oraclecloud.com', '/hcmUI/CandidateExperience', 'oracle'],
+    ['apply.workable.com', '/acme/j/123', 'workable'],
+    ['acme.bamboohr.com', '/careers/456', 'bamboohr'],
   ] as const)('recognises %s', (hostname, pathname, expected) => {
     expect(detectAtsPlatform(locationFor(hostname, pathname))).toBe(expected);
   });

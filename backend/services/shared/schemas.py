@@ -3,7 +3,7 @@ from decimal import Decimal
 from typing import Any, Literal
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, model_validator
 
 
 class OrmModel(BaseModel):
@@ -279,8 +279,7 @@ class ApplicationCandidateInput(BaseModel):
     exp_score: float | None = None
     easy_apply: bool = False
     already_applied: bool = False
-    posted_at: str | None = None
-    date_posted: str | None = None
+    last_posted_at: datetime | None = None
     technologies: list[str] = Field(default_factory=list)
 
 
@@ -288,10 +287,29 @@ class ApplicationDecisionRequest(BaseModel):
     candidate: ApplicationCandidateInput
 
 
+class JobExtractionSnapshotInput(BaseModel):
+    platform: str = "generic"
+    external_id: str | None = None
+    url: str | None = None
+    title: str | None = None
+    company: str | None = None
+    location: str | None = None
+    description: str | None = None
+    technologies: list[str] = Field(default_factory=list)
+    first_posted_at: datetime | None = None
+    last_posted_at: datetime | None = None
+    posting_observed_at: datetime | None = None
+    is_reposted: bool = False
+    posting_date_raw: dict[str, Any] = Field(default_factory=dict)
+
+
 class ApplicationPlanCreateRequest(ApplicationDecisionRequest):
     job_description: str | None = None
     job_link: str | None = None
     work_location: str | None = None
+    original_snapshot: JobExtractionSnapshotInput | None = None
+    modified_snapshot: JobExtractionSnapshotInput | None = None
+    correction_idempotency_key: str | None = Field(default=None, max_length=255)
 
 
 class ApplicationPlanActionRequest(BaseModel):
@@ -506,11 +524,14 @@ class JobApplicationBase(BaseModel):
     deleted_at: datetime | None = None
     application_type: str | None = None
     resume_path: str | None = None
-    date_posted: str | None = None
+    first_posted_at: datetime | None = None
+    last_posted_at: datetime | None = None
+    posting_observed_at: datetime | None = None
+    is_reposted: bool = False
+    posting_date_raw: dict[str, Any] = Field(default_factory=dict)
     date_applied: datetime | None = None
     status_updated_at: datetime | None = None
     questions: Any = Field(default_factory=list)
-    skip_reason: str | None = None
     screenshot_path: str | None = None
     raw_data: dict = Field(default_factory=dict)
 
@@ -518,6 +539,10 @@ class JobApplicationBase(BaseModel):
 class JobApplicationRead(JobApplicationBase, OrmModel):
     id: UUID
     user_id: UUID
+    job_id: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("external_job_id", "job_id"),
+    )
     has_tailored_resume: bool = False
     tailored_resume_id: UUID | None = None
     created_at: datetime
@@ -535,7 +560,6 @@ class JobApplicationUpdate(BaseModel):
     job_description: str | None = None
     job_link: str | None = None
     external_job_link: str | None = None
-    skip_reason: str | None = None
     pipeline_stage: str | None = None
     interview_stage: str | None = None
     next_action: str | None = None
@@ -547,7 +571,11 @@ class JobApplicationUpdate(BaseModel):
     deleted_at: datetime | None = None
     application_type: str | None = None
     resume_path: str | None = None
-    date_posted: str | None = None
+    first_posted_at: datetime | None = None
+    last_posted_at: datetime | None = None
+    posting_observed_at: datetime | None = None
+    is_reposted: bool | None = None
+    posting_date_raw: dict[str, Any] | None = None
     date_applied: datetime | None = None
     status_updated_at: datetime | None = None
     questions: Any | None = None

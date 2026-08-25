@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
-
 import type { FormFieldObservation } from '../../shared/contracts/form-inspection';
-import { fileFieldPurpose } from './ResultsDisplay';
+import { fileFieldPurpose, ExpandableAnswer } from './ResultsDisplay';
 
 function fileField(
   overrides: Partial<FormFieldObservation>,
@@ -49,5 +48,11 @@ describe('file field purpose detection', () => {
     expect(
       fileFieldPurpose(fileField({ label: 'Attach Resume' })),
     ).toBe('resume');
+  });
+});
+
+describe('ExpandableAnswer component', () => {
+  it('exports ExpandableAnswer component correctly', () => {
+    expect(ExpandableAnswer).toBeDefined();
   });
 });

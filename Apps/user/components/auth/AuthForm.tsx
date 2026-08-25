@@ -5,7 +5,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, Lock, LogIn, UserPlus } from 'lucide-react';
-import { login, signup, signInWithGoogle } from '@/app/auth/actions';
+import { signInWithGoogle } from '@/app/auth/actions';
 import { createClient } from '@/lib/supabase/client';
 import {
   extensionCallbackPath,
@@ -13,9 +13,10 @@ import {
 } from '@/lib/auth/extension-redirect';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useAuthStore } from '@/lib/store';
 
 // Use components from @jobby/ui
-import { InputField, SegmentedControl, Button } from '@jobby/ui';
+import { InputField, Button, Checkbox } from '@jobby/ui';
 
 interface AuthFormProps {
   initialMode?: 'login' | 'signup';
@@ -43,6 +44,10 @@ export function AuthForm({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [rememberMe, setRememberMe] = useState(
+    () => useAuthStore.getState().rememberMe ?? true,
+  );
 
   const isLogin = mode === 'login';
 
@@ -61,12 +66,24 @@ export function AuthForm({
     if (onClose) onClose();
   };
 
+  const validateConsent = () => {
+    if (!agreedToTerms) {
+      setError('Please agree to the Terms of Service and Privacy Policy to continue.');
+      return false;
+    }
+    return true;
+  };
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setIsLoading(true);
     setError(null);
     setSuccessMessage(null);
 
+    if (!validateConsent()) {
+      return;
+    }
+
+    setIsLoading(true);
     const supabase = createClient();
 
     try {
@@ -87,6 +104,9 @@ export function AuthForm({
         }
 
         if (data.session) {
+          useAuthStore
+            .getState()
+            .login(data.session.access_token, rememberMe);
           handlePostAuthRedirect();
         }
       } else {
@@ -107,13 +127,16 @@ export function AuthForm({
         if (signUpError) {
           setError(
             signUpError.message ||
-              'Unable to register account. Please try again.',
+              'Unable to create account. Please try again.',
           );
           setIsLoading(false);
           return;
         }
 
         if (data.session) {
+          useAuthStore
+            .getState()
+            .login(data.session.access_token, rememberMe);
           handlePostAuthRedirect();
         } else {
           setSuccessMessage(
@@ -134,8 +157,12 @@ export function AuthForm({
   };
 
   const handleGoogleSignIn = async () => {
-    setIsLoading(true);
     setError(null);
+    if (!validateConsent()) {
+      return;
+    }
+
+    setIsLoading(true);
     try {
       const result = await signInWithGoogle({ next, extensionRedirect });
       if (result?.error) {
@@ -148,11 +175,6 @@ export function AuthForm({
     }
   };
 
-  const tabOptions = [
-    { value: 'login', label: 'Sign In', icon: LogIn },
-    { value: 'signup', label: 'Create Account', icon: UserPlus },
-  ];
-
   return (
     <div className='w-full'>
       {/* Header */}
@@ -160,9 +182,14 @@ export function AuthForm({
         <h2 className='text-2xl font-bold tracking-tight text-ink-primary font-serif'>
           {isLogin ? 'Welcome Back' : 'Create an Account'}
         </h2>
+        {reason && (
+          <p className='mt-2 text-xs text-ink-secondary leading-relaxed'>
+            {reason}
+          </p>
+        )}
       </div>
 
-      {/* 1. Google OAuth Button - Clean, centered, premium */}
+      {/* 1. Google OAuth Button */}
       <button
         type='button'
         onClick={handleGoogleSignIn}
@@ -199,22 +226,8 @@ export function AuthForm({
           <div className='w-full border-t border-primary/60' />
         </div>
         <span className='relative bg-panel px-3 text-xs text-ink-secondary'>
-          or
+          or continue with email
         </span>
-      </div>
-
-      {/* 2. Mode Switcher using @jobby/ui SegmentedControl */}
-      <div className='flex justify-center mb-5'>
-        <SegmentedControl
-          options={tabOptions}
-          value={mode}
-          onChange={(val) => {
-            setMode(val as 'login' | 'signup');
-            setError(null);
-          }}
-          size='md'
-          className='w-full justify-stretch'
-        />
       </div>
 
       {/* Alert Error / Success */}
@@ -241,7 +254,7 @@ export function AuthForm({
         )}
       </AnimatePresence>
 
-      {/* 3. Form using @jobby/ui InputField and Button */}
+      {/* 2. Email / Password Form */}
       <form onSubmit={handleSubmit} className='space-y-4'>
         <InputField
           label='Email Address'
@@ -266,7 +279,54 @@ export function AuthForm({
           showCharCount={false}
         />
 
-        {/* Submit button using @jobby/ui Button */}
+        {/* Checkboxes: Trust this device & Terms consent */}
+        <div className='space-y-2.5 pt-1 pb-1'>
+          <label className='flex items-center gap-2.5 cursor-pointer select-none text-ink-secondary hover:text-ink-primary transition-colors'>
+            <Checkbox
+              checked={rememberMe}
+              onCheckedChange={(checked) => {
+                const val = !!checked;
+                setRememberMe(val);
+                useAuthStore.getState().setRememberMe(val);
+              }}
+              className='rounded-md'
+            />
+            <span className='text-xs font-medium'>Trust this device for 7 days</span>
+          </label>
+
+          <label className='flex items-start gap-2.5 cursor-pointer select-none text-ink-secondary hover:text-ink-primary transition-colors'>
+            <Checkbox
+              checked={agreedToTerms}
+              onCheckedChange={(checked) => {
+                setAgreedToTerms(!!checked);
+                if (error) setError(null);
+              }}
+              className='mt-0.5 rounded-md shrink-0'
+            />
+            <span className='text-xs leading-snug'>
+              I agree to the{' '}
+              <Link
+                href='/terms'
+                target='_blank'
+                className='text-primary hover:underline font-medium'
+                onClick={(e) => e.stopPropagation()}
+              >
+                Terms of Service
+              </Link>{' '}
+              and{' '}
+              <Link
+                href='/privacy'
+                target='_blank'
+                className='text-primary hover:underline font-medium'
+                onClick={(e) => e.stopPropagation()}
+              >
+                Privacy Policy
+              </Link>
+            </span>
+          </label>
+        </div>
+
+        {/* Submit button */}
         <Button
           type='submit'
           disabled={isLoading}
@@ -286,28 +346,43 @@ export function AuthForm({
             </>
           }
         </Button>
-      </form>
 
-      {/* 4. Privacy Policy & Terms Consent Notice */}
-      <div className='mt-6 pt-4 border-t border-primary/50 text-center text-[11px] text-ink-secondary leading-relaxed'>
-        By continuing, you acknowledge and agree to Jobby's{' '}
-        <Link
-          href='/terms'
-          target='_blank'
-          className='text-ink-primary hover:text-primary underline font-medium transition-colors'
-        >
-          Terms of Service
-        </Link>{' '}
-        and{' '}
-        <Link
-          href='/privacy'
-          target='_blank'
-          className='text-ink-primary hover:text-primary underline font-medium transition-colors'
-        >
-          Privacy Policy
-        </Link>
-        .
-      </div>
+        {/* Mode Switcher as compact text hint below */}
+        <div className='text-center text-xs text-ink-secondary pt-2'>
+          {isLogin ? (
+            <span>
+              Don&apos;t have an account?{' '}
+              <button
+                type='button'
+                onClick={() => {
+                  setMode('signup');
+                  setError(null);
+                  setSuccessMessage(null);
+                }}
+                className='font-semibold text-primary hover:underline cursor-pointer'
+              >
+                Sign up
+              </button>
+            </span>
+          ) : (
+            <span>
+              Already have an account?{' '}
+              <button
+                type='button'
+                onClick={() => {
+                  setMode('login');
+                  setError(null);
+                  setSuccessMessage(null);
+                }}
+                className='font-semibold text-primary hover:underline cursor-pointer'
+              >
+                Sign in
+              </button>
+            </span>
+          )}
+        </div>
+      </form>
     </div>
   );
 }
+

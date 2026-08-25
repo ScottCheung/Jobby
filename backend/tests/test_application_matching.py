@@ -12,7 +12,7 @@ def test_match_score_uses_resume_terms_and_returns_explanation() -> None:
         },
     )
 
-    assert result.score > 0.45
+    assert result.match_score > 0.45
     assert "python" in result.matched_terms
     assert "fastapi" in result.matched_terms
 
@@ -108,7 +108,10 @@ def test_smooth_plateau_recency_decay_schedule() -> None:
     assert parse_recency_score("19 days ago") == 0.1050
     assert parse_recency_score("26d ago") == 0.0398
     assert parse_recency_score("30+ days ago") < 0.05
-    assert parse_recency_score(None) == 1.00
+    assert parse_recency_score(None) == 0.75
+    assert parse_recency_score("Unknown") == 0.75
+    assert parse_recency_score("未知") == 0.75
+    assert parse_recency_score("无法标准化") == 0.75
 
 
 def test_seniority_mismatch_penalty() -> None:
@@ -217,3 +220,35 @@ def test_experience_differentiation_and_gradients() -> None:
 
 
 
+
+
+def test_unrelated_role_without_tech_tags_is_damped_and_not_recommended() -> None:
+    engineer_resume = {
+        "target_title": "Software Engineer",
+        "search_terms": ["Software Engineer", "Backend Developer", "Full Stack Developer"],
+        "summary": "Software Engineer with 4 years experience building web systems, data validation pipelines, and APIs.",
+        "skills": ["Python", "FastAPI", "React", "PostgreSQL", "Docker"],
+    }
+    payroll_desc = (
+        "The Payroll Officer will join IMC Finance team in Sydney, working directly with the Payroll Manager "
+        "to execute and govern payroll across 5+ APAC jurisdictions, supporting 350+ employees. "
+        "Key near-term priority is supporting the global payroll migration to Neeyamo. "
+        "Responsibilities include end-to-end APAC payroll, payroll mutations, reconciliations, and posting to GL in Workday."
+    )
+
+    result = score_job_match(
+        payroll_desc,
+        engineer_resume,
+        job_title="Payroll Officer",
+        date_posted="Unknown",
+    )
+
+    # Title score should be very low (< 0.25)
+    assert result.title_score < 0.25
+    # Skill score should be damped due to domain mismatch, NOT 1.00
+    assert result.skill_score < 0.30
+    # Recency factor should be neutral 0.75 for unknown date
+    assert result.recency_factor == 0.75
+    # Overall score should be firmly in Not Recommended territory (< 0.40)
+    assert result.match_score < 0.35
+    assert result.priority_score < 0.30

@@ -14,6 +14,7 @@ import {
   History,
   Layers,
   Loader2,
+  Maximize2,
   RefreshCw,
   SlidersHorizontal,
   Sparkles,
@@ -26,12 +27,15 @@ import { notify } from '@jobby/ui/components/UI/toast/toast-store';
 import {
   ResumePdfPreview,
   renderResumePdfOnce,
+} from '@jobby/ui/components/UI/Resume/ResumePdfPreview';
+import { CoverLetterPdfPreview } from '@jobby/ui/components/UI/Resume/CoverLetterPdfPreview';
+import {
   formatResumeFilename,
   formatResumeAsPlainText as formatResumeAsPlainTextImpl,
-  CoverLetterPdfPreview,
   formatCoverLetterFilename,
   defaultMasterResumeData,
-} from '@jobby/ui/components/UI/Resume';
+} from '@jobby/ui/components/UI/Resume/helpers';
+import { StructuredJobDescription } from '@jobby/ui/components/UI/StructuredJobDescription';
 import type { PageInspection } from '../../shared/contracts/page-inspection';
 import type {
   DocType,
@@ -42,11 +46,16 @@ import {
   closeFloatingResumePreview,
   openStandaloneResumePreview,
 } from '../services/resume-floating-preview';
+import { sendContentCommandToActiveTab } from '../services/messaging';
 import { renderCoverLetterPdfInWorker } from '../services/cover-letter-pdf-renderer';
 import type { useTailoredResumeStudio } from '../hooks/useTailoredResumeStudio';
 import { AiGeneratingCard } from './AiGeneratingCard';
 import { AuthGuardBanner } from './AuthGuardBanner';
 import { cn } from '@jobby/ui/lib/utils';
+import {
+  DetectionProviderBadge,
+  isGenericDetection,
+} from './DetectionProviderBadge';
 
 export const formatResumeAsPlainText = formatResumeAsPlainTextImpl;
 
@@ -106,6 +115,7 @@ export function TailorStudioCard({
   const {
     jobTitle,
     company,
+    datePosted,
     jobDescription,
     mockMode,
     setMockMode,
@@ -509,15 +519,7 @@ export function TailorStudioCard({
         editUrl: getWebEditorUrl(),
       };
 
-      try {
-        await chrome.tabs.sendMessage(activeTab.id, payload);
-      } catch {
-        await chrome.scripting.executeScript({
-          target: { tabId: activeTab.id },
-          files: ['src/content/bootstrap.ts-loader.js'],
-        });
-        await chrome.tabs.sendMessage(activeTab.id, payload);
-      }
+      await sendContentCommandToActiveTab(payload);
     } catch (error) {
       const message =
         error instanceof Error ?
@@ -574,6 +576,33 @@ export function TailorStudioCard({
           error.message
         : 'Could not open the resume library.',
       );
+    }
+  };
+
+  const handleOpenInPageJobDescription = async () => {
+    if (!jobDescription?.trim()) return;
+    try {
+      await sendContentCommandToActiveTab({
+        type: 'content.show-job-description',
+        title: jobTitle || detectedJob?.title || 'Job Description',
+        company: company || detectedJob?.company || undefined,
+        datePosted: datePosted || undefined,
+        description: jobDescription,
+      });
+    } catch (error) {
+      notify.error(
+        error instanceof Error ? error.message : 'Could not open in-page preview.',
+      );
+    }
+  };
+
+  const handleCopyJobDescription = async () => {
+    if (!jobDescription?.trim()) return;
+    try {
+      await navigator.clipboard.writeText(jobDescription);
+      notify.success('Job Description copied');
+    } catch {
+      notify.error('Failed to copy job description');
     }
   };
 
@@ -779,12 +808,9 @@ export function TailorStudioCard({
             {/* Header */}
             <div className='flex items-center justify-between gap-2 border-b border-primary/20 pb-2 w-full min-w-0'>
               <div className='flex items-center gap-1.5 min-w-0 flex-1'>
-                <span className='page-class-banner__icon text-primary font-bold shrink-0'>
-                  ✓
-                </span>
                 <strong className='text-xs font-bold text-foreground truncate'>
                   {hasDetectedJob ?
-                    'Job Page Identified'
+                    'Job Identified'
                   : 'Target Job Requirements'}
                 </strong>
               </div>
@@ -801,11 +827,22 @@ export function TailorStudioCard({
                     <RefreshCw className='w-3.5 h-3.5' />
                   </button>
                 )}
-                <span className='rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-bold text-primary capitalize'>
-                  {detectedJob?.platform || 'Manual'}
-                </span>
+                <DetectionProviderBadge
+                  platform={detectedJob?.platform}
+                  url={detectedJob?.url}
+                />
               </div>
             </div>
+
+            {hasDetectedJob && isGenericDetection(detectedJob?.platform) && (
+              <div
+                className='rounded-md border border-warning/30 bg-warning/10 px-2 py-1.5 text-[10px] leading-relaxed text-warning'
+                role='alert'
+              >
+                Results may be inaccurate—please verify the extracted
+                information.
+              </div>
+            )}
 
             {/* Job Details Key-Value List */}
             <div className='grid gap-1.5 text-xs text-foreground/90 w-full min-w-0'>
@@ -834,39 +871,69 @@ export function TailorStudioCard({
                 <span className='text-muted-foreground text-[10px] font-semibold uppercase tracking-wider'>
                   Job Description
                 </span>
-                <span className='text-[8px] ml-1'>
-                  {jobDescription ?
-                    `${jobDescription.length.toLocaleString()} characters`
-                  : 'Empty'}
-                </span>
+                <div className='flex items-center gap-1.5'>
+                  {jobDescription ? (
+                    <>
+                      <button
+                        type='button'
+                        className='inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-sm text-muted-foreground/70 transition-colors hover:bg-primary/10 hover:text-primary cursor-pointer'
+                        onClick={() => void handleOpenInPageJobDescription()}
+                        title='Open in full page modal'
+                        aria-label='Open in full page modal'
+                      >
+                        <Maximize2 className='h-3 w-3' />
+                      </button>
+                      <button
+                        type='button'
+                        className='inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-sm text-muted-foreground/70 transition-colors hover:bg-primary/10 hover:text-primary cursor-pointer'
+                        onClick={() => void handleCopyJobDescription()}
+                        title='Copy Job Description'
+                        aria-label='Copy Job Description'
+                      >
+                        <Copy className='h-3 w-3' />
+                      </button>
+                      <span className='text-[8px] text-muted-foreground/60 ml-0.5'>
+                        {`${jobDescription.length.toLocaleString()} chars`}
+                      </span>
+                    </>
+                  ) : (
+                    <span className='text-[8px] text-muted-foreground/60'>Empty</span>
+                  )}
+                </div>
               </div>
 
-              {/* Quick Preview Text */}
-              {!isDescExpanded && jobDescription && (
-                <p className='text-[10px] text-transparent bg-gradient-to-b from-ink-secondary from-60% to-transparent bg-clip-text text-muted-foreground leading-relaxed line-clamp-3 pt-0.5'>
-                  {jobDescription}
-                </p>
-              )}
-
-              {/* Full Text Preview */}
-              {isDescExpanded && jobDescription && (
-                <div className='max-h-[380px] overflow-y-auto text-[10px] text-muted-foreground leading-relaxed pt-0.5 whitespace-pre-wrap pr-1.5 custom-scrollbar-primary'>
-                  {jobDescription}
+              {jobDescription && (
+                <div
+                  className={cn(
+                    'transition-all duration-200',
+                    isDescExpanded ?
+                      'max-h-[380px] overflow-y-auto pr-1'
+                    : 'max-h-[90px] overflow-hidden relative',
+                  )}
+                >
+                  <StructuredJobDescription
+                    content={jobDescription}
+                    size='sm'
+                    maxBlocks={isDescExpanded ? undefined : 3}
+                  />
+                  {!isDescExpanded && (
+                    <div className='absolute bottom-0 inset-x-0 h-8 bg-gradient-to-t from-panel to-transparent pointer-events-none' />
+                  )}
                 </div>
               )}
             </div>
-            <button
-              type='button'
-              onClick={() => setIsDescExpanded(!isDescExpanded)}
-              className={`text-[10px] justify-center font-medium text-primary hover:underline flex items-center gap-0.5 bg-transparent border-0 cursor-pointer ${
-                isDescExpanded ? 'mt-2 pt-1' : '-mt-13 pt-10'
-              }`}
-            >
-              <span>{isDescExpanded ? 'Collapse' : 'Show More'}</span>
-              {isDescExpanded ?
-                <ChevronUp className='w-3 h-3' />
-              : <ChevronDown className='w-3 h-3' />}
-            </button>
+            {jobDescription && (
+              <button
+                type='button'
+                onClick={() => setIsDescExpanded(!isDescExpanded)}
+                className='text-[10px] justify-center font-medium text-primary hover:underline flex items-center gap-0.5 bg-transparent border-0 cursor-pointer pt-1'
+              >
+                <span>{isDescExpanded ? 'Collapse' : 'Show More'}</span>
+                {isDescExpanded ?
+                  <ChevronUp className='w-3 h-3' />
+                : <ChevronDown className='w-3 h-3' />}
+              </button>
+            )}
           </div>
 
           {/* ── 2. BASE RESUME CARD & TAILOR ACTION BUTTONS ── */}
@@ -940,9 +1007,7 @@ export function TailorStudioCard({
                     coverLetterGenerating ? 'animate-spin' : undefined
                   }
                   onClick={() => handleOpenConfirm('cover_letter')}
-                  disabled={
-                    hasActiveGeneration || !jobDescription.trim()
-                  }
+                  disabled={hasActiveGeneration || !jobDescription.trim()}
                 >
                   {coverLetterGenerating ?
                     'Generating CL...'

@@ -5,8 +5,6 @@ import {
   Eye,
   MessageSquare,
   Award,
-  Clock,
-  AlertTriangle,
   XCircle,
   LogOut,
 } from 'lucide-react';
@@ -48,34 +46,6 @@ export const stageConfig: Record<
     colorClass: 'text-white',
     bgColorClass: 'bg-gradient-to-br from-emerald-500 to-teal-500',
     borderClass: 'border-emerald-500/20',
-  },
-  skipped: {
-    label: 'Skipped',
-    icon: Clock,
-    colorClass: 'text-white',
-    bgColorClass: 'bg-gradient-to-br from-zinc-500 to-slate-500',
-    borderClass: 'border-primary',
-  },
-  processing: {
-    label: 'Processing',
-    icon: Clock,
-    colorClass: 'text-white',
-    bgColorClass: 'bg-gradient-to-br from-sky-500 to-indigo-500',
-    borderClass: 'border-sky-500/20',
-  },
-  interrupted: {
-    label: 'Needs Review',
-    icon: AlertTriangle,
-    colorClass: 'text-white',
-    bgColorClass: 'bg-gradient-to-br from-orange-500 to-red-500',
-    borderClass: 'border-orange-500/20',
-  },
-  cancelled: {
-    label: 'Cancelled',
-    icon: XCircle,
-    colorClass: 'text-white',
-    bgColorClass: 'bg-gradient-to-br from-rose-500 to-pink-500',
-    borderClass: 'border-rose-500/20',
   },
   rejected: {
     label: 'Rejected',

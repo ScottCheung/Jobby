@@ -9,6 +9,16 @@ RECRUITMENT_STOPWORDS: frozenset[str] = frozenset(
         "qualified", "joining", "member", "company", "culture", "equal",
         "employer", "workplace", "location", "hybrid", "onsite", "full-time", "part-time",
         "must", "should", "ideal", "drive", "impact", "help",
+        "support", "supporting", "ensure", "ensuring", "process", "processes",
+        "management", "manage", "managing", "coordination", "coordinate", "coordinating",
+        "records", "record", "daily", "cycle", "cycles", "communication", "communicate",
+        "stakeholders", "deliver", "delivering", "delivery", "operations", "operational",
+        "reporting", "reports", "document", "documentation", "compliance", "compliant",
+        "policies", "procedures", "internal", "external", "audit", "auditing",
+        "accuracy", "accurate", "accurately", "timely", "quality", "service", "services",
+        "understanding", "participate", "collaborative", "collaborate", "collaborating",
+        "cross-functional", "initiatives", "maintain", "maintaining", "prepare", "preparing",
+        "review", "reviewing", "handling", "handle", "identify", "identifying", "assist", "assisting",
     }
 )
 

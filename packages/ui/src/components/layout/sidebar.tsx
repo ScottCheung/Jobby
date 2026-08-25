@@ -20,7 +20,6 @@ import {
   Palette,
   Star,
   MessageSquareCode,
-  MonitorCog,
   UserCheck,
   Sparkles,
   LogIn,
@@ -176,7 +175,6 @@ export function Sidebar() {
   const desktopNavigation = [
     { name: 'Home', href: '/', icon: LayoutGrid },
     { name: 'AI Networking Assistant', href: '/prospects', icon: UserCheck },
-    { name: 'Automation Console', href: '/automation', icon: MonitorCog },
     { name: 'Resume Tailor', href: '/job-review', icon: Sparkles },
     { name: 'Applications', href: '/applications', icon: Briefcase },
     { name: 'Interview Prep', href: '/interview-prep', icon: GraduationCap },

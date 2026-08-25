@@ -18,22 +18,22 @@ export function AuthGuardBanner({
   isSigningIn = false,
   className,
   title = 'Sign In to Unlock Full Features',
-  description = 'Connect your Jobby account to get AI match scores, tailored resumes, and 1-click autofill.',
+  description = 'Connect your Jobby account to use autofill, tailored documents, and application history.',
   compact = false,
 }: AuthGuardBannerProps) {
   return (
     <div
       className={cn(
-        'flex items-center justify-between gap-3 rounded-xl border border-primary/25 bg-gradient-to-r from-primary/15 via-primary/5 to-background-secondary/40 p-2.5 px-3 shadow-xs',
+        'flex items-center justify-between gap-3 rounded-xl border border-primary/25 bg-gradient-to-r from-primary/15 via-primary/5 to-background-secondary/40 p-2.5 px-3 shadow-xs w-full min-w-0',
         !compact && 'p-3',
         className,
       )}
     >
-      <div className='flex items-center gap-2.5 min-w-0'>
+      <div className='flex items-center gap-2.5 min-w-0 flex-1'>
         <div className='flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/20 text-primary shadow-xs'>
           <Sparkles className='h-3.5 w-3.5' />
         </div>
-        <div className='min-w-0'>
+        <div className='min-w-0 flex-1'>
           <p className='text-xs font-bold text-foreground truncate'>
             {title}
           </p>

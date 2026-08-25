@@ -93,6 +93,7 @@ def test_work_authorization_without_sponsorship_preserves_question_polarity() ->
 def test_ats_identifier_is_only_a_fallback_when_the_visible_label_is_unknown() -> None:
     field = SimpleNamespace(label="Eligibility", name="work_authorization", id=None)
     assert _autofill_intent_key_for_field(field, "workday") == "employment.work_authorization"
+    assert _autofill_intent_key_for_field(field, "glassdoor") == "employment.work_authorization"
     assert _autofill_intent_key_for_field(field, "generic") is None
 
 

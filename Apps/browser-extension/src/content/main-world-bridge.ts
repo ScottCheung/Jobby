@@ -111,7 +111,21 @@ const onBridgeRequest = (event: Event) => {
 
   if (typeof request.elementId !== "string") return;
   const element = document.getElementById(request.elementId);
-  if (!(element instanceof HTMLInputElement) || element.getAttribute("role") !== "combobox") {
+  const isGreenhouseLoc = Boolean(
+    element &&
+    element instanceof HTMLInputElement &&
+    (element.id === "job_application_location" ||
+      element.id === "candidate_location" ||
+      element.id === "location" ||
+      element.id.includes("location_autocomplete") ||
+      element.name === "job_application[location]" ||
+      element.name === "candidate[location]" ||
+      element.classList.contains("ui-autocomplete-input") ||
+      document.getElementById("job_application_location_id") ||
+      document.querySelector("input[name*='location_id']") ||
+      document.querySelector("#grnhse_app, .job-post-container, form.application--form, form[action*='greenhouse.io']"))
+  );
+  if (!(element instanceof HTMLInputElement) || (element.getAttribute("role") !== "combobox" && !isGreenhouseLoc)) {
     respond(requestId, { ok: false });
     return;
   }
@@ -138,14 +152,16 @@ const onBridgeRequest = (event: Event) => {
   }
 
   const target = normalized(request.value);
+  const targetFirstToken = target.split(/[,，\s]+/)[0] || target;
   const option = options.find((candidate) => {
     const label = normalized(candidate.label);
     const value = normalized(String(candidate.value));
     return label === target ||
       value === target ||
       (target.length > 1 && (label.includes(target) || target.includes(label))) ||
-      (target.length > 1 && (value.includes(target) || target.includes(value)));
-  });
+      (target.length > 1 && (value.includes(target) || target.includes(value))) ||
+      (targetFirstToken.length > 1 && (label.includes(targetFirstToken) || value.includes(targetFirstToken)));
+  }) || (options.length > 0 ? options[0] : undefined);
   if (!option) {
     respond(requestId, { ok: false, options: options.map((candidate) => ({ label: candidate.label, value: String(candidate.value) })) });
     return;
@@ -169,7 +185,9 @@ const shouldTrackSpaNavigation = window.top === window && (
   hostname === "linkedin.com" || hostname.endsWith(".linkedin.com") ||
   hostname === "seek.com" || hostname.endsWith(".seek.com") ||
   hostname === "seek.com.au" || hostname.endsWith(".seek.com.au") ||
-  hostname === "indeed.com" || hostname.endsWith(".indeed.com")
+  hostname === "seek.co.nz" || hostname.endsWith(".seek.co.nz") ||
+  /(?:^|\.)indeed\.(?:com(?:\.[a-z]{2})?|co\.[a-z]{2}|[a-z]{2,3})$/.test(hostname) ||
+  /(?:^|\.)glassdoor\.(?:com(?:\.[a-z]{2})?|co\.[a-z]{2}|[a-z]{2,3})$/.test(hostname)
 );
 const rawPushState = shouldTrackSpaNavigation ? window.history.pushState : undefined;
 const rawReplaceState = shouldTrackSpaNavigation ? window.history.replaceState : undefined;

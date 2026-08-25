@@ -7,12 +7,19 @@ export const formPlatformSchema = z.enum([
   "generic",
   "seek",
   "linkedin",
+  "indeed",
+  "glassdoor",
   "workday",
   "greenhouse",
   "lever",
   "ashby",
   "smartrecruiters",
   "taleo",
+  "icims",
+  "successfactors",
+  "oracle",
+  "workable",
+  "bamboohr",
 ]);
 export type FormPlatform = z.infer<typeof formPlatformSchema>;
 

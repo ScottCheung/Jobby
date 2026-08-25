@@ -2,6 +2,7 @@ import type { PageInspection, SeekJobSnapshot } from "../../../shared/contracts/
 
 import { extractTechnologyKeywords } from "../../technology-keywords";
 import { extractStructuredText } from "../../text-utils";
+import { capturedJobDateFields } from "../../../shared/utils/date-formatter";
 import { SEEK_SELECTORS } from "./selectors";
 
 function cleanText(value: string | null | undefined): string {
@@ -10,7 +11,7 @@ function cleanText(value: string | null | undefined): string {
 
 function getSeekDetailRoot(): ParentNode {
   const detailPane = document.querySelector<HTMLElement>(
-    "[data-automation='jobDetails'], [data-automation='job-details'], [data-testid='jobDetails'], #job-details, main [data-automation='jobDetails']"
+    "[data-automation='jobDetails'], [data-automation='jobDetailsPage'], [data-automation='job-details'], [data-testid='jobDetails'], #job-details, main [data-automation='jobDetails']"
   );
   if (detailPane) return detailPane;
   return document;
@@ -51,6 +52,40 @@ function firstDescriptionText(selectors: readonly string[]): string {
 }
 
 function jobIdFromUrl(url: string): string {
+  const root = getSeekDetailRoot();
+
+  // Split-view pages can retain the previous URL while mounting a newly
+  // selected detail pane. Prefer identity owned by that pane over URL state.
+  const rootElement = root instanceof HTMLElement ? root : null;
+  const rootId = rootElement?.getAttribute("data-job-id") ||
+    rootElement?.querySelector<HTMLElement>("[data-job-id]")?.getAttribute("data-job-id") || "";
+  if (/^\d+$/.test(rootId)) return rootId;
+
+  const applyEl = rootElement?.querySelector<HTMLAnchorElement>(
+    "a[data-automation='job-detail-apply'][href*='/job/'], a[href*='/job/'][data-automation*='apply']"
+  );
+  if (applyEl instanceof HTMLAnchorElement && applyEl.href) {
+    const applyMatch = applyEl.href.match(/\/job\/(\d+)/i);
+    if (applyMatch?.[1]) return applyMatch[1];
+  }
+
+  const titleLink = rootElement?.querySelector<HTMLAnchorElement>(
+    "a[href*='/job/'], [data-automation='job-detail-title'] a[href*='/job/']"
+  );
+  if (titleLink) {
+    const linkMatch = (titleLink.getAttribute("href") || "").match(/\/job\/(\d+)/i);
+    if (linkMatch?.[1]) return linkMatch[1];
+  }
+
+  // Some split views expose the active identity only on the selected card.
+  const selectedAnchor = document.querySelector<HTMLAnchorElement>(
+    "[data-automation='job-card'][data-selected='true'] a[data-automation='jobTitle'][href*='/job/'], [data-automation='job-card'][aria-current='true'] a[data-automation='jobTitle'][href*='/job/'], [data-testid='job-card'][aria-selected='true'] a[data-automation='jobTitle'][href*='/job/'], [data-testid='job-card'][data-selected='true'] a[data-automation='jobTitle'][href*='/job/']"
+  );
+  if (selectedAnchor) {
+    const cardMatch = (selectedAnchor.getAttribute("href") || "").match(/\/job\/(\d+)/i);
+    if (cardMatch?.[1]) return cardMatch[1];
+  }
+
   const match = url.match(/\/job\/(\d+)/i);
   if (match?.[1]) return match[1];
 
@@ -59,48 +94,7 @@ function jobIdFromUrl(url: string): string {
     if (/^\d+$/.test(queryJobId)) return queryJobId;
   } catch {}
 
-  // Fallback 1: Extract from active job-detail apply button or link in DOM
-  const applyEl = document.querySelector<HTMLAnchorElement | HTMLButtonElement>(
-    "a[data-automation='job-detail-apply'][href*='/job/'], [data-automation='jobDetails'] a[href*='/job/'][data-automation*='apply']"
-  );
-  if (applyEl instanceof HTMLAnchorElement && applyEl.href) {
-    const applyMatch = applyEl.href.match(/\/job\/(\d+)/i);
-    if (applyMatch?.[1]) return applyMatch[1];
-  }
-
-  // Fallback 2: Extract from data-job-id attribute on detail container or selected card
-  const jobContainer = document.querySelector<HTMLElement>(
-    "[data-automation='jobDetails'][data-job-id], [data-automation='job-card'][data-selected='true'] [data-job-id], [data-job-id]"
-  );
-  if (jobContainer) {
-    const attrId = jobContainer.getAttribute("data-job-id");
-    if (attrId && /^\d+$/.test(attrId)) return attrId;
-  }
-
-  // Fallback 3: Search for any job title link in the current detail view
-  const titleLink = document.querySelector<HTMLAnchorElement>(
-    "[data-automation='jobDetails'] a[href*='/job/'], [data-automation='job-detail-title'] a[href*='/job/']"
-  );
-  if (titleLink) {
-    const linkMatch = (titleLink.getAttribute("href") || "").match(/\/job\/(\d+)/i);
-    if (linkMatch?.[1]) return linkMatch[1];
-  }
-
-  // Fallback 4: Any selected card in search results list
-  const selectedAnchor = document.querySelector<HTMLAnchorElement>(
-    "article[data-automation='job-card'] a[data-automation='jobTitle'][href*='/job/']"
-  );
-  if (selectedAnchor) {
-    const cardMatch = (selectedAnchor.getAttribute("href") || "").match(/\/job\/(\d+)/i);
-    if (cardMatch?.[1]) return cardMatch[1];
-  }
-
   return "";
-}
-
-function hasApplyAction(): boolean {
-  const root = getSeekDetailRoot();
-  return SEEK_SELECTORS.apply.some((selector) => Boolean(root.querySelector(selector) || document.querySelector(selector)));
 }
 
 function datePostedFromDom(jobId?: string): string | undefined {
@@ -207,6 +201,7 @@ export function readSeekPage(): PageInspection {
   }
 
   const description = firstDescriptionText(SEEK_SELECTORS.description);
+  const rawDatePosted = datePostedFromDom(jobId);
   const snapshot: SeekJobSnapshot = {
     platform: "seek",
     externalId: jobId,
@@ -214,10 +209,9 @@ export function readSeekPage(): PageInspection {
     title,
     company: firstText(SEEK_SELECTORS.company) || "Unknown company",
     location: firstText(SEEK_SELECTORS.location) || undefined,
-    datePosted: datePostedFromDom(jobId),
+    ...capturedJobDateFields(rawDatePosted),
     description: description || undefined,
     technologies: extractTechnologyKeywords(description),
-    easyApply: hasApplyAction(),
   };
   return { kind: "job", snapshot };
 }

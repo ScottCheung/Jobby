@@ -1,6 +1,8 @@
 export * from './components/UI/Button';
 export * from './components/ShimmerText';
 export * from './lib/utils';
+export * from './lib/job-description';
+export * from './components/UI/StructuredJobDescription';
 
 // Animation exports
 export * from './components/animation';

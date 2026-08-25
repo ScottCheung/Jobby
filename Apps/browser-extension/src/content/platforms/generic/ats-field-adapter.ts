@@ -4,7 +4,8 @@ import type {
 } from '../../../shared/contracts/form-inspection';
 
 const ATS_PLATFORMS = new Set<FormPlatform>([
-  'workday', 'greenhouse', 'lever', 'ashby', 'smartrecruiters', 'taleo',
+  'indeed', 'glassdoor', 'workday', 'greenhouse', 'lever', 'ashby', 'smartrecruiters', 'taleo',
+  'icims', 'successfactors', 'oracle', 'workable', 'bamboohr',
 ]);
 
 const IDENTIFIER_LABELS: ReadonlyArray<[RegExp, string]> = [

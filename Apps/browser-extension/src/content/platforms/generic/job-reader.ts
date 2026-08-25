@@ -2,8 +2,9 @@ import type { GenericJobSnapshot, PageInspection } from "../../../shared/contrac
 
 import { extractTechnologyKeywords } from "../../technology-keywords";
 import { extractStructuredText } from "../../text-utils";
+import { capturedJobDateFields } from "../../../shared/utils/date-formatter";
 
-const JOB_TITLE_SELECTOR = [
+const JOB_TITLE_SELECTORS = [
   // SmartRecruiters exposes schema.org microdata, but also mounts an IE11
   // support overlay whose heading appears first in DOM order. Prefer the
   // JobPosting title over every generic heading.
@@ -31,9 +32,9 @@ const JOB_TITLE_SELECTOR = [
   "article h1",
   "[role='main'] h1",
   "h1",
-].join(", ");
+] as const;
 
-const DESCRIPTION_SELECTOR = [
+const DESCRIPTION_SELECTORS = [
   // Generic attribute-based
   "[data-testid*='job-description' i]",
   "[data-qa*='job-description' i]",
@@ -55,7 +56,7 @@ const DESCRIPTION_SELECTOR = [
   "article",
   "[role='main']",
   "main",
-].join(", ");
+] as const;
 
 const APPLY_SELECTOR = "button, a, input[type='submit'], [role='button']";
 const JOB_HEADING_PATTERN =
@@ -65,7 +66,16 @@ const APPLY_PATTERN =
 const URL_JOB_PATTERN = /(?:^|[/_.-])(job|jobs|career|careers|position|positions|vacancy|vacancies|role|roles|jd|posting|postings|opening|openings|requisition)(?:[/_.?-]|$)/i;
 const INVALID_TITLE_PATTERN = /\b(?:internet explorer|browser (?:is )?not supported|unsupported browser|please (?:enable|update) (?:your )?browser|access denied|page not found|something went wrong|maintenance mode)\b/i;
 
-type QueryRoot = Document | ShadowRoot;
+export type QueryRoot = Document | ShadowRoot;
+
+export type StructuredJobPosting = {
+  title?: string;
+  company?: string;
+  location?: string;
+  description?: string;
+  externalId?: string;
+  datePosted?: string;
+};
 
 function cleanText(value: string | null | undefined): string {
   return (value || "").replace(/\s+/g, " ").trim();
@@ -120,9 +130,15 @@ function isUsefulJobTitle(value: string): boolean {
 }
 
 function jobTitleFromPage(roots: readonly QueryRoot[]): string {
-  for (const candidate of elements(JOB_TITLE_SELECTOR, roots)) {
-    const title = cleanText(candidate.textContent);
-    if (isUsefulJobTitle(title)) return title;
+  for (const selector of JOB_TITLE_SELECTORS) {
+    const candidates = elements(selector, roots);
+    const primaryCandidates = candidates.filter((candidate) =>
+      !candidate.closest("aside, nav, footer, [role='complementary']"),
+    );
+    for (const candidate of primaryCandidates.length > 0 ? primaryCandidates : candidates) {
+      const title = cleanText(candidate.textContent);
+      if (isUsefulJobTitle(title)) return title;
+    }
   }
   return "";
 }
@@ -160,11 +176,14 @@ function locationFromPage(roots: readonly QueryRoot[]): string {
 }
 
 function descriptionFromPage(roots: readonly QueryRoot[]): string {
-  const candidate = elements(DESCRIPTION_SELECTOR, roots)
-    .map((element) => extractStructuredText(element))
-    .filter((text) => text.length >= 120)
-    .sort((left, right) => right.length - left.length)[0];
-  if (candidate) return truncate(candidate, 18_000);
+  for (const selector of DESCRIPTION_SELECTORS) {
+    const candidates = elements(selector, roots)
+      .filter((element) => !element.closest("aside, nav, footer, [role='complementary']"))
+      .map((element) => extractStructuredText(element))
+      .filter((text) => text.length >= 120)
+      .sort((left, right) => right.length - left.length);
+    if (candidates[0]) return truncate(candidates[0], 18_000);
+  }
 
   const heading = elements("h2, h3, h4", roots).find((element) => JOB_HEADING_PATTERN.test(cleanText(element.textContent)));
   const parentText = extractStructuredText(heading?.parentElement);
@@ -182,63 +201,78 @@ function hasApplyAction(roots: readonly QueryRoot[]): boolean {
   });
 }
 
-function jobPostingFromStructuredData(): {
-  title?: string;
-  company?: string;
-  location?: string;
-  description?: string;
-  externalId?: string;
-  datePosted?: string;
-} | null {
+export function jobPostingFromStructuredData(): StructuredJobPosting | null {
   const scripts = Array.from(document.querySelectorAll<HTMLScriptElement>("script[type='application/ld+json']")).slice(0, 30);
-  const visit = (value: unknown): Record<string, unknown> | null => {
-    if (!value || typeof value !== "object") return null;
+  const postings: Record<string, unknown>[] = [];
+  const visit = (value: unknown, depth = 0): void => {
+    if (!value || typeof value !== "object" || depth > 8) return;
     if (Array.isArray(value)) {
-      for (const item of value) {
-        const match = visit(item);
-        if (match) return match;
-      }
-      return null;
+      value.forEach((item) => visit(item, depth + 1));
+      return;
     }
     const record = value as Record<string, unknown>;
     const type = record["@type"];
-    if (type === "JobPosting" || (Array.isArray(type) && type.includes("JobPosting"))) return record;
-    return visit(record["@graph"]);
+    if (type === "JobPosting" || (Array.isArray(type) && type.includes("JobPosting"))) {
+      postings.push(record);
+      return;
+    }
+    for (const child of Object.values(record)) visit(child, depth + 1);
   };
 
   for (const script of scripts) {
     try {
-      const posting = visit(JSON.parse(script.textContent || ""));
-      if (!posting) continue;
-      const organization = posting.hiringOrganization as Record<string, unknown> | undefined;
-      const location = posting.jobLocation as Record<string, unknown> | Array<Record<string, unknown>> | undefined;
-      const firstLocation = Array.isArray(location) ? location[0] : location;
-      const address = firstLocation?.address as Record<string, unknown> | undefined;
-      const identifier = posting.identifier as Record<string, unknown> | string | undefined;
-      // Many ATSs (Greenhouse, Lever, Workday, Indeed) embed raw HTML in the
-      // description field. Strip tags so we work with readable plain text.
-      const tmpDiv = document.createElement('div');
-      tmpDiv.innerHTML = String(posting.description || "");
-      const rawDesc = extractStructuredText(tmpDiv);
-      return {
-        title: cleanText(String(posting.title || "")) || undefined,
-        company: cleanText(String(organization?.name || "")) || undefined,
-        location: cleanText(
-          [address?.addressLocality, address?.addressRegion, address?.addressCountry]
-            .filter((value) => typeof value === "string")
-            .join(", "),
-        ) || undefined,
-        description: rawDesc || undefined,
-        externalId: cleanText(
-          typeof identifier === "string" ? identifier : String(identifier?.value || ""),
-        ) || undefined,
-        datePosted: cleanText(String(posting.datePosted || "")) || undefined,
-      };
+      visit(JSON.parse(script.textContent || ""));
     } catch {
       // Invalid third-party structured data should not prevent DOM inspection.
     }
   }
-  return null;
+  if (postings.length === 0) return null;
+
+  const currentUrl = window.location.href.toLowerCase();
+  const currentIdentityTokens = decodeURIComponent(
+    `${window.location.pathname} ${window.location.search}`,
+  ).toLowerCase().split(/[^a-z0-9-]+/).filter(Boolean);
+  const activeHeading = cleanText(
+    document.querySelector<HTMLElement>("main h1, [role='main'] h1, article h1, h1")?.textContent,
+  ).toLowerCase();
+  const score = (posting: Record<string, unknown>): number => {
+    const identifier = posting.identifier as Record<string, unknown> | string | undefined;
+    const externalId = cleanText(
+      typeof identifier === "string" ? identifier : String(identifier?.value || ""),
+    ).toLowerCase();
+    const postingUrl = cleanText(String(posting.url || "")).toLowerCase();
+    const title = cleanText(String(posting.title || "")).toLowerCase();
+    return (
+      (postingUrl && currentUrl.includes(postingUrl) ? 100 : 0) +
+      (externalId && currentIdentityTokens.includes(externalId) ? 80 : 0) +
+      (title && activeHeading && (title === activeHeading || activeHeading.includes(title)) ? 40 : 0)
+    );
+  };
+  const posting = postings.reduce((best, candidate) =>
+    score(candidate) > score(best) ? candidate : best,
+  );
+  const organization = posting.hiringOrganization as Record<string, unknown> | undefined;
+  const location = posting.jobLocation as Record<string, unknown> | Array<Record<string, unknown>> | undefined;
+  const firstLocation = Array.isArray(location) ? location[0] : location;
+  const address = firstLocation?.address as Record<string, unknown> | undefined;
+  const identifier = posting.identifier as Record<string, unknown> | string | undefined;
+  const tmpDiv = document.createElement("div");
+  tmpDiv.innerHTML = String(posting.description || "");
+  const rawDesc = extractStructuredText(tmpDiv);
+  return {
+    title: cleanText(String(posting.title || "")) || undefined,
+    company: cleanText(String(organization?.name || "")) || undefined,
+    location: cleanText(
+      [address?.addressLocality, address?.addressRegion, address?.addressCountry]
+        .filter((value) => typeof value === "string")
+        .join(", "),
+    ) || undefined,
+    description: rawDesc || undefined,
+    externalId: cleanText(
+      typeof identifier === "string" ? identifier : String(identifier?.value || ""),
+    ) || undefined,
+    datePosted: cleanText(String(posting.datePosted || "")) || undefined,
+  };
 }
 
 /**
@@ -246,17 +280,9 @@ function jobPostingFromStructuredData(): {
  * pages. Unlike JSON-LD it is rendered alongside the posting, so it remains
  * available when an ATS has no JSON-LD script at all.
  */
-function jobPostingFromMicrodata(roots: readonly QueryRoot[]): {
-  title?: string;
-  company?: string;
-  location?: string;
-  description?: string;
-  externalId?: string;
-  datePosted?: string;
-} | null {
-  const posting = elements("[itemscope][itemtype*='JobPosting' i]", roots)[0];
-  if (!posting) return null;
-
+export function jobPostingFromMicrodata(
+  roots: readonly QueryRoot[] = [document],
+): StructuredJobPosting | null {
   const propertyValue = (scope: ParentNode, property: string): string => {
     const element = scope.querySelector<HTMLElement>(`[itemprop='${property}']`);
     if (!element) return "";
@@ -264,9 +290,29 @@ function jobPostingFromMicrodata(roots: readonly QueryRoot[]): {
       element.getAttribute("content") ||
         element.getAttribute("datetime") ||
         element.getAttribute("href") ||
-        element.textContent,
+      element.textContent,
     );
   };
+  const postings = elements("[itemscope][itemtype*='JobPosting' i]", roots);
+  if (postings.length === 0) return null;
+  const currentIdentityTokens = decodeURIComponent(
+    `${window.location.pathname} ${window.location.search}`,
+  ).toLowerCase().split(/[^a-z0-9-]+/).filter(Boolean);
+  const activeHeading = cleanText(
+    document.querySelector<HTMLElement>("main h1, [role='main'] h1, article h1, h1")?.textContent,
+  ).toLowerCase();
+  const score = (posting: HTMLElement): number => {
+    const title = propertyValue(posting, "title").toLowerCase();
+    const identifier = propertyValue(posting, "identifier").toLowerCase();
+    return (
+      (!posting.closest("aside, nav, footer, [role='complementary']") ? 20 : 0) +
+      (identifier && currentIdentityTokens.includes(identifier) ? 80 : 0) +
+      (title && activeHeading && (title === activeHeading || activeHeading.includes(title)) ? 40 : 0)
+    );
+  };
+  const posting = postings.reduce((best, candidate) =>
+    score(candidate) > score(best) ? candidate : best,
+  );
   const title = propertyValue(posting, "title");
   const companyScope = posting.querySelector<HTMLElement>("[itemprop='hiringOrganization']");
   const locationScope = posting.querySelector<HTMLElement>("[itemprop='jobLocation']");
@@ -299,7 +345,7 @@ function jobPostingFromMicrodata(roots: readonly QueryRoot[]): {
  * Tries <time datetime> first, then looks for spans/divs containing
  * common relative-date patterns.
  */
-function datePostedFromDom(): string | undefined {
+export function datePostedFromDom(): string | undefined {
   // 1. Meta tags are common on ATS and company career pages
   const metaSelectors = [
     "meta[property='article:published_time']",
@@ -353,7 +399,7 @@ function datePostedFromDom(): string | undefined {
   return undefined;
 }
 
-function stableId(value: string): string {
+export function stableId(value: string): string {
   let hash = 2166136261;
   for (let index = 0; index < value.length; index += 1) {
     hash ^= value.charCodeAt(index);
@@ -413,6 +459,7 @@ export function readGenericJobPage(): PageInspection {
     };
   }
 
+  const rawDatePosted = structured?.datePosted || datePostedFromDom();
   const snapshot: GenericJobSnapshot = {
     platform: "generic",
     externalId: structured?.externalId || stableId(`${url}|${title}|${company}`),
@@ -420,10 +467,9 @@ export function readGenericJobPage(): PageInspection {
     title,
     company: company || "Unknown company",
     location: location || undefined,
-    datePosted: structured?.datePosted || datePostedFromDom(),
+    ...capturedJobDateFields(rawDatePosted),
     description: description || undefined,
     technologies: extractTechnologyKeywords(description),
-    easyApply: applyAction,
   };
   return { kind: "job", snapshot };
 }

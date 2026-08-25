@@ -5,9 +5,10 @@ import type {
   LinkedInApplicationAction,
   LinkedInApplicationResult,
 } from '../../../shared/contracts/linkedin';
-import { extractLinkedInPostedDate, cleanPostedAt } from './date-parser';
+import { extractLinkedInPostedDate } from './date-parser';
 import { extractStructuredText } from '../../text-utils';
 import type { LinkedInJobApiData } from './api-client';
+import { captureJobDate } from '../../../shared/utils/date-formatter';
 
 type LinkedInJobData = Omit<
   LinkedInJobSnapshot,
@@ -28,9 +29,6 @@ const SELECTORS = {
     "h1[class*='job-title']",
     "h1[class*='topcard']",
     "h1",
-    ".jobs-details__main-content p",
-    "[data-display-contents='true'] p",
-    "[data-display-contents='true']",
   ],
   company: [
     '.job-details-jobs-unified-top-card__company-name a',
@@ -440,7 +438,11 @@ function titleFromDocument(jobId: string, company?: string): string {
 }
 
 function titleFromJobLink(jobId: string, company?: string): string {
-  const links = Array.from(document.querySelectorAll<HTMLAnchorElement>("a[href*='/jobs/view/']"));
+  const links = Array.from(document.querySelectorAll<HTMLAnchorElement>([
+    '.job-details-jobs-unified-top-card__job-title-link',
+    '.jobs-unified-top-card__job-title-link',
+    "main h1 a[href*='/jobs/view/']",
+  ].join(', ')));
   for (const link of links) {
     const href = link.getAttribute("href") || "";
     if (!new RegExp(`/jobs/view/${jobId}(?:/|\\?|$)`, "i").test(href)) continue;
@@ -455,11 +457,18 @@ function titleFromPage(jobId: string, company?: string): string {
   if (jobLinkTitle) return jobLinkTitle;
 
   const root = getJobDetailRoot();
+  const isDirectJobPage = new RegExp(`/jobs/view/${jobId}(?:/|$)`, 'i').test(
+    window.location.pathname,
+  );
+  if (isDirectJobPage) {
+    const documentTitle = titleFromDocument(jobId, company);
+    if (documentTitle) return documentTitle;
+  }
+
   const selectedTitle = firstText(root, SELECTORS.title);
   if (isLikelyTitle(selectedTitle, company)) return selectedTitle;
 
-  const documentTitle = titleFromDocument(jobId, company);
-  return documentTitle || titleFromMain(company);
+  return titleFromMain(company) || titleFromDocument(jobId, company);
 }
 
 function locationFromPage(): string | undefined {
@@ -564,10 +573,10 @@ function datePostedFromPage(externalId: string): string | undefined {
   const listCard = externalId ? findListCard(externalId) : null;
   if (listCard) {
     for (const timeEl of Array.from(listCard.querySelectorAll<HTMLElement>('time'))) {
-      const date =
-        extractLinkedInPostedDate(timeEl.getAttribute('datetime')) ||
-        extractLinkedInPostedDate(timeEl.textContent);
-      if (date) return date;
+      const datetime = timeEl.getAttribute('datetime');
+      if (extractLinkedInPostedDate(datetime)) return datetime || undefined;
+      const text = cleanText(timeEl.textContent);
+      if (extractLinkedInPostedDate(text)) return text;
     }
   }
 
@@ -580,18 +589,21 @@ function datePostedFromPage(externalId: string): string | undefined {
   // ── 2. <time datetime="..."> inside detail panel ──────────────────────────
   for (const timeNode of Array.from(root.querySelectorAll<HTMLElement>('time'))) {
     const dt = timeNode.getAttribute('datetime');
-    const dateStr = extractLinkedInPostedDate(dt) || extractLinkedInPostedDate(timeNode.textContent);
-    if (dateStr) return dateStr;
+    if (extractLinkedInPostedDate(dt)) return dt || undefined;
+    const text = cleanText(timeNode.textContent);
+    if (extractLinkedInPostedDate(text)) return text;
   }
 
   // ── 3. Known metadata selectors scoped to detail panel ───────────────────
   for (const selector of DATE_METADATA_SELECTORS) {
     for (const element of deepQueryAll(root, selector)) {
-      const date =
-        extractLinkedInPostedDate(element.getAttribute('aria-label')) ||
-        extractLinkedInPostedDate(element.getAttribute('datetime')) ||
-        extractLinkedInPostedDate(element.textContent);
-      if (date) return date;
+      const candidates = [
+        element.getAttribute('aria-label'),
+        element.getAttribute('datetime'),
+        cleanText(element.textContent),
+      ];
+      const raw = candidates.find((candidate) => extractLinkedInPostedDate(candidate));
+      if (raw) return raw;
     }
   }
 
@@ -607,7 +619,7 @@ function datePostedFromPage(externalId: string): string | undefined {
     const text = cleanText(element.textContent);
     if (text && text.length <= 80) {
       const date = extractLinkedInPostedDate(text);
-      if (date) return date;
+      if (date) return text;
     }
   }
 
@@ -622,7 +634,7 @@ function datePostedFromPage(externalId: string): string | undefined {
       const text = cleanText(leaf.textContent);
       if (text && text.length <= 80) {
         const date = extractLinkedInPostedDate(text);
-        if (date) return date;
+        if (date) return text;
       }
     }
   }
@@ -696,11 +708,13 @@ export class LinkedInAdapter {
       descriptionFromHeading(root) ||
       descriptionFromHeading(document);
 
-    // ── Date: API is authoritative (exact ISO date), DOM is the fallback ──────
-    // The Voyager API provides `listedAt` as a precise Unix timestamp converted
-    // to an ISO date string (e.g. "2026-04-24"). This is always preferred over
-    // the relative DOM text (e.g. "2 days ago") which is fragile and ambiguous.
-    const datePosted = apiData?.listedAt ?? cleanPostedAt(datePostedFromPage(externalId));
+    const apiHasPostingDate = Boolean(apiData?.firstPostedAt || apiData?.lastPostedAt);
+    const rawDatePosted = apiHasPostingDate ? undefined : datePostedFromPage(externalId);
+    const capturedDate = rawDatePosted ? captureJobDate(rawDatePosted) : undefined;
+    const postingDateRaw = capturedDate || apiData?.postingDateRaw ? {
+      ...(capturedDate ? { label: capturedDate.rawValue } : {}),
+      ...(apiData?.postingDateRaw ?? {}),
+    } : undefined;
 
     // ── Easy Apply: API is authoritative when available ───────────────────────
     const easyApply = apiData?.easyApply ?? Boolean(this.findEasyApplyTrigger());
@@ -710,7 +724,11 @@ export class LinkedInAdapter {
       title,
       company,
       location: apiData?.location || locationFromPage(),
-      datePosted,
+      firstPostedAt: apiData?.firstPostedAt ?? apiData?.lastPostedAt ?? capturedDate?.postedAt,
+      lastPostedAt: apiData?.lastPostedAt ?? apiData?.firstPostedAt ?? capturedDate?.postedAt,
+      postingObservedAt: capturedDate?.observedAt ?? apiData?.postingObservedAt,
+      isReposted: apiHasPostingDate ? apiData?.isReposted : capturedDate?.isReposted,
+      postingDateRaw,
       description: description || undefined,
       easyApply,
       ...(apiData?.workType ? { workType: apiData.workType } : {}),

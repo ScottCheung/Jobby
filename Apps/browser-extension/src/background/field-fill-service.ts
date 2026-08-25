@@ -1,8 +1,7 @@
-import type { FormFillInstructionsResponse, FieldFillResult, FormFieldTarget } from "../shared/contracts/form-actions";
-import type { ValidatedApplicationPlanResponse } from "../shared/contracts/backend";
+import type { FieldFillResult, FormFieldTarget } from "../shared/contracts/form-actions";
 import type { FormInspection } from "../shared/contracts/form-inspection";
 
-import { inspectActiveTab, inspectFormActiveTab, fillActiveTabField, clickLinkedInApplicationAction, uploadActiveTabFile } from "./content-bridge";
+import { inspectActiveTab, inspectFormActiveTab, fillActiveTabField, uploadActiveTabFile } from "./content-bridge";
 import { apiClient } from "./api-client";
 import { logDiagnostic } from "./diagnostics";
 import { getAutofillSessionId } from "./session-store";
@@ -362,101 +361,6 @@ async function autofillAshbyFieldsIndividually(initialForm: FormInspection): Pro
     unansweredFields: results
       .filter((result) => !isFillComplete(result))
       .map((result) => ({ key: result.key, label: result.key, reason: result.message })),
-  };
-}
-
-export async function fillKnownFieldsForActiveTab(applicationId: string): Promise<{
-  instructions: FormFillInstructionsResponse;
-  results: FieldFillResult[];
-  plan?: ValidatedApplicationPlanResponse;
-}> {
-  let currentPlan = await apiClient.getApplicationPlan(applicationId);
-  if (currentPlan.plan.state === "planned" || currentPlan.plan.state === "awaiting_user_review") {
-    currentPlan = await apiClient.applyApplicationPlanAction(applicationId, "prepare");
-  } else if (currentPlan.plan.state !== "preparing") {
-    throw new Error(`Application plan is ${currentPlan.plan.state}; prepare it before filling fields.`);
-  }
-
-  let instructionsCache: FormFillInstructionsResponse | undefined;
-  const filled = await fillFormWithReactiveConvergence(
-    () => inspectFormActiveTab(),
-    async (form: FormInspection) => {
-      const fields = form.kind === "application_form" || form.kind === "page_input_fields" ? form.fields : [];
-      instructionsCache = await apiClient.getFormFillInstructions(
-        applicationId,
-        fields.map(({ frameId: _frameId, ...field }) => field),
-      );
-      return instructionsCache;
-    },
-  );
-
-  const instructions = instructionsCache || { application_id: applicationId, instructions: [], unanswered_fields: [] };
-  const unresolvedInstructions = instructions.unanswered_fields.filter(
-    (item) => !filled.results.some(
-      (result) =>
-        result.key === item.key &&
-        (result.status === "filled" || result.status === "already_filled"),
-    ),
-  );
-  const requiresReview =
-    unresolvedInstructions.length > 0 ||
-    filled.results.some((item) => item.status !== "filled" && item.status !== "already_filled");
-
-  if (!requiresReview) {
-    return {
-      instructions: { ...instructions, unanswered_fields: unresolvedInstructions },
-      results: filled.results,
-    };
-  }
-
-  const plan = await apiClient.applyApplicationPlanAction(
-    applicationId,
-    "request_review",
-    "Some application fields need user review before preparation can be marked complete.",
-  );
-  return { instructions: { ...instructions, unanswered_fields: unresolvedInstructions }, results: filled.results, plan };
-}
-
-export async function fillAndNextForActiveTab(applicationId: string): Promise<{
-  instructions: FormFillInstructionsResponse;
-  results: FieldFillResult[];
-  plan?: ValidatedApplicationPlanResponse;
-  stepAdvanced: boolean;
-  actionLabel?: string;
-  unfilledRequiredLabels?: string[];
-}> {
-  const filled = await fillKnownFieldsForActiveTab(applicationId);
-  const form = await inspectFormActiveTab();
-  if (form.kind !== "application_form") {
-    return { ...filled, stepAdvanced: false, actionLabel: "No active form found" };
-  }
-
-  if (form.action === "next") {
-    const requiredUnfilled = form.fields.filter((f) => f.required && !f.filled);
-    if (requiredUnfilled.length === 0) {
-      const actionRes = await clickLinkedInApplicationAction("next");
-      if (actionRes.status === "clicked") {
-        return {
-          ...filled,
-          stepAdvanced: true,
-          actionLabel: actionRes.actionLabel || "Next step",
-        };
-      }
-    } else {
-      const labels = requiredUnfilled.map((f) => f.label);
-      return {
-        ...filled,
-        stepAdvanced: false,
-        actionLabel: `Unfilled required: ${labels.join(", ")}`,
-        unfilledRequiredLabels: labels,
-      };
-    }
-  }
-
-  return {
-    ...filled,
-    stepAdvanced: false,
-    actionLabel: form.action === "submit" ? "Ready for submission" : "Manual review required",
   };
 }
 

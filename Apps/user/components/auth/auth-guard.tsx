@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useConsole } from '@/components/ConsoleContext';
-import { createClient } from '@/lib/supabase/client';
+import { getValidAuthSession } from '@/lib/supabase/client';
 
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -14,8 +14,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     async function checkAuth() {
-      const supabase = createClient();
-      const { data: { session } } = await supabase.auth.getSession();
+      const session = await getValidAuthSession();
       if (session?.user) {
         setIsAuthenticated(true);
       } else {

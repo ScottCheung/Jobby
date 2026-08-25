@@ -19,8 +19,11 @@ export type PageClass =
 const DEDICATED_ATS_HOSTS: ReadonlyArray<RegExp> = [
   /^(?:www\.)?myworkdayjobs\.com$/,
   /^(?:[a-z0-9-]+\.)+myworkdayjobs\.com$/,
+  /^(?:[a-z0-9-]+\.)+myworkday\.com$/,
   /^boards\.greenhouse\.io$/,
+  /^job-boards\.greenhouse\.io$/,
   /^jobs\.lever\.co$/,
+  /^jobs\.eu\.lever\.co$/,
   /^jobs\.ashbyhq\.com$/,
   /^apply\.workable\.com$/,
   /^jobs\.jobvite\.com$/,
@@ -29,10 +32,13 @@ const DEDICATED_ATS_HOSTS: ReadonlyArray<RegExp> = [
   /^(?:www\.)?icims\.com$/,
   /^(?:[a-z0-9-]+\.)+icims\.com$/,
   /^(?:www\.)?bamboohr\.com$/,
-  /^(?:[a-z0-9-]+\.)+bamboohr\.com$/,
+  /^(?:[a-z0-9-]+\.)+bamboohr\.(?:com|co\.uk)$/,
+  /(?:^|\.)(?:successfactors|sapsf)\.(?:com|eu)$/,
+  /(?:^|\.)(?:oraclecloud|fa\.ocs\.oraclecloud)\.com$/,
   /^(?:www\.)?recruitee\.com$/,
   /^(?:www\.)?breezy\.hr$/,
   /^(?:www\.)?jobs\.smartrecruiters\.com$/,
+  /^careers\.smartrecruiters\.com$/,
   /^ats\.rippling\.com$/,
   /^(?:www\.)?recruitcrm\.io$/,
   /^app\.vbench\.com\.au$/,
@@ -119,7 +125,7 @@ export const MAJOR_PLATFORM_RULES: ReadonlyArray<MajorPlatformRule> = [
   },
   {
     name: "Indeed",
-    hostRegex: /^(?:[a-z0-9-]+\.)*indeed\.com$/i,
+    hostRegex: /^(?:[a-z0-9-]+\.)*indeed\.(?:com(?:\.[a-z]{2})?|co\.[a-z]{2}|[a-z]{2,3})$/i,
     nonJobPatterns: [
       /^\/career-advice(?:\/|$)/i,
       /^\/salaries(?:\/|$)/i,
@@ -150,7 +156,7 @@ export const MAJOR_PLATFORM_RULES: ReadonlyArray<MajorPlatformRule> = [
   },
   {
     name: "Glassdoor",
-    hostRegex: /^(?:[a-z0-9-]+\.)*glassdoor\.(?:com(?:\.au)?)$/i,
+    hostRegex: /^(?:[a-z0-9-]+\.)*glassdoor\.(?:com(?:\.[a-z]{2})?|co\.[a-z]{2}|[a-z]{2,3})$/i,
     nonJobPatterns: [
       /^\/Reviews\//i,
       /^\/Salaries\//i,
@@ -251,22 +257,18 @@ export function classifyCurrentPage(): PageClass {
     document.querySelectorAll<HTMLScriptElement>("script[type='application/ld+json']"),
   ).slice(0, 20);
   let hasJobPosting = false;
+  const containsJobPosting = (value: unknown, depth = 0): boolean => {
+    if (!value || typeof value !== "object" || depth > 8) return false;
+    if (Array.isArray(value)) return value.some((item) => containsJobPosting(item, depth + 1));
+    const record = value as Record<string, unknown>;
+    const type = record["@type"];
+    if (type === "JobPosting" || (Array.isArray(type) && type.includes("JobPosting"))) return true;
+    return Object.values(record).some((child) => containsJobPosting(child, depth + 1));
+  };
   for (const script of ldScripts) {
     try {
       const raw = JSON.parse(script.textContent || "");
-      const types: string[] = Array.isArray(raw?.["@type"])
-        ? raw["@type"]
-        : [raw?.["@type"]];
-      const graphItems: unknown[] = raw?.["@graph"] ?? [];
-      const allTypes = [
-        ...types,
-        ...graphItems.flatMap((item) =>
-          Array.isArray((item as { "@type"?: unknown })["@type"])
-            ? ((item as { "@type": string[] })["@type"])
-            : [(item as { "@type"?: string })["@type"] ?? ""],
-        ),
-      ];
-      if (allTypes.includes("JobPosting")) {
+      if (containsJobPosting(raw)) {
         hasJobPosting = true;
         break;
       }
@@ -283,6 +285,7 @@ export function classifyCurrentPage(): PageClass {
       LinkedIn: "[class*='jobs-unified-top-card'], [class*='job-details'], [data-occludable-job-id], #job-details, .jobs-search__job-details",
       SEEK: "[data-automation='job-detail-title'], [data-automation='jobDetails'], [data-automation='jobAdDetails'], h1[data-automation='job-detail-title']",
       Indeed: "#jobDescriptionText, [class*='jobsearch-jobDescriptionText'], [data-testid='jobsearch-JobInfoHeader-title'], .jobsearch-JobInfoHeader-title, #viewJobSSRRoot, [data-jk], [data-testid='inlineHeader-companyName']",
+      Glassdoor: "[class*='JobDetails_jobDetailsContainer'], [data-test='job-details-header'], [id^='jd-job-title-']",
     };
     const selector = platformDomSelectors[matchedPlatform.name];
     const hasPlatformDomSignal = Boolean(selector && document.querySelector(selector));

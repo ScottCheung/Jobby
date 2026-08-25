@@ -13,6 +13,7 @@ import React, {
 import { usePathname } from 'next/navigation';
 import { api } from '@/lib/api';
 import { createClient } from '@/lib/supabase/client';
+import { useAuthStore } from '@/lib/store';
 import { openGlobalAuthModal } from '@/lib/store/auth-modal-store';
 import { showGlobalToast } from '@/lib/toast';
 import { withMinimumLoadingTime } from '@/lib/loading';
@@ -24,7 +25,6 @@ import type {
   DesktopRuntimeInfo,
   DesktopServiceStatus,
   ApplicationSettings,
-  ApplicationPlanResponse,
   JobApplication,
   QuestionCacheEntry,
   RuntimeSettings,
@@ -37,9 +37,7 @@ import { isDesktopRuntime, resolveApiBaseUrl, resolveSseBaseUrl } from '@/lib/ru
 
 import {
   Briefcase,
-  CheckCircle2,
   MessageSquareCode,
-  ChevronLast,
   ArrowUpRight,
   ArrowDownRight,
   MoveRight,
@@ -294,11 +292,6 @@ interface ConsoleContextType {
     applicationId: string,
     payload: Partial<JobApplication>,
   ) => Promise<void>;
-  applicationPlanAction: (
-    applicationId: string,
-    action: string,
-    reason?: string,
-  ) => Promise<ApplicationPlanResponse>;
   deleteApplication: (applicationId: string) => Promise<void>;
   startWorker: () => Promise<void>;
   stopWorker: () => Promise<void>;
@@ -310,7 +303,6 @@ interface ConsoleContextType {
     today_processed: number;
     yesterday_processed: number;
     interviewing: number;
-    skipped: number;
   } | null;
   stats: Array<{
     label: string;
@@ -325,9 +317,8 @@ interface ConsoleContextType {
     comparisonIcon?: any;
   }>;
   dashboardData: {
-    trend: Array<{ date: string; Submitted: number; Skipped: number }>;
+    trend: Array<{ date: string; Submitted: number }>;
     statusDistribution: Array<{ name: string; value: number; fill: string }>;
-    skipReasons: Array<{ name: string; value: number; percentage: number }>;
     topCities: Array<{ name: string; value: number; fill: string }>;
     topCompanies: Array<{ name: string; applications: number }>;
     recentActivities: JobApplication[];
@@ -364,7 +355,6 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
     today_processed: number;
     yesterday_processed: number;
     interviewing: number;
-    skipped: number;
   } | null>(null);
 
   const loadAppStats = async () => {
@@ -660,15 +650,28 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
+    if (useAuthStore.getState().isTokenExpired()) {
+      const supabase = createClient();
+      supabase.auth.signOut().catch(() => {});
+      useAuthStore.getState().logout();
+    }
+
     loadData();
 
     const supabase = createClient();
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+        if (session?.access_token) {
+          const authState = useAuthStore.getState();
+          if (!authState.loginTime || event === 'SIGNED_IN') {
+            authState.login(session.access_token, authState.rememberMe ?? true);
+          }
+        }
         loadData();
       } else if (event === 'SIGNED_OUT') {
+        useAuthStore.getState().logout();
         setUser(null);
         setProfile(emptyProfile);
         setApplications([]);
@@ -1224,28 +1227,6 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
     void loadAppStats();
   };
 
-  const applicationPlanAction = async (
-    applicationId: string,
-    action: string,
-    reason?: string,
-  ): Promise<ApplicationPlanResponse> => {
-    const response = await api.applicationPlanAction(applicationId, action, reason);
-    const nextState = response.plan.state;
-    const nextStatus = nextState === 'submitted' ? 'submitted' :
-      nextState === 'skipped' || nextState === 'rejected' ? 'skipped' :
-      nextState === 'awaiting_user_review' ? 'interrupted' : undefined;
-    setApplications((current) => sortApplications(current.map((item) => item.id !== applicationId ? item : {
-      ...item,
-      ...(nextStatus ? { status: nextStatus } : {}),
-      skip_reason: response.plan.review_reason ?? item.skip_reason,
-      raw_data: { ...(item.raw_data || {}), application_plan: response.plan },
-    })));
-    notify(action === 'reject' ? 'Application plan rejected' : 'Application plan updated');
-    return response;
-  };
-
-
-
   const deleteApplication = async (applicationId: string) => {
     await api.deleteApplication(applicationId);
     setApplications((current) =>
@@ -1344,7 +1325,7 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
 
     return [
       {
-        label: 'Processing',
+        label: 'Applications',
         value: appStats?.total_applications ?? 0,
         icon: Briefcase,
         iconColor: 'text-blue-500/50 dark:text-blue-400',
@@ -1353,13 +1334,17 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
         borderColor: 'border-blue-500/20',
       },
       {
-        label: 'Submitted',
-        value: appStats?.submitted ?? 0,
-        icon: CheckCircle2,
+        label: 'Today',
+        value: appStats?.today_submitted ?? 0,
+        icon: CalendarCheck,
         iconColor: 'text-emerald-500/50 dark:text-emerald-400',
         textColor: 'text-emerald-600 dark:text-emerald-400',
         bgColor: 'bg-emerald-500/5 dark:bg-emerald-500/20',
         borderColor: 'border-emerald-500/20',
+        ...getComparisonDetails(
+          appStats?.today_submitted ?? 0,
+          appStats?.yesterday_submitted ?? 0,
+        ),
       },
       {
         label: 'Interviewing',
@@ -1370,15 +1355,6 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
         bgColor: 'bg-purple-500/5 dark:bg-purple-500/20',
         borderColor: 'border-purple-500/20',
       },
-      {
-        label: 'Skipped',
-        value: appStats?.skipped ?? 0,
-        icon: ChevronLast,
-        iconColor: 'text-amber-500/50 dark:text-amber-400',
-        textColor: 'text-amber-500 dark:text-amber-400',
-        bgColor: 'bg-amber-500/5 dark:bg-amber-500/20',
-        borderColor: 'border-amber-500/20',
-      },
     ];
   }, [appStats]);
 
@@ -1387,7 +1363,6 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
       rawDateStr: string;
       displayDate: string;
       Submitted: number;
-      Skipped: number;
     }
     const days: DayTrend[] = [];
     for (let i = trendRange - 1; i >= 0; i--) {
@@ -1405,7 +1380,6 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
           day: 'numeric',
         }),
         Submitted: 0,
-        Skipped: 0,
       });
     }
 
@@ -1419,20 +1393,14 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
       const dateVal = String(d.getDate()).padStart(2, '0');
       const appDateStr = `${year}-${month}-${dateVal}`;
       const match = days.find((day) => day.rawDateStr === appDateStr);
-      if (match) {
-        const statusLower = app.status.toLowerCase();
-        if (isStatusSubmitted(app.status)) {
-          match.Submitted += 1;
-        } else if (statusLower.includes('skip')) {
-          match.Skipped += 1;
-        }
+      if (match && isStatusSubmitted(app.status)) {
+        match.Submitted += 1;
       }
     });
 
     const trend = days.map((day) => ({
       date: day.displayDate,
       Submitted: day.Submitted,
-      Skipped: day.Skipped,
     }));
 
     const statusCounts: Record<string, number> = {};
@@ -1440,8 +1408,6 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
       let status = 'Other';
       const s = app.status.toLowerCase();
       if (isStatusSubmitted(app.status)) status = 'Submitted';
-      else if (s.includes('skip')) status = 'Skipped';
-      else if (s.includes('cancel')) status = 'Cancelled';
       else if (s.includes('pending') || s.includes('process'))
         status = 'Pending';
       statusCounts[status] = (statusCounts[status] || 0) + 1;
@@ -1449,9 +1415,7 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
 
     const statusColors: Record<string, string> = {
       Submitted: '#10b981',
-      Skipped: '#f59e0b',
       Pending: '#3b82f6',
-      Cancelled: '#ef4444',
       Other: '#71717a',
     };
 
@@ -1460,58 +1424,6 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
       value: statusCounts[name],
       fill: statusColors[name] || '#71717a',
     }));
-
-    const skipReasonCounts: Record<string, number> = {};
-    let totalSkipped = 0;
-    applications.forEach((app) => {
-      const s = app.status.toLowerCase();
-      if (s.includes('skip')) {
-        totalSkipped += 1;
-        const rawReason = app.skip_reason || 'unknown_reason';
-        let reason = rawReason;
-        if (
-          reason.includes('blacklist_rules.company') ||
-          reason.includes('company_blacklist')
-        ) {
-          reason = 'Blacklisted Company';
-        } else if (
-          reason.includes('blacklist_rules.title') ||
-          reason.includes('title_blacklist')
-        ) {
-          reason = 'Blacklisted Job Title';
-        } else if (reason.includes('require_visa') || reason.includes('visa')) {
-          reason = 'Visa Sponsorship Required';
-        } else if (
-          reason.includes('years_of_experience') ||
-          reason.includes('experience')
-        ) {
-          reason = 'Experience Requirements Mismatch';
-        } else if (reason.includes('resume') || reason.includes('no_resume')) {
-          reason = 'Missing Resume';
-        } else if (reason.includes('whitelist')) {
-          reason = 'Whitelist Check Failed';
-        } else if (reason.startsWith('no_') || reason.includes('missing')) {
-          reason = `Missing required field: ${reason.replace('no_', '').replace('_', ' ')}`;
-        } else {
-          reason = reason
-            .replace(/_/g, ' ')
-            .replace(/\b\w/g, (char) => char.toUpperCase());
-        }
-        skipReasonCounts[reason] = (skipReasonCounts[reason] || 0) + 1;
-      }
-    });
-
-    const skipReasons = Object.keys(skipReasonCounts)
-      .map((name) => ({
-        name,
-        value: skipReasonCounts[name],
-        percentage:
-          totalSkipped > 0 ?
-            Math.round((skipReasonCounts[name] / totalSkipped) * 100)
-          : 0,
-      }))
-      .sort((a, b) => b.value - a.value)
-      .slice(0, 5);
 
     const cityCounts: Record<string, number> = {};
     applications.forEach((app) => {
@@ -1538,7 +1450,7 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
 
     const companyCounts: Record<string, number> = {};
     applications.forEach((app) => {
-      if (app.status.toLowerCase().includes('submit') && app.company) {
+      if (app.company) {
         companyCounts[app.company] = (companyCounts[app.company] || 0) + 1;
       }
     });
@@ -1564,7 +1476,6 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
     return {
       trend,
       statusDistribution,
-      skipReasons,
       topCities,
       topCompanies,
       recentActivities,
@@ -1613,7 +1524,6 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
     saveQuestion,
     deleteQuestion,
     saveApplicationPatch,
-    applicationPlanAction,
     deleteApplication,
     startWorker,
     stopWorker,

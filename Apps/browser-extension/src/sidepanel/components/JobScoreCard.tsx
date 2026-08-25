@@ -4,14 +4,15 @@ import { CircularProgress } from '@jobby/ui/components/UI/Progress/CircularProgr
 import { Number } from '@jobby/ui/components/UI/Number/Number';
 import { FileText, Layers, Loader2, Sparkles } from 'lucide-react';
 import type { DocType } from '../../shared/contracts/tailored-resume';
-import type { ValidatedApplicationPlanResponse } from '../../shared/contracts/backend';
+import type { JobMatchEvaluation } from '../../shared/contracts/job-match';
 import type { PageInspection } from '../../shared/contracts/page-inspection';
 import { parseAndFormatJobDate } from '../../shared/utils/date-formatter';
 import { cn } from '@jobby/ui/lib/utils';
 
 interface JobScoreCardProps {
   latestInspection: PageInspection | null;
-  latestPlan: ValidatedApplicationPlanResponse | null;
+  latestMatch: JobMatchEvaluation | null;
+  isMatchLoading?: boolean;
   isInspecting?: boolean;
   onTailor?: (type: DocType) => void;
   activeGeneration?: {
@@ -23,9 +24,23 @@ interface JobScoreCardProps {
   onSignIn?: () => void;
 }
 
+export function jobMatchLabel(
+  authConnected: boolean,
+  isMatchLoading: boolean,
+  percentage: number | null,
+): string {
+  if (!authConnected) return 'Sign In for Match Score';
+  if (isMatchLoading) return 'Calculating Score...';
+  if (percentage === null) return 'Score unavailable';
+  if (percentage >= 70) return 'Highly Recommended';
+  if (percentage >= 45) return 'Recommended';
+  return 'Not Recommended';
+}
+
 export function JobScoreCard({
   latestInspection,
-  latestPlan,
+  latestMatch,
+  isMatchLoading = false,
   isInspecting: _isInspecting = false,
   onTailor,
   activeGeneration = null,
@@ -42,15 +57,17 @@ export function JobScoreCard({
     : bothGenerating ? 'CV and cover letter'
     : 'CV';
 
-  const decision = latestPlan?.plan?.decision;
-  const candidate = latestPlan?.plan?.candidate;
+  const decision = latestMatch?.decision;
+  const candidate = latestMatch?.candidate;
 
-  // Live date on screen (latestInspection.snapshot.datePosted) is the authoritative ground truth
+  // Prefer the backend's current scoring result; derive freshness locally only
+  // when the response cannot provide it.
   const snapshot =
     latestInspection?.kind === 'job' ? latestInspection.snapshot : null;
   const derivedRecency = (() => {
-    if (snapshot?.datePosted) {
-      const info = parseAndFormatJobDate(snapshot.datePosted);
+    if (candidate?.recency_factor != null) return candidate.recency_factor;
+    if (snapshot?.lastPostedAt) {
+      const info = parseAndFormatJobDate(snapshot.lastPostedAt);
       if (info.ageInDays != null) {
         const d = Math.max(0, info.ageInDays);
         if (d <= 4.0) return Math.round((1.0 - 0.04 * d) * 10000) / 10000;
@@ -59,37 +76,11 @@ export function JobScoreCard({
         );
       }
     }
-    return (
-      candidate?.recency_factor ??
-      ((
-        candidate?.priority_score != null &&
-        candidate?.match_score != null &&
-        candidate.match_score > 0
-      ) ?
-        candidate.priority_score / candidate.match_score
-      : 0.5)
-    );
+    return 0.5;
   })();
 
-  const optimisticSkillScore = (() => {
-    if (!snapshot) return null;
-    const techs = snapshot.technologies || [];
-    if (techs.length > 0) return 0.88;
-    return 0.75;
-  })();
-
-  const rawMatchScore =
-    candidate?.match_score ??
-    candidate?.skill_score ??
-    (candidate?.priority_score != null && derivedRecency > 0 ?
-      candidate.priority_score / derivedRecency
-    : optimisticSkillScore);
-
-  // Overall Score strictly incorporates the time penalty
   const overallScore =
-    rawMatchScore != null ?
-      rawMatchScore * derivedRecency
-    : (candidate?.priority_score ?? decision?.score ?? null);
+    candidate?.priority_score ?? decision?.score ?? candidate?.match_score ?? null;
 
   const explanation = decision?.explanation;
 
@@ -100,12 +91,11 @@ export function JobScoreCard({
     !isNaN(overallScore);
   const percentage = hasScore ? Math.round(overallScore * 100) : 0;
 
-  const matchLabel =
-    !authConnected ? 'Sign In for Match Score'
-    : !hasScore ? 'Calculating Score...'
-    : percentage >= 70 ? 'Highly Recommended'
-    : percentage >= 45 ? 'Recommended'
-    : 'Not Recommended';
+  const matchLabel = jobMatchLabel(
+    authConnected,
+    isMatchLoading,
+    hasScore ? percentage : null,
+  );
 
   const skillPct = Math.min(
     100,
@@ -113,7 +103,6 @@ export function JobScoreCard({
       0,
       candidate?.skill_score != null ? Math.round(candidate.skill_score * 100)
       : candidate?.match_score != null ? Math.round(candidate.match_score * 100)
-      : optimisticSkillScore != null ? Math.round(optimisticSkillScore * 100)
       : percentage,
     ),
   );
@@ -160,7 +149,7 @@ export function JobScoreCard({
               : 'danger'
             }
             showValue={false}
-            isIndeterminate={authConnected && !hasScore}
+            isIndeterminate={authConnected && isMatchLoading}
             thickness={8}
           />
 
@@ -170,7 +159,8 @@ export function JobScoreCard({
               hasScore ? percentage
               : !authConnected ?
                 '--'
-              : '..'
+              : isMatchLoading ? '..'
+              : '--'
             }
           />
         </div>
@@ -181,7 +171,7 @@ export function JobScoreCard({
             <span
               className={cn(
                 'font-bold text-xs text-foreground truncate',
-                hasScore || !authConnected ? '' : (
+                hasScore || !authConnected || !isMatchLoading ? '' : (
                   'animate-text-shimmer-primary animate-text-shimmer'
                 ),
               )}
@@ -314,7 +304,8 @@ export function JobScoreCard({
                 <span className='shrink-0 font-mono text-[9px]'>--</span>
               </div>
             </div>
-          : <div className='grid grid-cols-2 mr-4 gap-x-3 gap-y-1.5 mt-0.5 text-[10px] select-none'>
+          : isMatchLoading ?
+            <div className='grid grid-cols-2 mr-4 gap-x-3 gap-y-1.5 mt-0.5 text-[10px] select-none'>
               <div className='flex items-center gap-1.5 min-w-0'>
                 <span className='w-7 shrink-0 text-muted-foreground font-medium truncate'>
                   Skill
@@ -340,6 +331,10 @@ export function JobScoreCard({
                 <div className='h-1.5 flex-1 rounded-full overflow-hidden animate-skeleton-shimmer' />
               </div>
             </div>
+          : <p className='mt-1 text-[10px] leading-relaxed text-muted-foreground'>
+              Add a resume profile to calculate Skill, Title, Experience, and
+              Freshness scores.
+            </p>
           }
         </div>
       </div>

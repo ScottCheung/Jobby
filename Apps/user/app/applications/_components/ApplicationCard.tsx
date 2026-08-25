@@ -12,7 +12,6 @@ import {
   Briefcase,
   ChevronRight,
   RefreshCw,
-  AlertCircle,
   FileText,
   Calendar,
 } from 'lucide-react';
@@ -35,12 +34,13 @@ export interface ApplicationCardViewModel {
   isLiveProcessing: boolean;
   stageTimestamp?: string | null;
   displayStageTime: string;
-  skipReason?: string | null;
-  shouldShowSkipReason: boolean;
   jobLink?: string | null;
   hasTailoredResume?: boolean;
-  datePosted?: string | null;
-  displayDatePosted?: string | null;
+  firstPostedAt?: string | null;
+  lastPostedAt?: string | null;
+  displayFirstPostedAt?: string | null;
+  displayLastPostedAt?: string | null;
+  isReposted?: boolean;
   jobDescription?: string | null;
 }
 
@@ -150,15 +150,27 @@ export function ApplicationCard({
         {/* Job Posting Info & Requisition Details */}
         <div className='mt-4 flex flex-col gap-2 rounded-xl border border-primary/40 bg-background-secondary/30 p-3 text-xs text-ink-secondary'>
           <div className='flex items-center justify-between gap-2 flex-wrap'>
-            {/* Job Posted Info Field */}
-            <div className='flex items-center gap-1.5 text-primary font-medium'>
-              <Clock className='size-3.5 shrink-0 text-primary' />
-              <span>
-                Posted:{' '}
-                <strong className='font-bold text-ink-primary'>
-                  {entry.displayDatePosted || entry.datePosted || 'Recently'}
-                </strong>
-              </span>
+            <div className='grid gap-1 text-primary font-medium'>
+              {entry.isReposted && (
+                <div className='flex items-center gap-1.5'>
+                  <Clock className='size-3.5 shrink-0 text-primary' />
+                  <span>
+                    First posted:{' '}
+                    <strong className='font-bold text-ink-primary'>
+                      {entry.displayFirstPostedAt || entry.firstPostedAt || 'Unknown'}
+                    </strong>
+                  </span>
+                </div>
+              )}
+              <div className='flex items-center gap-1.5'>
+                <Clock className='size-3.5 shrink-0 text-primary' />
+                <span>
+                  {entry.isReposted ? 'Reposted' : 'Posted'}:{' '}
+                  <strong className='font-bold text-ink-primary'>
+                    {entry.displayLastPostedAt || entry.lastPostedAt || entry.displayFirstPostedAt || entry.firstPostedAt || 'Unknown'}
+                  </strong>
+                </span>
+              </div>
             </div>
 
             {/* Applied Stage Time */}
@@ -201,18 +213,7 @@ export function ApplicationCard({
           </div>
         </div>
 
-        {/* Skip Reason Alert Box or Job Description Snippet */}
-        {entry.shouldShowSkipReason && entry.skipReason ?
-          <div className='mt-3.5 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-700 dark:text-amber-300 flex items-start gap-2'>
-            <AlertCircle className='size-4 text-amber-500 shrink-0 mt-0.5' />
-            <div className='min-w-0 flex-1'>
-              <span className='font-bold uppercase tracking-wider text-[10px] block mb-0.5'>
-                Review Note
-              </span>
-              <p className='leading-relaxed italic'>{entry.skipReason}</p>
-            </div>
-          </div>
-        : entry.jobDescription ?
+        {entry.jobDescription ?
           <Tooltip
             side='top'
             size='lg'

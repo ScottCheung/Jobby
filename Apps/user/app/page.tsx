@@ -7,7 +7,6 @@ import {
   CityVectorMap,
   EmptyPlaceHolder,
   H2,
-  SegmentedControl,
   ToggleGroup,
 } from '@jobby/ui';
 
@@ -18,8 +17,6 @@ import { useConsole } from '@/components/ConsoleContext';
 import {
   getDisplayApplicationStatus,
   getStatusBadgeClasses,
-  shouldShowApplicationSkipReason,
-  type DesktopBotPlatform,
 } from '@/lib/types';
 import {
   ChartNoAxesGantt,
@@ -36,37 +33,10 @@ import {
   Briefcase,
   GraduationCap,
   MessageSquareCode,
-  LayoutGrid,
 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { formatDate } from '@/components/ConsoleUtils';
-
-const PLATFORM_CARDS: Array<{
-  key: DesktopBotPlatform;
-  label: string;
-  subtitle: string;
-  actionLabel: string;
-}> = [
-  {
-    key: 'linkedin',
-    label: 'LinkedIn Automation',
-    subtitle: 'Easy Apply Bot',
-    actionLabel: 'Start LinkedIn',
-  },
-  {
-    key: 'seek',
-    label: 'Seek Automation',
-    subtitle: 'Quick Apply Bot',
-    actionLabel: 'Start Seek',
-  },
-  {
-    key: 'third_party',
-    label: 'Third-Party Assist',
-    subtitle: 'Guided Form Fill',
-    actionLabel: 'Assist Current Page',
-  },
-];
 
 type QuickStartStep = {
   title: string;
@@ -106,7 +76,7 @@ function ApplicationQuickStart() {
     {
       title: 'Set your target roles',
       description:
-        'Add at least one job title or keyword so the automation knows what to search for.',
+        'Add job titles or keywords for resume tailoring and recommendations.',
       href: '/settings/career-profiles',
       action: 'Set search target',
       icon: Search,
@@ -133,8 +103,8 @@ function ApplicationQuickStart() {
           <Sparkles className='mb-2 h-7 w-7 text-primary' />
           <h2 className='title-sub text-ink-primary'>2 Min Quick Start</h2>
           <p className='body-sm mt-1 text-ink-secondary'>
-            Complete these essentials once so your application automation has
-            the information it needs to run.
+            Complete these essentials once so job recognition, autofill, and
+            document tailoring have the information they need.
           </p>
         </div>
 
@@ -445,7 +415,7 @@ export default function OverviewPage() {
           <div>
             <H2>Application Trend</H2>
             <p className='text-meta dark:text-ink-primary0'>
-              Daily tracking of submitted vs skipped applications
+              Daily submitted applications
             </p>
           </div>
 
@@ -480,7 +450,7 @@ export default function OverviewPage() {
             showXAxis={false}
             showYAxis={false}
             xKey='date'
-            yKeys={['Skipped', 'Submitted']}
+            yKeys={['Submitted']}
             showLegend
             yDomain={[0, 'dataMax']}
             // stacked
@@ -516,34 +486,12 @@ export default function OverviewPage() {
         </div>
       </div>
 
-      {/* Row 2: Insights & Work Style Breakdown */}
-      {/* Skip Reasons Card */}
-      <div className='col-span-12 md:col-span-12 lg:col-span-4 bg-panel rounded-card p-card'>
-        <div>
-          <H2>Top Skip Reasons</H2>
-          <p className='text-meta dark:text-ink-primary0 mb-4'>
-            Main constraints preventing automatic job application
-          </p>
-
-          <Chart
-            type='bar-list'
-            data={dashboardData.skipReasons}
-            nameKey='name'
-            valueKey='value'
-            maxEquivalent={true}
-            barColorClassName='bg-gradient-to-r from-[#eaab41] to-[#efc95d]'
-            emptyMessage='No skipped applications recorded yet.'
-            valueFormatter={(val, item) => `${val} (${item.percentage}%)`}
-          />
-        </div>
-      </div>
-
       {/* Top Companies Card */}
-      <div className='col-span-12 md:col-span-6 lg:col-span-4 bg-panel rounded-card p-card'>
+      <div className='col-span-12 md:col-span-6 bg-panel rounded-card p-card'>
         <div>
           <H2>Top Applied Companies</H2>
           <p className='text-meta dark:text-ink-primary0 mb-4'>
-            Most frequent companies targeted by automation bot
+            Companies you have applied to most often
           </p>
           <Chart
             type='bar-list'
@@ -559,11 +507,11 @@ export default function OverviewPage() {
       </div>
 
       {/* Top Cities Card */}
-      <div className='col-span-12 md:col-span-6 lg:col-span-4 bg-panel rounded-card p-card'>
+      <div className='col-span-12 md:col-span-6 bg-panel rounded-card p-card'>
         <div>
           <H2>Cities</H2>
           <p className='text-meta dark:text-ink-primary0 mb-4'>
-            Geographical distribution of job automation activity
+            Geographical distribution of submitted applications
           </p>
           <ChartWrapper className='h-64'>
             <CityVectorMap data={dashboardData.topCities} className='h-full' />
@@ -577,7 +525,7 @@ export default function OverviewPage() {
           <div>
             <H2>Recent Application History</H2>
             <p className='text-meta dark:text-ink-primary0'>
-              The latest application attempts by the Jobbie
+              Your latest submitted applications
             </p>
           </div>
           <Link
@@ -635,15 +583,6 @@ export default function OverviewPage() {
                           >
                             {displayStatus}
                           </span>
-                          {shouldShowApplicationSkipReason(item) &&
-                            item.skip_reason && (
-                              <p
-                                className='text-[9px] text-zinc-400 dark:text-ink-primary0 italic max-w-[150px] truncate'
-                                title={item.skip_reason}
-                              >
-                                {item.skip_reason}
-                              </p>
-                            )}
                         </td>
                         <td className='body-sm py-3 pl-4 text-right text-ink-primary0 dark:text-ink-primary0 whitespace-nowrap'>
                           {formatDate(

@@ -21,7 +21,9 @@
 
 body {
   margin: 0;
-  min-width: 320px;
+  min-width: 0;
+  width: 100%;
+  overflow-x: clip;
   @apply bg-background text-foreground;
 }
 
@@ -58,7 +60,7 @@ button.is-loading {
 
 /* Side panel shell: mirrors the application design system's page → panel → module hierarchy. */
 .sidepanel-shell {
-  @apply min-h-screen bg-background text-foreground;
+  @apply min-h-screen bg-background text-foreground w-full min-w-0 max-w-full;
   overflow-x: clip;
 }
 .sidepanel-header {
@@ -122,7 +124,7 @@ button.is-loading {
   @apply text-right text-[10px] leading-tight text-destructive;
 }
 .sidepanel-content {
-  @apply grid gap-4 p-3 pb-24 max-w-full;
+  @apply grid gap-4 p-3 pb-24 w-full min-w-0 max-w-full;
   overflow-x: clip;
 }
 /* ── Bottom Navigation ─────────────────────────────────────────────────── */
@@ -393,7 +395,7 @@ p {
   @apply grid gap-2 border-b border-primary py-2 last:border-b-0 min-w-0 max-w-full overflow-hidden;
 }
 .form-field-heading {
-  @apply flex items-center gap-2 min-w-0 max-w-full relative;
+  @apply flex items-start gap-2 min-w-0 max-w-full relative;
 }
 .form-field-focus {
   @apply flex-1 grid gap-0.5 min-h-0 p-0 border-0 bg-transparent text-left text-foreground min-w-0 max-w-full overflow-hidden;
@@ -411,7 +413,7 @@ p {
   @apply text-muted-foreground/60;
 }
 .form-field-status {
-  @apply shrink-0 w-5 h-5 p-0 rounded-full  flex items-center justify-center transition-all duration-150 cursor-pointer relative z-10 pointer-events-auto hover:scale-110 focus:outline-none focus:ring-2 focus:ring-primary/40;
+  @apply shrink-0 w-5 h-5 p-0 rounded-full flex items-center justify-center transition-all duration-150 cursor-pointer relative z-10 pointer-events-auto hover:scale-110 focus:outline-none focus:ring-2 focus:ring-primary/40 mt-1;
 }
 .form-field-status.is-filled {
   @apply border-emerald-500 bg-emerald-500 text-white;
@@ -423,7 +425,7 @@ p {
   @apply border-primary/50! bg-primary/10! text-primary! cursor-wait!;
 }
 .form-field-edit {
-  @apply shrink-0 min-h-[28px] rounded-full px-2 py-0 text-[11px] font-semibold text-primary;
+  @apply shrink-0 min-h-[28px] rounded-full px-2 py-0 text-[11px] font-semibold text-primary -mt-0.5;
 }
 .form-field-edit:hover:not(:disabled) {
   @apply bg-primary/20;
@@ -581,11 +583,6 @@ textarea.form-field-input {
   cursor: pointer;
 }
 
-/* Classifier rejected outright — grey/muted */
-.page-class-banner--skip {
-  @apply bg-panel border-primary text-muted-foreground;
-}
-
 .page-class-banner__icon {
   @apply shrink-0 w-4 text-center font-bold leading-[1.4];
 }
@@ -658,7 +655,7 @@ details.page-class-banner .page-class-banner__summary {
 
 /* Modal Overlay */
 .modal-backdrop {
-  @apply fixed inset-0 z-50 flex items-center justify-center p-3.5 bg-black/65 backdrop-blur-sm;
+  @apply fixed inset-0 z-[500] flex items-center justify-center p-3.5 bg-black/65 backdrop-blur-sm;
   animation: fadeIn 0.2s ease-out;
 }
 .modal-card {

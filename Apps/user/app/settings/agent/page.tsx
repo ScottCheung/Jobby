@@ -3,5 +3,5 @@
 import { redirect } from 'next/navigation';
 
 export default function LegacyAgentSettingsPage() {
-  redirect('/settings/apply-settings');
+  redirect('/settings/profile');
 }

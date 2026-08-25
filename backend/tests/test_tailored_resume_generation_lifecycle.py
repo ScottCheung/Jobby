@@ -67,7 +67,7 @@ def test_background_generation_uses_mocked_result_and_marks_ready() -> None:
         targeted_projects=[],
         error_message=None,
     )
-    application = SimpleNamespace(id="application-1", date_posted=None)
+    application = SimpleNamespace(id="application-1", last_posted_at=None)
     db = MagicMock()
     db.get.side_effect = lambda model, _id: (
         tailored_resume if model is main.TailoredResume else application

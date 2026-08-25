@@ -19,7 +19,9 @@ describe('Document Studio & Resume Tailoring (Zero-Token Mock Mode)', () => {
       url: 'https://www.linkedin.com/jobs/view/12345',
       title: 'Senior Frontend Engineer',
       company: 'Acme Corp',
-      datePosted: 'Posted 2 days ago',
+      firstPostedAt: '2026-08-24T00:00:00.000Z',
+      lastPostedAt: '2026-08-24T00:00:00.000Z',
+      postingObservedAt: '2026-08-26T00:00:00.000Z',
       description: 'Looking for a Senior Frontend Engineer proficient in React, TypeScript, and Tailwind CSS.',
       technologies: ['React', 'TypeScript', 'Tailwind CSS'],
       easyApply: true,
@@ -60,7 +62,7 @@ describe('Document Studio & Resume Tailoring (Zero-Token Mock Mode)', () => {
     if (sampleInspection.kind === 'job') {
       expect(sampleInspection.snapshot.title).toBe('Senior Frontend Engineer');
       expect(sampleInspection.snapshot.company).toBe('Acme Corp');
-      expect(sampleInspection.snapshot.datePosted).toBe('Posted 2 days ago');
+      expect(sampleInspection.snapshot.lastPostedAt).toBe('2026-08-24T00:00:00.000Z');
       expect(sampleInspection.snapshot.description).toContain('Senior Frontend Engineer');
     }
   });

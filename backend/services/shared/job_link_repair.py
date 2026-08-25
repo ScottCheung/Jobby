@@ -119,7 +119,6 @@ def _merge_json_ld(target: dict[str, Any], posting: dict) -> None:
 
     target["work_location"] = _location_from_json_ld(posting.get("jobLocation"))
     target["job_description"] = _clean_html(posting.get("description"))
-    target["date_posted"] = _clean_text(posting.get("datePosted"))
 
     workplace_type = posting.get("jobLocationType")
     if isinstance(workplace_type, str) and workplace_type.upper() == "TELECOMMUTE":

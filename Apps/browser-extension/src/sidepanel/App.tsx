@@ -5,6 +5,10 @@ import { Sparkles } from 'lucide-react';
 import { Button } from '@jobby/ui/components/UI/Button';
 import { Input } from '@jobby/ui/components/UI/input';
 import { Textarea } from '@jobby/ui/components/UI/textarea';
+import type {
+  JobSnapshot,
+  PageInspection,
+} from '../shared/contracts/page-inspection';
 import type { DocType } from '../shared/contracts/tailored-resume';
 import { AuthCard } from './components/AuthCard';
 import { AuthGuardBanner } from './components/AuthGuardBanner';
@@ -15,15 +19,16 @@ import { HeaderQuickActions } from './components/HeaderQuickActions';
 import { JobScoreCard } from './components/JobScoreCard';
 import { PageClassBanner } from './components/PageClassBanner';
 import { ResultsDisplay } from './components/ResultsDisplay';
-import { ReviewModal } from './components/ReviewModal';
 import { WorkflowSection } from './components/WorkflowSection';
-import { useApplicationPlan } from './hooks/useApplicationPlan';
+import { useApplicationTools } from './hooks/useApplicationTools';
 import { useAuth } from './hooks/useAuth';
 import { useDiagnostics } from './hooks/useDiagnostics';
 import { useInspection } from './hooks/useInspection';
+import { useJobMatch } from './hooks/useJobMatch';
 import { useTailoredResumeStudio } from './hooks/useTailoredResumeStudio';
 import { useThemeSync } from './hooks/useThemeSync';
 import { getActiveTab } from './services/messaging';
+import { pageChangeInspectionRequest } from './services/page-change-inspection';
 import { IPEmotion } from '@jobby/ui/components/UI/IPEmotion';
 import { Toaster } from '@jobby/ui/components/UI/toast/toaster';
 import { cn } from '@jobby/ui/lib/utils';
@@ -36,7 +41,6 @@ const TailorStudioCard = lazy(() =>
 );
 
 export function App() {
-  const [isReviewOpen, setIsReviewOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('home');
   const [generationDraft, setGenerationDraft] = useState<{
     type: DocType;
@@ -64,6 +68,7 @@ export function App() {
     useThemeSync(authStatus);
   const {
     latestInspection,
+    setLatestInspection,
     latestForm,
     inspectionError,
     setInspectionError,
@@ -75,6 +80,7 @@ export function App() {
     autoInspectActivePage,
     inspectForm,
     focusFormField,
+    highlightJobRequirement,
     autofillSingleField,
     uploadTailoredResume,
     editFormField,
@@ -193,28 +199,14 @@ export function App() {
   }, []);
 
   const {
-    latestPlan,
-    planError,
-    retryPlan,
     loadingButton,
-    createPlan,
-    applyPlanAction,
     autofillForm,
-    fillAndNext,
-    openLinkedIn,
-    moveNext,
-    movePrevious,
-    submitApplication,
     recordApplication,
-    autoRunLinkedIn,
-    activeProfile,
-    profileSkills,
-    claimSkill,
-    unclaimSkill,
-  } = useApplicationPlan(
+    canRecordApplication,
+    isApplicationRecorded,
+  } = useApplicationTools(
     latestInspection,
     latestForm,
-    inspectPage,
     inspectForm,
     setInspectionError,
     applyAutofillResults,
@@ -222,9 +214,32 @@ export function App() {
     signIn,
   );
 
+  const jobMatch = useJobMatch(latestInspection, authStatus?.connected, signIn);
+  const isMatchPending = Boolean(
+    authStatus?.connected &&
+    latestInspection?.kind === 'job' &&
+    !jobMatch.evaluation &&
+    !jobMatch.error,
+  );
+
   const handleReDetectPage = async () => {
     await inspectPage();
     void inspectForm(true);
+  };
+
+  const handleUpdateJobSnapshot = (updates: Partial<JobSnapshot>) => {
+    setLatestInspection((prev) => {
+      if (!prev || prev.kind !== 'job') return prev;
+      const updatedInspection: PageInspection = {
+        ...prev,
+        originalSnapshot: prev.snapshot,
+        snapshot: {
+          ...prev.snapshot,
+          ...updates,
+        } as JobSnapshot,
+      };
+      return updatedInspection;
+    });
   };
 
   const tailorStudio = useTailoredResumeStudio(
@@ -275,44 +290,43 @@ export function App() {
   useEffect(() => {
     refresh();
     refreshAuth();
-    const inspectCurrentPage = (showLoading: boolean) => {
-      void autoInspectActivePage(false, showLoading).then((isJob) => {
+    const inspectCurrentPage = (showLoading: boolean, force = false) => {
+      void autoInspectActivePage(force, showLoading).then((isJob) => {
         if (isJob) {
           void inspectForm(true);
         }
       });
     };
     let scheduledInspection: number | undefined;
-    const scheduleInspection = (showLoading: boolean) => {
+    const scheduleInspection = (showLoading: boolean, force = false) => {
       if (scheduledInspection !== undefined) {
         window.clearTimeout(scheduledInspection);
       }
       scheduledInspection = window.setTimeout(() => {
         scheduledInspection = undefined;
-        inspectCurrentPage(showLoading);
+        inspectCurrentPage(showLoading, force);
       }, PAGE_READY_DELAY_MS);
     };
 
     inspectCurrentPage(true);
 
-    const onTabActivated = () => scheduleInspection(true);
+    const onTabActivated = () => scheduleInspection(true, true);
     const onTabUpdated = (
       tabId: number,
       changeInfo: chrome.tabs.TabChangeInfo,
     ) => {
       if (!changeInfo.url && changeInfo.status !== 'complete') return;
       void getActiveTab().then((tab) => {
-        if (tab?.id === tabId) scheduleInspection(true);
+        if (tab?.id === tabId) scheduleInspection(true, true);
       });
     };
 
     const onRuntimeMessage = (message: unknown) => {
-      if (
-        typeof message === 'object' &&
-        message !== null &&
-        (message as { type?: unknown }).type === 'content.page-changed'
-      ) {
-        scheduleInspection(false);
+      const request = pageChangeInspectionRequest(message);
+      if (request) {
+        // Job-board split views can select a different card without changing
+        // either the active tab or its URL.
+        scheduleInspection(request.showLoading, request.force);
       }
     };
 
@@ -394,11 +408,6 @@ export function App() {
     };
   }, []);
 
-  const handleConfirmSubmit = async () => {
-    setIsReviewOpen(false);
-    await submitApplication();
-  };
-
   const finalizePendingFormAction = async (save: boolean) => {
     if (!pendingFormAction || isFinalizingFormAction) return;
     setIsFinalizingFormAction(true);
@@ -467,9 +476,7 @@ export function App() {
 
       <div className='sidepanel-content'>
         {!authStatus?.connected && (
-          <div className='px-4 pt-3 pb-1'>
-            <AuthGuardBanner onSignIn={signIn} isSigningIn={isSigningIn} />
-          </div>
+          <AuthGuardBanner onSignIn={signIn} isSigningIn={isSigningIn} />
         )}
 
         {activeTab === 'home' && (
@@ -523,7 +530,8 @@ export function App() {
                   <>
                     <JobScoreCard
                       latestInspection={latestInspection}
-                      latestPlan={latestPlan}
+                      latestMatch={jobMatch.evaluation}
+                      isMatchLoading={jobMatch.isEvaluating || isMatchPending}
                       isInspecting={isInspectingPage}
                       onTailor={openGenerationConfirmation}
                       activeGeneration={activeTailorGeneration}
@@ -532,15 +540,18 @@ export function App() {
                     />
                     <PageClassBanner
                       latestInspection={latestInspection}
-                      latestPlan={latestPlan}
+                      latestMatch={jobMatch.evaluation}
+                      isMatchLoading={jobMatch.isEvaluating || isMatchPending}
                       isInspecting={isInspectingPage}
-                      error={planError}
-                      onRetryPlan={retryPlan}
-                      onClaimSkill={claimSkill}
-                      onUnclaimSkill={unclaimSkill}
-                      activeProfile={activeProfile}
-                      profileSkills={profileSkills}
+                      error={jobMatch.error}
+                      onRetryMatch={() => void jobMatch.retry()}
+                      onClaimSkill={jobMatch.claimSkill}
+                      onUnclaimSkill={jobMatch.unclaimSkill}
+                      activeProfile={jobMatch.activeProfile}
+                      profileSkills={jobMatch.profileSkills}
                       onReDetect={handleReDetectPage}
+                      onUpdateJobSnapshot={handleUpdateJobSnapshot}
+                      onHighlightJobRequirement={highlightJobRequirement}
                       authConnected={authStatus?.connected}
                       onSignIn={signIn}
                     />
@@ -556,21 +567,14 @@ export function App() {
             >
               <p className='menu-label'>Actions</p>
               <WorkflowSection
-                latestInspection={latestInspection}
                 latestForm={latestForm}
-                latestPlan={latestPlan}
                 loadingButton={loadingButton}
                 isClearingForm={isClearingForm}
+                canRecordApplication={canRecordApplication}
+                isApplicationRecorded={isApplicationRecorded}
                 onAutofill={autofillForm}
                 onClearAll={clearAllFormFields}
-                onAutoApply={autoRunLinkedIn}
-                onOpenLinkedIn={openLinkedIn}
-                onMovePrevious={movePrevious}
-                onMoveNext={moveNext}
-                onFillAndNext={fillAndNext}
-                onOpenReviewModal={() => setIsReviewOpen(true)}
                 onRecordApplication={recordApplication}
-                hideAutofill
                 authConnected={authStatus?.connected}
                 onSignIn={signIn}
               />
@@ -599,25 +603,15 @@ export function App() {
         {activeTab === 'form' && (
           <div className='panel-form-area'>
             <div
-              className={`sticky-autofill ${
-                navVisible ? 'top-[44px]' : 'top-0'
-              }`}
+              className={`sticky-autofill  ${navVisible ? 'top-[44px]' : 'top-0'}`}
               aria-label='Form autofill'
             >
               <WorkflowSection
-                latestInspection={latestInspection}
                 latestForm={latestForm}
-                latestPlan={latestPlan}
                 loadingButton={loadingButton}
                 isClearingForm={isClearingForm}
                 onAutofill={autofillForm}
                 onClearAll={clearAllFormFields}
-                onAutoApply={autoRunLinkedIn}
-                onOpenLinkedIn={openLinkedIn}
-                onMovePrevious={movePrevious}
-                onMoveNext={moveNext}
-                onFillAndNext={fillAndNext}
-                onOpenReviewModal={() => setIsReviewOpen(true)}
                 autofillOnly
                 authConnected={authStatus?.connected}
                 onSignIn={signIn}
@@ -651,16 +645,8 @@ export function App() {
             aria-label='Advanced tools'
           >
             <DebugDrawer
-              latestInspection={latestInspection}
-              latestForm={latestForm}
-              latestPlan={latestPlan}
-              loadingButton={loadingButton}
               onInspectPage={inspectPage}
               onInspectForm={inspectForm}
-              onCreatePlan={createPlan}
-              onApplyPlanAction={applyPlanAction}
-              onMoveNext={moveNext}
-              onMovePrevious={movePrevious}
             />
             <DiagnosticsCard
               diagnostics={diagnostics}
@@ -676,16 +662,6 @@ export function App() {
         onChange={setActiveTab}
         visible={navVisible}
         hasNewDocuments={tailorStudio.hasNewDocuments}
-      />
-
-      <ReviewModal
-        isOpen={isReviewOpen}
-        latestInspection={latestInspection}
-        latestPlan={latestPlan}
-        latestForm={latestForm}
-        loadingButton={loadingButton}
-        onClose={() => setIsReviewOpen(false)}
-        onConfirmSubmit={handleConfirmSubmit}
       />
 
       {generationDraft && (
@@ -797,8 +773,8 @@ export function App() {
               <p className='text-xs leading-relaxed text-muted-foreground'>
                 Your application has continued. Save the{' '}
                 {pendingFormAction.pendingCount}{' '}
-                {pendingFormAction.pendingCount === 1 ? 'answer' : 'answers'}
-                {' '}you entered so Jobby can reuse them next time.
+                {pendingFormAction.pendingCount === 1 ? 'answer' : 'answers'}{' '}
+                you entered so Jobby can reuse them next time.
               </p>
               {formActionError && (
                 <p className='rounded-xl bg-destructive/10 p-3 text-xs text-destructive'>

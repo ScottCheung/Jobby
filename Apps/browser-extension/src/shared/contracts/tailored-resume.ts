@@ -83,7 +83,7 @@ export type JobReviewPayload = {
   job_description: string;
   title?: string;
   company?: string;
-  date_posted?: string;
+  last_posted_at?: string;
   doc_type?: DocType;
   mock?: boolean;
   generation_id?: string;

@@ -1,8 +1,9 @@
 /** @format */
 
 import { useEffect, useRef, useState } from 'react';
-import { Check, RotateCw, Circle, History } from 'lucide-react';
+import { Check, RotateCw, Circle, History, ChevronDown } from 'lucide-react';
 import { IPEmotion } from '@jobby/ui/components/UI/IPEmotion';
+import { cn } from '@jobby/ui/lib/utils';
 import type {
   FormFieldObservation,
   FormInspection,
@@ -239,6 +240,121 @@ function displayLabel(field: FormFieldObservation): string {
   return field.label;
 }
 
+interface ExpandableAnswerProps {
+  value: string;
+  isFilled: boolean;
+  isAutofilling: boolean;
+}
+
+export function ExpandableAnswer({
+  value,
+  isFilled,
+  isAutofilling,
+}: ExpandableAnswerProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [isClamped, setIsClamped] = useState(false);
+  const [measuredHeight, setMeasuredHeight] = useState<number | undefined>(
+    undefined,
+  );
+  const textRef = useRef<HTMLSpanElement>(null);
+
+  const displayText = isAutofilling && !isFilled ? 'AI is thinking...' : value;
+
+  useEffect(() => {
+    const el = textRef.current;
+    if (!el) return;
+
+    const measure = () => {
+      const computed = window.getComputedStyle(el);
+      const lineHeight = parseFloat(computed.lineHeight) || 19.25;
+      const twoLinesMax = lineHeight * 2 + 3;
+
+      const scrollH = el.scrollHeight;
+      const exceeds = scrollH > twoLinesMax;
+
+      setIsClamped(exceeds);
+      if (exceeds) {
+        setMeasuredHeight(scrollH);
+      } else {
+        setIsExpanded(false);
+        setMeasuredHeight(undefined);
+      }
+    };
+
+    measure();
+
+    const resizeObserver = new ResizeObserver(() => {
+      measure();
+    });
+    resizeObserver.observe(el);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, [displayText, isFilled]);
+
+  useEffect(() => {
+    setIsExpanded(false);
+  }, [value]);
+
+  const handleToggle = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    e.nativeEvent?.stopImmediatePropagation?.();
+    setIsExpanded((prev) => !prev);
+  };
+
+  return (
+    <div className='flex flex-col min-w-0 max-w-full'>
+      <div
+        className={cn(
+          'transition-[max-height] duration-300 ease-in-out min-w-0 max-w-full overflow-hidden',
+          isClamped && !isExpanded ? 'max-h-[2.85em]' : '',
+        )}
+        style={
+          isClamped && isExpanded && measuredHeight ?
+            { maxHeight: `${measuredHeight + 8}px` }
+          : undefined
+        }
+      >
+        <span
+          ref={textRef}
+          className={cn(
+            'break-all block transition-colors duration-200',
+            isAutofilling && !isFilled ?
+              'animate-text-shimmer animate-text-shimmer-primary'
+            : '',
+            isClamped && !isExpanded ?
+              'line-clamp-2 [-webkit-box-orient:vertical] [display:-webkit-box] overflow-hidden'
+            : '',
+          )}
+        >
+          {displayText}
+        </span>
+      </div>
+
+      {isClamped && (
+        <button
+          type='button'
+          onClick={handleToggle}
+          aria-expanded={isExpanded}
+          className='group/expand inline-flex items-center gap-1 text-[10px] font-semibold text-primary/80 hover:text-primary transition-all duration-200 mt-1 self-start cursor-pointer select-none py-0.5 px-1 -ml-1 rounded hover:bg-primary/10 active:scale-95'
+        >
+          <span className='tracking-tight'>
+            {isExpanded ? 'Show less' : 'Show more'}
+          </span>
+          <ChevronDown
+            className={cn(
+              'w-3 h-3 text-primary/70 group-hover/expand:text-primary transition-transform duration-300 ease-out',
+              isExpanded ? 'rotate-180' : 'rotate-0',
+            )}
+          />
+        </button>
+      )}
+    </div>
+  );
+}
+
 function FormFieldRow({
   field,
   onFocusField,
@@ -382,12 +498,19 @@ function FormFieldRow({
   return (
     <article className='form-field-row min-w-0 max-w-full overflow-hidden'>
       <div className='form-field-heading min-w-0 max-w-full'>
-        <button
-          type='button'
-          className='form-field-focus min-w-0 max-w-full overflow-hidden'
+        <div
+          role='button'
+          tabIndex={0}
+          className='form-field-focus min-w-0 max-w-full overflow-hidden cursor-pointer'
           title='Locate field on webpage'
           aria-label={`Locate ${field.label}`}
           onClick={() => void onFocusField(field)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              void onFocusField(field);
+            }
+          }}
         >
           <span
             className={`transition-all duration-700 min-w-0 max-w-full block overflow-hidden ${!field.filled ? 'form-field-value' : 'form-field-label'}`}
@@ -408,19 +531,13 @@ function FormFieldRow({
           <span
             className={`transition-all duration-700 min-w-0 max-w-full block overflow-hidden ${field.filled ? 'form-field-value' : 'form-field-label'} `}
           >
-            <span
-              className={`break-all block ${
-                isAutofilling && !field.filled ?
-                  'animate-text-shimmer animate-text-shimmer-primary'
-                : ''
-              }`}
-            >
-              {isAutofilling && !field.filled ?
-                'AI is thinking...'
-              : currentValue}
-            </span>
+            <ExpandableAnswer
+              value={currentValue}
+              isFilled={field.filled}
+              isAutofilling={isAutofilling}
+            />
           </span>
-        </button>
+        </div>
         {editable && (
           <button
             type='button'

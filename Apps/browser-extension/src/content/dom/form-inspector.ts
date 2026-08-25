@@ -12,7 +12,6 @@ const CONTROL_SELECTOR = [
   "input:not([type='hidden']):not([type='button']):not([type='submit']):not([type='reset']):not([type='image'])",
   "select",
   "textarea",
-  "[role='combobox']",
 ].join(", ");
 const BUTTON_CHOICE_VALUE = /^(?:yes|no|true|false|agree|disagree|i agree|prefer not to say)$/i;
 const PLACEHOLDER_OPTION_LABELS = new Set([
@@ -88,11 +87,25 @@ function isLikelyHelperText(value: string): boolean {
     /^(?:accepted formats?|supported formats?|maximum file size|format:|e\.g\.?)/i.test(text);
 }
 
+function isValidationElement(element: HTMLElement): boolean {
+  const className = typeof element.className === "string" ? element.className : "";
+  return (
+    element.getAttribute("role") === "alert" ||
+    element.hasAttribute("aria-live") ||
+    /(?:^|[-_\s])(?:error|errors|invalid|validation|helper|hint)(?:$|[-_\s])/i.test(className) ||
+    /(?:error|validation|helper|hint)/i.test(element.id)
+  );
+}
+
 function precedingQuestionLabel(element: HTMLElement): string {
   let container: HTMLElement | null = element.closest<HTMLElement>("[data-testid='field'], [data-testid*='field' i]") || element.parentElement;
   for (let depth = 0; container && depth < 4; depth += 1) {
     let sibling = container.previousElementSibling as HTMLElement | null;
     while (sibling) {
+      if (isValidationElement(sibling)) {
+        sibling = sibling.previousElementSibling as HTMLElement | null;
+        continue;
+      }
       const text = cleanText(sibling.textContent);
       if (text.length >= 8 && text.length <= 500 && !isLikelyHelperText(text) && !/^(?:search|select|choose)$/i.test(text)) {
         return cleanLabel(text);
@@ -175,6 +188,31 @@ function observedOptionValue(value: string): string {
 
 export function isVisibleElement(element: HTMLElement): boolean {
   if (element.hidden || element.getAttribute("aria-hidden") === "true") return false;
+
+  // getComputedStyle(element) does not expose display:none on an ancestor in
+  // every DOM implementation. Walk the composed tree so stale wizard steps,
+  // hidden hydration copies, and controls inside hidden shadow hosts never
+  // become candidate questions.
+  let ancestor = composedParent(element);
+  for (let depth = 0; ancestor && depth < 32; depth += 1) {
+    if (
+      ancestor.hidden ||
+      ancestor.hasAttribute("inert") ||
+      ancestor.getAttribute("aria-hidden") === "true"
+    ) {
+      return false;
+    }
+    const ancestorStyle = window.getComputedStyle(ancestor);
+    if (
+      ancestorStyle.display === "none" ||
+      ancestorStyle.visibility === "hidden" ||
+      ancestorStyle.visibility === "collapse" ||
+      ancestorStyle.opacity === "0"
+    ) {
+      return false;
+    }
+    ancestor = composedParent(ancestor);
+  }
 
   // Fast path for Chromium / modern browser engines: native checkVisibility
   if (typeof (element as any).checkVisibility === "function") {
@@ -333,6 +371,7 @@ export function queryAllInScope<T extends HTMLElement>(scope: FormScope, selecto
     if (visitedRoots.has(root)) return;
     visitedRoots.add(root);
     results.push(...Array.from(root.querySelectorAll<T>(selector)));
+    if (root instanceof HTMLElement && root.shadowRoot) visit(root.shadowRoot);
     const hosts = root.querySelectorAll<HTMLElement>("*");
     for (let i = 0; i < hosts.length; i++) {
       const el = hosts[i];
@@ -401,8 +440,34 @@ function fieldType(element: HTMLElement): FormFieldType {
   return "unknown";
 }
 
+export function isGreenhouseLocation(element: HTMLElement): boolean {
+  if (!(element instanceof HTMLInputElement)) return false;
+  const id = cleanText(element.id).toLowerCase();
+  const name = cleanText(element.getAttribute("name")).toLowerCase();
+  const isGreenhousePage = Boolean(
+    element.closest("#grnhse_app, .job-post-container, form.application--form, form[action*='greenhouse.io']") ||
+    document.querySelector("#grnhse_app, .job-post-container, form.application--form, form[action*='greenhouse.io'], #job_application_location_id, input[name*='location_id']") ||
+    (typeof window !== "undefined" && /(?:^|\.)(?:boards|job-boards)\.greenhouse\.io$/i.test(window.location.hostname))
+  );
+  if (
+    id === "job_application_location" ||
+    id === "candidate_location" ||
+    name === "job_application[location]" ||
+    name === "candidate[location]" ||
+    id.includes("location_autocomplete") ||
+    element.classList.contains("ui-autocomplete-input")
+  ) {
+    return true;
+  }
+  if (isGreenhousePage && (id === "location" || name === "location" || id.includes("location") || name.includes("location"))) {
+    return true;
+  }
+  return false;
+}
+
 export function isSelectableCombobox(element: HTMLElement): boolean {
   if (!(element instanceof HTMLInputElement)) return false;
+  if (isGreenhouseLocation(element)) return true;
   const role = element.getAttribute("role");
   const ariaHasPopup = element.getAttribute("aria-haspopup");
   const ariaAutocomplete = element.getAttribute("aria-autocomplete");
@@ -536,6 +601,36 @@ function comboboxContainerFor(element: HTMLElement): HTMLElement | null {
     element.parentElement;
 }
 
+function controlledListboxFor(element: HTMLElement): HTMLElement | null {
+  const listboxId = cleanText(element.getAttribute("aria-controls"));
+  if (!listboxId) return null;
+  const root = element.getRootNode();
+  const localRoot = root instanceof Document || root instanceof ShadowRoot ? root : document;
+  return (
+    localRoot.querySelector<HTMLElement>(`#${CSS.escape(listboxId)}`) ||
+    (localRoot !== document
+      ? document.querySelector<HTMLElement>(`#${CSS.escape(listboxId)}`)
+      : null) ||
+    queryAllInScope<HTMLElement>(document, "[role='listbox']").find(
+      (candidate) => candidate.id === listboxId,
+    ) ||
+    null
+  );
+}
+
+function openComboboxValueIsCommitted(element: HTMLInputElement): boolean {
+  if (element.getAttribute("aria-expanded") !== "true") return true;
+  const inputValue = cleanText(element.value).toLowerCase();
+  if (!inputValue) return false;
+  const selectedOption = controlledListboxFor(element)?.querySelector<HTMLElement>(
+    "[role='option'][aria-selected='true'], [role='option'][aria-checked='true'], [role='option'][data-state='selected'], [role='option'][data-state='checked']",
+  );
+  const selectedValue = cleanText(
+    selectedOption?.getAttribute("aria-label") || selectedOption?.textContent,
+  ).toLowerCase();
+  return Boolean(selectedValue && selectedValue === inputValue);
+}
+
 export function isPhoneCountryElement(element: HTMLElement): boolean {
   const id = cleanText(element.id).toLowerCase();
   const name = cleanText(element.getAttribute("name")).toLowerCase();
@@ -570,6 +665,11 @@ export function comboboxCurrentValue(element: HTMLElement): string {
 
   const bridgedValue = observedOptionValue(inspectPageCombobox(element)?.currentValue || "");
   if (bridgedValue) return bridgedValue;
+
+  // Autocomplete inputs contain the search query while their popup is open.
+  // Ashby, for example, highlights "Sydney, New South Wales, Australia" but
+  // leaves the input as "Sydney" until the option is actually committed.
+  if (element instanceof HTMLInputElement && !openComboboxValueIsCommitted(element)) return "";
 
   const rawValue = element instanceof HTMLInputElement ? element.value : element.getAttribute("value");
   const directValue = observedOptionValue(cleanText(rawValue));
@@ -1052,6 +1152,38 @@ function requiredFor(element: HTMLElement): boolean {
   const fieldset = element.closest("fieldset");
   if (fieldset?.hasAttribute("required") || fieldset?.getAttribute("aria-required") === "true") return true;
 
+  const root = scopeFor(element, document);
+  const explicitLabel = element.id
+    ? root.querySelector<HTMLLabelElement>(`label[for='${CSS.escape(element.id)}']`)
+    : null;
+  const parentLabel = element.closest<HTMLLabelElement>("label");
+  const legend = fieldset?.querySelector("legend");
+  const labelledByMarker = cleanText(element.getAttribute("aria-labelledby"))
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((id) => cleanText(root.querySelector(`#${CSS.escape(id)}`)?.textContent))
+    .filter(Boolean)
+    .join(" ");
+  const markerContainer = element.closest<HTMLElement>(
+    "[data-required], [class~='required'], [class*='form-field' i], [class*='question' i], [data-testid*='field' i]",
+  );
+  const markerText = cleanText([
+    explicitLabel?.textContent,
+    parentLabel?.textContent,
+    legend?.textContent,
+    labelledByMarker,
+  ].filter(Boolean).join(" "));
+  if (!/\boptional\b|选填/i.test(markerText)) {
+    if (/\*|\brequired\b|必填/i.test(markerText)) return true;
+    if (
+      markerContainer?.getAttribute("data-required") === "true" ||
+      markerContainer?.classList.contains("required") ||
+      Boolean(markerContainer?.querySelector("[data-required='true'], [class~='required-marker'], [data-testid*='required-mark' i]"))
+    ) {
+      return true;
+    }
+  }
+
   const metadata = element.closest<HTMLElement>("[data-t1-control]")?.getAttribute("data-t1-control");
   if (metadata) {
     try {
@@ -1529,7 +1661,7 @@ export function isAutofillResumeInput(element: HTMLInputElement): boolean {
   if (
     closestComposed(
       element,
-      "spl-dropzone[data-test='apply-with-resume-container'], oc-apply-with-resume",
+      "spl-dropzone[data-test='apply-with-resume-container'], oc-apply-with-resume, .ashby-application-form-autofill-input-root, .ashby-application-form-autofill-pane",
     )
   ) {
     return true;
@@ -1550,6 +1682,7 @@ export function elementsInScope(scope: FormScope): HTMLElement[] {
     visitedRoots.add(root);
     const descendants = Array.from(root.querySelectorAll<HTMLElement>("*"));
     elements.push(...descendants);
+    if (root instanceof HTMLElement && root.shadowRoot) visit(root.shadowRoot);
     descendants.forEach((element) => {
       if (element.shadowRoot) visit(element.shadowRoot);
     });
@@ -1584,39 +1717,35 @@ export function fieldKeyFor(element: HTMLElement, index: number, scope?: FormSco
 
 type CheckboxChoiceGroup = {
   container: HTMLElement;
+  groupKey: string;
   name: string;
   label: string;
+  type: "checkbox" | "radio";
   required: boolean;
   options: HTMLInputElement[];
 };
 
 function checkboxChoiceGroupFor(
   element: HTMLInputElement,
-  scope: FormScope,
 ): CheckboxChoiceGroup | null {
-  const name = cleanText(element.name);
-  if (
-    element.type.toLowerCase() !== "checkbox" ||
-    !name ||
-    !name.endsWith("[]") ||
-    !name.startsWith("question_")
-  ) {
-    return null;
-  }
-
+  if (element.type.toLowerCase() !== "checkbox") return null;
   const fieldset = element.closest<HTMLElement>("fieldset");
   if (!fieldset) return null;
-  const root = scopeFor(element, scope);
-  const options = Array.from(
-    root.querySelectorAll<HTMLInputElement>(`input[type='checkbox'][name='${CSS.escape(name)}']`),
-  ).filter((candidate) => isVisibleElement(candidate) && candidate.closest("fieldset") === fieldset);
+  const options = Array.from(fieldset.querySelectorAll<HTMLInputElement>("input[type='checkbox']"))
+    .filter((candidate) => isVisibleElement(candidate));
   const label = cleanLabel(cleanText(fieldset.querySelector("legend")?.textContent));
   if (options.length < 2 || !label) return null;
+  const names = Array.from(new Set(options.map((option) => cleanText(option.name)).filter(Boolean)));
+  const name = names.length === 1 ? names[0] || "" : "";
+  const greenhouseSingleChoice = name.startsWith("question_") && name.endsWith("[]");
+  const groupKey = cleanText(fieldset.id) || name || `checkbox-group-${cleanText(label).toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
 
   return {
     container: fieldset,
+    groupKey,
     name,
     label,
+    type: greenhouseSingleChoice ? "radio" : "checkbox",
     required: requiredFor(fieldset),
     options,
   };
@@ -1636,6 +1765,30 @@ type ButtonChoiceGroup = {
   required: boolean;
   options: HTMLElement[];
 };
+
+type AriaRadioGroup = {
+  container: HTMLElement;
+  label: string;
+  required: boolean;
+  options: HTMLElement[];
+};
+
+function ariaRadioGroups(scope: FormScope): AriaRadioGroup[] {
+  return queryAllInScope<HTMLElement>(scope, "[role='radiogroup']")
+    .filter((container) => isVisibleElement(container))
+    .map((container) => {
+      const options = Array.from(container.querySelectorAll<HTMLElement>("[role='radio']"))
+        .filter((option) => isVisibleElement(option) && option.getAttribute("aria-disabled") !== "true");
+      const label = cleanLabel(
+        labelledByText(container, scopeFor(container, scope)) ||
+          cleanText(container.getAttribute("aria-label")) ||
+          cleanText(container.closest("fieldset")?.querySelector("legend")?.textContent) ||
+          precedingQuestionLabel(container),
+      );
+      return { container, label, required: requiredFor(container), options };
+    })
+    .filter((group) => Boolean(group.label) && group.options.length >= 2);
+}
 
 function visibleChoiceButtons(container: HTMLElement): HTMLElement[] {
   return Array.from(container.querySelectorAll<HTMLElement>("button, [role='radio'], [role='button']"))
@@ -1756,19 +1909,19 @@ export function inspectVisibleFormFields(scope: FormScope = document): FormField
     if (type === "file") continue;
 
     if (element instanceof HTMLInputElement) {
-      const checkboxGroup = checkboxChoiceGroupFor(element, scope);
+      const checkboxGroup = checkboxChoiceGroupFor(element);
       if (checkboxGroup) {
-        if (seenCheckboxGroupNames.has(checkboxGroup.name)) continue;
-        seenCheckboxGroupNames.add(checkboxGroup.name);
+        if (seenCheckboxGroupNames.has(checkboxGroup.groupKey)) continue;
+        seenCheckboxGroupNames.add(checkboxGroup.groupKey);
         const value = currentCheckboxChoiceValue(checkboxGroup, scope);
         result.push({
-          key: cleanText(checkboxGroup.container.id) || checkboxGroup.name,
+          key: checkboxGroup.groupKey,
           id: cleanText(checkboxGroup.container.id) || undefined,
-          name: checkboxGroup.name,
+          name: checkboxGroup.name || undefined,
           // Greenhouse renders these single-answer screening questions as
           // checkbox controls. Present them as one choice field so the panel
           // mirrors the question instead of listing every option as a field.
-          type: "radio",
+          type: checkboxGroup.type,
           label: checkboxGroup.label,
           required: checkboxGroup.required,
           filled: Boolean(value),
@@ -1873,12 +2026,18 @@ export function inspectVisibleFormFields(scope: FormScope = document): FormField
     const key = fieldKeyFor(combobox, result.length, scope);
     if (result.some((field) => field.key === key || (combobox.id && field.id === combobox.id))) continue;
     const value = cleanText(combobox.textContent);
-    const label = labelFor(combobox, scope);
+    const elementScope = scopeFor(combobox, scope);
+    const label = labelFor(combobox, elementScope);
 
     const controlsId = cleanText(combobox.getAttribute("aria-controls"));
     let options: FormOption[] = [];
     if (controlsId) {
-      const listbox = scope.querySelector<HTMLElement>(`#${CSS.escape(controlsId)}`);
+      // React Select and similar libraries portal their listbox to document.body.
+      // Resolve aria-controls from the control's document/shadow root rather
+      // than the narrow application container.
+      const listbox =
+        elementScope.querySelector<HTMLElement>(`#${CSS.escape(controlsId)}`) ||
+        document.querySelector<HTMLElement>(`#${CSS.escape(controlsId)}`);
       if (listbox) {
         options = Array.from(listbox.querySelectorAll<HTMLElement>("[role='option'], li"))
           .map((opt) => {
@@ -1900,6 +2059,32 @@ export function inspectVisibleFormFields(scope: FormScope = document): FormField
       sensitive: false,
       options,
       ...(value && !isPlaceholderOption(value, "selected") ? { currentValue: value } : {}),
+    });
+  }
+
+  for (const group of ariaRadioGroups(scope)) {
+    if (result.length >= 200) break;
+    if (result.some((field) => field.type === "radio" && cleanLabel(field.label) === cleanLabel(group.label))) continue;
+    const selected = group.options.find((option) =>
+      option.getAttribute("aria-checked") === "true" ||
+      option.getAttribute("data-state") === "checked" ||
+      option.getAttribute("data-state") === "selected",
+    );
+    result.push({
+      key: cleanText(group.container.id) || `aria-radio-${result.length + 1}`,
+      id: cleanText(group.container.id) || undefined,
+      name: cleanText(group.container.getAttribute("name")) || undefined,
+      type: "radio",
+      label: group.label,
+      required: group.required,
+      filled: Boolean(selected),
+      sensitive: false,
+      options: group.options.map((option) => {
+        const value = cleanText(option.getAttribute("data-value") || option.getAttribute("value") || option.textContent || option.getAttribute("aria-label"));
+        const optionLabel = cleanText(option.getAttribute("aria-label") || option.textContent || value);
+        return { label: optionLabel, value };
+      }),
+      ...(selected ? { currentValue: cleanText(selected.getAttribute("aria-label") || selected.textContent) } : {}),
     });
   }
 
@@ -2005,6 +2190,7 @@ export function readSeekForm(
   submitLabel?: string,
   action?: "next" | "submit",
   canGoBack = false,
+  scope: FormScope = document,
 ): FormInspection {
-  return readApplicationForm(url, "seek", isApplicationPage, submitLabel, document, action, canGoBack);
+  return readApplicationForm(url, "seek", isApplicationPage, submitLabel, scope, action, canGoBack);
 }

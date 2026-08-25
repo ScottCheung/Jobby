@@ -64,7 +64,7 @@ def evaluate_candidate(
             str(candidate_payload.get("description") or ""),
             dict(resume_data),
             job_title=str(candidate_payload.get("title") or ""),
-            date_posted=candidate_payload.get("posted_at") or candidate_payload.get("date_posted"),
+            date_posted=candidate_payload.get("last_posted_at"),
             technologies=candidate_payload.get("technologies"),
             user_years_experience=user_years,
             profile_skills=profile_skills,

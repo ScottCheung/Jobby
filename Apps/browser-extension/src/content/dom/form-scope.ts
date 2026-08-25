@@ -70,6 +70,7 @@ function actionLabel(element: HTMLElement): string {
 const SUBMIT_ACTION_REGEX = /(?:submit|apply|send|finish|complete|confirm|提交|申请|发送|完成|确认)/i;
 const NEXT_ACTION_REGEX = /(?:continue|next|review|proceed|save|继续|下一步|审核|保存)/i;
 const PREVIOUS_ACTION_REGEX = /(?:back|previous|返回|上一步)/i;
+const APPLICATION_INTENT_REGEX = /(?:application questions?|apply for (?:this|the) (?:job|role)|candidate (?:details|information)|resume|curriculum vitae|cover letter|work authori[sz]ation|right to work|sponsorship|employment history|work experience)/i;
 
 function hasFormAction(scope: FormScope): boolean {
   const actions = Array.from(scope.querySelectorAll<HTMLElement>(ACTION_SELECTOR));
@@ -95,6 +96,9 @@ function scoreCandidate(candidate: HTMLElement): number {
   if (isModalLike(candidate)) score += 90;
   if (isFormContainerLike(candidate)) score += 40;
   if (hasFormAction(candidate)) score += 20;
+  const candidateText = cleanText(candidate.textContent);
+  if (APPLICATION_INTENT_REGEX.test(candidateText)) score += 60;
+  if (candidate.closest("nav, header, footer, aside, [role='navigation'], [role='complementary']")) score -= 80;
   if (isVisibleElement(candidate)) score += 10;
   return score;
 }

@@ -7,6 +7,7 @@
  * then fall back to Indeed-specific DOM selectors.
  */
 import type { IndeedJobSnapshot, PageInspection } from "../../../shared/contracts/page-inspection";
+import { capturedJobDateFields } from "../../../shared/utils/date-formatter";
 import { extractTechnologyKeywords } from "../../technology-keywords";
 import { extractStructuredText } from "../../text-utils";
 
@@ -25,16 +26,70 @@ function isVisible(element: Element): boolean {
   return style.display !== "none" && style.visibility !== "hidden";
 }
 
-function getIndeedDetailRoot(): ParentNode {
-  const pane = document.querySelector<HTMLElement>(
-    ".jobsearch-RightPane, .jobsearch-ViewJobPaneWrapper, #jobsearch-ViewjobPane, #viewJobSSRRoot, .jobsearch-JobComponent, .fastviewjob, main"
+function selectedIndeedCard(root: ParentNode = document): HTMLElement | null {
+  return root.querySelector<HTMLElement>(
+    "[data-jk][aria-selected='true'], [data-jk][aria-current='true'], [data-jk][data-selected='true'], [data-jk].resultWithShelf, [data-jk][class~='selected'], .job_seen_beacon.selected, [data-jk]:has(a[aria-current='true'])",
   );
-  if (pane) return pane;
-  return document;
 }
 
-function firstText(...selectors: string[]): string {
-  const root = getIndeedDetailRoot();
+function getIndeedTargetJobKey(url: string): string | undefined {
+  const match = url.match(/[?&](?:jk|vjk|jobkey)=([^&#]+)/i);
+  if (match?.[1]) return match[1];
+
+  const selectedCard = selectedIndeedCard(document);
+  const cardKey = cleanText(selectedCard?.getAttribute("data-jk"));
+  if (cardKey) return cardKey;
+
+  const detail = document.querySelector<HTMLElement>(
+    ".jobsearch-RightPane, .jobsearch-ViewJobPaneWrapper, #jobsearch-ViewjobPane, #viewJobSSRRoot, .jobsearch-JobComponent, .fastviewjob, [data-testid='jobsearch-ViewjobPane']",
+  );
+  const detailKey =
+    cleanText(detail?.getAttribute("data-jk")) ||
+    cleanText(detail?.querySelector<HTMLElement>("[data-jk]")?.getAttribute("data-jk")) ||
+    cleanText(detail?.querySelector<HTMLElement>("[data-mobtk]")?.getAttribute("data-mobtk"));
+  if (detailKey) return detailKey;
+
+  const firstCardKey = cleanText(document.querySelector<HTMLElement>("[data-jk]")?.getAttribute("data-jk"));
+  if (firstCardKey) return firstCardKey;
+
+  return undefined;
+}
+
+function getDetailPaneJobKey(detailRoot: HTMLElement): string | undefined {
+  const directKey = cleanText(detailRoot.getAttribute("data-jk"));
+  if (directKey) return directKey;
+
+  const innerKey = cleanText(
+    detailRoot.querySelector<HTMLElement>("[data-jk]")?.getAttribute("data-jk") ||
+    detailRoot.querySelector<HTMLElement>("[data-job-id]")?.getAttribute("data-job-id") ||
+    detailRoot.querySelector<HTMLElement>("[data-mobtk]")?.getAttribute("data-mobtk"),
+  );
+  if (innerKey) return innerKey;
+
+  const linkWithKey = detailRoot.querySelector<HTMLAnchorElement>("a[href*='jk='], a[href*='vjk=']");
+  if (linkWithKey) {
+    const match = linkWithKey.href.match(/[?&](?:jk|vjk|jobkey)=([^&#]+)/i);
+    if (match?.[1]) return match[1];
+  }
+
+  return undefined;
+}
+
+function getIndeedDetailRoot(): HTMLElement | null {
+  const pane = document.querySelector<HTMLElement>(
+    ".jobsearch-RightPane, .jobsearch-ViewJobPaneWrapper, #jobsearch-ViewjobPane, #viewJobSSRRoot, .jobsearch-JobComponent, .fastviewjob, [data-testid='jobsearch-ViewjobPane']",
+  );
+  if (pane) return pane;
+
+  const isMultiCardPage = document.querySelectorAll(".job_seen_beacon, [data-jk]").length > 1;
+  if (!isMultiCardPage) {
+    const mainEl = document.querySelector<HTMLElement>("main, #main, [role='main']");
+    if (mainEl) return mainEl;
+  }
+  return null;
+}
+
+function firstTextIn(root: ParentNode, ...selectors: string[]): string {
   for (const selector of selectors) {
     const el = root.querySelector<HTMLElement>(selector);
     if (el && isVisible(el)) {
@@ -42,19 +97,10 @@ function firstText(...selectors: string[]): string {
       if (text) return text;
     }
   }
-  if (root !== document) {
-    for (const selector of selectors) {
-      const el = document.querySelector<HTMLElement>(selector);
-      if (el && isVisible(el)) {
-        const text = cleanText(el.textContent);
-        if (text) return text;
-      }
-    }
-  }
   return "";
 }
 
-function structuredJobPosting(): {
+function structuredJobPosting(targetExternalId?: string): {
   title?: string;
   company?: string;
   location?: string;
@@ -62,6 +108,7 @@ function structuredJobPosting(): {
   externalId?: string;
   datePosted?: string;
 } | null {
+  const isMultiCardPage = document.querySelectorAll(".job_seen_beacon, [data-jk]").length > 1;
   const scripts = Array.from(
     document.querySelectorAll<HTMLScriptElement>("script[type='application/ld+json']"),
   ).slice(0, 30);
@@ -88,8 +135,21 @@ function structuredJobPosting(): {
       const firstLocation = Array.isArray(location) ? location[0] : location;
       const address = firstLocation?.address as Record<string, unknown> | undefined;
       const identifier = posting.identifier as Record<string, unknown> | string | undefined;
+      const externalId =
+        cleanText(
+          typeof identifier === "string" ? identifier : String(identifier?.value || ""),
+        ) || undefined;
+
+      // In split view or multi-card search page, ensure JSON-LD corresponds to current job
+      if (targetExternalId && externalId && externalId !== targetExternalId) {
+        continue;
+      }
+      if (isMultiCardPage && targetExternalId && !externalId) {
+        continue;
+      }
+
       // Indeed embeds the full HTML description. Parse it structurally to preserve newlines.
-      const tmpDiv = document.createElement('div');
+      const tmpDiv = document.createElement("div");
       tmpDiv.innerHTML = String(posting.description || "");
       const rawDesc = extractStructuredText(tmpDiv);
 
@@ -99,7 +159,6 @@ function structuredJobPosting(): {
         address?.addressRegion,
         address?.addressCountry,
       ].filter((v) => typeof v === "string" && String(v).trim());
-      // Some JSON-LD embeds location directly on jobLocation as a string or .name
       const locationStr =
         addressParts.length > 0
           ? cleanText(addressParts.join(", "))
@@ -116,10 +175,7 @@ function structuredJobPosting(): {
         company: cleanText(String(organization?.name || "")) || undefined,
         location: locationStr || undefined,
         description: rawDesc || undefined,
-        externalId:
-          cleanText(
-            typeof identifier === "string" ? identifier : String(identifier?.value || ""),
-          ) || undefined,
+        externalId,
         datePosted: cleanText(String(posting.datePosted || "")) || undefined,
       };
     } catch {
@@ -134,10 +190,9 @@ function structuredJobPosting(): {
  * Indeed uses relative-date spans near the job header,
  * e.g. "Posted 3 days ago", "Posted today", "30+ days ago".
  */
-function datePostedFromDom(_jobKey?: string): string | undefined {
-  const root = getIndeedDetailRoot();
+function datePostedFromDom(root: ParentNode): string | undefined {
   // Try <time> elements first — most reliable
-  const timeEl = root.querySelector<HTMLElement>("time[datetime]") || document.querySelector<HTMLElement>("time[datetime]");
+  const timeEl = root.querySelector<HTMLElement>("time[datetime]");
   if (timeEl) {
     const dt = timeEl.getAttribute("datetime");
     if (dt) return cleanText(dt);
@@ -145,7 +200,8 @@ function datePostedFromDom(_jobKey?: string): string | undefined {
     if (text) return text;
   }
 
-  const datePattern = /\b(?:posted\s+)?(?:\d+\s*\+?\s*(?:minutes?|mins?|hours?|hrs?|days?|weeks?|wks?|months?|mos?|years?|yrs?|[dhwmy]|mo)\s*(?:ago)?|today|yesterday|just\s+(?:now|posted))\b/i;
+  const datePattern =
+    /\b(?:posted\s+)?(?:\d+\s*\+?\s*(?:minutes?|mins?|hours?|hrs?|days?|weeks?|wks?|months?|mos?|years?|yrs?|[dhwmy]|mo)\s*(?:ago)?|today|yesterday|just\s+(?:now|posted))\b/i;
 
   const selectors = [
     "[data-testid='jobsearch-JobMetadataFooter-item']",
@@ -165,18 +221,6 @@ function datePostedFromDom(_jobKey?: string): string | undefined {
     }
   }
 
-  if (root !== document) {
-    for (const selector of selectors) {
-      const elements = Array.from(document.querySelectorAll<HTMLElement>(selector));
-      for (const element of elements) {
-        const text = cleanText(element.textContent);
-        if (text && datePattern.test(text)) {
-          return text;
-        }
-      }
-    }
-  }
-
   return undefined;
 }
 
@@ -191,60 +235,115 @@ function stableId(value: string): string {
 
 export function readIndeedJobPage(): PageInspection {
   const url = window.location.href;
-  const root = getIndeedDetailRoot();
+  const targetKey = getIndeedTargetJobKey(url);
+  const detailRoot = getIndeedDetailRoot();
 
-  // 1. Try structured data first — most reliable on standalone Indeed job views.
-  const structured = structuredJobPosting();
+  // Find the selected card, matching targetKey if present
+  let selectedCard: HTMLElement | null = null;
+  if (targetKey) {
+    selectedCard = document.querySelector<HTMLElement>(
+      `[data-jk='${targetKey}'], .job_seen_beacon:has(a[href*='${targetKey}'])`,
+    );
+  }
+  if (!selectedCard) {
+    selectedCard = selectedIndeedCard(document);
+  }
 
-  // 2. DOM fallbacks with Indeed-specific selectors.
+  // Check if detail pane matches the target key
+  const detailKey = detailRoot ? getDetailPaneJobKey(detailRoot) : undefined;
+  const isDetailMismatch = Boolean(
+    targetKey && detailKey && targetKey !== detailKey,
+  );
+
+  // 1. Try structured data first (only if it matches target key)
+  const structured = structuredJobPosting(targetKey);
+
+  // 2. Extract from detail pane if not mismatched, otherwise fall back to selected card
+  const primaryRoot = (!isDetailMismatch && detailRoot) ? detailRoot : selectedCard;
+  const fallbackRoot = detailRoot || selectedCard || document.body;
+
   const title =
     structured?.title ||
-    firstText(
+    (primaryRoot ?
+      firstTextIn(
+        primaryRoot,
+        "[data-testid='jobsearch-JobInfoHeader-title']",
+        ".jobsearch-JobInfoHeader-title",
+        "h1[class*='jobsearch-JobInfoHeader-title']",
+        "h2[class*='jobsearch-JobInfoHeader-title']",
+        "[class*='jobsearch-JobInfoHeader-title']",
+        "h1[class*='job-title']",
+        "h2.jobTitle",
+        "[data-testid='job-title']",
+        "h1",
+      )
+    : "") ||
+    firstTextIn(
+      fallbackRoot,
       "[data-testid='jobsearch-JobInfoHeader-title']",
       ".jobsearch-JobInfoHeader-title",
       "h1[class*='jobsearch-JobInfoHeader-title']",
       "h2[class*='jobsearch-JobInfoHeader-title']",
       "[class*='jobsearch-JobInfoHeader-title']",
       "h1[class*='job-title']",
-      ".jobsearch-RightPane h1",
+      "h2.jobTitle",
+      "[data-testid='job-title']",
       "h1",
     );
 
   const company =
     structured?.company ||
-    firstText(
+    (primaryRoot ?
+      firstTextIn(
+        primaryRoot,
+        "[data-testid='inlineHeader-companyName'] a",
+        "[data-testid='inlineHeader-companyName']",
+        ".jobsearch-InlineCompanyRating-companyHeader a",
+        ".jobsearch-InlineCompanyRating-companyHeader",
+        "[data-company-name='true']",
+        "[data-testid='company-name']",
+        "[class*='jobsearch-CompanyInfoContainer'] a",
+        "[class*='companyName']",
+      )
+    : "") ||
+    firstTextIn(
+      fallbackRoot,
       "[data-testid='inlineHeader-companyName'] a",
       "[data-testid='inlineHeader-companyName']",
       ".jobsearch-InlineCompanyRating-companyHeader a",
       ".jobsearch-InlineCompanyRating-companyHeader",
       "[data-company-name='true']",
+      "[data-testid='company-name']",
       "[class*='jobsearch-CompanyInfoContainer'] a",
       "[class*='companyName']",
     );
 
   const location =
     structured?.location ||
-    firstText(
-      "[data-testid='job-location']",
-      "[data-testid='inlineHeader-companyLocation']",
-      "[class*='inlineHeader-companyLocation']",
-      "[data-testid='jobsearch-JobInfoHeader-subtitle'] > div:last-child",
-      "[class*='jobsearch-JobInfoHeader-subtitle'] > div:last-child",
-      "[class*='companyLocation']",
-      "[data-testid='jobsearch-JobInfoHeader-subtitle'] div",
-      "[class*='jobsearch-JobInfoHeader-subtitle'] div",
-    ) || undefined;
+    (primaryRoot ?
+      firstTextIn(
+        primaryRoot,
+        "[data-testid='job-location']",
+        "[data-testid='inlineHeader-companyLocation']",
+        "[class*='inlineHeader-companyLocation']",
+        "[data-testid='text-location']",
+        "[data-testid='jobsearch-JobInfoHeader-subtitle'] > div:last-child",
+        "[class*='jobsearch-JobInfoHeader-subtitle'] > div:last-child",
+        "[class*='companyLocation']",
+        "[data-testid='jobsearch-JobInfoHeader-subtitle'] div",
+        "[class*='jobsearch-JobInfoHeader-subtitle'] div",
+      )
+    : undefined) ||
+    undefined;
 
   let description = structured?.description || "";
-  if (!description) {
+  if (!description && !isDetailMismatch && detailRoot) {
     const descEl =
-      root.querySelector<HTMLElement>("#jobDescriptionText") ||
-      root.querySelector<HTMLElement>("[class*='jobsearch-jobDescriptionText']") ||
-      root.querySelector<HTMLElement>("[data-testid='jobsearch-jobDescriptionText']") ||
-      root.querySelector<HTMLElement>("#jobDescriptionSection") ||
-      root.querySelector<HTMLElement>("[data-testid='jobDescriptionText']") ||
-      document.querySelector<HTMLElement>("#jobDescriptionText") ||
-      document.querySelector<HTMLElement>("[class*='jobsearch-jobDescriptionText']");
+      detailRoot.querySelector<HTMLElement>("#jobDescriptionText") ||
+      detailRoot.querySelector<HTMLElement>("[class*='jobsearch-jobDescriptionText']") ||
+      detailRoot.querySelector<HTMLElement>("[data-testid='jobsearch-jobDescriptionText']") ||
+      detailRoot.querySelector<HTMLElement>("#jobDescriptionSection") ||
+      detailRoot.querySelector<HTMLElement>("[data-testid='jobDescriptionText']");
     if (descEl) {
       description = truncate(extractStructuredText(descEl), 18_000);
     }
@@ -252,22 +351,18 @@ export function readIndeedJobPage(): PageInspection {
 
   const externalId =
     structured?.externalId ||
-    (() => {
-      // Indeed puts the job key in the URL: /viewjob?jk=<key> or ?vjk=<key> or ?jobkey=<key>
-      const match = url.match(/[?&](?:jk|vjk|jobkey)=([a-z0-9]+)/i);
-      if (match?.[1]) return match[1];
+    targetKey ||
+    detailKey ||
+    stableId(`${url}|${title}|${company}`);
 
-      const domKey =
-        document.querySelector<HTMLElement>("[data-jk]")?.getAttribute("data-jk") ||
-        document.querySelector<HTMLElement>("[data-mobtk]")?.getAttribute("data-mobtk");
-      if (domKey) return domKey;
+  const datePosted =
+    structured?.datePosted ||
+    (primaryRoot ? datePostedFromDom(primaryRoot) : undefined) ||
+    datePostedFromDom(fallbackRoot);
 
-      return stableId(`${url}|${title}|${company}`);
-    })();
-
-  const datePosted = structured?.datePosted || datePostedFromDom(externalId);
-
-  const enoughEvidence = Boolean(title) && (Boolean(structured) || description.length >= 10 || Boolean(company));
+  const enoughEvidence =
+    Boolean(title) &&
+    (Boolean(structured) || description.length >= 10 || Boolean(company));
   if (!enoughEvidence) {
     return {
       kind: "unsupported_page",
@@ -283,12 +378,9 @@ export function readIndeedJobPage(): PageInspection {
     title,
     company: company || "Unknown company",
     location: location || undefined,
-    datePosted: datePosted || undefined,
+    ...capturedJobDateFields(datePosted),
     description: description || undefined,
     technologies: extractTechnologyKeywords(description),
-    easyApply:
-      Boolean(document.querySelector("[id*='indeedApplyButton'], [class*='indeed-apply-button'], [data-testid='indeedApplyButton'], [aria-label*='Apply with Indeed' i], button.ia-IndeedApplyButton")) ||
-      Boolean(document.querySelector("[data-indeed-apply]")),
   };
   return { kind: "job", snapshot };
 }

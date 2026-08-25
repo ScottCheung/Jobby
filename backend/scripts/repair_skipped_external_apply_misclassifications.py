@@ -80,7 +80,7 @@ def main() -> None:
             fields_changed = repair(application)
             changed += 1
             print(
-                f"{application.id} job_id={application.job_id} "
+                f"{application.id} job_id={application.external_job_id} "
                 f"status={application.status} changes={','.join(fields_changed)}"
             )
 

@@ -4,15 +4,13 @@
 import { EmptyPlaceHolder } from '@jobby/ui';
 
 import React from 'react';
-import { AlertTriangle, Check, Edit3 } from 'lucide-react';
+import { Check, Edit3 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { FormTextarea } from './FormControls';
 
 interface NotesAndQAProps {
   notes?: string | null;
-  status?: string | null;
-  skipReason?: string | null;
   questions?: any;
   isEditingNotes: boolean;
   setIsEditingNotes: (val: boolean) => void;
@@ -21,8 +19,6 @@ interface NotesAndQAProps {
 
 export function NotesAndQA({
   notes,
-  status,
-  skipReason,
   questions,
   isEditingNotes,
   setIsEditingNotes,
@@ -50,7 +46,7 @@ export function NotesAndQA({
     if (QAList.length === 0) {
       return (
         <div className='text-ink-secondary mt-6'>
-          <h3 className='panel-header'>AI Auto-Apply Questions</h3>
+          <h3 className='panel-header'>Application Questions</h3>
           <EmptyPlaceHolder message='No Q&A recorded for this application.' />
         </div>
       );
@@ -59,7 +55,7 @@ export function NotesAndQA({
     return (
       <div className='space-y-4 mt-6'>
         <h3 className='label-overline mb-3'>
-          AI Auto-Apply Questions
+          Application Questions
         </h3>
         <div className='space-y-3'>
           {QAList.map((qa, index) => (
@@ -128,15 +124,6 @@ export function NotesAndQA({
         : <EmptyPlaceHolder message='No Insights/Notes recorded for this application.' />
         }
       </div>
-
-      {status === 'skipped' && skipReason && (
-        <div className='mt-6'>
-          <h3 className='label-overline row mb-2'>
-            Auto Apply Skip Reason
-          </h3>
-          <div className='whitespace-pre-wrap panel-lg'>{skipReason}</div>
-        </div>
-      )}
 
       {/* Questions list */}
       {renderQuestions()}

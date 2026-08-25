@@ -16,11 +16,12 @@ const style =
 const TooltipContent = React.forwardRef<
   React.ElementRef<typeof TooltipPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof TooltipPrimitive.Content>
->(({ className, sideOffset = 16, ...props }, ref) => (
+>(({ className, sideOffset = 6, collisionPadding = 8, ...props }, ref) => (
   <TooltipPrimitive.Portal>
     <TooltipPrimitive.Content
       ref={ref}
       sideOffset={sideOffset}
+      collisionPadding={collisionPadding}
       className={cn(style, className)}
       {...props}
     />
@@ -34,6 +35,10 @@ interface TooltipProps {
   children: React.ReactNode;
   size?: 'sm' | 'md' | 'lg' | 'xl';
   side?: 'top' | 'bottom' | 'left' | 'right';
+  align?: 'start' | 'center' | 'end';
+  alignOffset?: number;
+  sideOffset?: number;
+  collisionPadding?: number;
   className?: string;
   delay?: number;
 }
@@ -42,6 +47,10 @@ export function Tooltip({
   content,
   children,
   side = 'top',
+  align = 'center',
+  alignOffset,
+  sideOffset = 6,
+  collisionPadding = 8,
   size = 'md',
   className,
   delay = 50,
@@ -53,6 +62,10 @@ export function Tooltip({
         {content && (
           <TooltipContent
             side={side}
+            align={align}
+            alignOffset={alignOffset}
+            sideOffset={sideOffset}
+            collisionPadding={collisionPadding}
             className={cn(
               style,
               className,

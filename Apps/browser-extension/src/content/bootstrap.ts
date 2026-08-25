@@ -1,6 +1,8 @@
 import { handleContentCommand, startContentFormDiscovery } from "./command-handler";
 import { initializeFloatingBall } from "./dom/floating-ball";
+import { observeIndeedJobDom } from "./indeed-page-change-observer";
 import { classifyCurrentPage } from "./page-classifier";
+import { observeSeekJobDom } from "./seek-page-change-observer";
 
 type ContentMessageListener = Parameters<typeof chrome.runtime.onMessage.addListener>[0];
 
@@ -42,7 +44,7 @@ const listener: ContentMessageListener = (message, _sender, sendResponse) => {
   if (!isExtensionContextValid()) return false;
   void handleContentCommand(message)
     .then((response) => {
-      if (response !== undefined) sendResponse({ ok: true, ...response });
+      sendResponse(response !== undefined ? { ok: true, ...response } : { ok: true });
     })
     .catch((error: unknown) => {
       const reason = error instanceof Error ? error.message : "Could not inspect the current page.";
@@ -127,21 +129,38 @@ if (isExtensionContextValid() && chrome.storage?.onChanged) {
   }
 }
 
-// LinkedIn and SEEK are the only sites where Jobby continuously drives an
-// application flow. Other pages still support on-demand generic inspection,
-// but must not receive a whole-document observer merely because the extension
-// is installed.
+// Large job boards are observed continuously for client-side job selection
+// and application-step changes. ATS pages still use on-demand inspection so
+// the extension does not attach a whole-document observer to every website.
 const hostname = window.location.hostname.toLowerCase();
 const isTopLevelFrame = window.top === window;
-const isAutoObservedHost =
-  hostname === "linkedin.com" ||
-  hostname.endsWith(".linkedin.com") ||
+const isSeekObservedHost =
   hostname === "seek.com" ||
   hostname.endsWith(".seek.com") ||
   hostname === "seek.com.au" ||
   hostname.endsWith(".seek.com.au") ||
-  hostname === "indeed.com" ||
-  hostname.endsWith(".indeed.com");
+  hostname === "seek.co.nz" ||
+  hostname.endsWith(".seek.co.nz");
+const isIndeedObservedHost =
+  /(?:^|\.)indeed\.(?:com(?:\.[a-z]{2})?|co\.[a-z]{2}|[a-z]{2,3})$/.test(hostname);
+const isAutoObservedHost =
+  hostname === "linkedin.com" ||
+  hostname.endsWith(".linkedin.com") ||
+  isSeekObservedHost ||
+  isIndeedObservedHost ||
+  /(?:^|\.)glassdoor\.(?:com(?:\.[a-z]{2})?|co\.[a-z]{2}|[a-z]{2,3})$/.test(hostname) ||
+  /(?:^|\.)(?:myworkdayjobs|myworkday|workday)\.com$/.test(hostname) ||
+  /(?:^|\.)(?:boards|job-boards)\.greenhouse\.io$/.test(hostname) ||
+  /(?:^|\.)jobs(?:\.eu)?\.lever\.co$/.test(hostname) ||
+  /(?:^|\.)jobs\.ashbyhq\.com$/.test(hostname) ||
+  /(?:^|\.)smartrecruiters\.com$/.test(hostname) ||
+  hostname === "taleo.net" ||
+  hostname.endsWith(".taleo.net") ||
+  /(?:^|\.)(?:icims\.com|icims-candidateportal\.com)$/.test(hostname) ||
+  /(?:^|\.)(?:successfactors|sapsf)\.(?:com|eu)$/.test(hostname) ||
+  /(?:^|\.)(?:oraclecloud|fa\.ocs\.oraclecloud)\.com$/.test(hostname) ||
+  /(?:^|\.)(?:apply\.)?workable\.com$/.test(hostname) ||
+  /(?:^|\.)bamboohr\.(?:com|co\.uk)$/.test(hostname);
 
 if (isTopLevelFrame && isExtensionContextValid()) {
   cleanupCallbacks.push(initializeFloatingBall());
@@ -194,7 +213,15 @@ if (isTopLevelFrame && isExtensionContextValid()) {
       if (pageChangeTimer !== undefined) window.clearTimeout(pageChangeTimer);
     });
 
-    // Also observe clicks on job listing cards/links on SEEK, LinkedIn, and Indeed
+    if (isSeekObservedHost) {
+      cleanupCallbacks.push(observeSeekJobDom(notifyPageChanged));
+    }
+    if (isIndeedObservedHost) {
+      cleanupCallbacks.push(observeIndeedJobDom(notifyPageChanged));
+    }
+
+    // Also observe clicks on job listing cards/links. Glassdoor and some SEEK
+    // layouts replace the detail pane without updating history.
     const onJobCardClick = (event: MouseEvent) => {
       try {
         if (!isExtensionContextValid()) {
@@ -205,7 +232,7 @@ if (isTopLevelFrame && isExtensionContextValid()) {
         if (!target) return;
         const isJobClick = Boolean(
           target.closest(
-            "a[href*='/job/'], a[href*='/jobs/view/'], [data-automation='job-card'], .job-card-container, [data-occludable-job-id], a[href*='vjk='], a[href*='jk='], .job_seen_beacon, [data-jk], [data-mobtk]"
+            "a[href*='/job/'], a[href*='/jobs/view/'], [data-automation='job-card'], [data-automation='normalJob'], [data-testid='job-card'], .job-card-container, [data-occludable-job-id], a[href*='vjk='], a[href*='jk='], .job_seen_beacon, [data-jk], [data-mobtk], [data-test='jobListing'][data-jobid], [data-selected][data-jobid], [id^='requisitionListInterface.reqTitleLinkAction'], [id*='pagerDiv'][id$='.Next'], [id*='pagerDiv'][id$='.Previous']"
           )
         );
         if (isJobClick) {

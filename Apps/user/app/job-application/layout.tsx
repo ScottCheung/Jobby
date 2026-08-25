@@ -20,14 +20,14 @@ const tabs: ModuleNavigationItem[] = [
     name: 'Dashboard',
     href: '/job-application',
     icon: LayoutDashboard,
-    description: 'Overview of your application activity and automation',
+    description: 'Overview of your submitted applications',
     exact: true,
   },
   {
     name: 'Application History',
     href: '/job-application/history',
     icon: BriefcaseBusiness,
-    description: 'Review submitted, skipped, and in-progress applications',
+    description: 'Review applications you have submitted',
   },
   {
     name: 'AI Memory',

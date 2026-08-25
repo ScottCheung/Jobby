@@ -4,7 +4,8 @@ from uuid import UUID as PyUUID
 from uuid import uuid4
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, Numeric, String, Text, UniqueConstraint, func, text
-from sqlalchemy.dialects.postgresql import JSONB, UUID as PgUUID
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID as PgUUID
+from sqlalchemy.ext.associationproxy import AssociationProxy, association_proxy
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from services.shared.database import Base
@@ -398,6 +399,94 @@ class FormTempChange(Base, TimestampMixin):
     is_sensitive: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
 
+class Job(Base, TimestampMixin):
+    __tablename__ = "jobs"
+    __table_args__ = (
+        Index(
+            "uq_jobs_platform_external_id",
+            "platform",
+            "external_id",
+            unique=True,
+            postgresql_where=text("external_id IS NOT NULL"),
+        ),
+        Index(
+            "uq_jobs_url_hash",
+            "url_hash",
+            unique=True,
+            postgresql_where=text("url_hash IS NOT NULL"),
+        ),
+        Index("ix_jobs_company", "company"),
+    )
+
+    id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid4)
+    platform: Mapped[str] = mapped_column(String(50), nullable=False, default="generic")
+    external_id: Mapped[str | None] = mapped_column(String(255))
+    url: Mapped[str | None] = mapped_column(Text)
+    normalized_url: Mapped[str | None] = mapped_column(Text)
+    url_hash: Mapped[str | None] = mapped_column(String(64))
+    title: Mapped[str | None] = mapped_column(Text)
+    company: Mapped[str | None] = mapped_column(String(255))
+    location: Mapped[str | None] = mapped_column(String(255))
+    description: Mapped[str | None] = mapped_column(Text)
+    technologies: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    first_posted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_posted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    posting_observed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    is_reposted: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    raw_extracted_snapshot: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+
+    applications: Mapped[list["JobApplication"]] = relationship(back_populates="job")
+    extraction_corrections: Mapped[list["JobExtractionCorrection"]] = relationship(
+        back_populates="job",
+        cascade="all, delete-orphan",
+    )
+
+    @property
+    def posting_date_raw(self) -> dict:
+        return dict((self.raw_extracted_snapshot or {}).get("posting_date_raw") or {})
+
+
+class JobExtractionCorrection(Base):
+    __tablename__ = "job_extraction_corrections"
+    __table_args__ = (
+        Index("ix_job_extraction_corrections_job_created", "job_id", "created_at"),
+        Index(
+            "uq_job_extraction_corrections_idempotency",
+            "job_id",
+            "user_id",
+            "idempotency_key",
+            unique=True,
+            postgresql_where=text("idempotency_key IS NOT NULL"),
+        ),
+    )
+
+    id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid4)
+    job_id: Mapped[PyUUID] = mapped_column(
+        PgUUID(as_uuid=True),
+        ForeignKey("jobs.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    job_application_id: Mapped[PyUUID | None] = mapped_column(
+        PgUUID(as_uuid=True),
+        ForeignKey("job_applications.id", ondelete="SET NULL"),
+    )
+    user_id: Mapped[PyUUID | None] = mapped_column(
+        PgUUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+    )
+    base_revision: Mapped[int] = mapped_column(Integer, nullable=False)
+    resulting_revision: Mapped[int] = mapped_column(Integer, nullable=False)
+    original: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    modified: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    changed_fields: Mapped[list[str]] = mapped_column(ARRAY(String(50)), nullable=False)
+    source: Mapped[str] = mapped_column(String(50), nullable=False, default="browser_extension")
+    idempotency_key: Mapped[str | None] = mapped_column(String(255))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    job: Mapped[Job] = relationship(back_populates="extraction_corrections")
+
+
 class JobApplication(Base, TimestampMixin):
     __tablename__ = "job_applications"
     __table_args__ = (
@@ -406,28 +495,70 @@ class JobApplication(Base, TimestampMixin):
             "user_id",
             "job_id",
             unique=True,
-            postgresql_where=text("deleted_at IS NULL AND job_id IS NOT NULL"),
+            postgresql_where=text("deleted_at IS NULL"),
         ),
         Index("idx_job_app_user_status_date", "user_id", "deleted_at", "status", "date_applied"),
-        Index("idx_job_app_user_company", "user_id", "deleted_at", "company"),
     )
 
     id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid4)
     user_id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True)
-    platform: Mapped[str] = mapped_column(String(50), nullable=False, default=Platform.linkedin.value)
-    job_id: Mapped[str | None] = mapped_column(String(255), index=True)
-    title: Mapped[str | None] = mapped_column(Text)
-    company: Mapped[str | None] = mapped_column(String(255), index=True)
-    work_location: Mapped[str | None] = mapped_column(String(255))
-    job_link: Mapped[str | None] = mapped_column(Text)
+    job_id: Mapped[PyUUID] = mapped_column(
+        PgUUID(as_uuid=True),
+        ForeignKey("jobs.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
     status: Mapped[str] = mapped_column(String(50), nullable=False, default="submitted", index=True)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
-    date_posted: Mapped[str | None] = mapped_column(String(100))
     date_applied: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
     status_updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
     skip_reason: Mapped[str | None] = mapped_column(Text)
-    job_description: Mapped[str | None] = mapped_column(Text)
     raw_data: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+
+    job: Mapped[Job] = relationship(back_populates="applications")
+    platform: AssociationProxy[str] = association_proxy(
+        "job", "platform", creator=lambda value: Job(platform=value)
+    )
+    external_job_id: AssociationProxy[str | None] = association_proxy(
+        "job", "external_id", creator=lambda value: Job(external_id=value)
+    )
+    title: AssociationProxy[str | None] = association_proxy(
+        "job", "title", creator=lambda value: Job(title=value)
+    )
+    company: AssociationProxy[str | None] = association_proxy(
+        "job", "company", creator=lambda value: Job(company=value)
+    )
+    work_location: AssociationProxy[str | None] = association_proxy(
+        "job", "location", creator=lambda value: Job(location=value)
+    )
+    job_link: AssociationProxy[str | None] = association_proxy(
+        "job", "url", creator=lambda value: Job(url=value)
+    )
+    first_posted_at: AssociationProxy[datetime | None] = association_proxy(
+        "job", "first_posted_at", creator=lambda value: Job(first_posted_at=value)
+    )
+    last_posted_at: AssociationProxy[datetime | None] = association_proxy(
+        "job", "last_posted_at", creator=lambda value: Job(last_posted_at=value)
+    )
+    posting_observed_at: AssociationProxy[datetime | None] = association_proxy(
+        "job", "posting_observed_at", creator=lambda value: Job(posting_observed_at=value)
+    )
+    posting_date_raw: AssociationProxy[dict] = association_proxy(
+        "job",
+        "posting_date_raw",
+        creator=lambda value: Job(raw_extracted_snapshot={"posting_date_raw": value}),
+    )
+
+    @property
+    def is_reposted(self) -> bool:
+        return bool(self.job.is_reposted)
+
+    @is_reposted.setter
+    def is_reposted(self, value: bool) -> None:
+        self.job.is_reposted = bool(value)
+    job_description: AssociationProxy[str | None] = association_proxy(
+        "job", "description", creator=lambda value: Job(description=value)
+    )
 
     @property
     def questions(self) -> list:

@@ -30,8 +30,14 @@ const WORKPLACE_TYPE_MAP: Record<string, 'onsite' | 'remote' | 'hybrid'> = {
 export type WorkType = 'onsite' | 'remote' | 'hybrid';
 
 export interface LinkedInJobApiData {
-  /** Exact posting date as an ISO-8601 date string, e.g. "2026-04-24". */
-  listedAt?: string;
+  firstPostedAt?: string;
+  lastPostedAt?: string;
+  postingObservedAt: string;
+  isReposted: boolean;
+  postingDateRaw: {
+    listedAt?: number;
+    originalListedAt?: number;
+  };
   workType?: WorkType;
   experienceLevel?: string;
   /** Canonical location text from the API (more authoritative than DOM). */
@@ -57,10 +63,10 @@ function getCsrfToken(): string {
  * Convert a Unix millisecond timestamp to an ISO-8601 date string.
  * Returns undefined for invalid / missing values.
  */
-function msToIsoDate(ms: number | null | undefined): string | undefined {
+function msToIsoTimestamp(ms: number | null | undefined): string | undefined {
   if (!ms || typeof ms !== 'number' || ms <= 0) return undefined;
   try {
-    return new Date(ms).toISOString().split('T')[0]; // "YYYY-MM-DD"
+    return new Date(ms).toISOString();
   } catch {
     return undefined;
   }
@@ -118,16 +124,14 @@ export async function fetchLinkedInJobPosting(jobId: string): Promise<LinkedInJo
     const data = (json.data ?? json) as Record<string, unknown>;
 
     // ── listedAt ──────────────────────────────────────────────────────────────
-    // `listedAt` is the canonical posting date; `originalListedAt` is used when
-    // the job was reposted.  Prefer `originalListedAt` when it differs and is
-    // earlier (i.e. the job existed before the repost).
     const listedAtMs = data.listedAt as number | undefined;
     const originalListedAtMs = data.originalListedAt as number | undefined;
-    const bestMs =
-      originalListedAtMs && originalListedAtMs < (listedAtMs ?? Infinity)
-        ? originalListedAtMs
-        : listedAtMs;
-    const listedAt = msToIsoDate(bestMs);
+    const firstPostedAt = msToIsoTimestamp(originalListedAtMs ?? listedAtMs);
+    const lastPostedAt = msToIsoTimestamp(listedAtMs ?? originalListedAtMs);
+    const isReposted = Boolean(
+      originalListedAtMs && listedAtMs && originalListedAtMs < listedAtMs,
+    );
+    const postingObservedAt = new Date().toISOString();
 
     // ── workType ──────────────────────────────────────────────────────────────
     const workplaceTypes = data.workplaceTypes as string[] | undefined;
@@ -160,7 +164,14 @@ export async function fetchLinkedInJobPosting(jobId: string): Promise<LinkedInJo
     const easyApply = applyMethod?.$type === 'com.linkedin.voyager.jobs.ComplexOnsiteApply';
 
     return {
-      listedAt,
+      firstPostedAt,
+      lastPostedAt,
+      postingObservedAt,
+      isReposted,
+      postingDateRaw: {
+        listedAt: listedAtMs,
+        originalListedAt: originalListedAtMs,
+      },
       workType,
       experienceLevel,
       location,

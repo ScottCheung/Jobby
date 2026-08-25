@@ -6,18 +6,14 @@ import {
   restoreWebSession,
 } from './auth-service';
 import {
-  applicationPlanResponseSchema,
-  type ApplicationPlanAction,
-  type ApplicationPlanCreatePayload,
-  type ValidatedApplicationPlanResponse,
-} from '../shared/contracts/backend';
-import {
-  formFillInstructionsResponseSchema,
   formAutofillInstructionsResponseSchema,
   type FormAutofillInstructionsResponse,
-  type FormFillInstructionsResponse,
 } from '../shared/contracts/form-actions';
 import type { FormFieldObservation } from '../shared/contracts/form-inspection';
+import {
+  jobMatchEvaluationSchema,
+  type JobMatchEvaluation,
+} from '../shared/contracts/job-match';
 import type {
   CareerProfile,
   JobReviewPayload,
@@ -26,6 +22,7 @@ import type {
   TailoredResume,
   UserSkill,
 } from '../shared/contracts/tailored-resume';
+import type { JobSnapshot } from '../shared/contracts/page-inspection';
 
 export interface ResumeAsset {
   profile_id: string;
@@ -249,64 +246,51 @@ export class ApiClient {
     }
   }
 
-  async createApplicationPlan(
-    payload: ApplicationPlanCreatePayload,
-  ): Promise<ValidatedApplicationPlanResponse> {
-    const response = await this.request<unknown>('/api/application-plans', {
+  async recordSubmittedApplication(
+    snapshot: JobSnapshot,
+  ): Promise<{ id: string; status: string }> {
+    return this.request<{ id: string; status: string }>('/api/applications', {
       method: 'POST',
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        platform: snapshot.platform,
+        job_id: snapshot.externalId,
+        title: snapshot.title,
+        company: snapshot.company,
+        work_location: snapshot.location || null,
+        job_description: snapshot.description || null,
+        job_link: snapshot.url,
+        first_posted_at: snapshot.firstPostedAt || null,
+        last_posted_at: snapshot.lastPostedAt || null,
+        posting_observed_at: snapshot.postingObservedAt || null,
+        is_reposted: Boolean(snapshot.isReposted),
+        posting_date_raw: snapshot.postingDateRaw || null,
+        status: 'submitted',
+        pipeline_stage: 'applied',
+        date_applied: new Date().toISOString(),
+        application_type: 'manual',
+        raw_data: { created_from: 'browser_extension' },
+      }),
     });
-    return applicationPlanResponseSchema.parse(response);
   }
 
-  async getApplicationPlan(
-    applicationId: string,
-  ): Promise<ValidatedApplicationPlanResponse> {
-    const response = await this.request<unknown>(
-      `/api/application-plans/${encodeURIComponent(applicationId)}`,
-    );
-    return applicationPlanResponseSchema.parse(response);
-  }
-
-  async applyApplicationPlanAction(
-    applicationId: string,
-    action: ApplicationPlanAction,
-    reason?: string,
-  ): Promise<ValidatedApplicationPlanResponse> {
-    const response = await this.request<unknown>(
-      `/api/application-plans/${encodeURIComponent(applicationId)}/actions`,
-      {
-        method: 'POST',
-        body: JSON.stringify({ action, ...(reason ? { reason } : {}) }),
-      },
-    );
-    return applicationPlanResponseSchema.parse(response);
-  }
-
-  async getFormFillInstructions(
-    applicationId: string,
-    fields: FormFieldObservation[],
-  ): Promise<FormFillInstructionsResponse> {
-    const response = await this.request<unknown>(
-      `/api/application-plans/${encodeURIComponent(applicationId)}/form-instructions`,
-      {
-        method: 'POST',
-        body: JSON.stringify({
-          fields: fields.map(
-            ({ key, id, name, type, label, required, options }) => ({
-              key,
-              id,
-              name,
-              type,
-              label,
-              required,
-              options,
-            }),
-          ),
-        }),
-      },
-    );
-    return formFillInstructionsResponseSchema.parse(response);
+  async evaluateJobMatch(snapshot: JobSnapshot): Promise<JobMatchEvaluation> {
+    const response = await this.request<unknown>('/api/application-decisions', {
+      method: 'POST',
+      body: JSON.stringify({
+        candidate: {
+          platform: snapshot.platform,
+          external_id: snapshot.externalId,
+          title: snapshot.title,
+          company: snapshot.company,
+          description: snapshot.description || null,
+          easy_apply:
+            'easyApply' in snapshot ? Boolean(snapshot.easyApply) : false,
+          last_posted_at: snapshot.lastPostedAt || null,
+          technologies: snapshot.technologies || [],
+        },
+      }),
+    });
+    return jobMatchEvaluationSchema.parse(response);
   }
 
   async getFormAutofillInstructions(

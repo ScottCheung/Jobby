@@ -6,6 +6,8 @@ import type { FormFieldObservation } from '../../shared/contracts/form-inspectio
 import type { PageInspection } from '../../shared/contracts/page-inspection';
 import type { TailoredResume } from '../../shared/contracts/tailored-resume';
 import { canonicalizeFormFields } from '../../shared/utils/form-field-resolution';
+import { formatResumeFilename } from '@jobby/ui/components/UI/Resume/helpers';
+import { renderResumePdfOnce } from '@jobby/ui/components/UI/Resume/ResumePdfPreview';
 import { getActiveTab, send, wait } from '../services/messaging';
 
 export type UploadSyncState = {
@@ -127,7 +129,13 @@ function mergePageInspection(
         : previous.snapshot.company,
       location: next.snapshot.location || previous.snapshot.location,
       description: next.snapshot.description || previous.snapshot.description,
-      datePosted: next.snapshot.datePosted || previous.snapshot.datePosted,
+      firstPostedAt: next.snapshot.firstPostedAt || previous.snapshot.firstPostedAt,
+      lastPostedAt: next.snapshot.lastPostedAt || previous.snapshot.lastPostedAt,
+      postingObservedAt:
+        next.snapshot.postingObservedAt || previous.snapshot.postingObservedAt,
+      isReposted: next.snapshot.isReposted ?? previous.snapshot.isReposted,
+      postingDateRaw:
+        next.snapshot.postingDateRaw || previous.snapshot.postingDateRaw,
     },
   };
 }
@@ -274,6 +282,7 @@ export function useInspection(onJobChanged?: () => void) {
   >({});
 
   const pageInspectionInFlight = useRef(false);
+  const pageInspectionSequence = useRef(0);
   const formInspectionInFlight = useRef(false);
   const lastObservedActiveUrl = useRef<string | null>(null);
   const lastObservedActiveTabId = useRef<number | null>(null);
@@ -312,7 +321,8 @@ export function useInspection(onJobChanged?: () => void) {
   }, [onJobChanged]);
 
   const inspectPage = useCallback(async () => {
-    if (pageInspectionInFlight.current) return;
+    const requestSequence = pageInspectionSequence.current + 1;
+    pageInspectionSequence.current = requestSequence;
     pageInspectionInFlight.current = true;
     setIsInspectingPage(true);
     try {
@@ -320,6 +330,7 @@ export function useInspection(onJobChanged?: () => void) {
       lastObservedActiveUrl.current = null;
       lastObservedActiveTabId.current = null;
       const response = await send({ type: 'content.inspect-active' });
+      if (requestSequence !== pageInspectionSequence.current) return;
       if (!response.ok) {
         setInspectionError(response.error);
         return;
@@ -332,35 +343,41 @@ export function useInspection(onJobChanged?: () => void) {
         lastObservedActiveUrl.current = inspectionUrl(response.inspection);
       }
     } finally {
-      pageInspectionInFlight.current = false;
-      setIsInspectingPage(false);
+      if (requestSequence === pageInspectionSequence.current) {
+        pageInspectionInFlight.current = false;
+        setIsInspectingPage(false);
+      }
     }
   }, [resetInspectionState]);
 
   const autoInspectActivePage = useCallback(
     async (force = false, showLoading = false): Promise<boolean> => {
-      if (pageInspectionInFlight.current) return false;
+      if (pageInspectionInFlight.current && !force) return false;
 
-      const tab = await getActiveTab();
-      const url = tab?.url;
-      const tabId = tab?.id ?? null;
-      if (!url) {
-        setInspectionError('No active web page detected. Please switch to the job page you wish to inspect.');
-        return false;
-      }
-
-      const tabOrUrlChanged =
-        tabId !== lastObservedActiveTabId.current ||
-        url !== lastObservedActiveUrl.current;
-
-      if (!force && !tabOrUrlChanged) return false;
-
+      const requestSequence = pageInspectionSequence.current + 1;
+      pageInspectionSequence.current = requestSequence;
       pageInspectionInFlight.current = true;
-      if (showLoading) {
-        setIsInspectingPage(true);
-      }
       try {
+        const tab = await getActiveTab();
+        if (requestSequence !== pageInspectionSequence.current) return false;
+        const url = tab?.url;
+        const tabId = tab?.id ?? null;
+        if (!url) {
+          setInspectionError('No active web page detected. Please switch to the job page you wish to inspect.');
+          return false;
+        }
+
+        const tabOrUrlChanged =
+          tabId !== lastObservedActiveTabId.current ||
+          url !== lastObservedActiveUrl.current;
+
+        if (!force && !tabOrUrlChanged) return false;
+
+        if (showLoading) {
+          setIsInspectingPage(true);
+        }
         const response = await send({ type: 'content.inspect-active' });
+        if (requestSequence !== pageInspectionSequence.current) return false;
         if (!response.ok || !response.inspection) {
           setInspectionError(
             response.ok ? 'The page returned no inspection results.' : response.error,
@@ -393,6 +410,7 @@ export function useInspection(onJobChanged?: () => void) {
         lastObservedActiveUrl.current = url;
         return response.inspection.kind === 'job';
       } catch (error) {
+        if (requestSequence !== pageInspectionSequence.current) return false;
         setInspectionError(
           error instanceof Error ? error.message : 'Failed to inspect the current page.',
         );
@@ -400,8 +418,10 @@ export function useInspection(onJobChanged?: () => void) {
         lastObservedActiveTabId.current = null;
         return false;
       } finally {
-        pageInspectionInFlight.current = false;
-        setIsInspectingPage(false);
+        if (requestSequence === pageInspectionSequence.current) {
+          pageInspectionInFlight.current = false;
+          setIsInspectingPage(false);
+        }
       }
     },
     [onJobChanged],
@@ -465,6 +485,26 @@ export function useInspection(onJobChanged?: () => void) {
     if (!response.ok) setInspectionError(response.error);
   }, []);
 
+  const highlightJobRequirement = useCallback(
+    async (searchTerms: string[]) => {
+      const response = await send({
+        type: 'content.highlight-job-requirement-active',
+        searchTerms,
+      });
+      if (!response.ok) {
+        setInspectionError(response.error);
+        return false;
+      }
+      if (!response.highlighted) {
+        setInspectionError('Could not find this requirement in the current job description.');
+        return false;
+      }
+      setInspectionError('');
+      return true;
+    },
+    [],
+  );
+
   const autofillSingleField = useCallback(
     async (field: FormFieldObservation) => {
       const response = await send({
@@ -506,9 +546,6 @@ export function useInspection(onJobChanged?: () => void) {
       let response;
       let filename = 'Tailored-Resume.pdf';
       try {
-        const { formatResumeFilename, renderResumePdfOnce } = await import(
-          '@jobby/ui/components/UI/Resume'
-        );
         const { blob } = await renderResumePdfOnce(
           resume.resume_data,
           1,
@@ -797,6 +834,7 @@ export function useInspection(onJobChanged?: () => void) {
     inspectForm,
     applyAutofillResults,
     focusFormField,
+    highlightJobRequirement,
     autofillSingleField,
     uploadTailoredResume,
     editFormField,

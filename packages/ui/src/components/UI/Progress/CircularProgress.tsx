@@ -88,10 +88,13 @@ export const CircularProgress = React.memo<CircularProgressProps>(
     // visually closes its ~6px gap with an 8px stroke and becomes indistinguishable
     // from 100%. Shorten non-complete dashes by one stroke width so the visible arc
     // accurately represents the displayed percentage; 100% remains a true closed ring.
+    // For small non-zero values, preserve a minimal dash length so the round cap
+    // renders a visible starting indicator rather than collapsing to 0.
+    const rawArc = (percentage / 100) * circumference;
     const visibleDashLength =
-      percentage >= 100 ?
-        circumference
-      : Math.max(0, (percentage / 100) * circumference - thickness);
+      percentage <= 0 ? 0
+      : percentage >= 100 ? circumference
+      : Math.max(0.1, rawArc - thickness);
     const strokeDashoffset = circumference - visibleDashLength;
 
     const dashArray =

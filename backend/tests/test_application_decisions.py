@@ -103,7 +103,11 @@ def test_invalid_candidate_payload_is_rejected() -> None:
 
 def test_missing_score_is_derived_before_policy_evaluation_when_resume_is_available() -> None:
     result = evaluate_candidate(
-        candidate_payload(match_score=None, description="Python FastAPI APIs"),
+        candidate_payload(
+            match_score=None,
+            description="Python FastAPI APIs",
+            last_posted_at="2026-08-26T00:00:00+00:00",
+        ),
         settings=settings(ai_enabled=False),
         resume_data={"skills": [{"skills": ["Python", "FastAPI"]}]},
     )

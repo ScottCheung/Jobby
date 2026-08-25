@@ -250,9 +250,10 @@ export function useTailoredResumeStudio(
       ? {
           title: latestInspection.snapshot.title || '',
           company: latestInspection.snapshot.company || '',
-          datePosted: latestInspection.snapshot.datePosted || '',
+          datePosted: latestInspection.snapshot.lastPostedAt || '',
           jobDescription: latestInspection.snapshot.description || '',
           platform: latestInspection.snapshot.platform || '',
+          url: latestInspection.snapshot.url || '',
         }
       : null;
 
@@ -294,12 +295,12 @@ export function useTailoredResumeStudio(
       lastSnapshotRef.current = {
         title: snapshot.title,
         company: snapshot.company,
-        datePosted: snapshot.datePosted,
+        datePosted: snapshot.lastPostedAt,
         description: snapshot.description,
       };
       if (snapshot.title) setJobTitle(snapshot.title);
       if (snapshot.company) setCompany(snapshot.company);
-      if (snapshot.datePosted) setDatePosted(snapshot.datePosted);
+      if (snapshot.lastPostedAt) setDatePosted(snapshot.lastPostedAt);
       if (snapshot.description) setJobDescription(snapshot.description);
       return;
     }
@@ -314,9 +315,9 @@ export function useTailoredResumeStudio(
       setCompany(snapshot.company);
       prev.company = snapshot.company;
     }
-    if (snapshot.datePosted && snapshot.datePosted !== prev.datePosted) {
-      setDatePosted(snapshot.datePosted);
-      prev.datePosted = snapshot.datePosted;
+    if (snapshot.lastPostedAt && snapshot.lastPostedAt !== prev.datePosted) {
+      setDatePosted(snapshot.lastPostedAt);
+      prev.datePosted = snapshot.lastPostedAt;
     }
     if (snapshot.description && snapshot.description !== prev.description) {
       setJobDescription(snapshot.description);
@@ -389,7 +390,7 @@ export function useTailoredResumeStudio(
         job_description: jobDescription.trim(),
         title: jobTitle.trim() || undefined,
         company: company.trim() || undefined,
-        date_posted: datePosted.trim() || undefined,
+        last_posted_at: datePosted.trim() || undefined,
         doc_type: chosenType,
       });
       setPreview(p);
@@ -495,7 +496,7 @@ export function useTailoredResumeStudio(
         job_description: targetDescription,
         title: targetTitle,
         company: targetCompany,
-        date_posted: datePosted.trim() || undefined,
+        last_posted_at: datePosted.trim() || undefined,
         doc_type: chosenType,
         mock: mockMode,
         generation_id: generationId,

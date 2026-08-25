@@ -11,6 +11,96 @@ export interface FormattedJobDate {
   ageInDays?: number;
 }
 
+export interface CapturedJobDate {
+  postedAt: string;
+  observedAt: string;
+  rawValue: string;
+  isReposted: boolean;
+}
+
+export function capturedJobDateFields(
+  value: string | null | undefined,
+  observedAt: Date = new Date(),
+) {
+  const captured = captureJobDate(value, observedAt);
+  if (!captured) return {};
+  return {
+    firstPostedAt: captured.postedAt,
+    lastPostedAt: captured.postedAt,
+    postingObservedAt: captured.observedAt,
+    isReposted: captured.isReposted,
+    postingDateRaw: { label: captured.rawValue },
+  };
+}
+
+/**
+ * Convert a source posting date to an absolute ISO timestamp at extraction
+ * time. Relative labels must never be persisted because their meaning changes
+ * after the page was observed.
+ */
+export function captureJobDate(
+  value: string | null | undefined,
+  observedAt: Date = new Date(),
+): CapturedJobDate | undefined {
+  const rawValue = typeof value === 'string' ? value.replace(/\s+/g, ' ').trim() : '';
+  if (!rawValue || Number.isNaN(observedAt.getTime())) return undefined;
+
+  const observedAtIso = observedAt.toISOString();
+  const isReposted = /\breposted\b/i.test(rawValue) || /重新发布/.test(rawValue);
+  const cleaned = rawValue
+    .replace(/^(?:posted\s+(?:on\s+)?|reposted\s+(?:on\s+)?|date\s*:\s*|发布于\s*|重新发布于\s*|over\s+|more\s+than\s+)/i, '')
+    .trim();
+
+  const explicitTimestamp = Date.parse(cleaned);
+  if (!Number.isNaN(explicitTimestamp)) {
+    const explicitDate = new Date(explicitTimestamp);
+    const year = explicitDate.getUTCFullYear();
+    if (year >= 2000 && year <= 2100) {
+      return {
+        postedAt: explicitDate.toISOString(),
+        observedAt: observedAtIso,
+        rawValue,
+        isReposted,
+      };
+    }
+  }
+
+  const lower = cleaned.toLowerCase();
+  let ageMs: number | null = null;
+  const quantity = (pattern: RegExp): number | null => {
+    const match = lower.match(pattern);
+    return match?.[1] ? Number.parseInt(match[1], 10) : null;
+  };
+
+  const minutes = quantity(/(\d+)\s*(?:minutes?|mins?|min\b|分钟前)/i);
+  const hours = quantity(/(\d+)\s*(?:hours?|hrs?|h\b|小时前)/i);
+  const days = quantity(/(\d+)\s*(?:days?|d\b|天前|日前的?)/i);
+  const weeks = quantity(/(\d+)\s*(?:weeks?|wks?|w\b|周前|星期前)/i);
+  const months = quantity(/(\d+)\s*(?:months?|mos?|mo\b|个月前|月前)/i);
+  const years = quantity(/(\d+)\s*(?:years?|yrs?|y\b|年前)/i);
+
+  if (minutes !== null) ageMs = minutes * 60_000;
+  else if (hours !== null) ageMs = hours * 3_600_000;
+  else if (days !== null) ageMs = days * 86_400_000;
+  else if (weeks !== null) ageMs = weeks * 7 * 86_400_000;
+  else if (months !== null) ageMs = months * 30 * 86_400_000;
+  else if (years !== null) ageMs = years * 365 * 86_400_000;
+  else if (/\b30\+\s*(?:days?|d)\b/i.test(lower)) ageMs = 30 * 86_400_000;
+  else if (/\b(?:yesterday)\b/i.test(lower) || /昨天/.test(lower)) ageMs = 86_400_000;
+  else if (
+    /\b(?:today|just\s+(?:posted|now)|secs?\s+ago)\b/i.test(lower) ||
+    /(?:刚刚|今天)/.test(lower)
+  ) ageMs = 0;
+
+  if (ageMs === null) return undefined;
+  return {
+    postedAt: new Date(observedAt.getTime() - ageMs).toISOString(),
+    observedAt: observedAtIso,
+    rawValue,
+    isReposted,
+  };
+}
+
 function formatDateToYYYYMMDD(date: Date): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -37,8 +127,6 @@ export function parseAndFormatJobDate(
   let ageInHours: number | null = null;
   let realDateStr: string | undefined = undefined;
 
-  let inputUnit: 'hour' | 'minute' | 'day' | 'week' | 'month' | 'year' | null = null;
-
   // 1. Try parsing relative hour and minute keywords
   const hourMatch = lower.match(/(\d+)\s*(?:hours?|hrs?|h\b|小时前)/i);
   const minMatch = lower.match(/(\d+)\s*(?:minutes?|mins?|分钟前)/i);
@@ -46,12 +134,10 @@ export function parseAndFormatJobDate(
   if (hourMatch && hourMatch[1]) {
     ageInHours = parseInt(hourMatch[1], 10);
     ageInDays = 0;
-    inputUnit = 'hour';
   } else if (minMatch && minMatch[1]) {
     const mins = parseInt(minMatch[1], 10);
     ageInHours = Math.max(0, Math.floor(mins / 60));
     ageInDays = 0;
-    inputUnit = 'minute';
   } else if (
     /\b(?:today|just\s+(?:posted|now)|secs?\s+ago)\b/i.test(lower) ||
     /(?:刚刚|今天)/.test(lower)
@@ -59,33 +145,27 @@ export function parseAndFormatJobDate(
     ageInDays = 0;
   } else if (/\b(?:yesterday)\b/i.test(lower) || /昨天/.test(lower)) {
     ageInDays = 1;
-    inputUnit = 'day';
   } else {
     // Check day count: e.g. "3 days ago", "6d", "19d", "26d", "6天前"
     const dayMatch = lower.match(/(\d+)\s*(?:days?|d\b|天前|日前的?)/i);
     if (dayMatch && dayMatch[1]) {
       ageInDays = parseInt(dayMatch[1], 10);
-      inputUnit = 'day';
     } else {
       // Check week count: e.g. "1 week ago", "1w", "1周前", "Over 2 weeks"
       const weekMatch = lower.match(/(\d+)\s*(?:weeks?|wks?|w\b|周前|星期前)/i);
       if (weekMatch && weekMatch[1]) {
         ageInDays = parseInt(weekMatch[1], 10) * 7;
-        inputUnit = 'week';
       } else {
         // Check month count: e.g. "1 month ago", "1mo", "1个月前"
         const monthMatch = lower.match(/(\d+)\s*(?:months?|mos?|mo\b|m\b|个月前|月前)/i);
         if (monthMatch && monthMatch[1]) {
           ageInDays = parseInt(monthMatch[1], 10) * 30;
-          inputUnit = 'month';
         } else if (/30\+\s*(?:days?|d)/i.test(lower)) {
           ageInDays = 30;
-          inputUnit = 'month';
         } else {
           const yearMatch = lower.match(/(\d+)\s*(?:years?|yrs?|y\b|年前)/i);
           if (yearMatch && yearMatch[1]) {
             ageInDays = parseInt(yearMatch[1], 10) * 365;
-            inputUnit = 'year';
           }
         }
       }
@@ -141,12 +221,9 @@ export function parseAndFormatJobDate(
     } else {
       displayText = 'Today';
     }
-  } else if (inputUnit === 'day' || (inputUnit === null && ageInDays < 7)) {
+  } else if (ageInDays < 30) {
     displayText = `${ageInDays} day${ageInDays === 1 ? '' : 's'} ago`;
-  } else if (inputUnit === 'week' || (inputUnit === null && ageInDays < 30)) {
-    const weeks = Math.max(1, Math.round(ageInDays / 7));
-    displayText = `${weeks} week${weeks === 1 ? '' : 's'} ago`;
-  } else if (inputUnit === 'month' || (inputUnit === null && ageInDays < 365)) {
+  } else if (ageInDays < 365) {
     const months = Math.max(1, Math.round(ageInDays / 30));
     displayText = `${months} month${months === 1 ? '' : 's'} ago`;
   } else {

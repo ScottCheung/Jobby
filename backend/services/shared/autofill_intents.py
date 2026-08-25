@@ -101,7 +101,21 @@ def _autofill_intent_key(label: str) -> str | None:
     }.get(category)
 
 
-_ATS_PLATFORMS = {"workday", "greenhouse", "lever", "ashby", "smartrecruiters", "taleo"}
+_ATS_PLATFORMS = {
+    "indeed",
+    "glassdoor",
+    "workday",
+    "greenhouse",
+    "lever",
+    "ashby",
+    "smartrecruiters",
+    "taleo",
+    "icims",
+    "successfactors",
+    "oracle",
+    "workable",
+    "bamboohr",
+}
 
 
 def _autofill_intent_key_for_field(field: Any, platform: str = "generic") -> str | None:

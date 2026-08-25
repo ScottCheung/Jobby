@@ -18,8 +18,6 @@ import {
   getStatusBadgeClasses,
   isProcessingApplication,
   isStaleProcessingApplication,
-  isStatusSubmitted,
-  shouldShowApplicationSkipReason,
   type JobApplication,
 } from '@/lib/types';
 import { type ApplicationCardViewModel } from './_components/ApplicationCard';
@@ -29,31 +27,10 @@ const PAGE_SIZE = 20;
 
 function matchesApplication(
   application: JobApplication,
-  statusFilter: string,
   searchText: string,
 ) {
   const effectiveStatus =
     getDisplayApplicationStatus(application).toLowerCase();
-
-  if (statusFilter) {
-    const filterLower = statusFilter.toLowerCase();
-    if (filterLower === 'submitted') {
-      if (!isStatusSubmitted(effectiveStatus)) {
-        return false;
-      }
-    } else if (filterLower === 'interrupted') {
-      if (
-        application.status !== 'interrupted' &&
-        !isStaleProcessingApplication(application)
-      ) {
-        return false;
-      }
-    } else {
-      if (effectiveStatus !== filterLower) {
-        return false;
-      }
-    }
-  }
 
   const query = searchText.trim().toLowerCase();
   if (!query) return true;
@@ -76,11 +53,9 @@ export default function ApplicationsPage() {
   const {
     applications,
     saveApplicationPatch,
-    applicationPlanAction,
     deleteApplication,
   } = useConsole();
 
-  const [statusFilter, setStatusFilter] = useState('');
   const [searchText, setSearchText] = useState('');
   const [items, setItems] = useState<JobApplication[]>([]);
   const [hasMore, setHasMore] = useState(true);
@@ -133,7 +108,7 @@ export default function ApplicationsPage() {
       try {
         const data = await withMinimumLoadingTime(
           api.applications(
-            statusFilter,
+            undefined,
             PAGE_SIZE,
             currentOffset,
             deferredSearchText,
@@ -169,7 +144,7 @@ export default function ApplicationsPage() {
         }
       }
     },
-    [deferredSearchText, statusFilter],
+    [deferredSearchText],
   );
 
   const handleDeleteApplication = React.useCallback(
@@ -208,11 +183,11 @@ export default function ApplicationsPage() {
       const syncedItems = prevItems
         .map((item) => applicationsById.get(item.id) ?? item)
         .filter((item) =>
-          matchesApplication(item, statusFilter, deferredSearchText),
+          matchesApplication(item, deferredSearchText),
         );
       return syncedItems;
     });
-  }, [applicationsById, deferredSearchText, statusFilter, isLoading]);
+  }, [applicationsById, deferredSearchText, isLoading]);
 
   const handleCardScroll = React.useCallback(
     (event: React.UIEvent<HTMLDivElement>) => {
@@ -249,15 +224,17 @@ export default function ApplicationsPage() {
           isLiveProcessing,
           stageTimestamp,
           displayStageTime: formatRelativeDate(stageTimestamp),
-          skipReason: item.skip_reason,
-          shouldShowSkipReason: shouldShowApplicationSkipReason(item),
           jobLink: item.job_link || item.external_job_link,
           hasTailoredResume: Boolean(
             item.has_tailored_resume || item.job_description,
           ),
-          datePosted: item.date_posted || null,
-          displayDatePosted:
-            item.date_posted ? formatRelativeDate(item.date_posted) : null,
+          firstPostedAt: item.first_posted_at || null,
+          lastPostedAt: item.last_posted_at || null,
+          displayFirstPostedAt:
+            item.first_posted_at ? formatRelativeDate(item.first_posted_at) : null,
+          displayLastPostedAt:
+            item.last_posted_at ? formatRelativeDate(item.last_posted_at) : null,
+          isReposted: Boolean(item.is_reposted),
           jobDescription: item.job_description || null,
         };
       }),
@@ -319,7 +296,6 @@ export default function ApplicationsPage() {
               updateUrlParams(applicationId, tab, true);
             }}
             onSave={saveApplicationPatch}
-            onPlanAction={applicationPlanAction}
           />
         ),
       });
@@ -328,7 +304,6 @@ export default function ApplicationsPage() {
       applicationsById,
       openDrawer,
       saveApplicationPatch,
-      applicationPlanAction,
       updateUrlParams,
     ],
   );
@@ -412,17 +387,6 @@ export default function ApplicationsPage() {
                   className='body-md pl-9 pr-4 py-1.5 w-full rounded-xl border border-zinc-200 bg-panel dark:bg-zinc-955 dark:border-primary focus:outline-none focus:border-primary/50 dark:focus:border-primary/50 focus:ring-1 focus:ring-primary/20 dark:focus:ring-zinc-750 text-ink-primary'
                 />
               </div>
-              <select
-                value={statusFilter}
-                onChange={(event) => setStatusFilter(event.target.value)}
-                className='body-md h-9 rounded-xl border border-zinc-200 bg-panel px-3 outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/20 dark:border-primary dark:bg-zinc-955 dark:focus:border-primary/50 dark:focus:ring-zinc-750'
-              >
-                <option value=''>All statuses</option>
-                <option value='submitted'>Submitted</option>
-                <option value='interrupted'>Needs review</option>
-                <option value='skipped'>Skipped</option>
-                <option value='cancelled'>Cancelled</option>
-              </select>
             </div>
           </ScrollLayout.BtmToRight>
         </ScrollLayout>

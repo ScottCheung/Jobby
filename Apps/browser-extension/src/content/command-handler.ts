@@ -1,26 +1,51 @@
 import { pageInspectionSchema } from "../shared/contracts/page-inspection";
 import { formInspectionSchema } from "../shared/contracts/form-inspection";
 import { fieldFillInstructionSchema, fileUploadInstructionSchema, formFieldTargetSchema } from "../shared/contracts/form-actions";
-import { linkedinApplicationActionSchema } from "../shared/contracts/linkedin";
 
 import { getCurrentFormScope, readCurrentForm, readCurrentPageWhenReady } from "./page-reader";
 import { startFormDiscovery, watchFormScope } from "./form-observer";
 import { classifyCurrentPage } from "./page-classifier";
 import { fillFormField, fillFormFieldValue, focusFormField, uploadFormFile } from "./dom/form-driver";
-import { linkedinAdapter } from "./platforms/linkedin/adapter";
-import { clickSeekApplicationAction } from "./platforms/seek/adapter";
-import { clickGenericApplicationAction, openGenericApplication } from "./platforms/generic/adapter";
 import {
   closeInPageResumePreviewModal,
   showInPageResumeLibraryModal,
   showInPageResumePreviewModal,
 } from "./dom/resume-preview-modal-injector";
+import {
+  closeInPageJobDescriptionModal,
+  showInPageJobDescriptionModal,
+} from "./dom/job-description-modal-injector";
 import { showInPageToast } from "./dom/in-page-toast";
+import { highlightJobRequirement } from './dom/job-requirement-highlight';
 
 export async function handleContentCommand(message: unknown): Promise<unknown> {
+  if (isHighlightJobRequirementCommand(message)) {
+    return {
+      highlighted: highlightJobRequirement(
+        (message as { searchTerms: string[] }).searchTerms,
+      ),
+    };
+  }
   if (isShowToastCommand(message)) {
     const payload = message as { message: string; toastType?: 'success' | 'error' | 'info' | 'warning'; duration?: number };
     showInPageToast(payload.message, payload.toastType || 'info', payload.duration);
+    return { ok: true };
+  }
+  if (isShowJobDescriptionCommand(message)) {
+    const payload = message as {
+      title?: string;
+      company?: string;
+      location?: string;
+      datePosted?: string;
+      description: string;
+      platform?: string;
+      themeColor?: string;
+    };
+    await showInPageJobDescriptionModal(payload);
+    return { ok: true };
+  }
+  if (isCloseJobDescriptionCommand(message)) {
+    closeInPageJobDescriptionModal();
     return { ok: true };
   }
   if (isShowResumePreviewCommand(message)) {
@@ -61,9 +86,6 @@ export async function handleContentCommand(message: unknown): Promise<unknown> {
     const inspection = pageInspectionSchema.parse(await readCurrentPageWhenReady());
     return { inspection };
   }
-  if (isRenderScoreCardCommand(message)) {
-    return { ok: true };
-  }
   if (isInspectFormCommand(message)) {
     const form = formInspectionSchema.parse(readCurrentForm());
     if (hasObservableFields(form)) {
@@ -89,23 +111,6 @@ export async function handleContentCommand(message: unknown): Promise<unknown> {
     if (typeof value !== "string" && typeof value !== "boolean") throw new Error("Invalid form field value.");
     return { fillResult: await fillFormFieldValue(target, value, getCurrentFormScope()) };
   }
-  if (isOpenLinkedInApplicationCommand(message)) {
-    const hostname = window.location.hostname;
-    const application = isLinkedInHost(hostname)
-      ? await linkedinAdapter.openApplication()
-      : await openGenericApplication();
-    return { application };
-  }
-  if (isLinkedInApplicationActionCommand(message)) {
-    const action = linkedinApplicationActionSchema.parse((message as { action: unknown }).action);
-    const hostname = window.location.hostname;
-    const application = isSeekHost(hostname)
-      ? await clickSeekApplicationAction(action)
-      : isLinkedInHost(hostname)
-        ? await linkedinAdapter.clickApplicationAction(action)
-        : await clickGenericApplicationAction(action);
-    return { application };
-  }
   if (isFillFieldCommand(message)) {
     const instruction = fieldFillInstructionSchema.parse(message);
     return { fillResult: await fillFormField(instruction, getCurrentFormScope()) };
@@ -127,16 +132,17 @@ function hasObservableFields(
   return form.kind === "application_form" || form.kind === "page_input_fields";
 }
 
-function isLinkedInHost(hostname: string): boolean {
-  return hostname === "linkedin.com" || hostname.endsWith(".linkedin.com");
-}
-
-function isSeekHost(hostname: string): boolean {
-  return hostname === "seek.com" || hostname.endsWith(".seek.com") || hostname === "seek.com.au" || hostname.endsWith(".seek.com.au");
-}
-
 function isInspectFormCommand(message: unknown): boolean {
   return typeof message === "object" && message !== null && (message as { type?: unknown }).type === "content.inspect-form";
+}
+
+function isHighlightJobRequirementCommand(message: unknown): boolean {
+  return (
+    typeof message === 'object' &&
+    message !== null &&
+    (message as { type?: unknown }).type ===
+      'content.highlight-job-requirement'
+  );
 }
 
 function isFillFieldCommand(message: unknown): boolean {
@@ -157,30 +163,6 @@ function isUploadFileCommand(message: unknown): boolean {
 
 function isInspectCommand(message: unknown): boolean {
   return typeof message === "object" && message !== null && (message as { type?: unknown }).type === "content.inspect";
-}
-
-function isOpenLinkedInApplicationCommand(message: unknown): boolean {
-  return (
-    typeof message === "object" &&
-    message !== null &&
-    (message as { type?: unknown }).type === "content.linkedin.open-application"
-  );
-}
-
-function isLinkedInApplicationActionCommand(message: unknown): boolean {
-  return (
-    typeof message === "object" &&
-    message !== null &&
-    (message as { type?: unknown }).type === "content.linkedin.application-action"
-  );
-}
-
-function isRenderScoreCardCommand(message: unknown): boolean {
-  return (
-    typeof message === "object" &&
-    message !== null &&
-    (message as { type?: unknown }).type === "content.render-score-card"
-  );
 }
 
 function isShowResumePreviewCommand(message: unknown): boolean {
@@ -214,3 +196,20 @@ function isShowToastCommand(message: unknown): boolean {
     (message as { type?: unknown }).type === "content.show-toast"
   );
 }
+
+function isShowJobDescriptionCommand(message: unknown): boolean {
+  return (
+    typeof message === "object" &&
+    message !== null &&
+    (message as { type?: unknown }).type === "content.show-job-description"
+  );
+}
+
+function isCloseJobDescriptionCommand(message: unknown): boolean {
+  return (
+    typeof message === "object" &&
+    message !== null &&
+    (message as { type?: unknown }).type === "content.close-job-description"
+  );
+}
+

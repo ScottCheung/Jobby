@@ -158,6 +158,53 @@ function renderDelayedLocation(): {
   return { input, pressedKeys };
 }
 
+function renderAshbyLocation(): HTMLInputElement {
+  const field = document.createElement('div');
+  field.className = 'ashby-application-form-field-entry';
+  field.innerHTML = `
+    <label>Location</label>
+    <input
+      class="ashby-application-form-input-autocomplete"
+      placeholder="Start typing..."
+      aria-autocomplete="list"
+      aria-expanded="false"
+      aria-haspopup="listbox"
+      role="combobox"
+    />
+  `;
+  document.body.append(field);
+  const input = field.querySelector<HTMLInputElement>('input');
+  if (!input) throw new Error('Ashby Location control was not rendered');
+
+  const commit = () => {
+    input.value = 'Sydney, New South Wales, Australia';
+    input.setAttribute('aria-expanded', 'false');
+    input.removeAttribute('aria-controls');
+    document.getElementById('ashby-location-options')?.remove();
+  };
+  input.addEventListener('input', () => {
+    input.setAttribute('aria-expanded', 'true');
+    input.setAttribute('aria-controls', 'ashby-location-options');
+    const listbox = document.createElement('div');
+    listbox.id = 'ashby-location-options';
+    listbox.setAttribute('role', 'listbox');
+    const option = document.createElement('div');
+    option.setAttribute('role', 'option');
+    // Ashby uses aria-selected for the highlighted suggestion before the
+    // user has committed it. The first synthetic click is deliberately a
+    // no-op here so the driver must verify the page state and use its
+    // keyboard fallback instead of accepting the highlighted row as filled.
+    option.setAttribute('aria-selected', 'true');
+    option.textContent = 'Sydney, New South Wales, Australia';
+    listbox.append(option);
+    document.body.append(listbox);
+  });
+  input.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') commit();
+  });
+  return input;
+}
+
 describe("shadow DOM autofill", () => {
   beforeEach(() => {
     document.body.innerHTML = "";
@@ -241,6 +288,46 @@ describe("shadow DOM autofill", () => {
     expect(pressedKeys).not.toContain('Enter');
   });
 
+  it('commits an Ashby Location option instead of accepting its search query', async () => {
+    const input = renderAshbyLocation();
+    input.value = 'Sydney';
+    input.dispatchEvent(new InputEvent('input', { bubbles: true }));
+
+    expect(inspectVisibleFormFields(document)).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        label: 'Location',
+        type: 'select',
+        filled: false,
+      }),
+    ]));
+    document.getElementById('ashby-location-options')?.remove();
+    input.value = '';
+    input.setAttribute('aria-expanded', 'false');
+    input.removeAttribute('aria-controls');
+
+    const field = inspectVisibleFormFields(document).find(
+      (candidate) => candidate.label === 'Location',
+    );
+    if (!field) throw new Error('Ashby Location field was not detected');
+    const result = await fillFormField({
+      type: 'content.fill-field',
+      commandId: 'test-ashby-location',
+      source: 'backend',
+      target: {
+        key: field.key,
+        id: field.id,
+        name: field.name,
+        type: 'select',
+        label: 'Location',
+      },
+      value: 'Sydney',
+    });
+
+    expect(result.status).toBe('filled');
+    expect(input.value).toBe('Sydney, New South Wales, Australia');
+    expect(input.getAttribute('aria-expanded')).toBe('false');
+  });
+
   it('ignores the resume-autocomplete helper and identifies required Resume', () => {
     renderSmartRecruitersResumeFields();
 
@@ -258,6 +345,73 @@ describe("shadow DOM autofill", () => {
     ]);
   });
 
+  it('recognises and fills a Greenhouse Location (City)* autocomplete field by selecting the first option', async () => {
+    const container = document.createElement('div');
+    container.id = 'grnhse_app';
+    container.innerHTML = `
+      <form id="application_form" class="application--form">
+        <div class="field">
+          <label for="job_application_location">Location (City)<span class="asterisk">*</span></label>
+          <input
+            type="text"
+            id="job_application_location"
+            name="job_application[location]"
+            autocomplete="off"
+            class="ui-autocomplete-input"
+          />
+          <input type="hidden" id="job_application_location_id" name="job_application[location_id]" />
+        </div>
+      </form>
+    `;
+    document.body.append(container);
+    const input = container.querySelector<HTMLInputElement>('#job_application_location');
+    if (!input) throw new Error('Greenhouse Location control was not rendered');
+
+    input.addEventListener('input', () => {
+      document.querySelector('.ui-autocomplete')?.remove();
+      const menu = document.createElement('ul');
+      menu.className = 'ui-autocomplete ui-front ui-menu ui-widget ui-widget-content';
+      const item = document.createElement('li');
+      item.className = 'ui-menu-item';
+      const wrapper = document.createElement('div');
+      wrapper.className = 'ui-menu-item-wrapper';
+      wrapper.textContent = 'Sydney NSW, Australia';
+      item.append(wrapper);
+      item.addEventListener('click', () => {
+        input.value = 'Sydney NSW, Australia';
+        const hidden = document.getElementById('job_application_location_id') as HTMLInputElement;
+        if (hidden) hidden.value = '98765';
+        menu.remove();
+      });
+      menu.append(item);
+      document.body.append(menu);
+    });
+
+    const fields = inspectVisibleFormFields(document);
+    const locationField = fields.find((f) => f.id === 'job_application_location');
+    expect(locationField).toBeDefined();
+    expect(locationField?.type).toBe('select');
+    expect(locationField?.required).toBe(true);
+
+    const result = await fillFormField({
+      type: 'content.fill-field',
+      commandId: 'test-greenhouse-location',
+      source: 'backend',
+      target: {
+        key: locationField!.key,
+        id: locationField!.id,
+        name: locationField!.name,
+        type: 'select',
+        label: locationField!.label,
+      },
+      value: 'sydney',
+    });
+
+    expect(result.status).toBe('filled');
+    expect(input.value).toBe('Sydney NSW, Australia');
+    expect((document.getElementById('job_application_location_id') as HTMLInputElement).value).toBe('98765');
+  });
+
   it('finds Resume through the nested Shadow DOM used by SmartRecruiters one-click forms', () => {
     renderNestedSmartRecruitersResumeFields();
 
@@ -273,3 +427,4 @@ describe("shadow DOM autofill", () => {
     ]);
   });
 });
+

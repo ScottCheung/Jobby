@@ -65,11 +65,12 @@ export const useAuthStore = create<AuthState>()(
       setRememberMe: (remember: boolean) => set({ rememberMe: remember }),
       isTokenExpired: () => {
         const state = get();
-        if (!state.loginTime || !state.rememberMe) return false;
+        if (!state.loginTime) return false;
 
+        const maxDuration = state.rememberMe !== false ? REMEMBER_ME_DURATION : 24 * 60 * 60 * 1000;
         const now = Date.now();
         const elapsed = now - state.loginTime;
-        return elapsed > REMEMBER_ME_DURATION;
+        return elapsed > maxDuration;
       },
     }),
     {

@@ -12,7 +12,7 @@ def normalized_text(value: str | None) -> str:
 
 
 def duplicate_key(application: JobApplication) -> tuple[str, str, str] | None:
-    job_id = str(application.job_id or "").strip()
+    job_id = str(application.external_job_id or "").strip()
     title = normalized_text(application.title)
     company = normalized_text(application.company)
 
@@ -52,7 +52,10 @@ def merge_missing_fields(target: JobApplication, source: JobApplication) -> None
         "external_job_link",
         "application_type",
         "resume_path",
-        "date_posted",
+        "first_posted_at",
+        "last_posted_at",
+        "posting_observed_at",
+        "is_reposted",
         "date_applied",
         "skip_reason",
         "screenshot_path",

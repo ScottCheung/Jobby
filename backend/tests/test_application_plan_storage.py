@@ -2,14 +2,14 @@ from __future__ import annotations
 
 import os
 import sys
-from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from uuid import uuid4
 
 WORKER_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "worker"))
 if WORKER_ROOT not in sys.path:
     sys.path.insert(0, WORKER_ROOT)
 
 import pytest
+from fastapi import HTTPException
 
 from application_core.models import ApplicationAction, ApplicationDecision, ApplicationState, JobCandidate, ResumeStrategy
 from application_core.policy import ApplicationPolicy, evaluate_policy
@@ -25,9 +25,11 @@ from services.shared.application_plans import (
 from services.shared.schemas import (
     ApplicationFieldInstruction,
     ApplicationFormFieldInput,
+    ApplicationFormInstructionsRequest,
     ApplicationFormInstructionsResponse,
     ApplicationPlanActionRequest,
     ApplicationPlanCreateRequest,
+    JobApplicationBase,
 )
 from services.api import main
 
@@ -86,110 +88,61 @@ def test_plan_api_contract_separates_creation_from_state_actions() -> None:
     assert action.action == "approve"
 
 
-def test_plan_creation_persists_candidate_posted_date() -> None:
-    db = MagicMock()
-    db.scalar.side_effect = [None, None, None]
-    candidate = JobCandidate(
-        platform="linkedin",
-        external_id="job-42",
-        title="Engineer",
-        company="Example Co",
-    )
-    evaluation = SimpleNamespace(
-        candidate=candidate,
-        decision=ApplicationDecision(action=ApplicationAction.APPLY),
-    )
+def test_automatic_application_plan_endpoints_are_disabled() -> None:
     payload = ApplicationPlanCreateRequest(
         candidate={
             "external_id": "job-42",
             "title": "Engineer",
             "company": "Example Co",
-            "date_posted": "14 hours ago",
+            "last_posted_at": "2026-08-26T00:00:00+00:00",
         },
     )
 
-    with (
-        patch.object(main, "_get_user_active_resume_data", return_value=None),
-        patch.object(main, "evaluate_candidate", return_value=evaluation),
-        patch.object(main, "_application_plan_response", return_value={"ok": True}),
-    ):
-        main.create_application_plan_endpoint(
-            payload,
-            db=db,
-            current_user=SimpleNamespace(id="user-1"),
+    application_id = uuid4()
+    operations = [
+        lambda: main.create_application_plan_endpoint(payload, db=None, current_user=None),
+        lambda: main.read_application_plan(application_id, db=None, current_user=None),
+        lambda: main.create_application_form_instructions(
+            application_id,
+            ApplicationFormInstructionsRequest(fields=[]),
+            db=None,
+            current_user=None,
+        ),
+        lambda: main.generate_application_plan_tailored_resume(
+            application_id,
+            db=None,
+            current_user=None,
+        ),
+        lambda: main.apply_application_plan_action(
+            application_id,
+            ApplicationPlanActionRequest(action="approve"),
+            db=None,
+            current_user=None,
+        ),
+    ]
+
+    for operation in operations:
+        with pytest.raises(HTTPException) as exc_info:
+            operation()
+        assert exc_info.value.status_code == 410
+
+
+@pytest.mark.parametrize("application_status", ["draft", "processing", "interrupted", "skipped", "cancelled"])
+def test_non_submitted_application_states_are_not_recorded(application_status: str) -> None:
+    with pytest.raises(HTTPException) as exc_info:
+        main.create_application(
+            JobApplicationBase(
+                platform="linkedin",
+                job_id="job-42",
+                title="Engineer",
+                company="Example Co",
+                status=application_status,
+            ),
+            db=None,
+            current_user=None,
         )
 
-    created = db.add.call_args.args[0]
-    assert created.date_posted == "14 hours ago"
-
-
-def test_plan_reevaluation_updates_candidate_posted_date_when_present() -> None:
-    existing = SimpleNamespace(raw_data={}, date_posted="2 days ago")
-    db = MagicMock()
-    db.scalar.side_effect = [None, None, existing]
-    candidate = JobCandidate(
-        platform="linkedin",
-        external_id="job-42",
-        title="Engineer",
-        company="Example Co",
-        already_applied=True,
-    )
-    evaluation = SimpleNamespace(
-        candidate=candidate,
-        decision=ApplicationDecision(action=ApplicationAction.APPLY),
-    )
-    payload = ApplicationPlanCreateRequest(
-        candidate={
-            "external_id": "job-42",
-            "title": "Engineer",
-            "company": "Example Co",
-            "date_posted": "14 hours ago",
-        },
-    )
-
-    with (
-        patch.object(main, "_get_user_active_resume_data", return_value=None),
-        patch.object(main, "evaluate_candidate", return_value=evaluation),
-        patch.object(main, "_application_plan_response", return_value={"ok": True}),
-    ):
-        main.create_application_plan_endpoint(
-            payload,
-            db=db,
-            current_user=SimpleNamespace(id="user-1"),
-        )
-
-    assert existing.date_posted == "14 hours ago"
-
-
-def test_existing_rejected_plan_is_returned_without_a_server_error() -> None:
-    rejected_plan = reject_review(
-        mark_prepared(begin_preparation(make_plan())),
-        "User rejected this application",
-    )
-    existing = SimpleNamespace(
-        id="application-42",
-        raw_data={"application_plan": plan_to_dict(rejected_plan)},
-    )
-    db = MagicMock()
-    db.scalar.side_effect = [None, None, existing]
-    payload = ApplicationPlanCreateRequest(
-        candidate={
-            "platform": "linkedin",
-            "external_id": "job-42",
-            "title": "Engineer",
-            "company": "Example Co",
-        },
-    )
-
-    with patch.object(main, "_application_plan_response", return_value={"ok": True}) as response:
-        result = main.create_application_plan_endpoint(
-            payload,
-            db=db,
-            current_user=SimpleNamespace(id="user-1"),
-        )
-
-    assert result == {"ok": True}
-    response.assert_called_once_with(existing, rejected_plan)
+    assert exc_info.value.status_code == 422
 
 
 def test_form_instructions_omit_unavailable_optional_field_identifiers() -> None:

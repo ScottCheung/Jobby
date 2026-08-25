@@ -3,13 +3,11 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Check, X } from 'lucide-react';
 import {
   getApplicationTimeline,
   getCurrentApplicationStage,
   type ApplicationTimelineEntry,
   type JobApplication,
-  type ApplicationPlanResponse,
 } from '@/lib/types';
 import { useLayoutStore } from '@/lib/store/layout-store';
 import { formatRelativeDate } from '@/components/ConsoleUtils';
@@ -26,7 +24,6 @@ export function ApplicationDetails({
   application,
   initialTab = 'overview',
   onSave,
-  onPlanAction,
   onTabChange,
 }: {
   application: JobApplication;
@@ -35,11 +32,6 @@ export function ApplicationDetails({
     applicationId: string,
     payload: Partial<JobApplication>,
   ) => Promise<void>;
-  onPlanAction?: (
-    applicationId: string,
-    action: string,
-    reason?: string,
-  ) => Promise<ApplicationPlanResponse>;
   onTabChange?: (tab: 'overview' | 'qa' | 'description') => void;
 }) {
   const { actions } = useLayoutStore();
@@ -51,8 +43,6 @@ export function ApplicationDetails({
   const [isEditingTimeline, setIsEditingTimeline] = useState(false);
   const [isEditingNotes, setIsEditingNotes] = useState(false);
   const [isEditingDescription, setIsEditingDescription] = useState(false);
-  const [planBusy, setPlanBusy] = useState(false);
-  const [rejectReason, setRejectReason] = useState('');
 
   useEffect(() => {
     setActiveTab(initialTab);
@@ -141,44 +131,10 @@ export function ApplicationDetails({
         next_action: draft.next_action,
         next_action_at: draft.next_action_at,
         notes: draft.notes,
-        skip_reason: draft.skip_reason,
         raw_data: draft.raw_data,
       });
     } finally {
       setSaving(false);
-    }
-  };
-
-  const plan = (draft.raw_data?.application_plan || null) as
-    | ApplicationPlanResponse['plan']
-    | null;
-  const reviewPending = plan?.state === 'awaiting_user_review';
-  const runPlanAction = async (action: 'approve' | 'reject') => {
-    if (!onPlanAction || (action === 'reject' && !rejectReason.trim())) return;
-    setPlanBusy(true);
-    try {
-      const response = await onPlanAction(
-        draft.id,
-        action,
-        rejectReason.trim() || undefined,
-      );
-      const nextState = response.plan.state;
-      setDraft((current) => ({
-        ...current,
-        status:
-          nextState === 'submitted' ? 'submitted'
-          : nextState === 'rejected' ? 'skipped'
-          : nextState === 'awaiting_user_review' ? 'interrupted'
-          : current.status,
-        skip_reason: response.plan.review_reason ?? current.skip_reason,
-        raw_data: {
-          ...(current.raw_data || {}),
-          application_plan: response.plan,
-        },
-      }));
-      if (action === 'reject') setRejectReason('');
-    } finally {
-      setPlanBusy(false);
     }
   };
 
@@ -199,45 +155,6 @@ export function ApplicationDetails({
 
       {/* Scrollable Content Container */}
       <div className='flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar-primary'>
-        {reviewPending && onPlanAction && (
-          <section className='rounded-lg border border-amber-500/30 bg-amber-500/5 p-4'>
-            <div className='flex items-start gap-3'>
-              <AlertTriangle className='mt-0.5 size-5 shrink-0 text-amber-600' />
-              <div className='min-w-0 flex-1'>
-                <h3 className='title-card'>Application review required</h3>
-                <p className='body-sm mt-1 text-ink-secondary'>
-                  {plan?.review_reason ||
-                    'Review the prepared application before continuing.'}
-                </p>
-                <div className='mt-3 flex flex-col gap-2 sm:flex-row'>
-                  <Button
-                    size='sm'
-                    Icon={Check}
-                    isLoading={planBusy}
-                    onClick={() => void runPlanAction('approve')}
-                  >
-                    Approve
-                  </Button>
-                  <input
-                    className='h-8 min-w-0 flex-1 rounded-md border border-transparent bg-background px-2 text-sm'
-                    placeholder='Reason for rejecting'
-                    value={rejectReason}
-                    onChange={(event) => setRejectReason(event.target.value)}
-                  />
-                  <Button
-                    size='sm'
-                    variant='destructive'
-                    Icon={X}
-                    disabled={planBusy || !rejectReason.trim()}
-                    onClick={() => void runPlanAction('reject')}
-                  >
-                    Reject
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </section>
-        )}
         {activeTab === 'overview' && (
           <div className='space-y-6'>
             <Timeline
@@ -254,8 +171,6 @@ export function ApplicationDetails({
         {activeTab === 'qa' && (
           <NotesAndQA
             notes={draft.notes}
-            status={draft.status}
-            skipReason={draft.skip_reason}
             questions={draft.questions}
             isEditingNotes={isEditingNotes}
             setIsEditingNotes={setIsEditingNotes}

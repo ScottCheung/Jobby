@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from typing import Any
+from typing import Any, NoReturn
 from uuid import UUID, uuid4
 import asyncio
 import json
@@ -22,7 +22,7 @@ except ImportError:
 
 from sqlalchemy import delete, or_, select, text, func, cast, Date, inspect
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from services.shared.realtime import broadcaster, broadcast_sync
 
@@ -122,31 +122,13 @@ from services.shared.application_settings import (
     application_settings_to_storage,
 )
 from services.shared.application_decisions import evaluate_candidate, evaluation_to_dict
-from services.shared.application_plans import (
-    append_plan_event,
-    plan_can_be_reevaluated,
-    plan_from_dict,
-    plan_requires_tailored_resume,
-    plan_to_dict,
-)
-from application_core.models import ApplicationState
-from application_core.workflow import (
-    PlanTransitionError,
-    approve_review,
-    begin_preparation,
-    begin_submission,
-    mark_failed,
-    mark_prepared,
-    mark_submitted,
-    reject_review,
-    request_review,
-)
 from services.shared.time_utils import parse_datetime_to_utc, utc_isoformat, utc_now
 from services.shared.media import MediaError, optimize_avatar_to_webp
 from services.shared.resume_parser import ResumeParseError, enrich_resume_data_from_source, extract_pdf_source, extract_pdf_text, normalize_resume_data, parse_resume_text, parse_resume_text_raw
 from services.shared.resume_evaluator import RUBRIC_VERSION, ResumeEvaluationError, evaluate_resume_data, resume_content_hash
 from services.shared.deepseek import DeepSeekError
 from services.shared.job_review import build_tailor_messages, review_job
+from services.shared.jobs import apply_job_updates, upsert_job
 
 
 from services.api.routers.interview import (
@@ -168,7 +150,7 @@ RESUME_RECOVERY_AFTER = timedelta(minutes=2)
 tags_metadata = [
     {"name": "interview", "description": "Interview Preparation, Question Bank, Practice Records & AI Evaluation APIs"},
     {"name": "user", "description": "User Profile, Settings, & Authentication APIs"},
-    {"name": "applications", "description": "Job Applications Tracking & Auto-Apply APIs"},
+    {"name": "applications", "description": "Submitted job application tracking APIs"},
     {"name": "prospects", "description": "AI Prospect Discovery & Recruiter Outreach APIs"},
 ]
 
@@ -180,8 +162,8 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Auto Job Applier & Interview Prep API",
-    description="High-performance backend API for AI Job Application Automation, Interview Question Library, Gamification, and Practice Mode.",
+    title="Jobby Career Assistant API",
+    description="Job recognition, form autofill, submitted application tracking, and interview preparation APIs.",
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
@@ -219,6 +201,117 @@ def apply_updates(model: object, values: dict) -> None:
         if key == "raw_data":
             continue
         setattr(model, key, value)
+
+
+APPLICATION_JOB_FIELDS = {
+    "platform",
+    "job_id",
+    "title",
+    "company",
+    "work_location",
+    "job_description",
+    "job_link",
+    "first_posted_at",
+    "last_posted_at",
+    "posting_observed_at",
+    "is_reposted",
+    "posting_date_raw",
+}
+
+
+def _job_snapshot_from_application_values(values: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "platform": values.get("platform") or "generic",
+        "external_id": values.get("job_id"),
+        "url": values.get("job_link"),
+        "title": values.get("title"),
+        "company": values.get("company"),
+        "location": values.get("work_location"),
+        "description": values.get("job_description"),
+        "technologies": values.get("technologies") or [],
+        "first_posted_at": values.get("first_posted_at"),
+        "last_posted_at": values.get("last_posted_at"),
+        "posting_observed_at": values.get("posting_observed_at"),
+        "is_reposted": values.get("is_reposted"),
+        "posting_date_raw": values.get("posting_date_raw") or {},
+    }
+
+
+def _application_values_only(values: dict[str, Any]) -> dict[str, Any]:
+    return {key: value for key, value in values.items() if key not in APPLICATION_JOB_FIELDS}
+
+
+def _update_application_job(
+    db: Session,
+    application: JobApplication,
+    values: dict[str, Any],
+    *,
+    user_id: UUID,
+    source: str,
+    allow_clear: bool,
+) -> None:
+    field_map = {
+        "title": "title",
+        "company": "company",
+        "work_location": "location",
+        "job_description": "description",
+    }
+    updates = {
+        target: values[source_field]
+        for source_field, target in field_map.items()
+        if source_field in values and (allow_clear or values[source_field] not in (None, ""))
+    }
+    if updates:
+        apply_job_updates(
+            db,
+            job=application.job,
+            updates=updates,
+            user_id=user_id,
+            job_application=application,
+            source=source,
+        )
+
+    identity_changed = False
+    incoming_external_id = normalize_job_id(values.get("job_id")) if "job_id" in values else None
+    if incoming_external_id and not application.job.external_id:
+        application.job.external_id = incoming_external_id
+        identity_changed = True
+    incoming_platform = str(values.get("platform") or "").strip().casefold()
+    if incoming_platform and application.job.platform == "generic":
+        application.job.platform = incoming_platform
+        identity_changed = True
+    for source_field, target in (("job_link", "url"),):
+        if source_field not in values:
+            continue
+        incoming = values[source_field]
+        if incoming in (None, "") and not allow_clear:
+            continue
+        if getattr(application.job, target) != incoming:
+            setattr(application.job, target, incoming)
+            identity_changed = True
+    first_posted_at = values.get("first_posted_at")
+    if first_posted_at and (
+        application.job.first_posted_at is None
+        or first_posted_at < application.job.first_posted_at
+    ):
+        application.job.first_posted_at = first_posted_at
+        identity_changed = True
+    for field in ("last_posted_at", "posting_observed_at"):
+        incoming = values.get(field)
+        current = getattr(application.job, field)
+        if incoming and (current is None or incoming > current):
+            setattr(application.job, field, incoming)
+            identity_changed = True
+    if values.get("is_reposted") and not application.job.is_reposted:
+        application.job.is_reposted = True
+        identity_changed = True
+    if values.get("posting_date_raw"):
+        application.job.raw_extracted_snapshot = {
+            **(application.job.raw_extracted_snapshot or {}),
+            "posting_date_raw": values["posting_date_raw"],
+        }
+    if identity_changed:
+        application.job.revision = int(application.job.revision or 1) + 1
 
 
 def profile_response(_profile: object | None, user: User, db: Session) -> dict:
@@ -366,6 +459,23 @@ def normalize_application_status(value: str | None) -> str:
     if status_value in {"failed", "fail", "error", "skipped", "skiped", "skip"}:
         return "skipped"
     return status_value or "submitted"
+
+
+NON_RECORDED_APPLICATION_STATUSES = (
+    "draft",
+    "processing",
+    "interrupted",
+    "skipped",
+    "cancelled",
+)
+
+
+def ensure_recordable_application_status(status_value: str) -> None:
+    if status_value in NON_RECORDED_APPLICATION_STATUSES:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Only submitted applications can be recorded.",
+        )
 
 
 def default_pipeline_stage_for_status(status_value: str | None) -> str:
@@ -540,7 +650,7 @@ def find_existing_application(
     title = _normalized_text(values.get("title"))
     company = _normalized_text(values.get("company"))
 
-    query = select(JobApplication).where(
+    query = select(JobApplication).options(selectinload(JobApplication.job)).where(
         JobApplication.user_id == current_user.id,
         JobApplication.deleted_at.is_(None),
     )
@@ -558,7 +668,7 @@ def find_existing_application(
         ])
 
     if job_id:
-        query = query.where(JobApplication.job_id == job_id)
+        query = query.where(JobApplication.external_job_id == job_id)
     elif link_clauses:
         query = query.where(or_(*link_clauses))
     elif title and company:
@@ -597,55 +707,6 @@ def find_existing_application(
             return candidate
 
     return None
-
-
-def reconcile_stale_processing_applications(
-    db: Session,
-    current_user: User,
-    timeout_seconds: int = 120,
-) -> list[JobApplication]:
-    now = utc_now()
-    rows = list(
-        db.scalars(
-            select(JobApplication).where(
-                JobApplication.user_id == current_user.id,
-                JobApplication.deleted_at.is_(None),
-                JobApplication.status == "processing",
-            )
-        )
-    )
-
-    updated_rows: list[JobApplication] = []
-    for application in rows:
-        last_touched = application.updated_at or application.created_at
-        if not last_touched:
-            continue
-        comparable_last_touched = (
-            last_touched.astimezone(now.tzinfo) if last_touched.tzinfo and now.tzinfo else last_touched
-        )
-        if (now - comparable_last_touched).total_seconds() <= timeout_seconds:
-            continue
-
-        application.status = "interrupted"
-        application.skip_reason = application.skip_reason or "Application flow was interrupted and needs review"
-        raw_data = application.raw_data or {}
-        application.raw_data = {
-            **raw_data,
-            "processing_timeout_at": utc_isoformat(now),
-            "processing_recovered_as": "interrupted",
-        }
-        updated_rows.append(application)
-
-    if updated_rows:
-        db.commit()
-        for application in updated_rows:
-            db.refresh(application)
-            broadcast_sync(
-                "application_updated",
-                JobApplicationRead.model_validate(application).model_dump(mode="json"),
-            )
-
-    return updated_rows
 
 
 def async_application_from_link_record(application: JobApplication) -> tuple[dict, str | None]:
@@ -705,7 +766,23 @@ def async_application_from_link_record(application: JobApplication) -> tuple[dic
         }
         return {}, warning
 
-    apply_updates(application, updates)
+    repaired_job_fields = {
+        "job_id": "external_id",
+        "title": "title",
+        "company": "company",
+        "work_location": "location",
+        "job_description": "description",
+    }
+    changed_job = False
+    for source_field, target_field in repaired_job_fields.items():
+        if source_field not in updates:
+            continue
+        value = updates[source_field]
+        if getattr(application.job, target_field) != value:
+            setattr(application.job, target_field, value)
+            changed_job = True
+    if changed_job:
+        application.job.revision = int(application.job.revision or 1) + 1
     application.raw_data = {
         **(application.raw_data or {}),
         "link_async_warning": None,
@@ -2122,7 +2199,7 @@ def review_job_from_jd(
         "job_description": description,
         "title": str(payload.get("title") or "").strip() or None,
         "company": str(payload.get("company") or "").strip() or None,
-        "date_posted": str(payload.get("date_posted") or "").strip() or None,
+        "last_posted_at": payload.get("last_posted_at"),
     }
     mock = bool(payload.get("mock"))
     generation_id = str(payload.get("generation_id") or uuid4())
@@ -2156,12 +2233,15 @@ def review_job_from_jd(
         )
 
     if tailored_resume is None:
+        job_record = upsert_job(
+            db,
+            extracted_snapshot=job,
+            user_id=current_user.id,
+            source="job_review",
+        ).job
         application = JobApplication(
             user_id=current_user.id,
-            title=job["title"],
-            company=job["company"],
-            job_description=description,
-            date_posted=job["date_posted"],
+            job=job_record,
             status="draft",
             raw_data={"pipeline_stage": "draft", "created_from": "job_review"},
         )
@@ -2304,7 +2384,7 @@ def _run_tailored_resume_generation(
         "job_description": tailored_resume.job_description,
         "title": tailored_resume.job_title,
         "company": tailored_resume.company,
-        "date_posted": application.date_posted,
+        "date_posted": application.last_posted_at,
     }
     return review_job(job, dict(tailored_resume.source_resume_data or {}), mock=mock)
 
@@ -3386,7 +3466,7 @@ def evaluate_application_decision(
         select(JobApplication.id).where(
             JobApplication.user_id == current_user.id,
             JobApplication.platform == candidate_payload["platform"],
-            JobApplication.job_id == candidate_payload["external_id"],
+            JobApplication.external_job_id == candidate_payload["external_id"],
             JobApplication.deleted_at.is_(None),
         )
     )
@@ -3403,11 +3483,11 @@ def evaluate_application_decision(
     return evaluation_to_dict(result)
 
 
-def _application_plan_response(application: JobApplication, plan: object) -> dict[str, Any]:
-    return {
-        "application_id": str(application.id),
-        "plan": plan_to_dict(plan),
-    }
+def _automatic_application_disabled() -> NoReturn:
+    raise HTTPException(
+        status_code=status.HTTP_410_GONE,
+        detail="Automatic application plans are disabled. Use autofill, then record the application after submission.",
+    )
 
 
 @app.post("/api/application-plans", status_code=status.HTTP_201_CREATED)
@@ -3416,111 +3496,7 @@ def create_application_plan_endpoint(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_or_create_current_user),
 ) -> dict[str, Any]:
-    """Create or recover an idempotent application plan for one discovered job."""
-    runtime_settings = db.scalar(select(RuntimeSettings).where(RuntimeSettings.user_id == current_user.id))
-    job_hunting_profile = db.scalar(
-        select(JobHuntingProfile)
-        .where(JobHuntingProfile.user_id == current_user.id, JobHuntingProfile.is_default.is_(True))
-        .order_by(JobHuntingProfile.updated_at.desc())
-        .limit(1)
-    )
-    settings = application_settings_from_storage(
-        runtime_settings.settings if runtime_settings else {},
-        legacy_runtime=_legacy_runtime_values(runtime_settings),
-        legacy_policy=_legacy_policy_values(job_hunting_profile),
-    )
-
-    candidate_payload = payload.candidate.model_dump()
-    if payload.job_description and not candidate_payload.get("description"):
-        candidate_payload["description"] = payload.job_description
-    date_posted = candidate_payload.get("date_posted") or candidate_payload.get("posted_at")
-    existing = db.scalar(
-        select(JobApplication).where(
-            JobApplication.user_id == current_user.id,
-            JobApplication.platform == candidate_payload["platform"],
-            JobApplication.job_id == candidate_payload["external_id"],
-            JobApplication.deleted_at.is_(None),
-        )
-    )
-    previous_plan = None
-    if existing:
-        stored_plan = (existing.raw_data or {}).get("application_plan")
-        if stored_plan:
-            previous_plan = plan_from_dict(stored_plan)
-            if previous_plan.state in (
-                ApplicationState.SUBMITTED,
-                ApplicationState.PREPARING,
-                ApplicationState.READY_TO_SUBMIT,
-                ApplicationState.REJECTED,
-            ):
-                return _application_plan_response(existing, previous_plan)
-        else:
-            candidate_payload["already_applied"] = True
-
-    resume_data = _get_user_active_resume_data(db, current_user)
-    result = evaluate_candidate(
-        candidate_payload,
-        settings=settings,
-        resume_data=resume_data,
-        profile_skills=_get_user_profile_skills(db, current_user),
-    )
-    from application_core.workflow import create_application_plan
-
-    plan = create_application_plan(result.candidate, result.decision)
-    if existing:
-        raw_data = append_plan_event(
-            existing.raw_data or {},
-            action="reevaluate" if previous_plan else "create",
-            from_state=previous_plan.state.value if previous_plan else None,
-            to_state=plan.state.value,
-            actor="api",
-        )
-        raw_data["application_plan"] = plan_to_dict(plan)
-        existing.raw_data = raw_data
-        existing.title = result.candidate.title
-        existing.company = result.candidate.company
-        existing.job_description = payload.job_description
-        existing.job_link = payload.job_link
-        existing.work_location = payload.work_location
-        if date_posted:
-            existing.date_posted = date_posted
-        existing.status = "skipped" if plan.state is ApplicationState.SKIPPED else (
-            "interrupted" if plan.state is ApplicationState.AWAITING_USER_REVIEW else "draft"
-        )
-        existing.skip_reason = result.decision.explanation if plan.state is ApplicationState.SKIPPED else None
-        existing.status_updated_at = utc_now()
-        db.commit()
-        db.refresh(existing)
-        return _application_plan_response(existing, plan)
-
-    initial_status = "skipped" if plan.state is ApplicationState.SKIPPED else (
-        "interrupted" if plan.state is ApplicationState.AWAITING_USER_REVIEW else "draft"
-    )
-    plan_raw_data = append_plan_event(
-        {"application_plan": plan_to_dict(plan)},
-        action="create",
-        from_state=None,
-        to_state=plan.state.value,
-        actor="api",
-    )
-    application = JobApplication(
-        user_id=current_user.id,
-        platform=result.candidate.platform,
-        job_id=result.candidate.external_id,
-        title=result.candidate.title,
-        company=result.candidate.company,
-        job_description=payload.job_description,
-        job_link=payload.job_link,
-        work_location=payload.work_location,
-        date_posted=date_posted,
-        status=initial_status,
-        skip_reason=result.decision.explanation if plan.state is ApplicationState.SKIPPED else None,
-        raw_data=plan_raw_data,
-    )
-    db.add(application)
-    db.commit()
-    db.refresh(application)
-    return _application_plan_response(application, plan)
+    _automatic_application_disabled()
 
 
 @app.get("/api/application-plans/{application_id}")
@@ -3529,13 +3505,7 @@ def read_application_plan(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_or_create_current_user),
 ) -> dict[str, Any]:
-    application = db.get(JobApplication, application_id)
-    if not application or application.user_id != current_user.id:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application plan not found")
-    stored_plan = (application.raw_data or {}).get("application_plan")
-    if not stored_plan:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application plan not found")
-    return _application_plan_response(application, plan_from_dict(stored_plan))
+    _automatic_application_disabled()
 
 
 def _normalize_form_label(value: str) -> str:
@@ -3643,7 +3613,21 @@ def _autofill_intent_key(label: str) -> str | None:
     }.get(category)
 
 
-_ATS_PLATFORMS = {"workday", "greenhouse", "lever", "ashby", "smartrecruiters", "taleo"}
+_ATS_PLATFORMS = {
+    "indeed",
+    "glassdoor",
+    "workday",
+    "greenhouse",
+    "lever",
+    "ashby",
+    "smartrecruiters",
+    "taleo",
+    "icims",
+    "successfactors",
+    "oracle",
+    "workable",
+    "bamboohr",
+}
 
 
 def _autofill_intent_key_for_field(field: Any, platform: str = "generic") -> str | None:
@@ -4654,28 +4638,7 @@ def create_application_form_instructions(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_or_create_current_user),
 ) -> dict[str, Any]:
-    """Return exact cached answers for a previously created application plan."""
-    application = db.get(JobApplication, application_id)
-    if not application or application.user_id != current_user.id:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application plan not found")
-
-    stored_plan = (application.raw_data or {}).get("application_plan")
-    if not stored_plan:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application plan not found")
-    plan = plan_from_dict(stored_plan)
-    if plan.state in {ApplicationState.SKIPPED, ApplicationState.REJECTED, ApplicationState.SUBMITTED, ApplicationState.FAILED}:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="This application plan cannot fill fields in its current state.")
-
-    return {
-        "application_id": application_id,
-        **_build_form_autofill_instructions(
-            db,
-            payload=payload,
-            current_user=current_user,
-            platform=plan.candidate.platform.strip().lower() or "generic",
-            scene="job_application",
-        ),
-    }
+    _automatic_application_disabled()
 
 
 @app.post("/api/application-plans/{application_id}/tailored-resume", response_model=TailoredResumeRead)
@@ -4684,51 +4647,7 @@ def generate_application_plan_tailored_resume(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_or_create_current_user),
 ) -> TailoredResume:
-    """Generate a tailored resume only when the durable plan explicitly requires it."""
-    application = db.scalar(
-        select(JobApplication)
-        .where(JobApplication.id == application_id, JobApplication.user_id == current_user.id)
-        .with_for_update()
-    )
-    if not application:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application plan not found")
-    stored_plan = (application.raw_data or {}).get("application_plan")
-    if not stored_plan:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application plan not found")
-
-    plan = plan_from_dict(stored_plan)
-    if not plan_requires_tailored_resume(plan):
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="This application plan does not request a tailored resume.",
-        )
-
-    tailored_resume = create_tailored_resume_for_application(
-        db,
-        current_user,
-        application,
-        mock=False,
-    )
-    if not tailored_resume:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Tailored resume generation is unavailable.",
-        )
-
-    raw_data = append_plan_event(
-        application.raw_data or {},
-        action="generate_tailored_resume",
-        from_state=plan.state.value,
-        to_state=plan.state.value,
-        actor="worker",
-    )
-    raw_data["application_plan"] = plan_to_dict(plan)
-    raw_data["tailored_resume_id"] = str(tailored_resume.id)
-    raw_data["tailored_resume_strategy"] = "tailored"
-    application.raw_data = raw_data
-    db.commit()
-    db.refresh(tailored_resume)
-    return tailored_resume
+    _automatic_application_disabled()
 
 
 @app.post("/api/application-plans/{application_id}/actions")
@@ -4738,72 +4657,7 @@ def apply_application_plan_action(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_or_create_current_user),
 ) -> dict[str, Any]:
-    application = db.scalar(
-        select(JobApplication)
-        .where(JobApplication.id == application_id, JobApplication.user_id == current_user.id)
-        .with_for_update()
-    )
-    if not application or application.user_id != current_user.id:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application plan not found")
-    stored_plan = (application.raw_data or {}).get("application_plan")
-    if not stored_plan:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Application plan not found")
-
-    plan = plan_from_dict(stored_plan)
-    previous_state = plan.state
-    action = payload.action.strip().casefold()
-    try:
-        if action == "prepare":
-            plan = begin_preparation(plan)
-        elif action == "request_review":
-            if plan.state is ApplicationState.PLANNED:
-                plan = begin_preparation(plan)
-            plan = request_review(plan, payload.reason or "")
-        elif action == "mark_prepared":
-            plan = mark_prepared(plan)
-        elif action in {"approve", "confirm_submit"}:
-            plan = approve_review(plan)
-        elif action == "reject":
-            plan = reject_review(plan, payload.reason or "")
-        elif action == "begin_submission":
-            plan = begin_submission(plan)
-        elif action == "mark_submitted":
-            plan = mark_submitted(plan)
-        elif action == "mark_failed":
-            plan = mark_failed(plan, payload.reason or "Worker browser flow failed.")
-        else:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Unknown plan action: {action}")
-    except HTTPException:
-        raise
-    except (ValueError, TypeError, PlanTransitionError) as exc:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
-
-    raw_data = append_plan_event(
-        application.raw_data or {},
-        action=action,
-        from_state=previous_state.value,
-        to_state=plan.state.value,
-        actor=str(current_user.email or "user"),
-    )
-    raw_data["application_plan"] = plan_to_dict(plan)
-    application.raw_data = raw_data
-    application.status = {
-        ApplicationState.SKIPPED: "skipped",
-        ApplicationState.AWAITING_USER_REVIEW: "interrupted",
-        ApplicationState.SUBMITTING: "processing",
-        ApplicationState.SUBMITTED: "submitted",
-        ApplicationState.REJECTED: "skipped",
-        ApplicationState.FAILED: "skipped",
-    }.get(plan.state, application.status)
-    application.skip_reason = plan.review_reason if plan.state in {
-        ApplicationState.SKIPPED,
-        ApplicationState.REJECTED,
-        ApplicationState.FAILED,
-    } else None
-    application.status_updated_at = utc_now()
-    db.commit()
-    db.refresh(application)
-    return _application_plan_response(application, plan)
+    _automatic_application_disabled()
 
 
 @app.get("/api/worker/config")
@@ -5067,20 +4921,14 @@ def get_applications_stats(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_or_create_current_user),
 ) -> dict:
-    # 1. Total applications
+    # Application history contains only jobs that were actually submitted.
     total_stmt = select(func.count(JobApplication.id)).where(
         JobApplication.user_id == current_user.id,
-        JobApplication.deleted_at.is_(None)
+        JobApplication.deleted_at.is_(None),
+        ~JobApplication.status.in_(NON_RECORDED_APPLICATION_STATUSES),
     )
     total_applications = db.scalar(total_stmt) or 0
-
-    # 2. Total submitted applications
-    total_submitted_stmt = select(func.count(JobApplication.id)).where(
-        JobApplication.user_id == current_user.id,
-        JobApplication.deleted_at.is_(None),
-        ~JobApplication.status.in_(["draft", "processing", "interrupted", "skipped", "cancelled"])
-    )
-    total_submitted = db.scalar(total_submitted_stmt) or 0
+    total_submitted = total_applications
 
     # 3. Today's and Yesterday's submitted and processed
     # Coalesce display date: status_updated_at ?? date_applied ?? updated_at ?? created_at
@@ -5100,7 +4948,7 @@ def get_applications_stats(
         today_submitted_stmt = select(func.count(JobApplication.id)).where(
             JobApplication.user_id == current_user.id,
             JobApplication.deleted_at.is_(None),
-            ~JobApplication.status.in_(["draft", "processing", "interrupted", "skipped", "cancelled"]),
+            ~JobApplication.status.in_(NON_RECORDED_APPLICATION_STATUSES),
             local_date_expr == today_expr
         )
         today_submitted = db.scalar(today_submitted_stmt) or 0
@@ -5109,7 +4957,7 @@ def get_applications_stats(
         yesterday_submitted_stmt = select(func.count(JobApplication.id)).where(
             JobApplication.user_id == current_user.id,
             JobApplication.deleted_at.is_(None),
-            ~JobApplication.status.in_(["draft", "processing", "interrupted", "skipped", "cancelled"]),
+            ~JobApplication.status.in_(NON_RECORDED_APPLICATION_STATUSES),
             local_date_expr == yesterday_expr
         )
         yesterday_submitted = db.scalar(yesterday_submitted_stmt) or 0
@@ -5118,6 +4966,7 @@ def get_applications_stats(
         today_processed_stmt = select(func.count(JobApplication.id)).where(
             JobApplication.user_id == current_user.id,
             JobApplication.deleted_at.is_(None),
+            ~JobApplication.status.in_(NON_RECORDED_APPLICATION_STATUSES),
             local_date_expr == today_expr
         )
         today_processed = db.scalar(today_processed_stmt) or 0
@@ -5126,6 +4975,7 @@ def get_applications_stats(
         yesterday_processed_stmt = select(func.count(JobApplication.id)).where(
             JobApplication.user_id == current_user.id,
             JobApplication.deleted_at.is_(None),
+            ~JobApplication.status.in_(NON_RECORDED_APPLICATION_STATUSES),
             local_date_expr == yesterday_expr
         )
         yesterday_processed = db.scalar(yesterday_processed_stmt) or 0
@@ -5140,7 +4990,7 @@ def get_applications_stats(
         today_submitted_stmt = select(func.count(JobApplication.id)).where(
             JobApplication.user_id == current_user.id,
             JobApplication.deleted_at.is_(None),
-            ~JobApplication.status.in_(["draft", "processing", "interrupted", "skipped", "cancelled"]),
+            ~JobApplication.status.in_(NON_RECORDED_APPLICATION_STATUSES),
             local_date_expr == today_expr
         )
         today_submitted = db.scalar(today_submitted_stmt) or 0
@@ -5149,7 +4999,7 @@ def get_applications_stats(
         yesterday_submitted_stmt = select(func.count(JobApplication.id)).where(
             JobApplication.user_id == current_user.id,
             JobApplication.deleted_at.is_(None),
-            ~JobApplication.status.in_(["draft", "processing", "interrupted", "skipped", "cancelled"]),
+            ~JobApplication.status.in_(NON_RECORDED_APPLICATION_STATUSES),
             local_date_expr == yesterday_expr
         )
         yesterday_submitted = db.scalar(yesterday_submitted_stmt) or 0
@@ -5158,6 +5008,7 @@ def get_applications_stats(
         today_processed_stmt = select(func.count(JobApplication.id)).where(
             JobApplication.user_id == current_user.id,
             JobApplication.deleted_at.is_(None),
+            ~JobApplication.status.in_(NON_RECORDED_APPLICATION_STATUSES),
             local_date_expr == today_expr
         )
         today_processed = db.scalar(today_processed_stmt) or 0
@@ -5166,6 +5017,7 @@ def get_applications_stats(
         yesterday_processed_stmt = select(func.count(JobApplication.id)).where(
             JobApplication.user_id == current_user.id,
             JobApplication.deleted_at.is_(None),
+            ~JobApplication.status.in_(NON_RECORDED_APPLICATION_STATUSES),
             local_date_expr == yesterday_expr
         )
         yesterday_processed = db.scalar(yesterday_processed_stmt) or 0
@@ -5174,17 +5026,10 @@ def get_applications_stats(
     interviewing_stmt = select(func.count(JobApplication.id)).where(
         JobApplication.user_id == current_user.id,
         JobApplication.deleted_at.is_(None),
+        ~JobApplication.status.in_(NON_RECORDED_APPLICATION_STATUSES),
         JobApplication.raw_data['pipeline_stage'].as_string() == "interviewing"
     )
     interviewing = db.scalar(interviewing_stmt) or 0
-
-    # 5. Skipped
-    skipped_stmt = select(func.count(JobApplication.id)).where(
-        JobApplication.user_id == current_user.id,
-        JobApplication.deleted_at.is_(None),
-        JobApplication.status.ilike("%skip%")
-    )
-    skipped = db.scalar(skipped_stmt) or 0
 
     return {
         "total_applications": total_applications,
@@ -5194,7 +5039,6 @@ def get_applications_stats(
         "today_processed": today_processed,
         "yesterday_processed": yesterday_processed,
         "interviewing": interviewing,
-        "skipped": skipped
     }
 
 
@@ -5208,24 +5052,22 @@ def list_applications(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_or_create_current_user),
 ) -> list[dict]:
-    reconcile_stale_processing_applications(db, current_user)
-    query = select(JobApplication).where(JobApplication.user_id == current_user.id)
+    query = select(JobApplication).options(selectinload(JobApplication.job)).where(
+        JobApplication.user_id == current_user.id,
+        ~JobApplication.status.in_(NON_RECORDED_APPLICATION_STATUSES),
+    )
     if not include_deleted:
         query = query.where(JobApplication.deleted_at.is_(None))
     if status_filter:
         norm_status = normalize_application_status(status_filter)
-        if norm_status == "submitted":
-            query = query.where(
-                ~JobApplication.status.in_(["draft", "processing", "interrupted", "skipped", "cancelled"])
-            )
-        else:
+        if norm_status != "submitted":
             query = query.where(JobApplication.status == norm_status)
     if search:
         search_query = f"%{search.strip().lower()}%"
         query = query.where(
             JobApplication.title.ilike(search_query) |
             JobApplication.company.ilike(search_query) |
-            JobApplication.job_id.ilike(search_query)
+            JobApplication.external_job_id.ilike(search_query)
         )
     stmt = query.order_by(
         JobApplication.status_updated_at.desc().nullslast(),
@@ -5261,6 +5103,7 @@ def create_application(
     values["job_id"] = normalize_job_id(values.get("job_id"))
     values["status"] = normalize_application_status(values.get("status"))
     sync_application_status_from_timeline(values)
+    ensure_recordable_application_status(values["status"])
     ensure_pipeline_stage(values)
     values["work_style"] = None
     ensure_application_date_applied(values)
@@ -5270,7 +5113,15 @@ def create_application(
         previous_snapshot = application_gamification_snapshot(existing_application)
         preserve_link_repaired_location(values, existing_application)
         ensure_status_updated_at(values, existing_application)
-        apply_updates(existing_application, values)
+        _update_application_job(
+            db,
+            existing_application,
+            values,
+            user_id=current_user.id,
+            source="application_api",
+            allow_clear=False,
+        )
+        apply_updates(existing_application, _application_values_only(values))
         sync_worker_application_from_link(existing_application, values)
         apply_application_gamification_events(
             db,
@@ -5288,8 +5139,14 @@ def create_application(
         broadcast_sync("application_updated", resp)
         return resp
 
-    application = JobApplication(user_id=current_user.id)
-    apply_updates(application, values)
+    job_result = upsert_job(
+        db,
+        extracted_snapshot=_job_snapshot_from_application_values(values),
+        user_id=current_user.id,
+        source="application_api",
+    )
+    application = JobApplication(user_id=current_user.id, job=job_result.job)
+    apply_updates(application, _application_values_only(values))
     if application.job_link or application.external_job_link:
         async_application_from_link_record(application)
     db.add(application)
@@ -5312,7 +5169,15 @@ def create_application(
             raise
         previous_snapshot = application_gamification_snapshot(existing_application)
         preserve_link_repaired_location(values, existing_application)
-        apply_updates(existing_application, values)
+        _update_application_job(
+            db,
+            existing_application,
+            values,
+            user_id=current_user.id,
+            source="application_api",
+            allow_clear=False,
+        )
+        apply_updates(existing_application, _application_values_only(values))
         sync_worker_application_from_link(existing_application, values)
         apply_application_gamification_events(
             db,
@@ -5353,12 +5218,22 @@ def update_application(
     if "status" in values:
         values["status"] = normalize_application_status(values.get("status"))
     sync_application_status_from_timeline(values, application)
+    if "status" in values:
+        ensure_recordable_application_status(values["status"])
     ensure_pipeline_stage(values, application)
     ensure_application_date_applied(values, application)
     ensure_status_updated_at(values, application)
     preserve_link_repaired_location(values, application)
     previous_snapshot = application_gamification_snapshot(application)
-    apply_updates(application, values)
+    _update_application_job(
+        db,
+        application,
+        values,
+        user_id=current_user.id,
+        source="application_api",
+        allow_clear=True,
+    )
+    apply_updates(application, _application_values_only(values))
     sync_worker_application_from_link(application, values)
     apply_application_gamification_events(
         db,
@@ -5419,6 +5294,7 @@ def async_applications_from_link_batch(
 ) -> dict:
     query = (
         select(JobApplication)
+        .options(selectinload(JobApplication.job))
         .where(JobApplication.user_id == current_user.id, JobApplication.deleted_at.is_(None), JobApplication.job_link.is_not(None))
         .order_by(JobApplication.created_at.desc())
         .limit(limit)

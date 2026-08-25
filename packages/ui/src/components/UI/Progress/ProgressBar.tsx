@@ -86,7 +86,13 @@ export const ProgressBar = React.memo<ProgressBarProps>(
               isIndeterminate && 'animate-progress-indeterminate',
             )}
             initial={{ width: 0 }}
-            whileInView={{ width: isIndeterminate ? '100%' : `${percentage}%` }}
+            whileInView={{
+              width:
+                isIndeterminate ? '100%'
+                : percentage > 0 ?
+                  `${Math.max(3, percentage)}%`
+                : '0%',
+            }}
             viewport={{ once: true, margin: '30%' }}
             transition={{
               duration: 2,

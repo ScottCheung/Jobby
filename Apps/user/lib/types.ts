@@ -381,50 +381,6 @@ export type ApplicationSettings = {
   policy: PolicySettings;
 };
 
-export type ApplicationCandidateInput = {
-  platform?: string;
-  external_id: string;
-  title: string;
-  company: string;
-  description?: string | null;
-  match_score?: number | null;
-  easy_apply?: boolean;
-  already_applied?: boolean;
-};
-
-export type ApplicationDecisionResponse = {
-  candidate: ApplicationCandidateInput & {
-    platform: string;
-    title: string;
-    company: string;
-  };
-  decision: {
-    action: 'skip' | 'review' | 'apply';
-    reason_codes: string[];
-    explanation: string;
-    score?: number | null;
-    resume_strategy?: 'master' | 'tailored' | null;
-    requires_submit_confirmation: boolean;
-  };
-  should_generate_tailored_resume: boolean;
-  matched_terms?: string[];
-};
-
-export type ApplicationPlanResponse = {
-  application_id: string;
-  plan: {
-    candidate: ApplicationCandidateInput & {
-      platform: string;
-      title: string;
-      company: string;
-    };
-    decision: ApplicationDecisionResponse['decision'];
-    idempotency_key: string;
-    state: string;
-    review_reason?: string | null;
-  };
-};
-
 export type QuestionCacheEntry = {
   id: string;
   platform_account_id?: string | null;
@@ -479,11 +435,13 @@ export type JobApplication = {
   deleted_at?: string | null;
   application_type?: string | null;
   resume_path?: string | null;
-  date_posted?: string | null;
+  first_posted_at?: string | null;
+  last_posted_at?: string | null;
+  posting_observed_at?: string | null;
+  is_reposted?: boolean;
   date_applied?: string | null;
   status_updated_at?: string | null;
   questions?: unknown;
-  skip_reason?: string | null;
   screenshot_path?: string | null;
   has_tailored_resume?: boolean;
   tailored_resume_id?: string | null;

@@ -1,6 +1,8 @@
 import type { FormInspection } from "../../../shared/contracts/form-inspection";
 
 import { readPageInputFields, readSeekForm } from "../../dom/form-inspector";
+import type { FormScope } from "../../dom/form-inspector";
+import { findActiveFormScope } from "../../dom/form-scope";
 import {
   getSeekApplicationAction,
   getSeekApplicationActionKind,
@@ -34,14 +36,28 @@ function hasQuickApplyLink(): boolean {
   );
 }
 
+export function getSeekApplicationScope(): FormScope {
+  return document.querySelector<HTMLElement>(
+    [
+      "[data-automation='applicationForm']",
+      "[data-automation='applyForm']",
+      "[data-testid='application-form']",
+      "form[action*='/apply']",
+      "[role='dialog'][aria-modal='true']",
+    ].join(", "),
+  ) || findActiveFormScope() || document;
+}
+
 export function readSeekFormPage(): FormInspection {
   const url = window.location.href;
+  const scope = getSeekApplicationScope();
   const inspection = readSeekForm(
     url,
     isApplicationPage(url),
     getSeekApplicationActionLabel(),
     getSeekApplicationActionKind(),
     Boolean(getSeekApplicationAction("previous")),
+    scope,
   );
   if (inspection.kind === "not_application_form") {
     const pageInputs = readPageInputFields(url, "seek");

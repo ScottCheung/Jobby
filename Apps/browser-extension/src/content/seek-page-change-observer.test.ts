@@ -1,0 +1,65 @@
+// @vitest-environment happy-dom
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import { observeSeekJobDom } from "./seek-page-change-observer";
+
+describe("SEEK late job detail rendering", () => {
+  beforeEach(() => {
+    document.body.innerHTML = "";
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("notifies when a slowly loaded detail pane becomes identifiable", async () => {
+    const onChange = vi.fn();
+    const cleanup = observeSeekJobDom(onChange);
+
+    document.body.innerHTML = `
+      <div data-automation="jobDetailsPage">
+        <h1 data-automation="job-detail-title">Platform Engineer</h1>
+        <span data-automation="advertiser-name">Acme</span>
+      </div>
+    `;
+    await vi.advanceTimersByTimeAsync(100);
+    expect(onChange).toHaveBeenCalledTimes(1);
+
+    document.querySelector("[data-automation='jobDetailsPage']")?.insertAdjacentHTML(
+      "beforeend",
+      `<div data-automation="jobAdDetails">${"Build reliable React and TypeScript services. ".repeat(4)}</div>`,
+    );
+    await vi.advanceTimersByTimeAsync(100);
+    expect(onChange).toHaveBeenCalledTimes(2);
+
+    document.body.insertAdjacentHTML("beforeend", "<footer>Unrelated navigation update</footer>");
+    await vi.advanceTimersByTimeAsync(100);
+    expect(onChange).toHaveBeenCalledTimes(2);
+    cleanup();
+  });
+
+  it("notifies when SEEK changes the selected card without changing the URL", async () => {
+    document.body.innerHTML = `
+      <article data-testid="job-card" data-job-id="40000001" aria-selected="true">
+        <a data-automation="jobTitle" href="/job/40000001">First Engineer</a>
+      </article>
+      <article data-testid="job-card" data-job-id="40000002" aria-selected="false">
+        <a data-automation="jobTitle" href="/job/40000002">Second Engineer</a>
+      </article>
+      <div data-automation="jobDetailsPage"><h1 data-automation="job-detail-title">First Engineer</h1></div>
+    `;
+    const onChange = vi.fn();
+    const cleanup = observeSeekJobDom(onChange);
+    await vi.advanceTimersByTimeAsync(100);
+    expect(onChange).toHaveBeenCalledTimes(1);
+
+    const cards = document.querySelectorAll<HTMLElement>("[data-testid='job-card']");
+    cards.item(0).setAttribute("aria-selected", "false");
+    cards.item(1).setAttribute("aria-selected", "true");
+    document.querySelector("[data-automation='job-detail-title']")!.textContent = "Second Engineer";
+    await vi.advanceTimersByTimeAsync(100);
+    expect(onChange).toHaveBeenCalledTimes(2);
+    cleanup();
+  });
+});

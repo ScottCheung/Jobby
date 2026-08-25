@@ -7,9 +7,6 @@ import type {
   QuestionCacheEntry,
   RuntimeSettings,
   ApplicationSettings,
-  ApplicationCandidateInput,
-  ApplicationDecisionResponse,
-  ApplicationPlanResponse,
   JobHuntingProfile,
   CareerProfile,
   CareerProfileScoreHistoryItem,
@@ -66,7 +63,7 @@ import {
   runLocalDiscoveryAgent,
 } from "./prospects-fallback";
 import { resolveApiBaseUrl } from "./runtime";
-import { createClient } from "./supabase/client";
+import { createClient, getValidAuthSession } from "./supabase/client";
 import { dedup } from "./request-dedup";
 
 export type JobReviewResult = {
@@ -148,25 +145,28 @@ async function readJsonResponse<T>(
   }
 }
 
-async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
-  const apiBaseUrl = await resolveApiBaseUrl();
-  const supabase = createClient();
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  const headers: Record<string, string> = {
-    Accept: "application/json",
-    "Content-Type": "application/json",
-    ...((init?.headers as Record<string, string>) ?? {}),
-  };
-
+async function getAuthHeaders(): Promise<Record<string, string>> {
+  const session = await getValidAuthSession();
+  const headers: Record<string, string> = {};
   if (session?.user?.email) {
     headers["X-User-Email"] = session.user.email;
   }
   if (session?.access_token) {
     headers.Authorization = `Bearer ${session.access_token}`;
   }
+  return headers;
+}
+
+async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
+  const apiBaseUrl = await resolveApiBaseUrl();
+  const authHeaders = await getAuthHeaders();
+
+  const headers: Record<string, string> = {
+    Accept: "application/json",
+    "Content-Type": "application/json",
+    ...authHeaders,
+    ...((init?.headers as Record<string, string>) ?? {}),
+  };
 
   const response = await fetch(`${apiBaseUrl}${path}`, {
     ...init,
@@ -175,6 +175,38 @@ async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
   });
 
   if (response.status === 401) {
+    // Proactively attempt session refresh and retry once before dispatching unauthorized
+    const supabase = createClient();
+    const { data: refreshed, error: refreshErr } = await supabase.auth.refreshSession();
+    if (refreshed?.session?.access_token && !refreshErr) {
+      const retryAuthHeaders: Record<string, string> = {};
+      if (refreshed.session.user?.email) {
+        retryAuthHeaders["X-User-Email"] = refreshed.session.user.email;
+      }
+      retryAuthHeaders.Authorization = `Bearer ${refreshed.session.access_token}`;
+
+      const retryHeaders: Record<string, string> = {
+        ...headers,
+        ...retryAuthHeaders,
+      };
+
+      const retryResponse = await fetch(`${apiBaseUrl}${path}`, {
+        ...init,
+        headers: retryHeaders,
+        cache: "no-store",
+      });
+
+      if (retryResponse.status !== 401) {
+        if (retryResponse.status === 204) {
+          return undefined as T;
+        }
+        return readJsonResponse<T>(
+          retryResponse,
+          `API request failed: ${retryResponse.status}`,
+        );
+      }
+    }
+
     if (typeof window !== "undefined") {
       window.dispatchEvent(
         new CustomEvent("jobby:unauthorized", {
@@ -196,12 +228,12 @@ async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   health: () => apiRequest<{ status: string }>("/health"),
-  reviewJob: (payload: { job_description: string; title?: string; company?: string; date_posted?: string }) =>
+  reviewJob: (payload: { job_description: string; title?: string; company?: string; last_posted_at?: string }) =>
     apiRequest<JobReviewResult>("/api/job-review", {
       method: "POST",
       body: JSON.stringify(payload),
     }),
-  previewJobReview: (payload: { job_description: string; title?: string; company?: string; date_posted?: string }) =>
+  previewJobReview: (payload: { job_description: string; title?: string; company?: string; last_posted_at?: string }) =>
     apiRequest<JobReviewPreview>("/api/job-review/preview", {
       method: "POST",
       body: JSON.stringify(payload),
@@ -225,18 +257,13 @@ export const api = {
   me: () => dedup("me", () => apiRequest<User>("/api/me")),
   uploadAvatar: async (file: File) => {
     const apiBaseUrl = await resolveApiBaseUrl();
-    const supabase = createClient();
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+    const headers = await getAuthHeaders();
     const formData = new FormData();
     formData.append("file", file, file.name);
     const response = await fetch(`${apiBaseUrl}/api/me/avatar`, {
       method: "POST",
       body: formData,
-      headers: session?.user?.email
-        ? { "X-User-Email": session.user.email }
-        : undefined,
+      headers,
       cache: "no-store",
     });
     if (!response.ok) {
@@ -257,13 +284,12 @@ export const api = {
     apiRequest<CareerProfile>(`/api/career-profiles/${profileId}`),
   uploadCareerProfile: async (file: File) => {
     const apiBaseUrl = await resolveApiBaseUrl();
-    const supabase = createClient();
-    const { data: { session } } = await supabase.auth.getSession();
+    const headers = await getAuthHeaders();
     const formData = new FormData();
     formData.append('file', file, file.name);
     const response = await fetch(`${apiBaseUrl}/api/career-profiles/upload`, {
       method: 'POST', body: formData,
-      headers: session?.user?.email ? { 'X-User-Email': session.user.email } : undefined,
+      headers,
       cache: 'no-store',
     });
     return readJsonResponse<CareerProfile>(response, 'Could not upload the resume.');
@@ -295,10 +321,7 @@ export const api = {
     }),
   extractResumeSource: async (file: File) => {
     const apiBaseUrl = await resolveApiBaseUrl();
-    const supabase = createClient();
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+    const headers = await getAuthHeaders();
     const formData = new FormData();
     formData.append("file", file, file.name);
     const response = await fetch(
@@ -306,9 +329,7 @@ export const api = {
       {
         method: "POST",
         body: formData,
-        headers: session?.user?.email
-          ? { "X-User-Email": session.user.email }
-          : undefined,
+        headers,
         cache: "no-store",
       },
     );
@@ -319,18 +340,13 @@ export const api = {
   },
   debugResumeAi: async (file: File) => {
     const apiBaseUrl = await resolveApiBaseUrl();
-    const supabase = createClient();
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+    const headers = await getAuthHeaders();
     const formData = new FormData();
     formData.append("file", file, file.name);
     const response = await fetch(`${apiBaseUrl}/api/master-resume/debug/ai`, {
       method: "POST",
       body: formData,
-      headers: session?.user?.email
-        ? { "X-User-Email": session.user.email }
-        : undefined,
+      headers,
       cache: "no-store",
     });
     return readJsonResponse<Record<string, unknown>>(
@@ -340,18 +356,13 @@ export const api = {
   },
   uploadMasterResume: async (file: File) => {
     const apiBaseUrl = await resolveApiBaseUrl();
-    const supabase = createClient();
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+    const headers = await getAuthHeaders();
     const formData = new FormData();
     formData.append("file", file, file.name);
     const response = await fetch(`${apiBaseUrl}/api/master-resume/upload`, {
       method: "POST",
       body: formData,
-      headers: session?.user?.email
-        ? { "X-User-Email": session.user.email }
-        : undefined,
+      headers,
       cache: "no-store",
     });
     return readJsonResponse<MasterResume>(
@@ -480,23 +491,6 @@ export const api = {
       method: "PUT",
       body: JSON.stringify(payload),
     }),
-  evaluateApplicationDecision: (candidate: ApplicationCandidateInput) =>
-    apiRequest<ApplicationDecisionResponse>("/api/application-decisions", {
-      method: "POST",
-      body: JSON.stringify({ candidate }),
-    }),
-  createApplicationPlan: (payload: { candidate: ApplicationCandidateInput; job_description?: string | null; job_link?: string | null }) =>
-    apiRequest<ApplicationPlanResponse>("/api/application-plans", {
-      method: "POST",
-      body: JSON.stringify(payload),
-    }),
-  applicationPlan: (applicationId: string) =>
-    apiRequest<ApplicationPlanResponse>(`/api/application-plans/${applicationId}`),
-  applicationPlanAction: (applicationId: string, action: string, reason?: string) =>
-    apiRequest<ApplicationPlanResponse>(`/api/application-plans/${applicationId}/actions`, {
-      method: "POST",
-      body: JSON.stringify({ action, reason }),
-    }),
   questionCache: (limit?: number, offset?: number, search?: string) => {
     const params = new URLSearchParams();
     if (limit !== undefined) params.append("limit", String(limit));
@@ -576,7 +570,6 @@ export const api = {
       today_processed: number;
       yesterday_processed: number;
       interviewing: number;
-      skipped: number;
     }>(`/api/applications/stats${tz}`);
   },
   updateApplication: (
@@ -757,10 +750,7 @@ export const api = {
     }),
   uploadCollectionCover: async (id: string, file: File) => {
     const apiBaseUrl = await resolveApiBaseUrl();
-    const supabase = createClient();
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+    const headers = await getAuthHeaders();
     const formData = new FormData();
     formData.append("file", file, file.name);
     const response = await fetch(
@@ -768,9 +758,7 @@ export const api = {
       {
         method: "POST",
         body: formData,
-        headers: session?.user?.email
-          ? { "X-User-Email": session.user.email }
-          : undefined,
+        headers,
         cache: "no-store",
       },
     );
@@ -1076,10 +1064,7 @@ export const api = {
     }),
   transcribePracticeAudio: async (blob: Blob, filename = "audio.webm") => {
     const apiBaseUrl = await resolveApiBaseUrl();
-    const supabase = createClient();
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+    const headers = await getAuthHeaders();
     const formData = new FormData();
     formData.append("file", blob, filename);
     const response = await fetch(
@@ -1087,9 +1072,7 @@ export const api = {
       {
         method: "POST",
         body: formData,
-        headers: session?.user?.email
-          ? { "X-User-Email": session.user.email }
-          : undefined,
+        headers,
         cache: "no-store",
       },
     );
@@ -1237,10 +1220,7 @@ export const api = {
     filename = "audio.webm",
   ) => {
     const apiBaseUrl = await resolveApiBaseUrl();
-    const supabase = createClient();
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+    const headers = await getAuthHeaders();
     const formData = new FormData();
     formData.append("file", blob, filename);
     const response = await fetch(
@@ -1248,9 +1228,7 @@ export const api = {
       {
         method: "POST",
         body: formData,
-        headers: session?.user?.email
-          ? { "X-User-Email": session.user.email }
-          : undefined,
+        headers,
         cache: "no-store",
       },
     );

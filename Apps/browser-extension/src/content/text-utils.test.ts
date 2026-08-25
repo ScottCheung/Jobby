@@ -86,8 +86,14 @@ describe('cleanDescription', () => {
     expect(result).toBe(`Job Overview\n\nKey skills:\n• React\n• TypeScript\n• Next.js`);
   });
 
-  it('formats squished text with missing spaces/newlines between sections and list items', () => {
-    const squished = `Who is Shift? At Shift, we're business specialists dedicated to helping Australian SMEs take control of their cashflow, streamline trade terms and choose the right financial products.We believe Australian businesses are the driving force behind our economy and are core to our communities. That's why our business expertise, focus on relationships, and market-leading technology is at the core of everything we do. We've helped solve the credit and payment pain points for more than 30,000 businesses, providing over $6 billion in aggregate funding.Our unique approach to product innovation combined with our collaborative culture means you can build your career in a supportive environment. You'll be joining a diverse team of over 300 people who are always looking to deliver better outcomes for Australian businesses.About the role:We're looking for a Full Stack Software Engineer who enjoys building things end to end, from polished interfaces to the backend services that power them. This role can flex to suit you: whether you're a true 50/50 full stack engineer or someone who leans more front-end, we're interested in strong engineers who care about the whole picture.What you'll do:Design, build, and maintain modern web applications across JavaScript/TypeScript (React) and C# (.NET)Support and enhance backend services to keep integrations solid and systems reliablePartner with designers and product to take ideas from concept to something users loveContribute to architectural discussions across the stack, with a focus on maintainability and scaleFollow engineering best practices around code quality, accessibility, and continuous improvementStay curious`;
+  it('formats squished text with missing spaces/newlines between sentences and sections', () => {
+    const squished = `Who is Shift? At Shift, we're business specialists dedicated to helping Australian SMEs take control of their cashflow, streamline trade terms and choose the right financial products.We believe Australian businesses are the driving force behind our economy and are core to our communities. That's why our business expertise, focus on relationships, and market-leading technology is at the core of everything we do. We've helped solve the credit and payment pain points for more than 30,000 businesses, providing over $6 billion in aggregate funding.Our unique approach to product innovation combined with our collaborative culture means you can build your career in a supportive environment. You'll be joining a diverse team of over 300 people who are always looking to deliver better outcomes for Australian businesses.About the role:We're looking for a Full Stack Software Engineer who enjoys building things end to end, from polished interfaces to the backend services that power them. This role can flex to suit you: whether you're a true 50/50 full stack engineer or someone who leans more front-end, we're interested in strong engineers who care about the whole picture.What you'll do:
+- Design, build, and maintain modern web applications across JavaScript/TypeScript (React) and C# (.NET)
+- Support and enhance backend services to keep integrations solid and systems reliable
+- Partner with designers and product to take ideas from concept to something users love
+- Contribute to architectural discussions across the stack, with a focus on maintainability and scale
+- Follow engineering best practices around code quality, accessibility, and continuous improvement
+- Stay curious`;
 
     const result = cleanDescription(squished);
     expect(result).toContain('Who is Shift?');
@@ -98,6 +104,27 @@ describe('cleanDescription', () => {
     expect(result).toContain('• Contribute to architectural discussions');
     expect(result).toContain('• Follow engineering best practices');
     expect(result).toContain('• Stay curious');
+  });
+
+  it('preserves CamelCase company and brand names like GoDaddy, LinkedIn, and DevOps', () => {
+    const text = `Location Details: Melbourne, Victoria, Australia
+
+At GoDaddy the future of work looks different for each team. Some teams work in the office full-time; others have a hybrid arrangement and some work entirely remotely.
+
+This is a remote position, so you'll be working remotely from your home. You may occasionally visit a GoDaddy office to meet with your team for events or meetings.
+
+Key technologies used at GitHub and GitLab include TypeScript, JavaScript, NodeJS, GraphQL, PostgreSQL, MongoDB, and DevOps best practices.`;
+
+    const result = cleanDescription(text);
+    expect(result).toContain('At GoDaddy the future of work');
+    expect(result).toContain('visit a GoDaddy office');
+    expect(result).toContain('GitHub and GitLab');
+    expect(result).toContain('TypeScript, JavaScript, NodeJS, GraphQL, PostgreSQL, MongoDB, and DevOps');
+    expect(result).not.toContain('Go\nDaddy');
+    expect(result).not.toContain('Git\nHub');
+    expect(result).not.toContain('Dev\nOps');
+    expect(result).not.toContain('• At Go');
+    expect(result).not.toContain('• Daddy the future');
   });
 
   it('returns empty string for null or empty inputs', () => {

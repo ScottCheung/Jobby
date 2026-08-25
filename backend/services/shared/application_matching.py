@@ -73,8 +73,10 @@ def _resume_text(values: Any) -> Iterable[str]:
 
 def parse_recency_score(date_posted: str | datetime | float | None) -> float:
     """Calculate recency decay multiplier D(t) with a 24h grace window and steep 2.0-day half-life."""
+    DEFAULT_UNKNOWN_RECENCY = 0.75
+
     if date_posted is None:
-        return 1.00
+        return DEFAULT_UNKNOWN_RECENCY
 
     diff_days: float | None = None
 
@@ -82,7 +84,7 @@ def parse_recency_score(date_posted: str | datetime | float | None) -> float:
         try:
             date_posted = datetime.fromtimestamp(date_posted, tz=timezone.utc)
         except Exception:
-            return 1.00
+            return DEFAULT_UNKNOWN_RECENCY
 
     if isinstance(date_posted, datetime):
         now = datetime.now(timezone.utc)
@@ -92,8 +94,8 @@ def parse_recency_score(date_posted: str | datetime | float | None) -> float:
 
     if diff_days is None:
         text = str(date_posted).strip().lower()
-        if not text:
-            return 1.00
+        if not text or text in ("unknown", "null", "none", "n/a", "未知"):
+            return DEFAULT_UNKNOWN_RECENCY
 
         # 1. Hour / minute / just now / today
         if any(k in text for k in ("just", "today", "刚刚", "今天")):
@@ -141,7 +143,7 @@ def parse_recency_score(date_posted: str | datetime | float | None) -> float:
                                             dt = dt.replace(tzinfo=timezone.utc)
                                         diff_days = max(0.0, (now - dt).total_seconds() / 86400.0)
                                     except Exception:
-                                        return 1.00
+                                        return DEFAULT_UNKNOWN_RECENCY
 
     if diff_days <= 4.0:
         factor = 1.00 - 0.04 * diff_days
@@ -465,7 +467,7 @@ def score_job_match(
         resume_terms.update(_tokens(skill))
 
     if not job_terms and not technologies and not job_title:
-        return MatchScore(match_score=0.0, recency_factor=1.0, priority_score=0.0, matched_terms=())
+        return MatchScore(match_score=0.0, recency_factor=parse_recency_score(date_posted), priority_score=0.0, matched_terms=())
 
     # 1. Tier 1: Explicit Hard Tech Stack Matching
     tech_terms: set[str] = set()
@@ -481,17 +483,30 @@ def score_job_match(
 
     # 2. Tier 2: General Job Context & Domain Terms Matching
     matched = tuple(sorted(job_terms & resume_terms))
-    description_denominator = min(len(job_terms), 30)
+    effective_len = len(job_terms)
+    description_denominator = min(effective_len, max(8, int(effective_len * 0.45)))
     general_ratio = min(1.0, len(matched) / max(1, description_denominator))
 
+    # 3. Differentiated Title Matching
+    title_score = calculate_title_score(job_title, resume_data, resume_raw_text, general_ratio)
+
+    has_title = bool(job_title.strip())
     if tech_ratio is not None:
         # Tiered: 80% explicit hard technologies + 20% general context
         skill_ratio = min(1.0, 0.80 * tech_ratio + 0.20 * general_ratio)
     else:
-        skill_ratio = general_ratio
-
-    # 3. Differentiated Title Matching
-    title_score = calculate_title_score(job_title, resume_data, resume_raw_text, skill_ratio)
+        # If no explicit hard tech is extracted, check title and domain affinity to prevent
+        # completely unrelated roles (e.g., Payroll Officer vs Software Engineer) from scoring high on generic overlap.
+        if has_title:
+            if title_score <= 0.30:
+                # Unrelated role domain: clamp/damp skill_ratio proportionally to title alignment
+                skill_ratio = min(general_ratio, max(0.10, title_score * 1.2))
+            elif title_score <= 0.60:
+                skill_ratio = min(general_ratio, 0.35 + 0.65 * title_score)
+            else:
+                skill_ratio = general_ratio
+        else:
+            skill_ratio = general_ratio
 
     # 4. Experience & Seniority Matching
     exp_score, _ = calculate_experience_score(

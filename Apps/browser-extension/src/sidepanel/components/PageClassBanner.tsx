@@ -3,8 +3,12 @@
 import { useState } from 'react';
 import {
   Check,
+  ArrowRight,
+  Copy,
   Loader,
+  Maximize2,
   Minus,
+  Pencil,
   Plus,
   RefreshCw,
   RotateCcw,
@@ -17,26 +21,40 @@ import {
   PopoverTrigger,
 } from '@jobby/ui/components/UI/popover';
 import { Tooltip } from '@jobby/ui/components/UI/tooltip';
-import type { ValidatedApplicationPlanResponse } from '../../shared/contracts/backend';
-import type { PageInspection } from '../../shared/contracts/page-inspection';
+import { notify } from '@jobby/ui/components/UI/toast/toast-store';
+import type { JobMatchEvaluation } from '../../shared/contracts/job-match';
+import type {
+  JobSnapshot,
+  PageInspection,
+} from '../../shared/contracts/page-inspection';
 import type {
   CareerProfile,
   UserSkill,
 } from '../../shared/contracts/tailored-resume';
 import { parseAndFormatJobDate } from '../../shared/utils/date-formatter';
+import { extractJobRequirements } from '../../shared/utils/job-requirements';
 import { cn } from '@jobby/ui/lib/utils';
+import { StructuredJobDescription } from '@jobby/ui/components/UI/StructuredJobDescription';
+import { sendContentCommandToActiveTab } from '../services/messaging';
+import { DetectionProviderBadge } from './DetectionProviderBadge';
+import { EditJobModal } from './EditJobModal';
 
 interface PageClassBannerProps {
   latestInspection: PageInspection | null;
-  latestPlan?: ValidatedApplicationPlanResponse | null;
+  latestMatch?: JobMatchEvaluation | null;
+  isMatchLoading?: boolean;
   isInspecting: boolean;
   error?: string;
-  onRetryPlan?: () => void;
+  onRetryMatch?: () => void;
   onClaimSkill?: (tech: string) => Promise<void> | void;
   onUnclaimSkill?: (tech: string) => Promise<void> | void;
   activeProfile?: CareerProfile | null;
   profileSkills?: UserSkill[];
   onReDetect?: () => void;
+  onUpdateJobSnapshot?: (updates: Partial<JobSnapshot>) => void;
+  onHighlightJobRequirement?: (
+    searchTerms: string[],
+  ) => Promise<boolean> | void;
   authConnected?: boolean;
   onSignIn?: () => void;
 }
@@ -120,6 +138,13 @@ function isTechMatched(tech: string, matchedSet: Set<string>): boolean {
 
 type SkillSource = 'profile' | 'resume' | 'unclaimed';
 
+export function shouldShowTechnologyLoading(
+  authConnected: boolean,
+  isMatchLoading: boolean,
+): boolean {
+  return authConnected && isMatchLoading;
+}
+
 export function getSkillSource(
   tech: string,
   matchedSet: Set<string>,
@@ -158,30 +183,143 @@ function hasResolvedCompany(company: string | undefined): boolean {
   );
 }
 
+function PostingDateRow({
+  label,
+  value,
+  showFreshness = false,
+}: {
+  label: string;
+  value?: string;
+  showFreshness?: boolean;
+}) {
+  const formatted = value ? parseAndFormatJobDate(value) : null;
+  const tier = showFreshness ? formatted?.freshnessTier : undefined;
+  return (
+    <div className='grid grid-cols-[85px_minmax(0,1fr)] gap-1 items-center'>
+      <span className='text-muted-foreground text-[11px] font-medium'>
+        {label}:
+      </span>
+      {formatted ?
+        <div className='flex items-center gap-1.5 flex-wrap'>
+          <span>{formatted.displayText}</span>
+          {tier && (
+            <span
+              className={cn(
+                'inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] font-semibold leading-none',
+                tier === 'new' && 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30',
+                tier === 'aging' && 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30',
+                tier === 'stale' && 'bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/30',
+              )}
+            >
+              {tier === 'new' ? 'New' : tier === 'aging' ? 'Aging' : 'Stale'}
+            </span>
+          )}
+        </div>
+      : <span className='text-muted-foreground/70 italic text-[11px]'>Unknown</span>}
+    </div>
+  );
+}
+
+function CopyFieldButton({ label, value }: { label: string; value: string }) {
+  const copyValue = async () => {
+    try {
+      await navigator.clipboard.writeText(value);
+      notify.success(`${label} copied`);
+    } catch {
+      notify.error(`Failed to copy ${label.toLowerCase()}`);
+    }
+  };
+
+  return (
+    <button
+      type='button'
+      className='inline-flex h-4 w-4 shrink-0 align-middle items-center justify-center rounded-sm text-muted-foreground/70 transition-colors hover:bg-primary/10 hover:text-primary cursor-pointer'
+      onClick={() => void copyValue()}
+      title={`Copy ${label}`}
+      aria-label={`Copy ${label}`}
+    >
+      <Copy className='h-3 w-3' />
+    </button>
+  );
+}
+
+function CopyableFieldRow({
+  label,
+  value,
+  valueClassName,
+  truncate = false,
+}: {
+  label: string;
+  value: string;
+  valueClassName?: string;
+  truncate?: boolean;
+}) {
+  const valueElement = (
+    <span
+      className={cn(
+        'align-middle',
+        valueClassName,
+        truncate && 'inline-block max-w-[calc(100%-1.25rem)] truncate whitespace-nowrap',
+      )}
+    >
+      {value}
+    </span>
+  );
+
+  return (
+    <div className='grid grid-cols-[85px_minmax(0,1fr)] gap-1 items-start'>
+      <span className='text-muted-foreground text-[11px] font-medium'>
+        {label}:
+      </span>
+      <div className='min-w-0'>
+        <span className='align-middle'>
+          {truncate ?
+            <Tooltip content={value} side='top' align='start' size='sm'>
+              {valueElement}
+            </Tooltip>
+          : valueElement}
+          <span className='ml-1'>
+            <CopyFieldButton label={label} value={value} />
+          </span>
+        </span>
+      </div>
+    </div>
+  );
+}
+
 /**
  * Diagnostic & details banner shown at the top of the side panel.
  * Displays all extracted details for identified job listing pages in English.
  */
 export function PageClassBanner({
   latestInspection,
-  latestPlan,
+  latestMatch,
+  isMatchLoading = false,
   isInspecting,
   error,
-  onRetryPlan,
+  onRetryMatch,
   onClaimSkill,
   onUnclaimSkill,
   activeProfile,
   profileSkills = [],
   onReDetect,
+  onUpdateJobSnapshot,
+  onHighlightJobRequirement,
   authConnected = true,
   onSignIn: _onSignIn,
 }: PageClassBannerProps) {
   const [isDescExpanded, setIsDescExpanded] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const [claimingSkills, setClaimingSkills] = useState<Set<string>>(new Set());
   const [unclaimingSkills, setUnclaimingSkills] = useState<Set<string>>(
     new Set(),
   );
   const [activeTech, setActiveTech] = useState<string | null>(null);
+
+  const saveJob = (updates: Partial<JobSnapshot>) => {
+    onUpdateJobSnapshot?.(updates);
+    notify.success('Job details updated');
+  };
 
   const handleClaim = async (tech: string) => {
     if (!onClaimSkill || claimingSkills.has(tech)) return;
@@ -262,13 +400,6 @@ export function PageClassBanner({
 
           <div className='grid grid-cols-[85px_minmax(0,1fr)] gap-1 items-center'>
             <span className='text-muted-foreground text-[11px] font-medium'>
-              Easy Apply:
-            </span>
-            <div className='h-3.5 w-10 rounded-md animate-skeleton-shimmer' />
-          </div>
-
-          <div className='grid grid-cols-[85px_minmax(0,1fr)] gap-1 items-center'>
-            <span className='text-muted-foreground text-[11px] font-medium'>
               Technologies:
             </span>
             <div className='flex gap-1.5'>
@@ -300,14 +431,36 @@ export function PageClassBanner({
       title,
       company,
       location,
-      datePosted,
+      firstPostedAt,
+      lastPostedAt,
+      isReposted,
       description,
       technologies,
-      easyApply,
       externalId,
     } = latestInspection.snapshot;
 
-    const matchedTerms = latestPlan?.plan?.decision?.matched_terms || [];
+    const handleOpenInPageJobDescription = async () => {
+      if (!description) return;
+      try {
+        await sendContentCommandToActiveTab({
+          type: 'content.show-job-description',
+          title: title || 'Job Description',
+          company: company || undefined,
+          location: location || undefined,
+          datePosted: firstPostedAt || lastPostedAt || undefined,
+          description,
+          platform: platform || undefined,
+        });
+      } catch (error) {
+        notify.error(
+          error instanceof Error ? error.message : 'Could not open in-page preview.',
+        );
+      }
+    };
+
+    const eligibilityRequirements = extractJobRequirements(description);
+
+    const matchedTerms = latestMatch?.matched_terms || [];
     const matchedSet = new Set(
       matchedTerms.map((t: string) => t.toLowerCase()),
     );
@@ -319,11 +472,8 @@ export function PageClassBanner({
       >
         <div className='flex items-center justify-between gap-2 border-b border-primary/20 pb-2'>
           <div className='flex items-center gap-1.5'>
-            <span className='page-class-banner__icon text-primary font-bold'>
-              ✓
-            </span>
             <strong className='text-xs font-bold text-foreground'>
-              Job Page Identified
+              Job Identified
             </strong>
           </div>
           <div className='flex items-center gap-1.5 shrink-0'>
@@ -341,94 +491,92 @@ export function PageClassBanner({
                 />
               </button>
             )}
-            <span className='rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-bold text-primary capitalize'>
-              {platform}
-            </span>
+            <button
+              type='button'
+              onClick={() => setEditOpen(true)}
+              className='inline-flex items-center justify-center p-1 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors cursor-pointer'
+              title='Edit job details'
+              aria-label='Edit job details'
+            >
+              <Pencil className='h-3.5 w-3.5' />
+            </button>
+            <DetectionProviderBadge
+              platform={platform}
+              url={latestInspection.snapshot.url}
+            />
           </div>
         </div>
 
         {/* Full Identified Information */}
         <div className='grid gap-1.5 text-xs text-foreground/90'>
-          <div className='grid grid-cols-[85px_minmax(0,1fr)] gap-1'>
-            <span className='text-muted-foreground text-[11px] font-medium'>
-              Job Title:
-            </span>
-            <span className='font-semibold text-foreground'>{title}</span>
-          </div>
+          <CopyableFieldRow
+            label='Job ID'
+            value={externalId}
+            valueClassName='font-mono text-[10px] text-foreground'
+            truncate
+          />
 
-          <div className='grid grid-cols-[85px_minmax(0,1fr)] gap-1'>
-            <span className='text-muted-foreground text-[11px] font-medium'>
-              Company:
-            </span>
-            <span className='font-semibold text-foreground'>{company}</span>
-          </div>
+          <CopyableFieldRow
+            label='Job Title'
+            value={title}
+            valueClassName='font-bold text-ink-primary'
+          />
 
-          {location && (
-            <div className='grid grid-cols-[85px_minmax(0,1fr)] gap-1'>
-              <span className='text-muted-foreground text-[11px] font-medium'>
-                Location:
+          <CopyableFieldRow
+            label='Company'
+            value={company}
+            valueClassName='font-bold text-ink-primary'
+          />
+
+          {eligibilityRequirements.length > 0 && (
+            <div className='grid grid-cols-[85px_minmax(0,1fr)] gap-1 items-start'>
+              <span className='text-muted-foreground text-[11px] font-medium pt-0.5'>
+                Eligibility:
               </span>
-              <span>{location}</span>
+              <div className='flex flex-wrap gap-1'>
+                {eligibilityRequirements.map((requirement) => {
+                  if (!requirement || typeof requirement.label !== 'string')
+                    return null;
+                  return (
+                    <button
+                      type='button'
+                      key={requirement.label}
+                      className='group inline-flex skill-claim-pill items-center gap-1 border border-destructive/30 bg-destructive/10 py-0.5 pl-1.5 pr-0.5 text-[10px] font-semibold text-destructive transition-colors hover:bg-destructive/20 cursor-pointer'
+                      onClick={() => {
+                        void onHighlightJobRequirement?.(
+                          requirement.searchTerms,
+                        );
+                      }}
+                      title='Show this requirement in the job description'
+                      aria-label={`Show ${requirement.label} in the job description`}
+                    >
+                      <span>{requirement.label}</span>
+                      <span className='inline-flex h-3.5 w-3.5 items-center justify-center rounded-full bg-destructive/10 text-destructive group-hover:text-destructive-foreground group-hover:bg-destructive '>
+                        <ArrowRight className='h-2.5 w-2.5 stroke-[2.5]' />
+                      </span>
+                    </button>
+                  );
+                })}
+                <CopyFieldButton
+                  label='Eligibility'
+                  value={eligibilityRequirements
+                    .map((requirement) => requirement.label)
+                    .join(', ')}
+                />
+              </div>
             </div>
           )}
 
-          <div className='grid grid-cols-[85px_minmax(0,1fr)] gap-1 items-center'>
-            <span className='text-muted-foreground text-[11px] font-medium'>
-              Posted:
-            </span>
-            {datePosted ?
-              (() => {
-                const formatted = parseAndFormatJobDate(datePosted);
-                const tier =
-                  formatted.freshnessTier ??
-                  (formatted.ageInDays != null ?
-                    formatted.ageInDays <= 4 ? 'new'
-                    : formatted.ageInDays <= 7 ? 'aging'
-                    : 'stale'
-                  : undefined);
-                return (
-                  <div className='flex items-center gap-1.5 flex-wrap'>
-                    <span>{formatted.displayText}</span>
-                    {tier === 'new' && (
-                      <span className='inline-flex items-center rounded-md bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 text-[10px] font-semibold leading-none'>
-                        New
-                      </span>
-                    )}
-                    {tier === 'aging' && (
-                      <span className='inline-flex items-center rounded-md bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 px-1.5 py-0.5 text-[10px] font-semibold leading-none'>
-                        Aging
-                      </span>
-                    )}
-                    {tier === 'stale' && (
-                      <span className='inline-flex items-center rounded-md bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/30 px-1.5 py-0.5 text-[10px] font-semibold leading-none'>
-                        Stale
-                      </span>
-                    )}
-                  </div>
-                );
-              })()
-            : <span className='text-muted-foreground/70 italic text-[11px]'>
-                Unknown
-              </span>
-            }
-          </div>
+          {location && (
+            <CopyableFieldRow label='Location' value={location} truncate />
+          )}
 
-          <div className='grid grid-cols-[85px_minmax(0,1fr)] gap-1'>
-            <span className='text-muted-foreground text-[11px] font-medium'>
-              Easy Apply:
-            </span>
-            <div>
-              <div
-                className={
-                  easyApply ?
-                    'font-semibold text-success border border-success inline-flex items-center justify-center rounded-full px-1 '
-                  : 'text-muted-foreground text-xs'
-                }
-              >
-                {easyApply ? 'Yes' : 'No'}
-              </div>
-            </div>
-          </div>
+          {isReposted ?
+            <>
+              <PostingDateRow label='First posted' value={firstPostedAt} />
+              <PostingDateRow label='Reposted' value={lastPostedAt} showFreshness />
+            </>
+          : <PostingDateRow label='Posted' value={lastPostedAt || firstPostedAt} showFreshness />}
 
           {technologies && technologies.length > 0 && (
             <div className='grid grid-cols-[85px_minmax(0,1fr)] gap-1 items-start'>
@@ -437,9 +585,10 @@ export function PageClassBanner({
               </span>
               <div className='flex flex-wrap gap-1'>
                 {technologies.map((tech: string) => {
-                  // Page refreshes can overlap a completed plan evaluation.
-                  // Keep the per-technology status tied only to that evaluation.
-                  const isLoading = !latestPlan?.plan?.decision;
+                  const isLoading = shouldShowTechnologyLoading(
+                    authConnected,
+                    isMatchLoading,
+                  );
 
                   if (isLoading) {
                     return (
@@ -629,7 +778,7 @@ export function PageClassBanner({
                             <span className='inline-flex items-center justify-center'>
                               <Loader className='w-2.5 h-2.5 animate-spin' />
                             </span>
-                          : <span className='inline-flex w-3.5 h-3.5 items-center justify-center rounded-full bg-warning/25 text-warning group-hover:bg-primary group-hover:text-primary-foreground transition-colors'>
+                          : <span className='inline-flex w-3.5 h-3.5 items-center justify-center rounded-full bg-warning/25 text-warning group-hover:bg-warning group-hover:text-primary-foreground transition-colors'>
                               <Plus className='w-2.5 h-2.5 stroke-[2.5]' />
                             </span>
                           }
@@ -691,25 +840,26 @@ export function PageClassBanner({
             </div>
           )}
 
-          {authConnected && error && !latestPlan?.plan?.decision && (
+          {authConnected && error && !latestMatch && (
             <div
               className='flex items-center justify-between gap-2 rounded-md border border-warning/30 bg-warning/10 px-2 py-1.5 text-[10px] text-warning'
               role='alert'
             >
               <span>{error}</span>
-              {onRetryPlan && (
+              {onRetryMatch && (
                 <Tooltip
                   content={
                     <span className='text-xs'>Retry technology evaluation</span>
                   }
-                  side='left'
+                  side='top'
+                  align='end'
                   delay={100}
                 >
                   <button
                     type='button'
                     className='inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-sm hover:bg-warning/15'
                     aria-label='Retry technology evaluation'
-                    onClick={onRetryPlan}
+                    onClick={onRetryMatch}
                   >
                     <RotateCcw className='h-3 w-3' />
                   </button>
@@ -718,42 +868,62 @@ export function PageClassBanner({
             </div>
           )}
 
-          {externalId && (
-            <details className='mt-1 text-[10px] text-muted-foreground/60 cursor-pointer select-none'>
-              <summary className='hover:text-muted-foreground transition-colors'>
-                Show Technical Details
-              </summary>
-              <div className='grid grid-cols-[85px_minmax(0,1fr)] gap-1 mt-1 font-mono text-[10px] border-t border-primary/40 pt-1'>
-                <span>External ID:</span>
-                <span className='truncate'>{externalId}</span>
-              </div>
-            </details>
-          )}
-
           {description && (
-            <div className='mt-1 pt-2 border-t border-primary/60 grid gap-1'>
+            <div className='mt-1 pt-2 border-t border-primary/60 grid gap-1.5'>
               <div className='flex items-center justify-between'>
                 <span className='text-muted-foreground text-[11px] font-semibold uppercase tracking-wider'>
                   Job Description
                 </span>
-                <button
-                  type='button'
-                  className='text-[11px] font-medium text-primary hover:underline cursor-pointer bg-transparent border-0 p-0'
-                  onClick={() => setIsDescExpanded((prev) => !prev)}
-                >
-                  {isDescExpanded ? 'Show Less ▲' : 'Show More ▼'}
-                </button>
+                <div className='flex items-center gap-1.5'>
+                  <button
+                    type='button'
+                    className='inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-sm text-muted-foreground/70 transition-colors hover:bg-primary/10 hover:text-primary cursor-pointer'
+                    onClick={() => void handleOpenInPageJobDescription()}
+                    title='Open in full page modal'
+                    aria-label='Open in full page modal'
+                  >
+                    <Maximize2 className='h-3 w-3' />
+                  </button>
+                  <CopyFieldButton
+                    label='Job Description'
+                    value={description}
+                  />
+                  <button
+                    type='button'
+                    className='text-[11px] font-medium text-primary hover:underline cursor-pointer bg-transparent border-0 p-0 ml-0.5'
+                    onClick={() => setIsDescExpanded((prev) => !prev)}
+                  >
+                    {isDescExpanded ? 'Show Less ▲' : 'Show More ▼'}
+                  </button>
+                </div>
               </div>
               <div
-                className={`text-[11px] leading-relaxed text-foreground/80 whitespace-pre-wrap ${
-                  isDescExpanded ? '' : 'job-desc-collapsed'
-                }`}
+                className={cn(
+                  'transition-all duration-200',
+                  isDescExpanded ?
+                    'max-h-[380px] overflow-y-auto pr-1'
+                  : 'max-h-[110px] overflow-hidden relative',
+                )}
               >
-                {description}
+                <StructuredJobDescription
+                  content={description}
+                  size='sm'
+                  maxBlocks={isDescExpanded ? undefined : 4}
+                />
+                {!isDescExpanded && (
+                  <div className='absolute bottom-0 inset-x-0 h-8 bg-gradient-to-t from-panel to-transparent pointer-events-none' />
+                )}
               </div>
             </div>
           )}
         </div>
+
+        <EditJobModal
+          isOpen={editOpen}
+          onClose={() => setEditOpen(false)}
+          snapshot={latestInspection.snapshot}
+          onSave={saveJob}
+        />
       </div>
     );
   }
@@ -771,9 +941,7 @@ export function PageClassBanner({
     reason.includes('没有任何求职信号') || reason.includes('置信度不足');
 
   return (
-    <details
-      className={`page-class-banner page-class-banner--no-job ${isClassifierRejection ? ' page-class-banner--skip' : ''}`}
-    >
+    <details className='page-class-banner page-class-banner--no-job'>
       <summary className='page-class-banner__summary' role='status'>
         <span className='page-class-banner__icon'>
           {isClassifierRejection ? '✗' : '!'}
@@ -782,7 +950,9 @@ export function PageClassBanner({
           {isClassifierRejection ?
             <>
               <strong>Non-Job Page</strong>
-              <span className='page-class-banner__sub'>Parsing skipped</span>
+              <span className='page-class-banner__sub'>
+                No job details found
+              </span>
             </>
           : <>
               <strong>Insufficient Content</strong>

@@ -23,7 +23,11 @@ export function readLinkedInPage(apiData?: LinkedInJobApiData | null): PageInspe
     title: job.title,
     company: job.company,
     location: job.location,
-    datePosted: job.datePosted,
+    firstPostedAt: job.firstPostedAt,
+    lastPostedAt: job.lastPostedAt,
+    postingObservedAt: job.postingObservedAt,
+    isReposted: job.isReposted,
+    postingDateRaw: job.postingDateRaw,
     description: job.description,
     technologies: extractTechnologyKeywords(job.description),
     easyApply: job.easyApply,
@@ -33,4 +37,3 @@ export function readLinkedInPage(apiData?: LinkedInJobApiData | null): PageInspe
   };
   return { kind: "job", snapshot };
 }
-

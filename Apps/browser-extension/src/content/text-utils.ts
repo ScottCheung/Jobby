@@ -44,11 +44,7 @@ export function extractStructuredText(element: Element | null | undefined): stri
 export function cleanDescriptionText(rawText: string): string {
   if (!rawText) return '';
 
-  let text = rawText
-    .replace(/TypeScript/g, '___TYPESCRIPT___')
-    .replace(/JavaScript/g, '___JAVASCRIPT___')
-    .replace(/NodeJS/gi, '___NODEJS___')
-    .replace(/GraphQL/gi, '___GRAPHQL___');
+  let text = rawText;
 
   // 1. Fix missing space/newline after period between sentences (e.g. "products.We believe" -> "products.\n\nWe believe")
   text = text.replace(/([a-z0-9)])\.\s*([A-Z])/g, '$1.\n\n$2');
@@ -59,16 +55,8 @@ export function cleanDescriptionText(rawText: string): string {
   // 3. Fix missing newline after question marks (e.g. "Who is Shift? At Shift" -> "Who is Shift?\n\nAt Shift")
   text = text.replace(/([?！])\s*([A-Z\u4e00-\u9fa5])/g, '$1\n\n$2');
 
-  // 4. Fix squished list items/sentences concatenated without punctuation or space
-  // (e.g. "(.NET)Support", "reliablePartner", "loveContribute", "scaleFollow", "improvementStay")
-  text = text.replace(/\(\.NET\)\s*([A-Z])/gi, '(.NET)\n$1');
-  text = text.replace(/([a-z0-9)])([A-Z][a-z])/g, '$1\n$2');
-
-  text = text
-    .replace(/___TYPESCRIPT___/g, 'TypeScript')
-    .replace(/___JAVASCRIPT___/g, 'JavaScript')
-    .replace(/___NODEJS___/g, 'NodeJS')
-    .replace(/___GRAPHQL___/g, 'GraphQL');
+  // 4. Fix missing newline after closing parentheses before capital letter (e.g. "(React)Support", "(.NET)Support")
+  text = text.replace(/\)\s*([A-Z])/g, ')\n$1');
 
   // Split into raw lines and clean each line while preserving blank lines
   const lines = text.split(/\r?\n/).map((line) => line.replace(/[ \t]+/g, ' ').trim());
@@ -83,6 +71,7 @@ export function cleanDescriptionText(rawText: string): string {
     let line = lines[i];
 
     if (!line) {
+      isInsideListSection = false;
       formattedLines.push('');
       continue;
     }
@@ -95,7 +84,7 @@ export function cleanDescriptionText(rawText: string): string {
     const isHeader = HEADER_PATTERN.test(line) || /^[A-Z][A-Za-z0-9\s/&'-]{2,40}:$/.test(line);
 
     if (isHeader) {
-      isInsideListSection = LIST_HEADER_PATTERN.test(line) || /:\s*$/.test(line);
+      isInsideListSection = LIST_HEADER_PATTERN.test(line);
       if (formattedLines.length > 0 && formattedLines[formattedLines.length - 1] !== '') {
         formattedLines.push('');
       }

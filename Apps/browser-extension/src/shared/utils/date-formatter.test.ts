@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseAndFormatJobDate } from "./date-formatter";
+import { captureJobDate, parseAndFormatJobDate } from "./date-formatter";
 import { extractLinkedInPostedDate } from "../../content/platforms/linkedin/date-parser";
 
 describe("extractLinkedInPostedDate", () => {
@@ -53,6 +53,28 @@ describe("extractLinkedInPostedDate", () => {
   });
 });
 
+describe("captureJobDate", () => {
+  const observedAt = new Date("2026-08-26T10:00:00.000Z");
+
+  it("freezes a relative label as an absolute timestamp and records observation time", () => {
+    expect(captureJobDate("Posted 2 days ago", observedAt)).toEqual({
+      postedAt: "2026-08-24T10:00:00.000Z",
+      observedAt: "2026-08-26T10:00:00.000Z",
+      rawValue: "Posted 2 days ago",
+      isReposted: false,
+    });
+  });
+
+  it("preserves the repost signal while normalizing its timestamp", () => {
+    expect(captureJobDate("Reposted 3 hours ago", observedAt)).toEqual({
+      postedAt: "2026-08-26T07:00:00.000Z",
+      observedAt: "2026-08-26T10:00:00.000Z",
+      rawValue: "Reposted 3 hours ago",
+      isReposted: true,
+    });
+  });
+});
+
 describe("parseAndFormatJobDate", () => {
   const refDate = new Date("2026-08-13T00:00:00Z");
 
@@ -78,25 +100,30 @@ describe("parseAndFormatJobDate", () => {
     const res5d = parseAndFormatJobDate("5 days ago", refDate);
     expect(res5d.displayText).toBe("5 days ago");
     expect(res5d.freshnessTier).toBe("aging");
+
+    const glassdoorAge = parseAndFormatJobDate("27d", refDate);
+    expect(glassdoorAge.displayText).toBe("27 days ago");
+    expect(glassdoorAge.freshnessTier).toBe("stale");
   });
 
-  it("parses weeks ago (1w, 2 weeks)", () => {
+  it("keeps week inputs as exact days while under 30 days", () => {
     const res1w = parseAndFormatJobDate("Posted 1w ago", refDate);
-    expect(res1w.displayText).toBe("1 week ago");
+    expect(res1w.displayText).toBe("7 days ago");
     expect(res1w.freshnessTier).toBe("aging");
 
     const res2w = parseAndFormatJobDate("2 weeks ago", refDate);
-    expect(res2w.displayText).toBe("2 weeks ago");
+    expect(res2w.displayText).toBe("14 days ago");
     expect(res2w.freshnessTier).toBe("stale");
   });
 
   it("marks postings older than 7 days as Stale", () => {
     const res8d = parseAndFormatJobDate("8 days ago", refDate);
     expect(res8d.freshnessTier).toBe("stale");
+    expect(res8d.displayText).toBe("8 days ago");
 
     const res3w = parseAndFormatJobDate("Posted 3 weeks ago", refDate);
     expect(res3w.freshnessTier).toBe("stale");
-    expect(res3w.displayText).toBe("3 weeks ago");
+    expect(res3w.displayText).toBe("21 days ago");
 
     const res1mo = parseAndFormatJobDate("Posted 1 month ago", refDate);
     expect(res1mo.freshnessTier).toBe("stale");
@@ -112,6 +139,9 @@ describe("parseAndFormatJobDate", () => {
     expect(resIso.displayText).toBe("3 days ago");
     expect(resIso.isTooOld).toBe(false);
     expect(resIso.isNotFresh).toBe(false);
+
+    const resIso8d = parseAndFormatJobDate("2026-08-05T00:00:00.000Z", refDate);
+    expect(resIso8d.displayText).toBe("8 days ago");
 
     const resIsoPosted = parseAndFormatJobDate("Posted 2026-08-10", refDate);
     expect(resIsoPosted.displayText).toBe("3 days ago");

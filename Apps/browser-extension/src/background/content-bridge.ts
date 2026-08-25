@@ -2,15 +2,8 @@ import { bindTabJobInspection, getTabJobInspection } from "./job-binding-service
 import { z } from "zod";
 
 import { pageInspectionSchema, type PageInspection } from "../shared/contracts/page-inspection";
-import type { ValidatedApplicationPlanResponse } from "../shared/contracts/backend";
 import { formInspectionSchema, type FormInspection } from "../shared/contracts/form-inspection";
 import { fieldFillResultSchema, formFocusResultSchema, type FieldFillInstruction, type FieldFillResult, type FileUploadInstruction, type FormFieldTarget, type FormFocusResult } from "../shared/contracts/form-actions";
-import {
-  linkedinApplicationActionSchema,
-  linkedinApplicationResultSchema,
-  type LinkedInApplicationAction,
-  type LinkedInApplicationResult,
-} from "../shared/contracts/linkedin";
 
 const contentResponseSchema = z.discriminatedUnion("ok", [
   z.object({ ok: z.literal(true), inspection: pageInspectionSchema }),
@@ -32,8 +25,8 @@ const formResponseSchema = z.discriminatedUnion("ok", [
   z.object({ ok: z.literal(false), error: z.string().min(1) }),
 ]);
 
-const linkedinApplicationResponseSchema = z.discriminatedUnion("ok", [
-  z.object({ ok: z.literal(true), application: linkedinApplicationResultSchema }),
+const highlightResponseSchema = z.discriminatedUnion("ok", [
+  z.object({ ok: z.literal(true), highlighted: z.boolean() }),
   z.object({ ok: z.literal(false), error: z.string().min(1) }),
 ]);
 
@@ -70,19 +63,6 @@ export async function inspectActiveTab(): Promise<PageInspection> {
   }
 
   return inspection;
-}
-
-export async function renderScoreCardActiveTab(
-  inspection?: PageInspection,
-  plan?: ValidatedApplicationPlanResponse
-): Promise<void> {
-  const activeTab = await findActiveTab().catch(() => undefined);
-  if (!activeTab?.id) return;
-  await sendToTab(activeTab.id, {
-    type: "content.render-score-card",
-    inspection,
-    plan,
-  }).catch(() => null);
 }
 
 export async function inspectFormActiveTab(): Promise<FormInspection> {
@@ -235,7 +215,21 @@ function selectGreenhouseComboboxInPage(
     return countryDialAliases[text] || text;
   };
   const element = document.getElementById(elementId);
-  if (!(element instanceof HTMLInputElement) || element.getAttribute("role") !== "combobox") {
+  const isGreenhouseLoc = Boolean(
+    element &&
+    element instanceof HTMLInputElement &&
+    (element.id === "job_application_location" ||
+      element.id === "candidate_location" ||
+      element.id === "location" ||
+      element.id.includes("location_autocomplete") ||
+      element.name === "job_application[location]" ||
+      element.name === "candidate[location]" ||
+      element.classList.contains("ui-autocomplete-input") ||
+      document.getElementById("job_application_location_id") ||
+      document.querySelector("input[name*='location_id']") ||
+      document.querySelector("#grnhse_app, .job-post-container, form.application--form, form[action*='greenhouse.io']"))
+  );
+  if (!(element instanceof HTMLInputElement) || (element.getAttribute("role") !== "combobox" && !isGreenhouseLoc)) {
     return Promise.resolve({ handled: false });
   }
 
@@ -297,18 +291,25 @@ function selectGreenhouseComboboxInPage(
 
   const renderedOption = (expected: string): HTMLElement | null => {
     const target = normalized(expected);
-    return Array.from(document.querySelectorAll<HTMLElement>(
-      "[role='option'], [role='listbox'] button, [role='listbox'] li, [data-value], [data-option-value]",
-    )).find((candidate) => {
-      if (!visible(candidate) || candidate.getAttribute("aria-disabled") === "true") return false;
+    const expectedFirstToken = target.split(/[,，\s]+/)[0] || target;
+    const candidates = Array.from(document.querySelectorAll<HTMLElement>(
+      "[role='option'], [role='listbox'] button, [role='listbox'] li, [data-value], [data-option-value], [class*='option' i], [class*='item' i], [class*='suggestion' i], [class*='result' i], .ui-menu-item, .ui-menu-item-wrapper, .pac-item",
+    )).filter((candidate) => visible(candidate) && candidate.getAttribute("aria-disabled") !== "true" && !(candidate instanceof HTMLInputElement) && !(candidate instanceof HTMLSelectElement));
+
+    const matched = candidates.find((candidate) => {
       const candidateValue = normalized(
         candidate.getAttribute("data-value") ||
         candidate.getAttribute("data-option-value") ||
         candidate.getAttribute("aria-label") ||
         candidate.textContent,
       );
-      return candidateValue === target || countryAlias(candidateValue) === countryAlias(expected) || (target.length > 1 && (candidateValue.includes(target) || target.includes(candidateValue)));
-    }) || null;
+      return candidateValue === target ||
+        countryAlias(candidateValue) === countryAlias(expected) ||
+        (target.length > 1 && (candidateValue.includes(target) || target.includes(candidateValue))) ||
+        (expectedFirstToken.length > 1 && candidateValue.includes(expectedFirstToken));
+    });
+    if (matched) return matched;
+    return candidates[0] || null;
   };
 
   const waitForRenderedOption = (expected: string): Promise<HTMLElement | null> => new Promise((resolve) => {
@@ -333,19 +334,39 @@ function selectGreenhouseComboboxInPage(
     const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
     if (setter) setter.call(element, requestedValue);
     else element.value = requestedValue;
+    const inputEventOpts = { bubbles: true, composed: true };
     try {
-      element.dispatchEvent(new InputEvent("input", { bubbles: true, composed: true, inputType: "insertText" }));
+      element.dispatchEvent(new InputEvent("input", { ...inputEventOpts, inputType: "insertText", data: requestedValue }));
     } catch {
-      element.dispatchEvent(new Event("input", { bubbles: true, composed: true }));
+      element.dispatchEvent(new Event("input", inputEventOpts));
     }
+    const char = requestedValue.slice(-1) || "a";
+    element.dispatchEvent(new KeyboardEvent("keydown", { key: char, code: `Key${char.toUpperCase()}`, bubbles: true, cancelable: true }));
+    element.dispatchEvent(new KeyboardEvent("keyup", { key: char, code: `Key${char.toUpperCase()}`, bubbles: true, cancelable: true }));
+    element.dispatchEvent(new Event("change", inputEventOpts));
+
     const option = await waitForRenderedOption(requestedValue);
     if (!option) return { handled: false };
+    const eventOpts = { bubbles: true, cancelable: true, composed: true };
+    option.dispatchEvent(new MouseEvent("mousedown", eventOpts));
+    option.dispatchEvent(new MouseEvent("mouseup", eventOpts));
     option.click();
+
     const startedAt = Date.now();
     let enterSent = false;
     return new Promise((resolve) => {
       const verify = () => {
-        if (matches(renderedCurrentValue(), requestedValue)) {
+        const currentVal = renderedCurrentValue() || clean(element.value);
+        const hasHiddenId = Boolean(
+          (document.getElementById("job_application_location_id") as HTMLInputElement)?.value ||
+          (document.querySelector("input[name*='location_id']") as HTMLInputElement)?.value
+        );
+        const expectedFirstToken = normalized(requestedValue).split(/[,，\s]+/)[0] || "";
+        if (
+          matches(currentVal, requestedValue) ||
+          hasHiddenId ||
+          (expectedFirstToken.length > 1 && currentVal.toLowerCase().includes(expectedFirstToken))
+        ) {
           resolve({ handled: true, status: "filled" });
           return;
         }
@@ -356,7 +377,7 @@ function selectGreenhouseComboboxInPage(
           element.dispatchEvent(new KeyboardEvent("keyup", keyOptions));
         }
         if (Date.now() - startedAt >= 900) {
-          resolve({ handled: false });
+          resolve({ handled: hasHiddenId || Boolean(element.value) });
           return;
         }
         window.setTimeout(verify, 40);
@@ -369,6 +390,7 @@ function selectGreenhouseComboboxInPage(
   if (!instance) return selectRenderedCombobox();
   const options = optionsFor(instance);
   const requested = normalized(requestedValue);
+  const requestedFirstToken = requested.split(/[,，\s]+/)[0] || requested;
   const option = options.find((candidate) => {
     const label = normalized(candidate.label);
     const value = normalized(String(candidate.value));
@@ -377,8 +399,9 @@ function selectGreenhouseComboboxInPage(
       countryAlias(value) === countryAlias(requestedValue) ||
       value === requested ||
       (requested.length > 1 && (label.includes(requested) || requested.includes(label))) ||
-      (requested.length > 1 && (value.includes(requested) || requested.includes(value)));
-  });
+      (requested.length > 1 && (value.includes(requested) || requested.includes(value))) ||
+      (requestedFirstToken.length > 1 && (label.includes(requestedFirstToken) || value.includes(requestedFirstToken)));
+  }) || (options.length > 0 ? options[0] : undefined);
   if (!option) return selectRenderedCombobox();
   if (normalized(currentValue(instance, options)) === normalized(option.label)) {
     return Promise.resolve({ handled: true, status: "already_filled" });
@@ -405,34 +428,26 @@ export async function focusActiveTabField(target: FormFieldTarget): Promise<Form
   return parsed.data.focusResult;
 }
 
+export async function highlightJobRequirementInActiveTab(
+  searchTerms: string[],
+): Promise<boolean> {
+  const rawResponse = await sendToActiveTab({
+    type: 'content.highlight-job-requirement',
+    searchTerms,
+  });
+  const parsed = highlightResponseSchema.safeParse(rawResponse);
+  if (!parsed.success)
+    throw new Error('The page returned an invalid job requirement response.');
+  if (!parsed.data.ok) throw new Error(parsed.data.error);
+  return parsed.data.highlighted;
+}
+
 export async function uploadActiveTabFile(instruction: FileUploadInstruction): Promise<FieldFillResult> {
   const rawResponse = await sendToActiveTab(instruction, instruction.target.frameId);
   const parsed = fillResponseSchema.safeParse(rawResponse);
   if (!parsed.success) throw new Error("The page returned an invalid file upload response.");
   if (!parsed.data.ok) throw new Error(parsed.data.error);
   return parsed.data.fillResult;
-}
-
-export async function openLinkedInApplicationActiveTab(): Promise<LinkedInApplicationResult> {
-  const rawResponse = await sendToActiveTab({ type: "content.linkedin.open-application" });
-  const parsed = linkedinApplicationResponseSchema.safeParse(rawResponse);
-  if (!parsed.success) throw new Error("The page returned an invalid LinkedIn application response.");
-  if (!parsed.data.ok) throw new Error(parsed.data.error);
-  return parsed.data.application;
-}
-
-export async function clickLinkedInApplicationAction(
-  action: LinkedInApplicationAction,
-): Promise<LinkedInApplicationResult> {
-  const parsedAction = linkedinApplicationActionSchema.parse(action);
-  const rawResponse = await sendToActiveTab({
-    type: "content.linkedin.application-action",
-    action: parsedAction,
-  });
-  const parsed = linkedinApplicationResponseSchema.safeParse(rawResponse);
-  if (!parsed.success) throw new Error("The page returned an invalid LinkedIn application response.");
-  if (!parsed.data.ok) throw new Error(parsed.data.error);
-  return parsed.data.application;
 }
 
 function isSupportedUrl(url: string | undefined): boolean {

@@ -1,5 +1,6 @@
 import type { FormFieldObservation, FormInspection } from "../shared/contracts/form-inspection";
 import type { FormScope } from "./dom/form-inspector";
+import { queryAllInScope } from "./dom/form-inspector";
 
 import { linkedinAdapter } from "./platforms/linkedin/adapter";
 import { getCurrentFormScope } from "./page-reader";
@@ -145,7 +146,7 @@ function nodeHasFormSignal(node: Node): boolean {
     return Boolean(parent?.closest(FORM_RELEVANT_SELECTOR));
   }
   if (!(node instanceof Element)) return false;
-  return node.matches(FORM_RELEVANT_SELECTOR) || Boolean(node.querySelector(FORM_RELEVANT_SELECTOR));
+  return node.matches(FORM_RELEVANT_SELECTOR) || queryAllInScope(node as HTMLElement, FORM_RELEVANT_SELECTOR).length > 0;
 }
 
 function hasRelevantFormMutation(records: readonly MutationRecord[]): boolean {
@@ -501,6 +502,7 @@ export function startFormDiscovery(readForm: () => FormInspection): void {
       childList: true,
       subtree: true,
     });
+    observeShadowRootsIn(root, observeRoot);
   }
 
   discovery.observe(document, {
@@ -529,7 +531,7 @@ export function startFormDiscovery(readForm: () => FormInspection): void {
 
 function hasDiscoverySignal(node: Node): boolean {
   if (!(node instanceof Element)) return false;
-  return node.matches(DISCOVERY_SELECTOR) || Boolean(node.querySelector(DISCOVERY_SELECTOR));
+  return node.matches(DISCOVERY_SELECTOR) || queryAllInScope(node as HTMLElement, DISCOVERY_SELECTOR).length > 0;
 }
 
 function hasDiscoveryMutation(record: MutationRecord): boolean {

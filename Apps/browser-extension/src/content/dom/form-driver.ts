@@ -841,7 +841,8 @@ function visibleOptionMatch(
   value: string,
 ): HTMLElement | null {
   const targetValue = normalized(value);
-  const selector = "[role='option'], [role='listbox'] button, [role='listbox'] li, [data-value], [data-option-value], [class*='t1-' i], [class*='option' i], [class*='item' i], [class*='suggestion' i], [class*='result' i], [class*='row' i]";
+  const targetFirstToken = targetValue.split(/[,，\s]+/)[0] || targetValue;
+  const selector = "[role='option'], [role='listbox'] button, [role='listbox'] li, [data-value], [data-option-value], [class*='t1-' i], [class*='option' i], [class*='item' i], [class*='suggestion' i], [class*='result' i], [class*='row' i], .ui-menu-item, .ui-menu-item-wrapper, .pac-item";
   // Listboxes on modern ATS pages are frequently rendered in a sibling or
   // child shadow root. `querySelectorAll` stops at a shadow boundary, while
   // `elementsInScope` deliberately follows open shadow roots.
@@ -854,31 +855,37 @@ function visibleOptionMatch(
             element.parentElement?.getAttribute('role') === 'listbox',
         )
       : Array.from(root.querySelectorAll<HTMLElement>(selector));
-  return (
-    candidates.find((candidate) => {
-      if (
-        !isVisible(candidate) ||
-        candidate.getAttribute('aria-disabled') === 'true' ||
-        candidate instanceof HTMLInputElement ||
-        candidate instanceof HTMLSelectElement
-      )
-        return false;
-      const candidateValue = normalized(
-        candidate.getAttribute('data-value') ||
-          candidate.getAttribute('data-option-value') ||
-          candidate.getAttribute('aria-label') ||
-          candidate.textContent ||
-          candidate.getAttribute('value') ||
-          '',
-      );
-      return (
-        candidateValue === targetValue ||
-        (targetValue.length > 1 &&
-          (candidateValue.includes(targetValue) ||
-            targetValue.includes(candidateValue)))
-      );
-    }) || null
-  );
+
+  const visibleCandidates = candidates.filter((candidate) => {
+    return (
+      isVisible(candidate) &&
+      candidate.getAttribute('aria-disabled') !== 'true' &&
+      !(candidate instanceof HTMLInputElement) &&
+      !(candidate instanceof HTMLSelectElement)
+    );
+  });
+
+  const matched = visibleCandidates.find((candidate) => {
+    const candidateValue = normalized(
+      candidate.getAttribute('data-value') ||
+        candidate.getAttribute('data-option-value') ||
+        candidate.getAttribute('aria-label') ||
+        candidate.textContent ||
+        candidate.getAttribute('value') ||
+        '',
+    );
+    return (
+      candidateValue === targetValue ||
+      (targetValue.length > 1 &&
+        (candidateValue.includes(targetValue) ||
+          targetValue.includes(candidateValue))) ||
+      (targetFirstToken.length > 1 &&
+        candidateValue.includes(targetFirstToken))
+    );
+  });
+
+  if (matched) return matched;
+  return visibleCandidates[0] || null;
 }
 
 function optionInteractionTarget(option: HTMLElement): HTMLElement {
@@ -982,11 +989,13 @@ function comboboxSelectionMatches(
 ): boolean {
   const selected = normalized(comboboxCurrentValue(element) || element.value);
   const expected = normalized(value);
+  const expectedFirstToken = expected.split(/[,，\s]+/)[0] || expected;
   return Boolean(
     selected &&
     (selected === expected ||
       (expected.length > 1 &&
-        (selected.includes(expected) || expected.includes(selected)))),
+        (selected.includes(expected) || expected.includes(selected))) ||
+      (expectedFirstToken.length > 1 && selected.includes(expectedFirstToken))),
   );
 }
 
@@ -1000,50 +1009,44 @@ function comboboxHasCommittedSelection(
   typedQuery: string,
 ): boolean {
   const expected = normalized(value);
+  const expectedFirstToken = expected.split(/[,，\s]+/)[0] || expected;
   const bridgedValue = normalized(inspectPageCombobox(element)?.currentValue || '');
   if (
     bridgedValue &&
     (bridgedValue === expected ||
       bridgedValue.includes(expected) ||
-      expected.includes(bridgedValue))
+      expected.includes(bridgedValue) ||
+      (expectedFirstToken.length > 1 && bridgedValue.includes(expectedFirstToken)))
   ) {
     return true;
   }
 
   const listbox = comboboxListbox(element, scope);
-  const selectedOption = listbox ?
-      elementsInScope(listbox).find(
-        (candidate) =>
-          candidate.getAttribute('aria-selected') === 'true' ||
-          candidate.getAttribute('aria-checked') === 'true' ||
-          candidate.getAttribute('data-state') === 'selected' ||
-          candidate.getAttribute('data-state') === 'checked',
-      )
-    : undefined;
-  if (selectedOption) {
-    const selectedValue = normalized(
-      selectedOption.getAttribute('data-value') ||
-        selectedOption.getAttribute('data-option-value') ||
-        selectedOption.getAttribute('aria-label') ||
-        selectedOption.textContent,
-    );
-    if (
-      selectedValue === expected ||
-      selectedValue.includes(expected) ||
-      expected.includes(selectedValue)
-    ) {
-      return true;
-    }
+  const selected = normalized(comboboxCurrentValue(element) || element.value);
+  const selectionMatches = Boolean(
+    selected &&
+    (selected === expected ||
+      (expected.length > 1 && (selected.includes(expected) || expected.includes(selected))) ||
+      (expectedFirstToken.length > 1 && selected.includes(expectedFirstToken)))
+  );
+
+  const root = element.getRootNode();
+  const searchScope = root instanceof Document || root instanceof ShadowRoot ? root : scope;
+  const hasHiddenGreenhouseId = Boolean(
+    (searchScope.querySelector("#job_application_location_id, input[name*='location_id']") as HTMLInputElement)?.value
+  );
+
+  if (!selectionMatches && !hasHiddenGreenhouseId && (!selected || selected === normalized(typedQuery))) {
+    return false;
   }
 
-  if (!comboboxSelectionMatches(element, value)) return false;
   const valueChangedAfterChoice =
     normalized(element.value) !== normalized(typedQuery);
   const listboxClosed =
     element.getAttribute('aria-expanded') === 'false' ||
     !listbox ||
     !isVisible(listbox);
-  return valueChangedAfterChoice || listboxClosed;
+  return valueChangedAfterChoice || listboxClosed || hasHiddenGreenhouseId;
 }
 
 function waitForComboboxCommit(
@@ -1113,6 +1116,10 @@ async function fillCombobox(
   if (element.getAttribute('aria-expanded') !== 'true') clickControl(element);
   setValue(element, label);
   emitInput(element);
+  const char = label.slice(-1) || 'a';
+  element.dispatchEvent(new KeyboardEvent('keydown', { key: char, code: `Key${char.toUpperCase()}`, bubbles: true, cancelable: true }));
+  element.dispatchEvent(new KeyboardEvent('keyup', { key: char, code: `Key${char.toUpperCase()}`, bubbles: true, cancelable: true }));
+  element.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
   const typedQuery = element.value;
 
   const option = await waitForComboboxOption(element, scope, label);
