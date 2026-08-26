@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { adaptAtsFormFields } from './ats-field-adapter';
+import { adaptAtsFormFields } from './field-adapter';
 
 const unnamedWorkRightsField = {
   key: 'work_authorization',

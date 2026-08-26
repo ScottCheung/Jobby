@@ -1,3 +1,5 @@
+/** @format */
+
 @import 'tailwindcss';
 @source '../../../../packages/ui/src';
 @import '../../../../packages/ui/src/styles/main.css';
@@ -571,7 +573,7 @@ textarea.form-field-input {
 
 /* Job page detected */
 .page-class-banner--job {
-  @apply bg-primary/10 dark:bg-primary/30 text-primary font-medium;
+  @apply bg-primary/10 dark:bg-primary/20 text-primary font-medium;
 }
 .page-class-banner--job .page-class-banner__icon {
   @apply text-primary font-bold;

@@ -1,34 +1,60 @@
-import { pageInspectionSchema } from "../shared/contracts/page-inspection";
-import { formInspectionSchema } from "../shared/contracts/form-inspection";
-import { fieldFillInstructionSchema, fileUploadInstructionSchema, formFieldTargetSchema } from "../shared/contracts/form-actions";
+/** @format */
 
-import { getCurrentFormScope, readCurrentForm, readCurrentPageWhenReady } from "./page-reader";
-import { startFormDiscovery, watchFormScope } from "./form-observer";
-import { classifyCurrentPage } from "./page-classifier";
-import { fillFormField, fillFormFieldValue, focusFormField, uploadFormFile } from "./dom/form-driver";
+import { pageInspectionSchema } from '../shared/contracts/page-inspection';
+import { formInspectionSchema } from '../shared/contracts/form-inspection';
+import {
+  fieldFillInstructionSchema,
+  fileUploadInstructionSchema,
+  formFieldTargetSchema,
+} from '../shared/contracts/form-actions';
+
+import {
+  getCurrentFormScope,
+  readCurrentForm,
+  readCurrentPageWhenReady,
+} from './page-reader';
+import { startFormDiscovery, watchFormScope } from './form-observer';
+import { classifyCurrentPage } from './page-classifier';
+import {
+  fillFormField,
+  fillFormFieldValue,
+  focusFormField,
+  uploadFormFile,
+} from './dom/form-driver';
 import {
   closeInPageResumePreviewModal,
   showInPageResumeLibraryModal,
   showInPageResumePreviewModal,
-} from "./dom/resume-preview-modal-injector";
+} from './dom/resume-preview-modal-injector';
 import {
   closeInPageJobDescriptionModal,
   showInPageJobDescriptionModal,
-} from "./dom/job-description-modal-injector";
-import { showInPageToast } from "./dom/in-page-toast";
+} from './dom/job-description-modal-injector';
+import { showInPageToast } from './dom/in-page-toast';
 import { highlightJobRequirement } from './dom/job-requirement-highlight';
 
 export async function handleContentCommand(message: unknown): Promise<unknown> {
   if (isHighlightJobRequirementCommand(message)) {
+    const result = await highlightJobRequirement(
+      (message as { searchTerms: string[] }).searchTerms,
+    );
     return {
-      highlighted: highlightJobRequirement(
-        (message as { searchTerms: string[] }).searchTerms,
-      ),
+      highlighted: result.highlighted,
+      matchCount: result.matchCount,
+      currentIndex: result.currentIndex,
     };
   }
   if (isShowToastCommand(message)) {
-    const payload = message as { message: string; toastType?: 'success' | 'error' | 'info' | 'warning'; duration?: number };
-    showInPageToast(payload.message, payload.toastType || 'info', payload.duration);
+    const payload = message as {
+      message: string;
+      toastType?: 'success' | 'error' | 'info' | 'warning';
+      duration?: number;
+    };
+    showInPageToast(
+      payload.message,
+      payload.toastType || 'info',
+      payload.duration,
+    );
     return { ok: true };
   }
   if (isShowJobDescriptionCommand(message)) {
@@ -83,7 +109,9 @@ export async function handleContentCommand(message: unknown): Promise<unknown> {
     return { ok: true };
   }
   if (isInspectCommand(message)) {
-    const inspection = pageInspectionSchema.parse(await readCurrentPageWhenReady());
+    const inspection = pageInspectionSchema.parse(
+      await readCurrentPageWhenReady(),
+    );
     return { inspection };
   }
   if (isInspectFormCommand(message)) {
@@ -102,22 +130,37 @@ export async function handleContentCommand(message: unknown): Promise<unknown> {
     return { form };
   }
   if (isFocusFormFieldCommand(message)) {
-    const target = formFieldTargetSchema.parse((message as { target: unknown }).target);
+    const target = formFieldTargetSchema.parse(
+      (message as { target: unknown }).target,
+    );
     return { focusResult: focusFormField(target, getCurrentFormScope()) };
   }
   if (isEditFormFieldCommand(message)) {
-    const target = formFieldTargetSchema.parse((message as { target: unknown }).target);
+    const target = formFieldTargetSchema.parse(
+      (message as { target: unknown }).target,
+    );
     const value = (message as { value: unknown }).value;
-    if (typeof value !== "string" && typeof value !== "boolean") throw new Error("Invalid form field value.");
-    return { fillResult: await fillFormFieldValue(target, value, getCurrentFormScope()) };
+    if (typeof value !== 'string' && typeof value !== 'boolean')
+      throw new Error('Invalid form field value.');
+    return {
+      fillResult: await fillFormFieldValue(
+        target,
+        value,
+        getCurrentFormScope(),
+      ),
+    };
   }
   if (isFillFieldCommand(message)) {
     const instruction = fieldFillInstructionSchema.parse(message);
-    return { fillResult: await fillFormField(instruction, getCurrentFormScope()) };
+    return {
+      fillResult: await fillFormField(instruction, getCurrentFormScope()),
+    };
   }
   if (isUploadFileCommand(message)) {
     const instruction = fileUploadInstructionSchema.parse(message);
-    return { fillResult: await uploadFormFile(instruction, getCurrentFormScope()) };
+    return {
+      fillResult: await uploadFormFile(instruction, getCurrentFormScope()),
+    };
   }
   return undefined;
 }
@@ -129,87 +172,109 @@ export function startContentFormDiscovery(): void {
 function hasObservableFields(
   form: ReturnType<typeof readCurrentForm>,
 ): boolean {
-  return form.kind === "application_form" || form.kind === "page_input_fields";
+  return form.kind === 'application_form' || form.kind === 'page_input_fields';
 }
 
 function isInspectFormCommand(message: unknown): boolean {
-  return typeof message === "object" && message !== null && (message as { type?: unknown }).type === "content.inspect-form";
+  return (
+    typeof message === 'object' &&
+    message !== null &&
+    (message as { type?: unknown }).type === 'content.inspect-form'
+  );
 }
 
 function isHighlightJobRequirementCommand(message: unknown): boolean {
   return (
     typeof message === 'object' &&
     message !== null &&
-    (message as { type?: unknown }).type ===
-      'content.highlight-job-requirement'
+    (message as { type?: unknown }).type === 'content.highlight-job-requirement'
   );
 }
 
 function isFillFieldCommand(message: unknown): boolean {
-  return typeof message === "object" && message !== null && (message as { type?: unknown }).type === "content.fill-field";
+  return (
+    typeof message === 'object' &&
+    message !== null &&
+    (message as { type?: unknown }).type === 'content.fill-field'
+  );
 }
 
 function isFocusFormFieldCommand(message: unknown): boolean {
-  return typeof message === "object" && message !== null && (message as { type?: unknown }).type === "content.focus-form-field";
+  return (
+    typeof message === 'object' &&
+    message !== null &&
+    (message as { type?: unknown }).type === 'content.focus-form-field'
+  );
 }
 
 function isEditFormFieldCommand(message: unknown): boolean {
-  return typeof message === "object" && message !== null && (message as { type?: unknown }).type === "content.edit-form-field";
+  return (
+    typeof message === 'object' &&
+    message !== null &&
+    (message as { type?: unknown }).type === 'content.edit-form-field'
+  );
 }
 
 function isUploadFileCommand(message: unknown): boolean {
-  return typeof message === "object" && message !== null && (message as { type?: unknown }).type === "content.upload-file";
+  return (
+    typeof message === 'object' &&
+    message !== null &&
+    (message as { type?: unknown }).type === 'content.upload-file'
+  );
 }
 
 function isInspectCommand(message: unknown): boolean {
-  return typeof message === "object" && message !== null && (message as { type?: unknown }).type === "content.inspect";
+  return (
+    typeof message === 'object' &&
+    message !== null &&
+    (message as { type?: unknown }).type === 'content.inspect'
+  );
 }
 
 function isShowResumePreviewCommand(message: unknown): boolean {
   return (
-    typeof message === "object" &&
+    typeof message === 'object' &&
     message !== null &&
-    (message as { type?: unknown }).type === "content.show-resume-preview"
+    (message as { type?: unknown }).type === 'content.show-resume-preview'
   );
 }
 
 function isShowResumeLibraryCommand(message: unknown): boolean {
   return (
-    typeof message === "object" &&
+    typeof message === 'object' &&
     message !== null &&
-    (message as { type?: unknown }).type === "content.show-resume-library"
+    (message as { type?: unknown }).type === 'content.show-resume-library'
   );
 }
 
 function isCloseResumePreviewCommand(message: unknown): boolean {
   return (
-    typeof message === "object" &&
+    typeof message === 'object' &&
     message !== null &&
-    (message as { type?: unknown }).type === "content.close-resume-preview"
+    (message as { type?: unknown }).type === 'content.close-resume-preview'
   );
 }
 
 function isShowToastCommand(message: unknown): boolean {
   return (
-    typeof message === "object" &&
+    typeof message === 'object' &&
     message !== null &&
-    (message as { type?: unknown }).type === "content.show-toast"
+    (message as { type?: unknown }).type === 'content.show-toast'
   );
 }
 
 function isShowJobDescriptionCommand(message: unknown): boolean {
   return (
-    typeof message === "object" &&
+    typeof message === 'object' &&
     message !== null &&
-    (message as { type?: unknown }).type === "content.show-job-description"
+    (message as { type?: unknown }).type === 'content.show-job-description'
   );
 }
 
 function isCloseJobDescriptionCommand(message: unknown): boolean {
   return (
-    typeof message === "object" &&
+    typeof message === 'object' &&
     message !== null &&
-    (message as { type?: unknown }).type === "content.close-job-description"
+    (message as { type?: unknown }).type === 'content.close-job-description'
   );
 }
-

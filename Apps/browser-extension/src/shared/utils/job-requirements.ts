@@ -6,6 +6,13 @@ const REQUIREMENT_LANGUAGE =
 const NEGATED_REQUIREMENT =
   /\bno\b.{0,80}\b(?:required|requirement|mandatory|essential|needed)\b|\bnot\b.{0,40}\b(?:required|requirement|mandatory|essential|needed)\b|\b(?:preferred|desirable|advantageous|encouraged)\b/i;
 
+const CLEARANCE_PREFERENCE =
+  /\b(?:preferred|desirable|advantageous|nice\s+to\s+have)\b/i;
+const NEGATED_CLEARANCE =
+  /\b(?:no|not)\b.{0,80}\b(?:security\s+)?clearance\b.{0,40}\b(?:required|mandatory|needed)\b/i;
+const MANDATORY_REQUIREMENT_SECTION =
+  /\b(?:mandatory|minimum|essential)\s+(?:requirements?|qualifications?|criteria)\b/i;
+
 const CITIZEN = /\bcitizen(?:s|ship)?\b/i;
 const PERMANENT_RESIDENT =
   /\bpermanent\s+residen(?:t|ts|cy)\b|\bPR\b/i;
@@ -19,13 +26,18 @@ type ClearanceRequirement = {
 export type JobRequirement = {
   label: string;
   searchTerms: string[];
+  priority?: 'required' | 'preferred';
 };
 
 const CLEARANCE_REQUIREMENTS: ClearanceRequirement[] = [
   {
-    pattern: /\bbaseline(?:\s+security)?\s+clearance\b/i,
+    pattern: /\bbaseline(?:\s+or\s+higher)?(?:\s+security)?\s+clearance\b/i,
     label: 'Baseline Clearance Required',
-    searchTerms: ['baseline clearance', 'baseline security clearance'],
+    searchTerms: [
+      'baseline clearance',
+      'baseline security clearance',
+      'baseline or higher security clearance',
+    ],
   },
   {
     pattern:
@@ -75,9 +87,38 @@ function requirementClauses(description: string): string[] {
     );
 }
 
+function clearanceClauses(description: string): Array<{
+  text: string;
+  inMandatorySection: boolean;
+}> {
+  let inMandatorySection = false;
+
+  return description
+    .replace(/\r/g, '\n')
+    .split('\n')
+    .flatMap((line) => {
+      const text = line.trim();
+      if (!text) {
+        inMandatorySection = false;
+        return [];
+      }
+
+      if (MANDATORY_REQUIREMENT_SECTION.test(text)) {
+        inMandatorySection = true;
+        return [];
+      }
+
+      return text
+        .split(/[.!?;]+\s*/)
+        .map((clause) => clause.trim())
+        .filter(Boolean)
+        .map((clause) => ({ text: clause, inMandatorySection }));
+    });
+}
+
 /**
- * Returns only explicit eligibility restrictions stated in the job description.
- * Incidental, preferred, and negated mentions are deliberately ignored.
+ * Returns explicit eligibility restrictions and explicitly preferred clearances.
+ * Incidental and negated mentions are deliberately ignored.
  */
 export function extractJobRequirements(description?: string): JobRequirement[] {
   if (!description?.trim()) return [];
@@ -100,14 +141,23 @@ export function extractJobRequirements(description?: string): JobRequirement[] {
   }
 
   const clearanceRequirements = new Map<string, JobRequirement>();
-  for (const clause of clauses) {
+  for (const { text: clause, inMandatorySection } of clearanceClauses(description)) {
+    if (NEGATED_CLEARANCE.test(clause)) continue;
+
     const specificClearance = CLEARANCE_REQUIREMENTS.find((requirement) =>
       requirement.pattern.test(clause),
     );
-    if (specificClearance) {
-      clearanceRequirements.set(specificClearance.label, {
-        label: specificClearance.label,
+    const isExplicitRequirement =
+      REQUIREMENT_LANGUAGE.test(clause) || inMandatorySection;
+    const isPreferred = CLEARANCE_PREFERENCE.test(clause);
+    if (specificClearance && (isExplicitRequirement || isPreferred)) {
+      const label = isPreferred ?
+        specificClearance.label.replace(' Required', ' Preferred')
+      : specificClearance.label;
+      clearanceRequirements.set(label, {
+        label,
         searchTerms: specificClearance.searchTerms,
+        priority: isPreferred ? 'preferred' : 'required',
       });
     }
   }

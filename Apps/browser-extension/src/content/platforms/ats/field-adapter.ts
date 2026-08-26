@@ -2,11 +2,9 @@ import type {
   FormFieldObservation,
   FormPlatform,
 } from '../../../shared/contracts/form-inspection';
+import { sharedFormPlatforms } from '../../../shared/contracts/platform';
 
-const ATS_PLATFORMS = new Set<FormPlatform>([
-  'indeed', 'glassdoor', 'workday', 'greenhouse', 'lever', 'ashby', 'smartrecruiters', 'taleo',
-  'icims', 'successfactors', 'oracle', 'workable', 'bamboohr',
-]);
+const ATS_PLATFORMS = new Set<FormPlatform>(sharedFormPlatforms);
 
 const IDENTIFIER_LABELS: ReadonlyArray<[RegExp, string]> = [
   [/(?:^|[_-])first[_-]?name(?:$|[_-])/i, 'First name'],

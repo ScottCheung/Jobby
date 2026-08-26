@@ -16,8 +16,12 @@ import {
 } from "./platforms/ats/form-reader";
 import {
   detectDedicatedPlatform,
-  isJobProviderPlatform,
 } from "./platforms/provider-routing";
+import {
+  getAtsProviderDefinition,
+  isAtsJobPlatform,
+  matchesProviderLocation,
+} from "./platforms/registry";
 import { findActiveFormScope } from "./dom/form-scope";
 import { linkedinAdapter } from "./platforms/linkedin/adapter";
 import { classifyCurrentPage } from "./page-classifier";
@@ -38,14 +42,6 @@ export function getLastPageClass(): PageClass | null {
 export function classifyPage(): PageClass {
   lastPageClass = classifyCurrentPage();
   return lastPageClass;
-}
-
-function isLinkedInHost(hostname: string): boolean {
-  return hostname === "linkedin.com" || hostname.endsWith(".linkedin.com");
-}
-
-function isIndeedHost(hostname: string): boolean {
-  return /(?:^|\.)indeed\.(?:com(?:\.[a-z]{2})?|co\.[a-z]{2}|[a-z]{2,3})$/i.test(hostname);
 }
 
 export function readCurrentPage(apiData?: import('./platforms/linkedin/api-client').LinkedInJobApiData | null): PageInspection {
@@ -74,16 +70,34 @@ export function readCurrentPage(apiData?: import('./platforms/linkedin/api-clien
   if (platform === "indeed") {
     return readIndeedJobPage();
   }
-  if (platform && isJobProviderPlatform(platform)) {
+  if (platform && isAtsJobPlatform(platform)) {
     const inspection = readAtsJobPage(platform);
     return inspection.kind === "job" ? inspection : fallbackToGenericJob(inspection);
   }
   return readGenericJobPage();
 }
 
+function postingDateWaitPolicy(
+  inspection: PageInspection,
+): { required: boolean; untilAttempt: number } {
+  if (
+    inspection.kind !== "job" ||
+    !isAtsJobPlatform(inspection.snapshot.platform)
+  ) {
+    return { required: false, untilAttempt: 0 };
+  }
+  const untilAttempt = getAtsProviderDefinition(
+    inspection.snapshot.platform,
+  ).job.postingDateWaitUntilAttempt;
+  return {
+    required: untilAttempt !== undefined && !inspection.snapshot.lastPostedAt,
+    untilAttempt: untilAttempt || 0,
+  };
+}
+
 export async function readCurrentPageWhenReady(): Promise<PageInspection> {
-  if (isLinkedInHost(window.location.hostname)) return readLinkedInPageWhenReady();
-  if (isIndeedHost(window.location.hostname)) return readIndeedPageWhenReady();
+  if (matchesProviderLocation("linkedin", window.location)) return readLinkedInPageWhenReady();
+  if (matchesProviderLocation("indeed", window.location)) return readIndeedPageWhenReady();
 
   let inspection = readCurrentPage();
   let previousSnapshotSignature = "";
@@ -99,14 +113,11 @@ export async function readCurrentPageWhenReady(): Promise<PageInspection> {
         inspection.snapshot.title,
         inspection.snapshot.company,
       ].join(":");
-      const waitingForGlassdoorAge =
-        inspection.snapshot.platform === "glassdoor" &&
-        !inspection.snapshot.lastPostedAt &&
-        attempt < 14;
+      const postingDateWait = postingDateWaitPolicy(inspection);
       if (
         attempt >= 2 &&
         snapshotSignature === previousSnapshotSignature &&
-        !waitingForGlassdoorAge
+        !(postingDateWait.required && attempt < postingDateWait.untilAttempt)
       ) {
         return inspection;
       }
@@ -114,16 +125,12 @@ export async function readCurrentPageWhenReady(): Promise<PageInspection> {
     } else {
       previousSnapshotSignature = "";
     }
-    // Preserve the existing six-attempt readiness window for every other
-    // platform. Glassdoor renders the selected card age separately from its
-    // detail pane, so only that provider waits for the late metadata.
+    // Preserve the existing six-attempt readiness window unless the selected
+    // provider declares that posting metadata renders in a separate pass.
+    const postingDateWait = postingDateWaitPolicy(inspection);
     if (
       attempt >= 5 &&
-      !(
-        inspection.kind === "job" &&
-        inspection.snapshot.platform === "glassdoor" &&
-        !inspection.snapshot.lastPostedAt
-      )
+      !postingDateWait.required
     ) {
       return inspection;
     }

@@ -5,9 +5,8 @@ import { extractStructuredText } from "../../text-utils";
 import { capturedJobDateFields } from "../../../shared/utils/date-formatter";
 
 const JOB_TITLE_SELECTORS = [
-  // SmartRecruiters exposes schema.org microdata, but also mounts an IE11
-  // support overlay whose heading appears first in DOM order. Prefer the
-  // JobPosting title over every generic heading.
+  // Structured job microdata can coexist with browser-support overlays and
+  // unrelated headings. Prefer the JobPosting title over generic headings.
   "main[itemtype*='JobPosting' i] [itemprop='title']",
   "[itemtype*='JobPosting' i] [itemprop='title']",
   "[itemprop='title']",
@@ -23,7 +22,7 @@ const JOB_TITLE_SELECTORS = [
   "[class*='job__title' i]",
   "[class*='posting-headline'] h2",
   "[class*='posting-headline']",
-  // Greenhouse / Lever / Workday headings
+  // Common hosted-job templates
   "#app_body h1",
   ".posting-headline h2",
   ".app-title",
@@ -45,7 +44,7 @@ const DESCRIPTION_SELECTORS = [
   "[class*='job__description' i]",
   "[id*='job-description' i]",
   "[id*='jobdescription' i]",
-  // Greenhouse / Lever / Workday containers
+  // Common hosted-job templates
   "#job_description",
   "#jobDescriptionText",
   ".posting-description",
@@ -276,9 +275,8 @@ export function jobPostingFromStructuredData(): StructuredJobPosting | null {
 }
 
 /**
- * Read schema.org microdata used by SmartRecruiters and several company ATS
- * pages. Unlike JSON-LD it is rendered alongside the posting, so it remains
- * available when an ATS has no JSON-LD script at all.
+ * Read schema.org microdata rendered alongside a posting. It remains
+ * available when a hosted job page has no JSON-LD script.
  */
 export function jobPostingFromMicrodata(
   roots: readonly QueryRoot[] = [document],
@@ -469,7 +467,7 @@ export function readGenericJobPage(): PageInspection {
     location: location || undefined,
     ...capturedJobDateFields(rawDatePosted),
     description: description || undefined,
-    technologies: extractTechnologyKeywords(description),
+    technologies: extractTechnologyKeywords([title, description].filter(Boolean).join("\n\n")),
   };
   return { kind: "job", snapshot };
 }

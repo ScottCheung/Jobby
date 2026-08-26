@@ -3,9 +3,8 @@ import type { FormScope } from "../../dom/form-inspector";
 
 import { findActiveFormScope, readGenericAction } from "../../dom/form-scope";
 import { inspectVisibleFormFields, readApplicationForm } from "../../dom/form-inspector";
-import { detectAtsPlatform } from './ats-platform';
-import { adaptAtsFormFields } from './ats-field-adapter';
-import { ensureSmartRecruitersResumeField } from './smartrecruiters-file-adapter';
+import { adaptRegisteredFormFields } from '../form-field-adapter';
+import { detectFormPlatform } from '../provider-routing';
 
 function cleanText(value: string | null | undefined): string {
   return (value || '').replace(/\s+/g, ' ').trim();
@@ -43,7 +42,7 @@ function isLikelyApplicationScope(
 
 export function readGenericFormPage(): FormInspection {
   const url = window.location.href;
-  const platform = detectAtsPlatform();
+  const platform = detectFormPlatform();
   const activeScope = findActiveFormScope();
   // Some ATSs place the required privacy/terms checkbox in a sibling panel
   // while the question fields live in the active wizard container. Inspecting
@@ -86,10 +85,7 @@ export function readGenericFormPage(): FormInspection {
     const scopedFields = scope === document && activeScope && activeScope !== document
       ? fields.filter((field) => allowedFieldKeys.has(field.key))
       : fields;
-    return ensureSmartRecruitersResumeField(
-      platform,
-      adaptAtsFormFields(platform, scopedFields),
-    );
+    return adaptRegisteredFormFields(platform, scopedFields);
   };
   if (!scope) {
     return {

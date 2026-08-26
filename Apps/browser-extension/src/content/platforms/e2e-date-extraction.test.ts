@@ -394,6 +394,54 @@ describe("E2E Date Extraction Across All Platforms", () => {
       }
     });
 
+    it("extracts job title and details from LinkedIn search-results page URL with currentJobId", () => {
+      document.body.innerHTML = `
+        <div class="scaffold-layout__list">
+          <div class="jobs-search-results-list">
+            <li data-occludable-job-id="4458174510" class="scaffold-layout__list-item jobs-search-results-list__list-item">
+              <a class="job-card-list__title--link" href="/jobs/view/4458174510/?eBP=123">
+                <strong aria-hidden="true">Staff Software Engineer</strong>
+              </a>
+              <div class="job-card-container__primary-description">Acme Technology</div>
+              <time datetime="2026-08-20T00:00:00Z">6 days ago</time>
+            </li>
+          </div>
+        </div>
+        <div class="scaffold-layout__detail jobs-search-two-pane__job-details">
+          <div class="job-details-jobs-unified-top-card">
+            <h2 class="job-details-jobs-unified-top-card__job-title">
+              <a href="/jobs/view/4458174510/?eBP=123">Staff Software Engineer</a>
+            </h2>
+            <div class="job-details-jobs-unified-top-card__company-name">
+              <a href="/company/acme-technology/">Acme Technology</a>
+            </div>
+            <div class="job-details-jobs-unified-top-card__primary-description-container">
+              <span>Sydney, New South Wales, Australia</span>
+              <span>·</span>
+              <span>6 days ago</span>
+            </div>
+          </div>
+          <div id="job-details" class="jobs-box__html-content">
+            Staff Software Engineer role requiring TypeScript, React, distributed systems, and GraphQL.
+          </div>
+        </div>
+      `;
+      Object.defineProperty(window, "location", {
+        writable: true,
+        value: new URL("https://www.linkedin.com/jobs/search-results/?currentJobId=4458174510&eBP"),
+      });
+
+      const inspection = readLinkedInPage();
+      expect(inspection.kind).toBe("job");
+      if (inspection.kind === "job") {
+        expect(inspection.snapshot.externalId).toBe("4458174510");
+        expect(inspection.snapshot.title).toBe("Staff Software Engineer");
+        expect(inspection.snapshot.company).toBe("Acme Technology");
+        expect(inspection.snapshot.location).toBe("Sydney, New South Wales, Australia");
+        expect(inspection.snapshot.url).toBe("https://www.linkedin.com/jobs/view/4458174510/");
+      }
+    });
+
     it("extracts LinkedIn job ID from DOM when URL is /jobs/search/ without currentJobId query", () => {
       document.body.innerHTML = `
         <div class="jobs-search-results-list">

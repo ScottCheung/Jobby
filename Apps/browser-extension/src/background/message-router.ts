@@ -152,19 +152,23 @@ export async function handleRuntimeMessage(
           snapshot: await getRuntimeSnapshot(),
           focusResult: await focusActiveTabField(parsed.data.target),
         };
-      case 'content.highlight-job-requirement-active':
+      case 'content.highlight-job-requirement-active': {
         if (!isExtensionUiSender(sender))
           return {
             ok: false,
             error: 'Only the extension UI can highlight job requirements.',
           };
+        const result = await highlightJobRequirementInActiveTab(
+          parsed.data.searchTerms,
+        );
         return {
           ok: true,
           snapshot: await getRuntimeSnapshot(),
-          highlighted: await highlightJobRequirementInActiveTab(
-            parsed.data.searchTerms,
-          ),
+          highlighted: result.highlighted,
+          matchCount: result.matchCount,
+          currentIndex: result.currentIndex,
         };
+      }
       case 'content.autofill-single-field-active':
         if (!isExtensionUiSender(sender))
           return {

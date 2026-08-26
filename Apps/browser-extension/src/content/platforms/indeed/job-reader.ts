@@ -8,8 +8,12 @@
  */
 import type { IndeedJobSnapshot, PageInspection } from "../../../shared/contracts/page-inspection";
 import { capturedJobDateFields } from "../../../shared/utils/date-formatter";
-import { extractTechnologyKeywords } from "../../technology-keywords";
+import { extractTechnologyKeywords, mergeSkills } from "../../technology-keywords";
 import { extractStructuredText } from "../../text-utils";
+import {
+  clearJobDescriptionRoot,
+  rememberJobDescriptionRoot,
+} from "../../dom/job-description-root";
 
 function cleanText(value: string | null | undefined): string {
   return (value || "").replace(/\s+/g, " ").trim();
@@ -234,6 +238,7 @@ function stableId(value: string): string {
 }
 
 export function readIndeedJobPage(): PageInspection {
+  clearJobDescriptionRoot("indeed");
   const url = window.location.href;
   const targetKey = getIndeedTargetJobKey(url);
   const detailRoot = getIndeedDetailRoot();
@@ -336,17 +341,18 @@ export function readIndeedJobPage(): PageInspection {
     : undefined) ||
     undefined;
 
-  let description = structured?.description || "";
-  if (!description && !isDetailMismatch && detailRoot) {
-    const descEl =
-      detailRoot.querySelector<HTMLElement>("#jobDescriptionText") ||
+  const descriptionElement = !isDetailMismatch && detailRoot ?
+    detailRoot.querySelector<HTMLElement>("#jobDescriptionText") ||
       detailRoot.querySelector<HTMLElement>("[class*='jobsearch-jobDescriptionText']") ||
       detailRoot.querySelector<HTMLElement>("[data-testid='jobsearch-jobDescriptionText']") ||
       detailRoot.querySelector<HTMLElement>("#jobDescriptionSection") ||
-      detailRoot.querySelector<HTMLElement>("[data-testid='jobDescriptionText']");
-    if (descEl) {
-      description = truncate(extractStructuredText(descEl), 18_000);
-    }
+      detailRoot.querySelector<HTMLElement>("[data-testid='jobDescriptionText']")
+  : null;
+  if (descriptionElement) rememberJobDescriptionRoot("indeed", descriptionElement);
+
+  let description = structured?.description || "";
+  if (!description && descriptionElement) {
+    description = truncate(extractStructuredText(descriptionElement), 18_000);
   }
 
   const externalId =
@@ -371,6 +377,32 @@ export function readIndeedJobPage(): PageInspection {
     };
   }
 
+  const extractIndeedExplicitSkills = (root: ParentNode | null): string[] => {
+    if (!root) return [];
+    const skills: string[] = [];
+    const elements = Array.from(
+      root.querySelectorAll<HTMLElement>(
+        "#qualificationsSection li, [data-testid='qualificationsSection'] li, [class*='jobsearch-ReqAndQual'] li, [data-testid='attributes-section'] [class*='tag']",
+      ),
+    );
+    for (const el of elements) {
+      const text = cleanText(el.textContent);
+      if (
+        text &&
+        text.length >= 2 &&
+        text.length <= 40 &&
+        !text.includes("?") &&
+        !/^(?:qualifications|full-time|part-time|permanent|contract)$/i.test(text)
+      ) {
+        skills.push(text);
+      }
+    }
+    return skills;
+  };
+
+  const explicitSkills = extractIndeedExplicitSkills(detailRoot || primaryRoot || fallbackRoot);
+  const textKeywords = extractTechnologyKeywords([title, description].filter(Boolean).join("\n\n"));
+
   const snapshot: IndeedJobSnapshot = {
     platform: "indeed",
     externalId,
@@ -380,7 +412,7 @@ export function readIndeedJobPage(): PageInspection {
     location: location || undefined,
     ...capturedJobDateFields(datePosted),
     description: description || undefined,
-    technologies: extractTechnologyKeywords(description),
+    technologies: mergeSkills(explicitSkills, textKeywords),
   };
   return { kind: "job", snapshot };
 }

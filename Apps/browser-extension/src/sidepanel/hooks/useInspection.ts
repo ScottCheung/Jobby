@@ -493,14 +493,18 @@ export function useInspection(onJobChanged?: () => void) {
       });
       if (!response.ok) {
         setInspectionError(response.error);
-        return false;
+        return { highlighted: false, matchCount: 0, currentIndex: 0 };
       }
       if (!response.highlighted) {
         setInspectionError('Could not find this requirement in the current job description.');
-        return false;
+        return { highlighted: false, matchCount: 0, currentIndex: 0 };
       }
       setInspectionError('');
-      return true;
+      return {
+        highlighted: true,
+        matchCount: (response as { matchCount?: number }).matchCount ?? 1,
+        currentIndex: (response as { currentIndex?: number }).currentIndex ?? 1,
+      };
     },
     [],
   );

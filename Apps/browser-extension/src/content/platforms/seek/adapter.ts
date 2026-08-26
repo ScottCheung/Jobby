@@ -1,4 +1,4 @@
-import type { LinkedInApplicationAction, LinkedInApplicationResult } from "../../../shared/contracts/linkedin";
+import type { ApplicationAction, ApplicationActionResult } from "../../../shared/contracts/application-navigation";
 
 const ACTION_SELECTOR = "button, input[type='button'], input[type='submit'], [role='button']";
 
@@ -24,7 +24,7 @@ function labelFor(element: HTMLElement): string {
   );
 }
 
-function matchesAction(label: string, action: LinkedInApplicationAction): boolean {
+function matchesAction(label: string, action: ApplicationAction): boolean {
   if (action === "previous") return /(?:back|previous|返回|上一步)/i.test(label);
   if (action === "submit") return /(?:submit|apply|send|finish|提交|申请|发送|完成)/i.test(label);
   return (
@@ -33,7 +33,7 @@ function matchesAction(label: string, action: LinkedInApplicationAction): boolea
   );
 }
 
-export function getSeekApplicationAction(action: LinkedInApplicationAction): HTMLElement | null {
+export function getSeekApplicationAction(action: ApplicationAction): HTMLElement | null {
   return Array.from(document.querySelectorAll<HTMLElement>(ACTION_SELECTOR)).find(
     (element) => isVisible(element) && isEnabled(element) && matchesAction(labelFor(element), action),
   ) || null;
@@ -50,7 +50,7 @@ export function getSeekApplicationActionKind(): "next" | "submit" | undefined {
   return undefined;
 }
 
-export async function clickSeekApplicationAction(action: LinkedInApplicationAction): Promise<LinkedInApplicationResult> {
+export async function clickSeekApplicationAction(action: ApplicationAction): Promise<ApplicationActionResult> {
   const button = getSeekApplicationAction(action);
   if (!button) {
     return {

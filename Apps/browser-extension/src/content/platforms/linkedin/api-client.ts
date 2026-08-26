@@ -30,6 +30,8 @@ const WORKPLACE_TYPE_MAP: Record<string, 'onsite' | 'remote' | 'hybrid'> = {
 export type WorkType = 'onsite' | 'remote' | 'hybrid';
 
 export interface LinkedInJobApiData {
+  title?: string;
+  company?: string;
   firstPostedAt?: string;
   lastPostedAt?: string;
   postingObservedAt: string;
@@ -133,6 +135,18 @@ export async function fetchLinkedInJobPosting(jobId: string): Promise<LinkedInJo
     );
     const postingObservedAt = new Date().toISOString();
 
+    // ── title & company ───────────────────────────────────────────────────────
+    const rawTitle = (data.title as string | undefined) || (data.jobPostingTitle as string | undefined);
+    const title = rawTitle && typeof rawTitle === 'string' ? rawTitle.trim() : undefined;
+
+    const companyDetails = data.companyDetails as Record<string, unknown> | undefined;
+    const companyDetailsCompany = companyDetails?.company as Record<string, unknown> | undefined;
+    const rawCompany =
+      (companyDetails?.companyName as string | undefined) ||
+      (companyDetailsCompany?.name as string | undefined) ||
+      (data.companyName as string | undefined);
+    const company = rawCompany && typeof rawCompany === 'string' ? rawCompany.trim() : undefined;
+
     // ── workType ──────────────────────────────────────────────────────────────
     const workplaceTypes = data.workplaceTypes as string[] | undefined;
     const workRemoteAllowed = data.workRemoteAllowed as boolean | undefined;
@@ -164,6 +178,8 @@ export async function fetchLinkedInJobPosting(jobId: string): Promise<LinkedInJo
     const easyApply = applyMethod?.$type === 'com.linkedin.voyager.jobs.ComplexOnsiteApply';
 
     return {
+      title,
+      company,
       firstPostedAt,
       lastPostedAt,
       postingObservedAt,

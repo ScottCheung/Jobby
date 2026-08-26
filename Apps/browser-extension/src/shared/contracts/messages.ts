@@ -28,7 +28,7 @@ export const runtimeMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('content.inspect-form-active') }),
   z.object({
     type: z.literal('content.highlight-job-requirement-active'),
-    searchTerms: z.array(z.string().trim().min(1).max(80)).min(1).max(5),
+    searchTerms: z.array(z.string().trim().min(1).max(80)).min(1).max(12),
   }),
   z.object({ type: z.literal('form.autofill-active') }),
   z.object({
@@ -75,6 +75,8 @@ export type RuntimeMessageResponse =
       unansweredFields?: Array<{ key: string; label: string; reason: string }>;
       focusResult?: FormFocusResult;
       highlighted?: boolean;
+      matchCount?: number;
+      currentIndex?: number;
       isOpen?: boolean;
       canHostSidepanel?: boolean;
     }

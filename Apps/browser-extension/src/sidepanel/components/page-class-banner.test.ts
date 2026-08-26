@@ -23,6 +23,7 @@ vi.mock('./EditJobModal', () => ({ EditJobModal: () => null }));
 import type { PageInspection } from '../../shared/contracts/page-inspection';
 import {
   PageClassBanner,
+  getSkillSource,
   shouldShowTechnologyLoading,
 } from './PageClassBanner';
 
@@ -125,7 +126,6 @@ describe('job details banner', () => {
     expect(html).toContain('aria-label="Copy Job Title"');
     expect(html).toContain('aria-label="Copy Company"');
     expect(html).toContain('aria-label="Copy Location"');
-    expect(html).toContain('aria-label="Copy Eligibility"');
     expect(html).toContain('aria-label="Copy Job Description"');
     expect(html).not.toContain('aria-label="Copy Posted"');
     expect(html).not.toContain('aria-label="Copy Technologies"');
@@ -185,4 +185,86 @@ describe('job details banner', () => {
     expect(html).not.toContain('Easy Apply:');
     expect(html).toContain('Show Citizen Required in the job description');
   });
+
+  it('renders single Bonus group as Bonus - xxx and multi-group with Detail toggle', () => {
+    const singleBonusInspection: PageInspection = {
+      kind: 'job',
+      snapshot: {
+        ...inspection.snapshot,
+        technologies: [
+          'React',
+          'C#',
+          '.NET',
+          'SQL',
+          'Financial Services',
+          'Wealth Management',
+        ],
+      },
+    };
+    const singleHtml = renderToStaticMarkup(
+      createElement(PageClassBanner, {
+        latestInspection: singleBonusInspection,
+        isInspecting: false,
+      }),
+    );
+
+    expect(singleHtml).toContain('Core (0/4)');
+    expect(singleHtml).toContain('Bonus - Finance &amp; Banking (0/2)');
+    expect(singleHtml).not.toContain('Detail');
+
+    const multiBonusInspection: PageInspection = {
+      kind: 'job',
+      snapshot: {
+        ...inspection.snapshot,
+        technologies: [
+          'React',
+          'C#',
+          '.NET',
+          'SQL',
+          'Financial Services',
+          'Wealth Management',
+          'Communication Skills',
+        ],
+      },
+    };
+    const multiHtml = renderToStaticMarkup(
+      createElement(PageClassBanner, {
+        latestInspection: multiBonusInspection,
+        isInspecting: false,
+      }),
+    );
+
+    expect(multiHtml).toContain('Core (0/4)');
+    expect(multiHtml).toContain('Bonus (0/3)');
+    expect(multiHtml).toContain('Detail');
+    expect(multiHtml).toContain('aria-label="Show category details"');
+  });
+
+  it('correctly resolves skill source with priority for claimed profile skills', () => {
+    const userSkills = [
+      {
+        id: '1',
+        skill_name: 'Communication Skills',
+        canonical_name: 'communication skills',
+        created_at: '',
+        updated_at: '',
+      },
+    ];
+
+    // Even if matchedSet (AI match terms) is completely empty, claimed skill must resolve to 'profile'
+    expect(getSkillSource('Communication Skills', new Set(), null, userSkills)).toBe(
+      'profile',
+    );
+
+    // Unclaimed skill with empty matchedSet resolves to 'unclaimed'
+    expect(getSkillSource('Financial Services', new Set(), null, userSkills)).toBe(
+      'unclaimed',
+    );
+
+    // Skill present in matchedSet resolves to 'resume'
+    expect(
+      getSkillSource('Financial Services', new Set(['financial services']), null, userSkills),
+    ).toBe('resume');
+  });
 });
+

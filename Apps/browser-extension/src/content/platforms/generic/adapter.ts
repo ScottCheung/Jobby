@@ -1,4 +1,4 @@
-import type { LinkedInApplicationAction, LinkedInApplicationResult } from "../../../shared/contracts/linkedin";
+import type { ApplicationAction, ApplicationActionResult } from "../../../shared/contracts/application-navigation";
 import { elementsInScope, isVisibleElement } from "../../dom/form-inspector";
 import { findActiveFormScope } from "../../dom/form-scope";
 
@@ -33,7 +33,7 @@ function labelFor(element: HTMLElement): string {
   );
 }
 
-function matchesAction(label: string, action: LinkedInApplicationAction): boolean {
+function matchesAction(label: string, action: ApplicationAction): boolean {
   if (action === "previous") return /(?:back|previous|返回|上一步)/i.test(label);
   if (action === "submit") return /(?:submit|apply|send|finish|complete|confirm|提交|申请|发送|完成|确认)/i.test(label);
   return (
@@ -42,7 +42,7 @@ function matchesAction(label: string, action: LinkedInApplicationAction): boolea
   );
 }
 
-export function getGenericApplicationAction(action: LinkedInApplicationAction): HTMLElement | null {
+export function getGenericApplicationAction(action: ApplicationAction): HTMLElement | null {
   const scope = findActiveFormScope() || document;
   const inScope = elementsInScope(scope).find(
     (element): element is HTMLElement =>
@@ -69,8 +69,8 @@ export function getGenericApplicationAction(action: LinkedInApplicationAction): 
 }
 
 export async function clickGenericApplicationAction(
-  action: LinkedInApplicationAction,
-): Promise<LinkedInApplicationResult> {
+  action: ApplicationAction,
+): Promise<ApplicationActionResult> {
   const button = getGenericApplicationAction(action);
   if (!button) {
     return {
@@ -148,7 +148,7 @@ export function findGenericApplyTrigger(): HTMLElement | null {
   );
 }
 
-export async function openGenericApplication(): Promise<LinkedInApplicationResult> {
+export async function openGenericApplication(): Promise<ApplicationActionResult> {
   const currentUrl = window.location.href;
   const scope = findActiveFormScope();
   if (scope && scope !== document) {

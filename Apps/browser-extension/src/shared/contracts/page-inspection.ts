@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { capturedJobDateFields } from "../utils/date-formatter";
+import { atsJobPlatforms, dedicatedPlatforms } from "./platform";
 
 const jobSnapshotFields = {
   externalId: z.string().min(1),
@@ -54,20 +55,7 @@ export const indeedJobSnapshotSchema = z.object({
 export type IndeedJobSnapshot = z.infer<typeof indeedJobSnapshotSchema>;
 
 export const atsJobSnapshotSchema = z.object({
-  platform: z.enum([
-    "glassdoor",
-    "workday",
-    "greenhouse",
-    "lever",
-    "ashby",
-    "smartrecruiters",
-    "taleo",
-    "icims",
-    "successfactors",
-    "oracle",
-    "workable",
-    "bamboohr",
-  ]),
+  platform: z.enum(atsJobPlatforms),
   ...jobSnapshotFields,
 });
 
@@ -107,23 +95,7 @@ export const pageInspectionSchema = z.discriminatedUnion("kind", [
   }),
   z.object({
     kind: z.literal("not_job_page"),
-    platform: z.enum([
-      "seek",
-      "linkedin",
-      "indeed",
-      "glassdoor",
-      "workday",
-      "greenhouse",
-      "lever",
-      "ashby",
-      "smartrecruiters",
-      "taleo",
-      "icims",
-      "successfactors",
-      "oracle",
-      "workable",
-      "bamboohr",
-    ]),
+    platform: z.enum(dedicatedPlatforms),
     url: z.string().url(),
     reason: z.string().min(1),
   }),

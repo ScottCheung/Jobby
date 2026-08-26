@@ -304,6 +304,59 @@ describe("ATS-specific job readers", () => {
     }
   });
 
+  it("extracts skills from Glassdoor qualifications section along with description and title", () => {
+    setLocation("https://www.glassdoor.com.au/Job/designer-jobs-SRCH_KO0,8.htm");
+    document.body.innerHTML = `
+      <div class="JobDetails_jobDetailsContainer__abc">
+        <header data-test="job-details-header" data-brandviews="jlid=1010238586194">
+          <h4>The Purple Panda Agency</h4>
+          <h1 id="jd-job-title-1010238586194">Web Designer</h1>
+          <span data-test="location">Hurstville Grove</span>
+        </header>
+        <div class="JobDetails_qualificationsSection__xyz" data-test="job-qualifications">
+          <h2>Your qualifications for this job</h2>
+          <ul>
+            <li>UX</li>
+            <li>Responsive web design</li>
+            <li>E-commerce</li>
+            <li>Shopify</li>
+            <li>WordPress</li>
+            <li>SEO</li>
+            <li>Communication skills</li>
+          </ul>
+          <div>
+            <h3>Do you also have these qualifications?</h3>
+            <span>UI design</span>
+            <span>Time management</span>
+          </div>
+        </div>
+        <section class="JobDetails_jobDescription__abc">
+          <p>We are looking for a Web Designer with HTML, CSS, and Figma skills.</p>
+        </section>
+        <button data-test="applyButton">Apply now</button>
+      </div>
+    `;
+
+    const inspection = readAtsJobPage("glassdoor");
+    expect(inspection.kind).toBe("job");
+    if (inspection.kind !== "job") return;
+    expect(inspection.snapshot.technologies).toEqual([
+      "UX",
+      "Responsive Web Design",
+      "E-commerce",
+      "Shopify",
+      "WordPress",
+      "SEO",
+      "Communication Skills",
+      "UI Design",
+      "Time Management",
+      "Web Design",
+      "HTML",
+      "CSS",
+      "Figma",
+    ]);
+  });
+
   it("updates the Taleo identity when detail pagination keeps the same URL", () => {
     setLocation("https://woodforest.taleo.net/careersection/4/jobdetail.ftl");
     document.body.innerHTML = `<img alt="Woodforest Taleo" /><main id="requisitionDescriptionInterface">
@@ -457,4 +510,75 @@ describe("ATS-specific job readers", () => {
     expect(inspection.snapshot.description).not.toContain("Recommended role content");
     expect(inspection.snapshot.description).not.toContain("Footer navigation");
   });
+
+  it("extracts all sections in modern Lever multi-section job postings", () => {
+    setLocation("https://jobs.lever.co/megaport/530b1eda-741e-4902-b651-1f000acf414b");
+    document.title = "Megaport - Frontend Software Engineer";
+    document.body.innerHTML = `
+      <div class="content-wrapper posting-page">
+        <div class="content">
+          <div class="section-wrapper accent-section page-full-width">
+            <div class="section page-centered posting-header">
+              <div class="posting-headline"><h2>Frontend Software Engineer</h2></div>
+              <div class="posting-categories"><div class="sort-by-time posting-category medium-category-label width-full capitalize-labels location">Australia / Brisbane</div></div>
+              <div class="postings-btn-wrapper"><a class="postings-btn" href="/megaport/530b1eda/apply">Apply</a></div>
+            </div>
+          </div>
+          <div class="section-wrapper page-full-width">
+            <div class="section page-centered" data-qa="job-description">
+              <h3>About Megaport</h3>
+              <p>We are a global cloud connectivity company building next-generation network tools.</p>
+            </div>
+            <div class="section page-centered">
+              <div>
+                <h3>What You’ll Be Doing</h3>
+                <div class="posting-requirements plain-list" data-qa="posting-requirements">
+                  <ul>
+                    <li>Build and ship features across the Megaport Portal in Vue 3, TypeScript, and Vite.</li>
+                    <li>Write tests using Vitest and Playwright.</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+            <div class="section page-centered">
+              <div>
+                <h3>What We Offer</h3>
+                <div class="posting-requirements plain-list" data-qa="posting-requirements">
+                  <ul>
+                    <li>Flexible working environments and generous leave.</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+            <div class="section page-centered" data-qa="closing-description">
+              <p>All applications will be treated in confidence. Contact Careers@megaport.com for questions.</p>
+            </div>
+            <div class="section page-centered" data-qa="ai-disclaimer">
+              <p>We may use artificial intelligence (AI) tools to assist our recruitment process.</p>
+            </div>
+            <div class="section page-centered last-section-apply" data-qa="btn-apply-bottom">
+              <a class="postings-btn" href="/megaport/530b1eda/apply">Apply for this job</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const inspection = readAtsJobPage("lever");
+    expect(inspection.kind).toBe("job");
+    if (inspection.kind !== "job") return;
+    expect(inspection.snapshot.title).toBe("Frontend Software Engineer");
+    expect(inspection.snapshot.company).toBe("Megaport");
+    expect(inspection.snapshot.description).toContain("About Megaport");
+    expect(inspection.snapshot.description).toContain("What You’ll Be Doing");
+    expect(inspection.snapshot.description).toContain("Vue 3, TypeScript, and Vite");
+    expect(inspection.snapshot.description).toContain("What We Offer");
+    expect(inspection.snapshot.description).toContain("All applications will be treated in confidence");
+    expect(inspection.snapshot.description).not.toContain("Apply for this job");
+    expect(inspection.snapshot.description).not.toContain("We may use artificial intelligence");
+    expect(inspection.snapshot.technologies).toContain("Vue.js");
+    expect(inspection.snapshot.technologies).toContain("TypeScript");
+    expect(inspection.snapshot.technologies).toContain("Vitest");
+  });
 });
+

@@ -67,12 +67,13 @@ development.
 
 - Content scripts perform isolated page reads and actions only.
 - The service worker owns REST communication, orchestration, and persisted run state.
-- Platform adapters contain site-specific selectors and flows.
+- Platform definitions and adapters contain site-specific selectors and flows.
 - LinkedIn, SEEK, Indeed, Glassdoor, Workday, Greenhouse, Lever,
   SmartRecruiters, Ashby, and Taleo providers are routed before generic
   job/form detection. Their
-  selectors remain isolated from shared DOM and execution code; unknown sites
-  use the generic fallback.
+  definitions remain isolated from shared ATS and generic execution code;
+  unknown sites use the generic fallback. See
+  `src/content/platforms/README.md` for the registry and ownership rules.
 - Form inspection returns field metadata only. The separate form driver may
   write only exact backend instructions for supported fields; it never clicks
   the final application Submit action.

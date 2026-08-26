@@ -1,0 +1,471 @@
+[
+  {
+    "label": "UI/UX Design",
+    "terms": [
+      "UI/UX Design",
+      "UX/UI Design",
+      "UI / UX Design",
+      "UX / UI Design",
+      "User Interface and User Experience Design",
+      "User Interface / User Experience Design"
+    ]
+  },
+  {
+    "label": "UI Design",
+    "terms": ["UI Design", "User Interface Design", "GUI Design"]
+  },
+  {
+    "label": "UX Design",
+    "terms": ["UX Design", "User Experience Design", "Experience Design"]
+  },
+  {
+    "label": "UI",
+    "terms": ["UI", "User Interface"]
+  },
+  {
+    "label": "UX",
+    "terms": ["UX", "User Experience"]
+  },
+  {
+    "label": "Web Design",
+    "terms": ["Web Design", "Website Design", "Web Designer"]
+  },
+  {
+    "label": "Landing Page Design",
+    "terms": ["Landing Page Design", "Landing Page Designing"]
+  },
+  {
+    "label": "Responsive Web Design",
+    "terms": [
+      "Responsive Web Design",
+      "Responsive Design",
+      "Responsive Web",
+      "Responsive Layout"
+    ]
+  },
+  {
+    "label": "Mobile-First Design",
+    "terms": ["Mobile-First Design", "Mobile First Design", "Mobile-first"]
+  },
+  {
+    "label": "Product Design",
+    "terms": ["Product Design", "Digital Product Design"]
+  },
+  {
+    "label": "End-to-End Design",
+    "terms": ["End-to-End Design", "End to End Design"]
+  },
+  {
+    "label": "Interaction Design",
+    "terms": ["Interaction Design", "IxD"]
+  },
+  {
+    "label": "Micro-interactions",
+    "terms": ["Micro-interactions", "Microinteractions", "Micro Interactions"]
+  },
+  {
+    "label": "Interactive Prototyping",
+    "terms": ["Interactive Prototyping"]
+  },
+  {
+    "label": "Visual Design",
+    "terms": ["Visual Design"]
+  },
+  {
+    "label": "Visual Identity",
+    "terms": ["Visual Identity"]
+  },
+  {
+    "label": "Brand Identity",
+    "terms": ["Brand Identity", "Brand Identity Design"]
+  },
+  {
+    "label": "Iconography",
+    "terms": ["Iconography", "Icon Design"]
+  },
+  {
+    "label": "Typography",
+    "terms": ["Typography", "Typography Design"]
+  },
+  {
+    "label": "Color Theory",
+    "terms": ["Color Theory", "Colour Theory"]
+  },
+  {
+    "label": "Graphic Design",
+    "terms": ["Graphic Design"]
+  },
+  {
+    "label": "Print Design",
+    "terms": ["Print Design"]
+  },
+  {
+    "label": "Digital Design",
+    "terms": ["Digital Design"]
+  },
+  {
+    "label": "Vector Illustration",
+    "terms": ["Vector Illustration", "Vector Illustrations"]
+  },
+  {
+    "label": "Banner Design",
+    "terms": ["Banner Design"]
+  },
+  {
+    "label": "Collateral Design",
+    "terms": ["Collateral Design", "Marketing Collateral Design"]
+  },
+  {
+    "label": "Wireframing",
+    "terms": [
+      "Wireframing",
+      "Wireframes",
+      "Wireframe",
+      "Low-Fidelity Wireframes",
+      "Low Fidelity Wireframes"
+    ]
+  },
+  {
+    "label": "Balsamiq",
+    "terms": ["Balsamiq", "Balsamiq Mockups"]
+  },
+  {
+    "label": "Prototyping",
+    "terms": ["Prototyping", "Prototype", "Prototypes", "Rapid Prototyping"]
+  },
+  {
+    "label": "High-Fidelity Prototyping",
+    "terms": [
+      "High-Fidelity Prototyping",
+      "High-Fidelity Prototype",
+      "High-Fidelity Prototypes",
+      "High Fidelity Prototyping"
+    ]
+  },
+  {
+    "label": "Clickable Prototypes",
+    "terms": ["Clickable Prototype", "Clickable Prototypes"]
+  },
+  {
+    "label": "Design Systems",
+    "terms": ["Design System", "Design Systems"]
+  },
+  {
+    "label": "Component Library",
+    "terms": ["Component Library", "Component Libraries"]
+  },
+  {
+    "label": "Design Tokens",
+    "terms": ["Design Tokens", "Design Token"]
+  },
+  {
+    "label": "Style Guides",
+    "terms": ["Style Guide", "Style Guides"]
+  },
+  {
+    "label": "Atomic Design",
+    "terms": ["Atomic Design"]
+  },
+  {
+    "label": "User Research",
+    "terms": ["User Research", "UX Research"]
+  },
+  {
+    "label": "User Interviews",
+    "terms": ["User Interviews", "User Interviewing"]
+  },
+  {
+    "label": "Survey Design",
+    "terms": ["Survey Design"]
+  },
+  {
+    "label": "Card Sorting",
+    "terms": ["Card Sorting"]
+  },
+  {
+    "label": "Tree Testing",
+    "terms": ["Tree Testing"]
+  },
+  {
+    "label": "Usability Testing",
+    "terms": ["Usability Testing", "Usability Test"]
+  },
+  {
+    "label": "User Testing",
+    "terms": ["User Testing"]
+  },
+  {
+    "label": "User Journey Mapping",
+    "terms": ["User Journey Mapping", "Journey Mapping"]
+  },
+  {
+    "label": "Customer Journey Mapping",
+    "terms": ["Customer Journey Mapping", "Customer Journey"]
+  },
+  {
+    "label": "User Personas",
+    "terms": ["User Personas", "User Persona", "Personas"]
+  },
+  {
+    "label": "Information Architecture",
+    "terms": ["Information Architecture", "IA"]
+  },
+  {
+    "label": "Site Mapping",
+    "terms": ["Site Mapping", "Sitemap Design", "Site Map Design"]
+  },
+  {
+    "label": "Content Organization",
+    "terms": ["Content Organization", "Content Organisation"]
+  },
+  {
+    "label": "Navigation Structure",
+    "terms": ["Navigation Structure", "Navigation Design"]
+  },
+  {
+    "label": "Accessibility",
+    "terms": [
+      "Accessibility",
+      "a11y",
+      "Web Accessibility",
+      "Digital Accessibility"
+    ]
+  },
+  {
+    "label": "WCAG",
+    "terms": [
+      "WCAG",
+      "Web Content Accessibility Guidelines",
+      "WCAG 2.1",
+      "WCAG 2.2"
+    ]
+  },
+  {
+    "label": "Screen Readers",
+    "terms": ["Screen Reader", "Screen Readers"]
+  },
+  {
+    "label": "Accessible Design",
+    "terms": ["Accessible Design", "Accessibility Design"]
+  },
+  {
+    "label": "Inclusive Design",
+    "terms": ["Inclusive Design"]
+  },
+  {
+    "label": "Color Contrast",
+    "terms": ["Color Contrast", "Colour Contrast"]
+  },
+
+  {
+    "label": "Figma",
+    "terms": ["Figma"]
+  },
+  {
+    "label": "FigJam",
+    "terms": ["FigJam"]
+  },
+  {
+    "label": "Figma Components",
+    "terms": ["Figma Components", "Figma Component"]
+  },
+  {
+    "label": "Figma Auto Layout",
+    "terms": ["Figma Auto Layout", "Auto Layout"]
+  },
+  {
+    "label": "Figma Plugins",
+    "terms": ["Figma Plugins", "Figma Plugin"]
+  },
+  {
+    "label": "Sketch",
+    "terms": ["Sketch", "Sketch App"]
+  },
+  {
+    "label": "Adobe XD",
+    "terms": ["Adobe XD"]
+  },
+  {
+    "label": "Framer",
+    "terms": ["Framer"]
+  },
+  {
+    "label": "Framer Sites",
+    "terms": ["Framer Sites"]
+  },
+  {
+    "label": "ProtoPie",
+    "terms": ["ProtoPie"]
+  },
+  {
+    "label": "Principle",
+    "terms": ["Principle", "Principle App"]
+  },
+
+  {
+    "label": "Adobe Creative Cloud",
+    "terms": ["Adobe Creative Cloud", "Adobe CC", "Creative Cloud"]
+  },
+  {
+    "label": "Adobe Photoshop",
+    "terms": ["Adobe Photoshop", "Photoshop"]
+  },
+  {
+    "label": "Photo Editing",
+    "terms": ["Photo Editing", "Image Editing"]
+  },
+  {
+    "label": "Image Retouching",
+    "terms": ["Image Retouching", "Photo Retouching"]
+  },
+  {
+    "label": "Adobe Illustrator",
+    "terms": ["Adobe Illustrator", "Illustrator"]
+  },
+  {
+    "label": "Vector Artwork",
+    "terms": ["Vector Artwork", "Vector Art"]
+  },
+  {
+    "label": "Adobe InDesign",
+    "terms": ["Adobe InDesign", "InDesign"]
+  },
+  {
+    "label": "Typesetting",
+    "terms": ["Typesetting"]
+  },
+  {
+    "label": "Editorial Layout",
+    "terms": ["Editorial Layout", "Editorial Design"]
+  },
+  {
+    "label": "Adobe Premiere Pro",
+    "terms": ["Adobe Premiere Pro", "Premiere Pro"]
+  },
+  {
+    "label": "Video Editing",
+    "terms": ["Video Editing", "Video Editor"]
+  },
+  {
+    "label": "Post-Production",
+    "terms": ["Post-Production", "Post Production"]
+  },
+  {
+    "label": "Adobe After Effects",
+    "terms": ["Adobe After Effects", "After Effects"]
+  },
+  {
+    "label": "VFX",
+    "terms": ["VFX", "Visual Effects"]
+  },
+  {
+    "label": "Lottie Animations",
+    "terms": ["Lottie Animations", "Lottie Animation", "Lottie"]
+  },
+  {
+    "label": "DaVinci Resolve",
+    "terms": ["DaVinci Resolve"]
+  },
+  {
+    "label": "Color Grading",
+    "terms": ["Color Grading", "Colour Grading"]
+  },
+  {
+    "label": "Canva",
+    "terms": ["Canva", "Canva Pro"]
+  },
+
+  {
+    "label": "Blender",
+    "terms": ["Blender", "Blender 3D"]
+  },
+  {
+    "label": "Cinema 4D",
+    "terms": ["Cinema 4D", "C4D"]
+  },
+  {
+    "label": "Maya",
+    "terms": ["Autodesk Maya", "Maya"]
+  },
+  {
+    "label": "3ds Max",
+    "terms": ["3ds Max", "Autodesk 3ds Max"]
+  },
+  {
+    "label": "ZBrush",
+    "terms": ["ZBrush"]
+  },
+  {
+    "label": "Substance Painter",
+    "terms": ["Substance Painter", "Adobe Substance 3D Painter"]
+  },
+  {
+    "label": "3D Modeling",
+    "terms": ["3D Modeling", "3D Modelling"]
+  },
+  {
+    "label": "Texturing",
+    "terms": ["Texturing", "3D Texturing"]
+  },
+  {
+    "label": "Rigging",
+    "terms": ["Rigging", "3D Rigging"]
+  },
+  {
+    "label": "3D Animation",
+    "terms": ["3D Animation"]
+  },
+  {
+    "label": "3D Rendering",
+    "terms": ["3D Rendering", "3D Render"]
+  },
+
+  {
+    "label": "Motion Graphics",
+    "terms": ["Motion Graphics", "Motion Design"]
+  },
+  {
+    "label": "2D Animation",
+    "terms": ["2D Animation"]
+  },
+  {
+    "label": "Character Animation",
+    "terms": ["Character Animation"]
+  },
+  {
+    "label": "Keyframe Animation",
+    "terms": ["Keyframe Animation", "Keyframe Animations"]
+  },
+  {
+    "label": "Storyboarding",
+    "terms": ["Storyboarding", "Storyboards", "Storyboard"]
+  },
+  {
+    "label": "Visual Storytelling",
+    "terms": ["Visual Storytelling"]
+  },
+  {
+    "label": "Concept Art",
+    "terms": ["Concept Art"]
+  },
+  {
+    "label": "Creative Direction",
+    "terms": ["Creative Direction"]
+  },
+  {
+    "label": "Art Direction",
+    "terms": ["Art Direction"]
+  },
+  {
+    "label": "Brand Guidelines",
+    "terms": ["Brand Guidelines", "Brand Guideline"]
+  },
+  {
+    "label": "Design Leadership",
+    "terms": ["Design Leadership"]
+  },
+  {
+    "label": "Creative Strategy",
+    "terms": ["Creative Strategy"]
+  }
+]

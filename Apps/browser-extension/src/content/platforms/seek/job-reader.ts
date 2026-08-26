@@ -1,9 +1,13 @@
 import type { PageInspection, SeekJobSnapshot } from "../../../shared/contracts/page-inspection";
 
-import { extractTechnologyKeywords } from "../../technology-keywords";
+import { extractTechnologyKeywords, mergeSkills } from "../../technology-keywords";
 import { extractStructuredText } from "../../text-utils";
 import { capturedJobDateFields } from "../../../shared/utils/date-formatter";
 import { SEEK_SELECTORS } from "./selectors";
+import {
+  clearJobDescriptionRoot,
+  rememberJobDescriptionRoot,
+} from "../../dom/job-description-root";
 
 function cleanText(value: string | null | undefined): string {
   return (value || "").replace(/\s+/g, " ").trim();
@@ -34,21 +38,21 @@ function firstText(selectors: readonly string[]): string {
   return "";
 }
 
-function firstDescriptionText(selectors: readonly string[]): string {
+function firstDescriptionElement(selectors: readonly string[]): HTMLElement | null {
   const root = getSeekDetailRoot();
   for (const selector of selectors) {
     const element = root.querySelector<HTMLElement>(selector);
     const text = extractStructuredText(element);
-    if (text) return text;
+    if (text) return element;
   }
   if (root !== document) {
     for (const selector of selectors) {
       const element = document.querySelector<HTMLElement>(selector);
       const text = extractStructuredText(element);
-      if (text) return text;
+      if (text) return element;
     }
   }
-  return "";
+  return null;
 }
 
 function jobIdFromUrl(url: string): string {
@@ -189,6 +193,7 @@ function datePostedFromDom(jobId?: string): string | undefined {
 }
 
 export function readSeekPage(): PageInspection {
+  clearJobDescriptionRoot("seek");
   const url = window.location.href;
   const jobId = jobIdFromUrl(url);
   if (!jobId) {
@@ -200,8 +205,30 @@ export function readSeekPage(): PageInspection {
     return { kind: "not_job_page", platform: "seek", url, reason: "The job title is not available yet." };
   }
 
-  const description = firstDescriptionText(SEEK_SELECTORS.description);
+  const descriptionElement = firstDescriptionElement(SEEK_SELECTORS.description);
+  if (descriptionElement) rememberJobDescriptionRoot("seek", descriptionElement);
+  const description = extractStructuredText(descriptionElement);
   const rawDatePosted = datePostedFromDom(jobId);
+  const extractSeekExplicitSkills = (): string[] => {
+    const root = getSeekDetailRoot();
+    const skills: string[] = [];
+    const elements = Array.from(
+      root.querySelectorAll<HTMLElement>(
+        "[data-automation='job-detail-key-skills'] li, [data-automation='job-skills'] li",
+      ),
+    );
+    for (const el of elements) {
+      const text = cleanText(el.textContent);
+      if (text && text.length >= 2 && text.length <= 40 && !text.includes("?")) {
+        skills.push(text);
+      }
+    }
+    return skills;
+  };
+
+  const explicitSkills = extractSeekExplicitSkills();
+  const textKeywords = extractTechnologyKeywords([title, description].filter(Boolean).join("\n\n"));
+
   const snapshot: SeekJobSnapshot = {
     platform: "seek",
     externalId: jobId,
@@ -211,7 +238,7 @@ export function readSeekPage(): PageInspection {
     location: firstText(SEEK_SELECTORS.location) || undefined,
     ...capturedJobDateFields(rawDatePosted),
     description: description || undefined,
-    technologies: extractTechnologyKeywords(description),
+    technologies: mergeSkills(explicitSkills, textKeywords),
   };
   return { kind: "job", snapshot };
 }

@@ -2,7 +2,7 @@
 
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { ensureSmartRecruitersResumeField } from './smartrecruiters-file-adapter';
+import { ensureSmartRecruitersResumeField } from './file-adapter';
 
 function visible(element: HTMLElement, width = 800, height = 90): void {
   Object.defineProperty(element, 'offsetWidth', { configurable: true, value: width });

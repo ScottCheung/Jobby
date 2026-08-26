@@ -1,5 +1,7 @@
 import type { FieldFillResult, FormFieldTarget } from "../shared/contracts/form-actions";
 import type { FormInspection } from "../shared/contracts/form-inspection";
+import type { ProviderAutofillPolicy } from "../content/platforms/platform-definition";
+import { ashbyAutofillPolicy } from "../content/platforms/ashby/autofill-policy";
 
 import { inspectActiveTab, inspectFormActiveTab, fillActiveTabField, uploadActiveTabFile } from "./content-bridge";
 import { apiClient } from "./api-client";
@@ -53,12 +55,16 @@ function isReactiveAddressCountryField(
   return /(?:^|\s)country(?:\s|$)/i.test(identity);
 }
 
-function isAshbyForm(form: FormInspection): boolean {
-  try {
-    return new URL(form.url).hostname.endsWith("ashbyhq.com");
-  } catch {
-    return false;
+function autofillPolicyFor(
+  form: FormInspection,
+): ProviderAutofillPolicy | undefined {
+  if (
+    form.kind !== "application_form" &&
+    form.kind !== "page_input_fields"
+  ) {
+    return undefined;
   }
+  return form.platform === "ashby" ? ashbyAutofillPolicy : undefined;
 }
 
 function isFillComplete(result: FieldFillResult | undefined): boolean {
@@ -177,7 +183,7 @@ async function fillFormWithReactiveConvergence<T extends { instructions: Array<{
     let selectOrComboboxFilledInThisPass = false;
     let hitReactiveAddressBarrier = false;
     let fields = form.kind === "application_form" || form.kind === "page_input_fields" ? form.fields : [];
-    const ashbyForm = isAshbyForm(form);
+    const autofillPolicy = autofillPolicyFor(form);
     for (const instruction of instructions.instructions) {
       const key = instruction.target.key;
       const field = fields.find((candidate) => candidate.key === key);
@@ -217,13 +223,13 @@ async function fillFormWithReactiveConvergence<T extends { instructions: Array<{
           break;
         }
 
-        // Ashby's controlled form fields persist their value asynchronously
-        // and can replace the input nodes after every change. A single-field
-        // fill naturally gives that update time to settle; batch fill did not,
-        // so later writes could target a detached field and end the run early.
-        // Re-read the live form before advancing to the next Ashby field.
-        if (ashbyForm) {
-          await new Promise((resolve) => setTimeout(resolve, 120));
+        // Providers with controlled fields can replace input nodes after each
+        // write. Their registered policy re-reads the live form before the
+        // next instruction targets a detached field.
+        if (autofillPolicy?.mode === "sequential") {
+          await new Promise((resolve) =>
+            setTimeout(resolve, autofillPolicy.refreshAfterFieldMs),
+          );
           const refreshedForm = await getForm().catch(() => null);
           if (
             refreshedForm &&
@@ -285,8 +291,9 @@ export async function autofillDetectedFormForActiveTab(): Promise<{
   unansweredFields: Array<{ key: string; label: string; reason: string }>;
 }> {
   const initialForm = await inspectFormActiveTab();
-  if (isAshbyForm(initialForm)) {
-    return autofillAshbyFieldsIndividually(initialForm);
+  const autofillPolicy = autofillPolicyFor(initialForm);
+  if (autofillPolicy?.mode === "sequential") {
+    return autofillFieldsSequentially(initialForm, autofillPolicy);
   }
 
   const page = await inspectActiveTab().catch(() => null);
@@ -312,14 +319,14 @@ export async function autofillDetectedFormForActiveTab(): Promise<{
 }
 
 /**
- * Ashby persists each answer through its own controlled-field update. The
- * normal batch endpoint is therefore a poor fit: it captures a stale form
- * snapshot before the first field changes. The per-field control in the
- * panel already uses the reliable sequence of inspect -> answer -> write.
- * Reuse that sequence for the top-level action and re-inspect after each
- * write so every next target belongs to the current Ashby DOM.
+ * Sequential providers persist answers through controlled-field updates. The
+ * normal batch endpoint captures a stale form snapshot before the first field
+ * changes, so re-inspect after every write.
  */
-async function autofillAshbyFieldsIndividually(initialForm: FormInspection): Promise<{
+async function autofillFieldsSequentially(
+  initialForm: FormInspection,
+  policy: ProviderAutofillPolicy,
+): Promise<{
   results: FieldFillResult[];
   unansweredFields: Array<{ key: string; label: string; reason: string }>;
 }> {
@@ -347,8 +354,9 @@ async function autofillAshbyFieldsIndividually(initialForm: FormInspection): Pro
     const result = await autofillSingleFieldForActiveTab(target);
     results.push(result);
 
-    // Wait for Ashby's save and React commit before locating the next field.
-    await new Promise((resolve) => setTimeout(resolve, 180));
+    await new Promise((resolve) =>
+      setTimeout(resolve, policy.settleBetweenFieldsMs),
+    );
     const refreshed = await inspectFormActiveTab().catch(() => null);
     if (!refreshed || (refreshed.kind !== "application_form" && refreshed.kind !== "page_input_fields")) {
       break;

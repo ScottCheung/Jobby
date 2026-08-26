@@ -28,6 +28,24 @@ describe('extractJobRequirements', () => {
     ]);
   });
 
+  it('keeps preferred clearance signals separate from mandatory restrictions', () => {
+    expect(
+      extractJobRequirements(`
+        Mandatory Requirements
+        • Australian Citizenship.
+        • Baseline or higher Security Clearance (preferred)
+      `),
+    ).toMatchObject([
+      {
+        label: 'Baseline Clearance Preferred',
+        priority: 'preferred',
+        searchTerms: expect.arrayContaining([
+          'baseline or higher security clearance',
+        ]),
+      },
+    ]);
+  });
+
   it('recognises descriptions that say the role requires citizenship', () => {
     expect(
       extractJobRequirements('This position requires Australian citizenship.'),

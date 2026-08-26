@@ -1,0 +1,1588 @@
+[
+  { "label": "Python", "terms": ["Python", "Python3", "Python 3"] },
+  { "label": "PyPy", "terms": ["PyPy"] },
+  { "label": "CPython", "terms": ["CPython"] },
+  {
+    "label": "JavaScript",
+    "terms": [
+      "JavaScript",
+      "JS",
+      "ECMAScript",
+      "Vanilla JS",
+      "Vanilla JavaScript"
+    ]
+  },
+  {
+    "label": "ES6+",
+    "terms": ["ES6", "ES2015", "ES2020", "ES2022", "ES6+"]
+  },
+  { "label": "TypeScript", "terms": ["TypeScript", "TS", "TSX"] },
+  {
+    "label": "Java",
+    "terms": ["Java", "Java 8", "Java 11", "Java 17", "Java 21", "Core Java"]
+  },
+  { "label": "JVM", "terms": ["JVM", "Java Virtual Machine"] },
+  { "label": "Spring Boot", "terms": ["Spring Boot", "SpringBoot"] },
+  { "label": "Spring Framework", "terms": ["Spring Framework", "Spring Core"] },
+  { "label": "Spring MVC", "terms": ["Spring MVC"] },
+  { "label": "Spring Security", "terms": ["Spring Security"] },
+  { "label": "Spring Cloud", "terms": ["Spring Cloud"] },
+  { "label": "Spring Data", "terms": ["Spring Data", "Spring Data JPA"] },
+  { "label": "Hibernate", "terms": ["Hibernate", "Hibernate ORM"] },
+  { "label": "JPA", "terms": ["JPA", "Java Persistence API"] },
+  { "label": "Quarkus", "terms": ["Quarkus"] },
+  { "label": "Micronaut", "terms": ["Micronaut"] },
+  { "label": "Maven", "terms": ["Maven", "Apache Maven"] },
+  { "label": "Gradle", "terms": ["Gradle"] },
+  { "label": "C#", "terms": ["C#", "CSharp", "C-Sharp", "C Sharp"] },
+  {
+    "label": ".NET",
+    "terms": [".NET", "Dotnet", ".NET Developer", "Dotnet Developer"]
+  },
+  {
+    "label": ".NET Core",
+    "terms": [
+      ".NET Core",
+      ".NET 5",
+      ".NET 6",
+      ".NET 7",
+      ".NET 8",
+      ".NET 9",
+      ".NET 6+",
+      ".NET 7+",
+      ".NET 8+"
+    ]
+  },
+  {
+    "label": ".NET Framework",
+    "terms": [".NET Framework"]
+  },
+  {
+    "label": ".NET Standard",
+    "terms": [".NET Standard"]
+  },
+  { "label": "ASP.NET", "terms": ["ASP.NET"] },
+  { "label": "ASP.NET Core", "terms": ["ASP.NET Core"] },
+  { "label": "ASP.NET MVC", "terms": ["ASP.NET MVC"] },
+  { "label": "ASP.NET Web API", "terms": ["ASP.NET Web API"] },
+  {
+    "label": "Entity Framework",
+    "terms": ["Entity Framework", "EF6", "Entity Framework 6"]
+  },
+  {
+    "label": "Entity Framework Core",
+    "terms": ["Entity Framework Core", "EF Core"]
+  },
+  { "label": "Dapper", "terms": ["Dapper", "Dapper ORM", "Dapper.NET"] },
+  { "label": "LINQ", "terms": ["LINQ"] },
+  { "label": "SignalR", "terms": ["SignalR", "ASP.NET Core SignalR"] },
+  { "label": "MediatR", "terms": ["MediatR"] },
+  { "label": "AutoMapper", "terms": ["AutoMapper"] },
+  { "label": "MassTransit", "terms": ["MassTransit"] },
+  { "label": "NServiceBus", "terms": ["NServiceBus"] },
+  { "label": "IIS", "terms": ["IIS", "Internet Information Services"] },
+  { "label": "WPF", "terms": ["WPF", "Windows Presentation Foundation"] },
+  {
+    "label": "Blazor",
+    "terms": ["Blazor", "Blazor WebAssembly", "Blazor Server"]
+  },
+  { "label": "MAUI", "terms": [".NET MAUI", "MAUI"] },
+  { "label": "WCF", "terms": ["WCF", "Windows Communication Foundation"] },
+  {
+    "label": "C++",
+    "terms": ["C++", "Modern C++", "C++11", "C++14", "C++17", "C++20", "C++23"]
+  },
+  { "label": "STL", "terms": ["STL", "Standard Template Library"] },
+  { "label": "Boost C++", "terms": ["Boost C++", "Boost"] },
+  { "label": "CMake", "terms": ["CMake"] },
+  {
+    "label": "C",
+    "terms": ["C programming", "ANSI C", "Embedded C", "C language"]
+  },
+  {
+    "label": "Go",
+    "terms": ["Golang", "Go programming", "Go language"]
+  },
+  { "label": "Rust", "terms": ["Rust", "Rustlang"] },
+  { "label": "Cargo", "terms": ["Cargo"] },
+  { "label": "Tokio", "terms": ["Tokio"] },
+  { "label": "Actix", "terms": ["Actix", "Actix-web"] },
+  { "label": "Axum", "terms": ["Axum"] },
+  {
+    "label": "Kotlin",
+    "terms": ["Kotlin"]
+  },
+  {
+    "label": "Kotlin Multiplatform",
+    "terms": ["Kotlin Multiplatform", "KMP"]
+  },
+  { "label": "Swift", "terms": ["Swift"] },
+  { "label": "SwiftUI", "terms": ["SwiftUI"] },
+  { "label": "UIKit", "terms": ["UIKit"] },
+  { "label": "CoreData", "terms": ["CoreData", "Core Data"] },
+  { "label": "Combine", "terms": ["Combine framework", "Apple Combine"] },
+  { "label": "PHP", "terms": ["PHP", "PHP7", "PHP8"] },
+  { "label": "Composer", "terms": ["Composer PHP", "Composer"] },
+  { "label": "Laravel", "terms": ["Laravel"] },
+  { "label": "Eloquent ORM", "terms": ["Eloquent ORM", "Eloquent"] },
+  { "label": "Symfony", "terms": ["Symfony"] },
+  { "label": "Doctrine ORM", "terms": ["Doctrine ORM", "Doctrine"] },
+  { "label": "Ruby", "terms": ["Ruby"] },
+  { "label": "Ruby on Rails", "terms": ["Ruby on Rails", "Rails", "RoR"] },
+  { "label": "Scala", "terms": ["Scala"] },
+  { "label": "Akka", "terms": ["Akka", "Apache Pekko"] },
+  { "label": "Play Framework", "terms": ["Play Framework"] },
+  { "label": "R", "terms": ["R programming", "R language"] },
+  { "label": "RStudio", "terms": ["RStudio"] },
+  { "label": "SQL", "terms": ["SQL", "Structured Query Language", "ANSI SQL"] },
+  { "label": "T-SQL", "terms": ["T-SQL", "Transact-SQL"] },
+  { "label": "PL/SQL", "terms": ["PL/SQL", "PL-SQL"] },
+  {
+    "label": "Shell Scripting",
+    "terms": ["Shell Script", "Shell Scripting", "Shell Scripts"]
+  },
+  { "label": "CLI", "terms": ["Command Line", "CLI"] },
+  { "label": "Bash", "terms": ["Bash", "Bash Scripting"] },
+  { "label": "Zsh", "terms": ["Zsh"] },
+  { "label": "PowerShell", "terms": ["PowerShell", "PowerShell Scripting"] },
+  { "label": "Elixir", "terms": ["Elixir"] },
+  {
+    "label": "Phoenix Framework",
+    "terms": ["Phoenix Framework", "Phoenix framework"]
+  },
+  { "label": "Erlang", "terms": ["Erlang"] },
+  { "label": "BEAM", "terms": ["BEAM", "Erlang VM"] },
+  { "label": "Lua", "terms": ["Lua"] },
+  { "label": "LuaJIT", "terms": ["LuaJIT"] },
+  { "label": "Perl", "terms": ["Perl", "Perl Scripting"] },
+  { "label": "Groovy", "terms": ["Groovy", "Apache Groovy"] },
+  { "label": "Solidity", "terms": ["Solidity"] },
+  { "label": "Smart Contracts", "terms": ["Smart Contracts"] },
+  { "label": "EVM", "terms": ["EVM", "Ethereum Virtual Machine"] },
+  { "label": "Web3.js", "terms": ["Web3.js", "web3js"] },
+  { "label": "Ethers.js", "terms": ["Ethers.js", "ethersjs"] },
+  { "label": "Hardhat", "terms": ["Hardhat"] },
+  { "label": "Foundry", "terms": ["Foundry", "Foundry Ethereum"] },
+
+  {
+    "label": "React",
+    "terms": ["React", "React.js", "ReactJS"]
+  },
+  { "label": "React Hooks", "terms": ["React Hooks"] },
+  { "label": "Context API", "terms": ["Context API"] },
+  { "label": "JSX", "terms": ["JSX"] },
+  {
+    "label": "Next.js",
+    "terms": ["Next.js", "NextJS", "Next js"]
+  },
+  { "label": "App Router", "terms": ["App Router", "Next.js App Router"] },
+  {
+    "label": "React Server Components",
+    "terms": ["Server Components", "React Server Components", "RSC"]
+  },
+  {
+    "label": "Vue.js",
+    "terms": ["Vue.js", "VueJS", "Vue 3", "Vue2", "Vue"]
+  },
+  {
+    "label": "Composition API",
+    "terms": ["Composition API", "Vue Composition API"]
+  },
+  { "label": "Nuxt.js", "terms": ["Nuxt.js", "NuxtJS", "Nuxt", "Nuxt 3"] },
+  { "label": "Pinia", "terms": ["Pinia"] },
+  { "label": "Vuex", "terms": ["Vuex"] },
+  {
+    "label": "Angular",
+    "terms": ["Angular", "Angular 2+", "Angular CLI"]
+  },
+  { "label": "AngularJS", "terms": ["AngularJS", "Angular 1.x"] },
+  { "label": "RxJS", "terms": ["RxJS", "ReactiveX"] },
+  { "label": "NgRx", "terms": ["NgRx"] },
+  { "label": "Svelte", "terms": ["Svelte", "Svelte 5"] },
+  { "label": "SvelteKit", "terms": ["SvelteKit"] },
+  { "label": "SolidJS", "terms": ["SolidJS", "Solid.js"] },
+  { "label": "SolidStart", "terms": ["SolidStart", "Solid Start"] },
+  { "label": "Astro", "terms": ["Astro", "Astro.build"] },
+  { "label": "HTML", "terms": ["HTML", "HTML5"] },
+  { "label": "Semantic HTML", "terms": ["Semantic HTML"] },
+  {
+    "label": "DOM",
+    "terms": ["DOM", "Document Object Model", "DOM Manipulation"]
+  },
+  {
+    "label": "CSS",
+    "terms": ["CSS", "CSS3"]
+  },
+  { "label": "Flexbox", "terms": ["Flexbox", "CSS Flexbox"] },
+  { "label": "CSS Grid", "terms": ["CSS Grid", "Grid Layout"] },
+  { "label": "CSS Animations", "terms": ["CSS Animations", "Web Animations"] },
+  {
+    "label": "Tailwind CSS",
+    "terms": ["Tailwind CSS", "TailwindCSS", "Tailwind", "Tailwind UI"]
+  },
+  {
+    "label": "Bootstrap",
+    "terms": ["Bootstrap", "Bootstrap CSS", "Bootstrap 5"]
+  },
+  { "label": "Sass", "terms": ["Sass", "SCSS"] },
+  { "label": "Less", "terms": ["Less CSS", "Less"] },
+  {
+    "label": "Redux",
+    "terms": ["Redux"]
+  },
+  { "label": "Redux Toolkit", "terms": ["Redux Toolkit", "RTK"] },
+  { "label": "React Redux", "terms": ["React Redux"] },
+  { "label": "Redux Saga", "terms": ["Redux Saga"] },
+  { "label": "Redux Thunk", "terms": ["Redux Thunk"] },
+  { "label": "Zustand", "terms": ["Zustand"] },
+  { "label": "MobX", "terms": ["MobX", "MobX-State-Tree"] },
+  { "label": "TanStack", "terms": ["TanStack"] },
+  { "label": "TanStack Query", "terms": ["TanStack Query", "React Query"] },
+  { "label": "TanStack Router", "terms": ["TanStack Router"] },
+  { "label": "TanStack Table", "terms": ["TanStack Table", "React Table"] },
+  { "label": "TanStack Form", "terms": ["TanStack Form"] },
+  { "label": "Vite", "terms": ["Vite", "ViteJS", "Vite.js"] },
+  { "label": "Webpack", "terms": ["Webpack"] },
+  { "label": "Turbopack", "terms": ["Turbopack"] },
+  { "label": "Rollup", "terms": ["Rollup", "Rollup.js"] },
+  { "label": "esbuild", "terms": ["esbuild"] },
+  { "label": "Babel", "terms": ["Babel", "Babel.js"] },
+  { "label": "SWC", "terms": ["SWC"] },
+  { "label": "Parcel", "terms": ["Parcel bundler", "Parcel"] },
+  { "label": "Nx", "terms": ["Nx", "Nx Monorepo", "Nx monorepo", "NX", "NX monorepo", "Nrwl Nx", "Nx.dev"] },
+  { "label": "Turborepo", "terms": ["Turborepo"] },
+  { "label": "Lerna", "terms": ["Lerna"] },
+  { "label": "Monorepo", "terms": ["Monorepo", "Monorepos", "Monorepo Architecture"] },
+  { "label": "Node.js", "terms": ["Node.js", "NodeJS", "Node js"] },
+  {
+    "label": "NPM",
+    "terms": ["npm", "npm package", "npm package manager"]
+  },
+  {
+    "label": "Yarn",
+    "terms": ["yarn package manager", "yarn", "yarn package"]
+  },
+  {
+    "label": "PNPM",
+    "terms": ["pnpm", "pnpm package", "pnpm package manager"]
+  },
+  { "label": "Bun", "terms": ["Bun runtime", "Bun"] },
+  { "label": "Deno", "terms": ["Deno", "Deno runtime"] },
+  {
+    "label": "Express.js",
+    "terms": ["Express.js", "ExpressJS", "Express framework"]
+  },
+  { "label": "NestJS", "terms": ["NestJS", "Nest.js"] },
+  { "label": "FastAPI", "terms": ["FastAPI"] },
+  { "label": "Uvicorn", "terms": ["Uvicorn"] },
+  { "label": "Starlette", "terms": ["Starlette"] },
+  { "label": "Pydantic", "terms": ["Pydantic"] },
+  { "label": "Django", "terms": ["Django", "Django ORM"] },
+  {
+    "label": "Django REST Framework",
+    "terms": ["Django REST Framework", "DRF"]
+  },
+  { "label": "Flask", "terms": ["Flask"] },
+  { "label": "Jinja2", "terms": ["Jinja", "Jinja2"] },
+  { "label": "Werkzeug", "terms": ["Werkzeug"] },
+  {
+    "label": "Backend Services",
+    "terms": [
+      "Backend Services",
+      "Backend Service",
+      "Back-End Services",
+      "Back End Services",
+      "Backend Development",
+      "Back-End Development",
+      "Back End Development",
+      "Backend Engineering",
+      "Back-End Engineering",
+      "Back End Engineering"
+    ]
+  },
+  {
+    "label": "REST APIs",
+    "terms": [
+      "REST API",
+      "REST APIs",
+      "RESTful API",
+      "RESTful APIs",
+      "RESTful Web Services",
+      "REST API Development",
+      "RESTful API Development",
+      "RESTful Services",
+      "REST Web Services",
+      "REST",
+      "RESTful"
+    ]
+  },
+  { "label": "API Design", "terms": ["API Design"] },
+  {
+    "label": "API Integration",
+    "terms": ["API Integration", "API Integrations"]
+  },
+  { "label": "JSON:API", "terms": ["JSON:API", "JSON API"] },
+  { "label": "OpenAPI / Swagger", "terms": ["OpenAPI", "Swagger"] },
+  { "label": "Postman", "terms": ["Postman"] },
+  { "label": "GraphQL", "terms": ["GraphQL"] },
+  {
+    "label": "Apollo GraphQL",
+    "terms": ["Apollo GraphQL"]
+  },
+  { "label": "Apollo Client", "terms": ["Apollo Client"] },
+  { "label": "Apollo Server", "terms": ["Apollo Server"] },
+  { "label": "Relay", "terms": ["Relay", "Relay GraphQL"] },
+  { "label": "Hasura", "terms": ["Hasura"] },
+  { "label": "gRPC", "terms": ["gRPC"] },
+  { "label": "tRPC", "terms": ["tRPC", "TRPC"] },
+  {
+    "label": "Protocol Buffers",
+    "terms": ["Protocol Buffers", "Protobuf"]
+  },
+  { "label": "Connect RPC", "terms": ["Connect RPC"] },
+  { "label": "WebSockets", "terms": ["WebSocket", "WebSockets"] },
+  { "label": "Socket.io", "terms": ["Socket.io", "SocketIO"] },
+  { "label": "SignalR", "terms": ["SignalR", "ASP.NET SignalR"] },
+  { "label": "Server-Sent Events", "terms": ["Server-Sent Events", "SSE"] },
+  {
+    "label": "Webhooks",
+    "terms": ["Webhooks", "Webhook", "Web Hooks", "Web Hook"]
+  },
+  {
+    "label": "React Native",
+    "terms": ["React Native", "ReactNative", "React Native Web"]
+  },
+  { "label": "Expo", "terms": ["Expo", "Expo SDK"] },
+  { "label": "Flutter", "terms": ["Flutter", "Flutter SDK"] },
+  { "label": "Dart", "terms": ["Dart", "Dart language"] },
+  {
+    "label": "Android Development",
+    "terms": [
+      "Android Development",
+      "Android App Development",
+      "Android Developer"
+    ]
+  },
+  { "label": "Android SDK", "terms": ["Android SDK"] },
+  { "label": "Android NDK", "terms": ["Android NDK", "NDK"] },
+  { "label": "Android Studio", "terms": ["Android Studio"] },
+  { "label": "Jetpack Compose", "terms": ["Jetpack Compose"] },
+  {
+    "label": "iOS Development",
+    "terms": [
+      "iOS Development",
+      "iOS Developer",
+      "CocoaTouch",
+      "iOS App Development"
+    ]
+  },
+  { "label": "Xcode", "terms": ["Xcode"] },
+  { "label": "Electron", "terms": ["Electron.js", "ElectronJS", "Electron"] },
+  { "label": "Tauri", "terms": ["Tauri"] },
+  { "label": "Capacitor", "terms": ["Capacitor", "Ionic Capacitor"] },
+  { "label": "Ionic", "terms": ["Ionic", "Ionic Framework"] },
+  { "label": "Apache Cordova", "terms": ["Cordova", "Apache Cordova"] },
+  { "label": "WebAssembly", "terms": ["WebAssembly", "WASM"] },
+
+  {
+    "label": "AWS",
+    "terms": ["AWS", "Amazon Web Services", "AWS Cloud"]
+  },
+  {
+    "label": "AWS CDK",
+    "terms": [
+      "AWS CDK",
+      "CDK",
+      "AWS Cloud Development Kit",
+      "Cloud Development Kit"
+    ]
+  },
+  { "label": "AWS IAM", "terms": ["AWS IAM", "IAM AWS"] },
+  { "label": "Amazon Route 53", "terms": ["Route 53", "Amazon Route 53"] },
+  { "label": "Amazon VPC", "terms": ["Amazon VPC", "VPC"] },
+  {
+    "label": "AWS Elastic Beanstalk",
+    "terms": ["Elastic Beanstalk", "AWS Elastic Beanstalk"]
+  },
+  { "label": "Amazon EC2", "terms": ["Amazon EC2", "EC2"] },
+  { "label": "Amazon S3", "terms": ["Amazon S3", "S3"] },
+  {
+    "label": "Amazon CloudWatch",
+    "terms": ["Amazon CloudWatch", "CloudWatch", "AWS CloudWatch"]
+  },
+  {
+    "label": "Amazon EventBridge",
+    "terms": ["Amazon EventBridge", "EventBridge", "CloudWatch Events"]
+  },
+  { "label": "AWS CloudTrail", "terms": ["AWS CloudTrail", "CloudTrail"] },
+  {
+    "label": "Amazon Kinesis",
+    "terms": ["Amazon Kinesis", "Kinesis", "AWS Kinesis"]
+  },
+  {
+    "label": "AWS Secrets Manager",
+    "terms": ["AWS Secrets Manager", "Secrets Manager"]
+  },
+  {
+    "label": "AWS Systems Manager",
+    "terms": ["AWS Systems Manager", "Systems Manager", "SSM"]
+  },
+  { "label": "AWS AppSync", "terms": ["AWS AppSync", "AppSync"] },
+  { "label": "AWS Amplify", "terms": ["AWS Amplify", "Amplify"] },
+  {
+    "label": "Amazon Bedrock",
+    "terms": ["Amazon Bedrock", "Bedrock", "AWS Bedrock"]
+  },
+  {
+    "label": "Amazon SageMaker",
+    "terms": ["Amazon SageMaker", "SageMaker", "AWS SageMaker"]
+  },
+  {
+    "label": "AWS CloudFormation",
+    "terms": ["AWS CloudFormation", "CloudFormation"]
+  },
+  {
+    "label": "Amazon CloudFront",
+    "terms": ["Amazon CloudFront", "CloudFront"]
+  },
+  { "label": "Amazon SQS", "terms": ["Amazon SQS", "SQS"] },
+  { "label": "Amazon SNS", "terms": ["Amazon SNS", "SNS"] },
+  {
+    "label": "AWS Step Functions",
+    "terms": ["AWS Step Functions", "Step Functions"]
+  },
+  {
+    "label": "AWS Lambda",
+    "terms": ["AWS Lambda", "Lambda", "Serverless Functions"]
+  },
+  { "label": "AWS SAM", "terms": ["AWS SAM"] },
+  { "label": "AWS Glue", "terms": ["AWS Glue", "Glue"] },
+  {
+    "label": "Amazon EMR",
+    "terms": ["Amazon EMR", "AWS EMR", "EMR", "Elastic MapReduce"]
+  },
+  { "label": "AWS Athena", "terms": ["AWS Athena", "Athena"] },
+  { "label": "AWS Fargate", "terms": ["AWS Fargate", "Fargate"] },
+  {
+    "label": "Amazon ECS",
+    "terms": ["Amazon ECS", "ECS", "Elastic Container Service"]
+  },
+  {
+    "label": "Amazon Redshift",
+    "terms": ["Amazon Redshift", "Redshift", "Redshift Spectrum"]
+  },
+  {
+    "label": "Amazon Aurora",
+    "terms": ["Amazon Aurora", "Aurora PostgreSQL", "Aurora MySQL"]
+  },
+  { "label": "AWS ElastiCache", "terms": ["AWS ElastiCache", "ElastiCache"] },
+  {
+    "label": "Amazon DynamoDB",
+    "terms": ["DynamoDB", "Amazon DynamoDB"]
+  },
+  {
+    "label": "Amazon DocumentDB",
+    "terms": ["DocumentDB", "Amazon DocumentDB"]
+  },
+  {
+    "label": "Azure",
+    "terms": ["Azure", "Microsoft Azure"]
+  },
+  {
+    "label": "ARM Templates",
+    "terms": ["ARM Templates", "Azure Resource Manager"]
+  },
+  { "label": "Azure Bicep", "terms": ["Bicep", "Azure Bicep"] },
+  { "label": "Azure App Service", "terms": ["Azure App Service"] },
+  { "label": "Azure Functions", "terms": ["Azure Functions"] },
+  { "label": "Azure Blob Storage", "terms": ["Azure Blob Storage"] },
+  {
+    "label": "Google Cloud",
+    "terms": ["Google Cloud", "GCP", "Google Cloud Platform"]
+  },
+  { "label": "Google Cloud Run", "terms": ["Cloud Run", "Google Cloud Run"] },
+  { "label": "Google Compute Engine", "terms": ["Compute Engine", "GCE"] },
+  {
+    "label": "Google Cloud Functions",
+    "terms": ["Cloud Functions", "Google Cloud Functions"]
+  },
+  { "label": "Google Cloud Storage", "terms": ["Cloud Storage", "GCS"] },
+  {
+    "label": "Google Kubernetes Engine",
+    "terms": ["GKE", "Google Kubernetes Engine"]
+  },
+  { "label": "Amazon EKS", "terms": ["Amazon EKS", "EKS"] },
+  {
+    "label": "Azure Kubernetes Service",
+    "terms": ["Azure Kubernetes Service", "AKS"]
+  },
+  {
+    "label": "Cloudflare",
+    "terms": ["Cloudflare"]
+  },
+  { "label": "Cloudflare Workers", "terms": ["Cloudflare Workers"] },
+  { "label": "Cloudflare Pages", "terms": ["Cloudflare Pages"] },
+  { "label": "Cloudflare R2", "terms": ["Cloudflare R2"] },
+  { "label": "Vercel", "terms": ["Vercel", "Vercel Edge"] },
+  { "label": "Netlify", "terms": ["Netlify"] },
+  {
+    "label": "Docker",
+    "terms": ["Docker"]
+  },
+  {
+    "label": "Containerization",
+    "terms": ["Containerization", "Containers", "Container Technology"]
+  },
+  { "label": "Docker Compose", "terms": ["Docker Compose"] },
+  { "label": "Dockerfile", "terms": ["Dockerfile"] },
+  { "label": "Podman", "terms": ["Podman"] },
+  { "label": "Containerd", "terms": ["Containerd"] },
+  {
+    "label": "Kubernetes",
+    "terms": ["Kubernetes", "K8s"]
+  },
+  {
+    "label": "Cluster Orchestration",
+    "terms": ["Cluster Orchestration", "Container Orchestration"]
+  },
+  { "label": "Pod Management", "terms": ["Pod Management"] },
+  {
+    "label": "Kubernetes Ingress",
+    "terms": ["Kubernetes Ingress", "Ingress Controller", "Ingress"]
+  },
+  {
+    "label": "Kubernetes Operator",
+    "terms": ["Kubernetes Operator", "Kubernetes Operators", "K8s Operator"]
+  },
+  { "label": "Istio", "terms": ["Istio"] },
+  { "label": "Service Mesh", "terms": ["Service Mesh"] },
+  { "label": "Linkerd", "terms": ["Linkerd"] },
+  { "label": "Envoy Proxy", "terms": ["Envoy Proxy", "Envoy"] },
+  { "label": "Helm", "terms": ["Helm", "Helm charts"] },
+  { "label": "Kustomize", "terms": ["Kustomize"] },
+  {
+    "label": "Terraform",
+    "terms": ["Terraform"]
+  },
+  {
+    "label": "Infrastructure as Code",
+    "terms": ["Infrastructure as Code", "IaC"]
+  },
+  { "label": "OpenTofu", "terms": ["OpenTofu"] },
+  { "label": "Pulumi", "terms": ["Pulumi"] },
+  { "label": "Ansible", "terms": ["Ansible"] },
+  { "label": "Puppet", "terms": ["Puppet"] },
+  { "label": "Chef", "terms": ["Chef"] },
+  { "label": "SaltStack", "terms": ["SaltStack"] },
+  {
+    "label": "CI/CD",
+    "terms": [
+      "CI/CD",
+      "CI / CD",
+      "Continuous Integration",
+      "Continuous Deployment",
+      "Continuous Delivery",
+      "Deployment Pipelines",
+      "Release Automation"
+    ]
+  },
+  {
+    "label": "Jenkins",
+    "terms": ["Jenkins", "Jenkinsfile", "Jenkins Pipeline"]
+  },
+  {
+    "label": "GitHub Actions",
+    "terms": ["GitHub Actions", "GitHub Workflows", "GH Actions"]
+  },
+  {
+    "label": "GitLab CI/CD",
+    "terms": ["GitLab CI/CD", "GitLab CI / CD", "GitLab CI", "GitLab Pipelines"]
+  },
+  {
+    "label": "Azure DevOps",
+    "terms": ["Azure DevOps", "ADO", "Azure Pipelines", "Azure Repos", "TFS"]
+  },
+  { "label": "CircleCI", "terms": ["CircleCI"] },
+  { "label": "Travis CI", "terms": ["Travis CI"] },
+  { "label": "TeamCity", "terms": ["TeamCity"] },
+  {
+    "label": "IBM UrbanCode",
+    "terms": [
+      "UrbanCode Deploy",
+      "UrbanCode",
+      "IBM UrbanCode",
+      "IBM UrbanCode Deploy",
+      "UCD"
+    ]
+  },
+  { "label": "Bamboo", "terms": ["Bamboo", "Atlassian Bamboo"] },
+  { "label": "Drone CI", "terms": ["Drone CI"] },
+  { "label": "Spinnaker", "terms": ["Spinnaker"] },
+  { "label": "Harness", "terms": ["Harness", "Harness CI"] },
+  { "label": "Bitbucket Pipelines", "terms": ["Bitbucket Pipelines"] },
+  { "label": "ArgoCD", "terms": ["ArgoCD", "Argo CD"] },
+  { "label": "FluxCD", "terms": ["FluxCD"] },
+  { "label": "GitOps", "terms": ["GitOps"] },
+  { "label": "Octopus Deploy", "terms": ["Octopus Deploy"] },
+  { "label": "Linux", "terms": ["Linux"] },
+  { "label": "Unix", "terms": ["Unix"] },
+  { "label": "Systemd", "terms": ["Systemd"] },
+  { "label": "Ubuntu", "terms": ["Ubuntu"] },
+  { "label": "CentOS", "terms": ["CentOS"] },
+  { "label": "Rocky Linux", "terms": ["Rocky Linux"] },
+  {
+    "label": "RedHat",
+    "terms": ["RedHat", "RHEL", "Red Hat Enterprise Linux"]
+  },
+  { "label": "Debian", "terms": ["Debian"] },
+  { "label": "Alpine Linux", "terms": ["Alpine Linux"] },
+  { "label": "Nginx", "terms": ["Nginx", "NGINX"] },
+  {
+    "label": "Apache HTTP Server",
+    "terms": ["Apache HTTP Server", "Apache Web Server"]
+  },
+  { "label": "HAProxy", "terms": ["HAProxy"] },
+  { "label": "Caddy", "terms": ["Caddy", "Caddy Server"] },
+  { "label": "Traefik", "terms": ["Traefik"] },
+  { "label": "Git", "terms": ["Git"] },
+  { "label": "Git Flow", "terms": ["Git Flow", "GitFlow"] },
+  {
+    "label": "Version Control",
+    "terms": ["Version Control", "VCS", "Source Control"]
+  },
+  { "label": "GitHub", "terms": ["GitHub"] },
+  { "label": "GitLab", "terms": ["GitLab"] },
+  { "label": "Bitbucket", "terms": ["Bitbucket"] },
+  {
+    "label": "Computer Networking",
+    "terms": ["Networking", "Computer Networking", "Network Engineering"]
+  },
+  { "label": "TCP/IP", "terms": ["TCP/IP", "TCP/IP Protocol Suite"] },
+  { "label": "TCP", "terms": ["TCP", "Transmission Control Protocol"] },
+  { "label": "UDP", "terms": ["UDP", "User Datagram Protocol"] },
+  { "label": "DNS", "terms": ["DNS", "Domain Name System"] },
+  { "label": "DHCP", "terms": ["DHCP", "Dynamic Host Configuration Protocol"] },
+  { "label": "VPN", "terms": ["VPN", "Virtual Private Network"] },
+  { "label": "BGP", "terms": ["BGP", "Border Gateway Protocol"] },
+  { "label": "CIDR", "terms": ["CIDR", "Classless Inter-Domain Routing"] },
+  {
+    "label": "Load Balancing",
+    "terms": ["Load Balancing", "Load Balancer"]
+  },
+  { "label": "Reverse Proxy", "terms": ["Reverse Proxy"] },
+  { "label": "HTTP / HTTPS", "terms": ["HTTP", "HTTPS", "HTTP/2", "HTTP/3"] },
+  { "label": "TLS / SSL", "terms": ["TLS", "SSL", "TLS/SSL"] },
+  {
+    "label": "Firewalls",
+    "terms": ["Firewall", "Firewalls", "Firewall Configuration"]
+  },
+  {
+    "label": "Cisco",
+    "terms": ["Cisco", "Cisco Systems", "Cisco Networking", "Cisco IOS"]
+  },
+  { "label": "CCNA", "terms": ["CCNA", "Cisco Certified Network Associate"] },
+  {
+    "label": "CCNP",
+    "terms": ["CCNP", "Cisco Certified Network Professional"]
+  },
+
+  {
+    "label": "NoSQL",
+    "terms": ["NoSQL", "NoSQL Databases", "NoSQL Database", "NoSQL DB"]
+  },
+  {
+    "label": "RDBMS",
+    "terms": ["RDBMS", "Relational Database", "Relational Databases"]
+  },
+  { "label": "SQLite", "terms": ["SQLite", "SQLite3"] },
+  { "label": "PostgreSQL", "terms": ["PostgreSQL", "Postgres", "pgSQL"] },
+  { "label": "PostGIS", "terms": ["PostGIS"] },
+  { "label": "MySQL", "terms": ["MySQL"] },
+  { "label": "MariaDB", "terms": ["MariaDB"] },
+  { "label": "CockroachDB", "terms": ["CockroachDB"] },
+  { "label": "Couchbase", "terms": ["Couchbase"] },
+  { "label": "CouchDB", "terms": ["CouchDB", "Apache CouchDB"] },
+  { "label": "ClickHouse", "terms": ["ClickHouse"] },
+  { "label": "DuckDB", "terms": ["DuckDB"] },
+  { "label": "TimescaleDB", "terms": ["TimescaleDB"] },
+  { "label": "InfluxDB", "terms": ["InfluxDB"] },
+  {
+    "label": "Microsoft SQL Server",
+    "terms": ["Microsoft SQL Server", "SQL Server", "MSSQL"]
+  },
+  { "label": "Azure SQL", "terms": ["Azure SQL", "Azure SQL Database"] },
+  { "label": "SSMS", "terms": ["SSMS", "SQL Server Management Studio"] },
+  {
+    "label": "Oracle Database",
+    "terms": ["Oracle Database", "Oracle DB", "Oracle 19c"]
+  },
+  {
+    "label": "MongoDB",
+    "terms": ["MongoDB", "Mongo", "MongoDB Atlas"]
+  },
+  { "label": "Mongoose", "terms": ["Mongoose", "Mongoose ODM"] },
+  { "label": "Redis", "terms": ["Redis", "Redis Cluster"] },
+  { "label": "Memcached", "terms": ["Memcached"] },
+  { "label": "KeyDB", "terms": ["KeyDB"] },
+  { "label": "Valkey", "terms": ["Valkey"] },
+  {
+    "label": "Cassandra",
+    "terms": ["Cassandra", "Apache Cassandra"]
+  },
+  { "label": "DataStax", "terms": ["DataStax", "DataStax Astra"] },
+  { "label": "ScyllaDB", "terms": ["ScyllaDB"] },
+  {
+    "label": "Elasticsearch",
+    "terms": ["Elasticsearch", "Elastic Search"]
+  },
+  { "label": "ELK Stack", "terms": ["ELK Stack", "ELK"] },
+  { "label": "Kibana", "terms": ["Kibana"] },
+  { "label": "Logstash", "terms": ["Logstash"] },
+  { "label": "OpenSearch", "terms": ["OpenSearch"] },
+  { "label": "Solr", "terms": ["Solr", "Apache Solr"] },
+  { "label": "Algolia", "terms": ["Algolia"] },
+  { "label": "Meilisearch", "terms": ["Meilisearch"] },
+  { "label": "Typesense", "terms": ["Typesense"] },
+  { "label": "Neo4j", "terms": ["Neo4j"] },
+  {
+    "label": "Cypher",
+    "terms": ["Cypher", "Cypher Query Language", "Cypher query"]
+  },
+  {
+    "label": "Graph Databases",
+    "terms": ["Graph Database", "Graph Databases", "Graph DB"]
+  },
+  { "label": "Amazon Neptune", "terms": ["Amazon Neptune", "Neptune DB"] },
+  {
+    "label": "Firebase",
+    "terms": ["Firebase"]
+  },
+  {
+    "label": "Firebase Auth",
+    "terms": ["Firebase Auth", "Firebase Authentication"]
+  },
+  {
+    "label": "Firebase Functions",
+    "terms": ["Firebase Functions", "Cloud Functions for Firebase"]
+  },
+  { "label": "Cloud Firestore", "terms": ["Firestore", "Cloud Firestore"] },
+  {
+    "label": "Supabase",
+    "terms": ["Supabase"]
+  },
+  {
+    "label": "Supabase Auth",
+    "terms": ["Supabase Auth", "Supabase Authentication"]
+  },
+  { "label": "Supabase Storage", "terms": ["Supabase Storage"] },
+  { "label": "Prisma", "terms": ["Prisma", "Prisma ORM"] },
+  { "label": "Drizzle ORM", "terms": ["Drizzle ORM", "Drizzle"] },
+  { "label": "TypeORM", "terms": ["TypeORM"] },
+  { "label": "Sequelize", "terms": ["Sequelize"] },
+
+  {
+    "label": "Databricks",
+    "terms": ["Databricks"]
+  },
+  { "label": "Unity Catalog", "terms": ["Unity Catalog"] },
+  { "label": "Databricks Lakehouse", "terms": ["Databricks Lakehouse"] },
+  { "label": "Delta Lake", "terms": ["Delta Lake"] },
+  { "label": "Apache Iceberg", "terms": ["Apache Iceberg", "Iceberg"] },
+  { "label": "Apache Hudi", "terms": ["Apache Hudi", "Hudi"] },
+  {
+    "label": "Snowflake",
+    "terms": ["Snowflake", "Snowflake DB", "Snowflake Data Cloud"]
+  },
+  { "label": "Snowpark", "terms": ["Snowpark"] },
+  { "label": "SnowSQL", "terms": ["SnowSQL"] },
+  { "label": "BigQuery", "terms": ["BigQuery", "Google BigQuery"] },
+  {
+    "label": "Apache Spark",
+    "terms": ["Apache Spark", "Spark", "Spark Core"]
+  },
+  { "label": "Spark SQL", "terms": ["Spark SQL"] },
+  {
+    "label": "Spark Streaming",
+    "terms": ["Spark Streaming", "Spark Structured Streaming"]
+  },
+  {
+    "label": "Best Practice Software",
+    "terms": ["Best Practice Software", "Best Practice EMR", "Best Practice"]
+  },
+  { "label": "PySpark", "terms": ["PySpark"] },
+  {
+    "label": "Apache Flink",
+    "terms": ["Apache Flink", "Flink"]
+  },
+  { "label": "Apache Beam", "terms": ["Apache Beam"] },
+  {
+    "label": "Apache Airflow",
+    "terms": ["Apache Airflow", "Airflow", "Airflow DAGs"]
+  },
+  { "label": "Dagster", "terms": ["Dagster"] },
+  { "label": "Prefect", "terms": ["Prefect"] },
+  {
+    "label": "dbt",
+    "terms": ["dbt", "data build tool", "dbt Core", "dbt Cloud"]
+  },
+  {
+    "label": "Kafka",
+    "terms": ["Kafka", "Apache Kafka"]
+  },
+  { "label": "Kafka Streams", "terms": ["Kafka Streams"] },
+  { "label": "Kafka Connect", "terms": ["Kafka Connect"] },
+  {
+    "label": "Confluent",
+    "terms": ["Confluent", "Confluent Kafka", "Confluent Cloud"]
+  },
+  {
+    "label": "Schema Registry",
+    "terms": ["Schema Registry", "Confluent Schema Registry"]
+  },
+  {
+    "label": "IBM MQ",
+    "terms": ["IBM MQ", "WebSphere MQ", "MQSeries", "IBM MQSeries"]
+  },
+  { "label": "RabbitMQ", "terms": ["RabbitMQ"] },
+  { "label": "ActiveMQ", "terms": ["ActiveMQ", "Apache ActiveMQ"] },
+  { "label": "Apache Pulsar", "terms": ["Apache Pulsar", "Pulsar"] },
+  { "label": "ZeroMQ", "terms": ["ZeroMQ", "0MQ", "ZMQ"] },
+  { "label": "NATS", "terms": ["NATS.io", "NATS", "Apache NATS"] },
+  { "label": "Celery", "terms": ["Celery", "Celery task queue"] },
+  { "label": "BullMQ", "terms": ["BullMQ", "Bull queue"] },
+  {
+    "label": "Temporal",
+    "terms": [
+      "Temporal",
+      "Temporal.io",
+      "Temporal workflow",
+      "Temporal workflows",
+      "Temporal Workflows"
+    ]
+  },
+  {
+    "label": "MuleSoft",
+    "terms": ["MuleSoft", "Mule ESB", "Anypoint Platform"]
+  },
+  { "label": "TIBCO", "terms": ["TIBCO", "TIBCO EMS", "TIBCO BusinessWorks"] },
+  { "label": "Boomi", "terms": ["Boomi", "Dell Boomi"] },
+  { "label": "BizTalk", "terms": ["BizTalk", "Microsoft BizTalk"] },
+  {
+    "label": "Data Engineering",
+    "terms": ["Data Engineering", "Data Engineer"]
+  },
+  {
+    "label": "Data Pipelines",
+    "terms": ["Data Pipeline", "Data Pipelines"]
+  },
+  {
+    "label": "Distributed Data Processing",
+    "terms": [
+      "Distributed Data Processing",
+      "Distributed Computing",
+      "Distributed Systems",
+      "Distributed Processing"
+    ]
+  },
+  {
+    "label": "Data Architecture",
+    "terms": ["Data Architecture", "Data Architect"]
+  },
+  {
+    "label": "Data Lake",
+    "terms": ["Data Lake", "Data Lakes"]
+  },
+  { "label": "Data Lakehouse", "terms": ["Data Lakehouse", "Lakehouse"] },
+  { "label": "Data Mesh", "terms": ["Data Mesh"] },
+  {
+    "label": "Data Warehousing",
+    "terms": ["Data Warehouse", "Data Warehousing", "DWH"]
+  },
+  { "label": "Data Governance", "terms": ["Data Governance"] },
+  { "label": "Data Lineage", "terms": ["Data Lineage"] },
+  {
+    "label": "ETL",
+    "terms": ["ETL", "Extract Transform Load", "Extract, Transform, Load"]
+  },
+  {
+    "label": "ELT",
+    "terms": ["ELT", "Extract Load Transform", "Extract, Load, Transform"]
+  },
+  { "label": "Fivetran", "terms": ["Fivetran"] },
+  { "label": "Airbyte", "terms": ["Airbyte"] },
+  { "label": "SSIS", "terms": ["SSIS", "SQL Server Integration Services"] },
+  { "label": "Azure Data Factory", "terms": ["Azure Data Factory", "ADF"] },
+  { "label": "Matillion", "terms": ["Matillion"] },
+  { "label": "Talend", "terms": ["Talend"] },
+  {
+    "label": "Informatica",
+    "terms": ["Informatica", "Informatica PowerCenter"]
+  },
+  {
+    "label": "Data Modeling",
+    "terms": ["Data Modeling", "Data Modelling", "Data Model Design"]
+  },
+  {
+    "label": "Dimensional Modeling",
+    "terms": ["Dimensional Modeling", "Dimensional Modelling"]
+  },
+  { "label": "Star Schema", "terms": ["Star Schema"] },
+  { "label": "Snowflake Schema", "terms": ["Snowflake Schema"] },
+  { "label": "Data Vault", "terms": ["Data Vault", "Data Vault 2.0"] },
+  { "label": "Erwin", "terms": ["Erwin", "erwin Data Modeler"] },
+  { "label": "Parquet", "terms": ["Parquet", "Apache Parquet"] },
+  { "label": "Avro", "terms": ["Avro", "Apache Avro"] },
+  { "label": "Apache Arrow", "terms": ["Apache Arrow", "Arrow"] },
+  { "label": "Pandas", "terms": ["Pandas"] },
+  { "label": "Polars", "terms": ["Polars"] },
+  { "label": "Dask", "terms": ["Dask"] },
+  { "label": "NumPy", "terms": ["NumPy"] },
+  { "label": "SciPy", "terms": ["SciPy"] },
+  {
+    "label": "Power BI",
+    "terms": ["Power BI", "PowerBI"]
+  },
+  { "label": "DAX", "terms": ["DAX", "Data Analysis Expressions"] },
+  { "label": "Power Query", "terms": ["Power Query", "PowerQuery", "M code"] },
+  { "label": "Power Platform", "terms": ["Power Platform"] },
+  { "label": "Power Automate", "terms": ["Power Automate", "MS Flow"] },
+  { "label": "Power Apps", "terms": ["Power Apps"] },
+  {
+    "label": "Tableau",
+    "terms": ["Tableau", "Tableau Desktop", "Tableau Server", "Tableau Prep"]
+  },
+  { "label": "Looker", "terms": ["Looker", "LookML"] },
+  {
+    "label": "Looker Studio",
+    "terms": ["Looker Studio", "Google Data Studio"]
+  },
+  { "label": "Metabase", "terms": ["Metabase"] },
+  { "label": "Apache Superset", "terms": ["Apache Superset", "Superset"] },
+  {
+    "label": "Amazon QuickSight",
+    "terms": ["QuickSight", "Amazon QuickSight"]
+  },
+
+  {
+    "label": "Generative AI",
+    "terms": ["Generative AI", "GenAI", "Gen AI"]
+  },
+  { "label": "Prompt Engineering", "terms": ["Prompt Engineering"] },
+  {
+    "label": "Model Fine-Tuning",
+    "terms": [
+      "Fine-tuning",
+      "Fine Tuning",
+      "Model Fine-Tuning",
+      "LLM Fine-Tuning"
+    ]
+  },
+  { "label": "LoRA", "terms": ["LoRA", "Low-Rank Adaptation"] },
+  { "label": "QLoRA", "terms": ["QLoRA"] },
+  { "label": "PEFT", "terms": ["PEFT", "Parameter-Efficient Fine-Tuning"] },
+  {
+    "label": "RLHF",
+    "terms": ["RLHF", "Reinforcement Learning from Human Feedback"]
+  },
+  {
+    "label": "RLAIF",
+    "terms": ["RLAIF", "Reinforcement Learning from AI Feedback"]
+  },
+  {
+    "label": "LLMs",
+    "terms": ["LLM", "LLMs", "Large Language Model", "Large Language Models"]
+  },
+  {
+    "label": "Foundation Models",
+    "terms": ["Foundation Model", "Foundation Models"]
+  },
+  { "label": "LangChain", "terms": ["LangChain"] },
+  { "label": "Semantic Kernel", "terms": ["Semantic Kernel"] },
+  { "label": "DSPy", "terms": ["DSPy"] },
+  { "label": "LangGraph", "terms": ["LangGraph"] },
+  { "label": "LangSmith", "terms": ["LangSmith"] },
+  { "label": "LangFuse", "terms": ["LangFuse"] },
+  {
+    "label": "Model Evaluation",
+    "terms": [
+      "Model Evaluation",
+      "LLM Evaluation",
+      "LLM Eval",
+      "LLM Evals",
+      "Model Evals",
+      "Model Benchmarking",
+      "LLM Benchmarking"
+    ]
+  },
+  { "label": "LlamaIndex", "terms": ["LlamaIndex", "GPT Index"] },
+  {
+    "label": "MCP",
+    "terms": ["MCP", "Model Context Protocol"]
+  },
+  { "label": "MCP Server", "terms": ["MCP Server", "MCP Servers"] },
+  { "label": "MCP Tools", "terms": ["MCP Tool", "MCP Tools"] },
+  {
+    "label": "Agentic AI",
+    "terms": ["Agentic AI", "Agentic Systems", "Agentic Workflows"]
+  },
+  {
+    "label": "AI Agents",
+    "terms": ["AI Agents", "AI Agent", "Autonomous Agents"]
+  },
+  {
+    "label": "Agent Frameworks",
+    "terms": ["Agent Frameworks", "Agent Framework"]
+  },
+  {
+    "label": "Multi-Agent Systems",
+    "terms": [
+      "Multi-agent systems",
+      "Multi-Agent Systems",
+      "Multi Agent Systems"
+    ]
+  },
+  { "label": "CrewAI", "terms": ["CrewAI"] },
+  { "label": "AutoGPT", "terms": ["AutoGPT"] },
+  { "label": "AutoGen", "terms": ["AutoGen", "Microsoft AutoGen"] },
+  {
+    "label": "RAG",
+    "terms": [
+      "RAG",
+      "Retrieval-Augmented Generation",
+      "Retrieval Augmented Generation"
+    ]
+  },
+  { "label": "Semantic Search", "terms": ["Semantic Search"] },
+  { "label": "Hybrid Search", "terms": ["Hybrid Search"] },
+  {
+    "label": "Vector Databases",
+    "terms": ["Vector Database", "Vector Databases", "Vector DB"]
+  },
+  {
+    "label": "Vector Search",
+    "terms": ["Vector Search", "Vector Similarity Search", "Similarity Search"]
+  },
+  { "label": "Pinecone", "terms": ["Pinecone"] },
+  { "label": "Milvus", "terms": ["Milvus"] },
+  { "label": "ChromaDB", "terms": ["ChromaDB"] },
+  { "label": "Weaviate", "terms": ["Weaviate"] },
+  { "label": "Qdrant", "terms": ["Qdrant"] },
+  { "label": "pgvector", "terms": ["pgvector"] },
+  { "label": "Faiss", "terms": ["Faiss"] },
+  {
+    "label": "OpenAI",
+    "terms": ["OpenAI", "OpenAI API"]
+  },
+  { "label": "ChatGPT", "terms": ["ChatGPT", "Chat GPT"] },
+  { "label": "GPT-4", "terms": ["GPT-4", "GPT-4o", "GPT-4 Turbo"] },
+  {
+    "label": "Anthropic",
+    "terms": ["Anthropic", "Claude API", "Claude 3", "Claude 3.5"]
+  },
+  {
+    "label": "Google Gemini",
+    "terms": ["Gemini API", "Google Gemini", "Gemini Pro"]
+  },
+  { "label": "Mistral AI", "terms": ["Mistral AI", "Mistral", "Mixtral"] },
+  { "label": "Ollama", "terms": ["Ollama"] },
+  { "label": "Groq", "terms": ["Groq"] },
+  { "label": "DeepSeek", "terms": ["DeepSeek", "DeepSeek-R1", "DeepSeek-V3"] },
+  {
+    "label": "Hugging Face",
+    "terms": ["Hugging Face", "HuggingFace", "Hugging Face Hub"]
+  },
+  {
+    "label": "Transformers",
+    "terms": ["Transformers", "Hugging Face Transformers"]
+  },
+  { "label": "vLLM", "terms": ["vLLM"] },
+  { "label": "TGI", "terms": ["TGI", "Text Generation Inference"] },
+  {
+    "label": "PyTorch",
+    "terms": ["PyTorch"]
+  },
+  { "label": "Torchaudio", "terms": ["Torchaudio", "TorchAudio"] },
+  {
+    "label": "PyTorch Lightning",
+    "terms": ["PyTorch Lightning", "Lightning AI"]
+  },
+  { "label": "TorchVision", "terms": ["TorchVision"] },
+  {
+    "label": "TensorFlow",
+    "terms": ["TensorFlow"]
+  },
+  { "label": "Keras", "terms": ["Keras"] },
+  { "label": "TensorFlow Lite", "terms": ["TensorFlow Lite", "TFLite"] },
+  { "label": "TensorBoard", "terms": ["TensorBoard"] },
+  { "label": "scikit-learn", "terms": ["scikit-learn", "sklearn"] },
+  { "label": "XGBoost", "terms": ["XGBoost"] },
+  { "label": "LightGBM", "terms": ["LightGBM"] },
+  { "label": "CatBoost", "terms": ["CatBoost"] },
+  { "label": "MLOps", "terms": ["MLOps", "Machine Learning Operations"] },
+  {
+    "label": "Model Deployment",
+    "terms": ["Model Deployment", "ML Model Deployment"]
+  },
+  { "label": "MLflow", "terms": ["MLflow"] },
+  { "label": "Kubeflow", "terms": ["Kubeflow"] },
+  { "label": "Amazon SageMaker", "terms": ["SageMaker", "Amazon SageMaker"] },
+  { "label": "Google Vertex AI", "terms": ["Vertex AI", "Google Vertex AI"] },
+  { "label": "Weights & Biases", "terms": ["Weights & Biases", "W&B"] },
+  { "label": "DVC", "terms": ["DVC"] },
+  { "label": "Feast", "terms": ["Feast feature store", "Feast"] },
+  { "label": "BentoML", "terms": ["BentoML"] },
+  {
+    "label": "NLP",
+    "terms": ["NLP", "Natural Language Processing"]
+  },
+  { "label": "Text Mining", "terms": ["Text Mining", "Text Analytics"] },
+  {
+    "label": "Named Entity Recognition (NER)",
+    "terms": ["Named Entity Recognition", "NER"]
+  },
+  { "label": "Sentiment Analysis", "terms": ["Sentiment Analysis"] },
+  { "label": "BERT", "terms": ["BERT"] },
+  { "label": "RoBERTa", "terms": ["RoBERTa"] },
+  { "label": "spaCy", "terms": ["spaCy"] },
+  { "label": "NLTK", "terms": ["NLTK"] },
+  {
+    "label": "Computer Vision",
+    "terms": ["Computer Vision", "VisionML"]
+  },
+  {
+    "label": "IaC",
+    "terms": ["Infrastructure as Code", "IaC", "IaaS"]
+  },
+  { "label": "Three.js", "terms": ["Three.js", "ThreeJs"] },
+  { "label": "AR", "terms": ["Augmented Reality", "AR"] },
+  {
+    "label": "VR",
+    "terms": ["Virtual Reality", "VR", "Extended Reality"]
+  },
+  {
+    "label": "WebXR",
+    "terms": ["WebXR", "Web XR"]
+  },
+  {
+    "label": "WebGL",
+    "terms": ["WebGL", "WebGL2"]
+  },
+  {
+    "label": "React Three Fiber",
+    "terms": ["React Three Fiber", "Three Fiber", "R3F"]
+  },
+  {
+    "label": "A-Frame",
+    "terms": ["A-Frame", "Aframe"]
+  },
+  {
+    "label": "ARKit",
+    "terms": ["ARKit", "Apple ARKit"]
+  },
+  {
+    "label": "ARCore",
+    "terms": ["ARCore", "Google ARCore"]
+  },
+  {
+    "label": "Unity",
+    "terms": ["Unity"]
+  },
+  {
+    "label": "Unreal Engine",
+    "terms": ["Unreal Engine", "Unreal Engine 5"]
+  },
+  { "label": "Object Detection", "terms": ["Object Detection"] },
+  { "label": "Image Segmentation", "terms": ["Image Segmentation"] },
+  { "label": "Image Classification", "terms": ["Image Classification"] },
+  { "label": "OpenCV", "terms": ["OpenCV"] },
+  { "label": "YOLO", "terms": ["YOLO", "YOLOv8", "YOLOv5"] },
+  {
+    "label": "OCR",
+    "terms": ["OCR", "Optical Character Recognition"]
+  },
+  { "label": "Tesseract OCR", "terms": ["Tesseract", "Tesseract OCR"] },
+
+  {
+    "label": "Cybersecurity",
+    "terms": [
+      "Cybersecurity",
+      "Cyber Security",
+      "Information Security",
+      "InfoSec"
+    ]
+  },
+  {
+    "label": "Security Architecture",
+    "terms": ["Security Architecture", "Security Architect"]
+  },
+  { "label": "Zero Trust", "terms": ["Zero Trust", "Zero Trust Architecture"] },
+  {
+    "label": "Threat Intelligence",
+    "terms": ["Threat Intelligence", "Cyber Threat Intelligence", "CTI"]
+  },
+  {
+    "label": "Threat Hunting",
+    "terms": ["Threat Hunting", "Cyber Threat Hunting"]
+  },
+  {
+    "label": "Vulnerability Management",
+    "terms": ["Vulnerability Management"]
+  },
+  {
+    "label": "Vulnerability Assessment",
+    "terms": ["Vulnerability Assessment", "Vulnerability Scanning"]
+  },
+  {
+    "label": "Penetration Testing",
+    "terms": ["Penetration Testing", "Pen Testing", "Pentesting"]
+  },
+  { "label": "Red Teaming", "terms": ["Red Teaming", "Red Team"] },
+  {
+    "label": "Ethical Hacking",
+    "terms": ["Ethical Hacking", "Ethical Hacker"]
+  },
+  { "label": "Burp Suite", "terms": ["Burp Suite"] },
+  { "label": "Metasploit", "terms": ["Metasploit"] },
+  { "label": "Kali Linux", "terms": ["Kali Linux"] },
+  { "label": "Wireshark", "terms": ["Wireshark"] },
+  { "label": "Nmap", "terms": ["Nmap"] },
+  {
+    "label": "SIEM",
+    "terms": ["SIEM", "Security Information and Event Management"]
+  },
+  { "label": "Log Analysis", "terms": ["Log Analysis"] },
+  {
+    "label": "SOC",
+    "terms": ["SOC", "Security Operations Center", "Security Operations"]
+  },
+  {
+    "label": "Microsoft Sentinel",
+    "terms": ["Microsoft Sentinel", "Azure Sentinel"]
+  },
+  { "label": "Splunk", "terms": ["Splunk"] },
+  { "label": "QRadar", "terms": ["QRadar", "IBM QRadar"] },
+  {
+    "label": "IAM",
+    "terms": ["IAM", "Identity and Access Management"]
+  },
+  {
+    "label": "OAuth 2.0",
+    "terms": ["OAuth 2.0", "OAuth2", "OAuth"]
+  },
+  { "label": "OpenID Connect", "terms": ["OpenID Connect", "OIDC"] },
+  { "label": "SAML", "terms": ["SAML", "SAML 2.0"] },
+  {
+    "label": "SSO",
+    "terms": ["SSO", "Single Sign-On", "Single Sign On"]
+  },
+  {
+    "label": "MFA",
+    "terms": [
+      "MFA",
+      "Multi-Factor Authentication",
+      "2FA",
+      "Two-Factor Authentication"
+    ]
+  },
+  { "label": "Okta", "terms": ["Okta"] },
+  { "label": "Auth0", "terms": ["Auth0"] },
+  {
+    "label": "Microsoft Entra",
+    "terms": ["Microsoft Entra", "Azure AD", "Entra ID"]
+  },
+  { "label": "PAM", "terms": ["PAM", "Privileged Access Management"] },
+  { "label": "CyberArk", "terms": ["CyberArk"] },
+  { "label": "HashiCorp Vault", "terms": ["HashiCorp Vault", "Vault"] },
+  {
+    "label": "DevSecOps",
+    "terms": ["DevSecOps"]
+  },
+  {
+    "label": "Application Security",
+    "terms": ["Application Security", "AppSec"]
+  },
+  { "label": "SAST", "terms": ["SAST", "Static Application Security Testing"] },
+  {
+    "label": "DAST",
+    "terms": ["DAST", "Dynamic Application Security Testing"]
+  },
+  { "label": "SCA", "terms": ["SCA", "Software Composition Analysis"] },
+  { "label": "Snyk", "terms": ["Snyk"] },
+  { "label": "SonarQube", "terms": ["SonarQube", "SonarCloud"] },
+  { "label": "OWASP", "terms": ["OWASP", "OWASP Top 10"] },
+  { "label": "Checkmarx", "terms": ["Checkmarx"] },
+  { "label": "Veracode", "terms": ["Veracode"] },
+  { "label": "Trivy", "terms": ["Trivy"] },
+  { "label": "SOC 2", "terms": ["SOC 2", "SOC2"] },
+  { "label": "ISO 27001", "terms": ["ISO 27001", "ISO27001"] },
+  { "label": "NIST", "terms": ["NIST", "NIST CSF"] },
+  { "label": "PCI-DSS", "terms": ["PCI-DSS", "PCI DSS"] },
+  { "label": "Essential Eight", "terms": ["Essential Eight", "Essential 8"] },
+  { "label": "HIPAA Compliance", "terms": ["HIPAA Compliance", "HIPAA"] },
+  { "label": "EDR", "terms": ["EDR", "Endpoint Detection and Response"] },
+  { "label": "XDR", "terms": ["XDR", "Extended Detection and Response"] },
+  {
+    "label": "Endpoint Protection",
+    "terms": ["Endpoint Protection", "Endpoint Security"]
+  },
+  { "label": "CrowdStrike", "terms": ["CrowdStrike", "Crowdstrike Falcon"] },
+  { "label": "SentinelOne", "terms": ["SentinelOne"] },
+  {
+    "label": "Microsoft Defender",
+    "terms": ["Defender for Endpoint", "Microsoft Defender"]
+  },
+
+  {
+    "label": "Microservices",
+    "terms": [
+      "Microservice",
+      "Microservices",
+      "Microservices Architecture",
+      "Microservice Architecture",
+      "Microservices & REST API Development",
+      "Micro-services"
+    ]
+  },
+  { "label": "SOA", "terms": ["Service-Oriented Architecture", "SOA"] },
+  {
+    "label": "Event-Driven Architecture",
+    "terms": [
+      "Event-Driven Architecture",
+      "Event Driven Architecture",
+      "Event-Driven",
+      "Event Driven",
+      "EDA"
+    ]
+  },
+  { "label": "Event Sourcing", "terms": ["Event Sourcing"] },
+  {
+    "label": "CQRS",
+    "terms": ["CQRS", "Command Query Responsibility Segregation"]
+  },
+  {
+    "label": "Domain-Driven Design",
+    "terms": ["Domain-Driven Design", "Domain Driven Design", "DDD"]
+  },
+  {
+    "label": "Design Patterns",
+    "terms": [
+      "Design Patterns",
+      "Software Design Patterns",
+      "GoF Design Patterns"
+    ]
+  },
+  {
+    "label": "Software Architecture",
+    "terms": ["Software Architecture", "Software Architect"]
+  },
+  {
+    "label": "System Architecture",
+    "terms": ["System Architecture", "System Architect"]
+  },
+  { "label": "Software Design", "terms": ["Software Design"] },
+  {
+    "label": "SOLID Principles",
+    "terms": ["SOLID principles", "SOLID Principles"]
+  },
+  {
+    "label": "Object-Oriented Design",
+    "terms": ["Object-Oriented Design", "Object Oriented Design", "OOD"]
+  },
+  {
+    "label": "Object-Oriented Programming",
+    "terms": [
+      "Object-Oriented Programming",
+      "Object Oriented Programming",
+      "OOP"
+    ]
+  },
+  {
+    "label": "TDD",
+    "terms": ["TDD", "Test-driven development", "Test Driven Development"]
+  },
+  { "label": "BDD", "terms": ["BDD", "Behavior Driven Development"] },
+  {
+    "label": "Unit Testing",
+    "terms": ["Unit Testing", "Unit Tests", "Unit Test", "Unit-Testing"]
+  },
+  { "label": "Jest", "terms": ["Jest", "Jest.js"] },
+  { "label": "Vitest", "terms": ["Vitest"] },
+  { "label": "Mocha", "terms": ["Mocha", "Mocha.js"] },
+  { "label": "Cypress", "terms": ["Cypress", "Cypress.io"] },
+  { "label": "Playwright", "terms": ["Playwright"] },
+  { "label": "Puppeteer", "terms": ["Puppeteer"] },
+  { "label": "Selenium", "terms": ["Selenium", "Selenium WebDriver"] },
+  { "label": "Appium", "terms": ["Appium"] },
+  { "label": "JUnit", "terms": ["JUnit", "JUnit 5"] },
+  { "label": "xUnit", "terms": ["xUnit", "xUnit.net"] },
+  { "label": "NUnit", "terms": ["NUnit"] },
+  { "label": "MSTest", "terms": ["MSTest"] },
+  { "label": "Moq", "terms": ["Moq"] },
+  { "label": "Serilog", "terms": ["Serilog"] },
+  { "label": "Mockito", "terms": ["Mockito"] },
+  { "label": "TestNG", "terms": ["TestNG"] },
+  { "label": "PyTest", "terms": ["PyTest", "pytest"] },
+  { "label": "Unittest", "terms": ["Unittest Python", "unittest"] },
+  {
+    "label": "Quality Assurance",
+    "terms": [
+      "Quality Assurance",
+      "QA Testing",
+      "Software QA",
+      "Quality Assurance Engineer"
+    ]
+  },
+  {
+    "label": "Test Automation",
+    "terms": [
+      "Test Automation",
+      "Automated Testing",
+      "Automation Testing",
+      "Automation Experience"
+    ]
+  },
+  {
+    "label": "Manual Testing",
+    "terms": ["Manual Testing", "Manual QA"]
+  },
+  { "label": "Exploratory Testing", "terms": ["Exploratory Testing"] },
+  {
+    "label": "Regression Testing",
+    "terms": ["Regression Testing", "Regression Tests"]
+  },
+  {
+    "label": "Integration Testing",
+    "terms": ["Integration Testing", "Integration Tests", "Integration Test"]
+  },
+  {
+    "label": "API Testing",
+    "terms": [
+      "API Testing",
+      "API Tests",
+      "API Test",
+      "REST API Testing",
+      "Web API Testing"
+    ]
+  },
+  {
+    "label": "End-to-End Testing",
+    "terms": [
+      "End-to-End Testing",
+      "E2E Testing",
+      "End to End Testing",
+      "E2E Tests"
+    ]
+  },
+  {
+    "label": "User Acceptance Testing",
+    "terms": ["User Acceptance Testing", "UAT"]
+  },
+  { "label": "Acceptance Testing", "terms": ["Acceptance Testing"] },
+  {
+    "label": "Performance Testing",
+    "terms": ["Performance Testing", "Performance Tests"]
+  },
+  { "label": "Load Testing", "terms": ["Load Testing", "Load Tests"] },
+  { "label": "Stress Testing", "terms": ["Stress Testing", "Stress Tests"] },
+  { "label": "Benchmarking", "terms": ["Benchmarking", "Benchmark"] },
+  { "label": "JMeter", "terms": ["JMeter", "Apache JMeter"] },
+  { "label": "k6", "terms": ["k6", "Grafana k6"] },
+  { "label": "Gatling", "terms": ["Gatling"] },
+  { "label": "Locust", "terms": ["Locust"] },
+  { "label": "Datadog", "terms": ["Datadog"] },
+  { "label": "New Relic", "terms": ["New Relic"] },
+  { "label": "Dynatrace", "terms": ["Dynatrace"] },
+  { "label": "AppDynamics", "terms": ["AppDynamics"] },
+  {
+    "label": "Observability",
+    "terms": ["Observability"]
+  },
+  {
+    "label": "APM",
+    "terms": ["APM", "Application Performance Monitoring"]
+  },
+  {
+    "label": "Log Monitoring",
+    "terms": ["Log Monitoring"]
+  },
+  {
+    "label": "System Monitoring",
+    "terms": ["System Monitoring"]
+  },
+  { "label": "OpenTelemetry", "terms": ["OpenTelemetry", "OTel"] },
+  { "label": "Distributed Tracing", "terms": ["Distributed Tracing"] },
+  {
+    "label": "Prometheus",
+    "terms": ["Prometheus"]
+  },
+  { "label": "VictoriaMetrics", "terms": ["VictoriaMetrics"] },
+  { "label": "Thanos", "terms": ["Thanos"] },
+  { "label": "Grafana", "terms": ["Grafana"] },
+  { "label": "Grafana Loki", "terms": ["Grafana Loki", "Loki"] },
+  { "label": "Jaeger", "terms": ["Jaeger"] },
+  { "label": "Sentry", "terms": ["Sentry"] },
+  { "label": "Bugsnag", "terms": ["Bugsnag"] },
+  { "label": "Rollbar", "terms": ["Rollbar"] },
+  { "label": "Jira", "terms": ["Jira", "Atlassian Jira", "Jira Software"] },
+  { "label": "Linear", "terms": ["Linear", "Linear app"] },
+  { "label": "Trello", "terms": ["Trello"] },
+  { "label": "Asana", "terms": ["Asana"] },
+  { "label": "Monday.com", "terms": ["Monday.com"] },
+  { "label": "ClickUp", "terms": ["ClickUp"] },
+  { "label": "Confluence", "terms": ["Confluence", "Atlassian Confluence"] },
+  { "label": "Notion", "terms": ["Notion", "Notion workspace"] },
+  {
+    "label": "Technical Documentation",
+    "terms": ["Technical Documentation", "Documentation Writing"]
+  },
+  {
+    "label": "Technical Writing",
+    "terms": ["Technical Writing", "Technical Writer"]
+  },
+  { "label": "API Documentation", "terms": ["API Documentation"] },
+  {
+    "label": "ServiceNow",
+    "terms": ["ServiceNow", "ServiceNow ITSM"]
+  },
+  { "label": "ITSM", "terms": ["ITSM", "IT Service Management"] },
+  { "label": "ITIL", "terms": ["ITIL", "ITIL v4"] },
+  {
+    "label": "Incident Management",
+    "terms": ["Incident Management"]
+  },
+  {
+    "label": "Major Incident Management",
+    "terms": ["Major Incident Management", "MIM"]
+  },
+  {
+    "label": "Agile",
+    "terms": ["Agile", "Agile Methodology", "Agile Software Development"]
+  },
+  {
+    "label": "Scrum",
+    "terms": ["Scrum"]
+  },
+  { "label": "Sprint Planning", "terms": ["Sprint Planning"] },
+  {
+    "label": "Daily Standup",
+    "terms": ["Daily Standups", "Daily Standup", "Daily Scrum"]
+  },
+  {
+    "label": "Sprint Retrospective",
+    "terms": ["Retrospectives", "Sprint Retrospective", "Sprint Retrospectives"]
+  },
+  { "label": "Sprint Review", "terms": ["Sprint Reviews", "Sprint Review"] },
+  {
+    "label": "Scrum Master",
+    "terms": ["Scrum Master", "Certified Scrum Master", "CSM"]
+  },
+  {
+    "label": "Kanban",
+    "terms": ["Kanban", "Kanban Methodology", "Kanban System"]
+  },
+  { "label": "Kanban Board", "terms": ["Kanban Board", "Kanban Boards"] },
+  {
+    "label": "SAFe",
+    "terms": ["Scaled Agile", "Scaled Agile Framework"]
+  }
+]

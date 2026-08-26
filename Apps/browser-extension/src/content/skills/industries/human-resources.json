@@ -1,0 +1,359 @@
+[
+  {
+    "label": "Workday",
+    "terms": ["Workday"]
+  },
+  {
+    "label": "Workday HCM",
+    "terms": ["Workday HCM", "Workday Human Capital Management"]
+  },
+  {
+    "label": "Workday Core HR",
+    "terms": ["Workday Core HR"]
+  },
+  {
+    "label": "Workday Recruiting",
+    "terms": ["Workday Recruiting"]
+  },
+  {
+    "label": "SAP SuccessFactors",
+    "terms": ["SAP SuccessFactors", "SuccessFactors"]
+  },
+  {
+    "label": "SAP SuccessFactors Employee Central",
+    "terms": [
+      "SAP SuccessFactors Employee Central",
+      "SuccessFactors Employee Central",
+      "Employee Central"
+    ]
+  },
+  {
+    "label": "BambooHR",
+    "terms": ["BambooHR"]
+  },
+  {
+    "label": "Rippling",
+    "terms": ["Rippling"]
+  },
+  {
+    "label": "Gusto",
+    "terms": ["Gusto"]
+  },
+  {
+    "label": "Employment Hero",
+    "terms": ["Employment Hero"]
+  },
+  {
+    "label": "Employment Hero Payroll",
+    "terms": ["Employment Hero Payroll"]
+  },
+
+  {
+    "label": "Greenhouse",
+    "terms": ["Greenhouse", "Greenhouse ATS", "Greenhouse Recruiting"]
+  },
+  {
+    "label": "Lever",
+    "terms": ["Lever", "Lever ATS"]
+  },
+  {
+    "label": "Ashby",
+    "terms": ["Ashby", "Ashby HQ"]
+  },
+  {
+    "label": "SmartRecruiters",
+    "terms": ["SmartRecruiters"]
+  },
+  {
+    "label": "Taleo",
+    "terms": ["Taleo", "Oracle Taleo"]
+  },
+  {
+    "label": "iCIMS",
+    "terms": ["iCIMS"]
+  },
+  {
+    "label": "Workable",
+    "terms": ["Workable"]
+  },
+  {
+    "label": "JobAdder",
+    "terms": ["JobAdder"]
+  },
+  {
+    "label": "Bullhorn",
+    "terms": ["Bullhorn"]
+  },
+  {
+    "label": "Applicant Tracking System",
+    "terms": ["ATS", "Applicant Tracking System", "Applicant Tracking Systems"]
+  },
+
+  {
+    "label": "Headhunting",
+    "terms": ["Headhunting", "Head Hunting"]
+  },
+  {
+    "label": "Candidate Screening",
+    "terms": ["Candidate Screening", "Applicant Screening"]
+  },
+
+  {
+    "label": "Talent Pipeline",
+    "terms": ["Talent Pipeline", "Candidate Pipeline"]
+  },
+  {
+    "label": "Offer Negotiation",
+    "terms": ["Offer Negotiation", "Offer Negotiations"]
+  },
+  {
+    "label": "Technical Recruiting",
+    "terms": [
+      "Technical Recruiting",
+      "Technical Recruitment",
+      "Tech Recruiting"
+    ]
+  },
+  {
+    "label": "Technical Sourcing",
+    "terms": ["Technical Sourcing", "Tech Sourcing"]
+  },
+  {
+    "label": "Candidate Sourcing",
+    "terms": ["Candidate Sourcing", "Talent Sourcing"]
+  },
+  {
+    "label": "Boolean Search",
+    "terms": ["Boolean Search", "Boolean Searching"]
+  },
+  {
+    "label": "Executive Search",
+    "terms": [
+      "Executive Search",
+      "Executive Recruiting",
+      "Executive Recruitment"
+    ]
+  },
+  {
+    "label": "Employer Branding",
+    "terms": ["Employer Branding", "Talent Brand", "Talent Branding"]
+  },
+
+  {
+    "label": "Compensation & Benefits",
+    "terms": [
+      "Compensation & Benefits",
+      "Compensation and Benefits",
+      "Comp & Benefits",
+      "C&B"
+    ]
+  },
+  {
+    "label": "Total Rewards",
+    "terms": ["Total Rewards", "Total Reward"]
+  },
+  {
+    "label": "Job Evaluation",
+    "terms": ["Job Evaluation", "Job Evaluation Methodology"]
+  },
+  {
+    "label": "Salary Benchmarking",
+    "terms": [
+      "Salary Benchmarking",
+      "Compensation Benchmarking",
+      "Pay Benchmarking"
+    ]
+  },
+  {
+    "label": "Incentive Plans",
+    "terms": ["Incentive Plans", "Incentive Planning", "Incentive Programs"]
+  },
+  {
+    "label": "Mercer IPE",
+    "terms": ["Mercer IPE", "International Position Evaluation"]
+  },
+  {
+    "label": "Hay Method",
+    "terms": ["Hay Method", "Hay Job Evaluation", "Hay Group Job Evaluation"]
+  },
+  {
+    "label": "Equity Compensation",
+    "terms": ["Equity Compensation", "Equity-Based Compensation"]
+  },
+
+  {
+    "label": "Learning & Development",
+    "terms": ["Learning & Development", "Learning and Development", "L&D"]
+  },
+  {
+    "label": "Training Needs Analysis",
+    "terms": ["Training Needs Analysis", "Training Needs Assessment", "TNA"]
+  },
+  {
+    "label": "Leadership Development",
+    "terms": ["Leadership Development"]
+  },
+  {
+    "label": "Curriculum Development",
+    "terms": ["Curriculum Development", "Curriculum Design"]
+  },
+  {
+    "label": "E-Learning",
+    "terms": ["E-Learning", "eLearning", "E Learning", "Online Learning"]
+  },
+  {
+    "label": "LMS Administration",
+    "terms": ["LMS Administration", "Learning Management System Administration"]
+  },
+  {
+    "label": "Instructional Design",
+    "terms": ["Instructional Design"]
+  },
+  {
+    "label": "Learning Experience Design",
+    "terms": ["Learning Experience Design", "LXD"]
+  },
+  {
+    "label": "Articulate 360",
+    "terms": ["Articulate 360"]
+  },
+  {
+    "label": "Articulate Storyline",
+    "terms": ["Articulate Storyline", "Storyline 360"]
+  },
+  {
+    "label": "Cornerstone OnDemand",
+    "terms": ["Cornerstone OnDemand", "Cornerstone LMS"]
+  },
+  {
+    "label": "Moodle",
+    "terms": ["Moodle"]
+  },
+  {
+    "label": "Canvas LMS",
+    "terms": ["Canvas LMS", "Instructure Canvas"]
+  },
+
+  {
+    "label": "Employee Relations",
+    "terms": ["Employee Relations", "ER"]
+  },
+  {
+    "label": "Grievance Handling",
+    "terms": [
+      "Grievance Handling",
+      "Employee Grievances",
+      "Grievance Management"
+    ]
+  },
+  {
+    "label": "Disciplinary Procedures",
+    "terms": ["Disciplinary Procedures", "Disciplinary Process"]
+  },
+  {
+    "label": "Workplace Investigations",
+    "terms": [
+      "Workplace Investigations",
+      "Workplace Investigation",
+      "HR Investigations"
+    ]
+  },
+
+  {
+    "label": "Performance Management",
+    "terms": ["Performance Management", "Employee Performance Management"]
+  },
+  {
+    "label": "Performance Improvement Plan",
+    "terms": [
+      "Performance Improvement Plan",
+      "Performance Improvement Plans",
+      "PIP"
+    ]
+  },
+  {
+    "label": "Performance Appraisal",
+    "terms": [
+      "Performance Appraisal",
+      "Performance Appraisals",
+      "Appraisal Process"
+    ]
+  },
+
+  {
+    "label": "Employee Engagement",
+    "terms": ["Employee Engagement"]
+  },
+  {
+    "label": "Employee Retention",
+    "terms": ["Employee Retention", "Staff Retention"]
+  },
+  {
+    "label": "Exit Interviews",
+    "terms": ["Exit Interview", "Exit Interviews"]
+  },
+  {
+    "label": "eNPS",
+    "terms": ["eNPS", "Employee Net Promoter Score"]
+  },
+
+  {
+    "label": "HR Business Partner",
+    "terms": ["HRBP", "HR Business Partner", "Human Resources Business Partner"]
+  },
+  {
+    "label": "People Partner",
+    "terms": ["People Partner"]
+  },
+
+  {
+    "label": "People Analytics",
+    "terms": ["People Analytics", "HR Analytics"]
+  },
+  {
+    "label": "Headcount Planning",
+    "terms": ["Headcount Planning", "Headcount Forecasting"]
+  },
+  {
+    "label": "Turnover Analysis",
+    "terms": ["Turnover Analysis", "Employee Turnover Analysis"]
+  },
+  {
+    "label": "Workforce Analytics",
+    "terms": ["Workforce Analytics"]
+  },
+
+  {
+    "label": "HR Operations",
+    "terms": ["HR Operations", "Human Resources Operations"]
+  },
+  {
+    "label": "People Operations",
+    "terms": ["People Operations", "People Ops"]
+  },
+  {
+    "label": "Employee Handbook",
+    "terms": ["Employee Handbook", "Employee Handbooks"]
+  },
+  {
+    "label": "HR Policies",
+    "terms": ["HR Policies", "Human Resources Policies", "HR Policy"]
+  },
+
+  {
+    "label": "Employee Onboarding",
+    "terms": ["Employee Onboarding", "Onboarding", "New Hire Onboarding"]
+  },
+  {
+    "label": "Employee Offboarding",
+    "terms": ["Employee Offboarding", "Offboarding"]
+  },
+  {
+    "label": "Communication Skills",
+    "terms": ["Communication Skills", "Communication Skill"]
+  },
+  {
+    "label": "Time Management",
+    "terms": ["Time Management", "Time Management Skills"]
+  }
+]

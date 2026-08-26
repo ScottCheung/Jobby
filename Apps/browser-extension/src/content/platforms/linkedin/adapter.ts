@@ -2,13 +2,17 @@
 
 import type { LinkedInJobSnapshot } from '../../../shared/contracts/page-inspection';
 import type {
-  LinkedInApplicationAction,
-  LinkedInApplicationResult,
-} from '../../../shared/contracts/linkedin';
+  ApplicationAction,
+  ApplicationActionResult,
+} from '../../../shared/contracts/application-navigation';
 import { extractLinkedInPostedDate } from './date-parser';
 import { extractStructuredText } from '../../text-utils';
 import type { LinkedInJobApiData } from './api-client';
 import { captureJobDate } from '../../../shared/utils/date-formatter';
+import {
+  clearJobDescriptionRoot,
+  rememberJobDescriptionRoot,
+} from '../../dom/job-description-root';
 
 type LinkedInJobData = Omit<
   LinkedInJobSnapshot,
@@ -18,17 +22,35 @@ type LinkedInJobData = Omit<
 const SELECTORS = {
   title: [
     '.job-details-jobs-unified-top-card__job-title-link',
+    '.job-details-jobs-unified-top-card__job-title a',
+    '.job-details-jobs-unified-top-card__job-title h1',
+    '.job-details-jobs-unified-top-card__job-title h2',
     '.job-details-jobs-unified-top-card__job-title',
     '.jobs-unified-top-card__job-title-link',
+    '.jobs-unified-top-card__job-title a',
+    '.jobs-unified-top-card__job-title h1',
+    '.jobs-unified-top-card__job-title h2',
     '.jobs-unified-top-card__job-title',
+    '.jobs-details__job-title',
     '.jobs-details__main-content h1',
+    '.jobs-details__main-content h2',
     "[data-testid='job-title']",
     "main h1 a[href*='/jobs/view/']",
-    "main h1",
+    "main h2 a[href*='/jobs/view/']",
     "h1.t-24",
+    "h2.t-24",
+    "h1.t-20",
+    "h2.t-20",
+    "h1.t-16",
+    "h2.t-16",
     "h1[class*='job-title']",
+    "h2[class*='job-title']",
     "h1[class*='topcard']",
+    "h2[class*='topcard']",
+    "[class*='top-card__job-title']",
+    "[class*='topcard__title']",
     "h1",
+    "h2",
   ],
   company: [
     '.job-details-jobs-unified-top-card__company-name a',
@@ -38,6 +60,8 @@ const SELECTORS = {
     "[class*='company-name'] a",
     "[class*='company-name']",
     "[class*='employer-name']",
+    '.job-card-container__primary-description',
+    '.artdeco-entity-lockup__subtitle',
     "a[href*='/company/']",
     "[aria-label^='Company,']",
     "[data-tracking-control-name*='company']",
@@ -160,6 +184,10 @@ const TITLE_METADATA = new Set([
   'see more',
   'view all',
   'read more',
+  'search results',
+  'search',
+  'job search',
+  'jobs search',
 ]);
 
 const INVALID_TITLE_PATTERNS = [
@@ -170,6 +198,7 @@ const INVALID_TITLE_PATTERNS = [
   /\b(?:easy\s+apply|apply\s+now|apply\s+on\s+company)\b/i,
   /\b(?:company\s+logo|promoted|posted)\b/i,
   /\b(?:show\s+(?:all|more|less)|see\s+(?:all|more)|view\s+(?:all|more)|read\s+more)\b/i,
+  /^(?:search\s+results?|\d+\+?\s+results?|job\s+search|jobs\s+in\s+.*)$/i,
 ];
 
 function cleanText(value: string | null | undefined): string {
@@ -289,14 +318,17 @@ function descriptionText(element: HTMLElement): string {
   return extractStructuredText(element);
 }
 
-function firstDescriptionText(root: ParentNode, selectors: readonly string[]): string {
+function firstDescription(
+  root: ParentNode,
+  selectors: readonly string[],
+): { element: HTMLElement; text: string } | null {
   for (const selector of selectors) {
     const element = deepFirst(root, selector);
     if (!element) continue;
     const text = descriptionText(element);
-    if (text) return text;
+    if (text) return { element, text };
   }
-  return '';
+  return null;
 }
 
 function descriptionFromHeading(root: ParentNode): string {
@@ -356,12 +388,20 @@ function getJobDetailPanel(): HTMLElement | null {
   // These selectors resolve to the right-side detail panel only.
   // They do NOT match list-card elements.
   const directSelectors = [
+    '.jobs-search-two-pane__job-details',
+    '.jobs-search-two-pane__details',
+    '.jobs-search-results-list__detail',
+    '.scaffold-layout__detail',
     '.jobs-search__job-details--detail-view',
     '.jobs-search__job-details',
+    '.jobs-search__right-rail',
     '.jobs-details__main-content',
     '.job-details-jobs-unified-top-card__container',
     '.job-details-jobs-unified-top-card',
     '.jobs-unified-top-card__container',
+    '.jobs-unified-top-card',
+    '.job-view-layout',
+    '.jobs-details',
   ];
   for (const sel of directSelectors) {
     const el = document.querySelector<HTMLElement>(sel);
@@ -438,25 +478,66 @@ function titleFromDocument(jobId: string, company?: string): string {
 }
 
 function titleFromJobLink(jobId: string, company?: string): string {
-  const links = Array.from(document.querySelectorAll<HTMLAnchorElement>([
-    '.job-details-jobs-unified-top-card__job-title-link',
-    '.jobs-unified-top-card__job-title-link',
-    "main h1 a[href*='/jobs/view/']",
-  ].join(', ')));
+  const panel = getJobDetailPanel();
+  if (panel) {
+    const panelLinks = Array.from(
+      panel.querySelectorAll<HTMLAnchorElement>("a[href*='/jobs/view/']"),
+    );
+    for (const link of panelLinks) {
+      const href = link.getAttribute('href') || '';
+      if (!new RegExp(`/jobs/view/${jobId}(?:/|\\?|$)`, 'i').test(href)) continue;
+      const text = extractCleanElementText(link);
+      if (isLikelyTitle(text, company)) return text;
+    }
+  }
+
+  const links = Array.from(
+    document.querySelectorAll<HTMLAnchorElement>([
+      '.job-details-jobs-unified-top-card__job-title-link',
+      '.jobs-unified-top-card__job-title-link',
+      '.job-details-jobs-unified-top-card__job-title a',
+      '.jobs-unified-top-card__job-title a',
+      '.job-card-list__title',
+      '.job-card-list__title--link',
+      '.job-card-container__link',
+      "main h1 a[href*='/jobs/view/']",
+      "main h2 a[href*='/jobs/view/']",
+      "a[href*='/jobs/view/']",
+    ].join(', ')),
+  );
   for (const link of links) {
-    const href = link.getAttribute("href") || "";
-    if (!new RegExp(`/jobs/view/${jobId}(?:/|\\?|$)`, "i").test(href)) continue;
+    const href = link.getAttribute('href') || '';
+    if (!new RegExp(`/jobs/view/${jobId}(?:/|\\?|$)`, 'i').test(href)) continue;
     const text = extractCleanElementText(link);
     if (isLikelyTitle(text, company)) return text;
   }
-  return "";
+  return '';
+}
+
+function titleFromListCard(jobId: string, company?: string): string {
+  if (!jobId) return '';
+  const card = findListCard(jobId);
+  if (!card) return '';
+
+  const candidates = Array.from(
+    card.querySelectorAll<HTMLElement>(
+      '.job-card-list__title, .job-card-list__title--link, .job-card-container__link, ' +
+      'a[href*="/jobs/view/"], h2, h3, strong, span.t-16',
+    ),
+  );
+  for (const el of candidates) {
+    const text = extractCleanElementText(el);
+    if (isLikelyTitle(text, company)) return text;
+  }
+  return '';
 }
 
 function titleFromPage(jobId: string, company?: string): string {
+  // 1. Direct job links (detail panel or matching job links)
   const jobLinkTitle = titleFromJobLink(jobId, company);
   if (jobLinkTitle) return jobLinkTitle;
 
-  const root = getJobDetailRoot();
+  // 2. On direct job page (/jobs/view/<id>), document.title is clean and authoritative
   const isDirectJobPage = new RegExp(`/jobs/view/${jobId}(?:/|$)`, 'i').test(
     window.location.pathname,
   );
@@ -465,10 +546,17 @@ function titleFromPage(jobId: string, company?: string): string {
     if (documentTitle) return documentTitle;
   }
 
+  // 3. Detail panel top-card title
+  const root = getJobDetailRoot();
   const selectedTitle = firstText(root, SELECTORS.title);
   if (isLikelyTitle(selectedTitle, company)) return selectedTitle;
 
-  return titleFromMain(company) || titleFromDocument(jobId, company);
+  // 4. Matched list-card title on search / collections / 2-pane view
+  const listCardTitle = titleFromListCard(jobId, company);
+  if (listCardTitle) return listCardTitle;
+
+  // 5. Fallbacks
+  return titleFromMain(company) || (isDirectJobPage ? titleFromDocument(jobId, company) : '');
 }
 
 function locationFromPage(): string | undefined {
@@ -540,8 +628,8 @@ function findListCard(externalId: string): HTMLElement | null {
     let el: HTMLElement | null = link.parentElement;
     for (let d = 0; el && d < 10; d += 1) {
       if (el.matches(
-        '.job-card-container, .jobs-search-results__list-item, ' +
-        'li[data-occludable-job-id], li[data-job-id], article.job-card-container',
+        '.job-card-container, .jobs-search-results__list-item, .jobs-search-results-list__list-item, ' +
+        'li[data-occludable-job-id], li[data-job-id], article.job-card-container, li.scaffold-layout__list-item',
       )) {
         return el;
       }
@@ -645,7 +733,7 @@ function datePostedFromPage(externalId: string): string | undefined {
 export class LinkedInAdapter {
   readonly platformName = 'linkedin' as const;
   private applicationRootCache: HTMLElement | null | undefined;
-  private applicationActionCache = new Map<LinkedInApplicationAction, HTMLElement | null>();
+  private applicationActionCache = new Map<ApplicationAction, HTMLElement | null>();
 
   jobIdFromUrl(url: string): string {
     const match = url.match(/\/jobs\/view\/(\d+)/i);
@@ -693,18 +781,32 @@ export class LinkedInAdapter {
   }
 
   readJob(url: string, apiData?: LinkedInJobApiData | null): LinkedInJobData | null {
+    clearJobDescriptionRoot('linkedin');
     const externalId = this.jobIdFromUrl(url);
     if (!externalId) return null;
     if (!this.hasCurrentJobReference(externalId)) return null;
 
     const root = getJobDetailRoot();
-    const company = firstText(root, SELECTORS.company) || firstText(document, SELECTORS.company) || "Unknown company";
-    const title = titleFromPage(externalId, company);
+    const company =
+      apiData?.company ||
+      firstText(root, SELECTORS.company) ||
+      firstText(document, SELECTORS.company) ||
+      "Unknown company";
+    const title =
+      (apiData?.title && isLikelyTitle(apiData.title, company))
+        ? apiData.title
+        : titleFromPage(externalId, company);
     if (!title) return null;
 
+    const primaryDescription = firstDescription(root, SELECTORS.description);
+    const fallbackDescription = primaryDescription
+      ? null
+      : firstDescription(document, SELECTORS.description);
+    const descriptionRoot = primaryDescription?.element || fallbackDescription?.element;
+    if (descriptionRoot) rememberJobDescriptionRoot('linkedin', descriptionRoot);
     const description =
-      firstDescriptionText(root, SELECTORS.description) ||
-      firstDescriptionText(document, SELECTORS.description) ||
+      primaryDescription?.text ||
+      fallbackDescription?.text ||
       descriptionFromHeading(root) ||
       descriptionFromHeading(document);
 
@@ -862,7 +964,7 @@ export class LinkedInAdapter {
   }
 
   getCurrentApplicationAction(
-    action: LinkedInApplicationAction,
+    action: ApplicationAction,
   ): HTMLElement | null {
     const cached = this.applicationActionCache.get(action);
     if (cached && cached.isConnected && isVisible(cached) && isEnabled(cached)) {
@@ -968,7 +1070,7 @@ export class LinkedInAdapter {
     return undefined;
   }
 
-  async openApplication(): Promise<LinkedInApplicationResult> {
+  async openApplication(): Promise<ApplicationActionResult> {
     const currentUrl = window.location.href;
     if (this.getApplicationRoot()) {
       return {
@@ -1013,8 +1115,8 @@ export class LinkedInAdapter {
   }
 
   async clickApplicationAction(
-    action: LinkedInApplicationAction,
-  ): Promise<LinkedInApplicationResult> {
+    action: ApplicationAction,
+  ): Promise<ApplicationActionResult> {
     const currentUrl = window.location.href;
     const root = this.getApplicationRoot();
     // The final confirmation screen can be rendered in a lightweight modal

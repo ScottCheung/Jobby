@@ -1,0 +1,498 @@
+[
+  {
+    "label": "AutoCAD",
+    "terms": ["AutoCAD", "Autodesk AutoCAD"]
+  },
+  {
+    "label": "2D Drafting",
+    "terms": ["2D Drafting", "2D CAD Drafting"]
+  },
+  {
+    "label": "AutoCAD Electrical",
+    "terms": ["AutoCAD Electrical", "Autodesk AutoCAD Electrical"]
+  },
+  {
+    "label": "AutoCAD Mechanical",
+    "terms": ["AutoCAD Mechanical", "Autodesk AutoCAD Mechanical"]
+  },
+  {
+    "label": "Civil 3D",
+    "terms": ["Civil 3D", "AutoCAD Civil 3D", "Autodesk Civil 3D"]
+  },
+  {
+    "label": "Revit",
+    "terms": ["Revit", "Autodesk Revit"]
+  },
+  {
+    "label": "Revit Architecture",
+    "terms": ["Revit Architecture"]
+  },
+  {
+    "label": "Revit MEP",
+    "terms": ["Revit MEP"]
+  },
+  {
+    "label": "Revit Structure",
+    "terms": ["Revit Structure"]
+  },
+  {
+    "label": "BIM",
+    "terms": [
+      "BIM",
+      "Building Information Modelling",
+      "Building Information Modeling"
+    ]
+  },
+  {
+    "label": "Clash Detection",
+    "terms": ["Clash Detection", "BIM Clash Detection"]
+  },
+  {
+    "label": "OpenBIM",
+    "terms": ["OpenBIM", "Open BIM"]
+  },
+  {
+    "label": "IFC",
+    "terms": ["IFC", "Industry Foundation Classes"]
+  },
+  {
+    "label": "BIM 360",
+    "terms": ["BIM 360", "Autodesk BIM 360"]
+  },
+  {
+    "label": "Autodesk Construction Cloud",
+    "terms": ["Autodesk Construction Cloud", "ACC"]
+  },
+  {
+    "label": "Navisworks",
+    "terms": ["Navisworks", "Autodesk Navisworks"]
+  },
+
+  {
+    "label": "SolidWorks",
+    "terms": ["SolidWorks", "Solid Works", "Dassault SolidWorks"]
+  },
+  {
+    "label": "SolidWorks Simulation",
+    "terms": ["SolidWorks Simulation"]
+  },
+  {
+    "label": "CATIA",
+    "terms": ["CATIA", "Dassault CATIA"]
+  },
+  {
+    "label": "PTC Creo",
+    "terms": ["PTC Creo", "Creo", "Creo Parametric", "Pro/ENGINEER", "ProE"]
+  },
+  {
+    "label": "Autodesk Inventor",
+    "terms": ["Autodesk Inventor", "Inventor"]
+  },
+  {
+    "label": "Siemens NX",
+    "terms": ["Siemens NX", "Unigraphics NX", "UG NX"]
+  },
+  {
+    "label": "ANSYS",
+    "terms": ["ANSYS", "Ansys"]
+  },
+  {
+    "label": "ANSYS Fluent",
+    "terms": ["ANSYS Fluent", "Ansys Fluent"]
+  },
+  {
+    "label": "ANSYS Workbench",
+    "terms": ["ANSYS Workbench", "Ansys Workbench"]
+  },
+  {
+    "label": "Abaqus",
+    "terms": ["Abaqus", "SIMULIA Abaqus"]
+  },
+  {
+    "label": "COMSOL",
+    "terms": ["COMSOL", "COMSOL Multiphysics"]
+  },
+  {
+    "label": "Altair HyperWorks",
+    "terms": ["Altair HyperWorks", "HyperWorks"]
+  },
+  {
+    "label": "HyperMesh",
+    "terms": ["HyperMesh", "Altair HyperMesh"]
+  },
+  {
+    "label": "LS-DYNA",
+    "terms": ["LS-DYNA", "LS DYNA"]
+  },
+  {
+    "label": "FEA",
+    "terms": ["FEA", "Finite Element Analysis"]
+  },
+  {
+    "label": "CFD",
+    "terms": ["CFD", "Computational Fluid Dynamics"]
+  },
+  {
+    "label": "OpenFOAM",
+    "terms": ["OpenFOAM"]
+  },
+
+  {
+    "label": "ArcGIS",
+    "terms": ["ArcGIS", "Esri ArcGIS"]
+  },
+  {
+    "label": "ArcGIS Pro",
+    "terms": ["ArcGIS Pro"]
+  },
+  {
+    "label": "ArcMap",
+    "terms": ["ArcMap"]
+  },
+  {
+    "label": "Esri",
+    "terms": ["Esri", "ESRI"]
+  },
+  {
+    "label": "QGIS",
+    "terms": ["QGIS"]
+  },
+  {
+    "label": "GIS",
+    "terms": [
+      "GIS",
+      "Geographic Information Systems",
+      "Geographic Information System"
+    ]
+  },
+  {
+    "label": "Spatial Analysis",
+    "terms": ["Spatial Analysis", "Geospatial Analysis"]
+  },
+  {
+    "label": "GIS Mapping",
+    "terms": ["GIS Mapping", "Geospatial Mapping"]
+  },
+
+  {
+    "label": "PLC Programming",
+    "terms": ["PLC Programming"]
+  },
+  {
+    "label": "PLC",
+    "terms": [
+      "PLC",
+      "Programmable Logic Controller",
+      "Programmable Logic Controllers"
+    ]
+  },
+  {
+    "label": "Ladder Logic",
+    "terms": ["Ladder Logic", "Ladder Diagram", "Ladder Programming"]
+  },
+  {
+    "label": "Structured Text",
+    "terms": ["Structured Text", "IEC 61131-3 Structured Text"]
+  },
+  {
+    "label": "Siemens PLC",
+    "terms": ["Siemens PLC", "Siemens S7"]
+  },
+  {
+    "label": "TIA Portal",
+    "terms": ["TIA Portal", "Siemens TIA Portal"]
+  },
+  {
+    "label": "Allen-Bradley",
+    "terms": ["Allen-Bradley", "Allen Bradley"]
+  },
+  {
+    "label": "Rockwell Automation",
+    "terms": ["Rockwell Automation"]
+  },
+  {
+    "label": "ControlLogix",
+    "terms": ["ControlLogix", "Allen-Bradley ControlLogix"]
+  },
+  {
+    "label": "Studio 5000",
+    "terms": ["Studio 5000", "Rockwell Studio 5000"]
+  },
+  {
+    "label": "SCADA",
+    "terms": ["SCADA", "Supervisory Control and Data Acquisition"]
+  },
+  {
+    "label": "Modbus",
+    "terms": ["Modbus", "Modbus TCP", "Modbus RTU"]
+  },
+  {
+    "label": "HMI Development",
+    "terms": ["HMI Development", "Human Machine Interface Development"]
+  },
+  {
+    "label": "Ignition SCADA",
+    "terms": ["Ignition SCADA", "Ignition"]
+  },
+  {
+    "label": "Inductive Automation",
+    "terms": ["Inductive Automation"]
+  },
+  {
+    "label": "Wonderware",
+    "terms": ["Wonderware"]
+  },
+  {
+    "label": "AVEVA System Platform",
+    "terms": ["AVEVA System Platform"]
+  },
+
+  {
+    "label": "Primavera P6",
+    "terms": ["Primavera P6", "P6 Primavera", "Oracle Primavera P6"]
+  },
+  {
+    "label": "Critical Path Method",
+    "terms": ["Critical Path Method", "CPM"]
+  },
+  {
+    "label": "CPM Scheduling",
+    "terms": ["CPM Scheduling", "Critical Path Scheduling"]
+  },
+  {
+    "label": "Procore",
+    "terms": ["Procore"]
+  },
+  {
+    "label": "Aconex",
+    "terms": ["Aconex", "Oracle Aconex"]
+  },
+  {
+    "label": "Bluebeam",
+    "terms": ["Bluebeam", "Bluebeam Revu"]
+  },
+  {
+    "label": "CostX",
+    "terms": ["CostX", "iTWO CostX"]
+  },
+  {
+    "label": "Quantity Takeoff",
+    "terms": ["Quantity Takeoff", "Quantity Take-Off", "Takeoff"]
+  },
+  {
+    "label": "Construction Cost Estimation",
+    "terms": ["Construction Cost Estimation", "Cost Estimation Construction"]
+  },
+  {
+    "label": "Quantity Surveying",
+    "terms": ["Quantity Surveying"]
+  },
+  {
+    "label": "Quantity Surveyor",
+    "terms": ["Quantity Surveyor", "QS"]
+  },
+  {
+    "label": "Construction Cost Planning",
+    "terms": ["Construction Cost Planning", "Cost Planning Construction"]
+  },
+
+  {
+    "label": "Structural Engineering",
+    "terms": ["Structural Engineering"]
+  },
+  {
+    "label": "Structural Analysis",
+    "terms": ["Structural Analysis"]
+  },
+  {
+    "label": "Concrete Design",
+    "terms": ["Concrete Design", "Reinforced Concrete Design"]
+  },
+  {
+    "label": "Steel Design",
+    "terms": ["Steel Design", "Structural Steel Design"]
+  },
+  {
+    "label": "Foundation Design",
+    "terms": ["Foundation Design"]
+  },
+  {
+    "label": "ETABS",
+    "terms": ["ETABS"]
+  },
+  {
+    "label": "SAP2000",
+    "terms": ["SAP2000"]
+  },
+  {
+    "label": "STAAD.Pro",
+    "terms": ["STAAD.Pro", "STAAD"]
+  },
+  {
+    "label": "Space Gass",
+    "terms": ["Space Gass", "SpaceGass"]
+  },
+
+  {
+    "label": "Construction Management",
+    "terms": ["Construction Management"]
+  },
+  {
+    "label": "Site Management",
+    "terms": ["Site Management", "Construction Site Management"]
+  },
+  {
+    "label": "Site Supervision",
+    "terms": ["Site Supervision", "Construction Site Supervision"]
+  },
+  {
+    "label": "Construction QA/QC",
+    "terms": [
+      "Construction QA/QC",
+      "QA/QC Construction",
+      "Construction Quality Control"
+    ]
+  },
+  {
+    "label": "Construction Contract Administration",
+    "terms": [
+      "Construction Contract Administration",
+      "Contract Administration Construction"
+    ]
+  },
+  {
+    "label": "Subcontractor Management",
+    "terms": ["Subcontractor Management", "Sub-contractor Management"]
+  },
+
+  {
+    "label": "Mechanical Engineering",
+    "terms": ["Mechanical Engineering"]
+  },
+  {
+    "label": "Thermal Analysis",
+    "terms": ["Thermal Analysis"]
+  },
+  {
+    "label": "Thermodynamics",
+    "terms": ["Thermodynamics"]
+  },
+  {
+    "label": "DFM",
+    "terms": ["DFM", "Design for Manufacturing", "Design for Manufacturability"]
+  },
+  {
+    "label": "HVAC",
+    "terms": [
+      "HVAC",
+      "Heating Ventilation and Air Conditioning",
+      "Heating, Ventilation and Air Conditioning"
+    ]
+  },
+  {
+    "label": "HVAC Design",
+    "terms": ["HVAC Design"]
+  },
+  {
+    "label": "Building Services Mechanical",
+    "terms": ["Building Services Mechanical", "Mechanical Building Services"]
+  },
+  {
+    "label": "GD&T",
+    "terms": ["GD&T", "Geometric Dimensioning and Tolerancing"]
+  },
+  {
+    "label": "P&ID",
+    "terms": [
+      "P&ID",
+      "Piping and Instrumentation Diagram",
+      "Piping & Instrumentation Diagram"
+    ]
+  },
+  {
+    "label": "Piping Design",
+    "terms": ["Piping Design"]
+  },
+
+  {
+    "label": "Electrical Engineering",
+    "terms": ["Electrical Engineering"]
+  },
+  {
+    "label": "Circuit Design",
+    "terms": ["Circuit Design", "Electronic Circuit Design"]
+  },
+  {
+    "label": "Power Systems",
+    "terms": ["Power Systems", "Electrical Power Systems"]
+  },
+  {
+    "label": "Single Line Diagrams",
+    "terms": ["Single Line Diagram", "Single Line Diagrams", "SLD"]
+  },
+  {
+    "label": "Switchgear",
+    "terms": ["Switchgear"]
+  },
+  {
+    "label": "High Voltage",
+    "terms": ["High Voltage", "HV Electrical"]
+  },
+  {
+    "label": "Low Voltage",
+    "terms": ["Low Voltage", "LV Electrical"]
+  },
+  {
+    "label": "Altium Designer",
+    "terms": ["Altium Designer", "Altium"]
+  },
+  {
+    "label": "PCB Design",
+    "terms": ["PCB Design", "Printed Circuit Board Design"]
+  },
+  {
+    "label": "Schematic Capture",
+    "terms": ["Schematic Capture", "Schematic Design"]
+  },
+  {
+    "label": "EAGLE",
+    "terms": ["Autodesk EAGLE", "Eagle PCB", "EAGLE"]
+  },
+
+  {
+    "label": "Civil Engineering",
+    "terms": ["Civil Engineering"]
+  },
+  {
+    "label": "Earthworks",
+    "terms": ["Earthworks", "Earthworks Design"]
+  },
+  {
+    "label": "Drainage Design",
+    "terms": ["Drainage Design"]
+  },
+  {
+    "label": "Hydrology",
+    "terms": ["Hydrology"]
+  },
+  {
+    "label": "Stormwater Management",
+    "terms": ["Stormwater Management", "Storm Water Management"]
+  },
+  {
+    "label": "Road Design",
+    "terms": ["Road Design", "Roadway Design"]
+  },
+  {
+    "label": "Geotechnical Engineering",
+    "terms": ["Geotechnical Engineering"]
+  },
+  {
+    "label": "Soil Mechanics",
+    "terms": ["Soil Mechanics"]
+  },
+  {
+    "label": "12d Model",
+    "terms": ["12d Model", "12d"]
+  }
+]

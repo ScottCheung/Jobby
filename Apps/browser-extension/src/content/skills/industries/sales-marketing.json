@@ -1,0 +1,849 @@
+[
+  {
+    "label": "Salesforce",
+    "terms": ["Salesforce", "SFDC"]
+  },
+  {
+    "label": "Salesforce Administration",
+    "terms": [
+      "Salesforce Admin",
+      "Salesforce Administrator",
+      "Salesforce Administration"
+    ]
+  },
+  {
+    "label": "Salesforce CPQ",
+    "terms": ["Salesforce CPQ"]
+  },
+  {
+    "label": "CPQ",
+    "terms": ["CPQ", "Configure Price Quote", "Configure-Price-Quote"]
+  },
+  {
+    "label": "Lightning Web Components",
+    "terms": ["Lightning Web Components", "LWC"]
+  },
+  {
+    "label": "Salesforce Apex",
+    "terms": ["Salesforce Apex", "Apex Salesforce", "Apex"]
+  },
+  {
+    "label": "Salesforce Sales Cloud",
+    "terms": ["Salesforce Sales Cloud", "Sales Cloud"]
+  },
+  {
+    "label": "Salesforce Service Cloud",
+    "terms": ["Salesforce Service Cloud", "Service Cloud"]
+  },
+  {
+    "label": "Salesforce Marketing Cloud",
+    "terms": ["Salesforce Marketing Cloud", "SFMC"]
+  },
+
+  {
+    "label": "HubSpot",
+    "terms": ["HubSpot"]
+  },
+  {
+    "label": "HubSpot CRM",
+    "terms": ["HubSpot CRM"]
+  },
+  {
+    "label": "HubSpot Marketing Hub",
+    "terms": ["HubSpot Marketing", "HubSpot Marketing Hub"]
+  },
+  {
+    "label": "HubSpot Sales Hub",
+    "terms": ["HubSpot Sales", "HubSpot Sales Hub"]
+  },
+  {
+    "label": "HubSpot CMS",
+    "terms": ["HubSpot CMS", "HubSpot CMS Hub"]
+  },
+  {
+    "label": "HubSpot Workflows",
+    "terms": ["HubSpot Workflows"]
+  },
+  {
+    "label": "Marketo",
+    "terms": [
+      "Marketo",
+      "Adobe Marketo",
+      "Marketo Engage",
+      "Adobe Marketo Engage"
+    ]
+  },
+  {
+    "label": "Pardot",
+    "terms": ["Pardot", "Salesforce Pardot"]
+  },
+  {
+    "label": "Marketing Cloud Account Engagement",
+    "terms": ["Account Engagement", "Marketing Cloud Account Engagement"]
+  },
+  {
+    "label": "ActiveCampaign",
+    "terms": ["ActiveCampaign"]
+  },
+  {
+    "label": "Braze",
+    "terms": ["Braze"]
+  },
+  {
+    "label": "Klaviyo",
+    "terms": ["Klaviyo"]
+  },
+  {
+    "label": "Mailchimp",
+    "terms": ["Mailchimp"]
+  },
+  {
+    "label": "Customer.io",
+    "terms": ["Customer.io"]
+  },
+  {
+    "label": "Iterable",
+    "terms": ["Iterable"]
+  },
+  {
+    "label": "Brevo",
+    "terms": ["Brevo"]
+  },
+  {
+    "label": "Omnisend",
+    "terms": ["Omnisend"]
+  },
+
+  {
+    "label": "Marketing Automation",
+    "terms": ["Marketing Automation"]
+  },
+  {
+    "label": "Drip Campaigns",
+    "terms": ["Drip Campaign", "Drip Campaigns", "Drip Marketing"]
+  },
+
+  {
+    "label": "Email Marketing",
+    "terms": ["Email Marketing"]
+  },
+  {
+    "label": "EDM Campaigns",
+    "terms": ["EDM Campaign", "EDM Campaigns", "Electronic Direct Mail"]
+  },
+  {
+    "label": "Email Automation",
+    "terms": ["Email Automation", "Automated Email Marketing"]
+  },
+  {
+    "label": "Newsletter Strategy",
+    "terms": ["Newsletter Strategy", "Newsletter Marketing"]
+  },
+  {
+    "label": "Email Deliverability",
+    "terms": ["Email Deliverability"]
+  },
+  {
+    "label": "List Segmentation",
+    "terms": ["List Segmentation", "Email List Segmentation"]
+  },
+
+  {
+    "label": "Google Analytics",
+    "terms": ["Google Analytics"]
+  },
+  {
+    "label": "Google Analytics 4",
+    "terms": ["Google Analytics 4", "GA4"]
+  },
+  {
+    "label": "Universal Analytics",
+    "terms": ["Universal Analytics", "Google Universal Analytics"]
+  },
+  {
+    "label": "Google Tag Manager",
+    "terms": ["Google Tag Manager", "GTM"]
+  },
+  {
+    "label": "Tag Management",
+    "terms": ["Tag Management"]
+  },
+  {
+    "label": "Mixpanel",
+    "terms": ["Mixpanel"]
+  },
+  {
+    "label": "Amplitude",
+    "terms": ["Amplitude", "Amplitude Analytics"]
+  },
+  {
+    "label": "Heap",
+    "terms": ["Heap", "Heap Analytics"]
+  },
+  {
+    "label": "PostHog",
+    "terms": ["PostHog"]
+  },
+  {
+    "label": "Pendo",
+    "terms": ["Pendo"]
+  },
+
+  {
+    "label": "Product Analytics",
+    "terms": ["Product Analytics"]
+  },
+  {
+    "label": "User Analytics",
+    "terms": ["User Analytics"]
+  },
+  {
+    "label": "Funnel Analysis",
+    "terms": ["Funnel Analysis"]
+  },
+  {
+    "label": "Cohort Analysis",
+    "terms": ["Cohort Analysis"]
+  },
+  {
+    "label": "Retention Analysis",
+    "terms": ["Retention Analysis"]
+  },
+
+  {
+    "label": "Google Ads",
+    "terms": ["Google Ads", "Google AdWords", "Google Adwords"]
+  },
+  {
+    "label": "Performance Max",
+    "terms": ["Performance Max", "PMax"]
+  },
+  {
+    "label": "Google Display Network",
+    "terms": ["Google Display Network", "GDN"]
+  },
+  {
+    "label": "Google Shopping Ads",
+    "terms": ["Google Shopping Ads", "Shopping Ads"]
+  },
+  {
+    "label": "YouTube Ads",
+    "terms": ["YouTube Ads", "YouTube Advertising"]
+  },
+  {
+    "label": "Meta Ads",
+    "terms": ["Meta Ads", "Meta Advertising"]
+  },
+  {
+    "label": "Facebook Ads",
+    "terms": ["Facebook Ads", "Facebook Advertising"]
+  },
+  {
+    "label": "Instagram Ads",
+    "terms": ["Instagram Ads", "Instagram Advertising"]
+  },
+  {
+    "label": "Meta Business Suite",
+    "terms": ["Meta Business Suite"]
+  },
+  {
+    "label": "Meta Ads Manager",
+    "terms": ["Facebook Ads Manager", "Meta Ads Manager"]
+  },
+  {
+    "label": "LinkedIn Ads",
+    "terms": ["LinkedIn Ads", "LinkedIn Advertising"]
+  },
+  {
+    "label": "TikTok Ads",
+    "terms": ["TikTok Ads", "TikTok Advertising"]
+  },
+  {
+    "label": "Pinterest Ads",
+    "terms": ["Pinterest Ads", "Pinterest Advertising"]
+  },
+  {
+    "label": "X Ads",
+    "terms": ["X Ads", "Twitter Ads", "X Advertising", "Twitter Advertising"]
+  },
+  {
+    "label": "Paid Social",
+    "terms": ["Paid Social", "Paid Social Media", "Social Advertising"]
+  },
+
+  {
+    "label": "SEM",
+    "terms": ["SEM", "Search Engine Marketing"]
+  },
+  {
+    "label": "Paid Search",
+    "terms": ["Paid Search", "Paid Search Marketing"]
+  },
+  {
+    "label": "PPC",
+    "terms": ["PPC", "Pay-Per-Click", "Pay Per Click", "Pay-per-click"]
+  },
+
+  {
+    "label": "Programmatic Advertising",
+    "terms": ["Programmatic Advertising", "Programmatic Media"]
+  },
+  {
+    "label": "Demand-Side Platform",
+    "terms": ["DSP", "Demand-Side Platform", "Demand Side Platform"]
+  },
+  {
+    "label": "Supply-Side Platform",
+    "terms": ["SSP", "Supply-Side Platform", "Supply Side Platform"]
+  },
+  {
+    "label": "Media Buying",
+    "terms": ["Media Buying"]
+  },
+
+  {
+    "label": "SEO",
+    "terms": ["SEO", "Search Engine Optimisation", "Search Engine Optimization"]
+  },
+  {
+    "label": "Technical SEO",
+    "terms": ["Technical SEO"]
+  },
+  {
+    "label": "On-Page SEO",
+    "terms": ["On-Page SEO", "On Page SEO"]
+  },
+  {
+    "label": "Off-Page SEO",
+    "terms": ["Off-Page SEO", "Off Page SEO"]
+  },
+  {
+    "label": "Link Building",
+    "terms": ["Link Building"]
+  },
+  {
+    "label": "Keyword Research",
+    "terms": ["Keyword Research"]
+  },
+  {
+    "label": "Core Web Vitals",
+    "terms": ["Core Web Vitals", "CWV"]
+  },
+  {
+    "label": "Site Architecture",
+    "terms": ["Site Architecture", "Website Architecture"]
+  },
+  {
+    "label": "Local SEO",
+    "terms": ["Local SEO"]
+  },
+  {
+    "label": "Ahrefs",
+    "terms": ["Ahrefs"]
+  },
+  {
+    "label": "Semrush",
+    "terms": ["Semrush", "SEMrush"]
+  },
+  {
+    "label": "Screaming Frog",
+    "terms": ["Screaming Frog", "Screaming Frog SEO Spider"]
+  },
+  {
+    "label": "Google Search Console",
+    "terms": ["Google Search Console", "GSC", "Google Webmaster Tools"]
+  },
+
+  {
+    "label": "A/B Testing",
+    "terms": ["A/B Testing", "AB Testing", "A/B Test", "Split Testing"]
+  },
+  {
+    "label": "Multivariate Testing",
+    "terms": ["Multivariate Testing", "MVT"]
+  },
+  {
+    "label": "Conversion Testing",
+    "terms": ["Conversion Testing"]
+  },
+
+  {
+    "label": "Optimizely",
+    "terms": ["Optimizely"]
+  },
+  {
+    "label": "VWO",
+    "terms": ["VWO", "Visual Website Optimizer"]
+  },
+  {
+    "label": "Conversion Rate Optimization",
+    "terms": [
+      "Conversion Rate Optimization",
+      "Conversion Rate Optimisation",
+      "CRO"
+    ]
+  },
+  {
+    "label": "User Journey Mapping",
+    "terms": ["User Journey Mapping", "Journey Mapping"]
+  },
+  {
+    "label": "Heatmap Analysis",
+    "terms": ["Heatmap Analysis", "Heat Map Analysis"]
+  },
+  {
+    "label": "Hotjar",
+    "terms": ["Hotjar"]
+  },
+  {
+    "label": "FullStory",
+    "terms": ["FullStory"]
+  },
+
+  {
+    "label": "Content Marketing",
+    "terms": ["Content Marketing"]
+  },
+  {
+    "label": "Content Strategy",
+    "terms": ["Content Strategy"]
+  },
+  {
+    "label": "Editorial Calendar",
+    "terms": ["Editorial Calendar", "Content Calendar"]
+  },
+  {
+    "label": "Whitepapers",
+    "terms": ["Whitepaper", "Whitepapers", "White Paper", "White Papers"]
+  },
+  {
+    "label": "Case Studies",
+    "terms": ["Case Study", "Case Studies"]
+  },
+  {
+    "label": "E-books",
+    "terms": ["E-book", "E-books", "Ebook", "Ebooks"]
+  },
+  {
+    "label": "Content Creation",
+    "terms": ["Content Creation"]
+  },
+  {
+    "label": "Inbound Marketing",
+    "terms": ["Inbound Marketing"]
+  },
+
+  {
+    "label": "Copywriting",
+    "terms": ["Copywriting"]
+  },
+  {
+    "label": "Brand Storytelling",
+    "terms": ["Brand Storytelling"]
+  },
+  {
+    "label": "Ad Copy",
+    "terms": ["Ad Copy", "Advertising Copy"]
+  },
+  {
+    "label": "UX Copywriting",
+    "terms": ["UX Copywriting", "UX Writing"]
+  },
+  {
+    "label": "Scriptwriting",
+    "terms": ["Scriptwriting", "Script Writing"]
+  },
+  {
+    "label": "Proofreading",
+    "terms": ["Proofreading", "Proof Reading"]
+  },
+  {
+    "label": "Content Writing",
+    "terms": ["Content Writing"]
+  },
+
+  {
+    "label": "Social Media Marketing",
+    "terms": ["Social Media Marketing", "SMM"]
+  },
+  {
+    "label": "Community Management",
+    "terms": ["Community Management"]
+  },
+  {
+    "label": "Influencer Marketing",
+    "terms": ["Influencer Marketing"]
+  },
+  {
+    "label": "Social Media Strategy",
+    "terms": ["Social Media Strategy", "Social Strategy"]
+  },
+  {
+    "label": "Brand Awareness",
+    "terms": ["Brand Awareness"]
+  },
+  {
+    "label": "Hootsuite",
+    "terms": ["Hootsuite"]
+  },
+  {
+    "label": "Buffer",
+    "terms": ["Buffer"]
+  },
+  {
+    "label": "Sprout Social",
+    "terms": ["Sprout Social"]
+  },
+
+  {
+    "label": "Public Relations",
+    "terms": ["Public Relations", "PR"]
+  },
+  {
+    "label": "Media Relations",
+    "terms": ["Media Relations"]
+  },
+  {
+    "label": "Press Releases",
+    "terms": ["Press Release", "Press Releases"]
+  },
+  {
+    "label": "Corporate Communications",
+    "terms": ["Corporate Communications", "Corporate Communication"]
+  },
+  {
+    "label": "Crisis Communications",
+    "terms": ["Crisis Communications", "Crisis Communication"]
+  },
+  {
+    "label": "Media Outreach",
+    "terms": ["Media Outreach"]
+  },
+  {
+    "label": "Brand Reputation",
+    "terms": ["Brand Reputation", "Reputation Management"]
+  },
+
+  {
+    "label": "B2B Sales",
+    "terms": [
+      "B2B Sales",
+      "Business-to-Business Sales",
+      "Business to Business Sales"
+    ]
+  },
+  {
+    "label": "Enterprise Sales",
+    "terms": ["Enterprise Sales"]
+  },
+  {
+    "label": "Solution Selling",
+    "terms": ["Solution Selling", "Solutions Selling"]
+  },
+  {
+    "label": "Consultative Selling",
+    "terms": ["Consultative Selling", "Consultative Sales"]
+  },
+  {
+    "label": "MEDDIC",
+    "terms": ["MEDDIC"]
+  },
+  {
+    "label": "MEDDPICC",
+    "terms": ["MEDDPICC"]
+  },
+  {
+    "label": "BANT",
+    "terms": ["BANT"]
+  },
+  {
+    "label": "Deal Closing",
+    "terms": ["Deal Closing", "Closing Deals"]
+  },
+  {
+    "label": "Account Executive",
+    "terms": ["Account Executive", "AE"]
+  },
+  {
+    "label": "Sales Development Representative",
+    "terms": ["Sales Development Representative", "SDR"]
+  },
+  {
+    "label": "Business Development Representative",
+    "terms": ["Business Development Representative", "BDR"]
+  },
+  {
+    "label": "Territory Management",
+    "terms": ["Territory Management", "Sales Territory Management"]
+  },
+  {
+    "label": "Quota Attainment",
+    "terms": ["Quota Attainment", "Sales Quota Attainment"]
+  },
+
+  {
+    "label": "Lead Generation",
+    "terms": ["Lead Generation", "Lead Gen"]
+  },
+  {
+    "label": "Sales Pipeline Management",
+    "terms": ["Pipeline Management", "Sales Pipeline Management"]
+  },
+  {
+    "label": "Cold Calling",
+    "terms": ["Cold Calling", "Cold Calls"]
+  },
+  {
+    "label": "Cold Emailing",
+    "terms": ["Cold Emailing", "Cold Email", "Cold Emails"]
+  },
+  {
+    "label": "Sales Prospecting",
+    "terms": ["Sales Prospecting", "Prospecting"]
+  },
+  {
+    "label": "Lead Qualification",
+    "terms": ["Lead Qualification", "Qualifying Leads"]
+  },
+  {
+    "label": "Lead Nurturing",
+    "terms": ["Lead Nurturing"]
+  },
+  {
+    "label": "Outreach.io",
+    "terms": ["Outreach.io", "Outreach"]
+  },
+  {
+    "label": "Salesloft",
+    "terms": ["Salesloft"]
+  },
+  {
+    "label": "Apollo.io",
+    "terms": ["Apollo.io"]
+  },
+  {
+    "label": "ZoomInfo",
+    "terms": ["ZoomInfo"]
+  },
+
+  {
+    "label": "CRM",
+    "terms": ["CRM", "Customer Relationship Management"]
+  },
+  {
+    "label": "Zoho CRM",
+    "terms": ["Zoho CRM"]
+  },
+  {
+    "label": "Pipedrive",
+    "terms": ["Pipedrive"]
+  },
+
+  {
+    "label": "E-commerce",
+    "terms": [
+      "E-commerce",
+      "Ecommerce",
+      "E-Commerce",
+      "eCommerce",
+      "Electronic Commerce"
+    ]
+  },
+  {
+    "label": "Direct-to-Consumer",
+    "terms": ["Direct-to-Consumer", "Direct to Consumer", "DTC"]
+  },
+  {
+    "label": "Marketplace Management",
+    "terms": ["Marketplace Management"]
+  },
+  {
+    "label": "Amazon Seller Central",
+    "terms": ["Amazon Seller Central"]
+  },
+  {
+    "label": "Amazon FBA",
+    "terms": ["Amazon FBA", "Fulfillment by Amazon", "Fulfilment by Amazon"]
+  },
+
+  {
+    "label": "Shopify",
+    "terms": ["Shopify"]
+  },
+  {
+    "label": "Shopify Plus",
+    "terms": ["Shopify Plus"]
+  },
+  {
+    "label": "Shopify Liquid",
+    "terms": ["Shopify Liquid", "Liquid Shopify"]
+  },
+  {
+    "label": "Shopify App Development",
+    "terms": ["Shopify App Development", "Shopify App Developer"]
+  },
+  {
+    "label": "Magento",
+    "terms": ["Magento", "Magento 2"]
+  },
+  {
+    "label": "Adobe Commerce",
+    "terms": ["Adobe Commerce"]
+  },
+  {
+    "label": "WooCommerce",
+    "terms": ["WooCommerce"]
+  },
+  {
+    "label": "BigCommerce",
+    "terms": ["BigCommerce"]
+  },
+
+  {
+    "label": "WordPress",
+    "terms": ["WordPress", "Wordpress"]
+  },
+  {
+    "label": "WP Engine",
+    "terms": ["WP Engine", "WPEngine"]
+  },
+  {
+    "label": "Elementor",
+    "terms": ["Elementor"]
+  },
+  {
+    "label": "Webflow",
+    "terms": ["Webflow"]
+  },
+  {
+    "label": "Squarespace",
+    "terms": ["Squarespace"]
+  },
+  {
+    "label": "Wix",
+    "terms": ["Wix"]
+  },
+  {
+    "label": "Headless CMS",
+    "terms": ["Headless CMS", "Headless Content Management System"]
+  },
+  {
+    "label": "Prismic",
+    "terms": ["Prismic", "Prismic CMS"]
+  },
+  {
+    "label": "Contentful",
+    "terms": ["Contentful"]
+  },
+  {
+    "label": "Strapi",
+    "terms": ["Strapi"]
+  },
+  {
+    "label": "Sanity",
+    "terms": ["Sanity.io", "Sanity CMS", "Sanity"]
+  },
+  {
+    "label": "Storyblok",
+    "terms": ["Storyblok"]
+  },
+
+  {
+    "label": "Customer Success",
+    "terms": ["Customer Success"]
+  },
+  {
+    "label": "Customer Success Manager",
+    "terms": ["Customer Success Manager", "CSM"]
+  },
+  {
+    "label": "Client Retention",
+    "terms": ["Client Retention", "Customer Retention"]
+  },
+  {
+    "label": "Churn Reduction",
+    "terms": ["Churn Reduction", "Customer Churn Reduction"]
+  },
+  {
+    "label": "Customer Onboarding",
+    "terms": ["Customer Onboarding", "Client Onboarding"]
+  },
+  {
+    "label": "NPS",
+    "terms": ["NPS", "Net Promoter Score"]
+  },
+  {
+    "label": "Gainsight",
+    "terms": ["Gainsight"]
+  },
+  {
+    "label": "Zendesk",
+    "terms": ["Zendesk"]
+  },
+  {
+    "label": "Freshdesk",
+    "terms": ["Freshdesk"]
+  },
+  {
+    "label": "Intercom",
+    "terms": ["Intercom"]
+  },
+
+  {
+    "label": "Growth Marketing",
+    "terms": ["Growth Marketing"]
+  },
+  {
+    "label": "Growth Hacking",
+    "terms": ["Growth Hacking"]
+  },
+  {
+    "label": "Product-Led Growth",
+    "terms": ["Product-Led Growth", "Product Led Growth", "PLG"]
+  },
+  {
+    "label": "Customer Acquisition",
+    "terms": ["Customer Acquisition", "User Acquisition"]
+  },
+  {
+    "label": "CAC/LTV",
+    "terms": [
+      "CAC/LTV",
+      "CAC to LTV",
+      "Customer Acquisition Cost to Lifetime Value"
+    ]
+  },
+  {
+    "label": "Viral Loops",
+    "terms": ["Viral Loop", "Viral Loops"]
+  },
+  {
+    "label": "Funnel Optimization",
+    "terms": ["Funnel Optimization", "Funnel Optimisation"]
+  },
+
+  {
+    "label": "Event Marketing",
+    "terms": ["Event Marketing"]
+  },
+  {
+    "label": "Webinars",
+    "terms": ["Webinar", "Webinars"]
+  },
+  {
+    "label": "Trade Shows",
+    "terms": ["Trade Show", "Trade Shows"]
+  },
+  {
+    "label": "Conference Management",
+    "terms": ["Conference Management"]
+  },
+  {
+    "label": "Event Planning",
+    "terms": ["Event Planning"]
+  },
+  {
+    "label": "Virtual Events",
+    "terms": ["Virtual Event", "Virtual Events"]
+  }
+]

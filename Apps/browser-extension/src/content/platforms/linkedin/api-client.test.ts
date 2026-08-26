@@ -40,4 +40,25 @@ describe('fetchLinkedInJobPosting posting dates', () => {
     });
     expect(result?.postingObservedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
   });
+
+  it('extracts title and company from Voyager API response', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: {
+          title: 'Senior Software Engineer',
+          companyName: 'Acme Global',
+          listedAt: Date.parse('2026-08-24T06:30:00.000Z'),
+        },
+      }),
+    }));
+
+    const result = await fetchLinkedInJobPosting('123456789');
+
+    expect(result).toMatchObject({
+      title: 'Senior Software Engineer',
+      company: 'Acme Global',
+      lastPostedAt: '2026-08-24T06:30:00.000Z',
+    });
+  });
 });

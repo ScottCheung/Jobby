@@ -26,7 +26,12 @@ const formResponseSchema = z.discriminatedUnion("ok", [
 ]);
 
 const highlightResponseSchema = z.discriminatedUnion("ok", [
-  z.object({ ok: z.literal(true), highlighted: z.boolean() }),
+  z.object({
+    ok: z.literal(true),
+    highlighted: z.boolean(),
+    matchCount: z.number().optional(),
+    currentIndex: z.number().optional(),
+  }),
   z.object({ ok: z.literal(false), error: z.string().min(1) }),
 ]);
 
@@ -430,7 +435,7 @@ export async function focusActiveTabField(target: FormFieldTarget): Promise<Form
 
 export async function highlightJobRequirementInActiveTab(
   searchTerms: string[],
-): Promise<boolean> {
+): Promise<{ highlighted: boolean; matchCount: number; currentIndex: number }> {
   const rawResponse = await sendToActiveTab({
     type: 'content.highlight-job-requirement',
     searchTerms,
@@ -439,7 +444,11 @@ export async function highlightJobRequirementInActiveTab(
   if (!parsed.success)
     throw new Error('The page returned an invalid job requirement response.');
   if (!parsed.data.ok) throw new Error(parsed.data.error);
-  return parsed.data.highlighted;
+  return {
+    highlighted: parsed.data.highlighted,
+    matchCount: parsed.data.matchCount ?? (parsed.data.highlighted ? 1 : 0),
+    currentIndex: parsed.data.currentIndex ?? (parsed.data.highlighted ? 1 : 0),
+  };
 }
 
 export async function uploadActiveTabFile(instruction: FileUploadInstruction): Promise<FieldFillResult> {

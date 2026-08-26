@@ -5,6 +5,15 @@
 >
 > **Important:** Job ads expire quickly. For ATS platforms I prioritised direct application/job pages. For Indeed and Glassdoor, native listings are often indexed/redirected inconsistently, so I included stable search entry points as fallback discovery links. SEEK links below are current direct job pages.
 
+Before manual testing, rebuild the extension and reload the unpacked extension in the browser:
+
+```bash
+cd Apps/browser-extension
+npm run build
+```
+
+Never click the final submit button on a real application. The expected regression result is that Jobby can detect, read, and fill the page without submitting it.
+
 ## 1. SEEK
 
 1. [NinjaTech AI — Senior Full Stack Engineer](https://au.seek.com/job/93941097)
@@ -135,6 +144,71 @@ Taleo is older and many employers are migrating away from it, but it is useful f
 
 ---
 
+## 11. iCIMS
+
+1. [iCIMS — Software Developer](https://careers.icims.com/careers-home/jobs/6555?lang=en-gb)
+2. [Atlassian — Americas job search](https://careers-americas.icims.com/jobs/search?ss=1)
+3. [iCIMS customer HR jobs](https://hrjobs.icims.com/jobs)
+
+**Detection:** hostname ends in `icims.com` or `icims-candidateportal.com`. Branded career sites may instead be detected from iCIMS DOM markers.
+
+> Tip: the first link is a direct detail page. The search pages are useful for finding a fresh application form if that role expires.
+
+---
+
+## 12. SAP SuccessFactors
+
+1. [International Criminal Court — career portal](https://career5.successfactors.eu/career?company=1657261P2)
+2. [HORNBACH — candidate portal](https://career5.successfactors.eu/career?career_company=Hornbach&lang=sv_SE&company=Hornbach)
+3. [Carhartt — career portal](https://career4.successfactors.com/career?company=C0004832834P)
+4. [Queensland Government / Data#3 portal](https://career10.successfactors.com/career?company=datacombusP)
+
+**Detection:** `successfactors.com`, `successfactors.eu`, `sapsf.com`, or `sapsf.eu`. Branded redirects may instead rely on SuccessFactors DOM markers.
+
+> Tip: select a live role inside the portal before checking job extraction and the application form. Some tenants require a candidate account before showing every field.
+
+---
+
+## 13. Oracle Recruiting Cloud
+
+1. [BNY — career search](https://eofe.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/BNY-Careers/jobs?bid=2503)
+2. [Oracle Health — Principal Software Engineer](https://eeho.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/job/336136)
+3. [Fortinet — Consulting Systems Engineer, Australia/New Zealand](https://edel.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/job/22169)
+4. [Oracle tenant — Software Development Engineer 3](https://ebwb.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/nl/sites/CX/job/11746/)
+5. [Oracle tenant — Senior Software Engineer](https://ebwg.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX/job/16824/)
+
+**Detection:** Oracle Candidate Experience pages on `oraclecloud.com`, usually under `/hcmUI/CandidateExperience/`.
+
+> Tip: Oracle can redirect to a canonical site name while keeping the same job ID. That redirect is expected and should remain detected as Oracle.
+
+---
+
+## 14. Workable
+
+1. [Teamified — Software Engineer, Brisbane application](https://apply.workable.com/teamified/j/8023551675/apply/)
+2. [Teamified — Senior Software Engineer, Melbourne application](https://apply.workable.com/teamified/j/0D2A6F476A/apply/)
+3. [1GLOBAL — Senior Software Engineer, Network Automation](https://apply.workable.com/1global/j/416C706063/apply/)
+4. [CORTO — Senior Software Engineer (.NET)](https://apply.workable.com/docorto/j/17EA684847/apply/)
+5. [LEAP — Software Engineer](https://apply.workable.com/leap-legal-software/j/8055918BC1)
+
+**Detection:** `apply.workable.com` or `workable.com`, with a `/j/<job-id>` path for direct jobs.
+
+---
+
+## 15. BambooHR
+
+1. [Fly.io — Infrastructure Ops Engineer](https://flyio.bamboohr.com/careers/35)
+2. [Fly.io — Developer Relations Engineer](https://flyio.bamboohr.com/careers/36)
+3. [Fly.io — Solutions Architect](https://flyio.bamboohr.com/careers/37)
+4. [Fly.io — Technical Writer, Developer Docs](https://flyio.bamboohr.com/careers/38)
+5. [Fly.io — Technical Writer](https://flyio.bamboohr.com/careers/64)
+
+**Detection:** tenant hostnames ending in `bamboohr.com` or `bamboohr.co.uk`, normally under `/careers/<job-id>`.
+
+> Tip: BambooHR expands its application form on the job page. Start filling, verify the fields, and stop before **Submit Application**.
+
+---
+
 # Suggested Regression Order
 
 For autofill development, I would test in this order:
@@ -143,14 +217,32 @@ For autofill development, I would test in this order:
 2. Lever
 3. Ashby
 4. SmartRecruiters
-5. SEEK Quick Apply
-6. LinkedIn Easy Apply
-7. Workday
-8. Indeed Apply
-9. Taleo
-10. Glassdoor / external redirects
+5. Workable
+6. BambooHR
+7. iCIMS
+8. SEEK Quick Apply
+9. LinkedIn Easy Apply
+10. Workday
+11. Oracle Recruiting Cloud
+12. SAP SuccessFactors
+13. Indeed Apply
+14. Taleo
+15. Glassdoor / external redirects
 
-The first four give you relatively repeatable forms. Workday and Taleo are much better stress tests for dynamic controls, multi-step flows, custom selects, uploads, and employer-specific questions.
+The first seven give you relatively repeatable forms. Workday, Oracle, SuccessFactors, and Taleo are better stress tests for dynamic controls, multi-step flows, custom selects, uploads, candidate accounts, and employer-specific questions.
+
+## Automated regression
+
+Run these before the manual link matrix:
+
+```bash
+cd Apps/browser-extension
+npm run typecheck
+npx vitest run
+npm run build
+```
+
+Expected result: typecheck, all tests, and the production build pass. Build-time bundle-size and third-party source-map warnings are informational unless they become errors.
 
 ## Useful test matrix
 
