@@ -549,10 +549,10 @@ function createFloatingBall() {
     /* ─── Floating Dialog Iframe Container ───────────────────────── */
     #jobby-dialog-iframe-wrapper {
       position: absolute !important;
-      width: 360px !important;
-      height: 580px !important;
-      max-height: calc(100vh - 30px) !important;
-      max-width: calc(100vw - 75px) !important;
+      width: 376px !important;
+      height: 600px !important;
+      max-height: calc(100vh - 40px) !important;
+      max-width: calc(100vw - 80px) !important;
       z-index: 2147483646 !important;
       overflow: visible !important;
       background: transparent !important;

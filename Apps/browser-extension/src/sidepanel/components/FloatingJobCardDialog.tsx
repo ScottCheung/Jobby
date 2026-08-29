@@ -1,7 +1,6 @@
 /** @format */
 
 import { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
 import type {
   JobSnapshot,
   PageInspection,
@@ -113,11 +112,7 @@ export function FloatingJobCardDialog() {
   const handleTailor = (docType: DocType) => {
     try {
       window.parent?.postMessage(
-        {
-          source: 'jobby-dialog',
-          type: 'jobby.dialog-trigger-tailor',
-          docType,
-        },
+        { source: 'jobby-dialog', type: 'jobby.dialog-trigger-tailor', docType },
         '*',
       );
       if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
@@ -208,7 +203,7 @@ export function FloatingJobCardDialog() {
       }
     };
 
-    if (
+    if(
       typeof chrome !== 'undefined' &&
       chrome.tabs?.onActivated &&
       chrome.tabs?.onUpdated
@@ -249,7 +244,7 @@ export function FloatingJobCardDialog() {
   const isAlignTop = ballPosition.pos === 'top';
 
   const bubblePositionClass = cn(
-    'flex w-full h-full p-1',
+    'flex w-full h-full p-2',
     isAlignRight ? 'justify-end' : 'justify-start',
     isAlignTop ? 'items-start'
     : isAlignBottom ? 'items-end'
@@ -257,33 +252,38 @@ export function FloatingJobCardDialog() {
   );
 
   return (
-    <div
-      className={cn(
-        'relative h-screen w-full bg-transparent text-foreground overflow-hidden font-sans select-none pointer-events-none',
-        bubblePositionClass,
-      )}
-    >
+    <div className='h-screen w-full bg-transparent text-foreground overflow-hidden font-sans select-text box-border'>
       {isLoading ? (
-        <div className='pointer-events-auto flex items-center gap-2 px-3 py-1.5 rounded-full bg-panel/95 border border-primary/40 backdrop-blur-md text-foreground'>
-          <span className='text-[11.5px] font-bold tracking-tight animate-text-shimmer animate-text-shimmer-primary whitespace-nowrap'>
-            Recognition...
-          </span>
+        <div className={cn(bubblePositionClass, 'animate-in fade-in duration-100')}>
+          <div className='flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-background-primary border border-primary/40  backdrop-blur-md text-foreground'>
+            <span className='relative flex h-2 w-2 shrink-0'>
+              <span className='animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75'></span>
+              <span className='relative inline-flex rounded-full h-2 w-2 bg-primary'></span>
+            </span>
+            <span className='text-[11.5px] font-bold tracking-tight animate-text-shimmer animate-text-shimmer-primary whitespace-nowrap'>
+              Recognition...
+            </span>
+            <div className='w-7 h-1.5 rounded-full overflow-hidden bg-primary/10 shrink-0'>
+              <div className='w-full h-full animate-skeleton-shimmer'></div>
+            </div>
+          </div>
         </div>
-      ) : (
-        <motion.div
-          layout
-          className={cn(
-            'pointer-events-auto flex flex-col gap-2 p-1 w-auto max-h-full min-h-0 overflow-y-auto no-scrollbar bg-background-primary rounded-tl-[5em]! rounded-2xl animate-in fade-in duration-100',
-          )}
-        >
-          {showNotJobOverlay ? (
-            <PlatformQuickSearchCard
-              activeProfile={jobMatch.activeProfile}
-              onReDetect={handleReDetectPage}
-              isInspecting={isInspectingPage}
-            />
-          ) : isJobPage ? (
-            <>
+      ) : showNotJobOverlay ? (
+        <div className='flex flex-col h-full max-h-screen w-full '>
+          <div className='flex flex-col w-full h-full max-h-full bg-background-primary rounded-2xl p-1 border border-primary/20 overflow-hidden box-border'>
+            <div className='flex flex-col gap-2.5 w-full h-full overflow-y-auto overscroll-contain p-0.5 custom-scrollbar'>
+              <PlatformQuickSearchCard
+                activeProfile={jobMatch.activeProfile}
+                onReDetect={handleReDetectPage}
+                isInspecting={isInspectingPage}
+              />
+            </div>
+          </div>
+        </div>
+      ) : isJobPage ? (
+        <div className='flex flex-col h-full max-h-screen w-full '>
+          <div className='flex flex-col w-full h-full max-h-full bg-background-primary rounded-tl-[4rem] rounded-tr-2xl rounded-bl-2xl rounded-br-2xl p-2  border border-primary/20 overflow-hidden box-border'>
+            <div className='flex flex-col gap-2.5 w-full h-full overflow-y-auto overscroll-contain p-0.5 custom-scrollbar'>
               <JobScoreCard
                 latestInspection={latestInspection}
                 latestMatch={jobMatch.evaluation}
@@ -308,10 +308,10 @@ export function FloatingJobCardDialog() {
                 onUnclaimSkill={jobMatch.unclaimSkill}
                 activeProfile={jobMatch.activeProfile}
               />
-            </>
-          ) : null}
-        </motion.div>
-      )}
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <Toaster />
     </div>

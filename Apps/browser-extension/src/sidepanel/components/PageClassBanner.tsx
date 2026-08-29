@@ -669,7 +669,7 @@ export function PageClassBanner({
               };
 
               const handleOpenSearch = (query: string) => {
-                const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+                const searchUrl = `https://www.google.com/search?q=${encodeURIComponent('What is ' + query)}`;
                 if (typeof chrome !== 'undefined' && chrome.tabs?.create) {
                   chrome.tabs.create({ url: searchUrl });
                 } else {
@@ -763,11 +763,9 @@ export function PageClassBanner({
                         <PopoverArrow width={14} height={7} />
                         <div className='flex items-center justify-between pb-0.5'>
                           <div className='flex items-center gap-1.5 min-w-0 flex-1 mr-2'>
-                            <span className='flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold'>
-                              ✓
-                            </span>
+
                             <a
-                              href={`https://www.google.com/search?q=${encodeURIComponent(tech)}`}
+                              href={`https://www.google.com/search?q=${encodeURIComponent('What is ' + tech)}`}
                               target='_blank'
                               rel='noopener noreferrer'
                               onClick={(e) => {
@@ -880,11 +878,9 @@ export function PageClassBanner({
                         <PopoverArrow width={14} height={7} />
                         <div className='flex items-center justify-between pb-0.5'>
                           <div className='flex items-center gap-1.5 min-w-0 flex-1 mr-2'>
-                            <span className='flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold'>
-                              ✓
-                            </span>
+
                             <a
-                              href={`https://www.google.com/search?q=${encodeURIComponent(tech)}`}
+                              href={`https://www.google.com/search?q=${encodeURIComponent('What is ' + tech)}`}
                               target='_blank'
                               rel='noopener noreferrer'
                               onClick={(e) => {
@@ -954,15 +950,7 @@ export function PageClassBanner({
                             <GoogleIcon className='w-3 h-3' />
                             <span className='truncate'>Google</span>
                           </Button>
-                          <Button
-                            type='button'
-                            variant='secondary'
-                            size='sm'
-                            className='flex-1 h-6.5 px-2 text-[11px] cursor-pointer font-medium hover:bg-muted/80 transition-all active:scale-95 min-w-0'
-                            onClick={() => setActiveTech(null)}
-                          >
-                            <span>Got it</span>
-                          </Button>
+            
                         </div>
                       </PopoverContent>
                     </Popover>
@@ -1008,11 +996,9 @@ export function PageClassBanner({
                         <PopoverArrow width={14} height={7} />
                         <div className='flex items-center justify-between pb-0.5'>
                           <div className='flex items-center gap-1.5 min-w-0 flex-1 mr-2'>
-                            <span className='flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-warning/20 text-warning text-[10px] font-bold'>
-                              +
-                            </span>
+
                             <a
-                              href={`https://www.google.com/search?q=${encodeURIComponent(tech)}`}
+                              href={`https://www.google.com/search?q=${encodeURIComponent('What is ' + tech)}`}
                               target='_blank'
                               rel='noopener noreferrer'
                               onClick={(e) => {
