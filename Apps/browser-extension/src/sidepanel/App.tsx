@@ -277,6 +277,32 @@ export function App() {
     null;
 
   useEffect(() => {
+    const handleActionMessage = (message: unknown) => {
+      if (typeof message !== 'object' || message === null) return;
+      const candidate = message as {
+        type?: unknown;
+        docType?: DocType;
+        tab?: TabType;
+      };
+      if (candidate.type === 'sidepanel.open-tab' && candidate.tab) {
+        setActiveTab(candidate.tab);
+      } else if (
+        candidate.type === 'sidepanel.trigger-tailor' &&
+        candidate.docType
+      ) {
+        setActiveTab('home');
+        openGenerationConfirmation(candidate.docType);
+      }
+    };
+    if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
+      chrome.runtime.onMessage.addListener(handleActionMessage);
+      return () => {
+        chrome.runtime.onMessage.removeListener(handleActionMessage);
+      };
+    }
+  }, []);
+
+  useEffect(() => {
     if (activeTab === 'studio') tailorStudio.markDocumentsSeen();
   }, [activeTab, tailorStudio.markDocumentsSeen]);
   // dependencies. Including them there created a loop: inspect → state update

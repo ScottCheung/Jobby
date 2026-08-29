@@ -3,7 +3,7 @@ import type { FormInspection } from "../shared/contracts/form-inspection";
 import type { ProviderAutofillPolicy } from "../content/platforms/platform-definition";
 import { ashbyAutofillPolicy } from "../content/platforms/ashby/autofill-policy";
 
-import { inspectActiveTab, inspectFormActiveTab, fillActiveTabField, uploadActiveTabFile } from "./content-bridge";
+import { autofillWorkdayStructuredActiveTab, inspectActiveTab, inspectFormActiveTab, fillActiveTabField, uploadActiveTabFile } from "./content-bridge";
 import { apiClient } from "./api-client";
 import { logDiagnostic } from "./diagnostics";
 import { getAutofillSessionId } from "./session-store";
@@ -290,7 +290,25 @@ export async function autofillDetectedFormForActiveTab(): Promise<{
   results: FieldFillResult[];
   unansweredFields: Array<{ key: string; label: string; reason: string }>;
 }> {
-  const initialForm = await inspectFormActiveTab();
+  let initialForm = await inspectFormActiveTab();
+  let structuredResults: FieldFillResult[] = [];
+  if (
+    (initialForm.kind === "application_form" || initialForm.kind === "page_input_fields") &&
+    initialForm.platform === "workday"
+  ) {
+    const [profiles, savedSkills] = await Promise.all([
+      apiClient.getCareerProfiles(),
+      apiClient.getUserSkills().catch(() => []),
+    ]);
+    const profile = profiles.find((candidate) => candidate.is_default) || profiles[0];
+    if (profile?.resume_data) {
+      structuredResults = await autofillWorkdayStructuredActiveTab(
+        profile.resume_data,
+        savedSkills.map((skill) => skill.canonical_name || skill.skill_name),
+      );
+      initialForm = await inspectFormActiveTab();
+    }
+  }
   const autofillPolicy = autofillPolicyFor(initialForm);
   if (autofillPolicy?.mode === "sequential") {
     return autofillFieldsSequentially(initialForm, autofillPolicy);
@@ -301,7 +319,7 @@ export async function autofillDetectedFormForActiveTab(): Promise<{
   const activeTab = (await chrome.tabs.query({ active: true, lastFocusedWindow: true }))[0];
   const sessionId = activeTab?.id === undefined ? undefined : await getAutofillSessionId(activeTab.id);
 
-  return fillFormWithReactiveConvergence(
+  const result = await fillFormWithReactiveConvergence(
     () => inspectFormActiveTab(),
     (form: FormInspection) => {
       const scene = inferFormScene(form);
@@ -316,6 +334,10 @@ export async function autofillDetectedFormForActiveTab(): Promise<{
       );
     },
   );
+  return {
+    ...result,
+    results: [...structuredResults, ...result.results],
+  };
 }
 
 /**

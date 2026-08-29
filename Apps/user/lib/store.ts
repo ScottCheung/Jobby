@@ -67,10 +67,9 @@ export const useAuthStore = create<AuthState>()(
         const state = get();
         if (!state.loginTime) return false;
 
-        const maxDuration = state.rememberMe !== false ? REMEMBER_ME_DURATION : 24 * 60 * 60 * 1000;
         const now = Date.now();
         const elapsed = now - state.loginTime;
-        return elapsed > maxDuration;
+        return elapsed > REMEMBER_ME_DURATION;
       },
     }),
     {

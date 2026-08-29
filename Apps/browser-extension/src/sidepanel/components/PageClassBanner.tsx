@@ -21,6 +21,7 @@ import { motion, LayoutGroup } from 'framer-motion';
 import { Button } from '@jobby/ui/components/UI/Button';
 import {
   Popover,
+  PopoverArrow,
   PopoverContent,
   PopoverTrigger,
 } from '@jobby/ui/components/UI/popover';
@@ -755,10 +756,12 @@ export function PageClassBanner({
                       <PopoverContent
                         side='top'
                         align='center'
-                        sideOffset={6}
-                        className='w-[270px] p-3 rounded-xl border border-primary/80 bg-background text-foreground shadow-xl text-xs space-y-2.5 z-[200]'
+                        sideOffset={8}
+                        collisionPadding={12}
+                        className='w-[270px] max-w-[calc(100vw-24px)] p-3 rounded-xl border-none bg-panel text-foreground shadow-2xl text-xs flex flex-col gap-2.5 z-[200]'
                       >
-                        <div className='flex items-center justify-between border-b border-primary/60 pb-1.5'>
+                        <PopoverArrow width={14} height={7} />
+                        <div className='flex items-center justify-between pb-0.5'>
                           <div className='flex items-center gap-1.5 min-w-0 flex-1 mr-2'>
                             <span className='flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold'>
                               ✓
@@ -870,10 +873,12 @@ export function PageClassBanner({
                       <PopoverContent
                         side='top'
                         align='center'
-                        sideOffset={6}
-                        className='w-[270px] p-3 rounded-xl border border-primary/80 bg-background text-foreground shadow-xl text-xs space-y-2.5 z-[200]'
+                        sideOffset={8}
+                        collisionPadding={12}
+                        className='w-[270px] max-w-[calc(100vw-24px)] p-3 rounded-xl border-none bg-panel text-foreground shadow-2xl text-xs flex flex-col gap-2.5 z-[200]'
                       >
-                        <div className='flex items-center justify-between border-b border-primary/60 pb-1.5'>
+                        <PopoverArrow width={14} height={7} />
+                        <div className='flex items-center justify-between pb-0.5'>
                           <div className='flex items-center gap-1.5 min-w-0 flex-1 mr-2'>
                             <span className='flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold'>
                               ✓
@@ -996,10 +1001,12 @@ export function PageClassBanner({
                       <PopoverContent
                         side='top'
                         align='center'
-                        sideOffset={6}
-                        className='w-[270px] p-3 rounded-xl border border-primary/80 bg-background text-foreground shadow-xl text-xs space-y-2.5 z-[200]'
+                        sideOffset={8}
+                        collisionPadding={12}
+                        className='w-[270px] max-w-[calc(100vw-24px)] p-3 rounded-xl border-none bg-panel text-foreground shadow-2xl text-xs flex flex-col gap-2.5 z-[200]'
                       >
-                        <div className='flex items-center justify-between border-b border-primary/60 pb-1.5'>
+                        <PopoverArrow width={14} height={7} />
+                        <div className='flex items-center justify-between pb-0.5'>
                           <div className='flex items-center gap-1.5 min-w-0 flex-1 mr-2'>
                             <span className='flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-warning/20 text-warning text-[10px] font-bold'>
                               +

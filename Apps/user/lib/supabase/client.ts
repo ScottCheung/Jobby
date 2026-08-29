@@ -30,9 +30,8 @@ export async function getValidAuthSession(): Promise<Session | null> {
       const parsed = JSON.parse(rawAuth)
       const state = parsed?.state
       if (state?.loginTime) {
-        const maxDuration = state.rememberMe !== false ? SEVEN_DAYS_SECONDS * 1000 : 24 * 60 * 60 * 1000
         const elapsed = Date.now() - Number(state.loginTime)
-        if (elapsed > maxDuration) {
+        if (elapsed > SEVEN_DAYS_SECONDS * 1000) {
           const supabase = createClient()
           await supabase.auth.signOut().catch(() => {})
           localStorage.removeItem('auth-storage')

@@ -1,6 +1,6 @@
-import { autoClickFirstJobCard } from "./auto-select-first-job";
+import { autoSelectFirstJobCard } from "./auto-select-first-job";
 import { handleContentCommand, startContentFormDiscovery } from "./command-handler";
-import { initializeFloatingBall } from "./dom/floating-ball";
+import { initializeFloatingBall, runJobDetectionForBall } from "./dom/floating-ball";
 import { classifyCurrentPage } from "./page-classifier";
 import { observeIndeedJobDom } from "./platforms/indeed/page-change-observer";
 import { detectDedicatedPlatform } from "./platforms/provider-routing";
@@ -140,7 +140,7 @@ const observedPlatform = detectDedicatedPlatform(window.location, document);
 if (isTopLevelFrame && isExtensionContextValid()) {
   cleanupCallbacks.push(initializeFloatingBall());
   if (observedPlatform) {
-    cleanupCallbacks.push(autoClickFirstJobCard(document));
+    cleanupCallbacks.push(autoSelectFirstJobCard(document));
     const syncDiscoveryState = () => {
       try {
         if (!isExtensionContextValid()) {
@@ -171,8 +171,9 @@ if (isTopLevelFrame && isExtensionContextValid()) {
             window.__jobbyContentBootstrapCleanup?.();
             return;
           }
-          autoClickFirstJobCard(document);
+          autoSelectFirstJobCard(document);
           syncDiscoveryState();
+          runJobDetectionForBall(true);
           if (chrome.runtime?.id && chrome.runtime?.sendMessage) {
             chrome.runtime.sendMessage({ type: "content.page-changed" }).catch(() => undefined);
           }

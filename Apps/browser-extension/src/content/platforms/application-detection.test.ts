@@ -83,6 +83,16 @@ describe("platform-specific application question detection", () => {
       label: "Workday custom question",
     },
     {
+      platform: "workday",
+      url: "https://tenant.myworkdayjobs.com/en-US/Careers/job/Sydney/UI-Engineer_JR1043041/apply/applyManually",
+      root: `<section data-automation-id="applyFlowPage">
+        <div data-automation-id="formField-legalName--firstName"><label for="platform-question">Given Name *</label>
+          <input id="platform-question" name="legalName--firstName" /></div>
+        <button data-automation-id="pageFooterNextButton">Save and Continue</button>
+      </section>`,
+      label: "Given Name",
+    },
+    {
       platform: "greenhouse",
       url: "https://boards.greenhouse.io/acme/jobs/123#app",
       root: `<form id="application-form" class="application--form">

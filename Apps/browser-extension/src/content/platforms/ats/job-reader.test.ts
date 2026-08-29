@@ -194,6 +194,24 @@ describe("ATS-specific job readers", () => {
     expect(() => pageInspectionSchema.parse(inspection)).not.toThrow();
   });
 
+  it("combines Workable description, requirements, and benefits", () => {
+    setLocation("https://apply.workable.com/acme/j/WORK123/");
+    document.title = "Acme - Workable Frontend Engineer";
+    document.body.innerHTML = `<div data-ui="overview"><h1 data-ui="job-title">Workable Frontend Engineer</h1>
+      <section data-ui="job-description">Build customer-facing TypeScript products with reliable APIs and automated testing.</section>
+      <section data-ui="job-requirements">You bring React experience, strong communication, and a focus on code quality.</section>
+      <section data-ui="job-benefits">Hybrid work, a learning budget, and a supportive team.</section>
+      <a data-ui="apply-button" href="/acme/j/WORK123/apply/">Apply</a></div>`;
+
+    const inspection = readAtsJobPage("workable");
+
+    expect(inspection.kind).toBe("job");
+    if (inspection.kind !== "job") return;
+    expect(inspection.snapshot.description).toContain("Build customer-facing TypeScript products");
+    expect(inspection.snapshot.description).toContain("You bring React experience");
+    expect(inspection.snapshot.description).toContain("Hybrid work, a learning budget");
+  });
+
   it("updates the Glassdoor identity when a card changes without changing the URL", () => {
     setLocation("https://www.glassdoor.com.au/Job/software-engineer-jobs.htm?countryRedirect=true");
     document.body.innerHTML = `<div class="JobDetails_jobDetailsContainer__abc">

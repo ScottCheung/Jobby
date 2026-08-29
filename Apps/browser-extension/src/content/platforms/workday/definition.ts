@@ -1,4 +1,5 @@
 import type { AtsProviderDefinition } from "../platform-definition";
+import { excludeWorkdayManagedFields } from "./managed-fields";
 
 function cleanText(value: string | null | undefined): string {
   return (value || "").replace(/\s+/g, " ").trim();
@@ -41,11 +42,13 @@ export const workdayDefinition = {
     dom: "[data-automation-id='jobPostingPage'], [data-automation-id='jobApplicationPage']",
   },
   applicationRoots: [
+    "[data-automation-id='applyFlowPage']",
     "[data-automation-id='jobApplicationPage']",
     "[data-automation-id='applicationPage']",
     "[data-automation-id='applyFlow']",
     "[data-automation-id='applicationForm']",
   ],
+  adaptFormFields: excludeWorkdayManagedFields,
   job: {
     roots: ["[data-automation-id='jobPostingPage']", "[data-automation-id='jobDetails']"],
     title: ["[data-automation-id='jobPostingHeader'] h2", "[data-automation-id='jobPostingHeader']", "h1", "h2"],

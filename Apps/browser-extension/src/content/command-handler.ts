@@ -32,6 +32,7 @@ import {
 } from './dom/job-description-modal-injector';
 import { showInPageToast } from './dom/in-page-toast';
 import { highlightJobRequirement } from './dom/job-requirement-highlight';
+import { autofillWorkdayStructuredSections } from './platforms/workday/structured-autofill';
 
 export async function handleContentCommand(message: unknown): Promise<unknown> {
   if (isHighlightJobRequirementCommand(message)) {
@@ -129,6 +130,14 @@ export async function handleContentCommand(message: unknown): Promise<unknown> {
     }
     return { form };
   }
+  if (isAutofillWorkdayStructuredCommand(message)) {
+    return {
+      fillResults: await autofillWorkdayStructuredSections(
+        (message as { resume: import('../shared/contracts/tailored-resume').MasterResumeData }).resume,
+        (message as { skills?: string[] }).skills || [],
+      ),
+    };
+  }
   if (isFocusFormFieldCommand(message)) {
     const target = formFieldTargetSchema.parse(
       (message as { target: unknown }).target,
@@ -180,6 +189,14 @@ function isInspectFormCommand(message: unknown): boolean {
     typeof message === 'object' &&
     message !== null &&
     (message as { type?: unknown }).type === 'content.inspect-form'
+  );
+}
+
+function isAutofillWorkdayStructuredCommand(message: unknown): boolean {
+  return (
+    typeof message === 'object' &&
+    message !== null &&
+    (message as { type?: unknown }).type === 'content.autofill-workday-structured'
   );
 }
 

@@ -163,7 +163,9 @@
   { "label": "Ethers.js", "terms": ["Ethers.js", "ethersjs"] },
   { "label": "Hardhat", "terms": ["Hardhat"] },
   { "label": "Foundry", "terms": ["Foundry", "Foundry Ethereum"] },
-
+  { "label": "Claude Code", "terms": ["Claude Code", "Claude"] },
+  { "label": "Codex", "terms": ["Codex", "OpenAI Codex"] },
+  { "label": "Gemini", "terms": ["Gemini", "Google Gemini"] },
   {
     "label": "React",
     "terms": ["React", "React.js", "ReactJS"]

@@ -36,10 +36,10 @@ function termPattern(term: string): RegExp {
 const SKILL_RULES: readonly SkillRule[] = Object.entries(
   INDUSTRY_CATALOGS,
 ).flatMap(([industry, entries]) =>
-  entries.map((entry) => ({
+  (entries || []).map((entry) => ({
     label: entry.label,
     industry,
-    patterns: entry.terms.map(termPattern),
+    patterns: (entry.terms || (entry.label ? [entry.label] : [])).map(termPattern),
   })),
 );
 
@@ -56,13 +56,13 @@ export function getSkillSearchTerms(skill: string): string[] {
   const entry =
     entries.find((candidate) => candidate.label.toLowerCase() === normalized) ||
     entries.find((candidate) =>
-      candidate.terms.some((term) => term.toLowerCase() === normalized),
+      (candidate.terms || []).some((term) => term.toLowerCase() === normalized),
     );
   if (!entry) return [value];
 
   return Array.from(
     new Map(
-      [value, entry.label, ...entry.terms].map((term) => [
+      [value, entry.label, ...(entry.terms || [])].map((term) => [
         term.toLowerCase(),
         term,
       ]),

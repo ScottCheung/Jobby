@@ -185,9 +185,9 @@ export function DetectionProviderBadge({
       <PopoverContent
         side='bottom'
         align='end'
-        sideOffset={8}
-        collisionPadding={14}
-        className='w-[310px] max-w-[calc(100vw-28px)] p-3 rounded-2xl border border-primary/20 bg-background/95 backdrop-blur-xl shadow-xl z-[200]'
+        sideOffset={6}
+        collisionPadding={8}
+        className='w-[280px] max-w-[calc(100vw-16px)] p-2.5 rounded-2xl border border-primary/20 bg-background/95 backdrop-blur-xl shadow-xl z-[200] max-h-[min(420px,calc(100vh-80px))] overflow-y-auto'
       >
         <PlatformQuickSearchList activeProfile={activeProfile} />
       </PopoverContent>

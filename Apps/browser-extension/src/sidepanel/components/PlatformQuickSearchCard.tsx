@@ -266,7 +266,9 @@ function PlatformItem({
   const searchUrl = platform.getSearchUrl(searchTitle, searchLocation);
   const faviconUrl = `https://www.google.com/s2/favicons?domain=${platform.domain}&sz=64`;
 
-  const handleOpen = () => {
+  const handleOpen = (e?: React.MouseEvent) => {
+    e?.preventDefault();
+    e?.stopPropagation();
     if (typeof chrome !== 'undefined' && chrome.tabs?.create) {
       chrome.tabs.create({ url: searchUrl });
     } else {
@@ -281,8 +283,8 @@ function PlatformItem({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       className={cn(
-        'group relative w-full flex items-center justify-between text-left',
-        'p-2.5 rounded-xl transition-all duration-150',
+        'group relative w-full flex items-center justify-between text-left min-w-0',
+        'p-2 rounded-xl transition-all duration-150',
         'cursor-pointer border-0 shadow-none outline-none select-none',
         'active:scale-[0.98]',
       )}
@@ -294,19 +296,19 @@ function PlatformItem({
       }}
       title={`Search for "${searchTitle || 'jobs'}" on ${platform.name}`}
     >
-      <div className='flex items-center gap-2.5 min-w-0 pr-1'>
+      <div className='flex items-center gap-2 min-w-0 pr-0.5 flex-1 overflow-hidden'>
         {/* Full Icon with No Surrounding Background */}
-        <div className='w-5.5 h-5.5 shrink-0 flex items-center justify-center'>
+        <div className='w-4.5 h-4.5 shrink-0 flex items-center justify-center'>
           {!faviconError ?
             <img
               src={faviconUrl}
               alt={platform.name}
-              className='w-5.5 h-5.5 object-contain rounded-xs'
+              className='w-4.5 h-4.5 object-contain rounded-xs'
               onError={() => setFaviconError(true)}
               loading='lazy'
             />
           : <span
-              className='text-xs font-bold'
+              className='text-[10px] font-bold'
               style={{ color: platform.brandColor }}
             >
               {platform.name.slice(0, 2).toUpperCase()}
@@ -314,28 +316,28 @@ function PlatformItem({
           }
         </div>
 
-        <div className='min-w-0 flex flex-col'>
+        <div className='min-w-0 flex flex-col flex-1'>
           <span
-            className='text-xs font-semibold tracking-tight truncate leading-tight transition-colors'
+            className='text-[11px] font-semibold tracking-tight truncate leading-tight transition-colors'
             style={{
               color: isHovered ? platform.brandColor : undefined,
             }}
           >
             {platform.name}
           </span>
-          <span className='text-[10px] text-muted-foreground truncate leading-none mt-0.5'>
+          <span className='text-[9px] text-muted-foreground truncate leading-none mt-0.5'>
             {platform.typeLabel}
           </span>
         </div>
       </div>
 
       <div
-        className='shrink-0 flex items-center justify-center w-5 h-5 rounded-md transition-colors'
+        className='shrink-0 flex items-center justify-center w-4 h-4 rounded-md transition-colors ml-1'
         style={{
           color: isHovered ? platform.brandColor : undefined,
         }}
       >
-        <ExternalLink className='w-3.5 h-3.5 opacity-60 group-hover:opacity-100' />
+        <ExternalLink className='w-3 h-3 opacity-50 group-hover:opacity-100' />
       </div>
     </button>
   );
@@ -346,7 +348,7 @@ const containerVariants: Variants = {
   visible: {
     opacity: 1,
     transition: {
-      delayChildren: 0.15,
+      delayChildren: 0.05,
       staggerChildren: 0.035,
     },
   },

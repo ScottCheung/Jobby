@@ -4,6 +4,7 @@ import { z } from "zod";
 import { pageInspectionSchema, type PageInspection } from "../shared/contracts/page-inspection";
 import { formInspectionSchema, type FormInspection } from "../shared/contracts/form-inspection";
 import { fieldFillResultSchema, formFocusResultSchema, type FieldFillInstruction, type FieldFillResult, type FileUploadInstruction, type FormFieldTarget, type FormFocusResult } from "../shared/contracts/form-actions";
+import type { MasterResumeData } from "../shared/contracts/tailored-resume";
 
 const contentResponseSchema = z.discriminatedUnion("ok", [
   z.object({ ok: z.literal(true), inspection: pageInspectionSchema }),
@@ -12,6 +13,11 @@ const contentResponseSchema = z.discriminatedUnion("ok", [
 
 const fillResponseSchema = z.discriminatedUnion("ok", [
   z.object({ ok: z.literal(true), fillResult: fieldFillResultSchema }),
+  z.object({ ok: z.literal(false), error: z.string().min(1) }),
+]);
+
+const fillResultsResponseSchema = z.discriminatedUnion("ok", [
+  z.object({ ok: z.literal(true), fillResults: z.array(fieldFillResultSchema) }),
   z.object({ ok: z.literal(false), error: z.string().min(1) }),
 ]);
 
@@ -142,6 +148,21 @@ export async function fillActiveTabField(instruction: FieldFillInstruction): Pro
   if (!parsed.success) throw new Error("The page returned an invalid field fill response.");
   if (!parsed.data.ok) throw new Error(parsed.data.error);
   return parsed.data.fillResult;
+}
+
+export async function autofillWorkdayStructuredActiveTab(
+  resume: MasterResumeData,
+  skills: string[] = [],
+): Promise<FieldFillResult[]> {
+  const rawResponse = await sendToActiveTab({
+    type: "content.autofill-workday-structured",
+    resume,
+    skills,
+  });
+  const parsed = fillResultsResponseSchema.safeParse(rawResponse);
+  if (!parsed.success) throw new Error("The page returned invalid Workday autofill results.");
+  if (!parsed.data.ok) throw new Error(parsed.data.error);
+  return parsed.data.fillResults;
 }
 
 export async function editActiveTabField(target: FormFieldTarget, value: string | boolean): Promise<FieldFillResult> {

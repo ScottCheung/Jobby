@@ -35,7 +35,11 @@ export const workableDefinition = {
     title: ["[data-ui='job-title']", "h1"],
     company: ["[data-ui='company-name']", ".company-name"],
     location: ["[data-ui='job-location']", "[data-ui='job-workplace']", ".job-location"],
-    description: ["[data-ui='job-description']", "[data-ui='job-requirements']", "[data-ui='job-overview']", "[data-ui='section']"],
+    description: [
+      "[data-ui='job-description'], [data-ui='job-requirements'], [data-ui='job-benefits']",
+      "[data-ui='job-overview']",
+      "[data-ui='section']",
+    ],
     apply: ["[data-ui='application-form-tab']", "a[href*='/apply']", "[data-ui='apply-button']", "button[type='submit']"],
     id: ["[data-job-id]"],
     idFromUrl: lastJobPathSegment,

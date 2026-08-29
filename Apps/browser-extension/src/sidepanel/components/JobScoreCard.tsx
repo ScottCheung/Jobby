@@ -344,6 +344,25 @@ export function JobScoreCard({
       </div>
       {isJob && authConnected && onTailor && (
         <div className='mt-3 border-t border-primary/15 pt-2.5'>
+          {activeGeneration && (
+            <div
+              role='status'
+              aria-live='polite'
+              className='mb-2 flex items-start gap-2 rounded-lg border border-primary/25 bg-primary/10 px-2.5 py-2'
+            >
+              <Loader2 className='mt-0.5 h-3 w-3 shrink-0 animate-spin text-primary' />
+              <p className='text-[9px] leading-relaxed text-muted-foreground'>
+                Generating {generationLabel} for{' '}
+                <span className='font-bold text-foreground'>
+                  {activeGeneration.jobTitle || 'this role'}
+                  {activeGeneration.company ?
+                    ` at ${activeGeneration.company}`
+                  : ''}
+                </span>
+                . You can switch pages; progress will remain available.
+              </p>
+            </div>
+          )}
           <div className='grid grid-cols-3 gap-1.5 pr-1'>
             <button
               type='button'
@@ -382,25 +401,6 @@ export function JobScoreCard({
               {bothGenerating ? 'Generating...' : 'Get Both'}
             </button>
           </div>
-          {activeGeneration && (
-            <div
-              role='status'
-              aria-live='polite'
-              className='mt-2 flex items-start gap-2 rounded-lg border border-primary/25 bg-primary/10 px-2.5 py-2'
-            >
-              <Loader2 className='mt-0.5 h-3 w-3 shrink-0 animate-spin text-primary' />
-              <p className='text-[9px] leading-relaxed text-muted-foreground'>
-                Generating {generationLabel} for{' '}
-                <span className='font-bold text-foreground'>
-                  {activeGeneration.jobTitle || 'this role'}
-                  {activeGeneration.company ?
-                    ` at ${activeGeneration.company}`
-                  : ''}
-                </span>
-                . You can switch pages; progress will remain available.
-              </p>
-            </div>
-          )}
         </div>
       )}
     </div>

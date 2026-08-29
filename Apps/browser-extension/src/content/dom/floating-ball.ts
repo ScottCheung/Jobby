@@ -1,10 +1,13 @@
 /** @format */
 
+import { classifyCurrentPage } from '../page-classifier';
+
 const BALL_CONTAINER_ID = 'jobby-floating-ball-root';
 const IFRAME_CONTAINER_ID = 'jobby-in-page-sidepanel-root';
 const DISMISS_KEY = 'jobby-floating-ball-dismissed';
 const DISABLED_DOMAINS_KEY = 'jobby_disabled_domains';
 const DISABLE_ALL_PAGES_KEY = 'jobby_disabled_all_pages';
+const AUTO_SHOW_JOB_DIALOG_KEY = 'jobby_auto_show_job_dialog';
 const PANEL_WIDTH = 380;
 const PANEL_TRANSITION_MS = 800;
 const PANEL_TRANSITION_EASING = 'cubic-bezier(0.16, 1, 0.3, 1)';
@@ -27,6 +30,9 @@ let openIframeAfterNativeClose = false;
 
 let ballRoot: HTMLDivElement | null = null;
 let iframeRoot: HTMLDivElement | null = null;
+let dialogIframeWrapper: HTMLDivElement | null = null;
+let isDialogVisible = false;
+let autoShowJobDialog = true;
 let disabledDomains: string[] = [];
 let disableAllPages: boolean = false;
 let currentDocumentClickHandler: ((e: MouseEvent) => void) | null = null;
@@ -227,6 +233,8 @@ function removeFloatingBall() {
     window.removeEventListener('click', currentDocumentClickHandler, true);
     currentDocumentClickHandler = null;
   }
+  hideFloatingDialog();
+  dialogIframeWrapper = null;
   if (ballRoot) {
     ballRoot.remove();
     ballRoot = null;
@@ -234,6 +242,34 @@ function removeFloatingBall() {
   const existing = document.getElementById(BALL_CONTAINER_ID);
   if (existing) {
     existing.remove();
+  }
+}
+
+function showFloatingDialog() {
+  if (panelState !== 'idle' || isDialogVisible || !dialogIframeWrapper) return;
+  isDialogVisible = true;
+  dialogIframeWrapper.classList.add('is-visible');
+}
+
+function hideFloatingDialog() {
+  if (!isDialogVisible && !dialogIframeWrapper?.classList.contains('is-visible')) return;
+  isDialogVisible = false;
+  dialogIframeWrapper?.classList.remove('is-visible');
+}
+
+export function runJobDetectionForBall(_showDialog = true): void {
+  if (!isExtensionContextValid() || panelState !== 'idle') return;
+  if (!autoShowJobDialog) {
+    hideFloatingDialog();
+    return;
+  }
+  const pageClass = classifyCurrentPage();
+  if (pageClass.isJobPage) {
+    dialogIframeWrapper?.classList.add('is-compact');
+    dialogIframeWrapper?.classList.remove('is-expanded');
+    showFloatingDialog();
+  } else {
+    hideFloatingDialog();
   }
 }
 
@@ -249,9 +285,24 @@ function createFloatingBall() {
     existing.remove();
   }
 
+  const SIZE = 60;
+  const EDGE_MARGIN = 20;
+  const DRAG_THRESHOLD = 6;
+
+  const initialPos = getSavedBallPosition();
+  const vh = window.innerHeight > 0 ? window.innerHeight : 800;
+  const boundedTop = Math.max(
+    EDGE_MARGIN,
+    Math.min(vh - SIZE - EDGE_MARGIN, initialPos.top),
+  );
+  const initialVertical =
+    boundedTop < vh * 0.35 ? 'top' : boundedTop > vh * 0.65 ? 'bottom' : 'middle';
+
   let logoUrl = '';
+  let dialogIframeSrc = '';
   try {
     logoUrl = chrome.runtime.getURL('favicon.svg');
+    dialogIframeSrc = `${chrome.runtime.getURL('src/sidepanel/index.html?floatingDialog=true')}&edge=${initialPos.edge}&pos=${initialVertical}`;
   } catch {
     return;
   }
@@ -263,17 +314,6 @@ function createFloatingBall() {
   updateThemeClasses();
 
   const shadow = ballRoot.attachShadow({ mode: 'open' });
-
-  const SIZE = 60;
-  const EDGE_MARGIN = 20;
-  const DRAG_THRESHOLD = 6;
-
-  const initialPos = getSavedBallPosition();
-  const vh = window.innerHeight > 0 ? window.innerHeight : 800;
-  const boundedTop = Math.max(
-    EDGE_MARGIN,
-    Math.min(vh - SIZE - EDGE_MARGIN, initialPos.top),
-  );
 
   const style = document.createElement('style');
   style.textContent = `
@@ -442,6 +482,156 @@ function createFloatingBall() {
     .jobby-menu-item:active {
       background: rgba(15, 23, 42, 0.12);
     }
+    .jobby-menu-divider {
+      height: 1px;
+      background: rgba(15, 23, 42, 0.08);
+      margin: 3px 0;
+    }
+    :host(.dark) .jobby-menu-divider {
+      background: rgba(255, 255, 255, 0.08);
+    }
+    .jobby-menu-toggle-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      width: 100%;
+      padding: 8px 12px;
+      border: none;
+      background: transparent;
+      color: inherit;
+      font-family: Inter, system-ui, -apple-system, sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      border-radius: 8px;
+      cursor: pointer;
+      text-align: left;
+      transition: background 0.12s ease;
+      box-sizing: border-box;
+      user-select: none;
+    }
+    .jobby-menu-toggle-item:hover {
+      background: rgba(15, 23, 42, 0.06);
+    }
+    :host(.dark) .jobby-menu-toggle-item:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+    .jobby-switch-track {
+      width: 30px;
+      height: 17px;
+      border-radius: 9999px;
+      background: rgba(15, 23, 42, 0.18);
+      position: relative;
+      transition: background 0.2s ease;
+      flex-shrink: 0;
+    }
+    :host(.dark) .jobby-switch-track {
+      background: rgba(255, 255, 255, 0.22);
+    }
+    .jobby-switch-thumb {
+      width: 13px;
+      height: 13px;
+      border-radius: 50%;
+      background: #ffffff;
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+      transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .jobby-menu-toggle-item.is-active .jobby-switch-track {
+      background: #0d9488;
+    }
+    .jobby-menu-toggle-item.is-active .jobby-switch-thumb {
+      transform: translateX(13px);
+    }
+
+    /* ─── Floating Dialog Iframe Container ───────────────────────── */
+    #jobby-dialog-iframe-wrapper {
+      position: absolute !important;
+      width: 360px !important;
+      height: 580px !important;
+      max-height: calc(100vh - 30px) !important;
+      max-width: calc(100vw - 75px) !important;
+      z-index: 2147483646 !important;
+      overflow: visible !important;
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+      opacity: 0 !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
+      transform: scale(0.96) !important;
+      transition: opacity 0.16s ease, transform 0.16s ease, visibility 0.16s ease !important;
+    }
+
+    /* Horizontal: Right edge vs Left edge */
+    #jobby-ball-wrapper.edge-right #jobby-dialog-iframe-wrapper {
+      right: calc(100% + 10px) !important;
+      left: auto !important;
+    }
+    #jobby-ball-wrapper.edge-left #jobby-dialog-iframe-wrapper {
+      left: calc(100% + 10px) !important;
+      right: auto !important;
+    }
+
+    /* Vertical: Top half vs Bottom half vs Middle */
+    #jobby-ball-wrapper.pos-top #jobby-dialog-iframe-wrapper {
+      top: 0 !important;
+      bottom: auto !important;
+      transform: scale(0.96) !important;
+      transform-origin: top right !important;
+    }
+    #jobby-ball-wrapper.edge-left.pos-top #jobby-dialog-iframe-wrapper {
+      transform-origin: top left !important;
+    }
+    #jobby-ball-wrapper.pos-top #jobby-dialog-iframe-wrapper.is-visible {
+      opacity: 1 !important;
+      visibility: visible !important;
+      pointer-events: auto !important;
+      transform: scale(1) !important;
+    }
+
+    #jobby-ball-wrapper.pos-bottom #jobby-dialog-iframe-wrapper {
+      bottom: 0 !important;
+      top: auto !important;
+      transform: scale(0.96) !important;
+      transform-origin: bottom right !important;
+    }
+    #jobby-ball-wrapper.edge-left.pos-bottom #jobby-dialog-iframe-wrapper {
+      transform-origin: bottom left !important;
+    }
+    #jobby-ball-wrapper.pos-bottom #jobby-dialog-iframe-wrapper.is-visible {
+      opacity: 1 !important;
+      visibility: visible !important;
+      pointer-events: auto !important;
+      transform: scale(1) !important;
+    }
+
+    #jobby-ball-wrapper.pos-middle #jobby-dialog-iframe-wrapper {
+      top: 50% !important;
+      bottom: auto !important;
+      transform: translateY(-50%) scale(0.96) !important;
+      transform-origin: center right !important;
+    }
+    #jobby-ball-wrapper.edge-left.pos-middle #jobby-dialog-iframe-wrapper {
+      transform-origin: center left !important;
+    }
+    #jobby-ball-wrapper.pos-middle #jobby-dialog-iframe-wrapper.is-visible {
+      opacity: 1 !important;
+      visibility: visible !important;
+      pointer-events: auto !important;
+      transform: translateY(-50%) scale(1) !important;
+    }
+
+    .jobby-dialog-iframe {
+      width: 100% !important;
+      height: 100% !important;
+      border: none !important;
+      background: transparent !important;
+      display: block !important;
+      pointer-events: auto !important;
+    }
   `;
 
   const wrapper = document.createElement('div');
@@ -467,6 +657,7 @@ function createFloatingBall() {
   const handleDismissAction = (action: 'session' | 'domain' | 'all') => {
     dismissMenu.classList.remove('is-open');
     wrapper.classList.remove('menu-open');
+    hideFloatingDialog();
 
     if (!isExtensionContextValid()) {
       removeFloatingBall();
@@ -517,6 +708,41 @@ function createFloatingBall() {
     }
   };
 
+  const toggleBtn = document.createElement('button');
+  toggleBtn.type = 'button';
+  toggleBtn.className = `jobby-menu-toggle-item ${autoShowJobDialog ? 'is-active' : ''}`;
+  toggleBtn.innerHTML = `
+    <span>Auto-show card</span>
+    <span class="jobby-switch-track">
+      <span class="jobby-switch-thumb"></span>
+    </span>
+  `;
+  toggleBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    autoShowJobDialog = !autoShowJobDialog;
+    if (autoShowJobDialog) {
+      toggleBtn.classList.add('is-active');
+      runJobDetectionForBall(true);
+    } else {
+      toggleBtn.classList.remove('is-active');
+      hideFloatingDialog();
+    }
+    if (isExtensionContextValid() && chrome.storage?.local) {
+      try {
+        chrome.storage.local.set({ [AUTO_SHOW_JOB_DIALOG_KEY]: autoShowJobDialog });
+      } catch {
+        // Ignore
+      }
+    }
+  });
+
+  const divider = document.createElement('div');
+  divider.className = 'jobby-menu-divider';
+
+  dismissMenu.appendChild(toggleBtn);
+  dismissMenu.appendChild(divider);
+
   const options: Array<{
     label: string;
     action: 'session' | 'domain' | 'all';
@@ -545,10 +771,15 @@ function createFloatingBall() {
       dismissMenu.classList.remove('is-open');
       wrapper.classList.remove('menu-open');
     } else {
+      hideFloatingDialog();
       dismissMenu.classList.add('is-open');
       wrapper.classList.add('menu-open');
     }
   };
+
+  closeBtn.addEventListener('pointerdown', (e) => {
+    e.stopPropagation();
+  });
 
   closeBtn.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -556,19 +787,79 @@ function createFloatingBall() {
     toggleDismissMenu();
   });
 
+  dismissMenu.addEventListener('pointerdown', (e) => {
+    e.stopPropagation();
+  });
+
+  dialogIframeWrapper = document.createElement('div');
+  dialogIframeWrapper.id = 'jobby-dialog-iframe-wrapper';
+  dialogIframeWrapper.classList.add('is-compact');
+  dialogIframeWrapper.addEventListener('pointerdown', (e) => {
+    e.stopPropagation();
+  });
+
+  const dialogIframe = document.createElement('iframe');
+  dialogIframe.src = dialogIframeSrc;
+  dialogIframe.className = 'jobby-dialog-iframe';
+  dialogIframeWrapper.appendChild(dialogIframe);
+
   currentDocumentClickHandler = (e: MouseEvent) => {
-    if (!dismissMenu.classList.contains('is-open')) return;
     const path = e.composedPath();
-    if (!path.includes(dismissMenu) && !path.includes(closeBtn)) {
-      dismissMenu.classList.remove('is-open');
-      wrapper.classList.remove('menu-open');
+    if (dismissMenu.classList.contains('is-open')) {
+      if (!path.includes(dismissMenu) && !path.includes(closeBtn)) {
+        dismissMenu.classList.remove('is-open');
+        wrapper.classList.remove('menu-open');
+      }
+    }
+    if (isDialogVisible && dialogIframeWrapper) {
+      if (
+        !path.includes(dialogIframeWrapper) &&
+        !path.includes(wrapper)
+      ) {
+        hideFloatingDialog();
+      }
     }
   };
   window.addEventListener('click', currentDocumentClickHandler, true);
 
+  const onWindowMessage = (event: MessageEvent) => {
+    if (event.data?.source === 'jobby-dialog') {
+      if (event.data?.type === 'jobby.dialog-resize') {
+        if (event.data.mode === 'compact') {
+          dialogIframeWrapper?.classList.add('is-compact');
+          dialogIframeWrapper?.classList.remove('is-expanded');
+        } else if (event.data.mode === 'expanded') {
+          dialogIframeWrapper?.classList.add('is-expanded');
+          dialogIframeWrapper?.classList.remove('is-compact');
+        }
+      } else if (event.data?.type === 'jobby.dialog-close') {
+        hideFloatingDialog();
+      } else if (event.data?.type === 'jobby.dialog-open-sidepanel') {
+        hideFloatingDialog();
+        showSidepanelIframe();
+      } else if (event.data?.type === 'jobby.dialog-trigger-tailor') {
+        hideFloatingDialog();
+        showSidepanelIframe();
+        const docType = event.data?.docType;
+        window.setTimeout(() => {
+          try {
+            if (isExtensionContextValid() && chrome.runtime?.sendMessage) {
+              chrome.runtime.sendMessage({
+                type: 'sidepanel.trigger-tailor',
+                docType,
+              }).catch(() => undefined);
+            }
+          } catch {}
+        }, 200);
+      }
+    }
+  };
+  window.addEventListener('message', onWindowMessage);
+
   wrapper.appendChild(logo);
   wrapper.appendChild(closeBtn);
   wrapper.appendChild(dismissMenu);
+  wrapper.appendChild(dialogIframeWrapper);
 
   // ── Drag logic (pointer events, edge-snapping) ──────────────────────────
   let isDragging = false;
@@ -581,6 +872,34 @@ function createFloatingBall() {
 
   let posLeft = 0;
   let posTop = boundedTop;
+
+  function updateVerticalPositionClass() {
+    const vh = window.innerHeight > 0 ? window.innerHeight : 800;
+    wrapper.classList.remove('pos-top', 'pos-middle', 'pos-bottom');
+    let pos: 'top' | 'middle' | 'bottom' = 'middle';
+    if (posTop < vh * 0.35) {
+      pos = 'top';
+      wrapper.classList.add('pos-top');
+    } else if (posTop > vh * 0.65) {
+      pos = 'bottom';
+      wrapper.classList.add('pos-bottom');
+    } else {
+      wrapper.classList.add('pos-middle');
+    }
+    try {
+      dialogIframe?.contentWindow?.postMessage(
+        {
+          source: 'jobby-ball',
+          type: 'jobby.ball-position',
+          edge: currentEdge,
+          pos,
+        },
+        '*',
+      );
+    } catch {}
+  }
+
+  updateVerticalPositionClass();
 
   function snapToEdge() {
     if (snapTimer) clearTimeout(snapTimer);
@@ -612,6 +931,7 @@ function createFloatingBall() {
       wrapper.style.right = 'auto';
       wrapper.style.top = `${posTop}px`;
     }
+    updateVerticalPositionClass();
     saveBallPosition({ edge: currentEdge, top: posTop });
   }
 
@@ -629,18 +949,22 @@ function createFloatingBall() {
       Math.min(window.innerHeight - SIZE - EDGE_MARGIN, posTop),
     );
     wrapper.style.top = `${posTop}px`;
+    updateVerticalPositionClass();
     saveBallPosition({ edge: currentEdge, top: posTop });
   };
   window.addEventListener('resize', handleWindowResize);
 
   wrapper.addEventListener('pointerdown', (e: PointerEvent) => {
+    const target = e.target as HTMLElement | null;
     if (
-      (e.target as HTMLElement).id === 'close-btn' ||
-      (e.target as HTMLElement).classList.contains('jobby-menu-item')
+      target?.closest('#close-btn') ||
+      target?.closest('#jobby-dismiss-menu') ||
+      target?.closest('#jobby-dialog-iframe-wrapper')
     )
       return;
     dismissMenu.classList.remove('is-open');
     wrapper.classList.remove('menu-open');
+    hideFloatingDialog();
     if (snapTimer) clearTimeout(snapTimer);
     isDragging = false;
     const rect = wrapper.getBoundingClientRect();
@@ -665,6 +989,7 @@ function createFloatingBall() {
     if (!isDragging && Math.hypot(dx, dy) > DRAG_THRESHOLD) {
       isDragging = true;
       wrapper.classList.add('is-dragging');
+      hideFloatingDialog();
     }
     if (isDragging) {
       const viewportWidth = document.documentElement.clientWidth;
@@ -697,12 +1022,22 @@ function createFloatingBall() {
   shadow.appendChild(style);
   shadow.appendChild(wrapper);
   mountOverlay(ballRoot);
+
+  // Trigger detection check after DOM is mounted
+  window.setTimeout(() => {
+    try {
+      if (isExtensionContextValid() && classifyCurrentPage().isJobPage) {
+        runJobDetectionForBall(true);
+      }
+    } catch {}
+  }, 400);
 }
 
 // ─── Ball click handler ───────────────────────────────────────────────────────
 
 function handleBallClick() {
   if (!isExtensionContextValid()) return;
+  hideFloatingDialog();
   if (panelState === 'iframe') return;
 
   if (panelState === 'native') {
@@ -1162,6 +1497,7 @@ export function initializeFloatingBall(): () => void {
           'auto-job-ui-theme-color',
           DISABLED_DOMAINS_KEY,
           DISABLE_ALL_PAGES_KEY,
+          AUTO_SHOW_JOB_DIALOG_KEY,
         ],
         (res) => {
           if (!isExtensionContextValid() || !res) return;
@@ -1179,6 +1515,17 @@ export function initializeFloatingBall(): () => void {
           }
           if (typeof res[DISABLE_ALL_PAGES_KEY] === 'boolean') {
             disableAllPages = res[DISABLE_ALL_PAGES_KEY];
+          }
+          if (typeof res[AUTO_SHOW_JOB_DIALOG_KEY] === 'boolean') {
+            autoShowJobDialog = res[AUTO_SHOW_JOB_DIALOG_KEY];
+            const toggleBtn = ballRoot?.shadowRoot?.querySelector('.jobby-menu-toggle-item');
+            if (toggleBtn) {
+              if (autoShowJobDialog) toggleBtn.classList.add('is-active');
+              else toggleBtn.classList.remove('is-active');
+            }
+            if (!autoShowJobDialog) {
+              hideFloatingDialog();
+            }
           }
           updateThemeClasses();
           updateBallVisibility();
@@ -1213,6 +1560,17 @@ export function initializeFloatingBall(): () => void {
         if (changes[DISABLE_ALL_PAGES_KEY] !== undefined) {
           disableAllPages = !!changes[DISABLE_ALL_PAGES_KEY].newValue;
           stateChanged = true;
+        }
+        if (changes[AUTO_SHOW_JOB_DIALOG_KEY] !== undefined) {
+          autoShowJobDialog = changes[AUTO_SHOW_JOB_DIALOG_KEY].newValue !== false;
+          const toggleBtn = ballRoot?.shadowRoot?.querySelector('.jobby-menu-toggle-item');
+          if (toggleBtn) {
+            if (autoShowJobDialog) toggleBtn.classList.add('is-active');
+            else toggleBtn.classList.remove('is-active');
+          }
+          if (!autoShowJobDialog) {
+            hideFloatingDialog();
+          }
         }
         if (stateChanged) {
           updateBallVisibility();
@@ -1284,10 +1642,34 @@ export function initializeFloatingBall(): () => void {
     // Ignore context invalidation
   }
 
-  // Listen for native side panel open/close broadcasts from the background.
+  const onVisibilityChange = () => {
+    try {
+      if (!isExtensionContextValid()) return;
+      if (document.visibilityState === 'visible' && panelState === 'idle') {
+        const pageClass = classifyCurrentPage();
+        if (pageClass.isJobPage) {
+          void runJobDetectionForBall(true);
+        }
+      }
+    } catch {
+      // Ignore
+    }
+  };
+  document.addEventListener('visibilitychange', onVisibilityChange);
+
+  // Listen for native side panel open/close broadcasts and detection events.
   const onRuntimeMessage = (message: any) => {
     try {
       if (!isExtensionContextValid()) return;
+      if (
+        message?.type === 'content.page-changed' ||
+        message?.type === 'content.trigger-job-detection'
+      ) {
+        if (panelState === 'idle') {
+          runJobDetectionForBall(true);
+        }
+        return;
+      }
       if (message?.type !== 'sidepanel.state-changed') return;
       if (!windowCanHostSidepanel) return;
 
@@ -1329,6 +1711,7 @@ export function initializeFloatingBall(): () => void {
   return () => {
     window.clearInterval(recoveryTimer);
     darkModeMedia.removeEventListener('change', onMediaChange);
+    document.removeEventListener('visibilitychange', onVisibilityChange);
     try {
       if (isExtensionContextValid()) {
         if (chrome.storage?.onChanged) {

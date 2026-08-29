@@ -29,6 +29,14 @@ body {
   @apply bg-background text-foreground;
 }
 
+html.is-floating-dialog,
+html.is-floating-dialog body,
+body.is-floating-dialog {
+  background: transparent !important;
+  background-color: transparent !important;
+  overflow: hidden !important;
+}
+
 button {
   @apply cursor-pointer transition-all duration-150;
 }
@@ -573,7 +581,7 @@ textarea.form-field-input {
 
 /* Job page detected */
 .page-class-banner--job {
-  @apply bg-primary/10 dark:bg-primary/20 text-primary font-medium;
+  @apply bg-primary/10 dark:bg-primary/20 text-primary font-medium backdrop-blur-2xl;
 }
 .page-class-banner--job .page-class-banner__icon {
   @apply text-primary font-bold;

@@ -11,6 +11,7 @@ vi.mock('@jobby/ui/components/UI/popover', () => ({
   Popover: ({ children }: { children?: unknown }) => children,
   PopoverContent: ({ children }: { children?: unknown }) => children,
   PopoverTrigger: ({ children }: { children?: unknown }) => children,
+  PopoverArrow: ({ children }: { children?: unknown }) => children,
 }));
 vi.mock('@jobby/ui/components/UI/tooltip', () => ({
   Tooltip: ({ children }: { children?: unknown }) => children,
