@@ -32,10 +32,10 @@ export function JobDescription({
         <button
           onClick={() => setIsEditing(!isEditing)}
           className={cn(
-            'label-sm inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl transition-all border cursor-pointer',
+            'label-sm inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl transition-all cursor-pointer',
             isEditing ?
-              'text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 border-emerald-500/20'
-            : 'text-primary hover:bg-primary/10 border-primary/20',
+              'text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10'
+            : 'text-primary hover:bg-primary/10',
           )}
         >
           {isEditing ?

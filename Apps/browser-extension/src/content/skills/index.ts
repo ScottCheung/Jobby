@@ -169,7 +169,7 @@ export function mergeSkills(
     }
   }
 
-  return result.slice(0, 50);
+  return result.slice(0, 30);
 }
 
 export * from './classification';

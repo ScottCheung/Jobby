@@ -457,6 +457,24 @@ describe("extractTechnologyKeywords", () => {
     expect(keywords).toContain("Monorepo");
     expect(keywords).toContain("Turborepo");
   });
+
+  it("extracts tRPC and Temporal workflow technologies", () => {
+    const text = `
+      Build type-safe fullstack features with tRPC and orchestrate long-running distributed workflows using Temporal.io.
+    `;
+    const keywords = extractTechnologyKeywords(text);
+    expect(keywords).toContain("tRPC");
+    expect(keywords).toContain("Temporal");
+  });
+
+  it("keeps merged skills within the job snapshot contract limit", () => {
+    const explicit = Array.from(
+      { length: 35 },
+      (_, index) => `Specialized Skill ${index + 1}`,
+    );
+
+    expect(mergeSkills(explicit, [])).toHaveLength(30);
+  });
 });
 
 

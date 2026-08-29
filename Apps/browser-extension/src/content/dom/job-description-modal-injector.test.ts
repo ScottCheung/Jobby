@@ -107,4 +107,37 @@ Qualifications:
       document.getElementById('jobby-in-page-job-description-modal-root'),
     ).toBeNull();
   });
+
+  it('formats raw ISO dates into friendly relative time in the header meta', async () => {
+    // 16 days prior to fixed reference
+    const now = new Date();
+    const sixteenDaysAgo = new Date(now.getTime() - 16 * 24 * 60 * 60 * 1000).toISOString();
+
+    await showInPageJobDescriptionModal({
+      title: 'Frontend Software Engineer',
+      company: 'CORTO',
+      location: 'Sydney, New South Wales, Australia',
+      datePosted: sixteenDaysAgo,
+      description: `
+Why join CORTO?
+• Your work matters.
+• We solve real world problems that improve and support local law firms.
+      `.trim(),
+      platform: 'linkedin',
+    });
+
+    const root = document.getElementById('jobby-in-page-job-description-modal-root');
+    expect(root).not.toBeNull();
+    const shadow = root!.shadowRoot!;
+
+    const metaEl = shadow.querySelector('.header-meta');
+    expect(metaEl?.textContent).toContain('CORTO');
+    expect(metaEl?.textContent).toContain('16 days ago');
+    expect(metaEl?.textContent).not.toContain(sixteenDaysAgo);
+
+    const headings = Array.from(shadow.querySelectorAll('.jd-heading')).map(
+      (el) => el.textContent?.trim(),
+    );
+    expect(headings).toContain('Why join CORTO?');
+  });
 });

@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { observeIndeedJobDom } from "./indeed-page-change-observer";
+import { observeIndeedJobDom } from "./page-change-observer";
 
 describe("Indeed late job detail rendering", () => {
   beforeEach(() => {
@@ -64,6 +64,28 @@ describe("Indeed late job detail rendering", () => {
       "Second Engineer";
     document.querySelector("#jobDescriptionText")!.textContent =
       "Second job description loaded after the card click. ".repeat(4);
+    await vi.advanceTimersByTimeAsync(100);
+    expect(onChange).toHaveBeenCalledTimes(2);
+    cleanup();
+  });
+
+  it("notifies when Indeed changes the pressed job link", async () => {
+    document.body.innerHTML = `
+      <article class="job_seen_beacon">
+        <a data-jk="first-job" aria-pressed="true">First Engineer</a>
+      </article>
+      <article class="job_seen_beacon">
+        <a data-jk="second-job">Second Engineer</a>
+      </article>
+    `;
+    const onChange = vi.fn();
+    const cleanup = observeIndeedJobDom(onChange);
+    await vi.advanceTimersByTimeAsync(100);
+    expect(onChange).toHaveBeenCalledTimes(1);
+
+    const links = document.querySelectorAll<HTMLAnchorElement>("[data-jk]");
+    links.item(0).setAttribute("aria-pressed", "false");
+    links.item(1).setAttribute("aria-pressed", "true");
     await vi.advanceTimersByTimeAsync(100);
     expect(onChange).toHaveBeenCalledTimes(2);
     cleanup();

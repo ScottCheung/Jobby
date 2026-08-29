@@ -1,18 +1,4 @@
-# Jobby Platform Test Links
-
-> Verified: 26 Aug 2026  
-> Purpose: platform detection + autofill regression testing.
->
-> **Important:** Job ads expire quickly. For ATS platforms I prioritised direct application/job pages. For Indeed and Glassdoor, native listings are often indexed/redirected inconsistently, so I included stable search entry points as fallback discovery links. SEEK links below are current direct job pages.
-
-Before manual testing, rebuild the extension and reload the unpacked extension in the browser:
-
-```bash
-cd Apps/browser-extension
-npm run build
-```
-
-Never click the final submit button on a real application. The expected regression result is that Jobby can detect, read, and fill the page without submitting it.
+<!-- @format -->
 
 ## 1. SEEK
 
@@ -33,8 +19,14 @@ Never click the final submit button on a real application. The expected regressi
 3. [Macquarie Group — Software Engineer](https://au.linkedin.com/jobs/view/software-engineer-at-macquarie-group-4448451118)
 4. [Propeller — Software Engineer](https://au.linkedin.com/jobs/view/software-engineer-at-propeller-4434953356)
 5. [weave. Recruitment — Software Engineer](https://au.linkedin.com/jobs/view/software-engineer-at-weave-recruitment-4452894753)
+6. [LinkedIn search results — Full Stack Developer](https://www.linkedin.com/jobs/search-results/?currentJobId=4451979219&keywords=full%20stack%20developer&origin=JOBS_HOME_SEARCH_BUTTON)
 
 **Detection:** `linkedin.com/jobs`
+
+LinkedIn live regression must cover both URL shapes:
+
+- Direct job: `/jobs/view/<title-and-company-slug>-<job-id>`
+- Search split view: `/jobs/search-results/?currentJobId=<job-id>`
 
 ---
 
@@ -243,6 +235,21 @@ npm run build
 ```
 
 Expected result: typecheck, all tests, and the production build pass. Build-time bundle-size and third-party source-map warnings are informational unless they become errors.
+
+The automated tests use controlled DOM fixtures. They are regression tests, not proof that the currently installed extension works against a live site.
+
+## Live extension E2E
+
+After every provider-reader change:
+
+1. Build the extension and reload it in `chrome://extensions`.
+2. Close and reopen the side panel so it runs the new bundle.
+3. Open every link for the changed provider in this file.
+4. For direct job URLs, verify Job ID, title, company, posted date, and description against the visible page.
+5. For split-view URLs, select the first card, another card, then the first card again. Verify that every side-panel field follows the selected card and that missing values are cleared instead of inherited.
+6. Refresh each URL once and repeat detection to catch initialization races.
+
+A provider change is not live-E2E complete until both its direct-job and split-view URL forms pass in the reloaded extension.
 
 ## Useful test matrix
 

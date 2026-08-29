@@ -31,18 +31,41 @@ function isVisible(element: Element): boolean {
 }
 
 function selectedIndeedCard(root: ParentNode = document): HTMLElement | null {
-  return root.querySelector<HTMLElement>(
-    "[data-jk][aria-selected='true'], [data-jk][aria-current='true'], [data-jk][data-selected='true'], [data-jk].resultWithShelf, [data-jk][class~='selected'], .job_seen_beacon.selected, [data-jk]:has(a[aria-current='true'])",
+  const selectors = [
+    "[data-jk][aria-selected='true']",
+    "[data-jk][aria-current='true']",
+    "[data-jk][data-selected='true']",
+    "[data-jk][aria-pressed='true']",
+    "[data-jk]:has(a[aria-current='true'])",
+    "[data-jk].resultWithShelf",
+    "[data-jk][class~='selected']",
+    ".job_seen_beacon.selected",
+  ];
+  for (const selector of selectors) {
+    const card = root.querySelector<HTMLElement>(selector);
+    if (card) return card.closest<HTMLElement>(".job_seen_beacon") || card;
+  }
+  return null;
+}
+
+function indeedJobKey(root: ParentNode | null): string {
+  if (!root) return "";
+  return cleanText(
+    (root as HTMLElement).getAttribute?.("data-jk") ||
+      root.querySelector<HTMLElement>("[data-jk]")?.getAttribute("data-jk"),
   );
 }
 
 function getIndeedTargetJobKey(url: string): string | undefined {
+  // Indeed frequently keeps the previous `vjk` in the URL while replacing the
+  // selected card and detail pane. In split view, the selected card is the
+  // current source of truth; preferring the URL here re-reads the old job.
+  const selectedCard = selectedIndeedCard(document);
+  const cardKey = indeedJobKey(selectedCard);
+  if (cardKey) return cardKey;
+
   const match = url.match(/[?&](?:jk|vjk|jobkey)=([^&#]+)/i);
   if (match?.[1]) return match[1];
-
-  const selectedCard = selectedIndeedCard(document);
-  const cardKey = cleanText(selectedCard?.getAttribute("data-jk"));
-  if (cardKey) return cardKey;
 
   const detail = document.querySelector<HTMLElement>(
     ".jobsearch-RightPane, .jobsearch-ViewJobPaneWrapper, #jobsearch-ViewjobPane, #viewJobSSRRoot, .jobsearch-JobComponent, .fastviewjob, [data-testid='jobsearch-ViewjobPane']",
@@ -52,9 +75,6 @@ function getIndeedTargetJobKey(url: string): string | undefined {
     cleanText(detail?.querySelector<HTMLElement>("[data-jk]")?.getAttribute("data-jk")) ||
     cleanText(detail?.querySelector<HTMLElement>("[data-mobtk]")?.getAttribute("data-mobtk"));
   if (detailKey) return detailKey;
-
-  const firstCardKey = cleanText(document.querySelector<HTMLElement>("[data-jk]")?.getAttribute("data-jk"));
-  if (firstCardKey) return firstCardKey;
 
   return undefined;
 }
@@ -70,9 +90,11 @@ function getDetailPaneJobKey(detailRoot: HTMLElement): string | undefined {
   );
   if (innerKey) return innerKey;
 
-  const linkWithKey = detailRoot.querySelector<HTMLAnchorElement>("a[href*='jk='], a[href*='vjk=']");
+  const linkWithKey = detailRoot.querySelector<HTMLAnchorElement>(
+    "a[href*='jk='], a[href*='vjk='], a[href*='fromjk=']",
+  );
   if (linkWithKey) {
-    const match = linkWithKey.href.match(/[?&](?:jk|vjk|jobkey)=([^&#]+)/i);
+    const match = linkWithKey.href.match(/[?&](?:jk|vjk|fromjk|jobkey)=([^&#]+)/i);
     if (match?.[1]) return match[1];
   }
 
@@ -144,11 +166,10 @@ function structuredJobPosting(targetExternalId?: string): {
           typeof identifier === "string" ? identifier : String(identifier?.value || ""),
         ) || undefined;
 
-      // In split view or multi-card search page, ensure JSON-LD corresponds to current job
-      if (targetExternalId && externalId && externalId !== targetExternalId) {
-        continue;
-      }
-      if (isMultiCardPage && targetExternalId && !externalId) {
+      // JSON-LD on an Indeed search page can describe the server-rendered
+      // previous job. Use it only when it explicitly identifies the selected
+      // job; otherwise the visible card/detail pane is authoritative.
+      if (isMultiCardPage && (!targetExternalId || externalId !== targetExternalId)) {
         continue;
       }
 
@@ -246,9 +267,10 @@ export function readIndeedJobPage(): PageInspection {
   // Find the selected card, matching targetKey if present
   let selectedCard: HTMLElement | null = null;
   if (targetKey) {
-    selectedCard = document.querySelector<HTMLElement>(
+    const matchingElement = document.querySelector<HTMLElement>(
       `[data-jk='${targetKey}'], .job_seen_beacon:has(a[href*='${targetKey}'])`,
     );
+    selectedCard = matchingElement?.closest<HTMLElement>(".job_seen_beacon") || matchingElement;
   }
   if (!selectedCard) {
     selectedCard = selectedIndeedCard(document);
@@ -265,7 +287,9 @@ export function readIndeedJobPage(): PageInspection {
 
   // 2. Extract from detail pane if not mismatched, otherwise fall back to selected card
   const primaryRoot = (!isDetailMismatch && detailRoot) ? detailRoot : selectedCard;
-  const fallbackRoot = detailRoot || selectedCard || document.body;
+  const fallbackRoot = isDetailMismatch ?
+    selectedCard || document.body
+  : detailRoot || selectedCard || document.body;
 
   const title =
     structured?.title ||

@@ -30,8 +30,8 @@ export function StructuredJobDescription({
   return (
     <div
       className={cn(
-        'font-sans text-foreground select-text',
-        isSm ? 'space-y-2.5 text-[11px]' : 'space-y-3.5 text-[13px]',
+        'font-sans text-foreground select-text ',
+        isSm ? 'space-y-3 text-[11px]' : 'space-y-4 text-[13px]',
         className,
       )}
     >
@@ -41,14 +41,20 @@ export function StructuredJobDescription({
             <div
               key={index}
               className={cn(
-                'border-b border-primary/25',
-                isSm ? 'pt-2 pb-1 mt-2 first:mt-0 first:pt-0' : 'pt-3 pb-1.5 mt-3.5 first:mt-0 first:pt-0',
+                'flex items-center gap-2.5',
+                isSm ? 'mt-3.5 mb-1.5 first:mt-0' : 'mt-6 mb-3 first:mt-0',
               )}
             >
+              <span
+                className={cn(
+                  'rounded-full bg-primary shrink-0',
+                  isSm ? 'w-1 h-3.5' : 'w-1 h-4',
+                )}
+              />
               <h4
                 className={cn(
-                  'font-semibold text-foreground tracking-tight capitalize',
-                  isSm ? 'text-[11px]' : 'text-[13px]',
+                  'font-bold text-foreground tracking-tight',
+                  isSm ? 'text-[12px]' : 'text-[14.5px]',
                 )}
               >
                 {block.text}
@@ -62,28 +68,30 @@ export function StructuredJobDescription({
             <ul
               key={index}
               className={cn(
-                'pl-2.5 sm:pl-3',
-                isSm ? 'space-y-1.5 my-1.5' : 'space-y-2 my-2',
+                'pl-3 sm:pl-3.5',
+                isSm ? 'space-y-1.5 my-1.5' : 'space-y-2.5 my-2.5',
               )}
             >
               {block.items.map((item, itemIdx) => (
                 <li
                   key={itemIdx}
                   className={cn(
-                    'flex items-start gap-2 leading-relaxed text-muted-foreground group/li',
-                    isSm ? 'text-[11px]' : 'text-[12px] sm:text-[13px]',
+                    'flex items-start gap-2.5 leading-relaxed text-muted-foreground group/li',
+                    isSm ? 'text-[11px]' : 'text-[13px]',
                   )}
                 >
                   <span
                     className={cn(
-                      'flex items-center justify-center shrink-0 select-none',
-                      isSm ? 'h-4 w-2' : 'h-4.5 w-2.5',
+                      'flex items-center justify-center shrink-0 select-none ',
+                      isSm ? 'h-3.5 w-2' : 'h-4 w-2',
                     )}
                   >
                     <span
                       className={cn(
-                        'rounded-full bg-primary/70 group-hover/li:bg-primary transition-all',
-                        isSm ? 'h-1 w-1' : 'h-1.25 w-1.25 group-hover/li:scale-125',
+                        'rounded-full bg-primary/80 group-hover/li:bg-primary transition-all',
+                        isSm ? 'h-1 w-1' : (
+                          'h-1.25 w-1.25 group-hover/li:scale-125'
+                        ),
                       )}
                     />
                   </span>
@@ -98,8 +106,8 @@ export function StructuredJobDescription({
           <p
             key={index}
             className={cn(
-              'leading-relaxed text-muted-foreground whitespace-pre-wrap',
-              isSm ? 'text-[11px] my-1.5' : 'text-[12px] sm:text-[13px] my-2',
+              'pl-4 leading-relaxed text-muted-foreground whitespace-pre-wrap',
+              isSm ? 'text-[11px] my-1.5' : 'text-[13px] my-2',
             )}
           >
             {block.text}

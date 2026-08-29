@@ -579,7 +579,7 @@ EXECUTION STEPS:
       {/* Main Body Content */}
       <div className='body'>
         {/* 1. OUTREACH INTENT STRATEGY SELECTION */}
-        <div className='rounded-2xl border border-primary/60 bg-background-secondary/40 p-4 space-y-3'>
+        <div className='rounded-2xl bg-background-secondary/40 p-4 space-y-3'>
           <span className='font-bold text-ink-primary block text-[11px] uppercase tracking-wider text-ink-secondary flex items-center gap-1.5'>
             <Sliders className='size-3.5 text-primary' /> Outreach Strategy &
             Intent Scenario
@@ -611,10 +611,10 @@ EXECUTION STEPS:
                 key={scen.id}
                 type='button'
                 onClick={() => setPromptIntent(scen.id as PromptIntent)}
-                className={`flex flex-col text-left p-3.5 rounded-xl border transition-all cursor-pointer ${
+                className={`flex flex-col text-left p-3.5 rounded-xl transition-all cursor-pointer ${
                   promptIntent === scen.id ?
-                    'border-primary bg-primary/10 text-ink-primary ring-1 ring-primary/40 shadow-xs'
-                  : 'border-primary/60 bg-panel hover:bg-background-secondary text-ink-secondary hover:text-ink-primary'
+                    'bg-primary/10 text-ink-primary shadow-xs'
+                  : 'bg-panel hover:bg-background-secondary text-ink-secondary hover:text-ink-primary'
                 }`}
               >
                 <div className='flex items-center gap-2 font-bold text-ink-primary text-xs'>
@@ -630,7 +630,7 @@ EXECUTION STEPS:
         </div>
 
         {/* 2. TARGET PROSPECT QUANTITY SELECTOR */}
-        <div className='rounded-2xl border border-primary/60 bg-background-secondary/40 p-4 space-y-3'>
+        <div className='rounded-2xl bg-background-secondary/40 p-4 space-y-3'>
           <div className='flex items-center justify-between'>
             <div className='flex items-center gap-2'>
               <Users className='size-4 text-primary' />
@@ -638,7 +638,7 @@ EXECUTION STEPS:
                 Target Prospect Quantity
               </span>
             </div>
-            <span className='text-xs font-extrabold text-primary bg-primary/10 border border-primary/30 px-3 py-1 rounded-full'>
+            <span className='text-xs font-extrabold text-primary bg-primary/10 px-3 py-1 rounded-full'>
               {targetCount} Prospects Selected
             </span>
           </div>
@@ -653,10 +653,10 @@ EXECUTION STEPS:
                   setTargetCount(num);
                   setCustomCountInput('');
                 }}
-                className={`py-2 px-1 rounded-xl border text-xs font-bold transition-all text-center cursor-pointer ${
+                className={`py-2 px-1 rounded-xl text-xs font-bold transition-all text-center cursor-pointer ${
                   targetCount === num && !customCountInput ?
-                    'bg-primary text-white border-primary shadow-xs scale-105'
-                  : 'bg-panel border-primary/60 text-ink-primary hover:bg-background-secondary'
+                    'bg-primary text-white shadow-xs scale-105'
+                  : 'bg-panel text-ink-primary hover:bg-background-secondary'
                 }`}
               >
                 {num}
@@ -664,7 +664,7 @@ EXECUTION STEPS:
             ))}
 
             {/* Custom Numeric Input Pill */}
-            <div className='col-span-2 sm:col-span-1 flex items-center justify-center gap-1 bg-panel border border-primary/60 rounded-xl px-2 py-1.5'>
+            <div className='col-span-2 sm:col-span-1 flex items-center justify-center gap-1 bg-panel rounded-xl px-2 py-1.5'>
               <span className='text-[10px] text-ink-secondary font-semibold shrink-0'>
                 Custom:
               </span>
@@ -689,8 +689,8 @@ EXECUTION STEPS:
         </div>
 
         {/* 3. CANDIDATE PROFILE & LOCATION PREFERENCES */}
-        <div className='rounded-2xl border border-primary/60 bg-background-secondary/40 p-4 space-y-3'>
-          <div className='flex items-center justify-between border-b border-primary/40 pb-2.5'>
+        <div className='rounded-2xl bg-background-secondary/40 p-4 space-y-3'>
+          <div className='flex items-center justify-between pb-2.5'>
             <div className='flex items-center gap-2 min-w-0'>
               <User className='size-4 text-primary shrink-0' />
               <span className='font-bold text-ink-primary text-xs uppercase tracking-wider text-ink-secondary truncate'>
@@ -714,43 +714,44 @@ EXECUTION STEPS:
 
           {/* READ-ONLY COMPACT DISPLAY STATE (Default) */}
           {!isEditingDossier ?
-            <div className='space-y-2 text-xs'>
-              <div className='flex flex-wrap items-center gap-x-4 gap-y-1.5 text-ink-secondary'>
-                <div className='flex items-center gap-1.5 text-ink-primary font-bold'>
-                  <User className='size-3.5 text-primary' />
-                  <span>
-                    {userName} ({userEmail})
-                  </span>
-                </div>
-
-                <div className='flex items-center gap-1.5'>
-                  <Briefcase className='size-3.5 text-primary' />
-                  <span>
-                    Roles:{' '}
-                    <strong className='text-ink-primary'>
-                      {customRoles || 'Not Specified'}
-                    </strong>
-                  </span>
-                </div>
-
-                <div className='flex items-center gap-1.5'>
-                  <MapPin className='size-3.5 text-primary' />
-                  <span>
-                    Locations:{' '}
-                    <strong className='text-ink-primary'>
-                      {customLocations || 'San Francisco, CA, Remote'}
-                    </strong>
-                  </span>
-                </div>
-              </div>
-
-              <div className='flex items-center gap-1.5 text-ink-secondary text-[11px] bg-panel p-2.5 rounded-xl border border-primary/40'>
-                <Code2 className='size-3.5 text-primary shrink-0' />
-                <span className='truncate'>
-                  Stack:{' '}
-                  <strong className='text-ink-primary'>{resumeSkills}</strong>
+            <div className='grid gap-1.5 text-xs w-full min-w-0'>
+              <div className='grid grid-cols-[80px_minmax(0,1fr)] gap-1.5 items-baseline'>
+                <span className='text-ink-secondary text-[11px] font-medium'>
+                  Candidate:
+                </span>
+                <span className='font-semibold text-ink-primary break-words'>
+                  {userName} {userEmail ? `(${userEmail})` : ''}
                 </span>
               </div>
+
+              <div className='grid grid-cols-[80px_minmax(0,1fr)] gap-1.5 items-baseline'>
+                <span className='text-ink-secondary text-[11px] font-medium'>
+                  Roles:
+                </span>
+                <span className='font-semibold text-ink-primary break-words'>
+                  {customRoles || 'Not Specified'}
+                </span>
+              </div>
+
+              <div className='grid grid-cols-[80px_minmax(0,1fr)] gap-1.5 items-baseline'>
+                <span className='text-ink-secondary text-[11px] font-medium'>
+                  Locations:
+                </span>
+                <span className='font-semibold text-ink-primary break-words'>
+                  {customLocations || 'San Francisco, CA, Remote'}
+                </span>
+              </div>
+
+              {resumeSkills && (
+                <div className='grid grid-cols-[80px_minmax(0,1fr)] gap-1.5 items-baseline'>
+                  <span className='text-ink-secondary text-[11px] font-medium'>
+                    Stack:
+                  </span>
+                  <span className='font-semibold text-ink-primary break-words'>
+                    {resumeSkills}
+                  </span>
+                </div>
+              )}
             </div>
           : /* EDITABLE FORM STATE (Expands when user clicks Customize Profile) */
             <div className='grid grid-cols-1 md:grid-cols-2 gap-3 pt-1'>
@@ -774,7 +775,7 @@ EXECUTION STEPS:
                     );
                   }}
                   placeholder='e.g. Senior Full Stack Engineer, Engineering Manager'
-                  className='w-full rounded-xl border border-primary/60 bg-panel p-2.5 text-xs text-ink-primary font-medium focus:outline-hidden focus:border-primary'
+                  className='w-full rounded-xl bg-panel p-2.5 text-xs text-ink-primary font-medium focus:outline-hidden'
                 />
               </div>
 
@@ -815,7 +816,7 @@ EXECUTION STEPS:
                     );
                   }}
                   placeholder='e.g. San Francisco, CA / Remote / Sydney'
-                  className='w-full rounded-xl border border-primary/60 bg-panel p-2.5 text-xs text-ink-primary font-medium focus:outline-hidden focus:border-primary'
+                  className='w-full rounded-xl bg-panel p-2.5 text-xs text-ink-primary font-medium focus:outline-hidden'
                 />
 
                 {/* Nearby Cities Pills (支持点击选中与反选/取消选中) */}
@@ -894,7 +895,7 @@ EXECUTION STEPS:
                     );
                   }}
                   placeholder='e.g. TypeScript, React, Next.js, Python, PostgreSQL, Node.js'
-                  className='w-full rounded-xl border border-primary/60 bg-panel p-2.5 text-xs text-ink-primary font-medium focus:outline-hidden focus:border-primary'
+                  className='w-full rounded-xl bg-panel p-2.5 text-xs text-ink-primary font-medium focus:outline-hidden'
                 />
               </div>
 
@@ -918,7 +919,7 @@ EXECUTION STEPS:
                     );
                   }}
                   placeholder='Summary of candidate achievements and technical focus...'
-                  className='w-full rounded-xl border border-primary/60 bg-panel p-2.5 text-xs text-ink-primary font-medium focus:outline-hidden focus:border-primary leading-relaxed'
+                  className='w-full rounded-xl bg-panel p-2.5 text-xs text-ink-primary font-medium focus:outline-hidden leading-relaxed'
                 />
               </div>
             </div>
@@ -926,7 +927,7 @@ EXECUTION STEPS:
         </div>
 
         {/* 4. PRIMARY AGENT PROMPT COPY BOX */}
-        <div className='rounded-2xl border border-primary/60 bg-background-secondary/40 p-4 space-y-3'>
+        <div className='rounded-2xl bg-background-secondary/40 p-4 space-y-3'>
           <div className='flex items-center justify-between'>
             <div className='flex items-center gap-2'>
               <Sparkles className='size-4 text-primary animate-pulse' />
@@ -939,7 +940,7 @@ EXECUTION STEPS:
             readOnly
             value={agentPrompt}
             rows={8}
-            className=' w-full rounded-xl border border-primary/60 bg-ink-primary p-3.5 text-primary-foreground font-mono text-[11px] leading-relaxed focus:outline-hidden custom-scrollbar-primary'
+            className=' w-full rounded-xl bg-ink-primary p-3.5 text-primary-foreground font-mono text-[11px] leading-relaxed focus:outline-hidden custom-scrollbar-primary'
           />
         </div>
 
@@ -948,9 +949,9 @@ EXECUTION STEPS:
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className='rounded-2xl border border-primary/30 bg-primary/5 p-4 flex flex-col gap-4 shadow-xs'
+            className='rounded-2xl bg-primary/5 p-4 flex flex-col gap-4 shadow-xs'
           >
-            <div className='flex items-center justify-between border-b border-primary/40 pb-3'>
+            <div className='flex items-center justify-between pb-3'>
               <div className='flex items-center gap-2'>
                 <UserCheck className='size-5 text-primary' />
                 <div>
@@ -986,17 +987,17 @@ EXECUTION STEPS:
                   <div
                     key={p.id}
                     onClick={() => toggleSelectStaged(p.id)}
-                    className={`cursor-pointer rounded-xl border p-3.5 transition-all flex items-start gap-3 ${
+                    className={`cursor-pointer rounded-xl p-3.5 transition-all flex items-start gap-3 ${
                       isSelected ?
-                        'border-primary/60 bg-panel shadow-xs'
-                      : 'border-primary/60 bg-background/50 opacity-60'
+                        'bg-panel shadow-xs'
+                      : 'bg-background/50 opacity-60'
                     }`}
                   >
                     <input
                       type='checkbox'
                       checked={isSelected}
                       onChange={() => toggleSelectStaged(p.id)}
-                      className='mt-1 size-4 rounded border-primary text-primary focus:ring-primary/40'
+                      className='mt-1 size-4 rounded text-primary focus:ring-primary/40'
                     />
 
                     <div className='flex-1 min-w-0 space-y-1 text-xs'>
@@ -1013,7 +1014,7 @@ EXECUTION STEPS:
                           </span>
                         </div>
 
-                        <div className='flex items-center gap-1 shrink-0 rounded-full bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-0.5 text-[11px] font-bold text-emerald-600 dark:text-emerald-400'>
+                        <div className='flex items-center gap-1 shrink-0 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-bold text-emerald-600 dark:text-emerald-400'>
                           <Sparkles className='size-3' />
                           <span>
                             {p.score_breakdown?.overall || p.priority_score}%
@@ -1070,14 +1071,14 @@ EXECUTION STEPS:
         )}
 
         {saveSuccessMsg && (
-          <div className='rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-xs text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-2'>
+          <div className='rounded-2xl bg-emerald-500/10 p-4 text-xs text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-2'>
             <CheckCircle2 className='size-4' />
             <span>{saveSuccessMsg}</span>
           </div>
         )}
 
         {error && (
-          <div className='rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-xs text-red-600 dark:text-red-400 flex items-center gap-2'>
+          <div className='rounded-2xl bg-red-500/10 p-4 text-xs text-red-600 dark:text-red-400 flex items-center gap-2'>
             <AlertCircle className='size-4 shrink-0' />
             <span>{error}</span>
           </div>

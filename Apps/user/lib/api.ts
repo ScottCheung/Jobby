@@ -1,5 +1,7 @@
 import type {
   JobApplication,
+  JobRecommendation,
+  JobRecommendationImport,
   AutofillAnswer,
   FormAnswerObservation,
   FormAutofillTestField,
@@ -90,6 +92,7 @@ export type TailoredResume = {
   key_qualifications: string[];
   core_competencies: string[];
   targeted_projects: Array<Record<string, unknown>>;
+  cover_letter?: string | null;
   prompt_version?: string;
   status: 'processing' | 'ready' | 'failed';
   error_message?: string | null;
@@ -228,12 +231,28 @@ async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   health: () => apiRequest<{ status: string }>("/health"),
-  reviewJob: (payload: { job_description: string; title?: string; company?: string; last_posted_at?: string }) =>
+  reviewJob: (payload: {
+    job_description: string;
+    title?: string;
+    company?: string;
+    last_posted_at?: string;
+    doc_type?: 'resume' | 'cover_letter' | 'both';
+    career_profile_id?: string;
+    mock?: boolean;
+  }) =>
     apiRequest<JobReviewResult>("/api/job-review", {
       method: "POST",
       body: JSON.stringify(payload),
     }),
-  previewJobReview: (payload: { job_description: string; title?: string; company?: string; last_posted_at?: string }) =>
+  previewJobReview: (payload: {
+    job_description: string;
+    title?: string;
+    company?: string;
+    last_posted_at?: string;
+    doc_type?: 'resume' | 'cover_letter' | 'both';
+    career_profile_id?: string;
+    mock?: boolean;
+  }) =>
     apiRequest<JobReviewPreview>("/api/job-review/preview", {
       method: "POST",
       body: JSON.stringify(payload),
@@ -560,6 +579,21 @@ export const api = {
       qs ? `/api/applications?${qs}` : "/api/applications",
     );
   },
+  recommendations: () =>
+    apiRequest<JobRecommendation[]>('/api/recommendations'),
+  importRecommendations: (payload: JobRecommendationImport[]) =>
+    apiRequest<JobRecommendation[]>('/api/recommendations/batch', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  updateRecommendation: (
+    recommendationId: string,
+    payload: Pick<JobRecommendation, 'status'>,
+  ) =>
+    apiRequest<JobRecommendation>(`/api/recommendations/${recommendationId}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    }),
   applicationStats: (timezone?: string) => {
     const tz = timezone ? `?timezone=${encodeURIComponent(timezone)}` : "";
     return apiRequest<{

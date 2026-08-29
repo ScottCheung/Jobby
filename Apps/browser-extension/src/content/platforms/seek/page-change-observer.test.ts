@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { observeSeekJobDom } from "./seek-page-change-observer";
+import { observeSeekJobDom } from "./page-change-observer";
 
 describe("SEEK late job detail rendering", () => {
   beforeEach(() => {

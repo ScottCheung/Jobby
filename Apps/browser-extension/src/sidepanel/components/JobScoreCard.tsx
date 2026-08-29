@@ -80,7 +80,10 @@ export function JobScoreCard({
   })();
 
   const overallScore =
-    candidate?.priority_score ?? decision?.score ?? candidate?.match_score ?? null;
+    candidate?.priority_score ??
+    decision?.score ??
+    candidate?.match_score ??
+    null;
 
   const explanation = decision?.explanation;
 
@@ -159,7 +162,8 @@ export function JobScoreCard({
               hasScore ? percentage
               : !authConnected ?
                 '--'
-              : isMatchLoading ? '..'
+              : isMatchLoading ?
+                '..'
               : '--'
             }
           />
@@ -171,9 +175,9 @@ export function JobScoreCard({
             <span
               className={cn(
                 'font-bold text-xs text-foreground truncate',
-                hasScore || !authConnected || !isMatchLoading ? '' : (
-                  'animate-text-shimmer-primary animate-text-shimmer'
-                ),
+                hasScore || !authConnected || !isMatchLoading ?
+                  ''
+                : 'animate-text-shimmer-primary animate-text-shimmer',
               )}
             >
               {matchLabel}

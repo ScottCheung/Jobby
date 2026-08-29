@@ -218,9 +218,9 @@ export function TailorStudioCard({
   ).replace(/\/$/, '');
 
   const getWebEditorUrl = () => {
-    let url = `${webAppBaseUrl}/settings/resume`;
+    let url = `${webAppBaseUrl}/ai-studio/resumes/master`;
     if (result?.tailored_resume?.id) {
-      url = `${webAppBaseUrl}/job-review?id=${result.tailored_resume.id}`;
+      url = `${webAppBaseUrl}/ai-studio/resumes/tailor/${result.tailored_resume.id}`;
     }
     return url;
   };
@@ -591,7 +591,9 @@ export function TailorStudioCard({
       });
     } catch (error) {
       notify.error(
-        error instanceof Error ? error.message : 'Could not open in-page preview.',
+        error instanceof Error ?
+          error.message
+        : 'Could not open in-page preview.',
       );
     }
   };
@@ -694,7 +696,7 @@ export function TailorStudioCard({
             fileSize: blob.size,
             ...(pdfScale === undefined ? {} : { pdfScale }),
             generatedAt: saved.created_at,
-            editUrl: `${webAppBaseUrl}/job-review?id=${saved.id}`,
+            editUrl: `${webAppBaseUrl}/ai-studio/resumes/tailor/${saved.id}`,
           });
         } catch (error) {
           notify.error(
@@ -830,6 +832,7 @@ export function TailorStudioCard({
                 <DetectionProviderBadge
                   platform={detectedJob?.platform}
                   url={detectedJob?.url}
+                  activeProfile={activeProfile}
                 />
               </div>
             </div>
@@ -872,7 +875,7 @@ export function TailorStudioCard({
                   Job Description
                 </span>
                 <div className='flex items-center gap-1.5'>
-                  {jobDescription ? (
+                  {jobDescription ?
                     <>
                       <button
                         type='button'
@@ -896,9 +899,10 @@ export function TailorStudioCard({
                         {`${jobDescription.length.toLocaleString()} chars`}
                       </span>
                     </>
-                  ) : (
-                    <span className='text-[8px] text-muted-foreground/60'>Empty</span>
-                  )}
+                  : <span className='text-[8px] text-muted-foreground/60'>
+                      Empty
+                    </span>
+                  }
                 </div>
               </div>
 
@@ -916,9 +920,9 @@ export function TailorStudioCard({
                     size='sm'
                     maxBlocks={isDescExpanded ? undefined : 3}
                   />
-                  {!isDescExpanded && (
+                  {/* {!isDescExpanded && (
                     <div className='absolute bottom-0 inset-x-0 h-8 bg-gradient-to-t from-panel to-transparent pointer-events-none' />
-                  )}
+                  )} */}
                 </div>
               )}
             </div>
@@ -981,24 +985,40 @@ export function TailorStudioCard({
 
             {/* Primary Action Buttons */}
             <div className='flex flex-col gap-2 w-full min-w-0'>
-              {/* Row 1: Tailor Resume for this Job (Full row) */}
-              <Button
-                variant='default'
-                // size='md'
-                Icon={resumeGenerating ? Loader2 : Sparkles}
-                iconClassName={resumeGenerating ? 'animate-spin' : undefined}
-                onClick={() => handleOpenConfirm('resume')}
-                disabled={hasActiveGeneration || !jobDescription.trim()}
-              >
-                {resumeGenerating ?
-                  'Generating CV...'
-                : mockMode ?
-                  'Mock Tailor Resume'
-                : 'Tailor Resume'}
-              </Button>
+              {hasActiveGeneration && (
+                <div
+                  role='status'
+                  aria-live='polite'
+                  className='flex items-start gap-2 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-primary'
+                >
+                  <Loader2 className='mt-0.5 h-3.5 w-3.5 shrink-0 animate-spin' />
+                  <div className='min-w-0'>
+                    <p className='text-[10px] font-bold'>
+                      Your {activeGenerationLabel} generation has started
+                    </p>
+                    <p className='mt-0.5 text-[9px] leading-relaxed text-muted-foreground'>
+                      You can continue browsing. This action is disabled until
+                      the current generation finishes.
+                    </p>
+                  </div>
+                </div>
+              )}
 
-              {/* Row 2: Cover Letter & Both (Half row each, 2 columns) */}
-              <div className='grid grid-cols-2 gap-2 w-full min-w-0'>
+              <div className='grid grid-cols-3 gap-2 w-full min-w-0'>
+                <Button
+                  variant='default'
+                  // size='md'
+                  Icon={resumeGenerating ? Loader2 : Sparkles}
+                  iconClassName={resumeGenerating ? 'animate-spin' : undefined}
+                  onClick={() => handleOpenConfirm('resume')}
+                  disabled={hasActiveGeneration || !jobDescription.trim()}
+                >
+                  {resumeGenerating ?
+                    'Generating CV...'
+                  : mockMode ?
+                    'Mock Tailor Resume'
+                  : 'Tailor Resume'}
+                </Button>
                 <Button
                   variant='outline'
                   // size='sm'
@@ -1031,25 +1051,6 @@ export function TailorStudioCard({
                   : 'Get Both'}
                 </Button>
               </div>
-
-              {hasActiveGeneration && (
-                <div
-                  role='status'
-                  aria-live='polite'
-                  className='flex items-start gap-2 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-primary'
-                >
-                  <Loader2 className='mt-0.5 h-3.5 w-3.5 shrink-0 animate-spin' />
-                  <div className='min-w-0'>
-                    <p className='text-[10px] font-bold'>
-                      Your {activeGenerationLabel} generation has started
-                    </p>
-                    <p className='mt-0.5 text-[9px] leading-relaxed text-muted-foreground'>
-                      You can continue browsing. This action is disabled until
-                      the current generation finishes.
-                    </p>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
         </>

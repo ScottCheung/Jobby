@@ -13,6 +13,7 @@ from services.shared.matching_dictionaries import (
     RECRUITMENT_STOPWORDS,
     TITLE_EQUIVALENCE_MAP,
 )
+from services.shared.skill_catalog import extract_jd_skills
 
 _WORD_RE = re.compile(r"[a-zA-Z][a-zA-Z0-9+#.-]{1,}")
 
@@ -469,44 +470,66 @@ def score_job_match(
     if not job_terms and not technologies and not job_title:
         return MatchScore(match_score=0.0, recency_factor=parse_recency_score(date_posted), priority_score=0.0, matched_terms=())
 
-    # 1. Tier 1: Explicit Hard Tech Stack Matching
-    tech_terms: set[str] = set()
+    # 1. Build requirement set from technologies + catalog extraction
+    jd_catalog_skills = extract_jd_skills(job_description)
+
+    # Weighted requirements: technologies (browser extension) = 1.0, catalog-only = 0.6
+    requirement_weights: dict[str, float] = {}
     if technologies:
         for tech in technologies:
-            tech_terms.update(_tokens(tech))
+            key = tech.strip().lower()
+            if key:
+                requirement_weights[key] = 1.0
+    for skill in jd_catalog_skills:
+        key = skill.lower()
+        if key not in requirement_weights:
+            requirement_weights[key] = 0.6
 
-    if tech_terms:
-        tech_matched = len(tech_terms & resume_terms)
-        tech_ratio = min(1.0, tech_matched / len(tech_terms))
+    # 2. Compute skill ratio from requirement coverage
+    if requirement_weights:
+        matched_weight = 0.0
+        total_weight = 0.0
+        for label, weight in requirement_weights.items():
+            total_weight += weight
+            label_tokens = _tokens(label)
+            if label_tokens and label_tokens.issubset(resume_terms):
+                matched_weight += weight
+        skill_ratio = matched_weight / total_weight if total_weight > 0 else 0.0
     else:
-        tech_ratio = None
+        # Fallback: no catalog skills found (extremely short/vague JD)
+        effective_len = len(job_terms)
+        description_denominator = min(effective_len, max(6, int(effective_len * 0.25)))
+        skill_ratio = min(1.0, len(job_terms & resume_terms) / max(1, description_denominator))
 
-    # 2. Tier 2: General Job Context & Domain Terms Matching
+    # General context matched terms (backward compat for matched_terms response field)
     matched = tuple(sorted(job_terms & resume_terms))
-    effective_len = len(job_terms)
-    description_denominator = min(effective_len, max(8, int(effective_len * 0.45)))
-    general_ratio = min(1.0, len(matched) / max(1, description_denominator))
+
+    # Context bonus: additional JD keyword overlap adds a small boost (capped at 0.10)
+    if requirement_weights and job_terms:
+        non_req_matched = len(matched) - sum(
+            1 for label in requirement_weights
+            if _tokens(label) and _tokens(label).issubset(resume_terms)
+        )
+        context_bonus = min(0.10, max(0.0, non_req_matched / max(1, len(job_terms)) * 0.2))
+        skill_ratio = min(1.0, skill_ratio + context_bonus)
 
     # 3. Differentiated Title Matching
-    title_score = calculate_title_score(job_title, resume_data, resume_raw_text, general_ratio)
+    title_score = calculate_title_score(job_title, resume_data, resume_raw_text, skill_ratio)
 
+    # Domain damping: only needed in fallback mode (no catalog skills found)
+    # When requirement_weights exist, skill_ratio is already well-calibrated
     has_title = bool(job_title.strip())
-    if tech_ratio is not None:
-        # Tiered: 80% explicit hard technologies + 20% general context
-        skill_ratio = min(1.0, 0.80 * tech_ratio + 0.20 * general_ratio)
-    else:
-        # If no explicit hard tech is extracted, check title and domain affinity to prevent
-        # completely unrelated roles (e.g., Payroll Officer vs Software Engineer) from scoring high on generic overlap.
-        if has_title:
-            if title_score <= 0.30:
-                # Unrelated role domain: clamp/damp skill_ratio proportionally to title alignment
-                skill_ratio = min(general_ratio, max(0.10, title_score * 1.2))
-            elif title_score <= 0.60:
-                skill_ratio = min(general_ratio, 0.35 + 0.65 * title_score)
-            else:
-                skill_ratio = general_ratio
-        else:
-            skill_ratio = general_ratio
+    if has_title and not requirement_weights:
+        if title_score <= 0.30:
+            skill_ratio = min(skill_ratio, max(0.10, title_score * 1.2))
+        elif title_score <= 0.50:
+            skill_ratio = min(skill_ratio, max(0.25, title_score * 0.8 + 0.15))
+
+    # Floor protection: domain-relevant roles should not score excessively low on skills
+    if title_score >= 0.70:
+        skill_ratio = max(0.35, skill_ratio)
+    elif title_score >= 0.50:
+        skill_ratio = max(0.20, skill_ratio)
 
     # 4. Experience & Seniority Matching
     exp_score, _ = calculate_experience_score(

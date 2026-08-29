@@ -47,16 +47,16 @@ const roleTypeBadge: Record<string, { label: string; className: string }> = {
   hiring_manager: {
     label: 'Hiring Manager',
     className:
-      'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
+      'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
   },
   engineering_manager: {
     label: 'Engineering Manager',
     className:
-      'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20',
+      'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400',
   },
   recruiter: {
     label: 'Technical Recruiter',
-    className: 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20',
+    className: 'bg-sky-500/10 text-sky-600 dark:text-sky-400',
   },
 };
 
@@ -86,7 +86,7 @@ export function ProspectCard({
   const roleBadge = roleTypeBadge[prospect.role_type] || {
     label: prospect.role_type,
     className:
-      'bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20',
+      'bg-slate-500/10 text-slate-600 dark:text-slate-400',
   };
 
   const getInitials = (name: string) => {
@@ -163,7 +163,7 @@ export function ProspectCard({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.98 }}
       onClick={() => onOpenDetail(prospect)}
-      className='group relative flex flex-col justify-between rounded-2xl border border-primary/60 bg-panel/70 p-5  transition-all hover:border-primary/40 hover:shadow-md cursor-pointer'
+      className='group relative flex flex-col justify-between rounded-2xl bg-panel/70 p-5 transition-all hover:shadow-md cursor-pointer'
     >
       {/* Top Header */}
       <div>
@@ -198,13 +198,13 @@ export function ProspectCard({
           <div className='flex flex-col items-end shrink-0 absolute top-4 right-4'>
             <div
               className={cn(
-                'flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold border shadow-xs',
+                'flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold shadow-xs',
                 (
                   (prospect.score_breakdown?.overall ||
                     prospect.priority_score) >= 90
                 ) ?
-                  'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
-                : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30',
+                  'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                : 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
               )}
             >
               <Sparkles className='size-3.5' />
@@ -230,7 +230,7 @@ export function ProspectCard({
           )}
           <div
             className={cn(
-              'rounded-md border px-2 py-0.5 text-[11px] font-medium',
+              'rounded-md px-2 py-0.5 text-[11px] font-medium',
               roleBadge.className,
             )}
           >
@@ -239,7 +239,7 @@ export function ProspectCard({
         </div>
 
         {/* Multi-Dimensional AI Match Score Metrics */}
-        <div className='mt-3 grid grid-cols-2 gap-x-6 text-[10px] font-semibold text-ink-secondary bg-background-secondary/40 p-2 rounded-xl border border-primary/40'>
+        <div className='mt-3 grid grid-cols-2 gap-x-6 text-[10px] font-semibold text-ink-secondary bg-background-secondary/40 p-2 rounded-xl'>
           <div className='flex items-center justify-between'>
             <span>Hiring Power:</span>
             <span className='text-emerald-600 dark:text-emerald-400 font-bold'>
@@ -270,7 +270,7 @@ export function ProspectCard({
         {prospect.has_active_job && prospect.active_job_title && (
           <div
             onClick={handleOpenJob}
-            className='mt-3 flex items-center justify-between rounded-xl border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-xs hover:bg-blue-500/20  transition-colors cursor-pointer group/job'
+            className='mt-3 flex items-center justify-between rounded-xl bg-blue-500/10 px-3 py-2 text-xs hover:bg-blue-500/20  transition-colors cursor-pointer group/job'
             title='Click to view active job requisition'
           >
             <div className='flex items-center gap-2 min-w-0'>
@@ -287,7 +287,7 @@ export function ProspectCard({
         )}
 
         {/* AI Recommendation Reason Box - Fully Expanded */}
-        <div className='mt-3.5 rounded-xl border border-primary/15 bg-background-secondary/60 p-3.5 text-xs leading-relaxed text-ink-secondary'>
+        <div className='mt-3.5 rounded-xl bg-background-secondary/60 p-3.5 text-xs leading-relaxed text-ink-secondary'>
           <div className='mb-1.5 flex items-center justify-between font-semibold text-primary text-[11px] uppercase tracking-wider'>
             <div className='flex items-center gap-1.5'>
               <Sparkles className='size-3.5 text-primary' />
@@ -327,12 +327,12 @@ export function ProspectCard({
                     handleCopyScenarioText(scen.id, scen.text);
                   }}
                   className={cn(
-                    'flex items-center justify-center gap-1 rounded-xl border p-2 text-[11px] font-semibold transition-all cursor-pointer shadow-xs',
+                    'flex items-center justify-center gap-1 rounded-xl p-2 text-[11px] font-semibold transition-all cursor-pointer shadow-xs',
                     isCopied ?
-                      'border-emerald-500/50 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold'
+                      'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold'
                     : isHovered ?
-                      'border-primary bg-primary/10 text-ink-primary shadow-sm scale-[1.02]'
-                    : 'border-primary/60 bg-background/70 text-ink-secondary hover:text-ink-primary hover:bg-background-secondary',
+                      'bg-primary/10 text-ink-primary shadow-sm scale-[1.02]'
+                    : 'bg-background/70 text-ink-secondary hover:text-ink-primary hover:bg-background-secondary',
                   )}
                   title={`Copy ${scen.title}`}
                 >
@@ -361,14 +361,14 @@ export function ProspectCard({
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 8, scale: 0.96 }}
                 transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
-                className='absolute bottom-full left-0 right-0 mb-2.5 z-50 rounded-2xl border border-primary/80 bg-panel/95 backdrop-blur-xl p-4 shadow-2xl text-xs space-y-2.5 pointer-events-none'
+                className='absolute bottom-full left-0 right-0 mb-2.5 z-50 rounded-2xl bg-panel/95 backdrop-blur-xl p-4 shadow-2xl text-xs space-y-2.5 pointer-events-none'
               >
-                <div className='flex col items-center justify-between border-b border-primary/40 pb-2'>
+                <div className='flex col items-center justify-between pb-2'>
                   <div className='flex items-center gap-1.5 font-bold text-ink-primary text-xs'>
                     {activeScenarioObj.icon}
                     <span>{activeScenarioObj.title}</span>
                   </div>
-                  <span className='font-mono text-[10px] font-bold text-primary bg-primary/10 border border-primary/20 px-1 py-0.5 rounded-full'>
+                  <span className='font-mono text-[10px] font-bold text-primary bg-primary/10 px-1 py-0.5 rounded-full'>
                     {activeScenarioObj.text.length} chars |{' '}
                     {
                       activeScenarioObj.text.trim().split(/\s+/).filter(Boolean)
@@ -377,7 +377,7 @@ export function ProspectCard({
                     words
                   </span>
                 </div>
-                <p className='text-[11px] text-ink-primary  leading-relaxed font-mono whitespace-pre-wrap bg-background/80 p-3 pb-6! rounded-xl border border-primary/40 '>
+                <p className='text-[11px] text-ink-primary leading-relaxed font-mono whitespace-pre-wrap bg-background/80 p-3 pb-6! rounded-xl'>
                   {activeScenarioObj.text}
                 </p>
               </motion.div>
@@ -387,7 +387,7 @@ export function ProspectCard({
       </div>
 
       {/* Footer Controls */}
-      <div className='mt-4 flex items-center justify-between border-t border-primary/40 pt-3 text-xs gap-2'>
+      <div className='mt-4 flex items-center justify-between pt-3 text-xs gap-2'>
         {/* Status Selector */}
         <div
           className='flex items-center gap-2'
@@ -406,7 +406,7 @@ export function ProspectCard({
             onChange={(e) =>
               onStatusChange(prospect.id, e.target.value as ProspectStatus)
             }
-            className='rounded-lg border border-primary bg-background px-2.5 py-1 text-xs font-medium text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-primary/40 cursor-pointer'
+            className='rounded-lg bg-background px-2.5 py-1 text-xs font-medium text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-primary/40 cursor-pointer'
           >
             {statusOptions.map((opt) => (
               <option key={opt.value} value={opt.value}>

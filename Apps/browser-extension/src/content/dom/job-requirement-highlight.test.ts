@@ -56,6 +56,32 @@ describe('highlightJobRequirement', () => {
     ).toBeNull();
   });
 
+  it('never activates unrelated LinkedIn controls while locating a skill', async () => {
+    document.body.innerHTML = `
+      <main class="jobs-details__main-content">
+        <a id="company-link" href="https://www.linkedin.com/company/acme/">
+          Show more about the company
+        </a>
+        <button id="people-search">See all</button>
+        <section id="job-details">
+          <p>Build production services with TypeScript.</p>
+        </section>
+      </main>
+    `;
+    const companyLink = document.querySelector<HTMLAnchorElement>('#company-link')!;
+    const onCompanyClick = vi.fn((event: Event) => event.preventDefault());
+    companyLink.addEventListener('click', onCompanyClick);
+    const peopleSearch = document.querySelector<HTMLButtonElement>('#people-search')!;
+    const onPeopleSearchClick = vi.fn();
+    peopleSearch.addEventListener('click', onPeopleSearchClick);
+
+    const result = await highlightJobRequirement(['TypeScript']);
+
+    expect(result.highlighted).toBe(true);
+    expect(onCompanyClick).not.toHaveBeenCalled();
+    expect(onPeopleSearchClick).not.toHaveBeenCalled();
+  });
+
   it('uses an exact CSS text highlight without creating a browser selection', async () => {
     document.body.innerHTML = `
       <main class="jobs-details__main-content">

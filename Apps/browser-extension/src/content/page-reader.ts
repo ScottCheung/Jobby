@@ -95,6 +95,12 @@ function postingDateWaitPolicy(
   };
 }
 
+function providerReadinessWaitUntilAttempt(): number {
+  const platform = detectDedicatedPlatform(window.location, document);
+  if (!platform || !isAtsJobPlatform(platform)) return 0;
+  return getAtsProviderDefinition(platform).job.readinessWaitUntilAttempt || 0;
+}
+
 export async function readCurrentPageWhenReady(): Promise<PageInspection> {
   if (matchesProviderLocation("linkedin", window.location)) return readLinkedInPageWhenReady();
   if (matchesProviderLocation("indeed", window.location)) return readIndeedPageWhenReady();
@@ -130,6 +136,7 @@ export async function readCurrentPageWhenReady(): Promise<PageInspection> {
     const postingDateWait = postingDateWaitPolicy(inspection);
     if (
       attempt >= 5 &&
+      attempt >= providerReadinessWaitUntilAttempt() &&
       !postingDateWait.required
     ) {
       return inspection;

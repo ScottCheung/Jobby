@@ -25,10 +25,7 @@ import { ApplicationCard } from './_components/ApplicationCard';
 
 const PAGE_SIZE = 20;
 
-function matchesApplication(
-  application: JobApplication,
-  searchText: string,
-) {
+function matchesApplication(application: JobApplication, searchText: string) {
   const effectiveStatus =
     getDisplayApplicationStatus(application).toLowerCase();
 
@@ -50,11 +47,8 @@ function matchesApplication(
 const SKELETON_HEIGHTS = [340, 420, 280, 380, 320, 400, 460, 290];
 
 export default function ApplicationsPage() {
-  const {
-    applications,
-    saveApplicationPatch,
-    deleteApplication,
-  } = useConsole();
+  const { applications, saveApplicationPatch, deleteApplication } =
+    useConsole();
 
   const [searchText, setSearchText] = useState('');
   const [items, setItems] = useState<JobApplication[]>([]);
@@ -182,9 +176,7 @@ export default function ApplicationsPage() {
     setItems((prevItems) => {
       const syncedItems = prevItems
         .map((item) => applicationsById.get(item.id) ?? item)
-        .filter((item) =>
-          matchesApplication(item, deferredSearchText),
-        );
+        .filter((item) => matchesApplication(item, deferredSearchText));
       return syncedItems;
     });
   }, [applicationsById, deferredSearchText, isLoading]);
@@ -231,9 +223,13 @@ export default function ApplicationsPage() {
           firstPostedAt: item.first_posted_at || null,
           lastPostedAt: item.last_posted_at || null,
           displayFirstPostedAt:
-            item.first_posted_at ? formatRelativeDate(item.first_posted_at) : null,
+            item.first_posted_at ?
+              formatRelativeDate(item.first_posted_at)
+            : null,
           displayLastPostedAt:
-            item.last_posted_at ? formatRelativeDate(item.last_posted_at) : null,
+            item.last_posted_at ?
+              formatRelativeDate(item.last_posted_at)
+            : null,
           isReposted: Boolean(item.is_reposted),
           jobDescription: item.job_description || null,
         };
@@ -300,12 +296,7 @@ export default function ApplicationsPage() {
         ),
       });
     },
-    [
-      applicationsById,
-      openDrawer,
-      saveApplicationPatch,
-      updateUrlParams,
-    ],
+    [applicationsById, openDrawer, saveApplicationPatch, updateUrlParams],
   );
 
   // Sync URL when drawer is closed via close button / backdrop click / ESC
@@ -361,7 +352,7 @@ export default function ApplicationsPage() {
 
   return (
     <div className='flex h-full min-h-[500px] flex-col overflow-hidden'>
-      <div className='app-drag px-page select-none shrink-0'>
+      <div className='app-drag select-none shrink-0'>
         <ScrollLayout
           key={scrollContainer ? 'scrolling' : 'static'}
           scrollContainerRef={scrollContainerRef}
@@ -384,7 +375,7 @@ export default function ApplicationsPage() {
                   placeholder='Search title, company, job id...'
                   value={searchText}
                   onChange={(event) => setSearchText(event.target.value)}
-                  className='body-md pl-9 pr-4 py-1.5 w-full rounded-xl border border-zinc-200 bg-panel dark:bg-zinc-955 dark:border-primary focus:outline-none focus:border-primary/50 dark:focus:border-primary/50 focus:ring-1 focus:ring-primary/20 dark:focus:ring-zinc-750 text-ink-primary'
+                  className='body-md pl-9 pr-4 py-1.5 w-full rounded-xl bg-panel dark:bg-zinc-955 focus:outline-none focus:ring-1 focus:ring-primary/20 dark:focus:ring-zinc-750 text-ink-primary'
                 />
               </div>
             </div>
@@ -399,7 +390,7 @@ export default function ApplicationsPage() {
       : <div
           ref={setContainerRef}
           onScroll={handleCardScroll}
-          className='flex-1 body overflow-y-auto custom-scrollbar-primary p-page relative'
+          className='flex-1 body overflow-y-auto custom-scrollbar-primary pt-page relative'
         >
           <WaterfallLayout minColumnWidth={340} gap={20}>
             {isLoading &&
@@ -410,7 +401,7 @@ export default function ApplicationsPage() {
                   style={{
                     height: `${SKELETON_HEIGHTS[index % SKELETON_HEIGHTS.length]}px`,
                   }}
-                  className='rounded-2xl rounded-tl-3xl! border border-primary/40 bg-background-secondary animate-pulse'
+                  className='rounded-2xl rounded-tl-3xl! bg-background-secondary animate-pulse'
                 />
               ))}
             {rowItems.map((item) => (
@@ -434,7 +425,7 @@ export default function ApplicationsPage() {
                   style={{
                     height: `${SKELETON_HEIGHTS[(index + 3) % SKELETON_HEIGHTS.length]}px`,
                   }}
-                  className='rounded-2xl rounded-tl-3xl! border border-primary/40 bg-background-secondary animate-pulse'
+                  className='rounded-2xl rounded-tl-3xl! bg-background-secondary animate-pulse'
                 />
               ))}
           </WaterfallLayout>

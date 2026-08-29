@@ -98,9 +98,9 @@ export function AddProspectModal({
   };
 
   return (
-    <div className='relative w-full max-w-2xl overflow-hidden rounded-3xl border border-primary/80 bg-panel shadow-2xl flex flex-col max-h-[90vh]'>
+    <div className='relative w-full max-w-2xl overflow-hidden rounded-3xl bg-panel shadow-2xl flex flex-col max-h-[90vh]'>
       {/* Header */}
-      <div className='flex items-center justify-between border-b border-primary/60 px-6 py-4 bg-background-secondary/40 shrink-0'>
+      <div className='flex items-center justify-between px-6 py-4 bg-background-secondary/40 shrink-0'>
         <div className='flex items-center gap-3'>
           <div className='flex size-10 items-center justify-center rounded-xl bg-primary-gradient text-white shadow-xs'>
             <UserPlus className='size-5' />
@@ -130,7 +130,7 @@ export function AddProspectModal({
         className='flex-1 overflow-y-auto p-6 space-y-4 text-xs'
       >
         {error && (
-          <div className='rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-red-600 dark:text-red-400 font-medium'>
+          <div className='rounded-xl bg-red-500/10 p-3 text-red-600 dark:text-red-400 font-medium'>
             {error}
           </div>
         )}
@@ -147,7 +147,7 @@ export function AddProspectModal({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder='e.g. Sarah Jenkins'
-              className='w-full rounded-xl border border-primary bg-background px-3 py-2 text-xs text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-primary/40'
+              className='w-full rounded-xl bg-background px-3 py-2 text-xs text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-primary/40'
             />
           </div>
 
@@ -161,7 +161,7 @@ export function AddProspectModal({
               value={company}
               onChange={(e) => setCompany(e.target.value)}
               placeholder='e.g. Stripe'
-              className='w-full rounded-xl border border-primary bg-background px-3 py-2 text-xs text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-primary/40'
+              className='w-full rounded-xl bg-background px-3 py-2 text-xs text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-primary/40'
             />
           </div>
         </div>
@@ -177,7 +177,7 @@ export function AddProspectModal({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder='e.g. Engineering Manager - Infrastructure'
-              className='w-full rounded-xl border border-primary bg-background px-3 py-2 text-xs text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-primary/40'
+              className='w-full rounded-xl bg-background px-3 py-2 text-xs text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-primary/40'
             />
           </div>
 
@@ -188,7 +188,7 @@ export function AddProspectModal({
             <select
               value={roleType}
               onChange={(e) => setRoleType(e.target.value as ProspectRoleType)}
-              className='w-full rounded-xl border border-primary bg-background px-3 py-2 text-xs text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-primary/40 cursor-pointer'
+              className='w-full rounded-xl bg-background px-3 py-2 text-xs text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-primary/40 cursor-pointer'
             >
               <option value='hiring_manager'>Hiring Manager</option>
               <option value='engineering_manager'>Engineering Manager</option>
@@ -207,7 +207,7 @@ export function AddProspectModal({
               value={location}
               onChange={(e) => setLocation(e.target.value)}
               placeholder='e.g. San Francisco, CA'
-              className='w-full rounded-xl border border-primary bg-background px-3 py-2 text-xs text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-primary/40'
+              className='w-full rounded-xl bg-background px-3 py-2 text-xs text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-primary/40'
             />
           </div>
 
@@ -220,20 +220,20 @@ export function AddProspectModal({
               value={linkedinUrl}
               onChange={(e) => setLinkedinUrl(e.target.value)}
               placeholder='https://www.linkedin.com/in/username'
-              className='w-full rounded-xl border border-primary bg-background px-3 py-2 text-xs text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-primary/40'
+              className='w-full rounded-xl bg-background px-3 py-2 text-xs text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-primary/40'
             />
           </div>
         </div>
 
         {/* Active Requisition Check */}
-        <div className='rounded-2xl border border-primary/60 bg-background-secondary/30 p-4 space-y-3'>
+        <div className='rounded-2xl bg-background-secondary/30 p-4 space-y-3'>
           <div className='flex items-center gap-2'>
             <input
               type='checkbox'
               id='hasActiveJob'
               checked={hasActiveJob}
               onChange={(e) => setHasActiveJob(e.target.checked)}
-              className='size-4 rounded border-primary text-primary focus:ring-primary/40 cursor-pointer'
+              className='size-4 rounded text-primary focus:ring-primary/40 cursor-pointer'
             />
             <label
               htmlFor='hasActiveJob'
@@ -254,7 +254,7 @@ export function AddProspectModal({
                   value={activeJobTitle}
                   onChange={(e) => setActiveJobTitle(e.target.value)}
                   placeholder='e.g. Senior Full Stack Engineer'
-                  className='w-full rounded-xl border border-primary bg-background px-3 py-2 text-xs text-ink-primary'
+                  className='w-full rounded-xl bg-background px-3 py-2 text-xs text-ink-primary'
                 />
               </div>
               <div>
@@ -266,7 +266,7 @@ export function AddProspectModal({
                   value={activeJobUrl}
                   onChange={(e) => setActiveJobUrl(e.target.value)}
                   placeholder='https://company.com/jobs/...'
-                  className='w-full rounded-xl border border-primary bg-background px-3 py-2 text-xs text-ink-primary'
+                  className='w-full rounded-xl bg-background px-3 py-2 text-xs text-ink-primary'
                 />
               </div>
             </div>
@@ -285,7 +285,7 @@ export function AddProspectModal({
               max={100}
               value={priorityScore}
               onChange={(e) => setPriorityScore(Number(e.target.value))}
-              className='w-full rounded-xl border border-primary bg-background px-3 py-2 text-xs text-ink-primary font-bold'
+              className='w-full rounded-xl bg-background px-3 py-2 text-xs text-ink-primary font-bold'
             />
           </div>
 
@@ -296,7 +296,7 @@ export function AddProspectModal({
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value as ProspectStatus)}
-              className='w-full rounded-xl border border-primary bg-background px-3 py-2 text-xs text-ink-primary font-medium cursor-pointer'
+              className='w-full rounded-xl bg-background px-3 py-2 text-xs text-ink-primary font-medium cursor-pointer'
             >
               <option value='recommended'>Recommended</option>
               <option value='contacted'>Contacted</option>
@@ -317,7 +317,7 @@ export function AddProspectModal({
             value={recommendationReason}
             onChange={(e) => setRecommendationReason(e.target.value)}
             placeholder='Detail why this recruiter or manager is worth contacting...'
-            className='w-full rounded-xl border border-primary bg-background p-3 text-xs text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-primary/40'
+            className='w-full rounded-xl bg-background p-3 text-xs text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-primary/40'
           />
         </div>
 
@@ -330,16 +330,16 @@ export function AddProspectModal({
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder='Optional outreach history, referral notes...'
-            className='w-full rounded-xl border border-primary bg-background p-3 text-xs text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-primary/40'
+            className='w-full rounded-xl bg-background p-3 text-xs text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-primary/40'
           />
         </div>
 
         {/* Footer Buttons */}
-        <div className='border-t border-primary/60 pt-4 flex items-center justify-end gap-3 shrink-0'>
+        <div className='pt-4 flex items-center justify-end gap-3 shrink-0'>
           <button
             type='button'
             onClick={onClose}
-            className='rounded-xl border border-primary bg-background px-4 py-2.5 text-xs font-semibold text-ink-primary hover:bg-background-secondary transition-colors cursor-pointer'
+            className='rounded-xl bg-background px-4 py-2.5 text-xs font-semibold text-ink-primary hover:bg-background-secondary transition-colors cursor-pointer'
           >
             Cancel
           </button>

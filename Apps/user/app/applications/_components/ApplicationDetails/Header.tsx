@@ -25,7 +25,7 @@ export function Header({
   onClose,
 }: HeaderProps) {
   return (
-    <div className='flex items-start justify-between px-6 py-5'>
+    <div className='flex items-start justify-between '>
       <div className='min-w-0 pr-4'>
         <div className='flex items-center gap-2 flex-wrap'>
           {platform && (

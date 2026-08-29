@@ -1,3 +1,5 @@
+/** @format */
+
 // @vitest-environment happy-dom
 import { describe, expect, it } from 'vitest';
 import { extractStructuredText, cleanDescription } from './text-utils';
@@ -14,7 +16,7 @@ describe('extractStructuredText', () => {
 
     const result = extractStructuredText(el);
     expect(result).toBe(
-      `About the Job\n\nWe are looking for a Senior Frontend Developer.\n\nRequirements:\n• Must know React and TypeScript.`
+      `About the Job\n\nWe are looking for a Senior Frontend Developer.\n\nRequirements:\n• Must know React and TypeScript.`,
     );
   });
 
@@ -83,7 +85,9 @@ describe('cleanDescription', () => {
   it('normalizes plain multiline text with dashes to bullet points', () => {
     const text = `Job Overview\n\nKey skills:\n- React\n* TypeScript\n- Next.js`;
     const result = cleanDescription(text);
-    expect(result).toBe(`Job Overview\n\nKey skills:\n• React\n• TypeScript\n• Next.js`);
+    expect(result).toBe(
+      `Job Overview\n\nKey skills:\n• React\n• TypeScript\n• Next.js`,
+    );
   });
 
   it('formats squished text with missing spaces/newlines between sentences and sections', () => {
@@ -98,7 +102,7 @@ describe('cleanDescription', () => {
     const result = cleanDescription(squished);
     expect(result).toContain('Who is Shift?');
     expect(result).toContain('About the role:');
-    expect(result).toContain('What you\'ll do:\n• Design, build');
+    expect(result).toContain("What you'll do:\n• Design, build");
     expect(result).toContain('• Support and enhance backend services');
     expect(result).toContain('• Partner with designers');
     expect(result).toContain('• Contribute to architectural discussions');
@@ -119,12 +123,105 @@ Key technologies used at GitHub and GitLab include TypeScript, JavaScript, NodeJ
     expect(result).toContain('At GoDaddy the future of work');
     expect(result).toContain('visit a GoDaddy office');
     expect(result).toContain('GitHub and GitLab');
-    expect(result).toContain('TypeScript, JavaScript, NodeJS, GraphQL, PostgreSQL, MongoDB, and DevOps');
+    expect(result).toContain(
+      'TypeScript, JavaScript, NodeJS, GraphQL, PostgreSQL, MongoDB, and DevOps',
+    );
     expect(result).not.toContain('Go\nDaddy');
     expect(result).not.toContain('Git\nHub');
     expect(result).not.toContain('Dev\nOps');
     expect(result).not.toContain('• At Go');
     expect(result).not.toContain('• Daddy the future');
+  });
+
+  it('un-squishes lowercase words attached to uppercase acronyms and fixes abnormal punctuation spacing', () => {
+    const text = `CORTO is part ofATI - one of the largest Legal Tech companies. Have fun with us . Celebrations.`;
+    const result = cleanDescription(text);
+    expect(result).toContain('of ATI');
+    expect(result).toContain('Have fun with us. Celebrations.');
+  });
+
+  it('recognizes question headers and does not convert them into bullet items', () => {
+    const text = `
+Why join CORTO?
+We solve real world problems.
+
+Who we are
+CORTO is a fast-growing legal tech team.
+    `.trim();
+    const result = cleanDescription(text);
+    expect(result).toContain('Why join CORTO?');
+    expect(result).not.toContain('• Why join CORTO?');
+    expect(result).toContain('Who we are');
+    expect(result).not.toContain('• Who we are');
+  });
+
+  it('preserves bullet items with colons on single lines without splitting or converting to headers', () => {
+    const text = `You'll:\n• Provide technical leadership: Serve as the key technical SME for data scientists and ML engineers on technical problems.\n• Own the experimental lifecycle: Architect and support the transition from data science experimentation to productionised ML.\n• Systematize ML delivery: Set shared patterns for how models are deployed.`;
+    const result = cleanDescription(text);
+
+    expect(result).toBe(
+      `You'll:\n• Provide technical leadership: Serve as the key technical SME for data scientists and ML engineers on technical problems.\n• Own the experimental lifecycle: Architect and support the transition from data science experimentation to productionised ML.\n• Systematize ML delivery: Set shared patterns for how models are deployed.`,
+    );
+  });
+
+  it('correctly cleans SmartRecruiters HTML with section headers and prefixed bullet items', () => {
+    const html = `
+      <section class="job-section">
+        <h2>Job Description</h2>
+        <div class="wysiwyg">
+          <p>We're looking for a Senior MLOps Engineer on AWS.</p>
+          <p><strong>You’ll:</strong></p>
+          <ul>
+            <li>Provide technical leadership: Serve as the key technical SME for data scientists.</li>
+            <li>Own the experimental lifecycle: Architect and support the transition to productionised ML.</li>
+          </ul>
+        </div>
+      </section>
+    `;
+    const result = cleanDescription(html);
+    expect(result).toContain('Job Description');
+    expect(result).toContain("You’ll:");
+    expect(result).toContain('• Provide technical leadership: Serve as the key technical SME for data scientists.');
+    expect(result).toContain('• Own the experimental lifecycle: Architect and support the transition to productionised ML.');
+  });
+
+  it('correctly identifies process and compensation section headers preceding lists without bulletizing them', () => {
+    const text = `
+• Unlimited workspace budget. Build your ideal setup.
+• Real ownership and impact from day one.
+
+How we think about comp
+Our overarching philosophy is to raise the ceiling for our best performers, not the floor. We pay based on the value you add to the company.
+
+• The range listed for this role is total comp: cash plus equity combined.
+• We re-evaluate compensation every 6 months.
+
+Our interview process
+1. A quick phone call to learn about you and share more about our company.
+2. A technical interview, 1hr of system design, no live coding.
+3. A paid work trial, so you get a feel for what it's like to work with us.
+4. You get an offer, and we celebrate!
+    `.trim();
+
+    const result = cleanDescription(text);
+    expect(result).toContain('How we think about comp');
+    expect(result).not.toContain('• How we think about comp');
+    expect(result).toContain('Our interview process');
+    expect(result).not.toContain('• Our interview process');
+    expect(result).toContain('• A quick phone call to learn about you');
+  });
+
+  it('separates inline section headers from paragraphs in SmartRecruiters style descriptions', () => {
+    const text = `Company Description: Are you ready to be a big part of something big? At carsales, we’re all about making buying and selling a great experience.
+
+Job Description: We're looking for a Senior MLOps Engineer to own how our AI team builds models.
+
+Qualifications: What we’re looking for: You have 5+ years of experience across MLOps.`;
+
+    const result = cleanDescription(text);
+    expect(result).toContain('Company Description:');
+    expect(result).toContain('Job Description:');
+    expect(result).toContain('Qualifications:');
   });
 
   it('returns empty string for null or empty inputs', () => {

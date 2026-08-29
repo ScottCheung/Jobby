@@ -2,8 +2,15 @@
 
 import { useState } from 'react';
 import { CircleCheck, TriangleAlert } from 'lucide-react';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@jobby/ui/components/UI/popover';
 import { Tooltip } from '@jobby/ui/components/UI/tooltip';
 import { cn } from '@jobby/ui/lib/utils';
+import type { CareerProfile } from '../../shared/contracts/tailored-resume';
+import { PlatformQuickSearchList } from './PlatformQuickSearchCard';
 
 export function isGenericDetection(platform?: string): boolean {
   return platform?.toLowerCase() === 'generic';
@@ -112,9 +119,11 @@ export function getPlatformBadgeStyle(
 export function DetectionProviderBadge({
   platform,
   url,
+  activeProfile,
 }: {
   platform?: string;
   url?: string;
+  activeProfile?: CareerProfile | null;
 }) {
   const [faviconFailed, setFaviconFailed] = useState(false);
   const isGeneric = isGenericDetection(platform);
@@ -134,38 +143,54 @@ export function DetectionProviderBadge({
   const badgeStyle = getPlatformBadgeStyle(platform, isGeneric, isManual);
 
   return (
-    <Tooltip
-      content={<span className='text-xs'>{tooltip}</span>}
-      side='bottom'
-      align='end'
-    >
-      <span
-        className={cn(
-          'inline-flex items-center gap-1.5 rounded-full border pl-2 pr-1 py-0.5 text-[10px] font-bold capitalize transition-colors',
-          badgeStyle,
-        )}
+    <Popover>
+      <Tooltip
+        content={<span className='text-xs'>{tooltip}</span>}
+        side='bottom'
+        align='end'
       >
-        {faviconUrl && !faviconFailed && (
-          <img
-            src={faviconUrl}
-            alt=''
-            className='h-3 w-3 shrink-0 rounded-xs object-contain'
-            onError={() => setFaviconFailed(true)}
-            loading='lazy'
-          />
-        )}
-        <span>{label}</span>
-        {!isManual &&
-          (isGeneric ?
-            <TriangleAlert
-              className='h-3 w-3 shrink-0 text-warning'
-              aria-hidden='true'
-            />
-          : <CircleCheck
-              className='h-3 w-3 shrink-0 text-emerald-500 dark:text-emerald-400'
-              aria-hidden='true'
-            />)}
-      </span>
-    </Tooltip>
+        <PopoverTrigger asChild>
+          <button
+            type='button'
+            className={cn(
+              'inline-flex items-center gap-1.5 rounded-full border pl-2 pr-1 py-0.5 text-[10px] font-bold capitalize transition-all cursor-pointer hover:brightness-95 dark:hover:brightness-110 active:scale-95 select-none',
+              badgeStyle,
+            )}
+            aria-label={`Platform: ${label}. Click to view supported platforms`}
+            title={`Platform: ${label}. Click to view supported platforms`}
+          >
+            {faviconUrl && !faviconFailed && (
+              <img
+                src={faviconUrl}
+                alt=''
+                className='h-3 w-3 shrink-0 rounded-xs object-contain'
+                onError={() => setFaviconFailed(true)}
+                loading='lazy'
+              />
+            )}
+            <span>{label}</span>
+            {!isManual &&
+              (isGeneric ?
+                <TriangleAlert
+                  className='h-3 w-3 shrink-0 text-warning'
+                  aria-hidden='true'
+                />
+              : <CircleCheck
+                  className='h-3 w-3 shrink-0 text-emerald-500 dark:text-emerald-400'
+                  aria-hidden='true'
+                />)}
+          </button>
+        </PopoverTrigger>
+      </Tooltip>
+      <PopoverContent
+        side='bottom'
+        align='end'
+        sideOffset={8}
+        collisionPadding={14}
+        className='w-[310px] max-w-[calc(100vw-28px)] p-3 rounded-2xl border border-primary/20 bg-background/95 backdrop-blur-xl shadow-xl z-[200]'
+      >
+        <PlatformQuickSearchList activeProfile={activeProfile} />
+      </PopoverContent>
+    </Popover>
   );
 }

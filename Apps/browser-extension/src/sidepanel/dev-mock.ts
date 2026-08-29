@@ -43,6 +43,49 @@ if (typeof window !== 'undefined' && (!window.chrome || !window.chrome.runtime?.
       getManifest: () => ({ version: '0.2.4-dev', content_scripts: [] }),
       sendMessage: async (msg: unknown) => {
         console.log('[Dev Mock] chrome.runtime.sendMessage called with:', msg);
+        const m = msg as { type?: string; payload?: unknown };
+        if (m?.type === 'auth.status') {
+          return {
+            state: 'authenticated',
+            user: {
+              id: 'dev-user-id',
+              email: 'developer@jobby.ai',
+              user_metadata: { full_name: 'Developer' },
+            },
+          };
+        }
+        if (m?.type === 'page.inspect') {
+          return {
+            kind: 'job',
+            snapshot: {
+              platform: 'seek',
+              externalId: '10001',
+              url: 'https://www.seek.com.au/software-engineer-jobs',
+              title: 'Senior Full Stack Developer',
+              company: 'Tech Innovators Pty Ltd',
+              location: 'Brisbane QLD',
+              datePosted: '1d ago',
+              technologies: [
+                'React',
+                'TypeScript',
+                'Tailwind CSS',
+                'Node.js',
+                'Python',
+                'PostgreSQL',
+                'AWS',
+                'Docker',
+              ],
+              description:
+                'We are seeking an experienced Senior Full Stack Developer to lead development of next-generation cloud solutions. You will work across modern React, TypeScript, Node.js and scalable cloud architectures.',
+            },
+          };
+        }
+        if (m?.type === 'tailored-resume.list') {
+          return { ok: true, tailoredResumes: [] };
+        }
+        if (m?.type === 'diagnostics.get') {
+          return { logs: [] };
+        }
         return { ok: true, data: null };
       },
       onMessage: dummyListeners,

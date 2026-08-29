@@ -139,7 +139,7 @@ export function ApplicationDetails({
   };
 
   return (
-    <div className='flex flex-col h-full text-ink-primary'>
+    <div className='flex flex-col h-full text-ink-primary p-6'>
       <div className='sticky top-0 z-20'>
         <Header
           platform={draft.platform}
@@ -154,7 +154,7 @@ export function ApplicationDetails({
       </div>
 
       {/* Scrollable Content Container */}
-      <div className='flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar-primary'>
+      <div className='body'>
         {activeTab === 'overview' && (
           <div className='space-y-6'>
             <Timeline
@@ -189,7 +189,7 @@ export function ApplicationDetails({
       </div>
 
       {/* Floating Save Actions Bar */}
-      <div className='px-6 py-4 flex items-center justify-between shrink-0'>
+      <div className='footer'>
         <span className='label-sm'>
           {draft.updated_at ?
             `Updated: ${formatRelativeDate(draft.updated_at)}`

@@ -29,6 +29,7 @@ export type CoverLetterPreviewCardProps = {
   onDownload?: () => void;
   onCopy?: () => void;
   className?: string;
+  thumbnailClassName?: string;
   headerAction?: ReactNode;
 };
 
@@ -40,6 +41,7 @@ export function CoverLetterPreviewCard({
   filename,
   title,
   badge,
+  thumbnailClassName,
   onOpenModal,
   onPreview,
   onNewWindow,
@@ -100,10 +102,10 @@ export function CoverLetterPreviewCard({
 
   return (
     <div
-      className={`group relative h-36 sm:h-40 w-full cursor-zoom-in bg-background-secondary overflow-hidden rounded-lg p-1.5 ${className}`}
+      className={`flex flex-col gap-3 rounded-3xl border border-primary/20 bg-panel/70 p-5 backdrop-blur-xl shadow-lg w-full min-w-0 max-w-full overflow-hidden transition-all ${className}`}
     >
       {/* Header */}
-      <div className='flex items-center justify-between gap-2 border-b border-primary/40 pb-2.5 w-full min-w-0'>
+      <div className='flex items-center justify-between gap-2 border-b border-primary/30 pb-3 w-full min-w-0'>
         <div className='min-w-0 flex-1 flex items-center gap-1.5 overflow-hidden'>
           <Sparkles className='w-3.5 h-3.5 text-primary shrink-0' />
           <strong className='text-xs font-bold text-ink-primary shrink-0'>
@@ -158,6 +160,7 @@ export function CoverLetterPreviewCard({
           company={company}
           jobTitle={jobTitle}
           filename={filename}
+          thumbnailClassName={thumbnailClassName}
           onOpenModal={onOpenModal}
           onPreview={onPreview}
           onNewWindow={onNewWindow}

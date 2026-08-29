@@ -414,7 +414,7 @@ export default function ResumePage() {
       layoutId: 'career-profile-switcher',
       className: 'w-[94vw] max-w-2xl max-h-[86vh] rounded-lg',
       content: (
-        <div className='flex max-h-[78vh] flex-col gap-5 p-6'>
+        <div className='flex max-h-[78vh] flex-col gap-5 '>
           <div>
             <h2 className='title-card text-ink-primary'>
               Switch Resume Profile
@@ -520,7 +520,7 @@ export default function ResumePage() {
       layoutId: 'career-profile-score-history',
       className: 'w-[94vw] max-w-3xl max-h-[88vh] rounded-lg',
       content: (
-        <div className='flex max-h-[78vh] flex-col gap-5 p-6'>
+        <div className='flex max-h-[78vh] flex-col gap-5'>
           <div>
             <h2 className='title-card text-ink-primary'>Score history</h2>
             <p className='body-sm mt-1 text-ink-secondary'>

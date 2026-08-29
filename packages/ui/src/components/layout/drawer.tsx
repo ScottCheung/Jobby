@@ -52,7 +52,7 @@ export function Drawer({
             exit={{ x: '100%', opacity: 0 }}
             transition={springTransition}
             className={cn(
-              'fixed right-0 top-0 z-[60] h-screen backdrop-blur-[20px] overflow-hidden border-l border-primary bg-background/20 shadow-2xl shadow-primary/20',
+              'fixed right-0 top-0 z-[60] h-screen backdrop-blur-[20px] overflow-hidden bg-background/20 shadow-2xl shadow-primary/20',
               className,
             )}
             style={{ width }}

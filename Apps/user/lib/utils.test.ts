@@ -62,4 +62,42 @@ describe('parseDescriptionBlocks', () => {
       },
     ]);
   });
+
+  it('parses question headers like Why join CORTO? into header blocks', () => {
+    const text = `Why join CORTO?\n• Your work matters.\n• We solve real world problems.`;
+    const blocks = parseDescriptionBlocks(text);
+
+    expect(blocks).toEqual([
+      {
+        type: 'header',
+        text: 'Why join CORTO?',
+      },
+      {
+        type: 'list',
+        items: [
+          'Your work matters.',
+          'We solve real world problems.',
+        ],
+      },
+    ]);
+  });
+
+  it('keeps bullet items with colons inside list block instead of promoting them to headers', () => {
+    const text = `You'll:\n• Provide technical leadership: Serve as the key SME.\n• Own the experimental lifecycle: Architect ML handoffs.`;
+    const blocks = parseDescriptionBlocks(text);
+
+    expect(blocks).toEqual([
+      {
+        type: 'header',
+        text: "You'll:",
+      },
+      {
+        type: 'list',
+        items: [
+          'Provide technical leadership: Serve as the key SME.',
+          'Own the experimental lifecycle: Architect ML handoffs.',
+        ],
+      },
+    ]);
+  });
 });

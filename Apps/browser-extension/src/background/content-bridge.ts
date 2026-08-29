@@ -44,10 +44,15 @@ export function setTargetedTabId(tabId: number | undefined): void {
   targetedTabId = tabId;
 }
 
-export async function inspectActiveTab(): Promise<PageInspection> {
-  const activeTab = await findActiveTab().catch(() => undefined);
+export async function inspectActiveTab(
+  targetTabId?: number,
+): Promise<PageInspection> {
+  const activeTab = await findActiveTab(targetTabId).catch(() => undefined);
+  if (!activeTab?.id) {
+    throw new Error("No active browser tab detected. Please switch to the web page you want to inspect.");
+  }
 
-  const rawResponse = await sendToActiveTab({ type: "content.inspect" });
+  const rawResponse = await sendToTab(activeTab.id, { type: "content.inspect" });
   const parsed = contentResponseSchema.safeParse(rawResponse);
   if (!parsed.success) throw new Error("The page returned an invalid inspection response.");
   if (!parsed.data.ok) throw new Error(parsed.data.error);
@@ -479,11 +484,12 @@ function isLinkedInUrl(url: string | undefined): boolean {
   }
 }
 
-async function findActiveTab(): Promise<chrome.tabs.Tab | undefined> {
-  if (targetedTabId !== undefined) {
-    const targetedTab = await chrome.tabs.get(targetedTabId).catch(() => undefined);
+async function findActiveTab(preferredTabId?: number): Promise<chrome.tabs.Tab | undefined> {
+  const requestedTabId = preferredTabId ?? targetedTabId;
+  if (requestedTabId !== undefined) {
+    const targetedTab = await chrome.tabs.get(requestedTabId).catch(() => undefined);
     if (targetedTab && isSupportedUrl(targetedTab.url)) return targetedTab;
-    targetedTabId = undefined;
+    if (preferredTabId === undefined) targetedTabId = undefined;
   }
 
   const currentWindowTabs = await chrome.tabs.query({ active: true, currentWindow: true }).catch(() => []);

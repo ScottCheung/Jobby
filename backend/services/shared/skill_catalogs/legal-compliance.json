@@ -1,0 +1,386 @@
+[
+  {
+    "label": "Contract Management",
+    "terms": ["Contract Management"]
+  },
+  {
+    "label": "Contract Administration",
+    "terms": ["Contract Administration"]
+  },
+  {
+    "label": "Contract Drafting",
+    "terms": ["Contract Drafting", "Drafting Contracts"]
+  },
+  {
+    "label": "SLA Drafting",
+    "terms": ["SLA Drafting", "Service Level Agreement Drafting"]
+  },
+  {
+    "label": "Contract Negotiation",
+    "terms": ["Contract Negotiation", "Negotiating Contracts"]
+  },
+  {
+    "label": "Commercial Contracts",
+    "terms": ["Commercial Contracts", "Commercial Agreements"]
+  },
+  {
+    "label": "Master Services Agreement",
+    "terms": ["Master Services Agreement", "Master Service Agreement", "MSA"]
+  },
+  {
+    "label": "Non-Disclosure Agreement",
+    "terms": ["Non-Disclosure Agreement", "Non Disclosure Agreement", "NDA"]
+  },
+  {
+    "label": "Statement of Work",
+    "terms": ["Statement of Work", "SOW"]
+  },
+
+  {
+    "label": "Corporate Governance",
+    "terms": ["Corporate Governance"]
+  },
+  {
+    "label": "Company Secretarial",
+    "terms": ["Company Secretarial", "Company Secretariat"]
+  },
+  {
+    "label": "Board Advisory",
+    "terms": ["Board Advisory", "Board Advisory Services"]
+  },
+  {
+    "label": "Entity Management",
+    "terms": ["Entity Management", "Legal Entity Management"]
+  },
+  {
+    "label": "Shareholder Agreements",
+    "terms": ["Shareholder Agreement", "Shareholder Agreements"]
+  },
+  {
+    "label": "Board Minutes",
+    "terms": ["Board Minutes", "Board Meeting Minutes"]
+  },
+  {
+    "label": "Corporate Compliance",
+    "terms": ["Corporate Compliance"]
+  },
+  {
+    "label": "Fiduciary Duty",
+    "terms": ["Fiduciary Duty", "Fiduciary Duties"]
+  },
+
+  {
+    "label": "Regulatory Compliance",
+    "terms": ["Regulatory Compliance"]
+  },
+  {
+    "label": "Compliance Management",
+    "terms": ["Compliance Management"]
+  },
+  {
+    "label": "Sanctions Compliance",
+    "terms": ["Sanctions Compliance"]
+  },
+  {
+    "label": "Export Controls",
+    "terms": ["Export Controls", "Export Control"]
+  },
+  {
+    "label": "Anti-Bribery",
+    "terms": ["Anti-Bribery", "Anti Bribery", "Anti-Bribery Compliance"]
+  },
+  {
+    "label": "Whistleblower Policy",
+    "terms": ["Whistleblower Policy", "Whistleblower Policies"]
+  },
+  {
+    "label": "Code of Conduct",
+    "terms": ["Code of Conduct", "Codes of Conduct"]
+  },
+  {
+    "label": "Regulatory Filings",
+    "terms": ["Regulatory Filings", "Regulatory Filing"]
+  },
+  {
+    "label": "FCPA",
+    "terms": ["FCPA", "Foreign Corrupt Practices Act"]
+  },
+
+  {
+    "label": "GDPR",
+    "terms": ["GDPR", "General Data Protection Regulation"]
+  },
+  {
+    "label": "Data Privacy",
+    "terms": ["Data Privacy", "Information Privacy"]
+  },
+  {
+    "label": "Privacy Law",
+    "terms": ["Privacy Law", "Privacy Laws"]
+  },
+  {
+    "label": "Privacy Compliance",
+    "terms": ["Privacy Compliance", "Data Privacy Compliance"]
+  },
+  {
+    "label": "Data Protection Officer",
+    "terms": ["Data Protection Officer", "DPO"]
+  },
+  {
+    "label": "Privacy Impact Assessment",
+    "terms": ["Privacy Impact Assessment", "PIA"]
+  },
+  {
+    "label": "Data Protection Impact Assessment",
+    "terms": ["Data Protection Impact Assessment", "DPIA"]
+  },
+  {
+    "label": "Cross-Border Data Transfers",
+    "terms": ["Cross-Border Data Transfers", "Cross Border Data Transfers"]
+  },
+  {
+    "label": "Australian Privacy Principles",
+    "terms": ["Australian Privacy Principles", "APPs"]
+  },
+  {
+    "label": "CCPA",
+    "terms": ["CCPA", "California Consumer Privacy Act"]
+  },
+  {
+    "label": "CPRA",
+    "terms": ["CPRA", "California Privacy Rights Act"]
+  },
+
+  {
+    "label": "Intellectual Property",
+    "terms": ["Intellectual Property", "IP Law"]
+  },
+  {
+    "label": "IP Licensing",
+    "terms": ["IP Licensing", "Intellectual Property Licensing"]
+  },
+  {
+    "label": "Brand Protection",
+    "terms": ["Brand Protection"]
+  },
+  {
+    "label": "Patent Law",
+    "terms": ["Patent Law"]
+  },
+  {
+    "label": "Patent Prosecution",
+    "terms": ["Patent Prosecution"]
+  },
+  {
+    "label": "Patent Litigation",
+    "terms": ["Patent Litigation"]
+  },
+  {
+    "label": "Trademark Law",
+    "terms": ["Trademark Law"]
+  },
+  {
+    "label": "Trademarks",
+    "terms": ["Trademark", "Trademarks"]
+  },
+  {
+    "label": "Trademark Prosecution",
+    "terms": ["Trademark Prosecution"]
+  },
+  {
+    "label": "Copyright Law",
+    "terms": ["Copyright Law"]
+  },
+  {
+    "label": "Copyright",
+    "terms": ["Copyright", "Copyrights"]
+  },
+
+  {
+    "label": "Litigation",
+    "terms": ["Litigation"]
+  },
+  {
+    "label": "Commercial Litigation",
+    "terms": ["Commercial Litigation"]
+  },
+  {
+    "label": "Court Appearances",
+    "terms": ["Court Appearance", "Court Appearances"]
+  },
+  {
+    "label": "Legal Pleadings",
+    "terms": ["Legal Pleadings", "Pleadings"]
+  },
+  {
+    "label": "Dispute Resolution",
+    "terms": ["Dispute Resolution"]
+  },
+  {
+    "label": "Arbitration",
+    "terms": ["Arbitration"]
+  },
+  {
+    "label": "Mediation",
+    "terms": ["Mediation"]
+  },
+  {
+    "label": "Settlement Negotiation",
+    "terms": ["Settlement Negotiation", "Settlement Negotiations"]
+  },
+
+  {
+    "label": "LexisNexis",
+    "terms": ["LexisNexis"]
+  },
+  {
+    "label": "Lexis Advance",
+    "terms": ["Lexis Advance", "LexisNexis Advance"]
+  },
+  {
+    "label": "Westlaw",
+    "terms": ["Westlaw", "Thomson Reuters Westlaw"]
+  },
+  {
+    "label": "Practical Law",
+    "terms": ["Practical Law", "Thomson Reuters Practical Law"]
+  },
+  {
+    "label": "Legal Research",
+    "terms": ["Legal Research"]
+  },
+  {
+    "label": "Case Law Analysis",
+    "terms": ["Case Law Analysis", "Case Analysis"]
+  },
+  {
+    "label": "Statutory Interpretation",
+    "terms": ["Statutory Interpretation"]
+  },
+  {
+    "label": "Legal Memoranda",
+    "terms": ["Legal Memoranda", "Legal Memorandum", "Legal Memo"]
+  },
+  {
+    "label": "Jurisprudence",
+    "terms": ["Jurisprudence"]
+  },
+  {
+    "label": "Legal Briefing",
+    "terms": ["Legal Briefing", "Legal Briefs"]
+  },
+
+  {
+    "label": "Contract Lifecycle Management",
+    "terms": ["Contract Lifecycle Management", "CLM"]
+  },
+  {
+    "label": "Ironclad",
+    "terms": ["Ironclad"]
+  },
+  {
+    "label": "Agiloft",
+    "terms": ["Agiloft"]
+  },
+  {
+    "label": "DocuSign",
+    "terms": ["DocuSign"]
+  },
+  {
+    "label": "DocuSign CLM",
+    "terms": ["DocuSign CLM"]
+  },
+
+  {
+    "label": "eDiscovery",
+    "terms": ["eDiscovery", "Electronic Discovery"]
+  },
+  {
+    "label": "EDRM",
+    "terms": ["EDRM", "Electronic Discovery Reference Model"]
+  },
+  {
+    "label": "Relativity",
+    "terms": ["Relativity", "Relativity eDiscovery"]
+  },
+
+  {
+    "label": "Employment Law",
+    "terms": ["Employment Law"]
+  },
+  {
+    "label": "Labor Law",
+    "terms": ["Labor Law", "Labour Law"]
+  },
+  {
+    "label": "Industrial Relations",
+    "terms": ["Industrial Relations", "IR"]
+  },
+  {
+    "label": "Enterprise Agreements",
+    "terms": ["Enterprise Agreement", "Enterprise Agreements"]
+  },
+  {
+    "label": "Fair Work Act",
+    "terms": ["Fair Work Act", "Fair Work Act 2009"]
+  },
+  {
+    "label": "Workplace Investigations",
+    "terms": ["Workplace Investigations", "Workplace Investigation"]
+  },
+
+  {
+    "label": "Workplace Health & Safety",
+    "terms": ["Workplace Health & Safety", "Workplace Health and Safety", "WHS"]
+  },
+  {
+    "label": "Occupational Health & Safety",
+    "terms": [
+      "Occupational Health & Safety",
+      "Occupational Health and Safety",
+      "OH&S",
+      "OHS"
+    ]
+  },
+  {
+    "label": "WHS Compliance",
+    "terms": ["WHS Compliance", "Workplace Health and Safety Compliance"]
+  },
+  {
+    "label": "Workplace Safety",
+    "terms": ["Workplace Safety"]
+  },
+
+  {
+    "label": "Enterprise Risk Management",
+    "terms": ["Enterprise Risk Management", "ERM"]
+  },
+  {
+    "label": "GRC",
+    "terms": [
+      "GRC",
+      "Governance, Risk and Compliance",
+      "Governance Risk and Compliance"
+    ]
+  },
+  {
+    "label": "Risk Register",
+    "terms": ["Risk Register", "Risk Registers"]
+  },
+  {
+    "label": "Archer GRC",
+    "terms": ["Archer GRC", "RSA Archer", "Archer"]
+  },
+  {
+    "label": "Third-Party Risk Management",
+    "terms": [
+      "Third-Party Risk Management",
+      "Third Party Risk Management",
+      "TPRM"
+    ]
+  },
+  {
+    "label": "Vendor Risk Management",
+    "terms": ["Vendor Risk Management", "Vendor Risk"]
+  }
+]

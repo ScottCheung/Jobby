@@ -40,7 +40,8 @@ export async function handleRuntimeMessage(
   if (!parsed.success)
     return { ok: false, error: 'Unsupported extension message.' };
 
-  setTargetedTabId(readTargetedTabId(rawMessage));
+  const messageTargetTabId = readTargetedTabId(rawMessage);
+  setTargetedTabId(messageTargetTabId);
 
   try {
     switch (parsed.data.type) {
@@ -109,7 +110,7 @@ export async function handleRuntimeMessage(
         return {
           ok: true,
           snapshot: await getRuntimeSnapshot(),
-          inspection: await inspectActiveTab(),
+          inspection: await inspectActiveTab(messageTargetTabId),
         };
       case 'content.inspect-form-active':
         if (!isExtensionUiSender(sender))

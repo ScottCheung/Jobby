@@ -7,6 +7,7 @@ import { readIndeedJobPage } from "./indeed/job-reader";
 import { readGenericJobPage } from "./generic/job-reader";
 import { classifyCurrentPage } from "../page-classifier";
 import { parseAndFormatJobDate } from "../../shared/utils/date-formatter";
+import { pageInspectionSchema } from "../../shared/contracts/page-inspection";
 
 describe("E2E Date Extraction Across All Platforms", () => {
   beforeEach(() => {
@@ -48,6 +49,70 @@ describe("E2E Date Extraction Across All Platforms", () => {
         const formatted = parseAndFormatJobDate(inspection.snapshot.lastPostedAt!);
         expect(formatted.displayText).toBe("14 days ago");
         expect(formatted.isNotFresh).toBe(false);
+      }
+    });
+
+    it.each([
+      ["software-engineer-at-stake-4458160309", "4458160309"],
+      ["software-engineer-net-ai-at-corto-4455221406", "4455221406"],
+      ["software-engineer-at-macquarie-group-4448451118", "4448451118"],
+      ["software-engineer-at-propeller-4434953356", "4434953356"],
+      ["software-engineer-at-weave-recruitment-4452894753", "4452894753"],
+    ])("recognizes LinkedIn slug job URL %s", (slug, externalId) => {
+      document.body.innerHTML = `
+        <main>
+          <h1>Software Engineer</h1>
+          <div class="job-details-jobs-unified-top-card__company-name">Test Company</div>
+          <div class="jobs-description__content">
+            <div class="jobs-box__html-content">
+              Build and maintain production software using TypeScript and React.
+            </div>
+          </div>
+        </main>
+      `;
+      Object.defineProperty(window, "location", {
+        writable: true,
+        value: new URL(`https://au.linkedin.com/jobs/view/${slug}`),
+      });
+
+      const inspection = readLinkedInPage();
+      expect(inspection.kind).toBe("job");
+      if (inspection.kind === "job") {
+        expect(inspection.snapshot.externalId).toBe(externalId);
+        expect(inspection.snapshot.title).toBe("Software Engineer");
+        expect(inspection.snapshot.url).toBe(
+          `https://www.linkedin.com/jobs/view/${externalId}/`,
+        );
+      }
+    });
+
+    it("keeps technology-rich LinkedIn jobs within the inspection contract", () => {
+      document.body.innerHTML = `
+        <main>
+          <h1>Staff Software Engineer</h1>
+          <div class="job-details-jobs-unified-top-card__company-name">Technology Company</div>
+          <div class="jobs-description__content">
+            <div class="jobs-box__html-content">
+              ${Array.from({ length: 45 }, (_, index) => `Specialized Skill ${index + 1}`).join(" ")}
+            </div>
+          </div>
+          <section class="job-details-preferences-and-skills-list">
+            <ul>${Array.from({ length: 35 }, (_, index) => `<li>Explicit Skill ${index + 1}</li>`).join("")}</ul>
+          </section>
+        </main>
+      `;
+      Object.defineProperty(window, "location", {
+        writable: true,
+        value: new URL(
+          "https://au.linkedin.com/jobs/view/staff-software-engineer-at-technology-company-4458160309",
+        ),
+      });
+
+      const inspection = readLinkedInPage();
+      expect(inspection.kind).toBe("job");
+      if (inspection.kind === "job") {
+        expect(inspection.snapshot.technologies).toHaveLength(30);
+        expect(pageInspectionSchema.safeParse(inspection).success).toBe(true);
       }
     });
 
@@ -442,6 +507,90 @@ describe("E2E Date Extraction Across All Platforms", () => {
       }
     });
 
+    it("extracts job info from multi-column LinkedIn search-results with non-job headings", () => {
+      document.body.innerHTML = `
+        <div class="scaffold-layout__list">
+          <ul class="jobs-search-results-list">
+            <li class="jobs-search-results-list__list-item jobs-search-results-list__list-item--active" data-occludable-job-id="4450450603">
+              <div class="job-card-container">
+                <a class="job-card-container__link" href="/jobs/search-results/?currentJobId=4450450603&eBP=123">
+                  <strong aria-hidden="true">Dotnet Developer</strong>
+                </a>
+                <div class="job-card-container__primary-description">Ad Astra Consultants</div>
+                <span>Sydney, NSW (On-site)</span>
+                <time datetime="2026-08-20T00:00:00Z">1 week ago</time>
+              </div>
+            </li>
+            <li class="jobs-search-results-list__list-item" data-occludable-job-id="9988776655">
+              <div class="job-card-container">
+                <a class="job-card-container__link" href="/jobs/search-results/?currentJobId=9988776655">
+                  <strong aria-hidden="true">C#.Net Developer</strong>
+                </a>
+                <div class="job-card-container__primary-description">TechnologyOne</div>
+              </div>
+            </li>
+          </ul>
+        </div>
+        <div class="scaffold-layout__detail">
+          <div class="jobs-details__main-content">
+            <div class="job-details-jobs-unified-top-card">
+              <h2 class="t-24 t-bold">Dotnet Developer</h2>
+              <div class="job-details-jobs-unified-top-card__primary-description-container">
+                <a href="/company/ad-astra-consultants/">Ad Astra Consultants</a>
+                <span>·</span>
+                <span>Sydney, New South Wales, Australia (On-site)</span>
+                <span>·</span>
+                <span>1 week ago</span>
+              </div>
+            </div>
+            <div class="people-section">
+              <h2>People you can reach out to</h2>
+              <h3>Meet the hiring team</h3>
+              <div>ASHWINI GHATODE</div>
+            </div>
+            <div class="about-section">
+              <h2>About the job</h2>
+              <div id="job-details" class="jobs-box__html-content">
+                Hiring: Senior .NET Developer<br>
+                We are looking for an experienced Senior .NET Developer with strong expertise in .NET Core/.NET 6+, C#, Microservices, REST APIs, Node.js, NestJS, AWS Cloud, and CI/CD practices.<br>
+                Key Skills:<br>
+                ✓ .NET Framework / .NET Core / C#<br>
+                ✓ Microservices & REST API Development<br>
+                ✓ Node.js & NestJS<br>
+                ✓ Kafka / IBM MQ<br>
+                ✓ SQL & NoSQL Databases<br>
+                ✓ AWS (Lambda, S3, IAM, CloudWatch, Step Functions)<br>
+                ✓ GitHub, GitHub Actions, TeamCity, UrbanCode Deploy<br>
+                ✓ Agile, Jira & Confluence<br>
+                Preferred: React.js, Next.js, TypeScript, Redux, Monitoring Tools (Grafana, Splunk), and Financial Services experience.
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+      Object.defineProperty(window, "location", {
+        writable: true,
+        value: new URL("https://www.linkedin.com/jobs/search-results/?currentJobId=4450450603&eBP=CwEAAAGgPjX5D8Usop"),
+      });
+
+      const inspection = readLinkedInPage();
+      expect(inspection.kind).toBe("job");
+      if (inspection.kind === "job") {
+        expect(inspection.snapshot.externalId).toBe("4450450603");
+        expect(inspection.snapshot.title).toBe("Dotnet Developer");
+        expect(inspection.snapshot.company).toBe("Ad Astra Consultants");
+        expect(inspection.snapshot.location).toBe("Sydney, New South Wales, Australia (On-site)");
+        expect(inspection.snapshot.url).toBe("https://www.linkedin.com/jobs/view/4450450603/");
+        expect(inspection.snapshot.technologies).toContain(".NET");
+        expect(inspection.snapshot.technologies).toContain("C#");
+        expect(inspection.snapshot.technologies).toContain("Microservices");
+        expect(inspection.snapshot.technologies).toContain("AWS");
+        expect(inspection.snapshot.technologies).toContain("Agile");
+        expect(inspection.snapshot.technologies).toContain("Jira");
+        expect(inspection.snapshot.technologies).toContain("Confluence");
+      }
+    });
+
     it("extracts LinkedIn job ID from DOM when URL is /jobs/search/ without currentJobId query", () => {
       document.body.innerHTML = `
         <div class="jobs-search-results-list">
@@ -696,6 +845,30 @@ describe("E2E Date Extraction Across All Platforms", () => {
       }
     });
 
+    it("uses JSON-LD on a standalone Indeed job when the posting has no identifier", () => {
+      document.body.innerHTML = `
+        <script type="application/ld+json">
+          {"@type":"JobPosting","title":"Standalone Role","hiringOrganization":{"name":"Standalone Company"},"datePosted":"2026-08-27T06:31:48.763Z","description":"A standalone role requiring TypeScript and React experience."}
+        </script>
+        <div id="viewJobSSRRoot">
+          <h1 data-testid="jobsearch-JobInfoHeader-title">Standalone Role</h1>
+          <div data-testid="inlineHeader-companyName">Standalone Company</div>
+          <div id="jobDescriptionText">A standalone role requiring TypeScript and React experience.</div>
+        </div>
+      `;
+      Object.defineProperty(window, "location", {
+        writable: true,
+        value: new URL("https://au.indeed.com/viewjob?jk=standalone-card"),
+      });
+
+      const inspection = readIndeedJobPage();
+      expect(inspection.kind).toBe("job");
+      if (inspection.kind === "job") {
+        expect(inspection.snapshot.externalId).toBe("standalone-card");
+        expect(inspection.snapshot.postingDateRaw?.label).toBe("2026-08-27T06:31:48.763Z");
+      }
+    });
+
     it("extracts job on Indeed home/search page with vjk parameter in split view", () => {
       document.body.innerHTML = `
         <div class="jobsearch-LeftPane">
@@ -827,6 +1000,129 @@ describe("E2E Date Extraction Across All Platforms", () => {
         expect(inspection.snapshot.location).toBe("Brisbane QLD");
         // Stale description from card-222 should NOT be leaked
         expect(inspection.snapshot.description).toBeUndefined();
+      }
+    });
+
+    it("does not reuse the previous detail date when Indeed exposes its key only as fromjk", () => {
+      document.body.innerHTML = `
+        <div class="jobsearch-LeftPane">
+          <div class="job_seen_beacon">
+            <h2 class="jobTitle"><a data-jk="new-card" aria-pressed="true">New Card Title</a></h2>
+            <span data-testid="company-name">New Card Company</span>
+          </div>
+        </div>
+        <div class="fastviewjob">
+          <a href="/cmp/Old-Company?fromjk=old-card">Old Company</a>
+          <h1 data-testid="jobsearch-JobInfoHeader-title">Old Card Title</h1>
+          <div id="jobDescriptionText">Old card description.</div>
+          <span data-testid="jobsearch-JobMetadataFooter-item">Posted 2 days ago</span>
+        </div>
+      `;
+      Object.defineProperty(window, "location", {
+        writable: true,
+        value: new URL("https://au.indeed.com/jobs?q=developer&vjk=old-card"),
+      });
+
+      const inspection = readIndeedJobPage();
+      expect(inspection.kind).toBe("job");
+      if (inspection.kind === "job") {
+        expect(inspection.snapshot.externalId).toBe("new-card");
+        expect(inspection.snapshot.title).toBe("New Card Title");
+        expect(inspection.snapshot.company).toBe("New Card Company");
+        expect(inspection.snapshot.postingDateRaw).toBeUndefined();
+        expect(inspection.snapshot.description).toBeUndefined();
+      }
+    });
+
+    it("uses the selected card when Indeed leaves the previous vjk and JSON-LD in place", () => {
+      document.body.innerHTML = `
+        <div class="jobsearch-LeftPane">
+          <div class="job_seen_beacon resultWithShelf" data-jk="old-card">
+            <h2 class="jobTitle"><a href="/rc/clk?jk=old-card">Old Role</a></h2>
+            <span data-testid="company-name">Old Company</span>
+          </div>
+          <div class="job_seen_beacon" data-jk="new-card" aria-selected="true">
+            <h2 class="jobTitle"><a href="/rc/clk?jk=new-card">Newest Role</a></h2>
+            <span data-testid="company-name">New Company</span>
+          </div>
+        </div>
+        <script type="application/ld+json">
+          {"@type":"JobPosting","title":"Old Role","datePosted":"2026-08-24"}
+        </script>
+        <div class="jobsearch-RightPane" data-jk="new-card">
+          <h1 data-testid="jobsearch-JobInfoHeader-title">Newest Role</h1>
+          <div data-testid="inlineHeader-companyName">New Company</div>
+          <div id="jobDescriptionText">Newest role description with React, TypeScript, and testing.</div>
+          <span data-testid="jobsearch-JobMetadataFooter-item">Posted today</span>
+        </div>
+      `;
+      Object.defineProperty(window, "location", {
+        writable: true,
+        value: new URL("https://au.indeed.com/jobs?q=developer&vjk=old-card"),
+      });
+
+      const inspection = readIndeedJobPage();
+      expect(inspection.kind).toBe("job");
+      if (inspection.kind === "job") {
+        expect(inspection.snapshot.externalId).toBe("new-card");
+        expect(inspection.snapshot.title).toBe("Newest Role");
+        expect(inspection.snapshot.company).toBe("New Company");
+        expect(inspection.snapshot.postingDateRaw?.label).toBe("Posted today");
+        expect(inspection.snapshot.description).toContain("Newest role description");
+      }
+    });
+
+    it("reads the initially selected Indeed card when its job key is on the pressed link", () => {
+      document.body.innerHTML = `
+        <div class="job_seen_beacon">
+          <h2 class="jobTitle"><a data-jk="first-card" aria-pressed="true">First Card Role</a></h2>
+          <span data-testid="company-name">First Card Company</span>
+          <span data-testid="myJobsStateDate">Posted 6 days ago</span>
+        </div>
+        <div class="job_seen_beacon">
+          <h2 class="jobTitle"><a data-jk="second-card">Second Card Role</a></h2>
+        </div>
+      `;
+      Object.defineProperty(window, "location", {
+        writable: true,
+        value: new URL("https://au.indeed.com/jobs?q=developer"),
+      });
+
+      const inspection = readIndeedJobPage();
+      expect(inspection.kind).toBe("job");
+      if (inspection.kind === "job") {
+        expect(inspection.snapshot.externalId).toBe("first-card");
+        expect(inspection.snapshot.title).toBe("First Card Role");
+        expect(inspection.snapshot.company).toBe("First Card Company");
+        expect(inspection.snapshot.postingDateRaw?.label).toBe("Posted 6 days ago");
+      }
+    });
+
+    it("keeps technology-rich Indeed jobs within the inspection contract", () => {
+      const skills = Array.from(
+        { length: 35 },
+        (_, index) => `<li>Specialized Skill ${index + 1}</li>`,
+      ).join("");
+      document.body.innerHTML = `
+        <article class="job_seen_beacon">
+          <a data-jk="technology-rich" aria-pressed="true">Technology Rich Role</a>
+        </article>
+        <div class="jobsearch-JobComponent">
+          <h1 data-testid="jobsearch-JobInfoHeader-title">Technology Rich Role</h1>
+          <div data-testid="inlineHeader-companyName">Technology Company</div>
+          <div id="jobDescriptionText">A detailed role using TypeScript, React, AWS, Docker, Kubernetes, and many specialist skills.</div>
+          <section id="qualificationsSection"><ul>${skills}</ul></section>
+        </div>
+      `;
+      Object.defineProperty(window, "location", {
+        writable: true,
+        value: new URL("https://au.indeed.com/?vjk=technology-rich"),
+      });
+
+      const inspection = readIndeedJobPage();
+      expect(() => pageInspectionSchema.parse(inspection)).not.toThrow();
+      if (inspection.kind === "job") {
+        expect(inspection.snapshot.technologies).toHaveLength(30);
       }
     });
   });

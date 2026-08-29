@@ -54,6 +54,7 @@ export type ResumePdfPreviewProps = {
   company?: string;
   jobTitle?: string;
   showSectionHeader?: boolean;
+  thumbnailClassName?: string;
   onOpenModal?: (content: ReactNode) => void;
   onPreview?: () => void;
   onNewWindow?: () => void;
@@ -927,6 +928,7 @@ export function ResumePdfPreview({
   company,
   jobTitle,
   showSectionHeader = false,
+  thumbnailClassName = '',
   onOpenModal,
   onPreview,
   onNewWindow,
@@ -1160,11 +1162,11 @@ export function ResumePdfPreview({
         />
       </div>
 
-      {/* ── THUMBNAIL LIVE PREVIEW (Compact & Efficient) ── */}
+      {/* ── THUMBNAIL LIVE PREVIEW (Compact & Efficient matching extension) ── */}
       <div
         ref={containerRef}
         onClick={openPreview}
-        className='group relative h-36 sm:h-40 w-full cursor-zoom-in bg-background-secondary overflow-hidden rounded-lg p-1.5'
+        className={`group relative h-44 sm:h-48 w-full max-w-[280px] mx-auto cursor-zoom-in bg-background-secondary/50 overflow-hidden rounded-xl p-2 flex items-center justify-center ${thumbnailClassName}`}
       >
         <div className='pointer-events-none flex items-center justify-center'>
           <div

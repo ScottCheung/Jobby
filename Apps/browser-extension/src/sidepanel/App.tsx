@@ -18,6 +18,7 @@ import { DiagnosticsCard } from './components/DiagnosticsCard';
 import { HeaderQuickActions } from './components/HeaderQuickActions';
 import { JobScoreCard } from './components/JobScoreCard';
 import { PageClassBanner } from './components/PageClassBanner';
+import { PlatformQuickSearchCard } from './components/PlatformQuickSearchCard';
 import { ResultsDisplay } from './components/ResultsDisplay';
 import { WorkflowSection } from './components/WorkflowSection';
 import { useApplicationTools } from './hooks/useApplicationTools';
@@ -28,10 +29,11 @@ import { useJobMatch } from './hooks/useJobMatch';
 import { useTailoredResumeStudio } from './hooks/useTailoredResumeStudio';
 import { useThemeSync } from './hooks/useThemeSync';
 import { getActiveTab } from './services/messaging';
-import { pageChangeInspectionRequest } from './services/page-change-inspection';
-import { IPEmotion } from '@jobby/ui/components/UI/IPEmotion';
+import {
+  createPageInspectionQueue,
+  pageChangeInspectionRequest,
+} from './services/page-change-inspection';
 import { Toaster } from '@jobby/ui/components/UI/toast/toaster';
-import { cn } from '@jobby/ui/lib/utils';
 
 const PAGE_READY_DELAY_MS = 150;
 const TailorStudioCard = lazy(() =>
@@ -290,13 +292,14 @@ export function App() {
   useEffect(() => {
     refresh();
     refreshAuth();
-    const inspectCurrentPage = (showLoading: boolean, force = false) => {
-      void autoInspectActivePage(force, showLoading).then((isJob) => {
+    const inspectCurrentPage = createPageInspectionQueue(
+      async ({ showLoading, force }) => {
+        const isJob = await autoInspectActivePage(force, showLoading);
         if (isJob) {
-          void inspectForm(true);
+          await inspectForm(true);
         }
-      });
-    };
+      },
+    );
     let scheduledInspection: number | undefined;
     const scheduleInspection = (showLoading: boolean, force = false) => {
       if (scheduledInspection !== undefined) {
@@ -304,11 +307,11 @@ export function App() {
       }
       scheduledInspection = window.setTimeout(() => {
         scheduledInspection = undefined;
-        inspectCurrentPage(showLoading, force);
+        inspectCurrentPage({ showLoading, force });
       }, PAGE_READY_DELAY_MS);
     };
 
-    inspectCurrentPage(true);
+    inspectCurrentPage({ showLoading: true, force: false });
 
     const onTabActivated = () => scheduleInspection(true, true);
     const onTabUpdated = (
@@ -496,33 +499,11 @@ export function App() {
 
                 if (showNotJobOverlay) {
                   return (
-                    <div className='relative rounded-2xl overflow-hidden min-h-[340px] flex flex-col gap-2 transition-all duration-200  p-1 bg-primary/30'>
-                      {/* Overlay Mask */}
-                      <div className='absolute inset-0 z-0 flex flex-col items-center justify-center bg-background/85 backdrop-blur-md p-4 rounded-2xl '>
-                        <div className='bg-background-50  w-full h-full justify-center items-center flex flex-col'>
-                          <IPEmotion
-                            emotionId={1}
-                            className={cn('w-40 absolute h-40 mx-auto -mt-10 ')}
-                          />
-
-                          <p
-                            className={cn(
-                              'text-xs pt-30 font-bold text-foreground max-w-[400px] uppercase tracking-wider',
-                            )}
-                          >
-                            Insufficient Content
-                          </p>
-
-                          <p
-                            className={cn(
-                              'text-[11px] mt-3 leading-relaxed text-muted-foreground max-w-[220px]',
-                            )}
-                          >
-                            Unable to extract job info
-                          </p>
-                        </div>
-                      </div>
-                    </div>
+                    <PlatformQuickSearchCard
+                      activeProfile={jobMatch.activeProfile}
+                      onReDetect={handleReDetectPage}
+                      isInspecting={isInspectingPage}
+                    />
                   );
                 }
 

@@ -57,9 +57,12 @@ const SELECTORS = {
     '.job-details-jobs-unified-top-card__company-name',
     '.jobs-unified-top-card__company-name a',
     '.jobs-unified-top-card__company-name',
+    '.job-details-jobs-unified-top-card__subtitle-primary-grouping a',
+    '.jobs-unified-top-card__subtitle-primary-grouping a',
     "[class*='company-name'] a",
     "[class*='company-name']",
     "[class*='employer-name']",
+    "[data-anonymize='company-name']",
     '.job-card-container__primary-description',
     '.artdeco-entity-lockup__subtitle',
     "a[href*='/company/']",
@@ -67,6 +70,7 @@ const SELECTORS = {
     "[data-tracking-control-name*='company']",
   ],
   location: [
+    '.job-details-jobs-unified-top-card__primary-description-without-tagline',
     '.job-details-jobs-unified-top-card__primary-description-container',
     '.jobs-unified-top-card__primary-description-container',
     '.job-details-jobs-unified-top-card__bullet',
@@ -83,11 +87,14 @@ const SELECTORS = {
     '.jobs-description',
     '.jobs-description-content__text',
     '.jobs-description__content',
+    '.jobs-box__html-content',
     "[data-test-id='job-details-description']",
     "[data-testid='job-details-description']",
     "[data-testid='expandable-text-box']",
     "[class*='job-details__description']",
     "[class*='jobs-box__html-content']",
+    'article.jobs-description__container',
+    'section.jobs-description',
   ],
   easyApply: [
     'button.jobs-apply-button',
@@ -212,6 +219,13 @@ function cleanText(value: string | null | undefined): string {
  */
 export function canonicalLinkedInJobUrl(jobId: string): string {
   return `https://www.linkedin.com/jobs/view/${jobId}/`;
+}
+
+function linkedInJobReferencePattern(jobId: string): RegExp {
+  return new RegExp(
+    `(?:/jobs/view/(?:[^/?#]*-)?${jobId}(?:/|\\?|#|$)|[?&](?:currentJobId|jobId)=${jobId}\\b)`,
+    'i',
+  );
 }
 
 const NOISY_ELEMENT_TAGS = new Set([
@@ -408,7 +422,9 @@ function getJobDetailPanel(): HTMLElement | null {
     if (el) return el;
   }
   // On a direct /jobs/view/<id> page there is no left sidebar, so `main` is safe.
-  const isDirectJobPage = /\/jobs\/view\/\d+/i.test(window.location.pathname);
+  const isDirectJobPage = /\/jobs\/view\/(?:[^/?#]*-)?\d+(?:\/|$)/i.test(
+    window.location.pathname,
+  );
   if (isDirectJobPage) {
     return document.querySelector<HTMLElement>('main');
   }
@@ -450,18 +466,60 @@ function isPureLocation(value: string): boolean {
   return /^[A-Za-z\s.-]+,\s*(?:NSW|VIC|QLD|WA|SA|TAS|ACT|NT|Australia|New South Wales|Victoria|Queensland|Western Australia|South Australia|Tasmania|Australian Capital Territory|Northern Territory)(?:,\s*Australia)?$/i.test(text);
 }
 
+function titleFromSelectors(
+  root: ParentNode,
+  selectors: readonly string[],
+  company?: string,
+): string {
+  for (const selector of selectors) {
+    const elements = deepQueryAll(root, selector);
+    for (const element of elements) {
+      const text = extractCleanElementText(element);
+      if (isLikelyTitle(text, company)) return text;
+    }
+  }
+  return '';
+}
+
+function companyFromSelectors(
+  root: ParentNode,
+  selectors: readonly string[],
+): string {
+  for (const selector of selectors) {
+    const elements = deepQueryAll(root, selector);
+    for (const element of elements) {
+      const text = extractCleanElementText(element);
+      if (
+        text &&
+        text.length >= 2 &&
+        text.length <= 100 &&
+        !TITLE_METADATA.has(text.toLowerCase()) &&
+        !INVALID_TITLE_PATTERNS.some((p) => p.test(text)) &&
+        !isPureLocation(text) &&
+        !/[·•]/.test(text) &&
+        !/\b(?:ago|applicants?|easy apply|apply|save|follow|following|connections?)\b/i.test(text)
+      ) {
+        return text;
+      }
+    }
+  }
+  return '';
+}
+
 function titleFromMain(company?: string): string {
   const root = getJobDetailRoot();
-  const companyName = company || firstText(root, SELECTORS.company) || firstText(document, SELECTORS.company);
+  const companyName = company || companyFromSelectors(root, SELECTORS.company) || companyFromSelectors(document, SELECTORS.company);
   if (!companyName) return "";
 
-  const paragraphs = Array.from(root.querySelectorAll<HTMLElement>("p"))
+  const paragraphs = Array.from(root.querySelectorAll<HTMLElement>("p, span, div, h1, h2, h3"))
     .map((element) => cleanText(element.textContent))
     .filter(Boolean);
   const companyIndex = paragraphs.findIndex((text) => text === companyName);
-  if (companyIndex < 0) return "";
+  if (companyIndex < 0) {
+    return paragraphs.find((t) => isLikelyTitle(t, companyName)) || "";
+  }
 
-  return paragraphs.slice(companyIndex + 1, companyIndex + 5).find((t) => isLikelyTitle(t, companyName)) || "";
+  return paragraphs.slice(Math.max(0, companyIndex - 3), companyIndex + 6).find((t) => isLikelyTitle(t, companyName)) || "";
 }
 
 function titleFromDocument(jobId: string, company?: string): string {
@@ -478,14 +536,19 @@ function titleFromDocument(jobId: string, company?: string): string {
 }
 
 function titleFromJobLink(jobId: string, company?: string): string {
+  if (!jobId) return '';
+  const jobLinkPattern = linkedInJobReferencePattern(jobId);
+
   const panel = getJobDetailPanel();
   if (panel) {
     const panelLinks = Array.from(
-      panel.querySelectorAll<HTMLAnchorElement>("a[href*='/jobs/view/']"),
+      panel.querySelectorAll<HTMLAnchorElement>(
+        "a[href*='/jobs/view/'], a[href*='currentJobId='], a[href*='jobId=']",
+      ),
     );
     for (const link of panelLinks) {
       const href = link.getAttribute('href') || '';
-      if (!new RegExp(`/jobs/view/${jobId}(?:/|\\?|$)`, 'i').test(href)) continue;
+      if (!jobLinkPattern.test(href)) continue;
       const text = extractCleanElementText(link);
       if (isLikelyTitle(text, company)) return text;
     }
@@ -503,11 +566,13 @@ function titleFromJobLink(jobId: string, company?: string): string {
       "main h1 a[href*='/jobs/view/']",
       "main h2 a[href*='/jobs/view/']",
       "a[href*='/jobs/view/']",
+      "a[href*='currentJobId=']",
+      "a[href*='jobId=']",
     ].join(', ')),
   );
   for (const link of links) {
     const href = link.getAttribute('href') || '';
-    if (!new RegExp(`/jobs/view/${jobId}(?:/|\\?|$)`, 'i').test(href)) continue;
+    if (!jobLinkPattern.test(href)) continue;
     const text = extractCleanElementText(link);
     if (isLikelyTitle(text, company)) return text;
   }
@@ -517,18 +582,37 @@ function titleFromJobLink(jobId: string, company?: string): string {
 function titleFromListCard(jobId: string, company?: string): string {
   if (!jobId) return '';
   const card = findListCard(jobId);
-  if (!card) return '';
-
-  const candidates = Array.from(
-    card.querySelectorAll<HTMLElement>(
-      '.job-card-list__title, .job-card-list__title--link, .job-card-container__link, ' +
-      'a[href*="/jobs/view/"], h2, h3, strong, span.t-16',
-    ),
-  );
-  for (const el of candidates) {
-    const text = extractCleanElementText(el);
-    if (isLikelyTitle(text, company)) return text;
+  if (card) {
+    const candidates = Array.from(
+      card.querySelectorAll<HTMLElement>(
+        '.job-card-list__title, .job-card-list__title--link, .job-card-container__link, ' +
+        'a[href*="/jobs/view/"], a[href*="currentJobId="], h2, h3, strong, span.t-16',
+      ),
+    );
+    for (const el of candidates) {
+      const text = extractCleanElementText(el);
+      if (isLikelyTitle(text, company)) return text;
+    }
   }
+
+  // Active / selected card fallback on search-results
+  const activeCard = document.querySelector<HTMLElement>(
+    '.jobs-search-results-list__list-item--active, .scaffold-layout__list-item--active, ' +
+    '.jobs-search-results__list-item--active, [class*="job-card"][class*="selected"], [class*="job-card"][class*="active"]',
+  );
+  if (activeCard) {
+    const activeCandidates = Array.from(
+      activeCard.querySelectorAll<HTMLElement>(
+        '.job-card-list__title, .job-card-list__title--link, .job-card-container__link, ' +
+        'a[href*="/jobs/view/"], a[href*="currentJobId="], h2, h3, strong, span.t-16',
+      ),
+    );
+    for (const el of activeCandidates) {
+      const text = extractCleanElementText(el);
+      if (isLikelyTitle(text, company)) return text;
+    }
+  }
+
   return '';
 }
 
@@ -538,7 +622,7 @@ function titleFromPage(jobId: string, company?: string): string {
   if (jobLinkTitle) return jobLinkTitle;
 
   // 2. On direct job page (/jobs/view/<id>), document.title is clean and authoritative
-  const isDirectJobPage = new RegExp(`/jobs/view/${jobId}(?:/|$)`, 'i').test(
+  const isDirectJobPage = linkedInJobReferencePattern(jobId).test(
     window.location.pathname,
   );
   if (isDirectJobPage) {
@@ -548,8 +632,8 @@ function titleFromPage(jobId: string, company?: string): string {
 
   // 3. Detail panel top-card title
   const root = getJobDetailRoot();
-  const selectedTitle = firstText(root, SELECTORS.title);
-  if (isLikelyTitle(selectedTitle, company)) return selectedTitle;
+  const selectedTitle = titleFromSelectors(root, SELECTORS.title, company);
+  if (selectedTitle) return selectedTitle;
 
   // 4. Matched list-card title on search / collections / 2-pane view
   const listCardTitle = titleFromListCard(jobId, company);
@@ -562,12 +646,27 @@ function titleFromPage(jobId: string, company?: string): string {
 function locationFromPage(): string | undefined {
   const root = getJobDetailRoot();
   const selected = firstText(root, SELECTORS.location) || firstText(document, SELECTORS.location);
-  if (selected) return selected.split(/\s*[·•]\s*/)[0] || undefined;
+  if (selected) {
+    const parts = selected.split(/\s*[·•]\s*/).map((p) => cleanText(p)).filter(Boolean);
+    const locationPart = parts.find((part) =>
+      !extractLinkedInPostedDate(part) &&
+      !/\b(?:ago|applicants?|reposted|promoted|views?|connections?)\b/i.test(part) &&
+      !JOB_ROLE_KEYWORDS.test(part) &&
+      (isPureLocation(part) || parts.length === 1 || part !== parts[0])
+    );
+    if (locationPart) return locationPart;
+    return parts[0] || undefined;
+  }
 
-  const metadata = Array.from(root.querySelectorAll<HTMLElement>("p"))
+  const metadata = Array.from(root.querySelectorAll<HTMLElement>("p, span"))
     .map((element) => cleanText(element.textContent))
     .find((text) => /\s*[·•]\s*/.test(text) && /\b(?:ago|applicants?)\b/i.test(text));
-  return metadata?.split(/\s*[·•]\s*/)[0] || undefined;
+  if (metadata) {
+    const parts = metadata.split(/\s*[·•]\s*/).map((p) => cleanText(p)).filter(Boolean);
+    const loc = parts.find((p) => isPureLocation(p) || (!extractLinkedInPostedDate(p) && !/\b(?:ago|applicants?)\b/i.test(p)));
+    if (loc) return loc;
+  }
+  return undefined;
 }
 
 /**
@@ -604,19 +703,23 @@ const DATE_METADATA_SELECTORS = [
  * absent (e.g. older LinkedIn layouts).
  */
 function findListCard(externalId: string): HTMLElement | null {
+  if (!externalId) return null;
   // Most reliable: LinkedIn stamps the job ID directly onto the list item.
-  const byAttr = (document.querySelector<HTMLElement>(
-    `[data-occludable-job-id="${externalId}"], [data-job-id="${externalId}"]`,
-  ));
+  const byAttr = document.querySelector<HTMLElement>(
+    `[data-occludable-job-id="${externalId}"], [data-job-id="${externalId}"], ` +
+    `[data-entity-urn*="${externalId}"], [data-chameleon-result-urn*="${externalId}"]`,
+  );
   if (byAttr) return byAttr;
 
   // Fallback: walk up from a link whose href contains the job ID.
   // IMPORTANT: only consider links that are NOT inside the right-side detail
   // panel — detail-panel links are title/company links, not list-card links.
   const panel = getJobDetailPanel();
-  const jobLinkPattern = new RegExp(`/jobs/view/${externalId}(?:/|\\?|$)`, 'i');
+  const jobLinkPattern = linkedInJobReferencePattern(externalId);
   const allLinks = Array.from(
-    document.querySelectorAll<HTMLAnchorElement>("a[href*='/jobs/view/']"),
+    document.querySelectorAll<HTMLAnchorElement>(
+      "a[href*='/jobs/view/'], a[href*='currentJobId='], a[href*='jobId=']",
+    ),
   ).filter((link) => {
     if (!jobLinkPattern.test(link.getAttribute('href') || '')) return false;
     // Exclude links that live inside the detail panel
@@ -736,7 +839,9 @@ export class LinkedInAdapter {
   private applicationActionCache = new Map<ApplicationAction, HTMLElement | null>();
 
   jobIdFromUrl(url: string): string {
-    const match = url.match(/\/jobs\/view\/(\d+)/i);
+    const match = url.match(
+      /\/jobs\/view\/(?:[^/?#]*-)?(\d+)(?:[/?#]|$)/i,
+    );
     if (match?.[1]) return match[1];
 
     try {
@@ -769,7 +874,9 @@ export class LinkedInAdapter {
       "main a[href*='/jobs/view/']",
     );
     if (detailPanelLink) {
-      const linkMatch = (detailPanelLink.getAttribute('href') || '').match(/\/jobs\/view\/(\d+)/i);
+      const linkMatch = (detailPanelLink.getAttribute('href') || '').match(
+        /\/jobs\/view\/(?:[^/?#]*-)?(\d+)(?:[/?#]|$)/i,
+      );
       if (linkMatch?.[1]) return linkMatch[1];
     }
 
@@ -789,8 +896,8 @@ export class LinkedInAdapter {
     const root = getJobDetailRoot();
     const company =
       apiData?.company ||
-      firstText(root, SELECTORS.company) ||
-      firstText(document, SELECTORS.company) ||
+      companyFromSelectors(root, SELECTORS.company) ||
+      companyFromSelectors(document, SELECTORS.company) ||
       "Unknown company";
     const title =
       (apiData?.title && isLikelyTitle(apiData.title, company))
@@ -1390,21 +1497,26 @@ export class LinkedInAdapter {
   private hasCurrentJobReference(jobId: string): boolean {
     if (!jobId) return false;
     const currentUrl = window.location.href;
-    const jobPattern = new RegExp(`/jobs/view/${jobId}(?:/|\\?|$)`, 'i');
+    const jobPattern = linkedInJobReferencePattern(jobId);
     if (
       jobPattern.test(currentUrl) ||
-      new URLSearchParams(window.location.search).get('currentJobId') === jobId
+      new URLSearchParams(window.location.search).get('currentJobId') === jobId ||
+      new URLSearchParams(window.location.search).get('jobId') === jobId
     ) {
       return true;
     }
 
     const titleLink = document.querySelector<HTMLAnchorElement>(
-      "main h1 a[href*='/jobs/view/'], main [role='heading'][aria-level='1'] a[href*='/jobs/view/']",
+      "main h1 a, main [role='heading'][aria-level='1'] a, .job-details-jobs-unified-top-card a",
     );
-    if (titleLink) return jobPattern.test(titleLink.getAttribute('href') || '');
+    if (titleLink && jobPattern.test(titleLink.getAttribute('href') || '')) {
+      return true;
+    }
 
     const links = Array.from(
-      document.querySelectorAll<HTMLAnchorElement>("a[href*='/jobs/view/']"),
+      document.querySelectorAll<HTMLAnchorElement>(
+        "a[href*='/jobs/view/'], a[href*='currentJobId='], a[href*='jobId=']",
+      ),
     );
     if (!links.length) return true;
     return links.some((link) =>

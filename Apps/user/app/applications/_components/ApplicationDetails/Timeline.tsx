@@ -79,7 +79,7 @@ export function Timeline({
         <button
           onClick={() => setIsEditingTimeline(!isEditingTimeline)}
           className={cn(
-            'label-sm inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all border cursor-pointer border-primary text-primary hover:bg-primary/10 bg-background/60',
+            'label-sm inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all cursor-pointer text-primary hover:bg-primary/10 bg-background/60',
           )}
         >
           {isEditingTimeline ?
@@ -97,7 +97,7 @@ export function Timeline({
 
       {/* Log Timeline List */}
       {timeline.length === 0 ?
-        <div className='text-center py-8 border border-dashed border-primary rounded-2xl text-ink-secondary mt-4'>
+        <div className='text-center py-8 rounded-2xl text-ink-secondary mt-4'>
           No timeline entries log recorded. Click "+ Add Stage" to add entries.
         </div>
       : <div className='relative pl-8 space-y-6 pt-2 mt-4 pb-[30vh]'>
@@ -110,7 +110,7 @@ export function Timeline({
               icon: Tag,
               colorClass: 'text-ink-secondary',
               bgColorClass: 'bg-glass',
-              borderClass: 'border-primary',
+              borderClass: '',
             };
             const Icon = cfg.icon;
             const isRelative =
@@ -175,14 +175,14 @@ export function Timeline({
                             deleteTimelineEntry(index);
                             setEditingIndex(null);
                           }}
-                          className='p-1.5 rounded-lg text-ink-secondary hover:text-red-500 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 transition-all cursor-pointer shrink-0'
+                          className='p-1.5 rounded-lg text-ink-secondary hover:text-red-500 hover:bg-red-500/10 transition-all cursor-pointer shrink-0'
                           title='Delete timeline stage'
                         >
                           <Trash2 className='w-4 h-4 text-red-500' />
                         </button>
                         <button
                           onClick={() => setEditingIndex(null)}
-                          className='label-sm inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-success/10 text-success border border-success/20 hover:bg-success/20 transition-all cursor-pointer active:scale-95'
+                          className='label-sm inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-success/10 text-success hover:bg-success/20 transition-all cursor-pointer active:scale-95'
                           title='Done editing'
                         >
                           <Check className='w-3.5 h-3.5' />
@@ -197,7 +197,7 @@ export function Timeline({
                         )}
                         <button
                           onClick={() => setEditingIndex(index)}
-                          className='p-1.5 rounded-lg text-ink-secondary hover:text-primary hover:bg-primary/10 border border-transparent hover:border-primary/40 transition-all cursor-pointer'
+                          className='p-1.5 rounded-lg text-ink-secondary hover:text-primary hover:bg-primary/10 transition-all cursor-pointer'
                           title='Edit stage details'
                         >
                           <Edit3 className='w-4 h-4' />
@@ -261,14 +261,14 @@ export function Timeline({
                               value={toInputDateTime(entry.timestamp)}
                               onChange={(e) =>
                                 handleTimelineEntryChange(
-                                  index,
+                                 index,
                                   'timestamp',
                                   e.target.value ?
                                     fromInputDateTime(e.target.value)
                                   : new Date().toISOString(),
                                 )
                               }
-                              className='body-sm pl-9 pr-3 py-2 bg-glass border border-primary/40 text-ink-primary rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all'
+                              className='body-sm pl-9 pr-3 py-2 bg-glass text-ink-primary rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all'
                             />
                           </div>
                         </div>
@@ -289,7 +289,7 @@ export function Timeline({
                                 e.target.value,
                               )
                             }
-                            className='body-sm px-3 py-2 bg-glass border border-primary/40 text-ink-primary rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all'
+                            className='body-sm px-3 py-2 bg-glass text-ink-primary rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all'
                           />
                         </div>
                       </motion.div>
@@ -310,7 +310,7 @@ export function Timeline({
               <motion.div
                 key='stage-selector'
                 className={cn(
-                  'fixed z-60 p-4 rounded-2xl backdrop-blur-[20px] overflow-hidden border border-primary bg-background/20 shadow-2xl shadow-primary/20',
+                  'fixed z-60 p-4 rounded-2xl backdrop-blur-[20px] overflow-hidden bg-background/20 shadow-2xl shadow-primary/20',
                   'lg:right-[660px] lg:top-[180px] lg:w-[200px] lg:flex-col lg:bottom-auto lg:left-auto',
                   'max-lg:bottom-6 max-lg:left-6 max-lg:right-6 max-lg:w-auto max-lg:flex-col',
                 )}
@@ -331,7 +331,7 @@ export function Timeline({
                           setIsEditingTimeline(false);
                         }}
                         className={cn(
-                          'label-sm inline-flex items-center gap-2 px-3 py-2 rounded-xl transition-all cursor-pointer active:scale-95 border hover:opacity-90 lg:w-full justify-start',
+                          'label-sm inline-flex items-center gap-2 px-3 py-2 rounded-xl transition-all cursor-pointer active:scale-95 hover:opacity-90 lg:w-full justify-start',
                           cfg.bgColorClass,
                           cfg.colorClass,
                           cfg.borderClass,

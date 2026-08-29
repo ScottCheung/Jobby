@@ -42,13 +42,18 @@ export function captureJobDate(
   value: string | null | undefined,
   observedAt: Date = new Date(),
 ): CapturedJobDate | undefined {
-  const rawValue = typeof value === 'string' ? value.replace(/\s+/g, ' ').trim() : '';
+  const rawValue =
+    typeof value === 'string' ? value.replace(/\s+/g, ' ').trim() : '';
   if (!rawValue || Number.isNaN(observedAt.getTime())) return undefined;
 
   const observedAtIso = observedAt.toISOString();
-  const isReposted = /\breposted\b/i.test(rawValue) || /重新发布/.test(rawValue);
+  const isReposted =
+    /\breposted\b/i.test(rawValue) || /重新发布/.test(rawValue);
   const cleaned = rawValue
-    .replace(/^(?:posted\s+(?:on\s+)?|reposted\s+(?:on\s+)?|date\s*:\s*|发布于\s*|重新发布于\s*|over\s+|more\s+than\s+)/i, '')
+    .replace(
+      /^(?:posted\s+(?:on\s+)?|reposted\s+(?:on\s+)?|date\s*:\s*|发布于\s*|重新发布于\s*|over\s+|more\s+than\s+)/i,
+      '',
+    )
     .trim();
 
   const explicitTimestamp = Date.parse(cleaned);
@@ -86,11 +91,13 @@ export function captureJobDate(
   else if (months !== null) ageMs = months * 30 * 86_400_000;
   else if (years !== null) ageMs = years * 365 * 86_400_000;
   else if (/\b30\+\s*(?:days?|d)\b/i.test(lower)) ageMs = 30 * 86_400_000;
-  else if (/\b(?:yesterday)\b/i.test(lower) || /昨天/.test(lower)) ageMs = 86_400_000;
+  else if (/\b(?:yesterday)\b/i.test(lower) || /昨天/.test(lower))
+    ageMs = 86_400_000;
   else if (
     /\b(?:today|just\s+(?:posted|now)|secs?\s+ago)\b/i.test(lower) ||
     /(?:刚刚|今天)/.test(lower)
-  ) ageMs = 0;
+  )
+    ageMs = 0;
 
   if (ageMs === null) return undefined;
   return {
@@ -114,10 +121,14 @@ function formatDateToYYYYMMDD(date: Date): string {
  */
 export function parseAndFormatJobDate(
   datePosted: string,
-  referenceDate: Date = new Date()
+  referenceDate: Date = new Date(),
 ): FormattedJobDate {
   if (!datePosted || typeof datePosted !== 'string') {
-    return { displayText: datePosted || '', isTooOld: false, isNotFresh: false };
+    return {
+      displayText: datePosted || '',
+      isTooOld: false,
+      isNotFresh: false,
+    };
   }
 
   const trimmed = datePosted.trim();
@@ -157,7 +168,9 @@ export function parseAndFormatJobDate(
         ageInDays = parseInt(weekMatch[1], 10) * 7;
       } else {
         // Check month count: e.g. "1 month ago", "1mo", "1个月前"
-        const monthMatch = lower.match(/(\d+)\s*(?:months?|mos?|mo\b|m\b|个月前|月前)/i);
+        const monthMatch = lower.match(
+          /(\d+)\s*(?:months?|mos?|mo\b|m\b|个月前|月前)/i,
+        );
         if (monthMatch && monthMatch[1]) {
           ageInDays = parseInt(monthMatch[1], 10) * 30;
         } else if (/30\+\s*(?:days?|d)/i.test(lower)) {
@@ -173,7 +186,12 @@ export function parseAndFormatJobDate(
   }
 
   // 2. Try parsing as an explicit date or timestamp (strip prefix words first)
-  const cleanDateStr = trimmed.replace(/^(?:posted\s+(?:on\s+)?|reposted\s+(?:on\s+)?|date\s*:\s*|发布于\s*|重新发布于\s*|over\s+|more\s+than\s+)/i, '').trim();
+  const cleanDateStr = trimmed
+    .replace(
+      /^(?:posted\s+(?:on\s+)?|reposted\s+(?:on\s+)?|date\s*:\s*|发布于\s*|重新发布于\s*|over\s+|more\s+than\s+)/i,
+      '',
+    )
+    .trim();
   const timestamp = Date.parse(cleanDateStr) || Date.parse(trimmed);
   if (!isNaN(timestamp)) {
     const parsedDate = new Date(timestamp);
@@ -203,7 +221,7 @@ export function parseAndFormatJobDate(
   // Calculate an estimated real date YYYY-MM-DD if not explicitly parsed
   if (!realDateStr) {
     const estimatedDate = new Date(
-      referenceDate.getTime() - ageInDays * 24 * 60 * 60 * 1000
+      referenceDate.getTime() - ageInDays * 24 * 60 * 60 * 1000,
     );
     realDateStr = formatDateToYYYYMMDD(estimatedDate);
   }
@@ -234,7 +252,9 @@ export function parseAndFormatJobDate(
   const isTooOld = ageInDays > 7;
   const isNotFresh = ageInDays > 4 && ageInDays <= 7;
   const freshnessTier: JobFreshnessTier =
-    ageInDays <= 4 ? 'new' : ageInDays <= 7 ? 'aging' : 'stale';
+    ageInDays <= 4 ? 'new'
+    : ageInDays <= 7 ? 'aging'
+    : 'stale';
 
   return {
     displayText,
@@ -250,17 +270,20 @@ export function parseAndFormatJobDate(
  * Formats a date or ISO string into a concise relative time (e.g. "just now", "10m ago", "2h ago", "19d ago", "26d ago").
  */
 export function formatRelativeTime(
-  dateInput: string | Date | number | undefined | null
+  dateInput: string | Date | number | undefined | null,
 ): string {
   if (!dateInput) return '';
   const date =
-    typeof dateInput === 'object' && dateInput instanceof Date
-      ? dateInput
-      : new Date(dateInput);
+    typeof dateInput === 'object' && dateInput instanceof Date ?
+      dateInput
+    : new Date(dateInput);
   if (isNaN(date.getTime())) return '';
 
   const now = new Date();
-  const diffSec = Math.max(0, Math.floor((now.getTime() - date.getTime()) / 1000));
+  const diffSec = Math.max(
+    0,
+    Math.floor((now.getTime() - date.getTime()) / 1000),
+  );
 
   if (diffSec < 45) return 'just now';
   if (diffSec < 90) return '1m ago';

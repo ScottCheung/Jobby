@@ -3,9 +3,19 @@ function cleanText(value: string | null | undefined): string {
 }
 
 function selectedIndeedCard(root: ParentNode): HTMLElement | null {
-  return root.querySelector<HTMLElement>(
-    "[data-jk][aria-selected='true'], [data-jk][aria-current='true'], [data-jk][data-selected='true'], [data-jk].resultWithShelf, [data-jk][class~='selected']",
-  );
+  const selectors = [
+    "[data-jk][aria-selected='true']",
+    "[data-jk][aria-current='true']",
+    "[data-jk][data-selected='true']",
+    "[data-jk][aria-pressed='true']",
+    "[data-jk].resultWithShelf",
+    "[data-jk][class~='selected']",
+  ];
+  for (const selector of selectors) {
+    const card = root.querySelector<HTMLElement>(selector);
+    if (card) return card.closest<HTMLElement>(".job_seen_beacon") || card;
+  }
+  return null;
 }
 
 export function indeedJobDomSignature(root: ParentNode = document): string {
@@ -41,7 +51,10 @@ export function indeedJobDomSignature(root: ParentNode = document): string {
     selectedCard?.querySelector<HTMLElement>("h2, [id^='jobTitle-'], a")?.textContent,
   );
   const jobKey =
-    cleanText(selectedCard?.getAttribute("data-jk")) ||
+    cleanText(
+      selectedCard?.getAttribute("data-jk") ||
+      selectedCard?.querySelector<HTMLElement>("[data-jk]")?.getAttribute("data-jk"),
+    ) ||
     cleanText(detail?.querySelector<HTMLElement>("[data-jk]")?.getAttribute("data-jk"));
 
   if (!title && !selectedTitle && !jobKey && descriptionState === "missing") return "";
@@ -71,7 +84,7 @@ export function observeIndeedJobDom(
     subtree: true,
     characterData: true,
     attributes: true,
-    attributeFilter: ["data-jk", "data-selected", "aria-selected", "aria-current", "class", "href"],
+    attributeFilter: ["data-jk", "data-selected", "aria-selected", "aria-current", "aria-pressed", "class", "href"],
   });
   scheduleCheck();
 

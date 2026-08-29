@@ -2,7 +2,6 @@
 
 import {
   Document,
-  Font,
   Link as PdfLink,
   Page,
   Path as PdfPath,
@@ -11,16 +10,10 @@ import {
   View,
   pdf,
 } from '@react-pdf/renderer';
-import { resumeContactItems, resumeFullName } from './helpers';
+import { resumeContactItems, resumeFullName, COVER_LETTER_SIGNATURE_STYLE } from './helpers';
 import type { MasterResumeData } from './types';
-import { CLBG_MAIN_PATH_D } from './cover-letter-contour';
-import { SACRAMENTO_FONT_DATA_URI } from './cover-letter-font';
 
-// Register commercial-use free handwriting font (SIL Open Font License 1.1)
-Font.register({
-  family: 'Sacramento',
-  src: SACRAMENTO_FONT_DATA_URI,
-});
+export { COVER_LETTER_SIGNATURE_STYLE };
 
 interface CoverLetterMetrics {
   bodyFontSize: number;
@@ -340,43 +333,60 @@ export function CoverLetterPdfDocument({
           position: 'relative',
         }}
       >
-        {/* Top-Right Decorative Contour: Exact vector SVG from clbg.svg in matching Warm Gold */}
+        {/* Top-Right Decorative Accent (Ultra-lightweight vector contour) */}
         <PdfSvg
-          viewBox='0 0 928 888'
+          viewBox='0 0 100 100'
           style={{
             position: 'absolute',
-            top: -50,
-            right: -30,
-            width: 150,
-            height: 150,
-            opacity: 1,
-            transform: 'rotate(-85deg)',
+            top: -20,
+            right: -20,
+            width: 120,
+            height: 120,
+            opacity: 0.85,
           }}
         >
           <PdfPath
-            d={CLBG_MAIN_PATH_D}
-            fill='#D4A853'
-            transform='matrix(0.866025, 0.5, -0.500207, 0.866384, 309.4571, 6.361)'
+            d='M 20,0 C 60,10 90,40 100,80 L 100,0 Z'
+            fill='#FAF5EC'
+          />
+          <PdfPath
+            d='M 40,0 C 70,15 85,45 100,75'
+            fill='none'
+            stroke='#D4A853'
+            strokeWidth={1.2}
+            opacity={0.7}
+          />
+          <PdfPath
+            d='M 60,0 C 80,18 90,42 100,65'
+            fill='none'
+            stroke='#D4A853'
+            strokeWidth={0.8}
+            opacity={0.4}
           />
         </PdfSvg>
 
-        {/* Bottom-Left Decorative Contour: Scaled vector SVG in matching Warm Gold */}
+        {/* Bottom-Left Decorative Accent (Ultra-lightweight vector contour) */}
         <PdfSvg
-          viewBox='0 0 928 888'
+          viewBox='0 0 100 100'
           style={{
             position: 'absolute',
-            bottom: -110,
-            left: -100,
-            width: 370,
-            height: 370,
-            opacity: 0.28,
-            transform: 'rotate(-25deg)',
+            bottom: -30,
+            left: -30,
+            width: 140,
+            height: 140,
+            opacity: 0.55,
           }}
         >
           <PdfPath
-            d={CLBG_MAIN_PATH_D}
-            fill='#D4A853'
-            transform='matrix(0.866025, 0.5, -0.500207, 0.866384, 309.4571, 6.361)'
+            d='M 0,20 C 10,60 40,90 80,100 L 0,100 Z'
+            fill='#FAF5EC'
+          />
+          <PdfPath
+            d='M 0,40 C 15,70 45,85 75,100'
+            fill='none'
+            stroke='#D4A853'
+            strokeWidth={1}
+            opacity={0.6}
           />
         </PdfSvg>
         {/* ── 2. DETAILED REFERENCE / SUBJECT SECTION (Placed on top) ── */}
@@ -391,8 +401,6 @@ export function CoverLetterPdfDocument({
           <View
             style={{
               backgroundColor: '#FAF5EC',
-              // borderWidth: 0.8,
-              // borderColor: '#DEC8A0',
               borderRadius: 9999,
               paddingHorizontal: 18,
               paddingVertical: 8,
@@ -526,7 +534,6 @@ export function CoverLetterPdfDocument({
               lineHeight: 1.1,
               letterSpacing: -0.2,
               marginBottom: metrics.namePaddingBottom,
-              // textTransform: 'uppercase',
             }}
           >
             {salutation},
@@ -578,10 +585,9 @@ export function CoverLetterPdfDocument({
           </Text>
           <Text
             style={{
-              fontSize: 26,
-              fontFamily: 'Sacramento',
+              fontSize: 22,
+              fontFamily: 'Times-Italic',
               color: '#784508',
-              transform: 'rotate(-4deg)',
             }}
           >
             {signoffName}

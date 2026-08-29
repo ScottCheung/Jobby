@@ -1,0 +1,304 @@
+[
+  {
+    "label": "Cerner",
+    "terms": ["Cerner", "Oracle Cerner", "Cerner Millennium"]
+  },
+  {
+    "label": "Epic Systems",
+    "terms": ["Epic Systems", "Epic Systems EMR", "Epic Systems EHR"]
+  },
+  {
+    "label": "Epic EMR",
+    "terms": ["Epic EMR"]
+  },
+  {
+    "label": "Epic EHR",
+    "terms": ["Epic EHR"]
+  },
+  {
+    "label": "Epic Certification",
+    "terms": ["Epic Certified", "Epic Certification"]
+  },
+  {
+    "label": "MEDITECH",
+    "terms": ["MEDITECH"]
+  },
+  {
+    "label": "Allscripts",
+    "terms": ["Allscripts"]
+  },
+  {
+    "label": "Veradigm",
+    "terms": ["Veradigm"]
+  },
+
+  {
+    "label": "HL7",
+    "terms": ["HL7", "Health Level Seven"]
+  },
+  {
+    "label": "HL7 v2",
+    "terms": ["HL7 v2", "HL7v2", "HL7 Version 2"]
+  },
+  {
+    "label": "HL7 v3",
+    "terms": ["HL7 v3", "HL7v3", "HL7 Version 3"]
+  },
+  {
+    "label": "FHIR",
+    "terms": ["FHIR", "Fast Healthcare Interoperability Resources"]
+  },
+  {
+    "label": "SMART on FHIR",
+    "terms": ["SMART on FHIR", "SMART-on-FHIR"]
+  },
+
+  {
+    "label": "EMR",
+    "terms": ["EMR", "Electronic Medical Record", "Electronic Medical Records"]
+  },
+  {
+    "label": "EHR",
+    "terms": ["EHR", "Electronic Health Record", "Electronic Health Records"]
+  },
+  {
+    "label": "MedicalDirector",
+    "terms": ["MedicalDirector"]
+  },
+
+  {
+    "label": "Athenahealth",
+    "terms": ["Athenahealth"]
+  },
+  {
+    "label": "eClinicalWorks",
+    "terms": ["eClinicalWorks"]
+  },
+
+  {
+    "label": "ICD-10",
+    "terms": ["ICD-10", "ICD 10"]
+  },
+  {
+    "label": "ICD-10-AM",
+    "terms": ["ICD-10-AM", "ICD 10 AM"]
+  },
+  {
+    "label": "ICD-11",
+    "terms": ["ICD-11", "ICD 11"]
+  },
+  {
+    "label": "SNOMED CT",
+    "terms": ["SNOMED CT", "SNOMED"]
+  },
+  {
+    "label": "DICOM",
+    "terms": ["DICOM", "Digital Imaging and Communications in Medicine"]
+  },
+  {
+    "label": "PACS",
+    "terms": ["PACS", "Picture Archiving and Communication System"]
+  },
+  {
+    "label": "Medical Imaging Informatics",
+    "terms": ["Medical Imaging Informatics", "Imaging Informatics"]
+  },
+
+  {
+    "label": "Clinical Trials",
+    "terms": ["Clinical Trials", "Clinical Trial"]
+  },
+  {
+    "label": "Clinical Research",
+    "terms": ["Clinical Research"]
+  },
+  {
+    "label": "Good Clinical Practice",
+    "terms": ["Good Clinical Practice"]
+  },
+  {
+    "label": "Protocol Design",
+    "terms": ["Protocol Design", "Clinical Protocol Design"]
+  },
+  {
+    "label": "Pharmacovigilance",
+    "terms": ["Pharmacovigilance", "Drug Safety"]
+  },
+  {
+    "label": "Adverse Event Reporting",
+    "terms": ["Adverse Event Reporting", "AE Reporting"]
+  },
+
+  {
+    "label": "CDISC",
+    "terms": ["CDISC", "Clinical Data Interchange Standards Consortium"]
+  },
+  {
+    "label": "SDTM",
+    "terms": ["SDTM", "Study Data Tabulation Model"]
+  },
+  {
+    "label": "ADaM",
+    "terms": ["ADaM", "Analysis Data Model"]
+  },
+  {
+    "label": "Electronic Data Capture",
+    "terms": ["Electronic Data Capture", "EDC"]
+  },
+  {
+    "label": "Clinical Data Management",
+    "terms": ["Clinical Data Management", "CDM"]
+  },
+  {
+    "label": "REDCap",
+    "terms": ["REDCap"]
+  },
+  {
+    "label": "Medidata Rave",
+    "terms": ["Medidata Rave", "Rave EDC"]
+  },
+  {
+    "label": "Medidata",
+    "terms": ["Medidata"]
+  },
+
+  {
+    "label": "Patient Care",
+    "terms": ["Patient Care", "Direct Patient Care"]
+  },
+  {
+    "label": "Nursing",
+    "terms": ["Nursing", "Nursing Care"]
+  },
+  {
+    "label": "Medication Administration",
+    "terms": ["Medication Administration"]
+  },
+  {
+    "label": "Vital Signs",
+    "terms": ["Vital Signs", "Vital Sign Monitoring"]
+  },
+  {
+    "label": "Infection Control",
+    "terms": ["Infection Control", "Infection Prevention and Control"]
+  },
+  {
+    "label": "IV Cannulation",
+    "terms": ["IV Cannulation", "Intravenous Cannulation"]
+  },
+  {
+    "label": "Triage",
+    "terms": ["Triage", "Emergency Triage"]
+  },
+  {
+    "label": "Phlebotomy",
+    "terms": ["Phlebotomy"]
+  },
+  {
+    "label": "Venipuncture",
+    "terms": ["Venipuncture", "Venepuncture"]
+  },
+  {
+    "label": "Aged Care",
+    "terms": ["Aged Care", "Geriatric Care"]
+  },
+  {
+    "label": "Palliative Care",
+    "terms": ["Palliative Care"]
+  },
+  {
+    "label": "End-of-Life Care",
+    "terms": ["End-of-Life Care", "End of Life Care"]
+  },
+
+  {
+    "label": "BLS",
+    "terms": ["BLS", "Basic Life Support"]
+  },
+  {
+    "label": "CPR",
+    "terms": ["CPR", "Cardiopulmonary Resuscitation"]
+  },
+  {
+    "label": "ACLS",
+    "terms": ["ACLS", "Advanced Cardiac Life Support"]
+  },
+  {
+    "label": "PALS",
+    "terms": [
+      "PALS",
+      "Pediatric Advanced Life Support",
+      "Paediatric Advanced Life Support"
+    ]
+  },
+
+  {
+    "label": "Health Informatics",
+    "terms": ["Health Informatics", "Digital Health Informatics"]
+  },
+  {
+    "label": "Biostatistics",
+    "terms": ["Biostatistics"]
+  },
+  {
+    "label": "Epidemiology",
+    "terms": ["Epidemiology", "Public Health Epidemiology"]
+  },
+  {
+    "label": "Health Economics",
+    "terms": ["Health Economics"]
+  },
+  {
+    "label": "HEOR",
+    "terms": ["HEOR", "Health Economics and Outcomes Research"]
+  },
+  {
+    "label": "Real-World Evidence",
+    "terms": ["Real-World Evidence", "Real World Evidence", "RWE"]
+  },
+  {
+    "label": "Telehealth",
+    "terms": ["Telehealth", "Telemedicine"]
+  },
+  {
+    "label": "Remote Patient Monitoring",
+    "terms": ["Remote Patient Monitoring", "RPM"]
+  },
+
+  {
+    "label": "ISO 13485",
+    "terms": ["ISO 13485", "ISO13485"]
+  },
+  {
+    "label": "Medical Devices",
+    "terms": ["Medical Device", "Medical Devices"]
+  },
+  {
+    "label": "FDA 510(k)",
+    "terms": ["FDA 510(k)", "510(k)", "510k"]
+  },
+  {
+    "label": "CE Marking for Medical Devices",
+    "terms": [
+      "CE Mark Medical",
+      "Medical Device CE Marking",
+      "CE Marking Medical Devices"
+    ]
+  },
+  {
+    "label": "EU MDR",
+    "terms": ["MDR", "EU MDR", "Medical Device Regulation"]
+  },
+  {
+    "label": "Design Controls",
+    "terms": ["Design Controls", "Medical Device Design Controls"]
+  },
+  {
+    "label": "GMP",
+    "terms": ["GMP", "Good Manufacturing Practice"]
+  },
+  {
+    "label": "cGMP",
+    "terms": ["cGMP", "Current Good Manufacturing Practice"]
+  }
+]

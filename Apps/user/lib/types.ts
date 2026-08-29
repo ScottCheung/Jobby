@@ -450,6 +450,34 @@ export type JobApplication = {
   updated_at?: string;
 };
 
+export type JobRecommendation = {
+  id: string;
+  job_id?: string | null;
+  platform: string;
+  title?: string | null;
+  company?: string | null;
+  work_location?: string | null;
+  work_style?: string | null;
+  job_link?: string | null;
+  match_score: number;
+  recommendation_reason?: string | null;
+  status: 'recommended' | 'dismissed' | 'started';
+  created_at: string;
+  updated_at: string;
+};
+
+export type JobRecommendationImport = {
+  job_id?: string;
+  platform: string;
+  title: string;
+  company?: string;
+  work_location?: string;
+  work_style?: string;
+  job_link?: string;
+  match_score: number;
+  recommendation_reason?: string;
+};
+
 export type WorkerConfig = {
   user: User;
   profile: UserProfile | null;

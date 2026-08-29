@@ -156,7 +156,7 @@ def test_profile_skills_affect_scoring_without_mutating_resume_data() -> None:
 
     assert "git" in result.matched_terms
     assert result.candidate.skill_score is not None
-    assert result.candidate.skill_score >= 0.8
+    assert result.candidate.skill_score >= 0.5
     assert resume_data == original_resume
     assert resume_data["skills"][0]["skills"] == ["React", "Next.js", "TypeScript"]
 

@@ -72,7 +72,7 @@ export function ModuleTopNav({
   }, [handleScroll]);
 
   return (
-    <div className='flex h-[calc(100vh-18px)] min-h-[500px] flex-col px-page pt-3 pb-0!'>
+    <div className='flex h-[calc(100vh-18px)] min-h-[500px] w-full max-w-full min-w-0 flex-col overflow-x-hidden px-page pt-3 pb-0!'>
       <AnimatePresence initial={false}>
         {navVisible && (
           <motion.header
@@ -81,9 +81,12 @@ export function ModuleTopNav({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -12 }}
             transition={{ duration: 0.22, ease: 'easeInOut' }}
-            className='z-20 flex w-full shrink-0 items-center justify-between'
+            className='z-20 flex w-full min-w-0 max-w-full shrink-0 items-center justify-between'
           >
-            <nav className='flex items-center px-2 pb-px' aria-label='Module navigation'>
+            <nav
+              className='flex items-center px-2 pb-px min-w-0'
+              aria-label='Module navigation'
+            >
               {tabs.map((tab) => {
                 const isActive =
                   tab.exact || tab.href === tabs[0]?.href ?
@@ -103,14 +106,16 @@ export function ModuleTopNav({
                     <Link
                       href={tab.href}
                       className={cn(
-                        'group relative top-px flex items-center gap-2 rounded-full px-4 py-2 transition-colors hover:bg-panel',
+                        'group relative top-px flex items-center gap-2 rounded-full px-4 py-2 transition-colors hover:bg-panel shrink-0',
                         isActive ?
                           'font-bold text-primary'
                         : 'font-medium text-ink-secondary hover:text-ink-primary',
                       )}
                     >
                       <tab.icon className='h-[18px] w-[18px]' />
-                      <span className='text-[13px] tracking-wide'>{tab.name}</span>
+                      <span className='text-[13px] tracking-wide'>
+                        {tab.name}
+                      </span>
                       {isActive && (
                         <motion.span
                           layoutId={activeLayoutId}
@@ -124,7 +129,7 @@ export function ModuleTopNav({
             </nav>
 
             {rightContent && (
-              <div className='ml-auto flex items-center gap-2.5 pr-4'>
+              <div className='ml-auto flex items-center gap-2.5 pr-4 shrink-0'>
                 {rightContent}
               </div>
             )}
@@ -135,12 +140,12 @@ export function ModuleTopNav({
       <div
         ref={scrollContainerRef}
         className={cn(
-          'z-0 flex-1 overflow-y-auto pt-6',
+          'z-0 flex-1 w-full max-w-full min-w-0 overflow-y-auto overflow-x-hidden pt-3',
           contentClassName,
         )}
         style={contentFade ? contentFadeStyle : undefined}
       >
-        <div className='h-full'>{children}</div>
+        <div className='h-full w-full max-w-full min-w-0'>{children}</div>
       </div>
     </div>
   );

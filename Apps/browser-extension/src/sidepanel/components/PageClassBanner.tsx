@@ -58,12 +58,9 @@ interface PageClassBannerProps {
   onUpdateJobSnapshot?: (updates: Partial<JobSnapshot>) => void;
   onHighlightJobRequirement?: (
     searchTerms: string[],
-  ) =>
-    | Promise<
-        | { highlighted: boolean; matchCount: number; currentIndex: number }
-        | boolean
-      >
-    | void;
+  ) => Promise<
+    { highlighted: boolean; matchCount: number; currentIndex: number } | boolean
+  > | void;
   authConnected?: boolean;
   onSignIn?: () => void;
 }
@@ -560,6 +557,7 @@ export function PageClassBanner({
             <DetectionProviderBadge
               platform={platform}
               url={latestInspection.snapshot.url}
+              activeProfile={activeProfile}
             />
           </div>
         </div>
@@ -789,7 +787,8 @@ export function PageClassBanner({
                                 title='Click to jump to next match in JD'
                                 className='shrink-0 rounded-full bg-yellow-400 text-black px-1.5 py-0.2 text-[9px] font-extrabold font-mono tracking-tight shadow-xs hover:bg-yellow-300 active:scale-95 transition-all cursor-pointer'
                               >
-                                {skillNavStats[tech].current}/{skillNavStats[tech].total}
+                                {skillNavStats[tech].current}/
+                                {skillNavStats[tech].total}
                               </button>
                             )}
                             <CopyFieldButton label={tech} value={tech} />
@@ -802,18 +801,23 @@ export function PageClassBanner({
                           Added to your career profile skills and matched to
                           this job.
                         </p>
-                        {skillNavStats[tech] && skillNavStats[tech].total > 1 && (
-                          <Button
-                            type='button'
-                            variant='custom'
-                            size='sm'
-                            className='w-full h-6.5 px-2 text-[11px] gap-1.5 cursor-pointer font-semibold bg-amber-400/20 text-amber-900 dark:text-amber-200 border border-amber-400/40 hover:bg-amber-400/35 hover:text-amber-950 dark:hover:text-amber-100 hover:border-amber-400/60 transition-all rounded-lg shadow-2xs active:scale-[0.98]'
-                            onClick={() => void handleLocateSkill(tech)}
-                          >
-                            <span>Jump to next match ({skillNavStats[tech].current}/{skillNavStats[tech].total})</span>
-                            <ArrowRight className='w-3 h-3 ml-0.5' />
-                          </Button>
-                        )}
+                        {skillNavStats[tech] &&
+                          skillNavStats[tech].total > 1 && (
+                            <Button
+                              type='button'
+                              variant='custom'
+                              size='sm'
+                              className='w-full h-6.5 px-2 text-[11px] gap-1.5 cursor-pointer font-semibold bg-amber-400/20 text-amber-900 dark:text-amber-200 border border-amber-400/40 hover:bg-amber-400/35 hover:text-amber-950 dark:hover:text-amber-100 hover:border-amber-400/60 transition-all rounded-lg shadow-2xs active:scale-[0.98]'
+                              onClick={() => void handleLocateSkill(tech)}
+                            >
+                              <span>
+                                Jump to next match (
+                                {skillNavStats[tech].current}/
+                                {skillNavStats[tech].total})
+                              </span>
+                              <ArrowRight className='w-3 h-3 ml-0.5' />
+                            </Button>
+                          )}
                         <div className='flex items-center gap-1.5 pt-1 w-full'>
                           <Button
                             type='button'
@@ -898,7 +902,8 @@ export function PageClassBanner({
                                 title='Click to jump to next match in JD'
                                 className='shrink-0 rounded-full bg-yellow-400 text-black px-1.5 py-0.2 text-[9px] font-extrabold font-mono tracking-tight shadow-xs hover:bg-yellow-300 active:scale-95 transition-all cursor-pointer'
                               >
-                                {skillNavStats[tech].current}/{skillNavStats[tech].total}
+                                {skillNavStats[tech].current}/
+                                {skillNavStats[tech].total}
                               </button>
                             )}
                             <CopyFieldButton label={tech} value={tech} />
@@ -911,18 +916,23 @@ export function PageClassBanner({
                           Matched from your uploaded base resume and work
                           experience.
                         </p>
-                        {skillNavStats[tech] && skillNavStats[tech].total > 1 && (
-                          <Button
-                            type='button'
-                            variant='custom'
-                            size='sm'
-                            className='w-full h-6.5 px-2 text-[11px] gap-1.5 cursor-pointer font-semibold bg-amber-400/20 text-amber-900 dark:text-amber-200 border border-amber-400/40 hover:bg-amber-400/35 hover:text-amber-950 dark:hover:text-amber-100 hover:border-amber-400/60 transition-all rounded-lg shadow-2xs active:scale-[0.98]'
-                            onClick={() => void handleLocateSkill(tech)}
-                          >
-                            <span>Jump to next match ({skillNavStats[tech].current}/{skillNavStats[tech].total})</span>
-                            <ArrowRight className='w-3 h-3 ml-0.5' />
-                          </Button>
-                        )}
+                        {skillNavStats[tech] &&
+                          skillNavStats[tech].total > 1 && (
+                            <Button
+                              type='button'
+                              variant='custom'
+                              size='sm'
+                              className='w-full h-6.5 px-2 text-[11px] gap-1.5 cursor-pointer font-semibold bg-amber-400/20 text-amber-900 dark:text-amber-200 border border-amber-400/40 hover:bg-amber-400/35 hover:text-amber-950 dark:hover:text-amber-100 hover:border-amber-400/60 transition-all rounded-lg shadow-2xs active:scale-[0.98]'
+                              onClick={() => void handleLocateSkill(tech)}
+                            >
+                              <span>
+                                Jump to next match (
+                                {skillNavStats[tech].current}/
+                                {skillNavStats[tech].total})
+                              </span>
+                              <ArrowRight className='w-3 h-3 ml-0.5' />
+                            </Button>
+                          )}
                         <p className='text-[10px] text-muted-foreground/80 italic'>
                           To edit base resume skills, update your Master Resume
                           in Settings.
@@ -1018,7 +1028,8 @@ export function PageClassBanner({
                                 title='Click to jump to next match in JD'
                                 className='shrink-0 rounded-full bg-yellow-400 text-black px-1.5 py-0.2 text-[9px] font-extrabold font-mono tracking-tight shadow-xs hover:bg-yellow-300 active:scale-95 transition-all cursor-pointer'
                               >
-                                {skillNavStats[tech].current}/{skillNavStats[tech].total}
+                                {skillNavStats[tech].current}/
+                                {skillNavStats[tech].total}
                               </button>
                             )}
                             <CopyFieldButton label={tech} value={tech} />
@@ -1031,18 +1042,23 @@ export function PageClassBanner({
                           Claim <strong>{tech}</strong> to your profile skills
                           to boost your match score for this role.
                         </p>
-                        {skillNavStats[tech] && skillNavStats[tech].total > 1 && (
-                          <Button
-                            type='button'
-                            variant='custom'
-                            size='sm'
-                            className='w-full h-6.5 px-2 text-[11px] gap-1.5 cursor-pointer font-semibold bg-amber-400/20 text-amber-900 dark:text-amber-200 border border-amber-400/40 hover:bg-amber-400/35 hover:text-amber-950 dark:hover:text-amber-100 hover:border-amber-400/60 transition-all rounded-lg shadow-2xs active:scale-[0.98]'
-                            onClick={() => void handleLocateSkill(tech)}
-                          >
-                            <span>Jump to next match ({skillNavStats[tech].current}/{skillNavStats[tech].total})</span>
-                            <ArrowRight className='w-3 h-3 ml-0.5' />
-                          </Button>
-                        )}
+                        {skillNavStats[tech] &&
+                          skillNavStats[tech].total > 1 && (
+                            <Button
+                              type='button'
+                              variant='custom'
+                              size='sm'
+                              className='w-full h-6.5 px-2 text-[11px] gap-1.5 cursor-pointer font-semibold bg-amber-400/20 text-amber-900 dark:text-amber-200 border border-amber-400/40 hover:bg-amber-400/35 hover:text-amber-950 dark:hover:text-amber-100 hover:border-amber-400/60 transition-all rounded-lg shadow-2xs active:scale-[0.98]'
+                              onClick={() => void handleLocateSkill(tech)}
+                            >
+                              <span>
+                                Jump to next match (
+                                {skillNavStats[tech].current}/
+                                {skillNavStats[tech].total})
+                              </span>
+                              <ArrowRight className='w-3 h-3 ml-0.5' />
+                            </Button>
+                          )}
                         <div className='flex items-center gap-1.5 pt-1 w-full'>
                           <Button
                             type='button'
@@ -1316,9 +1332,9 @@ export function PageClassBanner({
                   size='sm'
                   maxBlocks={isDescExpanded ? undefined : 4}
                 />
-                {!isDescExpanded && (
+                {/* {!isDescExpanded && (
                   <div className='absolute bottom-0 inset-x-0 h-8 bg-gradient-to-t from-panel to-transparent pointer-events-none' />
-                )}
+                )} */}
               </div>
             </div>
           )}

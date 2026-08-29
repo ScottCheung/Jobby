@@ -1,8 +1,10 @@
+import { autoClickFirstJobCard } from "./auto-select-first-job";
 import { handleContentCommand, startContentFormDiscovery } from "./command-handler";
 import { initializeFloatingBall } from "./dom/floating-ball";
-import { observeIndeedJobDom } from "./indeed-page-change-observer";
 import { classifyCurrentPage } from "./page-classifier";
-import { observeSeekJobDom } from "./seek-page-change-observer";
+import { observeIndeedJobDom } from "./platforms/indeed/page-change-observer";
+import { detectDedicatedPlatform } from "./platforms/provider-routing";
+import { observeSeekJobDom } from "./platforms/seek/page-change-observer";
 
 type ContentMessageListener = Parameters<typeof chrome.runtime.onMessage.addListener>[0];
 
@@ -132,39 +134,13 @@ if (isExtensionContextValid() && chrome.storage?.onChanged) {
 // Large job boards are observed continuously for client-side job selection
 // and application-step changes. ATS pages still use on-demand inspection so
 // the extension does not attach a whole-document observer to every website.
-const hostname = window.location.hostname.toLowerCase();
 const isTopLevelFrame = window.top === window;
-const isSeekObservedHost =
-  hostname === "seek.com" ||
-  hostname.endsWith(".seek.com") ||
-  hostname === "seek.com.au" ||
-  hostname.endsWith(".seek.com.au") ||
-  hostname === "seek.co.nz" ||
-  hostname.endsWith(".seek.co.nz");
-const isIndeedObservedHost =
-  /(?:^|\.)indeed\.(?:com(?:\.[a-z]{2})?|co\.[a-z]{2}|[a-z]{2,3})$/.test(hostname);
-const isAutoObservedHost =
-  hostname === "linkedin.com" ||
-  hostname.endsWith(".linkedin.com") ||
-  isSeekObservedHost ||
-  isIndeedObservedHost ||
-  /(?:^|\.)glassdoor\.(?:com(?:\.[a-z]{2})?|co\.[a-z]{2}|[a-z]{2,3})$/.test(hostname) ||
-  /(?:^|\.)(?:myworkdayjobs|myworkday|workday)\.com$/.test(hostname) ||
-  /(?:^|\.)(?:boards|job-boards)\.greenhouse\.io$/.test(hostname) ||
-  /(?:^|\.)jobs(?:\.eu)?\.lever\.co$/.test(hostname) ||
-  /(?:^|\.)jobs\.ashbyhq\.com$/.test(hostname) ||
-  /(?:^|\.)smartrecruiters\.com$/.test(hostname) ||
-  hostname === "taleo.net" ||
-  hostname.endsWith(".taleo.net") ||
-  /(?:^|\.)(?:icims\.com|icims-candidateportal\.com)$/.test(hostname) ||
-  /(?:^|\.)(?:successfactors|sapsf)\.(?:com|eu)$/.test(hostname) ||
-  /(?:^|\.)(?:oraclecloud|fa\.ocs\.oraclecloud)\.com$/.test(hostname) ||
-  /(?:^|\.)(?:apply\.)?workable\.com$/.test(hostname) ||
-  /(?:^|\.)bamboohr\.(?:com|co\.uk)$/.test(hostname);
+const observedPlatform = detectDedicatedPlatform(window.location, document);
 
 if (isTopLevelFrame && isExtensionContextValid()) {
   cleanupCallbacks.push(initializeFloatingBall());
-  if (isAutoObservedHost) {
+  if (observedPlatform) {
+    cleanupCallbacks.push(autoClickFirstJobCard(document));
     const syncDiscoveryState = () => {
       try {
         if (!isExtensionContextValid()) {
@@ -195,6 +171,7 @@ if (isTopLevelFrame && isExtensionContextValid()) {
             window.__jobbyContentBootstrapCleanup?.();
             return;
           }
+          autoClickFirstJobCard(document);
           syncDiscoveryState();
           if (chrome.runtime?.id && chrome.runtime?.sendMessage) {
             chrome.runtime.sendMessage({ type: "content.page-changed" }).catch(() => undefined);
@@ -213,10 +190,10 @@ if (isTopLevelFrame && isExtensionContextValid()) {
       if (pageChangeTimer !== undefined) window.clearTimeout(pageChangeTimer);
     });
 
-    if (isSeekObservedHost) {
+    if (observedPlatform === "seek") {
       cleanupCallbacks.push(observeSeekJobDom(notifyPageChanged));
     }
-    if (isIndeedObservedHost) {
+    if (observedPlatform === "indeed") {
       cleanupCallbacks.push(observeIndeedJobDom(notifyPageChanged));
     }
 

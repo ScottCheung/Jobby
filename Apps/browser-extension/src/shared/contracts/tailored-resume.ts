@@ -35,7 +35,7 @@ export type ResumeOtherItem = {
   description?: string[];
 };
 
-import type { MasterResumeData as UiMasterResumeData } from '@jobby/ui/components/UI/Resume';
+import type { MasterResumeData as UiMasterResumeData } from '@jobby/ui/components/UI/Resume/types';
 
 export type MasterResumeData = UiMasterResumeData;
 

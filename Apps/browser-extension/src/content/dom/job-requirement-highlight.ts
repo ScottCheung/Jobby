@@ -425,6 +425,9 @@ function isCollapsedDescriptionControl(element: HTMLElement): boolean {
   if (/(?:show|see|read|view)\s+(?:less|fewer)|收起|隐藏/i.test(label)) {
     return false;
   }
+  if (/\b(?:company|options?|similar jobs?|applicants?|people)\b/i.test(label)) {
+    return false;
+  }
   if (
     element.classList.contains('jobs-description__footer-button') ||
     element.classList.contains('show-more-less-html__button--more') ||
@@ -442,7 +445,7 @@ function isCollapsedDescriptionControl(element: HTMLElement): boolean {
     return true;
   }
   if (!label) return false;
-  return /\b(?:show|see|read|view)\s+(?:more|all)\b|\bmore\b|显示更多|展开全部|展开|更多|查看全部/i.test(
+  return /\b(?:show|see|read|view)\s+(?:more|all)\b|显示更多|展开全部|展开|更多|查看全部/i.test(
     label,
   );
 }
@@ -574,20 +577,22 @@ export function expandJobDescription(
     "[data-testid='expandable-text-box'] button",
   ];
 
-  for (const sel of commonButtonSelectors) {
-    for (const el of Array.from(document.querySelectorAll<HTMLElement>(sel))) {
-      if (isVisible(el) && !isExcludedControl(el) && isCollapsedDescriptionControl(el)) {
-        expandCandidates.add(el);
+  if (platform !== 'linkedin') {
+    for (const sel of commonButtonSelectors) {
+      for (const el of Array.from(document.querySelectorAll<HTMLElement>(sel))) {
+        if (isVisible(el) && !isExcludedControl(el) && isCollapsedDescriptionControl(el)) {
+          expandCandidates.add(el);
+        }
       }
     }
-  }
 
-  const candidateRoots = getCandidateRoots(platform);
-  for (const root of candidateRoots) {
-    const parentContainer = root.parentElement || root;
-    for (const btn of Array.from(parentContainer.querySelectorAll<HTMLElement>('button, [role="button"], a'))) {
-      if (isVisible(btn) && !isExcludedControl(btn) && isCollapsedDescriptionControl(btn)) {
-        expandCandidates.add(btn);
+    const candidateRoots = getCandidateRoots(platform);
+    for (const root of candidateRoots) {
+      const parentContainer = root.parentElement || root;
+      for (const btn of Array.from(parentContainer.querySelectorAll<HTMLElement>('button, [role="button"]'))) {
+        if (isVisible(btn) && !isExcludedControl(btn) && isCollapsedDescriptionControl(btn)) {
+          expandCandidates.add(btn);
+        }
       }
     }
   }
@@ -718,6 +723,15 @@ function showInPageNavFeedback(
       );
     }
   } else {
+    let logoUrl = '/favicon.svg';
+    try {
+      if (typeof chrome !== 'undefined' && chrome.runtime?.getURL) {
+        logoUrl = chrome.runtime.getURL('favicon.svg');
+      }
+    } catch {
+      logoUrl = '/favicon.svg';
+    }
+
     shadow.innerHTML = `
     <style>
       :host {
@@ -797,15 +811,15 @@ function showInPageNavFeedback(
       .badge-content {
         display: inline-flex;
         align-items: center;
-        gap: 10px;
-        padding: 4px 4px 4px 14px;
+        gap: 12px;
+        padding: 4px 4px 4px 8px;
         border-radius: 9999px;
         background: rgba(10, 15, 26, 0.94);
         backdrop-filter: blur(20px);
         -webkit-backdrop-filter: blur(20px);
         color: #ffffff;
         font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-        font-size: 13px;
+        font-size: 14.5px;
         font-weight: 600;
         letter-spacing: -0.01em;
         position: relative;
@@ -833,28 +847,30 @@ function showInPageNavFeedback(
       .term-container {
         display: inline-flex;
         align-items: center;
-        gap: 7px;
+        gap: 8px;
         text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
       }
-      .sparkle-icon {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        color: #38bdf8;
-        filter: drop-shadow(0 0 6px rgba(56, 189, 248, 0.8));
-        animation: aiSparklePulse 3.5s ease-in-out infinite;
+      .brand-logo {
+        width: 20px;
+        height: 20px;
+        border-radius: 5px;
+        object-fit: contain;
+        flex-shrink: 0;
+        user-select: none;
+        pointer-events: none;
+        filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.4));
       }
       /* Yellow Index Counter Pill - Concentric & Equidistant */
       .highlight-pill {
         background: linear-gradient(135deg, #fef08a 0%, #facc15 50%, #eab308 100%);
         color: #09090b;
-        height: 24px;
-        padding: 0 10px;
+        height: 28px;
+        padding: 0 12px;
         border-radius: 9999px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        font-size: 12px;
+        font-size: 13.5px;
         font-weight: 800;
         font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
         letter-spacing: 0.5px;
@@ -881,18 +897,12 @@ function showInPageNavFeedback(
         0% { left: -120%; }
         30%, 100% { left: 220%; }
       }
-      @keyframes aiSparklePulse {
-        0%, 100% { transform: scale(1); filter: drop-shadow(0 0 5px rgba(56, 189, 248, 0.7)); }
-        50% { transform: scale(1.08); filter: drop-shadow(0 0 9px rgba(56, 189, 248, 1)); }
-      }
     </style>
     <div class="feedback-overlay">
       <div class="feedback-wrapper" id="pill">
         <div class="badge-content">
           <span class="term-container">
-            <svg class="sparkle-icon" width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-              <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
-            </svg>
+            <img class="brand-logo" src="${escapeHtml(logoUrl)}" alt="Jobby" />
             <span id="feedback-term">${escapeHtml(term)}</span>
           </span>
           <span class="highlight-pill" id="feedback-counter">${currentIndex} / ${totalMatches}</span>

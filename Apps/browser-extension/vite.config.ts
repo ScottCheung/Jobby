@@ -45,10 +45,22 @@ export default defineConfig(({ command, mode }) => {
       ),
     },
     resolve: {
-      alias: {
-        "@jobby/ui": resolve(__dirname, "../../packages/ui/src"),
-        "@jobby/ui/*": resolve(__dirname, "../../packages/ui/src/*"),
-        "@": resolve(__dirname, "../../packages/ui/src"),
+      dedupe: ['react', 'react-dom'],
+      alias: [
+        { find: /^react$/, replacement: resolve(__dirname, "node_modules/react") },
+        { find: /^react\/(.*)$/, replacement: resolve(__dirname, "node_modules/react/$1") },
+        { find: /^react-dom$/, replacement: resolve(__dirname, "node_modules/react-dom") },
+        { find: /^react-dom\/(.*)$/, replacement: resolve(__dirname, "node_modules/react-dom/$1") },
+        { find: "lucide-react", replacement: resolve(__dirname, "node_modules/lucide-react") },
+        { find: "@jobby/ui", replacement: resolve(__dirname, "../../packages/ui/src") },
+        { find: /^@\/(.*)$/, replacement: resolve(__dirname, "../../packages/ui/src/$1") },
+      ],
+    },
+    test: {
+      server: {
+        deps: {
+          inline: [/@jobby\/ui/, /@radix-ui/, /framer-motion/, /lucide-react/],
+        },
       },
     },
     server: {
@@ -67,6 +79,11 @@ export default defineConfig(({ command, mode }) => {
     },
     build: {
       outDir: isDevelopment ? "dist-dev" : "dist",
+      minify: !isDevelopment,
+      sourcemap: false,
+      cssMinify: !isDevelopment,
+      reportCompressedSize: false,
+      emptyOutDir: !isDevelopment,
     },
     worker: {
       format: "es",

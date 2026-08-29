@@ -67,7 +67,7 @@ const ChromeIcon = (props: React.SVGProps<SVGSVGElement>) => (
 const navigation = [
   { name: 'Home', href: '/', icon: LayoutGrid },
   { name: 'AI Networking Assistant', href: '/prospects', icon: UserCheck },
-  { name: 'Resume Tailor', href: '/job-review', icon: Sparkles },
+  { name: 'AI Studio', href: '/ai-studio', icon: Sparkles },
   { name: 'Applications', href: '/applications', icon: Briefcase },
   { name: 'Interview Prep', href: '/interview-prep', icon: GraduationCap },
   {
@@ -175,7 +175,7 @@ export function Sidebar() {
   const desktopNavigation = [
     { name: 'Home', href: '/', icon: LayoutGrid },
     { name: 'AI Networking Assistant', href: '/prospects', icon: UserCheck },
-    { name: 'Resume Tailor', href: '/job-review', icon: Sparkles },
+    { name: 'AI Studio', href: '/ai-studio', icon: Sparkles },
     { name: 'Applications', href: '/applications', icon: Briefcase },
     { name: 'Interview Prep', href: '/interview-prep', icon: GraduationCap },
     {

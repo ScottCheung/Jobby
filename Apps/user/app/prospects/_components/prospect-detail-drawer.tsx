@@ -155,7 +155,7 @@ export function ProspectDetailDrawer({
     <div className='relative flex h-full w-full flex-col justify-between bg-panel p-6 overflow-y-auto'>
       {/* Header */}
       <div>
-        <div className='flex items-center justify-between border-b border-primary/40 pb-4'>
+        <div className='flex items-center justify-between pb-4'>
           <div className='flex items-center gap-2'>
             <UserCheck className='size-5 text-primary' />
             <h2 className='text-lg font-bold text-ink-primary'>
@@ -171,7 +171,7 @@ export function ProspectDetailDrawer({
               className={`rounded-lg px-2.5 py-1 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${
                 isEditing ?
                   'bg-primary text-white'
-                : 'border border-primary text-ink-primary hover:bg-background-secondary'
+                : 'text-ink-primary hover:bg-background-secondary'
               }`}
             >
               <Edit3 className='size-3.5' />
@@ -199,7 +199,7 @@ export function ProspectDetailDrawer({
                   type='text'
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className='w-full rounded-xl border border-primary bg-background p-2.5 text-xs text-ink-primary'
+                  className='w-full rounded-xl bg-background p-2.5 text-xs text-ink-primary'
                 />
               </div>
               <div>
@@ -210,7 +210,7 @@ export function ProspectDetailDrawer({
                   type='text'
                   value={company}
                   onChange={(e) => setCompany(e.target.value)}
-                  className='w-full rounded-xl border border-primary bg-background p-2.5 text-xs text-ink-primary'
+                  className='w-full rounded-xl bg-background p-2.5 text-xs text-ink-primary'
                 />
               </div>
             </div>
@@ -223,7 +223,7 @@ export function ProspectDetailDrawer({
                 type='text'
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className='w-full rounded-xl border border-primary bg-background p-2.5 text-xs text-ink-primary'
+                className='w-full rounded-xl bg-background p-2.5 text-xs text-ink-primary'
               />
             </div>
 
@@ -237,7 +237,7 @@ export function ProspectDetailDrawer({
                   onChange={(e) =>
                     setRoleType(e.target.value as ProspectRoleType)
                   }
-                  className='w-full rounded-xl border border-primary bg-background p-2 text-xs text-ink-primary'
+                  className='w-full rounded-xl bg-background p-2 text-xs text-ink-primary'
                 >
                   <option value='hiring_manager'>Hiring Manager</option>
                   <option value='engineering_manager'>
@@ -256,7 +256,7 @@ export function ProspectDetailDrawer({
                   max={100}
                   value={priorityScore}
                   onChange={(e) => setPriorityScore(Number(e.target.value))}
-                  className='w-full rounded-xl border border-primary bg-background p-2 text-xs text-ink-primary font-bold'
+                  className='w-full rounded-xl bg-background p-2 text-xs text-ink-primary font-bold'
                 />
               </div>
             </div>
@@ -270,7 +270,7 @@ export function ProspectDetailDrawer({
                   type='text'
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
-                  className='w-full rounded-xl border border-primary bg-background p-2 text-xs text-ink-primary'
+                  className='w-full rounded-xl bg-background p-2 text-xs text-ink-primary'
                 />
               </div>
               <div>
@@ -281,7 +281,7 @@ export function ProspectDetailDrawer({
                   type='url'
                   value={linkedinUrl}
                   onChange={(e) => setLinkedinUrl(e.target.value)}
-                  className='w-full rounded-xl border border-primary bg-background p-2 text-xs text-ink-primary'
+                  className='w-full rounded-xl bg-background p-2 text-xs text-ink-primary'
                 />
               </div>
             </div>
@@ -295,7 +295,7 @@ export function ProspectDetailDrawer({
                 value={activeJobTitle}
                 onChange={(e) => setActiveJobTitle(e.target.value)}
                 placeholder='Leave empty if no active opening'
-                className='w-full rounded-xl border border-primary bg-background p-2.5 text-xs text-ink-primary'
+                className='w-full rounded-xl bg-background p-2.5 text-xs text-ink-primary'
               />
             </div>
 
@@ -307,14 +307,14 @@ export function ProspectDetailDrawer({
                 rows={3}
                 value={recommendationReason}
                 onChange={(e) => setRecommendationReason(e.target.value)}
-                className='w-full rounded-xl border border-primary bg-background p-2.5 text-xs text-ink-primary'
+                className='w-full rounded-xl bg-background p-2.5 text-xs text-ink-primary'
               />
             </div>
           </div>
         : /* View Mode */
           <>
             {/* Profile Info Card */}
-            <div className='mt-5 rounded-2xl border border-primary/60 bg-background-secondary/40 p-4 flex flex-col gap-3'>
+            <div className='mt-5 rounded-2xl bg-background-secondary/40 p-4 flex flex-col gap-3'>
               <div className='flex items-start justify-between gap-3'>
                 <div>
                   <h3 className='text-base font-bold text-ink-primary'>
@@ -322,13 +322,13 @@ export function ProspectDetailDrawer({
                   </h3>
                   <p className='text-xs text-ink-secondary mt-0.5'>{title}</p>
                 </div>
-                <div className='flex items-center gap-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 px-3 py-1 text-xs font-bold text-emerald-600 dark:text-emerald-400'>
+                <div className='flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-600 dark:text-emerald-400'>
                   <Sparkles className='size-3.5' />
                   <span>{priorityScore}% Priority</span>
                 </div>
               </div>
 
-              <div className='flex flex-wrap items-center gap-4 text-xs text-ink-secondary pt-1 border-t border-primary/40'>
+              <div className='flex flex-wrap items-center gap-4 text-xs text-ink-secondary pt-1'>
                 <div className='flex items-center gap-1.5 font-medium text-ink-primary'>
                   <Building2 className='size-3.5 text-primary' />
                   <span>{company}</span>
@@ -356,7 +356,7 @@ export function ProspectDetailDrawer({
 
             {/* Active Job Requisition */}
             {activeJobTitle && (
-              <div className='mt-4 rounded-2xl border border-blue-500/30 bg-blue-500/10 p-4 flex flex-col gap-2'>
+              <div className='mt-4 rounded-2xl bg-blue-500/10 p-4 flex flex-col gap-2'>
                 <div className='flex items-center justify-between text-xs font-semibold text-blue-600 dark:text-blue-400'>
                   <span className='flex items-center gap-1.5'>
                     <Briefcase className='size-4' /> Verified Active Requisition
@@ -369,13 +369,13 @@ export function ProspectDetailDrawer({
             )}
 
             {/* Multi-Dimensional AI Score Breakdown Panel */}
-            <div className='mt-4 rounded-2xl border border-primary/25 bg-primary/5 p-4 space-y-3 text-xs'>
+            <div className='mt-4 rounded-2xl bg-primary/5 p-4 space-y-3 text-xs'>
               <div className='flex items-center justify-between'>
                 <span className='font-bold text-ink-primary flex items-center gap-1.5 uppercase tracking-wider text-[11px]'>
                   <Sparkles className='size-3.5 text-primary' />{' '}
                   Multi-Dimensional AI Match Score
                 </span>
-                <span className='rounded-full bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-0.5 text-xs font-bold text-emerald-600 dark:text-emerald-400'>
+                <span className='rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-bold text-emerald-600 dark:text-emerald-400'>
                   {prospect.score_breakdown?.overall || priorityScore}% Overall
                 </span>
               </div>
@@ -405,7 +405,7 @@ export function ProspectDetailDrawer({
                 ].map((m) => (
                   <div
                     key={m.label}
-                    className='space-y-1 bg-background/60 p-2.5 rounded-xl border border-primary/40'
+                    className='space-y-1 bg-background/60 p-2.5 rounded-xl'
                   >
                     <div className='flex items-center justify-between text-[11px] font-semibold text-ink-secondary'>
                       <span>{m.label}</span>
@@ -425,7 +425,7 @@ export function ProspectDetailDrawer({
             </div>
 
             {/* AI Recommendation Reason */}
-            <div className='mt-4 rounded-2xl border border-primary/60 bg-background/50 p-4 flex flex-col gap-2 text-xs'>
+            <div className='mt-4 rounded-2xl bg-background/50 p-4 flex flex-col gap-2 text-xs'>
               <span className='font-bold text-ink-primary flex items-center gap-1.5 uppercase tracking-wider text-[11px]'>
                 <Sparkles className='size-3.5 text-primary' /> Recommendation
                 Rationale
@@ -438,7 +438,7 @@ export function ProspectDetailDrawer({
         }
 
         {/* AI Automated Connection Note Generator */}
-        <div className='mt-4 rounded-2xl border border-primary/60 bg-background/50 p-4 flex flex-col gap-3'>
+        <div className='mt-4 rounded-2xl bg-background/50 p-4 flex flex-col gap-3'>
           <div className='flex items-center justify-between text-xs'>
             <span className='font-bold text-ink-primary flex items-center gap-1.5'>
               <MessageSquare className='size-3.5 text-primary' /> AI Generated
@@ -446,7 +446,7 @@ export function ProspectDetailDrawer({
             </span>
             <button
               onClick={handleCopyPitch}
-              className='flex items-center gap-1.5 rounded-lg border border-primary bg-background px-2.5 py-1 text-[11px] font-medium text-ink-primary hover:bg-background-secondary transition-colors cursor-pointer'
+              className='flex items-center gap-1.5 rounded-lg bg-background px-2.5 py-1 text-[11px] font-medium text-ink-primary hover:bg-background-secondary transition-colors cursor-pointer'
             >
               {copiedPitch ?
                 <>
@@ -477,7 +477,7 @@ export function ProspectDetailDrawer({
                 className={`rounded-lg px-2.5 py-1 transition-all cursor-pointer ${
                   pitchIntent === opt.id ?
                     'bg-primary text-white font-semibold shadow-xs'
-                  : 'bg-background border border-primary/60 text-ink-secondary hover:text-ink-primary'
+                  : 'bg-background text-ink-secondary hover:text-ink-primary'
                 }`}
               >
                 {opt.label}
@@ -489,7 +489,7 @@ export function ProspectDetailDrawer({
             readOnly
             value={pitchText}
             rows={5}
-            className='w-full rounded-xl border border-primary bg-background p-3 text-xs text-ink-primary font-mono leading-relaxed focus:outline-hidden no-scrollbar'
+            className='w-full rounded-xl bg-background p-3 text-xs text-ink-primary font-mono leading-relaxed focus:outline-hidden no-scrollbar'
           />
         </div>
 
@@ -502,7 +502,7 @@ export function ProspectDetailDrawer({
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value as ProspectStatus)}
-              className='w-full rounded-xl border border-primary bg-background p-2.5 text-xs font-medium text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-primary/40 cursor-pointer'
+              className='w-full rounded-xl bg-background p-2.5 text-xs font-medium text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-primary/40 cursor-pointer'
             >
               <option value='recommended'>Recommended</option>
               <option value='contacted'>Contacted</option>
@@ -521,18 +521,18 @@ export function ProspectDetailDrawer({
               onChange={(e) => setNotes(e.target.value)}
               placeholder='Add outreach notes, email dates, or referral details...'
               rows={3}
-              className='w-full rounded-xl border border-primary bg-background p-3 text-xs text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-primary/40'
+              className='w-full rounded-xl bg-background p-3 text-xs text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-primary/40'
             />
           </div>
         </div>
       </div>
 
       {/* Footer Save & Delete CTA */}
-      <div className='mt-6 border-t border-primary/40 pt-4 flex items-center justify-between gap-3 shrink-0'>
+      <div className='mt-6 pt-4 flex items-center justify-between gap-3 shrink-0'>
         <button
           onClick={handleDelete}
           disabled={isDeleting}
-          className='flex items-center gap-1.5 rounded-xl border border-red-500/30 bg-red-500/10 px-3.5 py-2.5 text-xs font-semibold text-red-600 dark:text-red-400 hover:bg-red-500/20 transition-colors disabled:opacity-50 cursor-pointer'
+          className='flex items-center gap-1.5 rounded-xl bg-red-500/10 px-3.5 py-2.5 text-xs font-semibold text-red-600 dark:text-red-400 hover:bg-red-500/20 transition-colors disabled:opacity-50 cursor-pointer'
         >
           <Trash2 className='size-3.5' />
           <span>{isDeleting ? 'Deleting...' : 'Delete'}</span>
@@ -541,7 +541,7 @@ export function ProspectDetailDrawer({
         <div className='flex items-center gap-2'>
           <button
             onClick={onClose}
-            className='rounded-xl border border-primary bg-background px-4 py-2.5 text-xs font-semibold text-ink-primary hover:bg-background-secondary transition-colors cursor-pointer'
+            className='rounded-xl bg-background px-4 py-2.5 text-xs font-semibold text-ink-primary hover:bg-background-secondary transition-colors cursor-pointer'
           >
             Cancel
           </button>

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { notify } from '@jobby/ui/components/UI/toast/toast-store';
-import { defaultMasterResumeData } from '@jobby/ui/components/UI/Resume';
+import { defaultMasterResumeData } from '@jobby/ui/components/UI/Resume/helpers';
 import { ApiClientError, apiClient } from '../../background/api-client';
 import type { PageInspection } from '../../shared/contracts/page-inspection';
 import type {
@@ -298,10 +298,10 @@ export function useTailoredResumeStudio(
         datePosted: snapshot.lastPostedAt,
         description: snapshot.description,
       };
-      if (snapshot.title) setJobTitle(snapshot.title);
-      if (snapshot.company) setCompany(snapshot.company);
-      if (snapshot.lastPostedAt) setDatePosted(snapshot.lastPostedAt);
-      if (snapshot.description) setJobDescription(snapshot.description);
+      setJobTitle(snapshot.title || '');
+      setCompany(snapshot.company || '');
+      setDatePosted(snapshot.lastPostedAt || '');
+      setJobDescription(snapshot.description || '');
       return;
     }
 
@@ -332,10 +332,10 @@ export function useTailoredResumeStudio(
       } catch {}
     }
     if (detectedJob) {
-      if (detectedJob.title) setJobTitle(detectedJob.title);
-      if (detectedJob.company) setCompany(detectedJob.company);
-      if (detectedJob.datePosted) setDatePosted(detectedJob.datePosted);
-      if (detectedJob.jobDescription) setJobDescription(detectedJob.jobDescription);
+      setJobTitle(detectedJob.title);
+      setCompany(detectedJob.company);
+      setDatePosted(detectedJob.datePosted);
+      setJobDescription(detectedJob.jobDescription);
       setResult(null);
       setPreview(null);
       notify.success('Job details imported from current page');

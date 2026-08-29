@@ -294,7 +294,7 @@ describe('Document Studio & Resume Tailoring (Zero-Token Mock Mode)', () => {
   });
 
   it('formats resume filename according to rule: Candidate Name_CV_Company_Job Title', async () => {
-    const { formatResumeFilename } = await import('@jobby/ui/components/UI/Resume');
+    const { formatResumeFilename } = await import('@jobby/ui/components/UI/Resume/helpers');
     const testResume: MasterResumeData = {
       basics: {
         first_name: 'Scott',
@@ -364,7 +364,7 @@ describe('Document Studio & Resume Tailoring (Zero-Token Mock Mode)', () => {
   });
 
   it('formats tailored resume into structured plain text for one-click copy', async () => {
-    const { formatResumeAsPlainText } = await import('./TailorStudioCard');
+    const { formatResumeAsPlainText } = await import('@jobby/ui/components/UI/Resume/helpers');
 
     const plainText = formatResumeAsPlainText(
       sampleMasterResume,
@@ -397,7 +397,7 @@ describe('Document Studio & Resume Tailoring (Zero-Token Mock Mode)', () => {
 
   it('renders cover letter PDF with vector SVG in milliseconds without hanging', async () => {
     const { COVER_LETTER_SIGNATURE_STYLE, renderCoverLetterPdfOnce } =
-      await import('@jobby/ui/components/UI/Resume');
+      await import('@jobby/ui/components/UI/Resume/cover-letter-pdf-document');
 
     expect(COVER_LETTER_SIGNATURE_STYLE).toEqual({
       fontFamily:
@@ -425,7 +425,7 @@ describe('Document Studio & Resume Tailoring (Zero-Token Mock Mode)', () => {
 
   it('shows the worker-generated cover letter PDF size in preview metadata', async () => {
     const { formatCoverLetterPdfFileSize } = await import(
-      '@jobby/ui/components/UI/Resume'
+      '@jobby/ui/components/UI/Resume/helpers'
     );
 
     expect(formatCoverLetterPdfFileSize(24_576)).toBe('24.0 KB');

@@ -137,6 +137,7 @@ from services.api.routers.interview import (
     apply_application_gamification_events,
 )
 from services.api.routers.prospects import router as prospects_router
+from services.api.routers.recommendations import router as recommendations_router
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
@@ -152,6 +153,7 @@ tags_metadata = [
     {"name": "user", "description": "User Profile, Settings, & Authentication APIs"},
     {"name": "applications", "description": "Submitted job application tracking APIs"},
     {"name": "prospects", "description": "AI Prospect Discovery & Recruiter Outreach APIs"},
+    {"name": "recommendations", "description": "AI job recommendation inbox APIs"},
 ]
 
 
@@ -183,6 +185,7 @@ app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 app.include_router(interview_router)
 app.include_router(prospects_router)
+app.include_router(recommendations_router)
 
 
 from fastapi.staticfiles import StaticFiles
@@ -2146,6 +2149,8 @@ def update_tailored_resume(
         tailored.job_title = str(payload["job_title"])
     if "company" in payload and payload["company"] is not None:
         tailored.company = str(payload["company"])
+    if "cover_letter" in payload:
+        tailored.cover_letter = str(payload["cover_letter"]) if payload["cover_letter"] is not None else None
     tailored.updated_at = utc_now()
     db.commit()
     db.refresh(tailored)

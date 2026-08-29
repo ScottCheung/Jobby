@@ -1325,3 +1325,26 @@ class ProspectAgentLog(Base, TimestampMixin):
     logs: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
 
     user: Mapped[User] = relationship(foreign_keys=[user_id])
+
+
+class JobRecommendation(Base, TimestampMixin):
+    __tablename__ = "job_recommendations"
+    __table_args__ = (
+        UniqueConstraint("user_id", "job_id", name="uq_job_recommendations_user_job"),
+        Index("ix_job_recommendations_user_status", "user_id", "status"),
+    )
+
+    id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid4)
+    user_id: Mapped[PyUUID] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    job_id: Mapped[PyUUID] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("jobs.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    match_score: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    recommendation_reason: Mapped[str | None] = mapped_column(Text)
+    work_style: Mapped[str | None] = mapped_column(String(100))
+    status: Mapped[str] = mapped_column(String(50), nullable=False, default="recommended")
+
+    user: Mapped[User] = relationship(foreign_keys=[user_id])
+    job: Mapped[Job] = relationship(foreign_keys=[job_id])

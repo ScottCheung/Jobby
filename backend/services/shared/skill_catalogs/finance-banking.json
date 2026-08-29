@@ -1,0 +1,885 @@
+[
+  {
+    "label": "Financial Modeling",
+    "terms": ["Financial Modeling", "Financial Modelling", "Financial Model"]
+  },
+  {
+    "label": "3-Statement Modeling",
+    "terms": [
+      "3-Statement Modeling",
+      "Three-Statement Modeling",
+      "3 Statement Model"
+    ]
+  },
+  {
+    "label": "Sensitivity Analysis",
+    "terms": ["Sensitivity Analysis"]
+  },
+  {
+    "label": "Scenario Analysis",
+    "terms": ["Scenario Analysis"]
+  },
+  {
+    "label": "DCF",
+    "terms": ["DCF", "Discounted Cash Flow", "Discounted Cash Flow Analysis"]
+  },
+  {
+    "label": "LBO",
+    "terms": ["LBO", "Leveraged Buyout", "Leveraged Buyout Model"]
+  },
+  {
+    "label": "Valuation",
+    "terms": ["Valuation", "Business Valuation", "Company Valuation"]
+  },
+  {
+    "label": "FP&A",
+    "terms": [
+      "FP&A",
+      "Financial Planning & Analysis",
+      "Financial Planning and Analysis"
+    ]
+  },
+  {
+    "label": "Budgeting",
+    "terms": ["Budgeting", "Budget Preparation", "Operating Budget"]
+  },
+  {
+    "label": "Forecasting",
+    "terms": [
+      "Forecasting",
+      "Financial Forecasting",
+      "Rolling Forecasts",
+      "Rolling Forecast"
+    ]
+  },
+  {
+    "label": "Capital Budgeting",
+    "terms": ["Capital Budgeting"]
+  },
+  {
+    "label": "Variance Analysis",
+    "terms": ["Variance Analysis"]
+  },
+  {
+    "label": "CAPEX",
+    "terms": ["CAPEX", "Capex", "Capital Expenditure", "Capital Expenditures"]
+  },
+  {
+    "label": "OPEX",
+    "terms": ["OPEX", "Opex", "Operating Expenditure", "Operating Expenditures"]
+  },
+
+  {
+    "label": "IFRS",
+    "terms": ["IFRS", "International Financial Reporting Standards"]
+  },
+  {
+    "label": "IFRS 9",
+    "terms": ["IFRS 9"]
+  },
+  {
+    "label": "IFRS 15",
+    "terms": ["IFRS 15"]
+  },
+  {
+    "label": "IFRS 16",
+    "terms": ["IFRS 16"]
+  },
+  {
+    "label": "IFRS 17",
+    "terms": ["IFRS 17"]
+  },
+  {
+    "label": "AASB",
+    "terms": ["AASB", "Australian Accounting Standards Board"]
+  },
+  {
+    "label": "Statutory Reporting",
+    "terms": ["Statutory Reporting", "Statutory Accounts"]
+  },
+  {
+    "label": "GAAP",
+    "terms": ["GAAP", "Generally Accepted Accounting Principles"]
+  },
+  {
+    "label": "US GAAP",
+    "terms": ["US GAAP", "U.S. GAAP"]
+  },
+  {
+    "label": "ASC 606",
+    "terms": ["ASC 606"]
+  },
+  {
+    "label": "ASC 842",
+    "terms": ["ASC 842"]
+  },
+
+  {
+    "label": "Financial Accounting",
+    "terms": ["Financial Accounting"]
+  },
+  {
+    "label": "General Ledger",
+    "terms": ["General Ledger", "GL Accounting", "GL"]
+  },
+  {
+    "label": "Chart of Accounts",
+    "terms": ["Chart of Accounts", "COA"]
+  },
+  {
+    "label": "Trial Balance",
+    "terms": ["Trial Balance"]
+  },
+  {
+    "label": "Journal Entries",
+    "terms": ["Journal Entries", "Journal Entry"]
+  },
+  {
+    "label": "Financial Consolidation",
+    "terms": ["Financial Consolidation", "Consolidation Accounting"]
+  },
+  {
+    "label": "Month-End Close",
+    "terms": ["Month-End Close", "Month End Close", "Monthly Close"]
+  },
+  {
+    "label": "Year-End Close",
+    "terms": ["Year-End Close", "Year End Close"]
+  },
+  {
+    "label": "Financial Close",
+    "terms": ["Financial Close", "Financial Closing"]
+  },
+  {
+    "label": "Account Reconciliation",
+    "terms": ["Account Reconciliation", "Account Reconciliations"]
+  },
+  {
+    "label": "Bank Reconciliation",
+    "terms": ["Bank Reconciliation", "Bank Reconciliations"]
+  },
+
+  {
+    "label": "Cost Accounting",
+    "terms": ["Cost Accounting"]
+  },
+  {
+    "label": "Cost Allocation",
+    "terms": ["Cost Allocation"]
+  },
+  {
+    "label": "Activity-Based Costing",
+    "terms": ["Activity-Based Costing", "Activity Based Costing", "ABC Costing"]
+  },
+  {
+    "label": "Inventory Accounting",
+    "terms": ["Inventory Accounting"]
+  },
+  {
+    "label": "Standard Costing",
+    "terms": ["Standard Costing"]
+  },
+  {
+    "label": "COGS",
+    "terms": ["COGS", "Cost of Goods Sold"]
+  },
+
+  {
+    "label": "Accounts Payable",
+    "terms": ["Accounts Payable", "AP"]
+  },
+  {
+    "label": "Three-Way Matching",
+    "terms": ["Three-Way Matching", "3-Way Matching", "Three Way Matching"]
+  },
+  {
+    "label": "Invoice Processing",
+    "terms": ["Invoice Processing"]
+  },
+  {
+    "label": "Vendor Payments",
+    "terms": ["Vendor Payments", "Supplier Payments"]
+  },
+  {
+    "label": "AP Automation",
+    "terms": ["AP Automation", "Accounts Payable Automation"]
+  },
+
+  {
+    "label": "Accounts Receivable",
+    "terms": ["Accounts Receivable", "AR"]
+  },
+  {
+    "label": "Credit Control",
+    "terms": ["Credit Control"]
+  },
+  {
+    "label": "Debt Collection",
+    "terms": ["Debt Collection", "Debt Collections"]
+  },
+  {
+    "label": "Billing",
+    "terms": ["Billing", "Billing Operations"]
+  },
+  {
+    "label": "Invoicing",
+    "terms": ["Invoicing", "Invoice Management"]
+  },
+  {
+    "label": "Collections",
+    "terms": ["Collections", "Accounts Receivable Collections"]
+  },
+  {
+    "label": "DSO",
+    "terms": ["DSO", "Days Sales Outstanding"]
+  },
+
+  {
+    "label": "Xero",
+    "terms": ["Xero", "Xero Certified"]
+  },
+  {
+    "label": "Xero Payroll",
+    "terms": ["Xero Payroll"]
+  },
+  {
+    "label": "Hubdoc",
+    "terms": ["Hubdoc"]
+  },
+  {
+    "label": "MYOB",
+    "terms": ["MYOB"]
+  },
+  {
+    "label": "MYOB Advanced",
+    "terms": ["MYOB Advanced"]
+  },
+  {
+    "label": "MYOB AccountRight",
+    "terms": ["MYOB AccountRight", "AccountRight"]
+  },
+  {
+    "label": "MYOB PayGlobal",
+    "terms": ["MYOB PayGlobal", "PayGlobal"]
+  },
+  {
+    "label": "MYOB Exo",
+    "terms": ["MYOB Exo"]
+  },
+  {
+    "label": "QuickBooks",
+    "terms": ["QuickBooks"]
+  },
+  {
+    "label": "QuickBooks Online",
+    "terms": ["QuickBooks Online", "QBO"]
+  },
+  {
+    "label": "NetSuite",
+    "terms": ["NetSuite", "Oracle NetSuite"]
+  },
+  {
+    "label": "SuiteScript",
+    "terms": ["SuiteScript"]
+  },
+  {
+    "label": "NetSuite OneWorld",
+    "terms": ["NetSuite OneWorld", "OneWorld"]
+  },
+
+  {
+    "label": "SAP FICO",
+    "terms": ["SAP FICO", "SAP FI/CO"]
+  },
+  {
+    "label": "SAP FI",
+    "terms": ["SAP FI", "SAP Financial Accounting"]
+  },
+  {
+    "label": "SAP CO",
+    "terms": ["SAP CO", "SAP Controlling"]
+  },
+  {
+    "label": "SAP S/4HANA Finance",
+    "terms": ["SAP S/4HANA Finance", "S/4HANA Finance"]
+  },
+  {
+    "label": "Oracle Financials",
+    "terms": ["Oracle Financials"]
+  },
+  {
+    "label": "Oracle Fusion Cloud Financials",
+    "terms": ["Oracle Fusion Cloud Financials", "Oracle Fusion Financials"]
+  },
+  {
+    "label": "Oracle E-Business Suite",
+    "terms": ["Oracle E-Business Suite", "Oracle EBS"]
+  },
+  {
+    "label": "Oracle Hyperion",
+    "terms": ["Oracle Hyperion", "Hyperion"]
+  },
+  {
+    "label": "Essbase",
+    "terms": ["Essbase", "Oracle Essbase"]
+  },
+  {
+    "label": "Workday Financials",
+    "terms": ["Workday Financials"]
+  },
+  {
+    "label": "Anaplan",
+    "terms": ["Anaplan"]
+  },
+  {
+    "label": "Connected Planning",
+    "terms": ["Connected Planning"]
+  },
+  {
+    "label": "OneStream",
+    "terms": ["OneStream"]
+  },
+  {
+    "label": "CCH Tagetik",
+    "terms": ["CCH Tagetik", "Tagetik"]
+  },
+  {
+    "label": "Corporate Performance Management",
+    "terms": ["Corporate Performance Management", "CPM"]
+  },
+  {
+    "label": "Enterprise Performance Management",
+    "terms": ["Enterprise Performance Management", "EPM"]
+  },
+
+  {
+    "label": "Corporate Finance",
+    "terms": ["Corporate Finance"]
+  },
+  {
+    "label": "Capital Raising",
+    "terms": ["Capital Raising", "Capital Raise"]
+  },
+  {
+    "label": "Debt Financing",
+    "terms": ["Debt Financing"]
+  },
+  {
+    "label": "IPO",
+    "terms": ["IPO", "Initial Public Offering", "IPO Preparation"]
+  },
+  {
+    "label": "Syndicated Loans",
+    "terms": ["Syndicated Loans", "Syndicated Lending"]
+  },
+  {
+    "label": "Corporate Development",
+    "terms": ["Corporate Development", "Corp Dev"]
+  },
+  {
+    "label": "Capital Markets",
+    "terms": ["Capital Markets"]
+  },
+  {
+    "label": "Equity Research",
+    "terms": ["Equity Research"]
+  },
+  {
+    "label": "M&A",
+    "terms": ["M&A", "Mergers and Acquisitions", "Mergers & Acquisitions"]
+  },
+  {
+    "label": "Post-Merger Integration",
+    "terms": ["Post-Merger Integration", "Post Merger Integration", "PMI"]
+  },
+  {
+    "label": "Transaction Advisory",
+    "terms": ["Transaction Advisory", "Transaction Advisory Services"]
+  },
+  {
+    "label": "Divestitures",
+    "terms": ["Divestiture", "Divestitures"]
+  },
+  {
+    "label": "Buy-Side",
+    "terms": ["Buy-Side", "Buy Side"]
+  },
+  {
+    "label": "Sell-Side",
+    "terms": ["Sell-Side", "Sell Side"]
+  },
+  {
+    "label": "Financial Due Diligence",
+    "terms": ["Financial Due Diligence", "FDD"]
+  },
+  {
+    "label": "Private Equity",
+    "terms": ["Private Equity", "PE"]
+  },
+  {
+    "label": "Venture Capital",
+    "terms": ["Venture Capital", "VC"]
+  },
+  {
+    "label": "Fund Accounting",
+    "terms": ["Fund Accounting"]
+  },
+  {
+    "label": "Asset Management",
+    "terms": ["Asset Management"]
+  },
+  {
+    "label": "Wealth Management",
+    "terms": ["Wealth Management"]
+  },
+  {
+    "label": "Portfolio Management",
+    "terms": ["Portfolio Management"]
+  },
+  {
+    "label": "Family Office",
+    "terms": ["Family Office"]
+  },
+
+  {
+    "label": "Quantitative Finance",
+    "terms": ["Quantitative Finance", "Quant Finance"]
+  },
+  {
+    "label": "Quantitative Analysis",
+    "terms": ["Quantitative Analysis", "Quant Analysis"]
+  },
+  {
+    "label": "Quantitative Research",
+    "terms": ["Quantitative Research", "Quant Research"]
+  },
+  {
+    "label": "Derivatives Pricing",
+    "terms": ["Derivatives Pricing", "Derivative Pricing"]
+  },
+  {
+    "label": "Black-Scholes",
+    "terms": ["Black-Scholes", "Black Scholes"]
+  },
+  {
+    "label": "Stochastic Calculus",
+    "terms": ["Stochastic Calculus"]
+  },
+  {
+    "label": "Monte Carlo Simulation",
+    "terms": ["Monte Carlo Simulation", "Monte Carlo Simulations"]
+  },
+  {
+    "label": "Algorithmic Trading",
+    "terms": ["Algorithmic Trading", "Algo Trading"]
+  },
+  {
+    "label": "High-Frequency Trading",
+    "terms": ["High-Frequency Trading", "High Frequency Trading", "HFT"]
+  },
+  {
+    "label": "Quantitative Trading",
+    "terms": ["Quantitative Trading", "Quant Trading"]
+  },
+
+  {
+    "label": "Bloomberg Terminal",
+    "terms": ["Bloomberg Terminal", "Bloomberg Professional"]
+  },
+  {
+    "label": "FactSet",
+    "terms": ["FactSet"]
+  },
+  {
+    "label": "Refinitiv",
+    "terms": ["Refinitiv"]
+  },
+  {
+    "label": "Refinitiv Eikon",
+    "terms": ["Refinitiv Eikon", "Eikon"]
+  },
+  {
+    "label": "Capital IQ",
+    "terms": ["Capital IQ", "CapIQ", "S&P Capital IQ"]
+  },
+  {
+    "label": "PitchBook",
+    "terms": ["PitchBook"]
+  },
+  {
+    "label": "Morningstar",
+    "terms": ["Morningstar"]
+  },
+
+  {
+    "label": "Credit Risk",
+    "terms": ["Credit Risk", "Credit Risk Management"]
+  },
+  {
+    "label": "Credit Analysis",
+    "terms": ["Credit Analysis", "Credit Assessment"]
+  },
+  {
+    "label": "Credit Scoring",
+    "terms": ["Credit Scoring", "Credit Score Modeling"]
+  },
+  {
+    "label": "Underwriting",
+    "terms": ["Underwriting", "Credit Underwriting"]
+  },
+  {
+    "label": "Loan Origination",
+    "terms": ["Loan Origination"]
+  },
+  {
+    "label": "Default Risk",
+    "terms": ["Default Risk"]
+  },
+  {
+    "label": "PD/LGD/EAD",
+    "terms": ["PD/LGD/EAD", "PD LGD EAD"]
+  },
+  {
+    "label": "Expected Credit Loss",
+    "terms": ["Expected Credit Loss", "ECL"]
+  },
+
+  {
+    "label": "Market Risk",
+    "terms": ["Market Risk", "Market Risk Management"]
+  },
+  {
+    "label": "Value at Risk",
+    "terms": ["Value at Risk", "VaR"]
+  },
+  {
+    "label": "Interest Rate Risk",
+    "terms": ["Interest Rate Risk"]
+  },
+  {
+    "label": "Financial Stress Testing",
+    "terms": ["Stress Testing", "Financial Stress Testing"]
+  },
+  {
+    "label": "Liquidity Risk",
+    "terms": ["Liquidity Risk"]
+  },
+  {
+    "label": "Asset Liability Management",
+    "terms": ["Asset Liability Management", "Asset-Liability Management", "ALM"]
+  },
+  {
+    "label": "Operational Risk",
+    "terms": ["Operational Risk", "OpRisk"]
+  },
+
+  {
+    "label": "Banking Regulation",
+    "terms": [
+      "Banking Regulation",
+      "Banking Regulations",
+      "Prudential Regulation"
+    ]
+  },
+  {
+    "label": "Basel III",
+    "terms": ["Basel III", "Basel 3"]
+  },
+  {
+    "label": "Basel IV",
+    "terms": ["Basel IV", "Basel 4"]
+  },
+  {
+    "label": "APRA",
+    "terms": [
+      "APRA",
+      "Australian Prudential Regulation Authority",
+      "APRA Compliance"
+    ]
+  },
+  {
+    "label": "ASIC",
+    "terms": [
+      "ASIC",
+      "Australian Securities and Investments Commission",
+      "ASIC Compliance"
+    ]
+  },
+  {
+    "label": "CCAR",
+    "terms": ["CCAR", "Comprehensive Capital Analysis and Review"]
+  },
+  {
+    "label": "Dodd-Frank",
+    "terms": ["Dodd-Frank", "Dodd Frank"]
+  },
+  {
+    "label": "MiFID II",
+    "terms": ["MiFID II", "MiFID 2"]
+  },
+  {
+    "label": "CPS 230",
+    "terms": ["CPS 230", "APRA CPS 230"]
+  },
+  {
+    "label": "CPS 234",
+    "terms": ["CPS 234", "APRA CPS 234"]
+  },
+
+  {
+    "label": "AML",
+    "terms": ["AML", "Anti-Money Laundering", "Anti Money Laundering"]
+  },
+  {
+    "label": "KYC",
+    "terms": ["KYC", "Know Your Customer"]
+  },
+  {
+    "label": "CTF",
+    "terms": [
+      "CTF",
+      "Counter-Terrorism Financing",
+      "Counter Terrorism Financing"
+    ]
+  },
+  {
+    "label": "Sanctions Screening",
+    "terms": ["Sanctions Screening", "Sanction Screening"]
+  },
+  {
+    "label": "Transaction Monitoring",
+    "terms": ["Transaction Monitoring"]
+  },
+  {
+    "label": "Customer Due Diligence",
+    "terms": ["Customer Due Diligence", "CDD"]
+  },
+  {
+    "label": "Enhanced Due Diligence",
+    "terms": ["Enhanced Due Diligence", "EDD"]
+  },
+
+  {
+    "label": "Internal Audit",
+    "terms": ["Internal Audit", "Internal Auditing"]
+  },
+  {
+    "label": "Internal Controls",
+    "terms": ["Internal Controls", "Internal Control"]
+  },
+  {
+    "label": "Audit Planning",
+    "terms": ["Audit Planning"]
+  },
+  {
+    "label": "External Audit",
+    "terms": ["External Audit", "External Auditing"]
+  },
+  {
+    "label": "Financial Audit",
+    "terms": ["Financial Audit", "Financial Statement Audit"]
+  },
+  {
+    "label": "Assurance",
+    "terms": ["Assurance", "Assurance Services"]
+  },
+  {
+    "label": "SOX Compliance",
+    "terms": ["SOX Compliance", "SOX", "Sarbanes-Oxley", "Sarbanes Oxley"]
+  },
+
+  {
+    "label": "Treasury Management",
+    "terms": ["Treasury Management", "Corporate Treasury"]
+  },
+  {
+    "label": "Cash Management",
+    "terms": ["Cash Management"]
+  },
+  {
+    "label": "Cash Flow Forecasting",
+    "terms": ["Cash Flow Forecasting", "Cashflow Forecasting"]
+  },
+  {
+    "label": "Liquidity Management",
+    "terms": ["Liquidity Management"]
+  },
+  {
+    "label": "Treasury Management System",
+    "terms": [
+      "Treasury Management System",
+      "Treasury Management Systems",
+      "TMS"
+    ]
+  },
+  {
+    "label": "Kyriba",
+    "terms": ["Kyriba"]
+  },
+  {
+    "label": "Foreign Exchange",
+    "terms": ["Foreign Exchange", "FX"]
+  },
+  {
+    "label": "FX Hedging",
+    "terms": ["FX Hedging", "Currency Hedging", "Foreign Exchange Hedging"]
+  },
+  {
+    "label": "Interest Rate Hedging",
+    "terms": ["Interest Rate Hedging"]
+  },
+
+  {
+    "label": "SWIFT",
+    "terms": ["SWIFT", "SWIFT Network"]
+  },
+  {
+    "label": "SEPA",
+    "terms": ["SEPA", "Single Euro Payments Area"]
+  },
+  {
+    "label": "Fedwire",
+    "terms": ["Fedwire"]
+  },
+  {
+    "label": "New Payments Platform",
+    "terms": ["New Payments Platform", "NPP"]
+  },
+  {
+    "label": "Payment Gateways",
+    "terms": ["Payment Gateway", "Payment Gateways"]
+  },
+  {
+    "label": "Merchant Acquiring",
+    "terms": ["Merchant Acquiring", "Merchant Acquisition"]
+  },
+  {
+    "label": "Card Issuing",
+    "terms": ["Card Issuing", "Card Issuance"]
+  },
+  {
+    "label": "ISO 20022",
+    "terms": ["ISO 20022"]
+  },
+  {
+    "label": "Stripe",
+    "terms": ["Stripe", "Stripe Payments"]
+  },
+  {
+    "label": "Adyen",
+    "terms": ["Adyen"]
+  },
+
+  {
+    "label": "Payroll Processing",
+    "terms": ["Payroll Processing", "Payroll Administration"]
+  },
+  {
+    "label": "Payroll Tax",
+    "terms": ["Payroll Tax"]
+  },
+  {
+    "label": "Single Touch Payroll",
+    "terms": ["Single Touch Payroll", "STP"]
+  },
+  {
+    "label": "STP Phase 2",
+    "terms": ["STP Phase 2", "Single Touch Payroll Phase 2"]
+  },
+  {
+    "label": "PAYG",
+    "terms": ["PAYG", "Pay As You Go"]
+  },
+  {
+    "label": "Award Interpretation",
+    "terms": ["Award Interpretation"]
+  },
+  {
+    "label": "Payroll Compliance",
+    "terms": ["Payroll Compliance"]
+  },
+
+  {
+    "label": "Taxation",
+    "terms": ["Taxation", "Tax"]
+  },
+  {
+    "label": "Corporate Tax",
+    "terms": ["Corporate Tax", "Corporate Taxation"]
+  },
+  {
+    "label": "Income Tax",
+    "terms": ["Income Tax"]
+  },
+  {
+    "label": "GST",
+    "terms": ["GST", "Goods and Services Tax"]
+  },
+  {
+    "label": "VAT",
+    "terms": ["VAT", "Value Added Tax", "Value-Added Tax"]
+  },
+  {
+    "label": "Transfer Pricing",
+    "terms": ["Transfer Pricing"]
+  },
+  {
+    "label": "Tax Compliance",
+    "terms": ["Tax Compliance"]
+  },
+  {
+    "label": "Tax Returns",
+    "terms": ["Tax Returns", "Tax Return Preparation"]
+  },
+  {
+    "label": "FBT",
+    "terms": ["FBT", "Fringe Benefits Tax"]
+  },
+  {
+    "label": "Indirect Tax",
+    "terms": ["Indirect Tax", "Indirect Taxation"]
+  },
+  {
+    "label": "R&D Tax Incentive",
+    "terms": ["R&D Tax Incentive", "Research and Development Tax Incentive"]
+  },
+  {
+    "label": "Tax Advisory",
+    "terms": ["Tax Advisory", "Tax Consulting"]
+  },
+
+  {
+    "label": "Fintech",
+    "terms": ["Fintech", "Financial Technology"]
+  },
+  {
+    "label": "Open Banking",
+    "terms": ["Open Banking"]
+  },
+  {
+    "label": "Consumer Data Right",
+    "terms": ["Consumer Data Right", "CDR"]
+  },
+  {
+    "label": "Financial Services",
+    "terms": [
+      "Financial Services",
+      "Financial Services Experience",
+      "Banking and Financial Services",
+      "BFSI",
+      "Financial Sector"
+    ]
+  },
+  {
+    "label": "Blockchain",
+    "terms": ["Blockchain", "Blockchain Technology"]
+  },
+  {
+    "label": "Cryptocurrency",
+    "terms": ["Cryptocurrency", "Crypto"]
+  },
+  {
+    "label": "DeFi",
+    "terms": ["DeFi", "Decentralized Finance"]
+  }
+]

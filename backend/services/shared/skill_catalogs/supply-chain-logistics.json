@@ -1,0 +1,366 @@
+[
+  {
+    "label": "Supply Chain Management",
+    "terms": ["Supply Chain Management", "Supply Chain", "SCM"]
+  },
+  {
+    "label": "Integrated Business Planning",
+    "terms": ["Integrated Business Planning", "IBP"]
+  },
+  {
+    "label": "Demand Planning",
+    "terms": ["Demand Planning"]
+  },
+  {
+    "label": "Demand Forecasting",
+    "terms": ["Demand Forecasting"]
+  },
+  {
+    "label": "Supply Planning",
+    "terms": ["Supply Planning"]
+  },
+  {
+    "label": "Capacity Planning",
+    "terms": ["Capacity Planning"]
+  },
+  {
+    "label": "Production Scheduling",
+    "terms": ["Production Scheduling"]
+  },
+  {
+    "label": "S&OP",
+    "terms": [
+      "S&OP",
+      "Sales and Operations Planning",
+      "Sales & Operations Planning"
+    ]
+  },
+
+  {
+    "label": "Procurement",
+    "terms": ["Procurement", "Purchasing"]
+  },
+  {
+    "label": "Strategic Sourcing",
+    "terms": ["Strategic Sourcing"]
+  },
+  {
+    "label": "Direct Sourcing",
+    "terms": ["Direct Sourcing", "Direct Procurement"]
+  },
+  {
+    "label": "Indirect Sourcing",
+    "terms": ["Indirect Sourcing", "Indirect Procurement"]
+  },
+  {
+    "label": "RFP",
+    "terms": ["RFP", "Request for Proposal"]
+  },
+  {
+    "label": "RFQ",
+    "terms": ["RFQ", "Request for Quotation", "Request for Quote"]
+  },
+  {
+    "label": "RFI",
+    "terms": ["RFI", "Request for Information"]
+  },
+  {
+    "label": "Spend Analysis",
+    "terms": ["Spend Analysis", "Spend Analytics"]
+  },
+
+  {
+    "label": "Vendor Management",
+    "terms": ["Vendor Management", "Supplier Management"]
+  },
+  {
+    "label": "Supplier Relationship Management",
+    "terms": ["Supplier Relationship Management", "SRM"]
+  },
+  {
+    "label": "SAP Ariba",
+    "terms": ["SAP Ariba", "Ariba"]
+  },
+  {
+    "label": "Coupa",
+    "terms": ["Coupa"]
+  },
+  {
+    "label": "Coupa Procurement",
+    "terms": ["Coupa Procurement"]
+  },
+
+  {
+    "label": "Warehouse Management System",
+    "terms": [
+      "Warehouse Management System",
+      "Warehouse Management Systems",
+      "WMS"
+    ]
+  },
+  {
+    "label": "Warehousing",
+    "terms": ["Warehousing", "Warehouse Operations"]
+  },
+  {
+    "label": "Pick and Pack",
+    "terms": ["Pick and Pack", "Pick & Pack", "Picking and Packing"]
+  },
+  {
+    "label": "Cross-Docking",
+    "terms": ["Cross-Docking", "Cross Docking"]
+  },
+  {
+    "label": "Material Handling",
+    "terms": ["Material Handling"]
+  },
+
+  {
+    "label": "Inventory Management",
+    "terms": ["Inventory Management"]
+  },
+  {
+    "label": "Stock Control",
+    "terms": ["Stock Control", "Inventory Control"]
+  },
+  {
+    "label": "Cycle Counting",
+    "terms": ["Cycle Counting", "Cycle Count"]
+  },
+  {
+    "label": "Safety Stock",
+    "terms": ["Safety Stock", "Safety Stock Management"]
+  },
+  {
+    "label": "ABC Analysis",
+    "terms": ["ABC Analysis", "Inventory ABC Analysis"]
+  },
+
+  {
+    "label": "Forklift Licence",
+    "terms": ["Forklift License", "Forklift Licence", "Forklift Certified"]
+  },
+  {
+    "label": "LF Forklift Licence",
+    "terms": ["LF Forklift", "LF Forklift Licence", "LF Forklift License"]
+  },
+  {
+    "label": "LO Order Picker Licence",
+    "terms": ["LO Order Picker", "LO Licence", "LO License"]
+  },
+
+  {
+    "label": "Manhattan Associates",
+    "terms": ["Manhattan Associates"]
+  },
+  {
+    "label": "Manhattan WMS",
+    "terms": ["Manhattan WMS", "Manhattan Warehouse Management"]
+  },
+  {
+    "label": "Manhattan SCALE",
+    "terms": ["Manhattan SCALE", "SCALE WMS"]
+  },
+  {
+    "label": "Blue Yonder",
+    "terms": ["Blue Yonder"]
+  },
+  {
+    "label": "JDA Software",
+    "terms": ["JDA Software", "JDA"]
+  },
+  {
+    "label": "Infor WMS",
+    "terms": ["Infor WMS"]
+  },
+
+  {
+    "label": "Transportation Management System",
+    "terms": [
+      "Transportation Management System",
+      "Transportation Management Systems",
+      "TMS"
+    ]
+  },
+  {
+    "label": "Freight Forwarding",
+    "terms": ["Freight Forwarding", "Freight Forwarder"]
+  },
+  {
+    "label": "Air Freight",
+    "terms": ["Air Freight", "Air Cargo"]
+  },
+  {
+    "label": "Sea Freight",
+    "terms": ["Sea Freight", "Ocean Freight"]
+  },
+  {
+    "label": "Bill of Lading",
+    "terms": ["Bill of Lading", "BOL", "B/L"]
+  },
+
+  {
+    "label": "Logistics Management",
+    "terms": ["Logistics Management"]
+  },
+  {
+    "label": "Logistics Operations",
+    "terms": ["Logistics Operations"]
+  },
+  {
+    "label": "Road Transport",
+    "terms": ["Road Transport", "Road Transportation"]
+  },
+  {
+    "label": "Incoterms",
+    "terms": ["Incoterms", "International Commercial Terms"]
+  },
+  {
+    "label": "Route Optimization",
+    "terms": ["Route Optimization", "Route Optimisation"]
+  },
+
+  {
+    "label": "Cold Chain Logistics",
+    "terms": ["Cold Chain Logistics", "Cold Chain"]
+  },
+  {
+    "label": "Temperature-Controlled Logistics",
+    "terms": [
+      "Temperature-Controlled Logistics",
+      "Temperature Controlled Logistics"
+    ]
+  },
+
+  {
+    "label": "Customs Clearance",
+    "terms": ["Customs Clearance"]
+  },
+  {
+    "label": "Customs Brokerage",
+    "terms": ["Customs Brokerage", "Customs Broker"]
+  },
+  {
+    "label": "Import/Export Compliance",
+    "terms": [
+      "Import Export Compliance",
+      "Import/Export Compliance",
+      "Trade Compliance"
+    ]
+  },
+
+  {
+    "label": "3PL",
+    "terms": ["3PL", "Third-Party Logistics", "Third Party Logistics"]
+  },
+  {
+    "label": "4PL",
+    "terms": ["4PL", "Fourth-Party Logistics", "Fourth Party Logistics"]
+  },
+  {
+    "label": "Fleet Management",
+    "terms": ["Fleet Management"]
+  },
+  {
+    "label": "Fleet Operations",
+    "terms": ["Fleet Operations"]
+  },
+
+  {
+    "label": "SAP ERP",
+    "terms": ["SAP ERP"]
+  },
+  {
+    "label": "SAP S/4HANA",
+    "terms": ["SAP S/4HANA", "S/4HANA"]
+  },
+  {
+    "label": "SAP ECC",
+    "terms": ["SAP ECC", "SAP ERP Central Component"]
+  },
+  {
+    "label": "SAP MM",
+    "terms": ["SAP MM", "SAP Materials Management"]
+  },
+  {
+    "label": "SAP SD",
+    "terms": ["SAP SD", "SAP Sales and Distribution"]
+  },
+  {
+    "label": "SAP PP",
+    "terms": ["SAP PP", "SAP Production Planning"]
+  },
+
+  {
+    "label": "Microsoft Dynamics 365",
+    "terms": ["Microsoft Dynamics 365", "Dynamics 365", "D365"]
+  },
+  {
+    "label": "Dynamics 365 Finance & Operations",
+    "terms": [
+      "Dynamics 365 Finance & Operations",
+      "Dynamics 365 Finance and Operations",
+      "D365 F&O",
+      "D365FO"
+    ]
+  },
+  {
+    "label": "Dynamics AX",
+    "terms": ["Dynamics AX", "Microsoft Dynamics AX", "AX"]
+  },
+
+  {
+    "label": "Oracle SCM",
+    "terms": ["Oracle SCM", "Oracle Supply Chain Management"]
+  },
+  {
+    "label": "Oracle ERP",
+    "terms": ["Oracle ERP"]
+  },
+
+  {
+    "label": "Lean Manufacturing",
+    "terms": ["Lean Manufacturing"]
+  },
+  {
+    "label": "5S",
+    "terms": ["5S", "5S Methodology"]
+  },
+  {
+    "label": "Kaizen",
+    "terms": ["Kaizen", "Continuous Improvement Kaizen"]
+  },
+  {
+    "label": "Just-in-Time",
+    "terms": ["Just-in-Time", "Just In Time", "JIT"]
+  },
+  {
+    "label": "Kanban Manufacturing",
+    "terms": [
+      "Kanban Manufacturing",
+      "Manufacturing Kanban",
+      "Production Kanban"
+    ]
+  },
+
+  {
+    "label": "Six Sigma",
+    "terms": ["Six Sigma"]
+  },
+  {
+    "label": "Lean Six Sigma",
+    "terms": ["Lean Six Sigma", "LSS"]
+  },
+  {
+    "label": "Six Sigma Green Belt",
+    "terms": ["Six Sigma Green Belt", "Green Belt Six Sigma"]
+  },
+  {
+    "label": "Six Sigma Black Belt",
+    "terms": ["Six Sigma Black Belt", "Black Belt Six Sigma"]
+  },
+  {
+    "label": "DMAIC",
+    "terms": ["DMAIC", "Define Measure Analyze Improve Control"]
+  }
+]

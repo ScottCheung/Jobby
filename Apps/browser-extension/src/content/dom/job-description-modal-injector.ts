@@ -4,6 +4,7 @@ import {
   parseDescriptionBlocks,
   cleanDescription,
 } from '@jobby/ui/lib/job-description';
+import { parseAndFormatJobDate } from '../../shared/utils/date-formatter';
 
 const MODAL_ROOT_ID = 'jobby-in-page-job-description-modal-root';
 
@@ -152,7 +153,10 @@ export async function showInPageJobDescriptionModal(
   const metaItems: string[] = [];
   if (displayCompany) metaItems.push(escapeHtml(displayCompany));
   if (location) metaItems.push(escapeHtml(location));
-  if (datePosted) metaItems.push(escapeHtml(datePosted));
+  if (datePosted) {
+    const formattedDate = parseAndFormatJobDate(datePosted);
+    metaItems.push(escapeHtml(formattedDate.displayText || datePosted));
+  }
   if (platform) metaItems.push(escapeHtml(platform));
 
   shadow.innerHTML = `
@@ -325,45 +329,54 @@ export async function showInPageJobDescriptionModal(
       }
 
       .jd-section-header {
-        border-bottom: 1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(15, 23, 42, 0.08)'};
-        padding-top: 16px;
-        padding-bottom: 6px;
-        margin-top: 18px;
-        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: 24px;
+        margin-bottom: 10px;
       }
       .jd-section-header:first-child {
-        padding-top: 0;
         margin-top: 0;
       }
+      .jd-section-header::before {
+        content: '';
+        display: inline-block;
+        width: 4px;
+        height: 16px;
+        border-radius: 9999px;
+        background: ${primaryColor};
+        flex-shrink: 0;
+      }
       .jd-heading {
-        font-size: 13px;
+        font-size: 14.5px;
         font-weight: 700;
         color: ${isDarkMode ? '#f8fafc' : '#0f172a'};
         margin: 0;
-        text-transform: capitalize;
         letter-spacing: -0.01em;
+        line-height: 1.35;
       }
       .jd-list {
         list-style: none;
-        margin: 8px 0;
-        padding-left: 4px;
+        margin: 10px 0;
+        padding-left: 14px;
         display: flex;
         flex-direction: column;
-        gap: 6px;
+        gap: 10px;
       }
       .jd-list-item {
         display: flex;
         align-items: flex-start;
-        gap: 8px;
+        gap: 10px;
         font-size: 13px;
-        line-height: 1.55;
-        color: ${isDarkMode ? '#cbd5e1' : '#475569'};
+        line-height: 1.65;
+        color: ${isDarkMode ? '#94a3b8' : '#475569'};
       }
       .jd-bullet {
         width: 5px;
         height: 5px;
         border-radius: 50%;
         background-color: ${primaryColor};
+        opacity: 0.8;
         margin-top: 8px;
         flex-shrink: 0;
       }
@@ -373,9 +386,10 @@ export async function showInPageJobDescriptionModal(
       }
       .jd-paragraph {
         font-size: 13px;
-        line-height: 1.6;
-        color: ${isDarkMode ? '#cbd5e1' : '#475569'};
+        line-height: 1.65;
+        color: ${isDarkMode ? '#94a3b8' : '#475569'};
         margin: 8px 0;
+        margin-left: 14px;
         white-space: pre-wrap;
       }
 
@@ -395,9 +409,9 @@ export async function showInPageJobDescriptionModal(
           <div class="header-title-group">
             <h3 class="header-title">${escapeHtml(displayTitle)}</h3>
             ${
-              metaItems.length > 0
-                ? `<div class="header-meta">${metaItems.map((m) => `<span>${m}</span>`).join('')}</div>`
-                : ''
+              metaItems.length > 0 ?
+                `<div class="header-meta">${metaItems.map((m) => `<span>${m}</span>`).join('')}</div>`
+              : ''
             }
           </div>
 

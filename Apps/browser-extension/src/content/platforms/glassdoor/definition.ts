@@ -100,6 +100,7 @@ export const glassdoorDefinition = {
     idFromUrl: (url) => url.searchParams.get("jl") || url.searchParams.get("jobListingId") || "",
     idFromRoot,
     dateFromPage,
+    readinessWaitUntilAttempt: 14,
     postingDateWaitUntilAttempt: 14,
   },
 } satisfies AtsProviderDefinition<"glassdoor">;

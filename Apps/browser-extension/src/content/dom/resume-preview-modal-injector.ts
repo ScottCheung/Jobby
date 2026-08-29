@@ -1,10 +1,7 @@
 /** @format */
 
 import type { MasterResumeData } from "../../shared/contracts/tailored-resume";
-import { createElement } from "react";
-import { createRoot, type Root } from "react-dom/client";
-import { formatResumeFilename } from "@jobby/ui/components/UI/Resume";
-import { Input } from "@jobby/ui/components/UI/input";
+import { formatResumeFilename } from "@jobby/ui/components/UI/Resume/helpers";
 import type { TailoredResume } from "../../shared/contracts/tailored-resume";
 import { formatRelativeTime } from "../../shared/utils/date-formatter";
 
@@ -37,7 +34,6 @@ function isExtensionContextValid(): boolean {
 
 let activeEscListener: ((e: KeyboardEvent) => void) | null = null;
 let activePdfBlobUrl: string | null = null;
-let activeLibraryInputRoot: Root | null = null;
 let activeLibraryThemeListener:
   | ((
       changes: { [key: string]: chrome.storage.StorageChange },
@@ -78,8 +74,6 @@ export interface ShowResumeLibraryOptions {
 }
 
 export function closeInPageResumeLibraryModal(): void {
-  activeLibraryInputRoot?.unmount();
-  activeLibraryInputRoot = null;
   if (activeLibraryThemeListener && isExtensionContextValid() && chrome.storage?.onChanged) {
     try {
       chrome.storage.onChanged.removeListener(activeLibraryThemeListener);
@@ -187,11 +181,7 @@ export function showInPageResumeLibraryModal({
     :host{--library-primary:var(--jobby-library-primary,var(--primary,#10b981));--library-primary-foreground:var(--jobby-library-primary-foreground,var(--primary-foreground,#fff))}.eyebrow{color:var(--library-primary)}input:focus,select:focus{border-color:var(--library-primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--library-primary) 14%,transparent)}.resume-card:hover,.resume-card.selected{border-color:var(--library-primary);box-shadow:0 8px 20px color-mix(in srgb,var(--library-primary) 12%,transparent)}.actions button{background:var(--library-primary);color:var(--library-primary-foreground)}.actions button.secondary{background:color-mix(in srgb,var(--library-primary) 12%,transparent);color:var(--library-primary)}.actions button.delete{background:transparent;color:hsl(var(--library-muted-foreground))}.actions button.delete:hover{color:var(--library-primary)}
     @media(max-width:720px){.backdrop{padding:10px}.library{width:100%;height:100%;border-radius:0}.filters{grid-template-columns:1fr}.waterfall{columns:1;padding:14px}.count{white-space:normal}}
   </style><div class="backdrop"><section class="library"><header><div><p class="eyebrow">Resume library</p><h1 class="title">Browse tailored resumes</h1></div><button class="close" aria-label="Close">×</button></header><div class="library-content"><div class="filters"><input placeholder="Search role, company or skills" aria-label="Search resumes"><select aria-label="Filter by company"><option value="">All companies</option>${companies.map((company) => `<option value="${escapeHtml(company)}">${escapeHtml(company)}</option>`).join("")}</select><span class="count">${resumes.length} tailored resumes</span></div><main class="waterfall">${cards || '<p class="empty">No saved resumes.</p>'}</main></div></section></div>`;
-  const nativeSearch = shadow.querySelector("input") as HTMLInputElement;
-  const searchRoot = document.createElement("div");
-  searchRoot.className = "search-input-root";
-  nativeSearch.replaceWith(searchRoot);
-  let search: HTMLInputElement | null = null;
+  const search = shadow.querySelector("input") as HTMLInputElement;
   const companyFilter = shadow.querySelector("select") as HTMLSelectElement;
   const count = shadow.querySelector(".count") as HTMLSpanElement;
   const updateList = () => {
@@ -208,19 +198,7 @@ export function showInPageResumeLibraryModal({
     });
     count.textContent = `${visible} tailored resume${visible === 1 ? "" : "s"}`;
   };
-  activeLibraryInputRoot = createRoot(searchRoot);
-  activeLibraryInputRoot.render(
-    createElement(Input, {
-      ref: (node: HTMLInputElement | null) => {
-        search = node;
-      },
-      className: "library-input",
-      placeholder: "Search role, company or skills",
-      "aria-label": "Search resumes",
-      onInput: updateList,
-      onChange: updateList,
-    }),
-  );
+  search.addEventListener("input", updateList);
   companyFilter.addEventListener("change", updateList);
   shadow
     .querySelector(".close")

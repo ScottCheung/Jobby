@@ -304,6 +304,45 @@ describe("ATS-specific job readers", () => {
     }
   });
 
+  it("waits for Glassdoor's initial first-card detail pane before returning", async () => {
+    vi.useFakeTimers();
+    try {
+      setLocation("https://www.glassdoor.com.au/Job/software-engineer-jobs.htm");
+      document.body.innerHTML = `
+        <li data-test="jobListing" data-jobid="8000000000001">
+          <div data-test="job-card-wrapper">First Engineer</div>
+        </li>
+      `;
+
+      window.setTimeout(() => {
+        document.body.insertAdjacentHTML(
+          "beforeend",
+          `<div class="JobDetails_jobDetailsContainer__current">
+            <header data-test="job-details-header" data-brandviews="MODULE:jlid=8000000000001">
+              <h4>First Company</h4>
+              <h1 data-test="job-title">First Engineer</h1>
+            </header>
+            <section class="JobDetails_jobDescription__current">${LONG_DESCRIPTION}</section>
+            <button data-test="applyButton">Apply now</button>
+          </div>`,
+        );
+      }, 700);
+
+      const pending = readCurrentPageWhenReady();
+      await vi.advanceTimersByTimeAsync(1_600);
+      const inspection = await pending;
+
+      expect(inspection.kind).toBe("job");
+      if (inspection.kind !== "job") return;
+      expect(inspection.snapshot.platform).toBe("glassdoor");
+      expect(inspection.snapshot.externalId).toBe("8000000000001");
+      expect(inspection.snapshot.title).toBe("First Engineer");
+      expect(inspection.snapshot.company).toBe("First Company");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("extracts skills from Glassdoor qualifications section along with description and title", () => {
     setLocation("https://www.glassdoor.com.au/Job/designer-jobs-SRCH_KO0,8.htm");
     document.body.innerHTML = `
@@ -355,6 +394,32 @@ describe("ATS-specific job readers", () => {
       "CSS",
       "Figma",
     ]);
+  });
+
+  it("keeps technology-rich Glassdoor jobs within the inspection contract", () => {
+    setLocation("https://www.glassdoor.com.au/Job/software-engineer-jobs.htm");
+    const qualifications = Array.from(
+      { length: 35 },
+      (_, index) => `<li>Specialized Skill ${index + 1}</li>`,
+    ).join("");
+    document.body.innerHTML = `
+      <div class="JobDetails_jobDetailsContainer__current">
+        <header data-test="job-details-header" data-brandviews="MODULE:jlid=9000000000001">
+          <h4>Technology Company</h4>
+          <h1 data-test="job-title">Staff Software Engineer</h1>
+        </header>
+        <section class="JobDetails_jobDescription__current">${LONG_DESCRIPTION}</section>
+        <section class="JobDetails_qualifications__current"><ul>${qualifications}</ul></section>
+        <button data-test="applyButton">Apply now</button>
+      </div>
+    `;
+
+    const inspection = readAtsJobPage("glassdoor");
+
+    expect(inspection.kind).toBe("job");
+    if (inspection.kind !== "job") return;
+    expect(inspection.snapshot.technologies).toHaveLength(30);
+    expect(pageInspectionSchema.safeParse(inspection).success).toBe(true);
   });
 
   it("updates the Taleo identity when detail pagination keeps the same URL", () => {
@@ -581,4 +646,3 @@ describe("ATS-specific job readers", () => {
     expect(inspection.snapshot.technologies).toContain("Vitest");
   });
 });
-

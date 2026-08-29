@@ -583,6 +583,38 @@ class JobApplicationUpdate(BaseModel):
     raw_data: dict | None = None
 
 
+class JobRecommendationCreate(BaseModel):
+    platform: str = Field(default="generic", min_length=1, max_length=50)
+    job_id: str | None = Field(default=None, max_length=255)
+    title: str = Field(min_length=1, max_length=500)
+    company: str | None = Field(default=None, max_length=255)
+    work_location: str | None = Field(default=None, max_length=255)
+    work_style: str | None = Field(default=None, max_length=100)
+    job_link: str | None = Field(default=None, max_length=2048)
+    match_score: int = Field(default=0, ge=0, le=100)
+    recommendation_reason: str | None = Field(default=None, max_length=2_000)
+
+
+class JobRecommendationUpdate(BaseModel):
+    status: str = Field(min_length=1, max_length=50)
+
+
+class JobRecommendationRead(OrmModel):
+    id: UUID
+    job_id: str | None = None
+    platform: str
+    title: str | None = None
+    company: str | None = None
+    work_location: str | None = None
+    work_style: str | None = None
+    job_link: str | None = None
+    match_score: int
+    recommendation_reason: str | None = None
+    status: str
+    created_at: datetime
+    updated_at: datetime
+
+
 class SkillBase(BaseModel):
     name: str
     canonical_name: str

@@ -18,6 +18,7 @@ import { Button } from '../Button';
 import { Mail, Phone, MapPin, FolderGit2, Globe } from 'lucide-react';
 import {
   formatCoverLetterFilename,
+  formatCoverLetterPdfFileSize,
   resumeContactItems,
   resumeFullName,
   type ResumeContactItem,
@@ -41,6 +42,7 @@ export type CoverLetterPdfPreviewProps = {
   jobTitle?: string;
   filename?: string;
   fileSize?: number | null;
+  thumbnailClassName?: string;
   onOpenModal?: (content: ReactNode) => void;
   onPreview?: () => void;
   onNewWindow?: () => void;
@@ -311,11 +313,7 @@ export function CoverLetterHtmlDocument({
   );
 }
 
-export function formatCoverLetterPdfFileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
+export { formatCoverLetterPdfFileSize } from './helpers';
 
 export function CoverLetterPdfPreview({
   coverLetter,
@@ -324,6 +322,7 @@ export function CoverLetterPdfPreview({
   jobTitle,
   filename,
   fileSize: suppliedFileSize,
+  thumbnailClassName = '',
   onOpenModal,
   onPreview,
   onNewWindow,
@@ -378,13 +377,14 @@ export function CoverLetterPdfPreview({
     const availableWidth = Math.max(80, containerSize.width - 24);
     const availableHeight = Math.max(80, containerSize.height - 20);
     return Math.min(availableWidth / pageWidth, availableHeight / pageHeight);
-  }, [containerSize.width, containerSize.height]);
+  }, [containerSize.width, containerSize.height, pageWidth, pageHeight]);
 
   const resolvedFilename =
     filename || formatCoverLetterFilename(candidateData, company, jobTitle);
+  const downloadName = `${resolvedFilename.replace(/\.pdf$/i, '') || 'cover-letter'}.pdf`;
 
   const generatePdfBlob = async () => {
-    if (pdfUrl) return pdfUrl;
+    if (pdfUrl) return;
     setIsGenerating(true);
     setError('');
     try {
@@ -399,12 +399,10 @@ export function CoverLetterPdfPreview({
       activeUrlRef.current = nextUrl;
       setPdfUrl(nextUrl);
       setGeneratedFileSize(blob.size);
-      setIsGenerating(false);
-      return nextUrl;
     } catch {
-      setError('Could not generate cover letter PDF.');
+      setError('Could not generate Cover Letter PDF.');
+    } finally {
       setIsGenerating(false);
-      return null;
     }
   };
 
@@ -416,15 +414,34 @@ export function CoverLetterPdfPreview({
   );
 
   const download = async () => {
-    if (onDownload) {
-      onDownload();
+    if (!pdfUrl) {
+      setIsGenerating(true);
+      setError('');
+      try {
+        const { blob } = await renderCoverLetterPdfOnce(
+          coverLetter,
+          candidateData,
+          company,
+          jobTitle,
+        );
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = downloadName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      } catch {
+        setError('Could not download PDF.');
+      } finally {
+        setIsGenerating(false);
+      }
       return;
     }
-    const url = pdfUrl || (await generatePdfBlob());
-    if (!url) return;
     const link = document.createElement('a');
-    link.href = url;
-    link.download = resolvedFilename;
+    link.href = pdfUrl;
+    link.download = downloadName;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -436,7 +453,6 @@ export function CoverLetterPdfPreview({
       return;
     }
     if (onOpenModal) {
-      void generatePdfBlob();
       onOpenModal(
         <div className='flex h-full flex-col bg-background'>
           <header className='flex shrink-0 items-center justify-between border-b border-primary/60 px-6 py-3.5 bg-panel/80 backdrop-blur-md'>
@@ -446,16 +462,16 @@ export function CoverLetterPdfPreview({
               </div>
               <div className='min-w-0'>
                 <p className='label font-semibold text-ink-primary truncate'>
-                  {resolvedFilename}
+                  {downloadName}
                 </p>
                 <div className='flex items-center gap-2 text-xs text-ink-secondary mt-0.5 truncate'>
                   <span>1 page</span>
-                  {fileSize ?
+                  {fileSize ? (
                     <>
                       <span className='opacity-40'>•</span>
                       <span>{formatCoverLetterPdfFileSize(fileSize)}</span>
                     </>
-                  : null}
+                  ) : null}
                 </div>
               </div>
             </div>
@@ -466,24 +482,30 @@ export function CoverLetterPdfPreview({
                 size='sm'
                 Icon={Download}
                 onClick={download}
-                disabled={isGenerating}
+                className='!h-8 !px-3 text-xs'
               >
-                {isGenerating ? 'Compiling PDF...' : 'Download PDF'}
+                Download PDF
               </Button>
+              <button
+                type='button'
+                onClick={() => onOpenModal(null)}
+                className='rounded-lg p-2 text-ink-secondary hover:bg-background-secondary hover:text-ink-primary cursor-pointer'
+              >
+                <X className='h-5 w-5' />
+              </button>
             </div>
           </header>
 
-          {pdfUrl ?
-            <iframe
-              title='Cover Letter PDF preview'
-              src={pdfUrl}
-              className='h-full w-full border-0 bg-background-secondary transform-gpu'
-            />
-          : <div className='flex h-full flex-col items-center justify-center gap-2 text-ink-secondary'>
-              <Loader2 className='h-6 w-6 animate-spin text-primary' />
-              <p className='text-xs font-medium'>Loading PDF engine...</p>
+          <div className='flex-1 overflow-auto p-6 bg-slate-900/10 flex justify-center'>
+            <div className='shadow-2xl rounded-sm overflow-hidden bg-white max-w-4xl w-full'>
+              <CoverLetterHtmlDocument
+                coverLetter={coverLetter}
+                candidateData={candidateData}
+                company={company}
+                jobTitle={jobTitle}
+              />
             </div>
-          }
+          </div>
         </div>,
       );
     } else {
@@ -494,11 +516,11 @@ export function CoverLetterPdfPreview({
 
   return (
     <div className='flex flex-col gap-2 w-full min-w-0'>
-      {/* ── THUMBNAIL LIVE PREVIEW (Compact & Efficient) ── */}
+      {/* ── THUMBNAIL LIVE PREVIEW (Compact & Efficient matching extension) ── */}
       <div
         ref={containerRef}
         onClick={openPreview}
-        className='group relative h-36 sm:h-40 w-full cursor-zoom-in bg-background-secondary overflow-hidden rounded-lg p-1.5'
+        className={`group relative h-44 sm:h-48 w-full max-w-[280px] mx-auto cursor-zoom-in bg-background-secondary/50 overflow-hidden rounded-xl p-2 flex items-center justify-center ${thumbnailClassName}`}
       >
         <div className='pointer-events-none flex items-center justify-center'>
           <div
@@ -656,7 +678,7 @@ export function CoverLetterPdfPreview({
                     size='sm'
                     Icon={Download}
                     onClick={download}
-                    disabled={!pdfUrl || isGenerating}
+                    disabled={isGenerating}
                   >
                     {isGenerating ? 'Compiling PDF...' : 'Download PDF'}
                   </Button>
@@ -672,17 +694,16 @@ export function CoverLetterPdfPreview({
               </header>
 
               {/* Modal Body */}
-              {pdfUrl ?
-                <iframe
-                  title='Cover Letter PDF preview'
-                  src={pdfUrl}
-                  className='h-full w-full border-0 bg-background-secondary transform-gpu'
-                />
-              : <div className='flex h-full flex-col items-center justify-center gap-2 text-ink-secondary'>
-                  <Loader2 className='h-6 w-6 animate-spin text-primary' />
-                  <p className='text-xs font-medium'>Loading PDF engine...</p>
+              <div className='flex-1 overflow-auto p-6 bg-slate-900/10 flex justify-center custom-scrollbar'>
+                <div className='shadow-2xl rounded-sm overflow-hidden bg-white max-w-4xl w-full my-auto'>
+                  <CoverLetterHtmlDocument
+                    coverLetter={coverLetter}
+                    candidateData={candidateData}
+                    company={company}
+                    jobTitle={jobTitle}
+                  />
                 </div>
-              }
+              </div>
             </div>
           </div>,
           document.body,
