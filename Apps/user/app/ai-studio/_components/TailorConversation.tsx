@@ -107,7 +107,7 @@ function JobResultBubble({
   return (
     <div
       data-testid='tailor-result-card'
-      className='mr-auto flex w-full max-w-2xl shrink-0 flex-col gap-0 overflow-hidden rounded-score-card mr-auto flex w-full max-w-2xl shrink-0 flex-col gap-0 overflow-hidden bg-primary/10 dark:bg-primary/20 p-4 rounded-2xl rounded-bl-lg! rounded-tl-[3em]! gap-4'
+      className='mr-auto flex w-full max-w-2xl shrink-0 flex-col gap-4 overflow-hidden rounded-score-card bg-primary/10 dark:bg-primary/20 p-4'
     >
       <JobAnalysisPanel
       hasBackground = {false}
@@ -166,7 +166,7 @@ export function TailorConversation({
     <div
       ref={conversationRef}
       aria-live='polite'
-      className='mx-auto flex max-h-[440px] w-full max-w-3xl flex-col gap-2.5 overflow-y-auto overscroll-contain px-1 pb-1 pr-2'
+      className='mx-auto flex  min-h-[80vh] w-full max-w-3xl flex-col gap-2.5 overflow-hidden '
     >
       {messages.map((message) => {
         if (message.kind === 'job') {
@@ -192,19 +192,25 @@ export function TailorConversation({
           <div
             key={message.id}
             className={cn(
-              'max-w-[78%] shrink-0 whitespace-pre-wrap break-words [overflow-wrap:anywhere] border px-3.5 py-2.5 text-xs leading-relaxed shadow-sm backdrop-blur-md',
+              'max-w-[78%] shrink-0 whitespace-pre-wrap break-words [overflow-wrap:anywhere] px-3.5 py-2.5 text-xs leading-relaxed shadow-xs',
               message.role === 'user' ?
-                'ml-auto rounded-2xl rounded-br-md border-primary/20 bg-primary/12 text-ink-primary'
+                'ml-auto rounded-2xl rounded-br-xs bg-primary text-primary-foreground font-medium'
               : message.state === 'error' ?
-                'mr-auto rounded-2xl rounded-bl-md border-red-500/15 bg-red-500/8 text-red-600'
-              : 'mr-auto rounded-2xl rounded-bl-md border-border/40 bg-panel/80 text-ink-primary',
+                'mr-auto rounded-2xl rounded-bl-xs border border-destructive/30 bg-destructive/10 text-destructive'
+              : 'mr-auto rounded-2xl rounded-bl-xs border border-primary/20 bg-panel text-ink-primary',
             )}
           >
             <span className='flex min-w-0 items-start gap-2'>
               {message.state === 'loading' && (
-                <Loader2 className='mt-0.5 size-3.5 shrink-0 animate-pulse text-primary' />
+                <Loader2 className='mt-0.5 h-3.5 w-3.5 shrink-0 animate-spin text-primary' />
               )}
-              <span className='min-w-0 [overflow-wrap:anywhere]'>
+              <span
+                className={cn(
+                  message.state === 'loading' &&
+                    'animate-text-shimmer animate-text-shimmer-primary',
+                  'min-w-0 [overflow-wrap:anywhere]',
+                )}
+              >
                 {message.content}
               </span>
             </span>

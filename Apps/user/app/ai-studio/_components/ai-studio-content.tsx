@@ -4,8 +4,8 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
-import { History, X } from 'lucide-react';
-import type { JobAnalysisSnapshot } from '@jobby/ui';
+import { ArrowDown, History, X } from 'lucide-react';
+import { Tooltip, type JobAnalysisSnapshot } from '@jobby/ui';
 import { api, type TailoredResume } from '@/lib/api';
 import { inspectJobLink } from '@/lib/job-link-inspection';
 import { showGlobalToast } from '@/lib/toast';
@@ -43,19 +43,66 @@ export function AiStudioContent({ targetId: initialTargetId }: { targetId?: stri
   >([]);
   const [activeProfile, setActiveProfile] = useState<CareerProfile | null>(null);
   const [profileSkills, setProfileSkills] = useState<UserSkill[]>([]);
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const heroEntryRef = useRef<HTMLDivElement>(null);
   const studioRef = useRef<HTMLDivElement>(null);
+
+  const scrollToStudio = useCallback((behavior: ScrollBehavior = 'smooth') => {
+    if (!studioRef.current) return;
+    const scrollParent = studioRef.current.closest('.overflow-y-auto') as HTMLElement | null;
+    if (scrollParent) {
+      scrollParent.scrollTo({
+        top: studioRef.current.offsetTop,
+        behavior,
+      });
+    } else {
+      studioRef.current.scrollIntoView({ behavior, block: 'start' });
+    }
+  }, []);
+
+  const scrollToBottom = useCallback(() => {
+    const scrollParent = (studioRef.current?.closest('.overflow-y-auto') ||
+      document.querySelector('.custom-scrollbar-primary')) as HTMLElement | null;
+    if (scrollParent) {
+      scrollParent.scrollTo({
+        top: scrollParent.scrollHeight,
+        behavior: 'smooth',
+      });
+    } else {
+      window.scrollTo({
+        top: document.documentElement.scrollHeight,
+        behavior: 'smooth',
+      });
+    }
+  }, []);
+
+  useEffect(() => {
+    const scrollParent = (studioRef.current?.closest('.overflow-y-auto') ||
+      document.querySelector('.custom-scrollbar-primary')) as HTMLElement | null;
+    if (!scrollParent) return;
+
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = scrollParent;
+      const isNotBottom = scrollHeight - scrollTop - clientHeight > 80;
+      const hasOverflow = scrollHeight > clientHeight + 100;
+      setShowScrollToBottom(hasOverflow && isNotBottom);
+    };
+
+    scrollParent.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll();
+    return () => scrollParent.removeEventListener('scroll', handleScroll);
+  }, []);
 
   useEffect(() => {
     if (initialTargetId) {
       setActiveTailorId(initialTargetId);
       requestAnimationFrame(() => {
         setTimeout(() => {
-          studioRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 100);
+          scrollToStudio('instant');
+        }, 60);
       });
     }
-  }, [initialTargetId]);
+  }, [initialTargetId, scrollToStudio]);
 
   useEffect(() => {
     let isCancelled = false;
@@ -426,7 +473,7 @@ export function AiStudioContent({ targetId: initialTargetId }: { targetId?: stri
         );
         requestAnimationFrame(() => {
           setTimeout(() => {
-            studioRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            scrollToStudio('smooth');
           }, 50);
         });
       } else {
@@ -465,7 +512,7 @@ export function AiStudioContent({ targetId: initialTargetId }: { targetId?: stri
     window.history.replaceState(null, '', `/ai-studio/tailor/${item.id}#cv`);
     requestAnimationFrame(() => {
       setTimeout(() => {
-        studioRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        scrollToStudio('smooth');
       }, 50);
     });
   };
@@ -475,7 +522,7 @@ export function AiStudioContent({ targetId: initialTargetId }: { targetId?: stri
       {/* ── 1. Hero Section: GPT-style Centered Dialog with 5 Recent Cards Below ── */}
       <div
         ref={heroEntryRef}
-        className='flex min-h-[85vh] w-full flex-col items-center justify-center py-6'
+        className='flex min-h-[100vh] w-full flex-col items-center justify-center'
       >
         <div className='w-full max-w-3xl space-y-6'>
           <TailorQuickEntry
@@ -501,12 +548,8 @@ export function AiStudioContent({ targetId: initialTargetId }: { targetId?: stri
             profileSkills={profileSkills}
           />
 
-          {tailoredResumes.length > 0 && (
-            <div className='space-y-2.5 pt-2'>
-              <div className='flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-ink-secondary'>
-                <History className='h-3.5 w-3.5 text-primary' />
-                <span>Recent Tailors</span>
-              </div>
+          {tailoredResumes.length > 0 && conversationMessages.length === 0 && (
+            <div className='pt-2'>
               <div className='grid grid-cols-1 gap-2.5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5'>
                 {tailoredResumes.slice(0, 5).map((item) => {
                   const docLabels = documentTypeLabel(item);
@@ -587,6 +630,22 @@ export function AiStudioContent({ targetId: initialTargetId }: { targetId?: stri
           }
         />
       </div>
+
+      {/* Floating Scroll to Bottom Button */}
+      {showScrollToBottom && (
+        <div className='fixed bottom-24 right-6 sm:right-10 z-40 animate-in fade-in slide-in-from-bottom-2 duration-200'>
+          <Tooltip content='Scroll to bottom' side='left'>
+            <button
+              type='button'
+              onClick={scrollToBottom}
+              className='flex size-10 items-center justify-center rounded-full border border-border/80 bg-panel/90 dark:bg-zinc-900/90 text-ink-primary shadow-lg backdrop-blur-md transition-all duration-200 hover:scale-110 hover:border-primary hover:bg-primary/10 hover:text-primary active:scale-95 cursor-pointer'
+              aria-label='Scroll to bottom'
+            >
+              <ArrowDown className='size-4' />
+            </button>
+          </Tooltip>
+        </div>
+      )}
 
       {/* Full-Screen Chat Overlay */}
       {isChatFullscreen && (

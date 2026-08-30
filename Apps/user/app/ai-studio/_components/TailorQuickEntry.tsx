@@ -379,7 +379,7 @@ export function TailorQuickEntry({
 
   return (
     <div className={cn("w-full", className)}>
-      {!compact && <div className="mb-5 flex items-center justify-end gap-3">
+      {/* {!compact && <div className="mb-5 flex items-center justify-end gap-3">
         <label className="flex cursor-pointer items-center gap-2 text-xs font-medium text-ink-secondary">
           <Checkbox
             checked={mockMode}
@@ -407,12 +407,12 @@ export function TailorQuickEntry({
             ))}
           </Select>
         )}
-      </div>}
+      </div>} */}
 
       <div
         className={cn(
           "relative mx-auto flex w-full flex-col gap-3",
-          compact ? "max-w-none" : "max-w-3xl pt-6 sm:pt-10",
+          compact ? "max-w-none" : "max-w-3xl ",
         )}
       >
         {!compact && (

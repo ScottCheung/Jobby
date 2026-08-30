@@ -89,14 +89,12 @@ export function RecentTailorCarousel({
           <span className='whitespace-nowrap'>Recent Tailor</span>
         </span>
 
-        {/* Input box shown right here when sticky */}
-        {isSticky && headerMiddle ? (
-          <div className='min-w-0 flex-1 mx-1 sm:mx-3 animate-in fade-in duration-200'>
+        {headerMiddle && (
+          <div className='min-w-0 flex-1 mx-1 sm:mx-3'>
             {headerMiddle}
           </div>
-        ) : (
-          <div className='flex-1 min-w-0' />
         )}
+        {!headerMiddle && <div className='flex-1 min-w-0' />}
 
         <div className='ml-auto flex items-center gap-2 shrink-0'>
           <button

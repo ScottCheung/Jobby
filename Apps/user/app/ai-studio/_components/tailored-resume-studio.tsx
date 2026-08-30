@@ -273,7 +273,7 @@ export function TailoredResumeStudio({
 
   if (loading) {
     return (
-      <div className='flex min-h-[400px] flex-col items-center justify-center gap-3'>
+      <div className='flex min-h-screen flex-col items-center justify-center gap-3'>
         <Loader2 className='h-8 w-8 animate-pulse text-primary' />
         <p className='text-xs font-medium text-ink-secondary'>
           Loading Recent Tailored Resumes...
@@ -284,7 +284,7 @@ export function TailoredResumeStudio({
 
   if (error) {
     return (
-      <div className='p-6'>
+      <div className='p-6 min-h-screen'>
         <EmptyPlaceHolder
           title='Error Loading Tailored Resumes'
           description={error}
@@ -295,7 +295,7 @@ export function TailoredResumeStudio({
 
   if (!currentResume && tailoredResumes.length === 0) {
     return (
-      <div className='p-6'>
+      <div className='p-6 min-h-screen'>
         <EmptyPlaceHolder
           title='No Tailored Resumes Yet'
           description='Go to AI Studio Home or use our Chrome Extension to tailor your first resume & cover letter.'
@@ -306,9 +306,7 @@ export function TailoredResumeStudio({
   }
 
   return (
-    <div className='space-y-6 pb-6'>
-
-
+    <div className='min-h-screen space-y-6 pb-6'>
       {/* ── 2. Top Carousel: Horizontal Scrollable Cards ── */}
       {tailoredResumes.length > 0 && (
         <RecentTailorCarousel
@@ -316,8 +314,7 @@ export function TailoredResumeStudio({
           selectedId={currentResume?.id}
           onSelect={selectTailoredResume}
           onDelete={handleDeleteResume}
-          headerMiddle={compactEntry}
-          className='sticky top-0 z-30'
+          className='sticky top-0 z-20 bg-background-primary/95 backdrop-blur-md'
         />
       )}
 
@@ -354,6 +351,13 @@ export function TailoredResumeStudio({
             onSave={handleSaveCoverLetter}
           />
         )
+      )}
+
+      {/* ── 5. Sticky Bottom-6 Input Box ── */}
+      {compactEntry && (
+        <div className='sticky bottom-6 z-30 w-full max-w-3xl mx-auto px-4'>
+          {compactEntry}
+        </div>
       )}
     </div>
   );

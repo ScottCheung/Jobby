@@ -1,3 +1,16 @@
+:root {
+  /* Score card corner: top-left and bottom-right accent corners */
+  --score-card-radius-accent: 45px;
+  /* Inner padding of score card: gap between card edge and children */
+  --score-card-padding: 12px;
+  /* Derived inner-element concentric radius = accent - padding */
+  --score-card-radius-inner: calc(var(--score-card-radius-accent) - var(--score-card-padding));
+  /* Floating dialog outer shell radius = accent + border width */
+  --score-card-radius-shell: calc(var(--score-card-radius-accent) + 4px);
+  /* Other three corners of the card */
+  --score-card-radius-base: 16px; /* rounded-2xl */
+}
+
 @layer utilities {
     .rounded-card {
         @apply rounded-xl md:rounded-2xl lg:rounded-3xl;
@@ -11,4 +24,10 @@
         @apply rounded-full;
     }
 
+    .rounded-score-card {
+        border-start-start-radius: var(--score-card-radius-accent);
+        border-end-end-radius: var(--score-card-radius-accent);
+        border-start-end-radius: var(--score-card-radius-base);
+        border-end-start-radius: var(--score-card-radius-base);
+    }
 }
