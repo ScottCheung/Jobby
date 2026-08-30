@@ -13,9 +13,9 @@ function JobReviewRedirect() {
   useEffect(() => {
     const id = searchParams?.get('id');
     if (id) {
-      router.replace(`/ai-studio/resumes/tailor/${id}`);
+      router.replace(`/ai-studio/tailor/${id}`);
     } else {
-      router.replace('/ai-studio/resumes/tailor');
+      router.replace('/ai-studio/tailor');
     }
   }, [router, searchParams]);
 

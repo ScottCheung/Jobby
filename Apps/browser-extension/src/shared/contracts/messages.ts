@@ -25,12 +25,17 @@ export const runtimeMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('auth.disconnect') }),
   z.object({ type: z.literal('auth.open-login') }),
   z.object({ type: z.literal('content.inspect-active') }),
+  z.object({
+    type: z.literal('content.inspect-url'),
+    url: z.string().url(),
+  }),
   z.object({ type: z.literal('content.inspect-form-active') }),
   z.object({
     type: z.literal('content.highlight-job-requirement-active'),
     searchTerms: z.array(z.string().trim().min(1).max(80)).min(1).max(12),
   }),
   z.object({ type: z.literal('form.autofill-active') }),
+  z.object({ type: z.literal('form.autofill-cancel-active') }),
   z.object({
     type: z.literal('content.focus-form-field-active'),
     target: formFieldTargetSchema,

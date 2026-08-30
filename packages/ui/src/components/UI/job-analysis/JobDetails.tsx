@@ -1,5 +1,7 @@
 /** @format */
 
+'use client';
+
 import { useState } from 'react';
 import {
   Check,
@@ -15,53 +17,52 @@ import {
   RefreshCw,
   RotateCcw,
 } from 'lucide-react';
-import { getSkillSearchTerms } from '../../content/technology-keywords';
-import { classifySkills } from '../../content/skills/classification';
+import { getSkillSearchTerms } from '../../../lib/job-skills';
+import { classifySkills } from '../../../lib/job-skills/classification';
 import { motion, LayoutGroup } from 'framer-motion';
-import { Button } from '@jobby/ui/components/UI/Button';
+import { Button } from '../Button';
 import {
   Popover,
   PopoverArrow,
   PopoverContent,
   PopoverTrigger,
-} from '@jobby/ui/components/UI/popover';
-import { Tooltip } from '@jobby/ui/components/UI/tooltip';
-import { notify } from '@jobby/ui/components/UI/toast/toast-store';
-import type { JobMatchEvaluation } from '../../shared/contracts/job-match';
+} from '../popover';
+import { Tooltip } from '../tooltip';
+import { notify } from '../toast/toast-store';
 import type {
-  JobSnapshot,
-  PageInspection,
-} from '../../shared/contracts/page-inspection';
-import type {
-  CareerProfile,
-  UserSkill,
-} from '../../shared/contracts/tailored-resume';
-import { parseAndFormatJobDate } from '../../shared/utils/date-formatter';
-import { extractJobRequirements } from '../../shared/utils/job-requirements';
-import { cn } from '@jobby/ui/lib/utils';
-import { StructuredJobDescription } from '@jobby/ui/components/UI/StructuredJobDescription';
-import { sendContentCommandToActiveTab } from '../services/messaging';
+  JobAnalysisCareerProfile,
+  JobAnalysisEvaluation,
+  JobAnalysisInspection,
+  JobAnalysisSnapshot,
+  JobAnalysisUserSkill,
+  JobDescriptionOpenPayload,
+  JobRequirementHighlightResult,
+} from './types';
+import { parseAndFormatJobDate } from '../../../lib/date-formatter';
+import { extractJobRequirements } from '../../../lib/job-requirements';
+import { cn } from '../../../lib/utils';
+import { StructuredJobDescription } from '../StructuredJobDescription';
 import { DetectionProviderBadge } from './DetectionProviderBadge';
 import { EditJobModal } from './EditJobModal';
 
-interface PageClassBannerProps {
-  latestInspection: PageInspection | null;
-  latestMatch?: JobMatchEvaluation | null;
+export interface JobDetailsProps {
+  latestInspection: JobAnalysisInspection | null;
+  latestMatch?: JobAnalysisEvaluation | null;
   isMatchLoading?: boolean;
   isInspecting: boolean;
   error?: string;
   onRetryMatch?: () => void;
   onClaimSkill?: (tech: string) => Promise<void> | void;
   onUnclaimSkill?: (tech: string) => Promise<void> | void;
-  activeProfile?: CareerProfile | null;
-  profileSkills?: UserSkill[];
+  activeProfile?: JobAnalysisCareerProfile | null;
+  profileSkills?: JobAnalysisUserSkill[];
   onReDetect?: () => void;
-  onUpdateJobSnapshot?: (updates: Partial<JobSnapshot>) => void;
+  onUpdateJobSnapshot?: (updates: Partial<JobAnalysisSnapshot>) => void;
   onHighlightJobRequirement?: (
     searchTerms: string[],
-  ) => Promise<
-    { highlighted: boolean; matchCount: number; currentIndex: number } | boolean
-  > | void;
+  ) => Promise<JobRequirementHighlightResult> | void;
+  onOpenJobDescription?: (payload: JobDescriptionOpenPayload) => Promise<void> | void;
+  initialDescriptionExpanded?: boolean;
   authConnected?: boolean;
   onSignIn?: () => void;
 }
@@ -155,8 +156,8 @@ export function shouldShowTechnologyLoading(
 export function getSkillSource(
   tech: string,
   matchedSet: Set<string>,
-  activeProfile?: CareerProfile | null,
-  profileSkills: UserSkill[] = [],
+  activeProfile?: JobAnalysisCareerProfile | null,
+  profileSkills: JobAnalysisUserSkill[] = [],
 ): SkillSource {
   // 1. Explicitly claimed profile skills take top priority
   const claimedSkillSet = new Set<string>();
@@ -337,7 +338,7 @@ function CopyableFieldRow({
  * Diagnostic & details banner shown at the top of the side panel.
  * Displays all extracted details for identified job listing pages in English.
  */
-export function PageClassBanner({
+export function JobDetails({
   latestInspection,
   latestMatch,
   isMatchLoading = false,
@@ -351,10 +352,16 @@ export function PageClassBanner({
   onReDetect,
   onUpdateJobSnapshot,
   onHighlightJobRequirement,
+  onOpenJobDescription,
+  initialDescriptionExpanded = false,
   authConnected = true,
   onSignIn: _onSignIn,
-}: PageClassBannerProps) {
-  const [isDescExpanded, setIsDescExpanded] = useState(false);
+}: JobDetailsProps) {
+  const [isDescExpanded, setIsDescExpanded] = useState(
+    initialDescriptionExpanded,
+  );
+  const isDescriptionFullyVisible =
+    initialDescriptionExpanded || isDescExpanded;
   const [editOpen, setEditOpen] = useState(false);
   const [claimingSkills, setClaimingSkills] = useState<Set<string>>(new Set());
   const [unclaimingSkills, setUnclaimingSkills] = useState<Set<string>>(
@@ -366,7 +373,7 @@ export function PageClassBanner({
     Record<string, { current: number; total: number }>
   >({});
 
-  const saveJob = (updates: Partial<JobSnapshot>) => {
+  const saveJob = (updates: Partial<JobAnalysisSnapshot>) => {
     onUpdateJobSnapshot?.(updates);
     notify.success('Job details updated');
   };
@@ -401,6 +408,7 @@ export function PageClassBanner({
 
   const isWaitingForCompany =
     latestInspection?.kind === 'job' &&
+    latestInspection.snapshot.platform !== 'manual' &&
     !hasResolvedCompany(latestInspection.snapshot.company);
 
   if (isInspecting || !latestInspection || isWaitingForCompany) {
@@ -409,7 +417,7 @@ export function PageClassBanner({
         className='page-class-banner page-class-banner--job flex-col !items-stretch gap-2.5'
         role='status'
       >
-        <div className='flex items-center justify-between gap-2 border-b border-primary/20 pb-2'>
+        <div className='flex items-center w-full justify-between gap-2 border-b border-primary/20 pb-2'>
           <div className='flex items-center gap-1.5'>
             <strong className='text-xs font-bold text-foreground animate-text-shimmer-primary animate-text-shimmer'>
               Inspecting Page...
@@ -495,8 +503,7 @@ export function PageClassBanner({
     const handleOpenInPageJobDescription = async () => {
       if (!description) return;
       try {
-        await sendContentCommandToActiveTab({
-          type: 'content.show-job-description',
+        await onOpenJobDescription?.({
           title: title || 'Job Description',
           company: company || undefined,
           location: location || undefined,
@@ -508,7 +515,7 @@ export function PageClassBanner({
         notify.error(
           error instanceof Error ?
             error.message
-          : 'Could not open in-page preview.',
+          : 'Could not open job description preview.',
         );
       }
     };
@@ -525,7 +532,7 @@ export function PageClassBanner({
         className='page-class-banner page-class-banner--job flex-col !items-stretch gap-2.5'
         role='status'
       >
-        <div className='flex items-center justify-between gap-2 border-b border-primary/20 pb-2'>
+        <div className='flex w-full items-center justify-between gap-2 border-b border-primary/20 pb-2'>
           <div className='flex items-center gap-1.5'>
             <strong className='text-xs font-bold text-foreground'>
               Job Identified
@@ -670,8 +677,13 @@ export function PageClassBanner({
 
               const handleOpenSearch = (query: string) => {
                 const searchUrl = `https://www.google.com/search?q=${encodeURIComponent('What is ' + query)}`;
-                if (typeof chrome !== 'undefined' && chrome.tabs?.create) {
-                  chrome.tabs.create({ url: searchUrl });
+                const extensionTabs = (
+                  globalThis as {
+                    chrome?: { tabs?: { create?: (options: { url: string }) => void } };
+                  }
+                ).chrome?.tabs;
+                if (extensionTabs?.create) {
+                  extensionTabs.create({ url: searchUrl });
                 } else {
                   window.open(searchUrl, '_blank', 'noopener,noreferrer');
                 }
@@ -1303,27 +1315,29 @@ export function PageClassBanner({
                     label='Job Description'
                     value={description}
                   />
-                  <button
-                    type='button'
-                    className='text-[11px] font-medium text-primary hover:underline cursor-pointer bg-transparent border-0 p-0 ml-0.5'
-                    onClick={() => setIsDescExpanded((prev) => !prev)}
-                  >
-                    {isDescExpanded ? 'Show Less ▲' : 'Show More ▼'}
-                  </button>
+                  {!initialDescriptionExpanded && (
+                    <button
+                      type='button'
+                      className='text-[11px] font-medium text-primary hover:underline cursor-pointer bg-transparent border-0 p-0 ml-0.5'
+                      onClick={() => setIsDescExpanded((prev) => !prev)}
+                    >
+                      {isDescExpanded ? 'Show Less ▲' : 'Show More ▼'}
+                    </button>
+                  )}
                 </div>
               </div>
               <div
                 className={cn(
                   'transition-all duration-200',
-                  isDescExpanded ?
-                    'max-h-[380px] overflow-y-auto pr-1'
+                  isDescriptionFullyVisible ?
+                    'pr-1'
                   : 'max-h-[110px] overflow-hidden relative',
                 )}
               >
                 <StructuredJobDescription
                   content={description}
                   size='sm'
-                  maxBlocks={isDescExpanded ? undefined : 4}
+                  maxBlocks={isDescriptionFullyVisible ? undefined : 4}
                 />
                 {/* {!isDescExpanded && (
                   <div className='absolute bottom-0 inset-x-0 h-8 bg-gradient-to-t from-panel to-transparent pointer-events-none' />

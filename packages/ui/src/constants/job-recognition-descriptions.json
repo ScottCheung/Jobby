@@ -1,0 +1,23 @@
+{
+  "inspectingDescriptions": [
+    "Recognizing Job Title...",
+    "Scanning Job Details...",
+    "Extracting Required Skills...",
+    "Analyzing Qualifications...",
+    "Parsing Experience Level...",
+    "Identifying Company Info...",
+    "Evaluating Tech Stack...",
+    "Scanning Core Responsibilities...",
+    "Checking Requirements..."
+  ],
+  "matchingDescriptions": [
+    "Fetching Your Resume...",
+    "Comparing Skillset Match...",
+    "Evaluating Experience Fit...",
+    "Calculating Fit Score...",
+    "Matching Profile Highlights...",
+    "Synthesizing Job Insights...",
+    "Analyzing Strengths & Gaps...",
+    "Calculating Compatibility..."
+  ]
+}

@@ -66,7 +66,7 @@ const ChromeIcon = (props: React.SVGProps<SVGSVGElement>) => (
 
 const navigation = [
   { name: 'Home', href: '/', icon: LayoutGrid },
-  { name: 'AI Networking Assistant', href: '/prospects', icon: UserCheck },
+  { name: 'AI Networking Assistant', href: '/ai-studio/prospects', icon: UserCheck },
   { name: 'AI Studio', href: '/ai-studio', icon: Sparkles },
   { name: 'Applications', href: '/applications', icon: Briefcase },
   { name: 'Interview Prep', href: '/interview-prep', icon: GraduationCap },
@@ -174,7 +174,7 @@ export function Sidebar() {
 
   const desktopNavigation = [
     { name: 'Home', href: '/', icon: LayoutGrid },
-    { name: 'AI Networking Assistant', href: '/prospects', icon: UserCheck },
+    { name: 'AI Networking Assistant', href: '/ai-studio/prospects', icon: UserCheck },
     { name: 'AI Studio', href: '/ai-studio', icon: Sparkles },
     { name: 'Applications', href: '/applications', icon: Briefcase },
     { name: 'Interview Prep', href: '/interview-prep', icon: GraduationCap },
@@ -253,7 +253,16 @@ export function Sidebar() {
                 (item.href !== '/' &&
                   item.href !== '/settings' &&
                   !item.href.startsWith('#') &&
-                  Boolean(pathname?.startsWith(item.href))));
+                  Boolean(pathname?.startsWith(item.href)) &&
+                  !visibleNavigation.some(
+                    (other) =>
+                      other.href !== item.href &&
+                      other.href !== '/' &&
+                      !('isAction' in other && other.isAction) &&
+                      !other.href.startsWith('#') &&
+                      Boolean(pathname?.startsWith(other.href)) &&
+                      other.href.length > item.href.length,
+                  )));
 
             const navItemContent = (
               <div

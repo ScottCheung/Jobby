@@ -9,7 +9,7 @@ import type {
   FormInspection,
 } from '../../shared/contracts/form-inspection';
 import type { TailoredResume } from '../../shared/contracts/tailored-resume';
-import { formatRelativeTime } from '../../shared/utils/date-formatter';
+import { formatRelativeTime } from '@jobby/ui/lib/date-formatter';
 import type { UploadSyncState } from '../hooks/useInspection';
 
 interface ResultsDisplayProps {
@@ -180,10 +180,11 @@ function formValue(field: FormFieldObservation): string {
   return field.currentValue || '';
 }
 
-function displayValue(field: FormFieldObservation): string {
+export function displayValue(field: FormFieldObservation): string {
   if (field.type === 'checkbox') return field.filled ? 'Checked' : 'Unchecked';
   if (field.type === 'file')
     return field.upload?.filename || (field.filled ? 'Uploaded' : 'None');
+  if (field.type === 'password' && field.filled) return 'Filled securely';
   const value = field.currentValue || '';
   return (
     field.options.find((option) => option.value === value)?.label ||
@@ -370,6 +371,9 @@ function FormFieldRow({
   const [isSingleFilling, setIsSingleFilling] = useState(false);
   const [selectedResumeId, setSelectedResumeId] = useState('');
   const timer = useRef<number | undefined>(undefined);
+  const isStructuredSummary = field.semanticFeatures?.includes(
+    'workday-structured-summary',
+  );
 
   const handleSingleFill = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -389,8 +393,7 @@ function FormFieldRow({
   // overwrite the user's in-progress input when the inspection poll fires
   // before the page has accepted the change.
   const pendingValue = useRef<string | boolean | undefined>(undefined);
-  const editable =
-    !field.sensitive && !['file', 'password', 'unknown'].includes(field.type);
+  const editable = !['file', 'unknown'].includes(field.type);
   const purpose = fileFieldPurpose(field);
   const isResumeUpload = purpose === 'resume';
   const isDocumentUpload =
@@ -549,17 +552,19 @@ function FormFieldRow({
         )}
         <button
           type='button'
-          disabled={isSingleFilling}
+          disabled={isSingleFilling || isStructuredSummary}
           className={`group form-field-status ${
             field.filled ? 'is-filled' : 'is-unfilled'
           } ${isSingleFilling ? 'is-loading' : ''}`}
           aria-label={
-            field.filled ?
+            isStructuredSummary ? `${field.label} summary`
+            : field.filled ?
               `Filled, click to re-autofill ${field.label}`
             : `Unfilled, click to autofill ${field.label}`
           }
           title={
-            isSingleFilling ? 'Autofilling field...'
+            isStructuredSummary ? `${field.label} summary`
+            : isSingleFilling ? 'Autofilling field...'
             : field.filled ?
               'Filled (click to re-autofill)'
             : 'Unfilled (click to autofill)'
@@ -574,9 +579,11 @@ function FormFieldRow({
                   <Check className='w-3 h-3 stroke-[2.5]' />
                 : <Circle className='w-2.5 h-2.5 stroke-[2] opacity-40' />}
               </span>
-              <span className='hidden items-center justify-center group-hover:flex'>
-                <RotateCw className='w-3 h-3 stroke-[2.5]' />
-              </span>
+              {!isStructuredSummary && (
+                <span className='hidden items-center justify-center group-hover:flex'>
+                  <RotateCw className='w-3 h-3 stroke-[2.5]' />
+                </span>
+              )}
             </>
           }
         </button>

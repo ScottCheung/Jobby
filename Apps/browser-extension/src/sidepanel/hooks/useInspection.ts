@@ -320,10 +320,13 @@ export function useInspection(onJobChanged?: () => void) {
     onJobChanged?.();
   }, [onJobChanged]);
 
+  const MIN_SKELETON_DISPLAY_MS = 300;
+
   const inspectPage = useCallback(async () => {
     const requestSequence = pageInspectionSequence.current + 1;
     pageInspectionSequence.current = requestSequence;
     pageInspectionInFlight.current = true;
+    const startTime = Date.now();
     setIsInspectingPage(true);
     try {
       resetInspectionState();
@@ -344,6 +347,10 @@ export function useInspection(onJobChanged?: () => void) {
       }
     } finally {
       if (requestSequence === pageInspectionSequence.current) {
+        const elapsed = Date.now() - startTime;
+        if (elapsed < MIN_SKELETON_DISPLAY_MS) {
+          await new Promise((resolve) => setTimeout(resolve, MIN_SKELETON_DISPLAY_MS - elapsed));
+        }
         pageInspectionInFlight.current = false;
         setIsInspectingPage(false);
       }
@@ -357,6 +364,7 @@ export function useInspection(onJobChanged?: () => void) {
       const requestSequence = pageInspectionSequence.current + 1;
       pageInspectionSequence.current = requestSequence;
       pageInspectionInFlight.current = true;
+      const startTime = showLoading ? Date.now() : 0;
       try {
         const tab = await getActiveTab();
         if (requestSequence !== pageInspectionSequence.current) return false;
@@ -419,6 +427,12 @@ export function useInspection(onJobChanged?: () => void) {
         return false;
       } finally {
         if (requestSequence === pageInspectionSequence.current) {
+          if (showLoading && startTime > 0) {
+            const elapsed = Date.now() - startTime;
+            if (elapsed < MIN_SKELETON_DISPLAY_MS) {
+              await new Promise((resolve) => setTimeout(resolve, MIN_SKELETON_DISPLAY_MS - elapsed));
+            }
+          }
           pageInspectionInFlight.current = false;
           setIsInspectingPage(false);
         }

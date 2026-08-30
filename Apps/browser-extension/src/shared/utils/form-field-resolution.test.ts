@@ -41,4 +41,18 @@ describe('canonicalizeFormFields', () => {
 
     expect(fields).toHaveLength(2);
   });
+
+  it('preserves repeated Workday controls with the same name in DOM order', () => {
+    const fields = canonicalizeFormFields([
+      { ...fileField(), key: 'workExperience-6--jobTitle', id: 'workExperience-6--jobTitle', name: 'jobTitle', type: 'text' as const, label: 'Job Title' },
+      { ...fileField(), key: 'workExperience-59--jobTitle', id: 'workExperience-59--jobTitle', name: 'jobTitle', type: 'text' as const, label: 'Job Title' },
+      { ...fileField(), key: 'workExperience-133--jobTitle', id: 'workExperience-133--jobTitle', name: 'jobTitle', type: 'text' as const, label: 'Job Title' },
+    ]);
+
+    expect(fields.map((field) => field.id)).toEqual([
+      'workExperience-6--jobTitle',
+      'workExperience-59--jobTitle',
+      'workExperience-133--jobTitle',
+    ]);
+  });
 });

@@ -2,7 +2,7 @@ import type { GenericJobSnapshot, PageInspection } from "../../../shared/contrac
 
 import { extractTechnologyKeywords } from "../../technology-keywords";
 import { extractStructuredText } from "../../text-utils";
-import { capturedJobDateFields } from "../../../shared/utils/date-formatter";
+import { capturedJobDateFields } from '@jobby/ui/lib/date-formatter';
 
 const JOB_TITLE_SELECTORS = [
   // Structured job microdata can coexist with browser-support overlays and
@@ -87,6 +87,7 @@ function truncate(value: string, maxLength: number): string {
 function isVisible(element: Element): boolean {
   const html = element as HTMLElement;
   if (html.hidden || html.getAttribute("aria-hidden") === "true") return false;
+  if (html.style.display === "none" || html.style.visibility === "hidden") return false;
   const style = window.getComputedStyle(html);
   return style.display !== "none" && style.visibility !== "hidden";
 }
@@ -95,10 +96,11 @@ function queryRoots(): QueryRoot[] {
   const roots: QueryRoot[] = [document];
   const seen = new Set<QueryRoot>(roots);
 
-  for (let index = 0; index < roots.length && roots.length < 80; index += 1) {
+  for (let index = 0; index < roots.length && roots.length < 40; index += 1) {
     const root = roots[index];
     if (!root) continue;
-    for (const element of Array.from(root.querySelectorAll("*"))) {
+    const candidates = Array.from(root.querySelectorAll<HTMLElement>("*:not(style):not(script)")).slice(0, 1000);
+    for (const element of candidates) {
       if (element.shadowRoot && !seen.has(element.shadowRoot)) {
         seen.add(element.shadowRoot);
         roots.push(element.shadowRoot);
@@ -106,20 +108,6 @@ function queryRoots(): QueryRoot[] {
     }
   }
   return roots;
-}
-
-function elements(selectors: string, roots: readonly QueryRoot[]): HTMLElement[] {
-  return roots.flatMap((root) =>
-    Array.from(root.querySelectorAll<HTMLElement>(selectors)).filter(isVisible),
-  );
-}
-
-function firstUsefulText(candidates: readonly HTMLElement[], minLength = 2, maxLength = 180): string {
-  for (const candidate of candidates) {
-    const text = cleanText(candidate.textContent);
-    if (text.length >= minLength && text.length <= maxLength) return text;
-  }
-  return "";
 }
 
 function isUsefulJobTitle(value: string): boolean {
@@ -130,13 +118,16 @@ function isUsefulJobTitle(value: string): boolean {
 
 function jobTitleFromPage(roots: readonly QueryRoot[]): string {
   for (const selector of JOB_TITLE_SELECTORS) {
-    const candidates = elements(selector, roots);
-    const primaryCandidates = candidates.filter((candidate) =>
-      !candidate.closest("aside, nav, footer, [role='complementary']"),
-    );
-    for (const candidate of primaryCandidates.length > 0 ? primaryCandidates : candidates) {
-      const title = cleanText(candidate.textContent);
-      if (isUsefulJobTitle(title)) return title;
+    for (const root of roots) {
+      const candidates = Array.from(root.querySelectorAll<HTMLElement>(selector)).slice(0, 15);
+      const primaryCandidates = candidates.filter((candidate) =>
+        !candidate.closest("aside, nav, footer, [role='complementary']"),
+      );
+      const list = primaryCandidates.length > 0 ? primaryCandidates : candidates;
+      for (const candidate of list) {
+        const title = cleanText(candidate.textContent);
+        if (isUsefulJobTitle(title) && isVisible(candidate)) return title;
+      }
     }
   }
   return "";
@@ -144,60 +135,92 @@ function jobTitleFromPage(roots: readonly QueryRoot[]): string {
 
 function labelledValue(labels: readonly string[], roots: readonly QueryRoot[]): string {
   const labelPattern = new RegExp(`^\\s*(?:${labels.join("|")})\\s*:?\\s*$`, "i");
-  for (const element of elements("dt, th, label, strong, b, span, div, p", roots).slice(0, 500)) {
-    if (!labelPattern.test(cleanText(element.textContent))) continue;
-    const sibling = element.nextElementSibling as HTMLElement | null;
-    const siblingText = cleanText(sibling?.textContent);
-    if (siblingText && siblingText.length <= 180) return siblingText;
-    const parentText = cleanText(element.parentElement?.textContent);
-    const match = parentText.match(new RegExp(`(?:${labels.join("|")})\\s*:\\s*([^|·•\\n]{2,120})`, "i"));
-    if (match?.[1]) return cleanText(match[1]);
+  for (const root of roots) {
+    const elements = Array.from(root.querySelectorAll<HTMLElement>("dt, th, label, strong, b, span, div, p")).slice(0, 300);
+    for (const element of elements) {
+      const text = cleanText(element.textContent);
+      if (!text || text.length > 60 || !labelPattern.test(text)) continue;
+      if (!isVisible(element)) continue;
+      const sibling = element.nextElementSibling as HTMLElement | null;
+      const siblingText = cleanText(sibling?.textContent);
+      if (siblingText && siblingText.length <= 180 && (!sibling || isVisible(sibling))) return siblingText;
+      const parentText = cleanText(element.parentElement?.textContent);
+      const match = parentText.match(new RegExp(`(?:${labels.join("|")})\\s*:\\s*([^|·•\\n]{2,120})`, "i"));
+      if (match?.[1]) return cleanText(match[1]);
+    }
   }
   return "";
 }
 
 function companyFromBranding(roots: readonly QueryRoot[]): string {
-  for (const image of elements("img[alt]", roots)) {
-    const alt = cleanText(image.getAttribute("alt"));
-    const match = alt.match(/^(.+?)\s+(?:logo|careers?)$/i);
-    if (match?.[1]) return cleanText(match[1]);
+  for (const root of roots) {
+    for (const image of Array.from(root.querySelectorAll<HTMLElement>("img[alt]")).slice(0, 20)) {
+      const alt = cleanText(image.getAttribute("alt"));
+      const match = alt.match(/^(.+?)\s+(?:logo|careers?)$/i);
+      if (match?.[1] && isVisible(image)) return cleanText(match[1]);
+    }
   }
   return "";
 }
 
 function locationFromPage(roots: readonly QueryRoot[]): string {
-  const semanticLocation = firstUsefulText(
-    elements("[class*='job__location' i], [class*='job-location' i], [data-testid*='job-location' i]", roots),
-    2,
-    180,
-  );
-  return semanticLocation || labelledValue(["location", "work location", "location type"], roots);
+  for (const root of roots) {
+    const candidates = Array.from(
+      root.querySelectorAll<HTMLElement>(
+        "[class*='job__location' i], [class*='job-location' i], [data-testid*='job-location' i]",
+      ),
+    ).slice(0, 10);
+    for (const candidate of candidates) {
+      const text = cleanText(candidate.textContent);
+      if (text.length >= 2 && text.length <= 180 && isVisible(candidate)) {
+        return text;
+      }
+    }
+  }
+  return labelledValue(["location", "work location", "location type"], roots);
 }
 
 function descriptionFromPage(roots: readonly QueryRoot[]): string {
   for (const selector of DESCRIPTION_SELECTORS) {
-    const candidates = elements(selector, roots)
-      .filter((element) => !element.closest("aside, nav, footer, [role='complementary']"))
-      .map((element) => extractStructuredText(element))
-      .filter((text) => text.length >= 120)
-      .sort((left, right) => right.length - left.length);
-    if (candidates[0]) return truncate(candidates[0], 18_000);
+    for (const root of roots) {
+      const candidates = Array.from(root.querySelectorAll<HTMLElement>(selector))
+        .filter((element) => !element.closest("aside, nav, footer, [role='complementary']"))
+        .slice(0, 10);
+      for (const element of candidates) {
+        const text = extractStructuredText(element);
+        if (text.length >= 120 && isVisible(element)) {
+          return truncate(text, 18_000);
+        }
+      }
+    }
   }
 
-  const heading = elements("h2, h3, h4", roots).find((element) => JOB_HEADING_PATTERN.test(cleanText(element.textContent)));
-  const parentText = extractStructuredText(heading?.parentElement);
-  return parentText.length >= 120 ? truncate(parentText, 18_000) : "";
+  for (const root of roots) {
+    const headings = Array.from(root.querySelectorAll<HTMLElement>("h2, h3, h4")).slice(0, 30);
+    const heading = headings.find((element) => JOB_HEADING_PATTERN.test(cleanText(element.textContent)));
+    if (heading) {
+      const parentText = extractStructuredText(heading.parentElement);
+      if (parentText.length >= 120 && isVisible(heading)) return truncate(parentText, 18_000);
+    }
+  }
+  return "";
 }
 
 function hasApplyAction(roots: readonly QueryRoot[]): boolean {
-  return elements(APPLY_SELECTOR, roots).some((element) => {
-    const text = cleanText(
-      element.getAttribute("aria-label") ||
-        element.getAttribute("value") ||
-        element.textContent,
-    );
-    return APPLY_PATTERN.test(text);
-  });
+  for (const root of roots) {
+    const candidates = Array.from(root.querySelectorAll<HTMLElement>(APPLY_SELECTOR)).slice(0, 150);
+    for (const element of candidates) {
+      const text = cleanText(
+        element.getAttribute("aria-label") ||
+          element.getAttribute("value") ||
+          element.textContent,
+      );
+      if (text && APPLY_PATTERN.test(text) && isVisible(element)) {
+        return true;
+      }
+    }
+  }
+  return false;
 }
 
 export function jobPostingFromStructuredData(): StructuredJobPosting | null {
@@ -291,7 +314,9 @@ export function jobPostingFromMicrodata(
       element.textContent,
     );
   };
-  const postings = elements("[itemscope][itemtype*='JobPosting' i]", roots);
+  const postings = roots.flatMap((root) =>
+    Array.from(root.querySelectorAll<HTMLElement>("[itemscope][itemtype*='JobPosting' i]")),
+  );
   if (postings.length === 0) return null;
   const currentIdentityTokens = decodeURIComponent(
     `${window.location.pathname} ${window.location.search}`,
@@ -386,11 +411,10 @@ export function datePostedFromDom(): string | undefined {
   const isoPattern = /\b\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z?)?\b/;
 
   for (const el of candidates) {
-    if (!isVisible(el)) continue;
     const text = cleanText(el.textContent);
-    if (text.length > 80) continue; // skip large containers
+    if (!text || text.length > 80) continue; // skip large containers
     const match = text.match(datePattern) || text.match(zhPattern) || text.match(isoPattern);
-    if (match?.[0]) {
+    if (match?.[0] && isVisible(el)) {
       return match[0].trim();
     }
   }
@@ -429,8 +453,11 @@ export function readGenericJobPage(): PageInspection {
     structured?.location ||
     locationFromPage(roots) ||
     "";
-  const hasJobHeading = elements("h2, h3, h4", roots)
-    .some((element) => JOB_HEADING_PATTERN.test(cleanText(element.textContent)));
+  const hasJobHeading = roots.some((root) =>
+    Array.from(root.querySelectorAll<HTMLElement>("h2, h3, h4"))
+      .slice(0, 30)
+      .some((element) => JOB_HEADING_PATTERN.test(cleanText(element.textContent)) && isVisible(element)),
+  );
   const applyAction = hasApplyAction(roots);
   const urlLooksLikeJob = URL_JOB_PATTERN.test(new URL(url).pathname);
 

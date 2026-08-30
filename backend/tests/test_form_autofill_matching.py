@@ -12,6 +12,7 @@ from services.api.main import (
     _is_single_consent_checkbox,
     _phone_country_code,
     _phone_country_value,
+    _form_scene,
 )
 
 
@@ -26,6 +27,15 @@ def test_form_autofill_classifies_location_salary_and_office_questions() -> None
 
 def test_form_autofill_leaves_unrelated_questions_uncategorized() -> None:
     assert _autofill_answer_category("Describe your experience with React") is None
+
+
+def test_password_confirmation_fields_identify_account_registration() -> None:
+    fields = [
+        SimpleNamespace(label="Email Address", type="text"),
+        SimpleNamespace(label="Password", type="password"),
+        SimpleNamespace(label="Verify New Password", type="password"),
+    ]
+    assert _form_scene("job_application", fields) == "registration"
 
 
 def test_form_autofill_reuses_answers_between_compatible_controls() -> None:

@@ -6,6 +6,7 @@ export * from './components/UI/StructuredJobDescription';
 
 // Animation exports
 export * from './components/animation';
+export { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 
 // Shared UI Components
 export * from './components/UI/EmptyState';
@@ -14,6 +15,8 @@ export * from './components/UI/GeminiBackground';
 export * from './components/UI/HorizontalScrollContainer';
 export * from './components/UI/ImageCropper';
 export * from './components/UI/InfiniteScroll';
+export * from './components/UI/JobMatchSummary';
+export * from './components/UI/job-analysis';
 export * from './components/UI/VirtualList';
 export * from './components/UI/bullet-list-input';
 export * from './components/UI/tag-input';
@@ -83,3 +86,9 @@ export * from './components/notifications/NotificationCenter';
 // Providers
 export * from './components/providers/QueryProvider';
 
+// Constants
+export { default as jobRecognitionDescriptions } from './constants/job-recognition-descriptions.json';
+export * from './lib/date-formatter';
+export * from './lib/job-requirements';
+export * from './lib/job-skills';
+export * from './lib/job-skills/classification';

@@ -8,7 +8,7 @@ import { readLinkedInPage } from "./platforms/linkedin/job-reader";
 import { readLinkedInFormPage } from "./platforms/linkedin/form-reader";
 import { readGenericFormPage } from "./platforms/generic/form-reader";
 import { readGenericJobPage } from "./platforms/generic/job-reader";
-import { readIndeedJobPage } from "./platforms/indeed/job-reader";
+import { getIndeedTargetJobKey, readIndeedJobPage } from "./platforms/indeed/job-reader";
 import { readAtsJobPage } from "./platforms/ats/job-reader";
 import {
   findDedicatedApplicationScope,
@@ -106,7 +106,12 @@ export async function readCurrentPageWhenReady(): Promise<PageInspection> {
   if (matchesProviderLocation("indeed", window.location)) return readIndeedPageWhenReady();
 
   let inspection = readCurrentPage();
+  if (lastPageClass && !lastPageClass.isJobPage) {
+    return inspection;
+  }
+
   let previousSnapshotSignature = "";
+  const readinessWaitAttempts = providerReadinessWaitUntilAttempt();
 
   // Split views can replace the selected job after the click while keeping the
   // same URL. Require a short stable window so a previous card's complete DOM
@@ -130,13 +135,16 @@ export async function readCurrentPageWhenReady(): Promise<PageInspection> {
       previousSnapshotSignature = snapshotSignature;
     } else {
       previousSnapshotSignature = "";
+      if (attempt >= 1 && readinessWaitAttempts === 0) {
+        return inspection;
+      }
     }
-    // Preserve the existing six-attempt readiness window unless the selected
+    // Preserve the existing readiness window unless the selected
     // provider declares that posting metadata renders in a separate pass.
     const postingDateWait = postingDateWaitPolicy(inspection);
     if (
       attempt >= 5 &&
-      attempt >= providerReadinessWaitUntilAttempt() &&
+      attempt >= readinessWaitAttempts &&
       !postingDateWait.required
     ) {
       return inspection;
@@ -148,13 +156,23 @@ export async function readCurrentPageWhenReady(): Promise<PageInspection> {
 }
 
 async function readIndeedPageWhenReady(): Promise<PageInspection> {
-  let observedUrl = window.location.href;
+  const currentUrl = window.location.href;
+  lastPageClass = classifyCurrentPage();
+  if (!lastPageClass.isJobPage) {
+    return {
+      kind: "unsupported_page",
+      url: currentUrl,
+      reason: lastPageClass.skipReason,
+    };
+  }
+
+  let observedUrl = currentUrl;
   let previousSnapshotSignature = "";
 
   for (let attempt = 0; attempt < 20; attempt += 1) {
-    const currentUrl = window.location.href;
-    if (currentUrl !== observedUrl) {
-      observedUrl = currentUrl;
+    const activeUrl = window.location.href;
+    if (activeUrl !== observedUrl) {
+      observedUrl = activeUrl;
       previousSnapshotSignature = "";
     }
 
@@ -178,6 +196,9 @@ async function readIndeedPageWhenReady(): Promise<PageInspection> {
       previousSnapshotSignature = snapshotSignature;
     } else {
       previousSnapshotSignature = "";
+      if (attempt >= 1 && !getIndeedTargetJobKey(activeUrl)) {
+        return inspection;
+      }
     }
 
     await new Promise<void>((resolve) => window.setTimeout(resolve, 100));
@@ -207,6 +228,15 @@ function fallbackToGenericJob(preferredInspection: PageInspection): PageInspecti
 
 async function readLinkedInPageWhenReady(): Promise<PageInspection> {
   let observedUrl = window.location.href;
+  lastPageClass = classifyCurrentPage();
+  if (!lastPageClass.isJobPage) {
+    return {
+      kind: "unsupported_page",
+      url: observedUrl,
+      reason: lastPageClass.skipReason,
+    };
+  }
+
   let previousSnapshotSignature = "";
 
   // ── Fire API fetch in parallel with DOM polling ───────────────────────────
@@ -281,6 +311,10 @@ async function readLinkedInPageWhenReady(): Promise<PageInspection> {
       previousSnapshotSignature = snapshotSignature;
     } else {
       previousSnapshotSignature = "";
+      const currentJobId = linkedinAdapter.jobIdFromUrl(currentUrl);
+      if (attempt >= 1 && !currentJobId) {
+        return inspection;
+      }
     }
 
     await new Promise<void>((resolve) => window.setTimeout(resolve, 150));

@@ -99,4 +99,46 @@ describe('Floating Ball & Auto-Show Card', () => {
     const iframeWrapper = iframeRoot?.shadowRoot?.getElementById('jobby-iframe-wrapper');
     expect(iframeWrapper?.classList.contains('is-visible') ?? false).toBe(false);
   });
+
+  it('synchronizes theme shadow and primary color variables on theme changes', async () => {
+    let storageChangedListener: any = null;
+    vi.mocked(chrome.storage.onChanged.addListener).mockImplementation((fn: any) => {
+      storageChangedListener = fn;
+    });
+
+    cleanup = initializeFloatingBall();
+
+    const root = document.getElementById('jobby-floating-ball-root') as HTMLDivElement;
+    expect(root).not.toBeNull();
+
+    // Default theme color is green
+    expect(root.style.getPropertyValue('--primary-shadow')).toBe('rgba(13, 148, 136, 0.32)');
+    expect(root.style.getPropertyValue('--primary-color')).toBe('#0d9488');
+
+    // Simulate changing theme color to blue
+    storageChangedListener?.(
+      {
+        'auto-job-ui-theme-color': { newValue: 'blue' },
+      },
+      'local',
+    );
+
+    expect(root.style.getPropertyValue('--primary-shadow')).toBe('rgba(37, 99, 235, 0.3)');
+    expect(root.style.getPropertyValue('--primary-glow')).toBe('rgba(59, 130, 246, 0.55)');
+    expect(root.style.getPropertyValue('--primary-color')).toBe('#2563eb');
+
+    // Simulate changing theme color to purple and dark mode
+    storageChangedListener?.(
+      {
+        'auto-job-ui-theme-color': { newValue: 'purple' },
+        'auto-job-ui-theme': { newValue: 'dark' },
+      },
+      'local',
+    );
+
+    expect(root.classList.contains('dark')).toBe(true);
+    expect(root.style.getPropertyValue('--primary-shadow')).toBe('rgba(167, 139, 250, 0.4)');
+    expect(root.style.getPropertyValue('--primary-glow')).toBe('rgba(196, 181, 253, 0.65)');
+    expect(root.style.getPropertyValue('--primary-color')).toBe('#a78bfa');
+  });
 });

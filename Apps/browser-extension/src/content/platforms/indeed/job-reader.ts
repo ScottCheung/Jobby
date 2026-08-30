@@ -7,7 +7,7 @@
  * then fall back to Indeed-specific DOM selectors.
  */
 import type { IndeedJobSnapshot, PageInspection } from "../../../shared/contracts/page-inspection";
-import { capturedJobDateFields } from "../../../shared/utils/date-formatter";
+import { capturedJobDateFields } from '@jobby/ui/lib/date-formatter';
 import { extractTechnologyKeywords, mergeSkills } from "../../technology-keywords";
 import { extractStructuredText } from "../../text-utils";
 import {
@@ -17,6 +17,13 @@ import {
 
 function cleanText(value: string | null | undefined): string {
   return (value || "").replace(/\s+/g, " ").trim();
+}
+
+function cleanTitle(value: string | null | undefined): string {
+  return cleanText(value)
+    .replace(/[-–—\s]+job\s+post(?:ing)?\s*$/i, "")
+    .replace(/[-–—\s]+new\s*$/i, "")
+    .trim();
 }
 
 function truncate(value: string, maxLength: number): string {
@@ -56,7 +63,7 @@ function indeedJobKey(root: ParentNode | null): string {
   );
 }
 
-function getIndeedTargetJobKey(url: string): string | undefined {
+export function getIndeedTargetJobKey(url: string): string | undefined {
   // Indeed frequently keeps the previous `vjk` in the URL while replacing the
   // selected card and detail pane. In split view, the selected card is the
   // current source of truth; preferring the URL here re-reads the old job.
@@ -134,7 +141,17 @@ function structuredJobPosting(targetExternalId?: string): {
   externalId?: string;
   datePosted?: string;
 } | null {
-  const isMultiCardPage = document.querySelectorAll(".job_seen_beacon, [data-jk]").length > 1;
+  const pathname = (typeof window !== "undefined" ? window.location.pathname : "").toLowerCase();
+  const isStandaloneJob =
+    pathname.includes("/viewjob") ||
+    pathname.includes("/rc/clk") ||
+    pathname.includes("/m/viewjob") ||
+    pathname.includes("/pagead/clk");
+  const isSearchPage =
+    !isStandaloneJob &&
+    (Boolean(document.querySelector(".jobsearch-LeftPane, .jobsearch-ResultsList, #mosaic-provider-jobcards")) ||
+      document.querySelectorAll(".job_seen_beacon").length > 1);
+
   const scripts = Array.from(
     document.querySelectorAll<HTMLScriptElement>("script[type='application/ld+json']"),
   ).slice(0, 30);
@@ -165,12 +182,21 @@ function structuredJobPosting(targetExternalId?: string): {
         cleanText(
           typeof identifier === "string" ? identifier : String(identifier?.value || ""),
         ) || undefined;
+      const postingUrl = cleanText(String(posting.url || posting["@id"] || posting.sameAs || ""));
 
       // JSON-LD on an Indeed search page can describe the server-rendered
-      // previous job. Use it only when it explicitly identifies the selected
-      // job; otherwise the visible card/detail pane is authoritative.
-      if (isMultiCardPage && (!targetExternalId || externalId !== targetExternalId)) {
-        continue;
+      // previous job. Use it on a search page only when it explicitly identifies
+      // the selected job; on standalone job pages, the JSON-LD is authoritative.
+      if (isSearchPage) {
+        const matchesTarget = Boolean(
+          targetExternalId && (
+            externalId === targetExternalId ||
+            (postingUrl && postingUrl.includes(targetExternalId))
+          ),
+        );
+        if (!matchesTarget) {
+          continue;
+        }
       }
 
       // Indeed embeds the full HTML description. Parse it structurally to preserve newlines.
@@ -210,6 +236,164 @@ function structuredJobPosting(targetExternalId?: string): {
   return null;
 }
 
+interface IndeedMosaicJobData {
+  title?: string;
+  company?: string;
+  location?: string;
+  pubDate?: string;
+  formattedRelativeTime?: string;
+}
+
+function findJobInMosaicObject(obj: unknown, targetJobKey?: string): IndeedMosaicJobData | null {
+  if (!obj || typeof obj !== "object") return null;
+
+  if (Array.isArray(obj)) {
+    for (const item of obj) {
+      const match = findJobInMosaicObject(item, targetJobKey);
+      if (match) return match;
+    }
+    return null;
+  }
+
+  const record = obj as Record<string, unknown>;
+  const jobKey = String(record.jobkey || record.jobKey || record.jk || record.id || "");
+  const isMatch = targetJobKey ? jobKey === targetJobKey : Boolean(jobKey);
+
+  if (isMatch && (record.pubDate || record.formattedRelativeTime || record.createDate || record.title)) {
+    let pubDateIso: string | undefined = undefined;
+    const rawPubDate = record.pubDate || record.createDate;
+    if (typeof rawPubDate === "number" || (typeof rawPubDate === "string" && /^\d+$/.test(rawPubDate))) {
+      const num = Number(rawPubDate);
+      const ms = num < 1e11 ? num * 1000 : num;
+      const d = new Date(ms);
+      if (!Number.isNaN(d.getTime())) pubDateIso = d.toISOString();
+    } else if (typeof rawPubDate === "string") {
+      pubDateIso = rawPubDate;
+    }
+
+    const relTime =
+      typeof record.formattedRelativeTime === "string"
+        ? record.formattedRelativeTime
+        : typeof record.formattedDate === "string"
+        ? record.formattedDate
+        : undefined;
+
+    return {
+      title: typeof record.title === "string" ? cleanText(record.title) : undefined,
+      company: typeof record.company === "string" ? cleanText(record.company) : undefined,
+      location: typeof record.formattedLocation === "string" ? cleanText(record.formattedLocation) : undefined,
+      pubDate: pubDateIso,
+      formattedRelativeTime: relTime ? cleanText(relTime) : undefined,
+    };
+  }
+
+  // Check nested properties
+  const candidateKeys = [
+    "results",
+    "metaData",
+    "mosaicProviderJobCardsModel",
+    "jobCards",
+    "jobDetail",
+    "jobHeader",
+    "model",
+  ];
+  for (const key of candidateKeys) {
+    if (record[key]) {
+      const match = findJobInMosaicObject(record[key], targetJobKey);
+      if (match) return match;
+    }
+  }
+
+  return null;
+}
+
+function extractIndeedMosaicData(targetJobKey?: string): IndeedMosaicJobData | null {
+  const scripts = Array.from(document.querySelectorAll<HTMLScriptElement>("script:not([src])"));
+  for (const script of scripts) {
+    const text = script.textContent;
+    if (!text) continue;
+
+    // Fast check
+    if (
+      !text.includes("mosaic") &&
+      !text.includes("jobcards") &&
+      !text.includes("jobdetail") &&
+      !text.includes("pubDate") &&
+      !text.includes("formattedRelativeTime")
+    ) {
+      continue;
+    }
+
+    // 1. Try extracting mosaic-provider-jobcards or window.mosaic.providerData assignments
+    const mosaicRegexes = [
+      /window\.mosaic\.providerData\["mosaic-provider-jobcards"\]\s*=\s*({.+?});/s,
+      /window\.mosaic\.providerData\["mosaic-provider-jobdetail"\]\s*=\s*({.+?});/s,
+      /window\.mosaic\.providerData\["mosaic-provider-jobheader"\]\s*=\s*({.+?});/s,
+      /window\.mosaic\.providerData\["mosaic-provider-vjheader"\]\s*=\s*({.+?});/s,
+      /window\.mosaic\.providerData\["[^"]+"\]\s*=\s*({.+?});/s,
+    ];
+
+    for (const regex of mosaicRegexes) {
+      const match = text.match(regex);
+      if (!match?.[1]) continue;
+      try {
+        const parsed = JSON.parse(match[1]);
+        const job = findJobInMosaicObject(parsed, targetJobKey);
+        if (job) return job;
+      } catch {
+        // continue
+      }
+    }
+
+    // 2. Direct JSON script tag
+    if (text.startsWith("{") && text.endsWith("}")) {
+      try {
+        const parsed = JSON.parse(text);
+        const job = findJobInMosaicObject(parsed, targetJobKey);
+        if (job) return job;
+      } catch {
+        // continue
+      }
+    }
+
+    // 3. Fallback regex around targetJobKey
+    if (targetJobKey && text.includes(targetJobKey)) {
+      const keyIndex = text.indexOf(targetJobKey);
+      const slice = text.slice(Math.max(0, keyIndex - 800), Math.min(text.length, keyIndex + 2500));
+
+      const pubDateMatch =
+        slice.match(/"pubDate"\s*:\s*(\d{10,13})/i) ||
+        slice.match(/"createDate"\s*:\s*(\d{10,13})/i) ||
+        slice.match(/"datePosted"\s*:\s*"([^"]+)"/i);
+
+      const relTimeMatch =
+        slice.match(/"formattedRelativeTime"\s*:\s*"([^"]+)"/i) ||
+        slice.match(/"formattedDate"\s*:\s*"([^"]+)"/i) ||
+        slice.match(/"age"\s*:\s*"([^"]+)"/i);
+
+      let pubDateIso: string | undefined = undefined;
+      if (pubDateMatch?.[1]) {
+        const val = pubDateMatch[1];
+        if (/^\d{10,13}$/.test(val)) {
+          const ms = val.length === 10 ? Number(val) * 1000 : Number(val);
+          const d = new Date(ms);
+          if (!Number.isNaN(d.getTime())) pubDateIso = d.toISOString();
+        } else {
+          pubDateIso = val;
+        }
+      }
+
+      if (pubDateIso || relTimeMatch?.[1]) {
+        return {
+          pubDate: pubDateIso,
+          formattedRelativeTime: relTimeMatch?.[1]?.trim(),
+        };
+      }
+    }
+  }
+  return null;
+}
+
 /**
  * Extract posting date from Indeed's DOM.
  * Indeed uses relative-date spans near the job header,
@@ -217,32 +401,79 @@ function structuredJobPosting(targetExternalId?: string): {
  */
 function datePostedFromDom(root: ParentNode): string | undefined {
   // Try <time> elements first — most reliable
-  const timeEl = root.querySelector<HTMLElement>("time[datetime]");
+  const timeEl = root.querySelector<HTMLElement>(
+    "time[datetime], [data-testid*='date' i] time, [class*='date' i] time, time",
+  );
   if (timeEl) {
-    const dt = timeEl.getAttribute("datetime");
-    if (dt) return cleanText(dt);
+    const dt = cleanText(timeEl.getAttribute("datetime"));
+    if (dt) return dt;
     const text = cleanText(timeEl.textContent);
     if (text) return text;
   }
 
   const datePattern =
-    /\b(?:posted\s+)?(?:\d+\s*\+?\s*(?:minutes?|mins?|hours?|hrs?|days?|weeks?|wks?|months?|mos?|years?|yrs?|[dhwmy]|mo)\s*(?:ago)?|today|yesterday|just\s+(?:now|posted))\b/i;
+    /\b(?:(?:posted|reposted|active|employer\s*active|over|more\s+than)\s+)?(?:\d+\s*\+?\s*(?:minutes?|mins?|hours?|hrs?|days?|weeks?|wks?|months?|mos?|[dhwm]|mo)\s+ago|30\+\s*(?:days?|d)\s*(?:ago)?|today|yesterday|just\s+(?:now|posted)|recently\s+posted)\b/i;
+  const zhPattern = /(?:(?:发布于|重新发布于|活跃于)\s*)?(?:\d+\s*\+?\s*(?:个?月|周|天|小时|分钟)前|刚刚|今天|昨天)/;
+  const jaPattern = /(?:(?:\d+\s*\+?\s*(?:日前|時間前|分前|週間前|ヶ月前))|今日|昨日|たった今)/;
+  const isoPattern = /\b\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z?)?\b/;
+
+  const isInsideJobDescription = (el: HTMLElement): boolean => {
+    return Boolean(
+      el.closest(
+        "#jobDescriptionText, [class*='jobDescription'], #qualificationsSection, [data-testid='qualificationsSection'], #jobDescriptionSection, [data-testid='jobsearch-jobDescriptionText'], [class*='JobComponent-description']",
+      ),
+    );
+  };
 
   const selectors = [
     "[data-testid='jobsearch-JobMetadataFooter-item']",
     "[data-testid='myJobsStateDate']",
-    "[class*='jobsearch-JobMetadataFooter']",
-    "[class*='jobsearch-HiringInsights-date']",
+    "[data-testid='jobsearch-HiringInsights-date']",
+    "[data-testid='job-metadata-date']",
+    "[data-testid*='JobMetadataFooter'] *",
+    "[class*='jobsearch-JobMetadataFooter'] *",
+    "[class*='jobsearch-HiringInsights'] *",
+    "[class*='jobCardShelf'] *",
+    "[class*='under-title'] *",
+    "[data-testid*='date' i]",
+    "[data-testid*='posted' i]",
     "span[class*='date' i]",
     "span[class*='posted' i]",
+    "span[class*='job-age' i]",
+    "span.date",
+    "div.date",
+    "[class*='jobsearch-JobMetadataFooter']",
+    "[class*='jobsearch-HiringInsights']",
   ];
   for (const selector of selectors) {
     const elements = Array.from(root.querySelectorAll<HTMLElement>(selector));
     for (const element of elements) {
+      if (!isVisible(element) || isInsideJobDescription(element)) continue;
       const text = cleanText(element.textContent);
-      if (text && datePattern.test(text)) {
-        return text;
+      if (!text || text.length > 200) continue;
+      const match =
+        text.match(datePattern) ||
+        text.match(zhPattern) ||
+        text.match(jaPattern) ||
+        text.match(isoPattern);
+      if (match?.[0]) {
+        return match[0].trim();
       }
+    }
+  }
+
+  const candidates = Array.from(root.querySelectorAll<HTMLElement>("span, div, p, li")).slice(0, 300);
+  for (const element of candidates) {
+    if (!isVisible(element) || isInsideJobDescription(element)) continue;
+    const text = cleanText(element.textContent);
+    if (!text || text.length > 80) continue;
+    const match =
+      text.match(datePattern) ||
+      text.match(zhPattern) ||
+      text.match(jaPattern) ||
+      text.match(isoPattern);
+    if (match?.[0]) {
+      return match[0].trim();
     }
   }
 
@@ -291,7 +522,7 @@ export function readIndeedJobPage(): PageInspection {
     selectedCard || document.body
   : detailRoot || selectedCard || document.body;
 
-  const title =
+  const rawTitle =
     structured?.title ||
     (primaryRoot ?
       firstTextIn(
@@ -319,6 +550,7 @@ export function readIndeedJobPage(): PageInspection {
       "[data-testid='job-title']",
       "h1",
     );
+  const title = cleanTitle(rawTitle);
 
   const company =
     structured?.company ||
@@ -385,10 +617,25 @@ export function readIndeedJobPage(): PageInspection {
     detailKey ||
     stableId(`${url}|${title}|${company}`);
 
+  const cardForTarget = targetKey
+    ? document
+        .querySelector<HTMLElement>(
+          `[data-jk='${targetKey}'], .job_seen_beacon:has(a[href*='${targetKey}']), a[href*='jk=${targetKey}'], a[href*='vjk=${targetKey}'], #job_${targetKey}, [data-mobtk='${targetKey}']`,
+        )
+        ?.closest<HTMLElement>(".job_seen_beacon, li, tr, [data-jk], [class*='jobCard']")
+    : null;
+
+  const mosaicData = targetKey ? extractIndeedMosaicData(targetKey) : null;
+  const mosaicDate = mosaicData?.pubDate || mosaicData?.formattedRelativeTime;
+
   const datePosted =
+    mosaicDate ||
     structured?.datePosted ||
     (primaryRoot ? datePostedFromDom(primaryRoot) : undefined) ||
-    datePostedFromDom(fallbackRoot);
+    (selectedCard ? datePostedFromDom(selectedCard) : undefined) ||
+    (cardForTarget ? datePostedFromDom(cardForTarget) : undefined) ||
+    datePostedFromDom(fallbackRoot) ||
+    (!isDetailMismatch ? datePostedFromDom(document) : undefined);
 
   const enoughEvidence =
     Boolean(title) &&

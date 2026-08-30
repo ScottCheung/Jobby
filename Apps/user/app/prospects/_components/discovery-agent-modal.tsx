@@ -33,6 +33,7 @@ import type {
   ProspectAgentLogEntry,
 } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import { AiWorkflowGuideModal } from '@/components/ai-workflow-guide-modal';
 
 interface DiscoveryAgentModalProps {
   isOpen: boolean;
@@ -136,6 +137,7 @@ export function DiscoveryAgentModal({
   );
   const [error, setError] = useState<string | null>(null);
   const [copiedPrompt, setCopiedPrompt] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
 
   // Helper to persist edits to localStorage
   const saveDossierCache = (
@@ -468,7 +470,8 @@ Outreach Tone: High-signal, outcome-driven, demonstrating immediate value for co
     }
   };
 
-  const agentPrompt = `Act as the Jobby AI Networking Assistant Agent for Candidate ${userName}.
+  const agentPrompt = `Help me discover high-value professional contacts for Candidate ${userName}.
+You are providing research results only. Do not call any API, write to a database, or attempt to operate Jobby.
 
 CANDIDATE DOSSIER & STRATEGIC BACKGROUND:
 - Candidate Name: ${userName}
@@ -481,7 +484,7 @@ CANDIDATE DOSSIER & STRATEGIC BACKGROUND:
 ${getIntentInstructions(promptIntent)}
 
 OBJECTIVE:
-Discover exactly ${targetCount} high-value contacts (Recruiters, Hiring Managers, Engineering Managers). Batch upload discovered candidates to Jobby DB in a single request.
+Discover exactly ${targetCount} high-value contacts (Recruiters, Hiring Managers, Engineering Managers). Return the results for the user to review and manually import into Jobby.
 
 AI MULTI-DIMENSIONAL MATCH SCORE SPECIFICATION:
 For each candidate discovered, evaluate and calculate the following 5 structured score dimensions (1-100):
@@ -492,51 +495,22 @@ For each candidate discovered, evaluate and calculate the following 5 structured
 - Overall (综合评估得分)
 
 EXECUTION STEPS:
-1. READ EXISTING JOBBY DATA (Deduplication):
-   HTTP GET http://localhost:8000/api/prospects (Header: X-User-Email: ${userEmail})
-   Skip existing contacts.
-
-2. SEARCH & EVALUATE CANDIDATES:
+1. SEARCH & EVALUATE CANDIDATES:
    Search LinkedIn, tech company engineering orgs, and hiring teams matching candidate's target roles [${customRoles}] and locations [${customLocations || 'San Francisco, CA, Remote'}].
    Verify active job requisitions matching candidate's target roles [${customRoles}] and stack [${resumeSkills}].
    Calculate priority match score and 5-dimensional score breakdown.
    Generate recommendation rationale explaining specifically how Candidate ${userName}'s background in [${resumeSkills}] aligns with the prospect's team.
 
-3. BATCH POST DISCOVERED PROSPECTS TO JOBBY API (SINGLE BATCH REQUEST):
-   HTTP POST http://localhost:8000/api/prospects/batch
-   Headers: Content-Type: application/json, X-User-Email: ${userEmail}
-   Body (JSON Array of ${targetCount} candidates):
-   [
-     {
-       "name": "Candidate Full Name",
-       "title": "Exact LinkedIn Job Title",
-       "company": "Company Name",
-       "linkedin_url": "https://www.linkedin.com/in/candidate",
-       "role_type": "hiring_manager",
-       "location": "${(customLocations || 'San Francisco, CA').split(',')[0].trim()}",
-       "has_active_job": true,
-       "active_job_title": "Senior Software Engineer",
-       "active_job_url": "https://company.com/careers/...",
-       "priority_score": 92,
-       "score_breakdown": {
-         "hiring_power": 93,
-         "reply_probability": 88,
-         "company_match": 95,
-         "experience_match": 90,
-         "overall": 92
-       },
-       "match_level": "high",
-       "recommendation_reason": "Tailored rationale explaining why candidate ${userName} with stack [${resumeSkills}] matches this team.",
-       "status": "recommended"
-     }
-   ]
-
-4. COMPLETION:
-   Stop after uploading exactly ${targetCount} records in batch. Print summary report.`;
+2. OUTPUT:
+   Return only one TSV code block with exactly ${targetCount} rows and this header:
+   name\ttitle\tcompany\trole_type\tlocation\tlinkedin_url\thas_active_job\tactive_job_title\tactive_job_url\tpriority_score\thiring_power\treply_probability\tcompany_match\texperience_match\toverall\tmatch_level\trecommendation_reason\tnotes
+   Use role_type values recruiter, hiring_manager, or engineering_manager; match_level values high, medium, or low. Use true/false for has_active_job and scores from 1 to 100.
+   Do not output JSON, Markdown tables, API calls, database writes, or commentary outside the TSV code block. The user will copy the TSV back into Jobby to review and import manually.`;
 
   const handleCopyPrompt = () => {
     navigator.clipboard.writeText(agentPrompt);
     setCopiedPrompt(true);
+    setShowGuide(true);
     setTimeout(() => setCopiedPrompt(false), 2000);
   };
 
@@ -932,7 +906,7 @@ EXECUTION STEPS:
             <div className='flex items-center gap-2'>
               <Sparkles className='size-4 text-primary animate-pulse' />
               <span className='font-bold text-ink-primary text-xs uppercase tracking-wider text-ink-secondary'>
-                Codex Agent Prompt ({targetCount} Prospects - {userName})
+                AI Prompt for Manual Import ({targetCount} Prospects - {userName})
               </span>
             </div>
           </div>
@@ -1112,12 +1086,18 @@ EXECUTION STEPS:
               <span>
                 {copiedPrompt ?
                   'Copied Prompt!'
-                : `Copy Agent Prompt (${targetCount} Prospects)`}
+                  : `Copy Prompt for Manual Import (${targetCount} Prospects)`}
               </span>
             </Button>
           }
         </div>
       </div>
+
+      <AiWorkflowGuideModal
+        isOpen={showGuide}
+        onClose={() => setShowGuide(false)}
+        targetActionName='Import Prospects'
+      />
     </div>
   );
 }

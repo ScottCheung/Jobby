@@ -12,6 +12,7 @@ import type {
   JobHuntingProfile,
   CareerProfile,
   CareerProfileScoreHistoryItem,
+  UserSkill,
   MasterResume,
   MasterResumeVersion,
   ResumeAsset,
@@ -78,6 +79,34 @@ export type JobReviewResult = {
 };
 
 export type JobReviewPreview = { messages: Array<{ role: string; content: string }> };
+
+export type JobMatchEvaluation = {
+  candidate: {
+    platform: string;
+    external_id: string;
+    title: string;
+    company: string;
+    match_score: number | null;
+    priority_score: number | null;
+    recency_factor: number | null;
+    skill_score: number | null;
+    title_score: number | null;
+    exp_score: number | null;
+    easy_apply: boolean;
+    already_applied: boolean;
+    description: string;
+  };
+  decision: {
+    action: 'skip' | 'review' | 'apply';
+    reason_codes: string[];
+    explanation: string;
+    score: number | null;
+    resume_strategy: 'master' | 'tailored' | null;
+    requires_submit_confirmation: boolean;
+  };
+  should_generate_tailored_resume: boolean;
+  matched_terms: string[];
+};
 
 export type TailoredResume = {
   id: string;
@@ -257,6 +286,31 @@ export const api = {
       method: "POST",
       body: JSON.stringify(payload),
     }),
+  evaluateJobMatch: (candidate: {
+    platform: string;
+    external_id: string;
+    title: string;
+    company: string;
+    description: string;
+    easy_apply?: boolean;
+    last_posted_at?: string;
+    technologies?: string[];
+  }) =>
+    apiRequest<JobMatchEvaluation>('/api/application-decisions', {
+      method: 'POST',
+      body: JSON.stringify({ candidate }),
+    }),
+  userSkills: () => apiRequest<UserSkill[]>('/api/user-skills'),
+  addUserSkill: (skillName: string) =>
+    apiRequest<UserSkill>('/api/user-skills', {
+      method: 'POST',
+      body: JSON.stringify({ skill_name: skillName }),
+    }),
+  deleteUserSkill: (skillName: string) =>
+    apiRequest<void>(
+      `/api/user-skills?skill_name=${encodeURIComponent(skillName)}`,
+      { method: 'DELETE' },
+    ),
   tailoredResumes: (limit = 20) =>
     apiRequest<TailoredResume[]>(`/api/tailored-resumes?limit=${limit}`),
   tailoredResume: (id: string) =>

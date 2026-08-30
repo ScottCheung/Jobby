@@ -8,10 +8,17 @@ import { Button } from '@jobby/ui';
 import { api } from '@/lib/api';
 import type { MasterResumeData } from '@/lib/types';
 import { PlatformTagSelector } from '@/components/platform-tag-selector';
+import { AiWorkflowGuideModal } from '@/components/ai-workflow-guide-modal';
 
 const times = ['1 day', '3 days', '1 week', '2 weeks'] as const;
 
-export function RecommendationDiscoveryModal({ onClose }: { onClose: () => void }) {
+export function RecommendationDiscoveryModal({
+  onClose,
+  onOpenImport,
+}: {
+  onClose: () => void;
+  onOpenImport?: () => void;
+}) {
   const [locations, setLocations] = useState(['Sydney, NSW', 'Remote']);
   const [locationInput, setLocationInput] = useState('');
   const [isAddingLocation, setIsAddingLocation] = useState(false);
@@ -20,6 +27,7 @@ export function RecommendationDiscoveryModal({ onClose }: { onClose: () => void 
   const [publishedWithin, setPublishedWithin] = useState<(typeof times)[number]>('3 days');
   const [resume, setResume] = useState<MasterResumeData | null>(null);
   const [copied, setCopied] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
   const [detecting, setDetecting] = useState(false);
 
   useEffect(() => { void api.masterResume().then((item) => setResume(item.resume_data)).catch(() => setResume(null)); }, []);
@@ -49,10 +57,15 @@ Score 0–100. recommend_reason must be concise and cite the strongest resume-to
   const toggle = (value: string) => setSelectedPlatforms((items) => items.includes(value) ? items.filter((item) => item !== value) : [...items, value]);
   const addLocation = () => { const value = locationInput.trim(); if (value && !locations.some((item) => item.toLowerCase() === value.toLowerCase())) setLocations((items) => [...items, value]); setLocationInput(''); setIsAddingLocation(false); };
   const detectLocation = () => { if (!navigator.geolocation) return; setDetecting(true); navigator.geolocation.getCurrentPosition((position) => { const value = position.coords.latitude < 0 && position.coords.longitude > 110 ? 'Sydney, NSW' : 'Remote'; setLocations((items) => items.includes(value) ? items : [...items, value]); setDetecting(false); }, () => setDetecting(false)); };
-  const copy = async () => { await navigator.clipboard.writeText(prompt); setCopied(true); window.setTimeout(() => setCopied(false), 2000); };
+  const copy = async () => {
+    await navigator.clipboard.writeText(prompt);
+    setCopied(true);
+    setShowGuide(true);
+    window.setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
-    <div className='panel-xl flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden'>
+    <div className='flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden'>
       <div className='header'>
         <div className='flex items-center gap-3'>
           <div className='flex size-10 items-center justify-center rounded-xl bg-primary-gradient text-white shadow-xs'>
@@ -177,6 +190,21 @@ Score 0–100. recommend_reason must be concise and cite the strongest resume-to
           {copied ? 'Copied prompt' : 'Copy prompt'}
         </Button>
       </div>
+
+      <AiWorkflowGuideModal
+        isOpen={showGuide}
+        onClose={() => setShowGuide(false)}
+        targetActionName='Create Application Plan'
+        targetActionCallback={
+          onOpenImport
+            ? () => {
+                setShowGuide(false);
+                onClose();
+                onOpenImport();
+              }
+            : undefined
+        }
+      />
     </div>
   );
 }

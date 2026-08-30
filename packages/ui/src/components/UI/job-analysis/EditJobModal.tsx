@@ -1,17 +1,20 @@
 /** @format */
 
+'use client';
+
 import { useEffect, useRef, useState } from 'react';
 import { Check, X } from 'lucide-react';
-import { Button } from '@jobby/ui/components/UI/Button';
-import { Input } from '@jobby/ui/components/UI/input';
-import { Textarea } from '@jobby/ui/components/UI/textarea';
-import type { JobSnapshot } from '../../shared/contracts/page-inspection';
+import { Button } from '../Button';
+import { Input } from '../input';
+import { Modal } from '../../layout/modal';
+import { Textarea } from '../textarea';
+import type { JobAnalysisSnapshot } from './types';
 
 interface EditJobModalProps {
   isOpen: boolean;
   onClose: () => void;
-  snapshot: JobSnapshot;
-  onSave: (updates: Partial<JobSnapshot>) => void;
+  snapshot: JobAnalysisSnapshot;
+  onSave: (updates: Partial<JobAnalysisSnapshot>) => void;
 }
 
 export function EditJobModal({
@@ -70,18 +73,18 @@ export function EditJobModal({
   };
 
   return (
-    <div
-      className='modal-backdrop'
-      onClick={onClose}
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      className='max-h-[88vh] w-[94vw] max-w-xl rounded-2xl text-ink-primary'
     >
       <div
-        className='modal-card max-w-[520px] !border-0'
-        onClick={(event) => event.stopPropagation()}
+        className='flex min-h-0 flex-1 flex-col'
         role='dialog'
         aria-modal='true'
         aria-labelledby='edit-job-modal-title'
       >
-        <div className='modal-header !border-0 flex items-center justify-between'>
+        <div className='flex items-center justify-between px-5 pb-3 pt-5'>
           <div>
             <span className='modal-badge bg-primary text-primary-foreground'>
               Job Details
@@ -100,7 +103,7 @@ export function EditJobModal({
           </button>
         </div>
 
-        <div className='modal-body flex flex-col gap-3 max-h-[70vh] overflow-y-auto pr-1'>
+        <div className='flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-5 py-3'>
           <p className='text-[11px] text-muted-foreground leading-relaxed'>
             Review or edit the job details before tailoring documents or recording the application.
           </p>
@@ -174,7 +177,7 @@ export function EditJobModal({
           </div>
         </div>
 
-        <div className='modal-footer !border-0 flex items-center justify-end gap-2 pt-2'>
+        <div className='flex items-center justify-end gap-2 px-5 pb-5 pt-3'>
           <Button
             variant='ghost'
             size='sm'
@@ -192,6 +195,6 @@ export function EditJobModal({
           </Button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

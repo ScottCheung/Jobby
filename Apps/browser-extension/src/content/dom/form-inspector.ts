@@ -79,6 +79,13 @@ function isAuxiliaryFieldLabel(label: string): boolean {
   );
 }
 
+function isHoneypotField(element: HTMLElement, label: string): boolean {
+  const text = `${label} ${element.getAttribute("aria-label") || ""}`;
+  return /(?:for robots? only|do not enter if you(?:'| a)re human|leave (?:this )?field blank|honeypot)/i.test(
+    text,
+  );
+}
+
 /** Help/error copy is useful to the page, but is not part of a field's intent. */
 function isLikelyHelperText(value: string): boolean {
   const text = cleanText(value);
@@ -1268,6 +1275,9 @@ function currentValue(element: HTMLInputElement | HTMLSelectElement | HTMLTextAr
 
 function isFilled(element: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement, type: FormFieldType, scope: QueryScope): boolean {
   if (type === "file") return Boolean(element instanceof HTMLInputElement && element.files?.length);
+  // Password values must never be included in the inspection payload, but
+  // their presence is safe to use for the side-panel completion indicator.
+  if (type === "password") return Boolean(element instanceof HTMLInputElement && element.value);
   if (element instanceof HTMLInputElement && type === "radio") {
     const group = radioGroupForElement(element, scope);
     return group.some((r) => r.checked);
@@ -1947,6 +1957,7 @@ export function inspectVisibleFormFields(scope: FormScope = document): FormField
     const val = currentValue(element, type, elementScope);
     const label = labelFor(element, elementScope);
     if (isAuxiliaryFieldLabel(label)) continue;
+    if (isHoneypotField(element, label)) continue;
     result.push({
       key: fieldKeyFor(element, index),
       id: cleanText(element.id) || undefined,

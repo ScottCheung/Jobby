@@ -8,7 +8,7 @@ import type {
 import { extractLinkedInPostedDate } from './date-parser';
 import { extractStructuredText } from '../../text-utils';
 import type { LinkedInJobApiData } from './api-client';
-import { captureJobDate } from '../../../shared/utils/date-formatter';
+import { captureJobDate } from '@jobby/ui/lib/date-formatter';
 import {
   clearJobDescriptionRoot,
   rememberJobDescriptionRoot,

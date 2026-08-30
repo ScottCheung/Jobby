@@ -1,5 +1,7 @@
 /** @format */
 
+'use client';
+
 import { useMemo, useState } from 'react';
 import {
   Briefcase,
@@ -9,12 +11,12 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { motion, type Variants } from 'framer-motion';
-import { IPEmotion } from '@jobby/ui/components/UI/IPEmotion';
-import { cn } from '@jobby/ui/lib/utils';
-import type { CareerProfile } from '../../shared/contracts/tailored-resume';
+import { IPEmotion } from '../IPEmotion';
+import { cn } from '../../../lib/utils';
+import type { JobAnalysisCareerProfile } from './types';
 
 interface PlatformQuickSearchCardProps {
-  activeProfile?: CareerProfile | null;
+  activeProfile?: JobAnalysisCareerProfile | null;
   onReDetect?: () => void;
   isInspecting?: boolean;
 }
@@ -217,7 +219,7 @@ export const SUPPORTED_PLATFORMS: JobPlatform[] = [
 ];
 
 export function extractProfileSearchCriteria(
-  profile: CareerProfile | null | undefined,
+  profile: JobAnalysisCareerProfile | null | undefined,
 ): {
   jobTitle: string;
   location: string;
@@ -269,8 +271,13 @@ function PlatformItem({
   const handleOpen = (e?: React.MouseEvent) => {
     e?.preventDefault();
     e?.stopPropagation();
-    if (typeof chrome !== 'undefined' && chrome.tabs?.create) {
-      chrome.tabs.create({ url: searchUrl });
+    const extensionTabs = (
+      globalThis as {
+        chrome?: { tabs?: { create?: (options: { url: string }) => void } };
+      }
+    ).chrome?.tabs;
+    if (extensionTabs?.create) {
+      extensionTabs.create({ url: searchUrl });
     } else {
       window.open(searchUrl, '_blank', 'noopener,noreferrer');
     }
@@ -284,7 +291,7 @@ function PlatformItem({
       onMouseLeave={() => setIsHovered(false)}
       className={cn(
         'group relative w-full flex items-center justify-between text-left min-w-0',
-        'p-2 rounded-xl transition-all duration-150',
+        'p-2.5 rounded-xl transition-all duration-150',
         'cursor-pointer border-0 shadow-none outline-none select-none',
         'active:scale-[0.98]',
       )}
@@ -296,14 +303,14 @@ function PlatformItem({
       }}
       title={`Search for "${searchTitle || 'jobs'}" on ${platform.name}`}
     >
-      <div className='flex items-center gap-2 min-w-0 pr-0.5 flex-1 overflow-hidden'>
+      <div className='flex items-center gap-2.5 min-w-0 pr-0.5 flex-1 overflow-hidden'>
         {/* Full Icon with No Surrounding Background */}
-        <div className='w-4.5 h-4.5 shrink-0 flex items-center justify-center'>
+        <div className='size-5 shrink-0 flex items-center justify-center'>
           {!faviconError ?
             <img
               src={faviconUrl}
               alt={platform.name}
-              className='w-4.5 h-4.5 object-contain rounded-xs'
+              className='size-5 object-contain rounded-xs'
               onError={() => setFaviconError(true)}
               loading='lazy'
             />
@@ -318,26 +325,26 @@ function PlatformItem({
 
         <div className='min-w-0 flex flex-col flex-1'>
           <span
-            className='text-[11px] font-semibold tracking-tight truncate leading-tight transition-colors'
+            className='text-xs font-semibold tracking-tight truncate leading-tight transition-colors'
             style={{
               color: isHovered ? platform.brandColor : undefined,
             }}
           >
             {platform.name}
           </span>
-          <span className='text-[9px] text-muted-foreground truncate leading-none mt-0.5'>
+          <span className='text-[10px] text-muted-foreground truncate leading-none mt-1'>
             {platform.typeLabel}
           </span>
         </div>
       </div>
 
       <div
-        className='shrink-0 flex items-center justify-center w-4 h-4 rounded-md transition-colors ml-1'
+        className='shrink-0 flex items-center justify-center size-5 rounded-md transition-colors ml-1'
         style={{
           color: isHovered ? platform.brandColor : undefined,
         }}
       >
-        <ExternalLink className='w-3 h-3 opacity-50 group-hover:opacity-100' />
+        <ExternalLink className='size-3.5 opacity-50 group-hover:opacity-100' />
       </div>
     </button>
   );
@@ -368,7 +375,7 @@ const itemVariants: Variants = {
 };
 
 export interface PlatformQuickSearchListProps {
-  activeProfile?: CareerProfile | null;
+  activeProfile?: JobAnalysisCareerProfile | null;
   className?: string;
 }
 
@@ -391,7 +398,7 @@ export function PlatformQuickSearchList({
   return (
     <motion.div
       className={cn(
-        'flex flex-col gap-3 max-h-[380px] overflow-y-auto pr-0.5',
+        'flex flex-col gap-4 max-h-[520px] overflow-y-auto pr-0.5',
         className,
       )}
       variants={containerVariants}
@@ -399,14 +406,14 @@ export function PlatformQuickSearchList({
       animate='visible'
     >
       {/* Job Boards Section */}
-      <div className='flex flex-col gap-1.5'>
-        <div className='flex items-center gap-1.5 px-1'>
-          <Briefcase className='w-3 h-3 text-primary' />
-          <span className='text-[11px] font-semibold text-foreground/90'>
+      <div className='flex flex-col gap-2'>
+        <div className='flex items-center gap-2 px-1'>
+          <Briefcase className='size-3.5 text-primary' />
+          <span className='text-xs font-semibold text-foreground/90'>
             Job Boards
           </span>
         </div>
-        <div className='grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-1.5'>
+        <div className='grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2'>
           {jobBoards.map((platform) => (
             <motion.div key={platform.id} variants={itemVariants}>
               <PlatformItem
@@ -420,14 +427,14 @@ export function PlatformQuickSearchList({
       </div>
 
       {/* ATS Portals Section */}
-      <div className='flex flex-col gap-1.5 pt-1'>
-        <div className='flex items-center gap-1.5 px-1'>
-          <Layers className='w-3 h-3 text-primary' />
-          <span className='text-[11px] font-semibold text-foreground/90'>
+      <div className='flex flex-col gap-2 pt-1'>
+        <div className='flex items-center gap-2 px-1'>
+          <Layers className='size-3.5 text-primary' />
+          <span className='text-xs font-semibold text-foreground/90'>
             ATS Portals
           </span>
         </div>
-        <div className='grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-1.5'>
+        <div className='grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2'>
           {atsPortals.map((platform) => (
             <motion.div key={platform.id} variants={itemVariants}>
               <PlatformItem
@@ -452,6 +459,27 @@ export function PlatformQuickSearchCard({
 
   return (
     <div className='w-full rounded-2xl bg-primary/10 p-2.5 flex flex-col gap-2.5 border-0 shadow-none'>
+            {/* Re-detect action */}
+      {onReDetect && (
+        <button
+          type='button'
+          onClick={onReDetect}
+          disabled={isInspecting}
+          className={cn(
+            'w-full py-2 px-3 rounded-xl flex items-center justify-center gap-1.5',
+            'text-[11px] font-medium text-muted-foreground hover:text-primary',
+            'bg-background-50/50 hover:bg-background-50 transition-colors',
+            'border-0 shadow-none cursor-pointer disabled:opacity-50',
+          )}
+        >
+          <RefreshCw
+            className={cn('w-3 h-3', isInspecting && 'animate-spin')}
+          />
+          <span>
+            {isInspecting ? 'Re-scanning page...' : 'Re-scan Current Page'}
+          </span>
+        </button>
+      )}
       {/* Top Banner / Mascot Header */}
       <div className='rounded-xl bg-background-50/90 backdrop-blur-sm px-4 pt-3 pb-3.5 flex flex-col items-center text-center border-0 shadow-none'>
         <div className='relative w-24 h-24 -mt-1 mb-1 flex items-center justify-center'>
@@ -489,27 +517,7 @@ export function PlatformQuickSearchCard({
       {/* Categorized Platform Lists */}
       <PlatformQuickSearchList activeProfile={activeProfile} />
 
-      {/* Re-detect action */}
-      {onReDetect && (
-        <button
-          type='button'
-          onClick={onReDetect}
-          disabled={isInspecting}
-          className={cn(
-            'w-full py-2 px-3 rounded-xl flex items-center justify-center gap-1.5',
-            'text-[11px] font-medium text-muted-foreground hover:text-primary',
-            'bg-background-50/50 hover:bg-background-50 transition-colors',
-            'border-0 shadow-none cursor-pointer disabled:opacity-50',
-          )}
-        >
-          <RefreshCw
-            className={cn('w-3 h-3', isInspecting && 'animate-spin')}
-          />
-          <span>
-            {isInspecting ? 'Re-scanning page...' : 'Re-scan Current Page'}
-          </span>
-        </button>
-      )}
+
     </div>
   );
 }

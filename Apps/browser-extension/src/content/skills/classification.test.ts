@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { classifySkills, getSkillIndustry } from './classification';
+import {
+  classifySkills,
+  getSkillIndustry,
+} from '@jobby/ui/lib/job-skills/classification';
 
 describe('classifySkills', () => {
   it('correctly classifies a tech-dominant role into Core IT and Bonus Finance/Workplace', () => {

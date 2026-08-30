@@ -107,10 +107,14 @@ export async function fetchLinkedInJobPosting(jobId: string): Promise<LinkedInJo
   const csrfToken = getCsrfToken();
   if (!csrfToken) return null; // Not logged in — no point calling the API
 
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), 2_500);
+
   try {
     const response = await fetch(`/voyager/api/jobs/jobPostings/${jobId}`, {
       method: 'GET',
       credentials: 'include',
+      signal: controller.signal,
       headers: {
         'csrf-token': csrfToken,
         'x-restli-protocol-version': '2.0.0',
@@ -198,5 +202,7 @@ export async function fetchLinkedInJobPosting(jobId: string): Promise<LinkedInJo
   } catch {
     // Network error, JSON parse failure, etc. — silently fall back to DOM.
     return null;
+  } finally {
+    window.clearTimeout(timeoutId);
   }
 }

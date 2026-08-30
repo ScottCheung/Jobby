@@ -58,6 +58,14 @@ export async function inspectActiveTab(
     throw new Error("No active browser tab detected. Please switch to the web page you want to inspect.");
   }
 
+  if (!isSupportedUrl(activeTab.url)) {
+    return {
+      kind: "unsupported_page",
+      url: activeTab.url || "",
+      reason: "This browser page cannot be inspected.",
+    };
+  }
+
   const rawResponse = await sendToTab(activeTab.id, { type: "content.inspect" });
   const parsed = contentResponseSchema.safeParse(rawResponse);
   if (!parsed.success) throw new Error("The page returned an invalid inspection response.");
@@ -79,6 +87,91 @@ export async function inspectActiveTab(
   }
 
   return inspection;
+}
+
+export function jobInspectionUrl(rawUrl: string): string {
+  const url = new URL(rawUrl);
+  const host = url.hostname.toLowerCase();
+
+  if (host === "linkedin.com" || host.endsWith(".linkedin.com")) {
+    const jobId = url.pathname.match(/\/jobs\/view\/(?:[^/?#]*-)?(\d+)/i)?.[1] || url.searchParams.get("currentJobId") || url.searchParams.get("jobId");
+    if (jobId && /^\d+$/.test(jobId)) {
+      return `https://www.linkedin.com/jobs/view/${jobId}/`;
+    }
+  }
+
+  if (/(^|\.)seek\.(?:com(?:\.[a-z]{2})?|co\.[a-z]{2})$/i.test(host)) {
+    const jobId = url.pathname.match(/\/job\/(\d+)/i)?.[1] || url.searchParams.get("jobId");
+    if (jobId && /^\d+$/.test(jobId)) {
+      return `${url.origin}/job/${jobId}`;
+    }
+  }
+
+  if (/(^|\.)glassdoor\.(?:com(?:\.[a-z]{2})?|co\.[a-z]{2}|[a-z]{2})$/i.test(host)) {
+    const listingId = url.searchParams.get("jl") || url.searchParams.get("jobListingId");
+    if (listingId && /^\d+$/.test(listingId)) {
+      return `${url.origin}/Job/index.htm?jl=${listingId}`;
+    }
+  }
+
+  return url.toString();
+}
+
+export async function inspectJobUrl(rawUrl: string): Promise<PageInspection> {
+  const inspectionUrl = jobInspectionUrl(rawUrl);
+  const tab = await chrome.tabs.create({ url: inspectionUrl, active: false });
+  if (tab.id === undefined) {
+    throw new Error("Could not open the job page for inspection.");
+  }
+
+  try {
+    for (let attempt = 0; attempt < 100; attempt += 1) {
+      const current = await chrome.tabs.get(tab.id).catch(() => undefined);
+      if (!current) {
+        throw new Error("The job page closed before it could be inspected.");
+      }
+      if (current.status === "complete") break;
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+
+    let lastInspection: PageInspection | undefined;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      lastInspection = await settleWithin(
+        inspectActiveTab(tab.id),
+        6_000,
+      );
+      if (lastInspection?.kind === "job" && lastInspection.snapshot.description?.trim()) {
+        return lastInspection;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+
+    throw new Error(
+      lastInspection?.kind === "job"
+        ? "The job description did not become available."
+        : lastInspection?.kind === "unsupported_page" || lastInspection?.kind === "not_job_page"
+          ? lastInspection.reason
+          : "The job details did not become available.",
+    );
+  } finally {
+    await chrome.tabs.remove(tab.id).catch(() => undefined);
+  }
+}
+
+function settleWithin<T>(promise: Promise<T>, timeoutMs: number): Promise<T | undefined> {
+  return new Promise((resolve) => {
+    const timeoutId = setTimeout(() => resolve(undefined), timeoutMs);
+    promise.then(
+      (value) => {
+        clearTimeout(timeoutId);
+        resolve(value);
+      },
+      () => {
+        clearTimeout(timeoutId);
+        resolve(undefined);
+      },
+    );
+  });
 }
 
 export async function inspectFormActiveTab(): Promise<FormInspection> {
@@ -104,9 +197,7 @@ export async function inspectFormActiveTab(): Promise<FormInspection> {
   for (const frame of frames) {
     if (frame.frameId === 0 || !isSupportedUrl(frame.url)) continue;
     try {
-      const form = parseFormResponse(
-        await sendToTab(activeTab.id, { type: "content.inspect-form" }, frame.frameId),
-      );
+      const form = parseFormResponse(await sendToTab(activeTab.id, { type: "content.inspect-form" }, frame.frameId));
       candidates.push({ form, frameId: frame.frameId });
     } catch {
       // Sandboxed or browser-owned frames are expected to reject extension
@@ -136,11 +227,7 @@ export function acceptsFormChange(tabId: number, frameId: number): boolean {
 }
 
 export async function fillActiveTabField(instruction: FieldFillInstruction): Promise<FieldFillResult> {
-  const mainWorldResult = await selectGreenhouseCombobox(
-    instruction.target,
-    instruction.value,
-    instruction.commandId,
-  );
+  const mainWorldResult = await selectGreenhouseCombobox(instruction.target, instruction.value, instruction.commandId);
   if (mainWorldResult) return mainWorldResult;
 
   const rawResponse = await sendToActiveTab(instruction, instruction.target.frameId);
@@ -150,12 +237,10 @@ export async function fillActiveTabField(instruction: FieldFillInstruction): Pro
   return parsed.data.fillResult;
 }
 
-export async function autofillWorkdayStructuredActiveTab(
-  resume: MasterResumeData,
-  skills: string[] = [],
-): Promise<FieldFillResult[]> {
+export async function autofillWorkdayStructuredActiveTab(resume: MasterResumeData, runId: string, skills: string[] = []): Promise<FieldFillResult[]> {
   const rawResponse = await sendToActiveTab({
     type: "content.autofill-workday-structured",
+    runId,
     resume,
     skills,
   });
@@ -165,12 +250,12 @@ export async function autofillWorkdayStructuredActiveTab(
   return parsed.data.fillResults;
 }
 
+export async function cancelWorkdayStructuredActiveTab(runId: string): Promise<void> {
+  await sendToActiveTab({ type: "content.cancel-workday-structured", runId });
+}
+
 export async function editActiveTabField(target: FormFieldTarget, value: string | boolean): Promise<FieldFillResult> {
-  const mainWorldResult = await selectGreenhouseCombobox(
-    target,
-    value,
-    `panel-${Date.now()}-${target.key}`,
-  );
+  const mainWorldResult = await selectGreenhouseCombobox(target, value, `panel-${Date.now()}-${target.key}`);
   if (mainWorldResult) return mainWorldResult;
 
   const rawResponse = await sendToActiveTab({ type: "content.edit-form-field", target, value }, target.frameId);
@@ -180,11 +265,7 @@ export async function editActiveTabField(target: FormFieldTarget, value: string 
   return parsed.data.fillResult;
 }
 
-async function selectGreenhouseCombobox(
-  target: FormFieldTarget,
-  value: string | boolean,
-  commandId: string,
-): Promise<FieldFillResult | null> {
+async function selectGreenhouseCombobox(target: FormFieldTarget, value: string | boolean, commandId: string): Promise<FieldFillResult | null> {
   if (target.type !== "select" || typeof value !== "string" || !target.id) return null;
 
   const activeTab = await findActiveTab();
@@ -223,7 +304,10 @@ async function selectGreenhouseCombobox(
 function selectGreenhouseComboboxInPage(
   elementId: string,
   requestedValue: string,
-): Promise<{ handled: boolean; status?: "filled" | "already_filled" | "rejected" }> {
+): Promise<{
+  handled: boolean;
+  status?: "filled" | "already_filled" | "rejected";
+}> {
   type Option = { label: string; value: string | number };
   type SelectInstance = {
     props?: { options?: unknown; value?: unknown };
@@ -231,18 +315,45 @@ function selectGreenhouseComboboxInPage(
   };
   type Fiber = { return?: Fiber | null; stateNode?: unknown };
 
-  const clean = (value: unknown) => typeof value === "string" ? value.replace(/\s+/g, " ").trim() : "";
+  const clean = (value: unknown) => (typeof value === "string" ? value.replace(/\s+/g, " ").trim() : "");
   const normalized = (value: unknown) => clean(value).toLowerCase();
   const countryDialAliases: Record<string, string> = {
-    australia: "+61", au: "+61", "+61": "+61", "61": "+61",
-    "new zealand": "+64", nz: "+64", "+64": "+64", "64": "+64",
-    "united kingdom": "+44", uk: "+44", gb: "+44", "+44": "+44", "44": "+44",
-    "united states": "+1", usa: "+1", us: "+1", "+1": "+1", "1": "+1",
-    canada: "+1", china: "+86", cn: "+86", "+86": "+86", india: "+91", in: "+91", "+91": "+91",
-    singapore: "+65", sg: "+65", "+65": "+65", "hong kong": "+852", hk: "+852", "+852": "+852",
+    australia: "+61",
+    au: "+61",
+    "+61": "+61",
+    "61": "+61",
+    "new zealand": "+64",
+    nz: "+64",
+    "+64": "+64",
+    "64": "+64",
+    "united kingdom": "+44",
+    uk: "+44",
+    gb: "+44",
+    "+44": "+44",
+    "44": "+44",
+    "united states": "+1",
+    usa: "+1",
+    us: "+1",
+    "+1": "+1",
+    "1": "+1",
+    canada: "+1",
+    china: "+86",
+    cn: "+86",
+    "+86": "+86",
+    india: "+91",
+    in: "+91",
+    "+91": "+91",
+    singapore: "+65",
+    sg: "+65",
+    "+65": "+65",
+    "hong kong": "+852",
+    hk: "+852",
+    "+852": "+852",
   };
   const countryAlias = (value: unknown): string => {
-    const text = normalized(value).replace(/[()\-]/g, "").replace(/\s+/g, " ");
+    const text = normalized(value)
+      .replace(/[()\-]/g, "")
+      .replace(/\s+/g, " ");
     return countryDialAliases[text] || text;
   };
   const element = document.getElementById(elementId);
@@ -258,7 +369,7 @@ function selectGreenhouseComboboxInPage(
       element.classList.contains("ui-autocomplete-input") ||
       document.getElementById("job_application_location_id") ||
       document.querySelector("input[name*='location_id']") ||
-      document.querySelector("#grnhse_app, .job-post-container, form.application--form, form[action*='greenhouse.io']"))
+      document.querySelector("#grnhse_app, .job-post-container, form.application--form, form[action*='greenhouse.io']")),
   );
   if (!(element instanceof HTMLInputElement) || (element.getAttribute("role") !== "combobox" && !isGreenhouseLoc)) {
     return Promise.resolve({ handled: false });
@@ -266,7 +377,7 @@ function selectGreenhouseComboboxInPage(
 
   const findInstance = (): SelectInstance | null => {
     const key = Object.keys(element).find((name) => name.startsWith("__reactFiber$"));
-    let fiber = key ? (element as unknown as Record<string, unknown>)[key] as Fiber : null;
+    let fiber = key ? ((element as unknown as Record<string, unknown>)[key] as Fiber) : null;
     for (let depth = 0; fiber && depth < 32; depth += 1) {
       const instance = fiber.stateNode as SelectInstance | undefined;
       if (instance && typeof instance.selectOption === "function" && Array.isArray(instance.props?.options)) {
@@ -294,16 +405,13 @@ function selectGreenhouseComboboxInPage(
   const renderedCurrentValue = (): string => {
     const container = element.closest<HTMLElement>(".select-shell, [class*='select' i]");
     if (element.id === "country") {
-      const flag = Array.from(container?.querySelector<HTMLElement>("[class*='iti__flag']")?.classList || [])
-        .find((name) => /^iti__[a-z]{2}$/i.test(name));
+      const flag = Array.from(container?.querySelector<HTMLElement>("[class*='iti__flag']")?.classList || []).find((name) => /^iti__[a-z]{2}$/i.test(name));
       const code = flag?.slice("iti__".length).toUpperCase();
       if (code && typeof Intl.DisplayNames === "function") {
         return new Intl.DisplayNames(["en"], { type: "region" }).of(code) || "";
       }
     }
-    return clean(container?.querySelector<HTMLElement>(
-      ".select__single-value, [class*='single-value' i], [class*='singleValue' i]",
-    )?.textContent);
+    return clean(container?.querySelector<HTMLElement>(".select__single-value, [class*='single-value' i], [class*='singleValue' i]")?.textContent);
   };
 
   const matches = (actual: string, expected: string): boolean => {
@@ -323,40 +431,48 @@ function selectGreenhouseComboboxInPage(
   const renderedOption = (expected: string): HTMLElement | null => {
     const target = normalized(expected);
     const expectedFirstToken = target.split(/[,，\s]+/)[0] || target;
-    const candidates = Array.from(document.querySelectorAll<HTMLElement>(
-      "[role='option'], [role='listbox'] button, [role='listbox'] li, [data-value], [data-option-value], [class*='option' i], [class*='item' i], [class*='suggestion' i], [class*='result' i], .ui-menu-item, .ui-menu-item-wrapper, .pac-item",
-    )).filter((candidate) => visible(candidate) && candidate.getAttribute("aria-disabled") !== "true" && !(candidate instanceof HTMLInputElement) && !(candidate instanceof HTMLSelectElement));
+    const candidates = Array.from(
+      document.querySelectorAll<HTMLElement>(
+        "[role='option'], [role='listbox'] button, [role='listbox'] li, [data-value], [data-option-value], [class*='option' i], [class*='item' i], [class*='suggestion' i], [class*='result' i], .ui-menu-item, .ui-menu-item-wrapper, .pac-item",
+      ),
+    ).filter(
+      (candidate) =>
+        visible(candidate) && candidate.getAttribute("aria-disabled") !== "true" && !(candidate instanceof HTMLInputElement) && !(candidate instanceof HTMLSelectElement),
+    );
 
     const matched = candidates.find((candidate) => {
       const candidateValue = normalized(
-        candidate.getAttribute("data-value") ||
-        candidate.getAttribute("data-option-value") ||
-        candidate.getAttribute("aria-label") ||
-        candidate.textContent,
+        candidate.getAttribute("data-value") || candidate.getAttribute("data-option-value") || candidate.getAttribute("aria-label") || candidate.textContent,
       );
-      return candidateValue === target ||
+      return (
+        candidateValue === target ||
         countryAlias(candidateValue) === countryAlias(expected) ||
         (target.length > 1 && (candidateValue.includes(target) || target.includes(candidateValue))) ||
-        (expectedFirstToken.length > 1 && candidateValue.includes(expectedFirstToken));
+        (expectedFirstToken.length > 1 && candidateValue.includes(expectedFirstToken))
+      );
     });
     if (matched) return matched;
     return candidates[0] || null;
   };
 
-  const waitForRenderedOption = (expected: string): Promise<HTMLElement | null> => new Promise((resolve) => {
-    const startedAt = Date.now();
-    const find = () => {
-      const option = renderedOption(expected);
-      if (option || Date.now() - startedAt >= 900) {
-        resolve(option);
-        return;
-      }
-      window.setTimeout(find, 40);
-    };
-    find();
-  });
+  const waitForRenderedOption = (expected: string): Promise<HTMLElement | null> =>
+    new Promise((resolve) => {
+      const startedAt = Date.now();
+      const find = () => {
+        const option = renderedOption(expected);
+        if (option || Date.now() - startedAt >= 900) {
+          resolve(option);
+          return;
+        }
+        window.setTimeout(find, 40);
+      };
+      find();
+    });
 
-  const selectRenderedCombobox = async (): Promise<{ handled: boolean; status?: "filled" | "already_filled" | "rejected" }> => {
+  const selectRenderedCombobox = async (): Promise<{
+    handled: boolean;
+    status?: "filled" | "already_filled" | "rejected";
+  }> => {
     if (matches(renderedCurrentValue(), requestedValue)) {
       return { handled: true, status: "already_filled" };
     }
@@ -367,13 +483,33 @@ function selectGreenhouseComboboxInPage(
     else element.value = requestedValue;
     const inputEventOpts = { bubbles: true, composed: true };
     try {
-      element.dispatchEvent(new InputEvent("input", { ...inputEventOpts, inputType: "insertText", data: requestedValue }));
+      element.dispatchEvent(
+        new InputEvent("input", {
+          ...inputEventOpts,
+          inputType: "insertText",
+          data: requestedValue,
+        }),
+      );
     } catch {
       element.dispatchEvent(new Event("input", inputEventOpts));
     }
     const char = requestedValue.slice(-1) || "a";
-    element.dispatchEvent(new KeyboardEvent("keydown", { key: char, code: `Key${char.toUpperCase()}`, bubbles: true, cancelable: true }));
-    element.dispatchEvent(new KeyboardEvent("keyup", { key: char, code: `Key${char.toUpperCase()}`, bubbles: true, cancelable: true }));
+    element.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: char,
+        code: `Key${char.toUpperCase()}`,
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
+    element.dispatchEvent(
+      new KeyboardEvent("keyup", {
+        key: char,
+        code: `Key${char.toUpperCase()}`,
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
     element.dispatchEvent(new Event("change", inputEventOpts));
 
     const option = await waitForRenderedOption(requestedValue);
@@ -389,21 +525,21 @@ function selectGreenhouseComboboxInPage(
       const verify = () => {
         const currentVal = renderedCurrentValue() || clean(element.value);
         const hasHiddenId = Boolean(
-          (document.getElementById("job_application_location_id") as HTMLInputElement)?.value ||
-          (document.querySelector("input[name*='location_id']") as HTMLInputElement)?.value
+          (document.getElementById("job_application_location_id") as HTMLInputElement)?.value || (document.querySelector("input[name*='location_id']") as HTMLInputElement)?.value,
         );
         const expectedFirstToken = normalized(requestedValue).split(/[,，\s]+/)[0] || "";
-        if (
-          matches(currentVal, requestedValue) ||
-          hasHiddenId ||
-          (expectedFirstToken.length > 1 && currentVal.toLowerCase().includes(expectedFirstToken))
-        ) {
+        if (matches(currentVal, requestedValue) || hasHiddenId || (expectedFirstToken.length > 1 && currentVal.toLowerCase().includes(expectedFirstToken))) {
           resolve({ handled: true, status: "filled" });
           return;
         }
         if (!enterSent && Date.now() - startedAt >= 120) {
           enterSent = true;
-          const keyOptions = { key: "Enter", code: "Enter", bubbles: true, cancelable: true };
+          const keyOptions = {
+            key: "Enter",
+            code: "Enter",
+            bubbles: true,
+            cancelable: true,
+          };
           element.dispatchEvent(new KeyboardEvent("keydown", keyOptions));
           element.dispatchEvent(new KeyboardEvent("keyup", keyOptions));
         }
@@ -422,17 +558,20 @@ function selectGreenhouseComboboxInPage(
   const options = optionsFor(instance);
   const requested = normalized(requestedValue);
   const requestedFirstToken = requested.split(/[,，\s]+/)[0] || requested;
-  const option = options.find((candidate) => {
-    const label = normalized(candidate.label);
-    const value = normalized(String(candidate.value));
-    return label === requested ||
-      countryAlias(label) === countryAlias(requestedValue) ||
-      countryAlias(value) === countryAlias(requestedValue) ||
-      value === requested ||
-      (requested.length > 1 && (label.includes(requested) || requested.includes(label))) ||
-      (requested.length > 1 && (value.includes(requested) || requested.includes(value))) ||
-      (requestedFirstToken.length > 1 && (label.includes(requestedFirstToken) || value.includes(requestedFirstToken)));
-  }) || (options.length > 0 ? options[0] : undefined);
+  const option =
+    options.find((candidate) => {
+      const label = normalized(candidate.label);
+      const value = normalized(String(candidate.value));
+      return (
+        label === requested ||
+        countryAlias(label) === countryAlias(requestedValue) ||
+        countryAlias(value) === countryAlias(requestedValue) ||
+        value === requested ||
+        (requested.length > 1 && (label.includes(requested) || requested.includes(label))) ||
+        (requested.length > 1 && (value.includes(requested) || requested.includes(value))) ||
+        (requestedFirstToken.length > 1 && (label.includes(requestedFirstToken) || value.includes(requestedFirstToken)))
+      );
+    }) || (options.length > 0 ? options[0] : undefined);
   if (!option) return selectRenderedCombobox();
   if (normalized(currentValue(instance, options)) === normalized(option.label)) {
     return Promise.resolve({ handled: true, status: "already_filled" });
@@ -459,16 +598,13 @@ export async function focusActiveTabField(target: FormFieldTarget): Promise<Form
   return parsed.data.focusResult;
 }
 
-export async function highlightJobRequirementInActiveTab(
-  searchTerms: string[],
-): Promise<{ highlighted: boolean; matchCount: number; currentIndex: number }> {
+export async function highlightJobRequirementInActiveTab(searchTerms: string[]): Promise<{ highlighted: boolean; matchCount: number; currentIndex: number }> {
   const rawResponse = await sendToActiveTab({
-    type: 'content.highlight-job-requirement',
+    type: "content.highlight-job-requirement",
     searchTerms,
   });
   const parsed = highlightResponseSchema.safeParse(rawResponse);
-  if (!parsed.success)
-    throw new Error('The page returned an invalid job requirement response.');
+  if (!parsed.success) throw new Error("The page returned an invalid job requirement response.");
   if (!parsed.data.ok) throw new Error(parsed.data.error);
   return {
     highlighted: parsed.data.highlighted,
@@ -509,28 +645,24 @@ async function findActiveTab(preferredTabId?: number): Promise<chrome.tabs.Tab |
   const requestedTabId = preferredTabId ?? targetedTabId;
   if (requestedTabId !== undefined) {
     const targetedTab = await chrome.tabs.get(requestedTabId).catch(() => undefined);
-    if (targetedTab && isSupportedUrl(targetedTab.url)) return targetedTab;
+    if (targetedTab) return targetedTab;
     if (preferredTabId === undefined) targetedTabId = undefined;
   }
 
   const currentWindowTabs = await chrome.tabs.query({ active: true, currentWindow: true }).catch(() => []);
-  if (currentWindowTabs[0] && isSupportedUrl(currentWindowTabs[0].url)) {
+  if (currentWindowTabs[0]) {
     return currentWindowTabs[0];
   }
 
   const lastFocusedTabs = await chrome.tabs.query({ active: true, lastFocusedWindow: true }).catch(() => []);
-  if (lastFocusedTabs[0] && isSupportedUrl(lastFocusedTabs[0].url)) {
+  if (lastFocusedTabs[0]) {
     return lastFocusedTabs[0];
   }
 
-  const allTabs = await chrome.tabs.query({}).catch(() => []);
-  const activeSupported = allTabs.find((t) => t.active && isSupportedUrl(t.url));
-  if (activeSupported) return activeSupported;
+  const allTabs = await chrome.tabs.query({ active: true }).catch(() => []);
+  if (allTabs[0]) return allTabs[0];
 
-  const anySupported = allTabs.find((t) => isSupportedUrl(t.url));
-  if (anySupported) return anySupported;
-
-  return currentWindowTabs[0] || lastFocusedTabs[0];
+  return undefined;
 }
 
 function parseFormResponse(rawResponse: unknown): FormInspection {
@@ -578,7 +710,9 @@ async function sendToTab(tabId: number, message: unknown, frameId?: number): Pro
   // Chrome confirms there is no receiver, then give that loader time to start.
   for (let attempt = 0; attempt < CONTENT_SCRIPT_STARTUP_ATTEMPTS; attempt += 1) {
     try {
-      return await chrome.tabs.sendMessage(tabId, message, { frameId: targetFrameId });
+      return await chrome.tabs.sendMessage(tabId, message, {
+        frameId: targetFrameId,
+      });
     } catch (error) {
       lastError = error;
       if (!isRecoverableContentScriptError(error)) throw error;
@@ -596,11 +730,7 @@ async function sendToTab(tabId: number, message: unknown, frameId?: number): Pro
   }
 
   const detail = lastError instanceof Error ? lastError.message : "";
-  throw new Error(
-    detail
-      ? `Content script failed to finish loading: ${detail}`
-      : "Content script failed to finish loading. Please try again later.",
-  );
+  throw new Error(detail ? `Content script failed to finish loading: ${detail}` : "Content script failed to finish loading. Please try again later.");
 }
 
 function isMissingContentScriptReceiver(error: unknown): boolean {
@@ -614,9 +744,10 @@ function isRecoverableContentScriptError(error: unknown): boolean {
 }
 
 async function injectContentScript(tabId: number, frameId: number): Promise<void> {
-  const files = (chrome.runtime.getManifest().content_scripts || [])
-    .flatMap((entry) => entry.js || [])
-    .filter((file): file is string => Boolean(file));
+  const files = (chrome.runtime.getManifest().content_scripts || []).flatMap((entry) => entry.js || []).filter((file): file is string => Boolean(file));
   if (!files.length) throw new Error("The extension content script is not configured.");
-  await chrome.scripting.executeScript({ target: { tabId, frameIds: [frameId] }, files });
+  await chrome.scripting.executeScript({
+    target: { tabId, frameIds: [frameId] },
+    files,
+  });
 }

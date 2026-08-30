@@ -11,6 +11,8 @@ interface WorkflowSectionProps {
   canRecordApplication?: boolean;
   isApplicationRecorded?: boolean;
   onAutofill: () => void;
+  onCancelAutofill: () => void;
+  isCancellingAutofill?: boolean;
   onClearAll: () => void;
   onRecordApplication?: () => void;
   autofillOnly?: boolean;
@@ -25,6 +27,8 @@ export function WorkflowSection({
   canRecordApplication = false,
   isApplicationRecorded = false,
   onAutofill,
+  onCancelAutofill,
+  isCancellingAutofill = false,
   onClearAll,
   onRecordApplication,
   autofillOnly = false,
@@ -54,13 +58,14 @@ export function WorkflowSection({
         type='button'
         size='md'
         className='flex-1'
-        disabled={autofillDisabled}
-        onClick={() => handleAction(onAutofill)}
+        disabled={isClearingForm || (loadingButton !== null && loadingButton !== 'autofill') || isCancellingAutofill}
+        onClick={() => loadingButton === 'autofill' ? onCancelAutofill() : handleAction(onAutofill)}
       >
         {loadingButton === 'autofill' ?
-          total > 0 ?
-            `Autofilling... ${completed}/${total} (${percentage}%)`
-          : 'Autofilling...'
+          isCancellingAutofill ? 'Cancelling...'
+          : total > 0 ?
+            `Cancel Autofill · ${completed}/${total} (${percentage}%)`
+          : 'Cancel Autofill'
         : total > 0 ?
           `Autofill Form ${completed}/${total} (${percentage}%)`
         : 'Autofill Form'}

@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { FormFieldObservation } from '../../shared/contracts/form-inspection';
-import { fileFieldPurpose, ExpandableAnswer } from './ResultsDisplay';
+import {
+  displayValue,
+  fileFieldPurpose,
+  ExpandableAnswer,
+} from './ResultsDisplay';
 
 function fileField(
   overrides: Partial<FormFieldObservation>,
@@ -54,5 +58,18 @@ describe('file field purpose detection', () => {
 describe('ExpandableAnswer component', () => {
   it('exports ExpandableAnswer component correctly', () => {
     expect(ExpandableAnswer).toBeDefined();
+  });
+});
+
+describe('password field display', () => {
+  it('confirms a filled password without exposing its value', () => {
+    expect(displayValue({
+      ...fileField({}),
+      key: 'password',
+      type: 'password',
+      label: 'Password',
+      filled: true,
+      sensitive: true,
+    })).toBe('Filled securely');
   });
 });

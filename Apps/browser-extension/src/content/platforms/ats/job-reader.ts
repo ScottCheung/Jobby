@@ -4,7 +4,7 @@ import type {
 } from "../../../shared/contracts/page-inspection";
 import { extractTechnologyKeywords, mergeSkills } from "../../technology-keywords";
 import { extractStructuredText } from "../../text-utils";
-import { capturedJobDateFields } from "../../../shared/utils/date-formatter";
+import { capturedJobDateFields } from '@jobby/ui/lib/date-formatter';
 import {
   datePostedFromDom,
   jobPostingFromMicrodata,

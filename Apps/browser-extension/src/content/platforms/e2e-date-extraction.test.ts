@@ -6,7 +6,7 @@ import { readSeekPage } from "./seek/job-reader";
 import { readIndeedJobPage } from "./indeed/job-reader";
 import { readGenericJobPage } from "./generic/job-reader";
 import { classifyCurrentPage } from "../page-classifier";
-import { parseAndFormatJobDate } from "../../shared/utils/date-formatter";
+import { parseAndFormatJobDate } from '@jobby/ui/lib/date-formatter';
 import { pageInspectionSchema } from "../../shared/contracts/page-inspection";
 
 describe("E2E Date Extraction Across All Platforms", () => {
@@ -1123,6 +1123,171 @@ describe("E2E Date Extraction Across All Platforms", () => {
       expect(() => pageInspectionSchema.parse(inspection)).not.toThrow();
       if (inspection.kind === "job") {
         expect(inspection.snapshot.technologies).toHaveLength(30);
+      }
+    });
+
+    it("strips Indeed '- job post' and accessibility suffixes from job titles", () => {
+      document.body.innerHTML = `
+        <div class="jobsearch-RightPane">
+          <div class="jobsearch-ViewJobPaneWrapper" data-jk="job-post-test">
+            <h1 data-testid="jobsearch-JobInfoHeader-title">
+              <span>Senior Full Stack Engineer</span>
+              <span class="visually-hidden"> - job post</span>
+            </h1>
+            <div data-testid="inlineHeader-companyName">Tech Global</div>
+            <div id="jobDescriptionText">Role requiring React and Node.js.</div>
+            <div class="jobsearch-JobMetadataFooter">
+              <ul>
+                <li><span>Posted 2 days ago</span></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      `;
+      Object.defineProperty(window, "location", {
+        writable: true,
+        value: new URL("https://au.indeed.com/viewjob?jk=job-post-test"),
+      });
+
+      const inspection = readIndeedJobPage();
+      expect(inspection.kind).toBe("job");
+      if (inspection.kind === "job") {
+        expect(inspection.snapshot.title).toBe("Senior Full Stack Engineer");
+        expect(inspection.snapshot.postingDateRaw?.label).toBe("Posted 2 days ago");
+      }
+    });
+
+    it("falls back to selected card date when detail pane does not contain date metadata", () => {
+      document.body.innerHTML = `
+        <div class="jobsearch-LeftPane">
+          <div class="job_seen_beacon" data-jk="card-date-test" aria-selected="true">
+            <h2 class="jobTitle"><span>DevOps Specialist - job post</span></h2>
+            <span data-testid="company-name">Cloud Systems</span>
+            <span data-testid="myJobsStateDate">Posted 5 days ago</span>
+          </div>
+        </div>
+        <div class="jobsearch-RightPane">
+          <div class="jobsearch-ViewJobPaneWrapper" data-jk="card-date-test">
+            <h1 data-testid="jobsearch-JobInfoHeader-title">DevOps Specialist - job post</h1>
+            <div data-testid="inlineHeader-companyName">Cloud Systems</div>
+            <div id="jobDescriptionText">AWS, Terraform, CI/CD pipeline management.</div>
+          </div>
+        </div>
+      `;
+      Object.defineProperty(window, "location", {
+        writable: true,
+        value: new URL("https://au.indeed.com/jobs?q=devops&vjk=card-date-test"),
+      });
+
+      const inspection = readIndeedJobPage();
+      expect(inspection.kind).toBe("job");
+      if (inspection.kind === "job") {
+        expect(inspection.snapshot.title).toBe("DevOps Specialist");
+        expect(inspection.snapshot.postingDateRaw?.label).toBe("Posted 5 days ago");
+        const formatted = parseAndFormatJobDate(inspection.snapshot.lastPostedAt!);
+        expect(formatted.displayText).toBe("5 days ago");
+      }
+    });
+
+    it("extracts employer active and active date variants on Indeed", () => {
+      document.body.innerHTML = `
+        <div class="jobsearch-RightPane">
+          <div class="jobsearch-ViewJobPaneWrapper" data-jk="active-date-test">
+            <h1 data-testid="jobsearch-JobInfoHeader-title">Data Engineer</h1>
+            <div data-testid="inlineHeader-companyName">Analytics Co</div>
+            <div id="jobDescriptionText">SQL, Spark, Python data pipelines.</div>
+            <div data-testid="jobsearch-HiringInsights-date">EmployerActive 3 days ago</div>
+          </div>
+        </div>
+      `;
+      Object.defineProperty(window, "location", {
+        writable: true,
+        value: new URL("https://au.indeed.com/viewjob?jk=active-date-test"),
+      });
+
+      const inspection = readIndeedJobPage();
+      expect(inspection.kind).toBe("job");
+      if (inspection.kind === "job") {
+        expect(inspection.snapshot.postingDateRaw?.label).toBe("EmployerActive 3 days ago");
+        const formatted = parseAndFormatJobDate(inspection.snapshot.lastPostedAt!);
+        expect(formatted.displayText).toBe("3 days ago");
+      }
+    });
+
+    it("does not extract years of experience or weekly hours from job description as posting date", () => {
+      document.body.innerHTML = `
+        <div class="jobsearch-RightPane">
+          <div class="jobsearch-ViewJobPaneWrapper" data-jk="9b6c4e44d19a1073">
+            <h1 data-testid="jobsearch-JobInfoHeader-title">Full-stack Developer (.NET/Blazor/SQL/Pipelines) - job post</h1>
+            <div data-testid="inlineHeader-companyName">Mango Chamba, LLC</div>
+            <div id="jobDescriptionText">
+              <p>We are seeking a Full-Stack Developer with 5+ years of experience with C#, .NET, Blazor.</p>
+              <p>Requirements:</p>
+              <ul>
+                <li>5+ years building web applications</li>
+                <li>3+ years with SQL databases</li>
+                <li>Work in office 3 days a week (hybrid)</li>
+                <li>40 hours per week</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      `;
+      Object.defineProperty(window, "location", {
+        writable: true,
+        value: new URL("https://www.indeed.com/viewjob?jk=9b6c4e44d19a1073"),
+      });
+
+      const inspection = readIndeedJobPage();
+      expect(inspection.kind).toBe("job");
+      if (inspection.kind === "job") {
+        expect(inspection.snapshot.title).toBe("Full-stack Developer (.NET/Blazor/SQL/Pipelines)");
+        expect(inspection.snapshot.postingDateRaw).toBeUndefined();
+        expect(inspection.snapshot.lastPostedAt).toBeUndefined();
+      }
+    });
+
+    it("extracts exact pubDate and relative time from window.mosaic.providerData", () => {
+      document.body.innerHTML = `
+        <div class="jobsearch-RightPane">
+          <div class="jobsearch-ViewJobPaneWrapper" data-jk="20fec3bae09fda06">
+            <h1 data-testid="jobsearch-JobInfoHeader-title">Full Stack Developer</h1>
+            <div data-testid="inlineHeader-companyName">Sydney Tech</div>
+            <div id="jobDescriptionText">Building scalable cloud services.</div>
+          </div>
+        </div>
+        <script id="mosaic-data">
+          window.mosaic = window.mosaic || {};
+          window.mosaic.providerData = window.mosaic.providerData || {};
+          window.mosaic.providerData["mosaic-provider-jobcards"] = {
+            "metaData": {
+              "mosaicProviderJobCardsModel": {
+                "results": [
+                  {
+                    "jobkey": "20fec3bae09fda06",
+                    "title": "Full Stack Developer",
+                    "company": "Sydney Tech",
+                    "formattedRelativeTime": "30+ days ago",
+                    "pubDate": 1724600000000
+                  }
+                ]
+              }
+            }
+          };
+        </script>
+      `;
+      Object.defineProperty(window, "location", {
+        writable: true,
+        value: new URL("https://www.indeed.com/jobs?q=Full+Stack+Developer&l=Sydney&vjk=20fec3bae09fda06"),
+      });
+
+      const inspection = readIndeedJobPage();
+      expect(inspection.kind).toBe("job");
+      if (inspection.kind === "job") {
+        expect(inspection.snapshot.title).toBe("Full Stack Developer");
+        expect(inspection.snapshot.company).toBe("Sydney Tech");
+        expect(inspection.snapshot.lastPostedAt).toBe(new Date(1724600000000).toISOString());
+        expect(inspection.snapshot.postingDateRaw?.label).toBe(new Date(1724600000000).toISOString());
       }
     });
   });

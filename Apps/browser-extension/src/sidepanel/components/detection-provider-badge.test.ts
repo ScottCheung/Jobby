@@ -4,7 +4,7 @@ import {
   getPlatformBadgeStyle,
   getPlatformDomain,
   isGenericDetection,
-} from './DetectionProviderBadge';
+} from '@jobby/ui/components/UI/job-analysis/DetectionProviderBadge';
 
 describe('DetectionProviderBadge', () => {
   it('marks only generic provider results as needing review', () => {
@@ -49,5 +49,4 @@ describe('DetectionProviderBadge', () => {
     expect(getPlatformBadgeStyle('custom_ats')).toContain('border-primary');
   });
 });
-
 

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { capturedJobDateFields } from "../utils/date-formatter";
+import { capturedJobDateFields } from '@jobby/ui/lib/date-formatter';
 import { atsJobPlatforms, dedicatedPlatforms } from "./platform";
 
 const jobSnapshotFields = {

@@ -295,7 +295,7 @@ export function TwoDocumentPreviewShowcase({
                   </h3>
                   {isCoverLetterGenerating ? (
                     <span className='inline-flex items-center gap-1 rounded-md bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-extrabold text-amber-600 dark:text-amber-400'>
-                      <Loader2 className='h-2.5 w-2.5 animate-spin' />{' '}
+                      <Loader2 className='h-2.5 w-2.5 animate-pulse' />{' '}
                       Generating
                     </span>
                   ) : isClSelected ? (

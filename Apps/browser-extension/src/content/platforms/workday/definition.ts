@@ -43,6 +43,7 @@ export const workdayDefinition = {
   },
   applicationRoots: [
     "[data-automation-id='applyFlowPage']",
+    "[data-automation-id='signInContent']",
     "[data-automation-id='jobApplicationPage']",
     "[data-automation-id='applicationPage']",
     "[data-automation-id='applyFlow']",

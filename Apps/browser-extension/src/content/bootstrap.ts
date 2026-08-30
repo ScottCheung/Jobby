@@ -98,6 +98,84 @@ const onThemeMessage = (event: MessageEvent) => {
 window.addEventListener("message", onThemeMessage);
 cleanupCallbacks.push(() => window.removeEventListener("message", onThemeMessage));
 
+const isJobbyWebAppPage = (): boolean => {
+  try {
+    const configuredOrigin = new URL(
+      import.meta.env.VITE_WEB_APP_URL || "http://localhost:3000",
+    ).origin;
+    return (
+      window.location.origin === configuredOrigin ||
+      ((window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") &&
+        (window.location.port === "3000" || window.location.port === "3001"))
+    );
+  } catch {
+    return false;
+  }
+};
+
+const onJobInspectionMessage = (event: MessageEvent) => {
+  const data = event.data as {
+    source?: unknown;
+    type?: unknown;
+    requestId?: unknown;
+    url?: unknown;
+  } | null;
+  if (
+    event.source !== window ||
+    event.origin !== window.location.origin ||
+    !isJobbyWebAppPage() ||
+    data?.source !== "jobby-web-app" ||
+    data.type !== "JOBBY_INSPECT_JOB_URL" ||
+    typeof data.requestId !== "string" ||
+    typeof data.url !== "string" ||
+    !isExtensionContextValid()
+  ) {
+    return;
+  }
+
+  window.postMessage(
+    {
+      source: "jobby-extension",
+      type: "JOBBY_INSPECT_JOB_URL_ACK",
+      requestId: data.requestId,
+    },
+    window.location.origin,
+  );
+
+  void chrome.runtime
+    .sendMessage({ type: "content.inspect-url", url: data.url })
+    .then((response) => {
+      window.postMessage(
+        {
+          source: "jobby-extension",
+          type: "JOBBY_INSPECT_JOB_URL_RESULT",
+          requestId: data.requestId,
+          response,
+        },
+        window.location.origin,
+      );
+    })
+    .catch((error: unknown) => {
+      window.postMessage(
+        {
+          source: "jobby-extension",
+          type: "JOBBY_INSPECT_JOB_URL_RESULT",
+          requestId: data.requestId,
+          response: {
+            ok: false,
+            error:
+              error instanceof Error
+                ? error.message
+                : "Could not inspect the job link.",
+          },
+        },
+        window.location.origin,
+      );
+    });
+};
+window.addEventListener("message", onJobInspectionMessage);
+cleanupCallbacks.push(() => window.removeEventListener("message", onJobInspectionMessage));
+
 // Broadcast extension theme changes to web app window in real-time
 if (isExtensionContextValid() && chrome.storage?.onChanged) {
   const onStorageChanged = (changes: Record<string, chrome.storage.StorageChange>, areaName: string) => {

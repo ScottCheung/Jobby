@@ -41,7 +41,7 @@ import type {
   DocType,
   TailoredResume,
 } from '../../shared/contracts/tailored-resume';
-import { formatRelativeTime } from '../../shared/utils/date-formatter';
+import { formatRelativeTime } from '@jobby/ui/lib/date-formatter';
 import {
   closeFloatingResumePreview,
   openStandaloneResumePreview,
@@ -55,7 +55,7 @@ import { cn } from '@jobby/ui/lib/utils';
 import {
   DetectionProviderBadge,
   isGenericDetection,
-} from './DetectionProviderBadge';
+} from '@jobby/ui/components/UI/job-analysis/DetectionProviderBadge';
 
 export const formatResumeAsPlainText = formatResumeAsPlainTextImpl;
 
@@ -170,6 +170,11 @@ export function TailorStudioCard({
   // here made it look as if the user had generated a document they did not ask for.
   const effectiveCoverLetter = result?.cover_letter || null;
 
+  const activeCompany =
+    result?.tailored_resume?.company || company || detectedJob?.company || '';
+  const activeJobTitle =
+    result?.tailored_resume?.job_title || jobTitle || detectedJob?.title || '';
+
   // Active generating view: only shown if activeOptimisticId is selected/active
   const isViewingGenerating = Boolean(
     activeOptimisticId &&
@@ -218,9 +223,9 @@ export function TailorStudioCard({
   ).replace(/\/$/, '');
 
   const getWebEditorUrl = () => {
-    let url = `${webAppBaseUrl}/ai-studio/resumes/master`;
+    let url = `${webAppBaseUrl}/ai-studio/master`;
     if (result?.tailored_resume?.id) {
-      url = `${webAppBaseUrl}/ai-studio/resumes/tailor/${result.tailored_resume.id}`;
+      url = `${webAppBaseUrl}/ai-studio/tailor/${result.tailored_resume.id}`;
     }
     return url;
   };
@@ -271,8 +276,8 @@ export function TailorStudioCard({
       link.href = url;
       const downloadName = formatCoverLetterFilename(
         effectiveResume,
-        company || detectedJob?.company,
-        jobTitle || detectedJob?.title,
+        activeCompany,
+        activeJobTitle,
       );
       link.download = downloadName;
       document.body.appendChild(link);
@@ -287,15 +292,15 @@ export function TailorStudioCard({
   const getCoverLetterDownloadName = () =>
     formatCoverLetterFilename(
       effectiveResume,
-      company || detectedJob?.company,
-      jobTitle || detectedJob?.title,
+      activeCompany,
+      activeJobTitle,
     );
 
   const renderTailoredCoverLetterPdf = () => {
     if (!effectiveCoverLetter) throw new Error('No cover letter is available.');
     const candidateData = effectiveResume || undefined;
-    const resolvedCompany = company || detectedJob?.company;
-    const resolvedJobTitle = jobTitle || detectedJob?.title;
+    const resolvedCompany = activeCompany;
+    const resolvedJobTitle = activeJobTitle;
     const key = JSON.stringify([
       effectiveCoverLetter,
       candidateData,
@@ -341,10 +346,8 @@ export function TailorStudioCard({
   }, [
     effectiveCoverLetter,
     effectiveResume,
-    company,
-    detectedJob?.company,
-    jobTitle,
-    detectedJob?.title,
+    activeCompany,
+    activeJobTitle,
   ]);
 
   const handleOpenInPageCoverLetterPreview = async () => {
@@ -374,8 +377,8 @@ export function TailorStudioCard({
         type: 'content.show-resume-preview',
         data: resume || originalResume,
         pdfDataUrl,
-        company: company || detectedJob?.company,
-        jobTitle: jobTitle || detectedJob?.title,
+        company: activeCompany,
+        jobTitle: activeJobTitle,
         filename: downloadName,
         pages: pages || 1,
         fileSize: blob.size,
@@ -446,8 +449,8 @@ export function TailorStudioCard({
   const getResumeDownloadName = () =>
     formatResumeFilename(
       resume,
-      company || detectedJob?.company,
-      jobTitle || detectedJob?.title,
+      activeCompany,
+      activeJobTitle,
     );
 
   const renderTailoredResumePdf = () => {
@@ -509,8 +512,8 @@ export function TailorStudioCard({
         data: resume,
         pdfDataUrl,
         coreCompetencies: competencies,
-        company: company || detectedJob?.company,
-        jobTitle: jobTitle || detectedJob?.title,
+        company: activeCompany,
+        jobTitle: activeJobTitle,
         filename: downloadName,
         pages,
         fileSize: blob.size,
@@ -696,7 +699,7 @@ export function TailorStudioCard({
             fileSize: blob.size,
             ...(pdfScale === undefined ? {} : { pdfScale }),
             generatedAt: saved.created_at,
-            editUrl: `${webAppBaseUrl}/ai-studio/resumes/tailor/${saved.id}`,
+            editUrl: `${webAppBaseUrl}/ai-studio/tailor/${saved.id}`,
           });
         } catch (error) {
           notify.error(
@@ -1267,16 +1270,22 @@ export function TailorStudioCard({
 
       {/* ── 4. RESUME PREVIEW SHOWCASE (Tailored or Default Base Resume) ── */}
       {!isViewingGenerating && displayResume && (
-        <div className='page-class-banner page-class-banner--job flex-col !items-stretch gap-2.5 !p-3.5 w-full min-w-0 max-w-full box-border'>
+        <div className='page-class-banner page-class-banner--job flex-col !items-stretch gap-2 !p-3.5 w-full min-w-0 max-w-full box-border'>
           {/* Header */}
-          <div className='flex items-center justify-between gap-2 border-b border-primary/40 pb-2.5 w-full min-w-0'>
-            <div className='min-w-0 flex-1'>
-              <div className='flex items-center gap-1.5'>
+          <div className='flex items-center justify-between gap-2 pb-0.5 w-full min-w-0'>
+            <div className='min-w-0 flex-1 flex flex-col gap-0.5'>
+              <div className='flex items-center gap-1.5 min-w-0'>
                 <Sparkles className='w-3.5 h-3.5 text-primary shrink-0' />
                 <strong className='text-xs font-bold text-foreground truncate'>
                   Resume
                 </strong>
               </div>
+              <span
+                className='text-[9.5px] text-muted-foreground truncate font-mono select-all'
+                title={getResumeDownloadName()}
+              >
+                {getResumeDownloadName()}
+              </span>
             </div>
 
             <div className='flex items-center gap-1.5 shrink-0'>
@@ -1303,12 +1312,12 @@ export function TailorStudioCard({
           </div>
 
           {/* Preview card with hover actions: page modal, floating window, web edit, or download */}
-          <div className='flex flex-col gap-2 pt-1 w-full min-w-0'>
+          <div className='flex flex-col gap-2 w-full min-w-0'>
             <ResumePdfPreview
               data={displayResume}
               coreCompetencies={competencies}
-              company={company || detectedJob?.company}
-              jobTitle={jobTitle || detectedJob?.title}
+              company={activeCompany}
+              jobTitle={activeJobTitle}
               onPreview={() => void handleOpenInPageResumePreview()}
               onNewWindow={() => void handleOpenFloatingResumePreview()}
               onEdit={handleOpenWebEditor}
@@ -1320,23 +1329,31 @@ export function TailorStudioCard({
 
       {/* ── 5. COVER LETTER SHOWCASE (Tailored or Default Template) ── */}
       {!isViewingGenerating && effectiveCoverLetter && (
-        <div className='page-class-banner page-class-banner--job flex-col !items-stretch gap-2.5 !p-3.5 w-full min-w-0 max-w-full box-border'>
-          <div className='flex items-center justify-between gap-2 border-b border-primary/40 pb-2.5 w-full min-w-0'>
-            <div className='min-w-0 flex-1 flex items-center gap-1.5'>
-              <Sparkles className='w-3.5 h-3.5 text-primary shrink-0' />
-              <strong
-                className='text-xs font-bold text-foreground truncate'
-                title={
-                  jobTitle || detectedJob?.title ?
-                    `Cover Letter (${jobTitle || detectedJob?.title})`
-                  : 'Cover Letter'
-                }
+        <div className='page-class-banner page-class-banner--job flex-col !items-stretch gap-2 !p-3.5 w-full min-w-0 max-w-full box-border'>
+          <div className='flex items-center justify-between gap-2 pb-0.5 w-full min-w-0'>
+            <div className='min-w-0 flex-1 flex flex-col gap-0.5'>
+              <div className='flex items-center gap-1.5 min-w-0'>
+                <Sparkles className='w-3.5 h-3.5 text-primary shrink-0' />
+                <strong
+                  className='text-xs font-bold text-foreground truncate'
+                  title={
+                    activeJobTitle ?
+                      `Cover Letter (${activeJobTitle})`
+                    : 'Cover Letter'
+                  }
+                >
+                  Cover Letter
+                  {activeJobTitle ?
+                    ` (${activeJobTitle})`
+                  : ''}
+                </strong>
+              </div>
+              <span
+                className='text-[9.5px] text-muted-foreground truncate font-mono select-all'
+                title={getCoverLetterDownloadName()}
               >
-                Cover Letter
-                {jobTitle || detectedJob?.title ?
-                  ` (${jobTitle || detectedJob?.title})`
-                : ''}
-              </strong>
+                {getCoverLetterDownloadName()}
+              </span>
             </div>
 
             <div className='flex items-center gap-1.5 shrink-0'>
@@ -1362,12 +1379,12 @@ export function TailorStudioCard({
             </div>
           </div>
 
-          <div className='flex flex-col gap-2 pt-1 w-full min-w-0'>
+          <div className='flex flex-col gap-2 w-full min-w-0'>
             <CoverLetterPdfPreview
               coverLetter={effectiveCoverLetter}
               candidateData={effectiveResume || undefined}
-              company={company || detectedJob?.company}
-              jobTitle={jobTitle || detectedJob?.title}
+              company={activeCompany}
+              jobTitle={activeJobTitle}
               fileSize={coverLetterFileSize}
               onPreview={() => void handleOpenInPageCoverLetterPreview()}
               onNewWindow={() => void handleOpenFloatingCoverLetterPreview()}

@@ -319,6 +319,46 @@ describe('Document Studio & Resume Tailoring (Zero-Token Mock Mode)', () => {
     expect(formatResumeFilename(testResume, '', '')).toBe('Scott Zhang_CV.pdf');
   });
 
+  it('aligns preview filename with the selected tailored document rather than current page', async () => {
+    const { formatResumeFilename, formatCoverLetterFilename } = await import(
+      '@jobby/ui/components/UI/Resume/helpers'
+    );
+    const testResume: MasterResumeData = {
+      basics: {
+        first_name: 'Scott',
+        last_name: 'Zhang',
+      },
+    };
+
+    // Selected tailored document is for "Google" / "Staff Engineer"
+    const selectedDocument = {
+      company: 'Google',
+      job_title: 'Staff Engineer',
+    };
+    // Current page is for "Synechron" / "Full Stack Engineer"
+    const currentPage = {
+      company: 'Synechron',
+      title: 'Full Stack Engineer',
+    };
+
+    const resolvedCompany = selectedDocument.company || currentPage.company;
+    const resolvedJobTitle = selectedDocument.job_title || currentPage.title;
+
+    const resumeFilename = formatResumeFilename(
+      testResume,
+      resolvedCompany,
+      resolvedJobTitle,
+    );
+    const clFilename = formatCoverLetterFilename(
+      testResume,
+      resolvedCompany,
+      resolvedJobTitle,
+    );
+
+    expect(resumeFilename).toBe('Scott Zhang_CV_Google_Staff Engineer.pdf');
+    expect(clFilename).toBe('Scott Zhang_CL_Google_Staff Engineer.pdf');
+  });
+
   it('provides concise AI status messages for resume, cover letter, and bundle generation', async () => {
     const {
       getAiStatusMessages,

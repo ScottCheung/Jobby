@@ -9,11 +9,11 @@ import {
   GlobalConfirm,
   GlobalModal,
   DashboardStats,
+  LayoutGroup,
 } from '@jobby/ui';
 
 import React from 'react';
 import { usePathname } from 'next/navigation';
-import { LayoutGroup } from 'framer-motion';
 import { useConsole } from '@/components/ConsoleContext';
 import { cn } from '@/lib/utils';
 import { GlobalAuthModal } from '@/components/auth/GlobalAuthModal';
@@ -27,6 +27,8 @@ export default function ConsoleLayout({
   const { error } = useConsole();
 
   const isFullHeightRoute =
+    pathname?.startsWith('/ai-studio') ||
+    pathname?.startsWith('/prospects') ||
     pathname?.startsWith('/interview-prep') ||
     pathname?.startsWith('/job-application') ||
     pathname?.startsWith('/applications') ||

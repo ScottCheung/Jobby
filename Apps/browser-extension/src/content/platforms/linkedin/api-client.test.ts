@@ -13,6 +13,7 @@ describe('fetchLinkedInJobPosting posting dates', () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.unstubAllGlobals();
   });
 
@@ -60,5 +61,24 @@ describe('fetchLinkedInJobPosting posting dates', () => {
       company: 'Acme Global',
       lastPostedAt: '2026-08-24T06:30:00.000Z',
     });
+  });
+
+  it('falls back instead of hanging when Voyager does not respond', async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((_input, init?: RequestInit) =>
+        new Promise((_resolve, reject) => {
+          init?.signal?.addEventListener('abort', () =>
+            reject(new DOMException('Aborted', 'AbortError')),
+          );
+        }),
+      ),
+    );
+
+    const resultPromise = fetchLinkedInJobPosting('123456789');
+    await vi.advanceTimersByTimeAsync(2_500);
+
+    await expect(resultPromise).resolves.toBeNull();
   });
 });

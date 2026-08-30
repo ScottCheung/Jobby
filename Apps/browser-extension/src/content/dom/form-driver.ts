@@ -1562,13 +1562,6 @@ export async function fillFormField(
     }
     return result(instruction, 'filled', 'Choice selected.');
   }
-  if (type === 'password') {
-    return result(
-      instruction,
-      'requires_user_action',
-      'Sensitive fields require explicit user handling.',
-    );
-  }
   if (type === 'unknown')
     return result(instruction, 'rejected', 'This field type is not supported.');
 

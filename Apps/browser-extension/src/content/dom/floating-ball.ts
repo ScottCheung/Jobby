@@ -75,40 +75,57 @@ function isLinkedInPage(): boolean {
 let currentThemeMode: 'light' | 'dark' | 'system' = 'system';
 let currentThemeColor: string = 'green';
 
-// Maps theme color names to their light/dark shadow RGBA values
+// Maps theme color names to their light/dark shadow RGBA values and primary colors
 const THEME_SHADOW_MAP: Record<
   string,
-  { light: string; dark: string; glow: string; glowDark: string }
+  {
+    light: string;
+    dark: string;
+    glow: string;
+    glowDark: string;
+    primary: string;
+    primaryDark: string;
+  }
 > = {
   green: {
     light: 'rgba(13, 148, 136, 0.32)',
     dark: 'rgba(20, 184, 166, 0.4)',
     glow: 'rgba(20, 184, 166, 0.55)',
     glowDark: 'rgba(45, 212, 191, 0.65)',
+    primary: '#0d9488',
+    primaryDark: '#14b8a6',
   },
   blue: {
     light: 'rgba(37, 99, 235, 0.3)',
     dark: 'rgba(96, 165, 250, 0.4)',
     glow: 'rgba(59, 130, 246, 0.55)',
     glowDark: 'rgba(147, 197, 253, 0.65)',
+    primary: '#2563eb',
+    primaryDark: '#60a5fa',
   },
   purple: {
     light: 'rgba(109, 40, 217, 0.3)',
     dark: 'rgba(167, 139, 250, 0.4)',
     glow: 'rgba(139, 92, 246, 0.55)',
     glowDark: 'rgba(196, 181, 253, 0.65)',
+    primary: '#7c3aed',
+    primaryDark: '#a78bfa',
   },
   orange: {
     light: 'rgba(194, 65, 12, 0.28)',
     dark: 'rgba(251, 146, 60, 0.4)',
     glow: 'rgba(249, 115, 22, 0.55)',
     glowDark: 'rgba(253, 186, 116, 0.65)',
+    primary: '#ea580c',
+    primaryDark: '#fb923c',
   },
   rose: {
     light: 'rgba(190, 18, 60, 0.28)',
     dark: 'rgba(251, 113, 133, 0.4)',
     glow: 'rgba(244, 63, 94, 0.55)',
     glowDark: 'rgba(253, 164, 175, 0.65)',
+    primary: '#e11d48',
+    primaryDark: '#fb7185',
   },
 };
 
@@ -133,6 +150,10 @@ function applyThemeShadowVars(root: ShadowRoot | null) {
   host.style.setProperty(
     '--panel-glow',
     isDark ? colors.glowDark : colors.glow,
+  );
+  host.style.setProperty(
+    '--primary-color',
+    isDark ? colors.primaryDark : colors.primary,
   );
 }
 
@@ -311,9 +332,9 @@ function createFloatingBall() {
   ballRoot.id = BALL_CONTAINER_ID;
   ballRoot.style.cssText =
     'position: fixed !important; top: 0 !important; left: 0 !important; width: 0 !important; height: 0 !important; border: none !important; margin: 0 !important; padding: 0 !important; z-index: 2147483647 !important; pointer-events: none !important; overflow: visible !important; transform: none !important; filter: none !important;';
-  updateThemeClasses();
 
   const shadow = ballRoot.attachShadow({ mode: 'open' });
+  updateThemeClasses();
 
   const style = document.createElement('style');
   style.textContent = `
@@ -329,10 +350,12 @@ function createFloatingBall() {
       overflow: visible !important;
       --primary-shadow: rgba(13, 148, 136, 0.32);
       --primary-glow: rgba(20, 184, 166, 0.55);
+      --primary-color: #0d9488;
     }
     :host(.dark) {
       --primary-shadow: rgba(20, 184, 166, 0.42);
       --primary-glow: rgba(45, 212, 191, 0.65);
+      --primary-color: #14b8a6;
     }
     #jobby-ball-wrapper {
       position: fixed !important;
@@ -522,7 +545,7 @@ function createFloatingBall() {
       border-radius: 9999px;
       background: rgba(15, 23, 42, 0.18);
       position: relative;
-      transition: background 0.2s ease;
+      transition: background 0.2s ease, box-shadow 0.2s ease;
       flex-shrink: 0;
     }
     :host(.dark) .jobby-switch-track {
@@ -537,13 +560,15 @@ function createFloatingBall() {
       top: 2px;
       left: 2px;
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
-      transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease;
     }
     .jobby-menu-toggle-item.is-active .jobby-switch-track {
-      background: #0d9488;
+      background: var(--primary-color, #0d9488);
+      box-shadow: 0 0 8px var(--primary-shadow);
     }
     .jobby-menu-toggle-item.is-active .jobby-switch-thumb {
       transform: translateX(13px);
+      box-shadow: 0 1px 3px var(--primary-shadow);
     }
 
     /* ─── Floating Dialog Iframe Container ───────────────────────── */
@@ -712,7 +737,7 @@ function createFloatingBall() {
   toggleBtn.type = 'button';
   toggleBtn.className = `jobby-menu-toggle-item ${autoShowJobDialog ? 'is-active' : ''}`;
   toggleBtn.innerHTML = `
-    <span>Auto-show card</span>
+    <span>Auto-show Recognition Results</span>
     <span class="jobby-switch-track">
       <span class="jobby-switch-thumb"></span>
     </span>
@@ -841,13 +866,17 @@ function createFloatingBall() {
         hideFloatingDialog();
         showSidepanelIframe();
         const docType = event.data?.docType;
+        const draft = event.data?.draft;
         window.setTimeout(() => {
           try {
             if (isExtensionContextValid() && chrome.runtime?.sendMessage) {
-              chrome.runtime.sendMessage({
-                type: 'sidepanel.trigger-tailor',
-                docType,
-              }).catch(() => undefined);
+              chrome.runtime
+                .sendMessage({
+                  type: 'sidepanel.trigger-tailor',
+                  docType,
+                  draft,
+                })
+                .catch(() => undefined);
             }
           } catch {}
         }, 200);
@@ -1081,6 +1110,7 @@ function preloadSidepanelIframe() {
   iframeRoot.style.cssText = FIXED_PANEL_HOST_STYLE;
 
   const shadow = iframeRoot.attachShadow({ mode: 'open' });
+  updateThemeClasses();
 
   const style = document.createElement('style');
   style.textContent = `

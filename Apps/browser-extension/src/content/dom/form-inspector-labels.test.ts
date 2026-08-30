@@ -101,6 +101,56 @@ describe('form inspector labels', () => {
     ]);
   });
 
+  it('ignores Workday robot honeypot fields', () => {
+    document.body.innerHTML = `
+      <label for="email">Email Address</label><input id="email" type="email" />
+      <label for="website">Enter website. This input is for robots only, do not enter if you're human.</label>
+      <input id="website" name="website" type="text" />
+    `;
+
+    expect(inspectVisibleFormFields(document)).toEqual([
+      expect.objectContaining({ id: 'email', label: 'Email Address' }),
+    ]);
+  });
+
+  it('fills password fields from an explicit autofill instruction', async () => {
+    document.body.innerHTML = `
+      <label for="password">Password</label><input id="password" name="password" type="password" />
+    `;
+
+    const result = await fillFormField({
+      type: 'content.fill-field',
+      commandId: 'password-fill',
+      source: 'backend',
+      target: {
+        key: 'password',
+        id: 'password',
+        name: 'password',
+        type: 'password',
+        label: 'Password',
+      },
+      value: 'application-password',
+    });
+
+    expect(result.status).toBe('filled');
+    expect(document.querySelector<HTMLInputElement>('#password')?.value).toBe('application-password');
+  });
+
+  it('reports filled password fields without exposing their value', () => {
+    document.body.innerHTML = `
+      <label for="password">Password</label>
+      <input id="password" type="password" value="application-password" />
+    `;
+
+    const [field] = inspectVisibleFormFields(document);
+    expect(field).toEqual(expect.objectContaining({
+      id: 'password',
+      filled: true,
+      sensitive: true,
+    }));
+    expect(field).not.toHaveProperty('currentValue');
+  });
+
   it('recognises JobAdder phone fields and ignores Select2 implementation inputs', () => {
     document.body.innerHTML = `
       <form>

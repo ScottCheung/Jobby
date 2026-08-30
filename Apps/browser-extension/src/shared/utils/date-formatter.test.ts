@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { captureJobDate, parseAndFormatJobDate } from "./date-formatter";
+import { captureJobDate, parseAndFormatJobDate } from '@jobby/ui/lib/date-formatter';
 import { extractLinkedInPostedDate } from "../../content/platforms/linkedin/date-parser";
 
 describe("extractLinkedInPostedDate", () => {

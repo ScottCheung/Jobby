@@ -17,6 +17,7 @@ import { showGlobalToast } from '@/lib/toast';
 import type { CoreProfileField, UserProfile } from '@/lib/types';
 import { PROFILE_SECTIONS, ProfileSidebar } from './_components/ProfileSidebar';
 import { AccountSection } from './_components/sections/AccountSection';
+import { ApplicationCredentialsSection } from './_components/sections/ApplicationCredentialsSection';
 import { PersonalSection } from './_components/sections/PersonalSection';
 import { ContactLocationSection } from './_components/sections/ContactLocationSection';
 import { WorkEligibilitySection } from './_components/sections/WorkEligibilitySection';
@@ -26,6 +27,9 @@ import { DemographicsSection } from './_components/sections/DemographicsSection'
 import { CustomFieldsSection } from './_components/sections/CustomFieldsSection';
 
 interface ProfileDraftState {
+  // Application credentials
+  application_password: string;
+
   // Personal
   title: string;
   first_name: string;
@@ -104,6 +108,8 @@ function initDraftFromProfile(profile: UserProfile): ProfileDraftState {
   const fields = profile.fields || [];
 
   return {
+    application_password: extractCoreFieldValue(fields, 'application.password', null),
+
     title: extractCoreFieldValue(fields, 'identity.title', profile.title),
     first_name: extractCoreFieldValue(
       fields,
@@ -381,6 +387,12 @@ export default function ProfilePage() {
     try {
       // Build structured core fields array
       const coreFieldsList: CoreProfileField[] = [
+        {
+          core_field_key: 'application.password',
+          value: draft.application_password || null,
+          value_type: 'password',
+          is_sensitive: true,
+        },
         // Identity
         {
           core_field_key: 'identity.title',
@@ -818,6 +830,13 @@ export default function ProfilePage() {
             user={user}
             onSaveAvatar={saveAvatar}
             onRemoveAvatar={removeAvatar}
+          />
+
+          <ApplicationCredentialsSection
+            email={draft.email}
+            password={draft.application_password}
+            onEmailChange={(value) => updateDraftField('email', value)}
+            onPasswordChange={(value) => updateDraftField('application_password', value)}
           />
 
           <PersonalSection values={draft} onChange={updateDraftField} />

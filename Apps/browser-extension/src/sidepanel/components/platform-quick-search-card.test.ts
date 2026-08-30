@@ -7,7 +7,7 @@ import {
   extractProfileSearchCriteria,
   PlatformQuickSearchList,
   SUPPORTED_PLATFORMS,
-} from './PlatformQuickSearchCard';
+} from '@jobby/ui/components/UI/job-analysis/PlatformQuickSearchCard';
 import type { CareerProfile } from '../../shared/contracts/tailored-resume';
 
 describe('PlatformQuickSearchCard', () => {
@@ -96,4 +96,3 @@ describe('PlatformQuickSearchCard', () => {
     expect(html).not.toMatch(/>\s*8\s*<\/span>/);
   });
 });
-

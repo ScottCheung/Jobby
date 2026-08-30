@@ -27,6 +27,7 @@ export function useApplicationTools(
   onSignIn?: () => void,
 ) {
   const [loadingButton, setLoadingButton] = useState<string | null>(null);
+  const [isCancellingAutofill, setIsCancellingAutofill] = useState(false);
   const [recordedJobKey, setRecordedJobKey] = useState<string | null>(null);
   const latestJobRef = useRef<JobSnapshot | null>(null);
 
@@ -56,6 +57,7 @@ export function useApplicationTools(
     if (!requireSignIn('Please sign in to Jobby to autofill forms.')) return;
 
     setLoadingButton('autofill');
+    setIsCancellingAutofill(false);
     try {
       let form =
         latestForm?.kind === 'application_form' ||
@@ -98,6 +100,7 @@ export function useApplicationTools(
       reportError('');
       await inspectForm();
     } finally {
+      setIsCancellingAutofill(false);
       setLoadingButton(null);
     }
   }, [
@@ -107,6 +110,21 @@ export function useApplicationTools(
     reportError,
     requireSignIn,
   ]);
+
+  const cancelAutofill = useCallback(async () => {
+    if (loadingButton !== 'autofill' || isCancellingAutofill) return;
+    setIsCancellingAutofill(true);
+    const response = await send({ type: 'form.autofill-cancel-active' }).catch(
+      (error: unknown) => ({
+        ok: false as const,
+        error: error instanceof Error ? error.message : 'Autofill could not be cancelled.',
+      }),
+    );
+    if (!response.ok) {
+      setIsCancellingAutofill(false);
+      reportError(response.error);
+    }
+  }, [isCancellingAutofill, loadingButton, reportError]);
 
   const recordApplication = useCallback(async () => {
     if (!requireSignIn('Please sign in to Jobby to record applications.')) {
@@ -145,7 +163,9 @@ export function useApplicationTools(
 
   return {
     loadingButton,
+    isCancellingAutofill,
     autofillForm,
+    cancelAutofill,
     recordApplication,
     canRecordApplication: Boolean(currentJob),
     isApplicationRecorded: Boolean(

@@ -1,7 +1,7 @@
 /** @format */
 
 export const HEADER_PATTERN =
-  /^(?:about\s+(?:the\s+)?(?:job|role|company|us|you|position|team|business|[a-z0-9\s&'’–-]{1,30})|why\s+(?:join|work\s+(?:with|at|for)|us|[a-z0-9\s&'’–-]{1,30})\b|how\s+(?:we\s+think\s+about\s+[^.!\n]{1,40}|we\s+work|we\s+hire|we\s+interview|to\s+apply|it\s+works)\b|who\s+(?:we\s+are|you\s+are|we(?:'|’)re\s+looking\s+for)\b|what\s+you(?:'|’)ll\s+(?:do|bring|get|need|achieve|learn|experience)\b|what\s+we(?:'|’)(?:re\s+looking\s+for|offer|want|value|do)\b|what\s+(?:you\s+need|to\s+expect|is\s+in\s+it\s+for\s+you|we\s+look\s+for)\b|what(?:'|’)s\s+on\s+offer\b|our\s+(?:interview\s+process|hiring\s+process|selection\s+process|process|team|culture|tech\s+stack|story|stack|benefits|commitment|approach|philosophy|mission|values)\b|(?:the\s+)?(?:interview\s+process|hiring\s+process|selection\s+process|application\s+process)\b|(?:the\s+)?(?:role|position|opportunity|team|company)\b|(?:key\s+|core\s+|role\s+)?responsibilities\b|(?:key\s+|role\s+|minimum\s+|basic\s+|preferred\s+)?qualifications\b|(?:key\s+|role\s+|mandatory\s+|preferred\s+)?requirements\b|(?:mandatory|preferred|core|technical|key)\s+skills\b|skills\s*(?:&|and)\s*experience\b|experience\s*(?:&|and)\s*qualifications\b|perks\s*(?:&|and)\s*benefits\b|benefits\s*(?:&|and)\s*perks\b|compensation\s*(?:&|and)\s*benefits\b|salary\s*(?:&|and)\s*benefits\b|compensation\b|benefits\b|overview\b|position\s+overview\b|job\s+summary\b|company\s+description\b|job\s+description\b|additional\s+information\b|years\s+of\s+experience\b|equal\s+opportunity\b|diversity\s*(?:&|and)\s*inclusion\b|life\s+at\b|nice\s+to\s+have\b|bonus\s+points\b|you(?:'|’)ll(?:\s+be)?\b|you\s+will(?:\s+be)?\b|what\s+we(?:'|’)re\s+looking\s+for\b|职位描述|岗位职责|任职要求|任职资格|福利待遇|关于我们|加分项|工作职责|职位要求)\b/i;
+  /^(?:about\s+(?:the\s+)?(?:job|role|company|us|you|position|team|business|[a-z0-9\s&'’–-]{1,30})|why\s+(?:join|work\s+(?:with|at|for)|us|[a-z0-9\s&'’–-]{1,30})\b|how\s+(?:we\s+think\s+about\s+[^.!\n]{1,40}|we\s+work|we\s+hire|we\s+interview|to\s+apply|it\s+works)\b|who\s+(?:we\s+are|you\s+are|we(?:'|’)re\s+looking\s+for)\b|what\s+you(?:'|’)ll\s+(?:do|bring|get|need|achieve|learn|experience)\b|what\s+we(?:'|’)(?:re\s+looking\s+for|offer|want|value|do)\b|what\s+(?:you\s+need|to\s+expect|is\s+in\s+it\s+for\s+you|we\s+look\s+for)\b|what(?:'|’)s\s+on\s+offer\b|our\s+(?:interview\s+process|hiring\s+process|selection\s+process|process|team|culture|tech\s+stack|story|stack|benefits|commitment|approach|philosophy|mission|values)\b|(?:the\s+)?(?:interview\s+process|hiring\s+process|selection\s+process|application\s+process)\b|(?:the\s+)?(?:role|position|opportunity|team|company)\b|(?:key\s+|core\s+|role\s+)?responsibilities\b|(?:key\s+|role\s+|minimum\s+|basic\s+|preferred\s+)?qualifications\b|(?:key\s+|role\s+|mandatory\s+|preferred\s+)?requirements\b|(?:mandatory|preferred|core|technical|key)\s+skills\b|skills\s*(?:&|and)\s*experience\b|experience\s*(?:&|and)\s*qualifications\b|perks\s*(?:&|and)\s*benefits\b|benefits\s*(?:&|and)\s*perks\b|compensation\s*(?:&|and)\s*benefits\b|salary\s*(?:&|and)\s*benefits\b|compensation\b|benefits\b|overview\b|position\s+overview\b|job\s+summary\b|company\s+description\b|job\s+description\b|additional\s+information\b|experience(?=\s*:?\s*$)|years\s+of\s+experience\b|equal\s+opportunity\b|diversity\s*(?:&|and)\s*inclusion\b|life\s+at\b|nice\s+to\s+have\b|bonus\s+points\b|you(?:'|’)ll(?:\s+be)?(?=\s*:?\s*$)|you\s+will(?:\s+be)?(?=\s*:?\s*$)|what\s+we(?:'|’)re\s+looking\s+for\b|职位描述|岗位职责|任职要求|任职资格|福利待遇|关于我们|加分项|工作职责|职位要求)\b/i;
 
 export const QUESTION_HEADER_PATTERN =
   /^(?:why|who|what|where|how|are\s+you|is\s+this)\b[^.!\n]{2,70}[?？]$/i;
@@ -32,8 +32,10 @@ export function cleanDescription(rawText: string | null | undefined): string {
     '\n\n$1:\n\n',
   );
 
-  // Separate bullets attached to preceding text without newlines (e.g. "change the game* Strong familiarity")
-  text = text.replace(/([^\r\n])\s*([•*\-▪►▸–—·])\s+/g, '$1\n• ');
+  // Separate unmistakable bullets attached to preceding text without newlines.
+  // Dashes are only bullets at the start of a line because they are also used
+  // for ranges and punctuation (e.g. "1 - 3+ years", "Sydney – Hybrid").
+  text = text.replace(/([^\r\n])\s*([•*▪►▸·])\s+/g, '$1\n• ');
 
   // 1. Fix missing space/newline after period between sentences when squished without whitespace (e.g. "products.We believe" -> "products.\n\nWe believe")
   text = text.replace(/([a-z0-9)])\.(?=[A-Z\u4e00-\u9fa5])/g, '$1.\n\n');
@@ -119,9 +121,13 @@ export function cleanDescription(rawText: string | null | undefined): string {
       .replace(/^\(?\d+[\.\)]\s+/, '')
       .trim();
 
+    const isKnownHeader =
+      strippedLine.length <= 90 &&
+      !/:\s+\S/.test(strippedLine) &&
+      HEADER_PATTERN.test(strippedLine);
     const isHeader =
       !isExplicitBullet &&
-      (HEADER_PATTERN.test(strippedLine) ||
+      (isKnownHeader ||
         QUESTION_HEADER_PATTERN.test(strippedLine) ||
         /^[A-Z\u4e00-\u9fa5][A-Za-z0-9\u4e00-\u9fa5\s/&'’–-]{1,60}:$/.test(
           strippedLine,
@@ -233,7 +239,7 @@ export function parseDescriptionBlocks(
       continue;
     }
 
-    const rawBulletMatch = line.match(/^(?:[•*\-▪►▸–—·]|\.|\(?\d+[\.\)]?)\s+(.*)$/);
+    const rawBulletMatch = line.match(/^(?:[•*\-▪►▸–—·]|\.|\(?\d+[\.\)])\s+(.*)$/);
     const isBullet = Boolean(rawBulletMatch);
     const content =
       rawBulletMatch && typeof rawBulletMatch[1] === 'string' ?
@@ -245,7 +251,7 @@ export function parseDescriptionBlocks(
     for (let j = i + 1; j < lines.length; j++) {
       const nextLine = lines[j];
       if (nextLine) {
-        if (/^(?:[•*\-▪►▸–—·]|\.|\(?\d+[\.\)]?)\s+/.test(nextLine)) {
+        if (/^(?:[•*\-▪►▸–—·]|\.|\(?\d+[\.\)])\s+/.test(nextLine)) {
           nextNonEmptyIsBullet = true;
         }
         break;
@@ -254,9 +260,13 @@ export function parseDescriptionBlocks(
 
     const isQuestionHeading =
       !isBullet && QUESTION_HEADER_PATTERN.test(content);
+    const isKnownHeading =
+      content.length <= 90 &&
+      !/:\s+\S/.test(content) &&
+      HEADER_PATTERN.test(content);
     const isExplicitHeading =
       !isBullet &&
-      (HEADER_PATTERN.test(content) ||
+      (isKnownHeading ||
         /^[A-Z\u4e00-\u9fa5][A-Za-z0-9\u4e00-\u9fa5\s/&'’–-]{1,60}:$/.test(
           content,
         ) ||

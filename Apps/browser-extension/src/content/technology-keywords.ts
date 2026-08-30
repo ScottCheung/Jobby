@@ -1,2 +1,2 @@
-export * from "./skills/index";
-export * from "./skills/types";
+export * from '@jobby/ui/lib/job-skills';
+export * from '@jobby/ui/lib/job-skills/types';

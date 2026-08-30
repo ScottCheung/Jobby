@@ -2,7 +2,7 @@
 
 // @vitest-environment happy-dom
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
   showInPageJobDescriptionModal,
   closeInPageJobDescriptionModal,
@@ -72,6 +72,116 @@ Qualifications:
 
     const closeBtn = shadow.getElementById('jobby-btn-close');
     expect(closeBtn).not.toBeNull();
+  });
+
+  it('falls back to execCommand when the Clipboard API rejects the copy', async () => {
+    const clipboardDescriptor = Object.getOwnPropertyDescriptor(
+      navigator,
+      'clipboard',
+    );
+    const execCommandDescriptor = Object.getOwnPropertyDescriptor(
+      document,
+      'execCommand',
+    );
+    const writeText = vi.fn().mockRejectedValue(new Error('Not allowed'));
+    let copiedText = '';
+
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+    Object.defineProperty(document, 'execCommand', {
+      configurable: true,
+      value: vi.fn(() => {
+        copiedText = document.querySelector('textarea')?.value ?? '';
+        return true;
+      }),
+    });
+
+    try {
+      await showInPageJobDescriptionModal({
+        title: 'Engineer',
+        description: 'Job description text',
+      });
+
+      const shadow = document.getElementById(
+        'jobby-in-page-job-description-modal-root',
+      )!.shadowRoot!;
+      shadow.getElementById('jobby-btn-copy')!.click();
+      await vi.waitFor(() => {
+        expect(shadow.getElementById('jobby-copy-text')?.textContent).toBe(
+          'Copied!',
+        );
+      });
+
+      expect(writeText).toHaveBeenCalledWith('Job description text');
+      expect(copiedText).toBe('Job description text');
+      expect(document.querySelector('textarea')).toBeNull();
+    } finally {
+      if (clipboardDescriptor) {
+        Object.defineProperty(navigator, 'clipboard', clipboardDescriptor);
+      } else {
+        delete (navigator as unknown as Record<string, unknown>)['clipboard'];
+      }
+      if (execCommandDescriptor) {
+        Object.defineProperty(document, 'execCommand', execCommandDescriptor);
+      } else {
+        delete (document as unknown as Record<string, unknown>)[
+          'execCommand'
+        ];
+      }
+    }
+  });
+
+  it('keeps a You will paragraph as body text before a bullet list', async () => {
+    const paragraph =
+      "You will work within Agile delivery teams to design, develop, test and maintain enterprise applications and cloud-native services. You'll contribute to the delivery of modern platforms, APIs, integrations and event-driven solutions while working in a secure, highly regulated environment. Responsibilities include:";
+
+    await showInPageJobDescriptionModal({
+      title: 'Full Stack Engineer',
+      description: `${paragraph}\n• Designing and developing enterprise-grade software solutions`,
+    });
+
+    const shadow = document.getElementById(
+      'jobby-in-page-job-description-modal-root',
+    )!.shadowRoot!;
+    const headings = Array.from(shadow.querySelectorAll('.jd-heading')).map(
+      (element) => element.textContent,
+    );
+
+    expect(headings).not.toContain(paragraph);
+    expect(shadow.querySelector('.jd-paragraph')?.textContent).toBe(paragraph);
+    expect(shadow.querySelector('.jd-item-text')?.textContent).toBe(
+      'Designing and developing enterprise-grade software solutions',
+    );
+  });
+
+  it('does not treat a dash inside a paragraph as a bullet', async () => {
+    const experience =
+      "1 - 3+ years of commercial development experience is preferred, though we will consider less based on demonstrated capability.";
+    const hiringProcess =
+      "Our hiring process: There is a small coding test, completed offline in your own time. We expect you to use AI to generate the solution, because that's how we build here.";
+
+    await showInPageJobDescriptionModal({
+      title: 'Software Engineer',
+      description: `Experience\n\n${experience}\n\n${hiringProcess}`,
+    });
+
+    const shadow = document.getElementById(
+      'jobby-in-page-job-description-modal-root',
+    )!.shadowRoot!;
+
+    expect(shadow.querySelectorAll('.jd-list-item')).toHaveLength(0);
+    expect(
+      Array.from(shadow.querySelectorAll('.jd-heading')).map(
+        (element) => element.textContent,
+      ),
+    ).toEqual(['Experience']);
+    expect(
+      Array.from(shadow.querySelectorAll('.jd-paragraph')).map(
+        (element) => element.textContent,
+      ),
+    ).toEqual([experience, hiringProcess]);
   });
 
   it('closes the modal when closeInPageJobDescriptionModal is called', async () => {

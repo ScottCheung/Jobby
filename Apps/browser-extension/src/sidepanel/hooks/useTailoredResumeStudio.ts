@@ -272,7 +272,7 @@ export function useTailoredResumeStudio(
     (type: DocType) => {
       const fingerprint = generationFingerprintFor(type);
       return generationTasks.some(
-        (task) => task.fingerprint === fingerprint || task.docType === type,
+        (task) => task.fingerprint === fingerprint,
       );
     },
     [generationFingerprintFor, generationTasks],
@@ -348,9 +348,9 @@ export function useTailoredResumeStudio(
     if (saved.isGenerating) {
       setResult(null);
       setActiveOptimisticId(saved.id);
-      if (saved.job_description) setJobDescription(saved.job_description);
-      if (saved.job_title) setJobTitle(saved.job_title);
-      if (saved.company) setCompany(saved.company);
+      setJobDescription(saved.job_description || '');
+      setJobTitle(saved.job_title || '');
+      setCompany(saved.company || '');
       return;
     }
     setActiveOptimisticId(null);
@@ -367,9 +367,9 @@ export function useTailoredResumeStudio(
         null,
       tailored_resume: saved,
     });
-    if (saved.job_description) setJobDescription(saved.job_description);
-    if (saved.job_title) setJobTitle(saved.job_title);
-    if (saved.company) setCompany(saved.company);
+    setJobDescription(saved.job_description || '');
+    setJobTitle(saved.job_title || '');
+    setCompany(saved.company || '');
   }, []);
 
   // Preview the prompt/payload

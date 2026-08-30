@@ -38,10 +38,23 @@ function samePhysicalField(
   left: FormFieldObservation,
   right: FormFieldObservation,
 ): boolean {
+  const distinctWorkdayEntries = Boolean(
+    left.id &&
+    right.id &&
+    left.id !== right.id &&
+    /^(?:workExperience|education|certification|language)-.+--/i.test(left.id) &&
+    /^(?:workExperience|education|certification|language)-.+--/i.test(right.id),
+  );
   return (
     left.key === right.key ||
     Boolean(left.id && right.id && left.id === right.id) ||
-    Boolean(left.name && right.name && left.name === right.name && left.type === right.type)
+    Boolean(
+      !distinctWorkdayEntries &&
+      left.name &&
+      right.name &&
+      left.name === right.name &&
+      left.type === right.type,
+    )
   );
 }
 

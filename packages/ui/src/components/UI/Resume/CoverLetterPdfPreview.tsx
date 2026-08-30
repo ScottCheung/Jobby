@@ -22,6 +22,7 @@ import {
   resumeContactItems,
   resumeFullName,
   type ResumeContactItem,
+  COVER_LETTER_SIGNATURE_STYLE,
 } from './helpers';
 import type { MasterResumeData } from './types';
 import { COVER_LETTER_GOLD_SVG_DATA_URI } from './cover-letter-contour';
@@ -49,13 +50,6 @@ export type CoverLetterPdfPreviewProps = {
   onEdit?: () => void;
   onDownload?: () => void;
 };
-
-export const COVER_LETTER_SIGNATURE_STYLE = {
-  fontFamily:
-    "'Sacramento', 'Dancing Script', 'Caveat', 'Brush Script MT', 'Segoe Script', cursive",
-  fontStyle: 'normal',
-  fontWeight: 400,
-} as const;
 
 function renderHtmlFormattedParagraph(
   text: string,

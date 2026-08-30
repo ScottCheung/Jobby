@@ -295,6 +295,16 @@ export type CareerProfile = JobHuntingProfile & {
   evaluation_updated_at?: string | null;
 };
 
+export type UserSkill = {
+  id: string;
+  skill_name: string;
+  canonical_name: string;
+  category?: string | null;
+  source?: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type JobHuntingProfile = {
   id?: string;
   user_id?: string;

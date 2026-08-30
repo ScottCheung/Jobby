@@ -4,8 +4,8 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2, Sparkles, Download, History } from 'lucide-react';
-import { Button, EmptyPlaceHolder } from '@jobby/ui';
+import { Loader2, Sparkles } from 'lucide-react';
+import { EmptyPlaceHolder } from '@jobby/ui';
 import { api, type TailoredResume } from '@/lib/api';
 import type { MasterResumeData } from '@/lib/types';
 import { showGlobalToast } from '@/lib/toast';
@@ -19,11 +19,15 @@ import { useConfirmStore } from '@/lib/store/confirm-store';
 interface TailoredResumeStudioProps {
   targetId?: string;
   baseUrl?: string;
+  latestResume?: TailoredResume | null;
+  compactEntry?: React.ReactNode;
 }
 
 export function TailoredResumeStudio({
   targetId,
-  baseUrl = '/ai-studio/resumes/tailor',
+  baseUrl = '/ai-studio/tailor',
+  latestResume,
+  compactEntry,
 }: TailoredResumeStudioProps) {
   const router = useRouter();
   const confirm = useConfirmStore((state) => state.confirm);
@@ -126,6 +130,15 @@ export function TailoredResumeStudio({
       isCancelled = true;
     };
   }, [targetId]);
+
+  useEffect(() => {
+    if (!latestResume) return;
+    setCurrentResume(latestResume);
+    setTailoredResumes((prev) => [
+      latestResume,
+      ...prev.filter((item) => item.id !== latestResume.id),
+    ]);
+  }, [latestResume]);
 
   const selectTailoredResume = (resume: TailoredResume) => {
     setCurrentResume(resume);
@@ -261,7 +274,7 @@ export function TailoredResumeStudio({
   if (loading) {
     return (
       <div className='flex min-h-[400px] flex-col items-center justify-center gap-3'>
-        <Loader2 className='h-8 w-8 animate-spin text-primary' />
+        <Loader2 className='h-8 w-8 animate-pulse text-primary' />
         <p className='text-xs font-medium text-ink-secondary'>
           Loading Recent Tailored Resumes...
         </p>
@@ -293,26 +306,8 @@ export function TailoredResumeStudio({
   }
 
   return (
-    <div className='space-y-6 pb-16 w-full max-w-full min-w-0 overflow-x-hidden'>
-      {/* ── 1. Top Header ── */}
-      <header className='flex flex-wrap items-center justify-between gap-4'>
-        <div>
-          <div className='flex flex-wrap items-center gap-3'>
-            <h1 className='text-xl font-bold tracking-tight text-ink-primary md:text-2xl flex items-center gap-2'>
-              <History className='h-6 w-6 text-primary' />
-              Recent Tailor
-            </h1>
-            {currentResume?.company && (
-              <span className='rounded-xl bg-primary/10 px-3 py-1 text-xs font-bold text-primary'>
-                {currentResume.company}
-              </span>
-            )}
-          </div>
-          <p className='mt-1 text-xs text-ink-secondary'>
-            Browse and inspect your recent tailored CVs and Cover Letters.
-          </p>
-        </div>
-      </header>
+    <div className='space-y-6 pb-6'>
+
 
       {/* ── 2. Top Carousel: Horizontal Scrollable Cards ── */}
       {tailoredResumes.length > 0 && (
@@ -321,6 +316,8 @@ export function TailoredResumeStudio({
           selectedId={currentResume?.id}
           onSelect={selectTailoredResume}
           onDelete={handleDeleteResume}
+          headerMiddle={compactEntry}
+          className='sticky top-0 z-30'
         />
       )}
 

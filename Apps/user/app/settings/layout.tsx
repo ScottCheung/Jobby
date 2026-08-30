@@ -2,7 +2,7 @@
 
 'use client';
 
-import { Bell, FileText, MessageSquareCode, User } from 'lucide-react';
+import { Bell, FileText, Mail, MessageSquareCode, User } from 'lucide-react';
 import {
   ModuleTopNav,
   type ModuleNavigationItem,
@@ -20,6 +20,12 @@ const settingsNavigation: ModuleNavigationItem[] = [
     href: '/settings/resumes',
     icon: FileText,
     description: 'Manage master resume profile, score history, work experience, and resume tailoring.',
+  },
+  {
+    name: 'Cover Letter Profile',
+    href: '/settings/cover-letter-profile',
+    icon: Mail,
+    description: 'Master cover letter template and career motivation profile.',
   },
   {
     name: 'AI Memory',

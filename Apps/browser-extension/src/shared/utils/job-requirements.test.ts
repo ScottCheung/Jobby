@@ -1,7 +1,7 @@
 /** @format */
 
 import { describe, expect, it } from 'vitest';
-import { extractJobRequirements } from './job-requirements';
+import { extractJobRequirements } from '@jobby/ui/lib/job-requirements';
 
 describe('extractJobRequirements', () => {
   it('extracts explicit citizenship, PR, and named clearance restrictions', () => {

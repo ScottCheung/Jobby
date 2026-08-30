@@ -6,21 +6,29 @@ import type {
   PageInspection,
 } from '../../shared/contracts/page-inspection';
 import type { DocType } from '../../shared/contracts/tailored-resume';
-import { JobScoreCard } from './JobScoreCard';
-import { PageClassBanner } from './PageClassBanner';
-import { PlatformQuickSearchCard } from './PlatformQuickSearchCard';
+import {
+  JobAnalysisPanel,
+  type JobAnalysisSnapshot,
+  type JobDescriptionOpenPayload,
+} from '@jobby/ui/components/UI/job-analysis';
 import { useAuth } from '../hooks/useAuth';
 import { useInspection } from '../hooks/useInspection';
 import { useJobMatch } from '../hooks/useJobMatch';
 import { useTailoredResumeStudio } from '../hooks/useTailoredResumeStudio';
 import { useThemeSync } from '../hooks/useThemeSync';
-import { getActiveTab } from '../services/messaging';
+import {
+  getActiveTab,
+  sendContentCommandToActiveTab,
+} from '../services/messaging';
 import {
   createPageInspectionQueue,
   pageChangeInspectionRequest,
 } from '../services/page-change-inspection';
 import { Toaster } from '@jobby/ui/components/UI/toast/toaster';
 import { cn } from '@jobby/ui/lib/utils';
+import { jobRecognitionDescriptions } from '@jobby/ui';
+
+const { inspectingDescriptions, matchingDescriptions } = jobRecognitionDescriptions;
 
 const PAGE_READY_DELAY_MS = 150;
 
@@ -63,30 +71,72 @@ export function FloatingJobCardDialog() {
     inspectPage,
     autoInspectActivePage,
     inspectForm,
+    highlightJobRequirement,
   } = useInspection();
 
+  const isJobPage = latestInspection?.kind === 'job';
   const jobMatch = useJobMatch(latestInspection, authStatus?.connected, signIn);
   const isMatchPending = Boolean(
     authStatus?.connected &&
-    latestInspection?.kind === 'job' &&
+    isJobPage &&
     !jobMatch.evaluation &&
     !jobMatch.error,
   );
 
-  const isInspecting = isInspectingPage || !latestInspection;
+  const isInspecting =
+    isInspectingPage || (!latestInspection && !inspectionError);
   const isEvaluatingMatch =
-    latestInspection?.kind === 'job' &&
+    isJobPage &&
     authStatus?.connected &&
     !jobMatch.evaluation &&
     !jobMatch.error;
   const isLoading = isInspecting || isEvaluatingMatch;
+
+  const activeDescriptions = isEvaluatingMatch
+    ? matchingDescriptions
+    : inspectingDescriptions;
+  const [messageIndex, setMessageIndex] = useState(() =>
+    Math.floor(Math.random() * inspectingDescriptions.length),
+  );
+
+  useEffect(() => {
+    if (!isLoading) return;
+
+    setMessageIndex((prev) => {
+      const total = activeDescriptions.length;
+      if (total <= 1) return 0;
+      let next = Math.floor(Math.random() * total);
+      if (next === prev) {
+        next = (next + 1) % total;
+      }
+      return next;
+    });
+
+    const interval = setInterval(() => {
+      setMessageIndex((prev) => {
+        const total = activeDescriptions.length;
+        if (total <= 1) return 0;
+        let next = Math.floor(Math.random() * total);
+        if (next === prev) {
+          next = (next + 1) % total;
+        }
+        return next;
+      });
+    }, 1200);
+
+    return () => clearInterval(interval);
+  }, [isLoading, isEvaluatingMatch, activeDescriptions]);
+
+  const currentLoadingMessage =
+    activeDescriptions[messageIndex % activeDescriptions.length] ||
+    'Analyzing...';
 
   const handleReDetectPage = async () => {
     await inspectPage();
     void inspectForm(true);
   };
 
-  const handleUpdateJobSnapshot = (updates: Partial<JobSnapshot>) => {
+  const handleUpdateJobSnapshot = (updates: Partial<JobAnalysisSnapshot>) => {
     setLatestInspection((prev) => {
       if (!prev || prev.kind !== 'job') return prev;
       const updatedInspection: PageInspection = {
@@ -101,6 +151,15 @@ export function FloatingJobCardDialog() {
     });
   };
 
+  const handleOpenJobDescription = async (
+    payload: JobDescriptionOpenPayload,
+  ) => {
+    await sendContentCommandToActiveTab({
+      type: 'content.show-job-description',
+      ...payload,
+    });
+  };
+
   const tailorStudio = useTailoredResumeStudio(
     latestInspection,
     authStatus?.connected,
@@ -111,8 +170,32 @@ export function FloatingJobCardDialog() {
 
   const handleTailor = (docType: DocType) => {
     try {
+      const job =
+        latestInspection?.kind === 'job' ? latestInspection.snapshot : null;
+      const draft = {
+        jobTitle:
+          job?.title ||
+          tailorStudio.jobTitle ||
+          tailorStudio.detectedJob?.title ||
+          '',
+        company:
+          job?.company ||
+          tailorStudio.company ||
+          tailorStudio.detectedJob?.company ||
+          '',
+        jobDescription:
+          (job && ('description' in job && job.description ? job.description : 'jobDescription' in job && (job as { jobDescription?: string }).jobDescription ? (job as { jobDescription?: string }).jobDescription : '')) ||
+          tailorStudio.jobDescription ||
+          tailorStudio.detectedJob?.jobDescription ||
+          '',
+      };
       window.parent?.postMessage(
-        { source: 'jobby-dialog', type: 'jobby.dialog-trigger-tailor', docType },
+        {
+          source: 'jobby-dialog',
+          type: 'jobby.dialog-trigger-tailor',
+          docType,
+          draft,
+        },
         '*',
       );
       if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
@@ -120,6 +203,7 @@ export function FloatingJobCardDialog() {
           .sendMessage({
             type: 'sidepanel.trigger-tailor',
             docType,
+            draft,
           })
           .catch(() => undefined);
       }
@@ -140,18 +224,38 @@ export function FloatingJobCardDialog() {
   }, []);
 
   // Synchronize size mode with parent container (compact bubble vs expanded cards)
+  // or dismiss if not a job page
   useEffect(() => {
     try {
-      window.parent?.postMessage(
-        {
-          source: 'jobby-dialog',
-          type: 'jobby.dialog-resize',
-          mode: isLoading ? 'compact' : 'expanded',
-        },
-        '*',
-      );
+      if (isLoading) {
+        window.parent?.postMessage(
+          {
+            source: 'jobby-dialog',
+            type: 'jobby.dialog-resize',
+            mode: 'compact',
+          },
+          '*',
+        );
+      } else if (isJobPage) {
+        window.parent?.postMessage(
+          {
+            source: 'jobby-dialog',
+            type: 'jobby.dialog-resize',
+            mode: 'expanded',
+          },
+          '*',
+        );
+      } else {
+        window.parent?.postMessage(
+          {
+            source: 'jobby-dialog',
+            type: 'jobby.dialog-close',
+          },
+          '*',
+        );
+      }
     } catch {}
-  }, [isLoading]);
+  }, [isLoading, isJobPage]);
 
   useEffect(() => {
     refreshAuth();
@@ -233,12 +337,6 @@ export function FloatingJobCardDialog() {
     };
   }, [autoInspectActivePage, inspectForm, refreshAuth]);
 
-  const isJobPage = latestInspection?.kind === 'job';
-  const showNotJobOverlay =
-    !isLoading &&
-    !isJobPage &&
-    (latestInspection !== null || Boolean(inspectionError));
-
   const isAlignRight = ballPosition.edge === 'right';
   const isAlignBottom = ballPosition.pos === 'bottom';
   const isAlignTop = ballPosition.pos === 'top';
@@ -255,36 +353,34 @@ export function FloatingJobCardDialog() {
     <div className='h-screen w-full bg-transparent text-foreground overflow-hidden font-sans select-text box-border'>
       {isLoading ? (
         <div className={cn(bubblePositionClass, 'animate-in fade-in duration-100')}>
-          <div className='flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-background-primary border border-primary/40  backdrop-blur-md text-foreground'>
-            <span className='relative flex h-2 w-2 shrink-0'>
-              <span className='animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75'></span>
-              <span className='relative inline-flex rounded-full h-2 w-2 bg-primary'></span>
+          <div className='flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-background-primary border border-primary/40 backdrop-blur-md text-foreground shadow-sm'>
+            <span
+              key={currentLoadingMessage}
+              className='text-[11.5px] font-bold tracking-tight animate-text-shimmer animate-text-shimmer-primary whitespace-nowrap animate-in fade-in duration-200'
+            >
+              {currentLoadingMessage}
             </span>
-            <span className='text-[11.5px] font-bold tracking-tight animate-text-shimmer animate-text-shimmer-primary whitespace-nowrap'>
-              Recognition...
-            </span>
-            <div className='w-7 h-1.5 rounded-full overflow-hidden bg-primary/10 shrink-0'>
-              <div className='w-full h-full animate-skeleton-shimmer'></div>
-            </div>
-          </div>
-        </div>
-      ) : showNotJobOverlay ? (
-        <div className='flex flex-col h-full max-h-screen w-full '>
-          <div className='flex flex-col w-full h-full max-h-full bg-background-primary rounded-2xl p-1 border border-primary/20 overflow-hidden box-border'>
-            <div className='flex flex-col gap-2.5 w-full h-full overflow-y-auto overscroll-contain p-0.5 custom-scrollbar'>
-              <PlatformQuickSearchCard
-                activeProfile={jobMatch.activeProfile}
-                onReDetect={handleReDetectPage}
-                isInspecting={isInspectingPage}
-              />
-            </div>
           </div>
         </div>
       ) : isJobPage ? (
-        <div className='flex flex-col h-full max-h-screen w-full '>
-          <div className='flex flex-col w-full h-full max-h-full bg-background-primary rounded-tl-[4rem] rounded-tr-2xl rounded-bl-2xl rounded-br-2xl p-2  border border-primary/20 overflow-hidden box-border'>
-            <div className='flex flex-col gap-2.5 w-full h-full overflow-y-auto overscroll-contain p-0.5 custom-scrollbar'>
-              <JobScoreCard
+        <div className='flex flex-col h-full max-h-screen w-full box-border'>
+          <div
+            className='flex flex-col w-full h-full max-h-full bg-background-primary p-2 border border-primary/20 overflow-hidden box-border'
+            style={{
+              borderRadius: 'var(--score-card-radius-shell) var(--score-card-radius-base) var(--score-card-radius-base) var(--score-card-radius-base)',
+              clipPath: 'inset(0 round var(--score-card-radius-shell) var(--score-card-radius-base) var(--score-card-radius-base) var(--score-card-radius-base))',
+              WebkitClipPath: 'inset(0 round var(--score-card-radius-shell) var(--score-card-radius-base) var(--score-card-radius-base) var(--score-card-radius-base))',
+            }}
+          >
+            <div
+              className='flex flex-col gap-2.5 w-full h-full overflow-y-auto overflow-x-hidden overscroll-contain custom-scrollbar'
+              style={{
+                borderRadius: 'var(--score-card-radius-accent) var(--score-card-radius-base) var(--score-card-radius-base) var(--score-card-radius-base)',
+                clipPath: 'inset(0 round var(--score-card-radius-accent) var(--score-card-radius-base) var(--score-card-radius-base) var(--score-card-radius-base))',
+                WebkitClipPath: 'inset(0 round var(--score-card-radius-accent) var(--score-card-radius-base) var(--score-card-radius-base) var(--score-card-radius-base))',
+              }}
+            >
+              <JobAnalysisPanel
                 latestInspection={latestInspection}
                 latestMatch={jobMatch.evaluation}
                 isMatchLoading={jobMatch.isEvaluating || isMatchPending}
@@ -293,20 +389,16 @@ export function FloatingJobCardDialog() {
                 activeGeneration={activeTailorGeneration}
                 authConnected={authStatus?.connected}
                 onSignIn={signIn}
-              />
-
-              <PageClassBanner
-                latestInspection={latestInspection}
-                latestMatch={jobMatch.evaluation}
-                isInspecting={isInspectingPage}
-                error={inspectionError}
-                onReDetect={handleReDetectPage}
-                onUpdateJobSnapshot={handleUpdateJobSnapshot}
-                authConnected={authStatus?.connected}
-                onSignIn={signIn}
+                error={jobMatch.error || inspectionError}
+                onRetryMatch={() => void jobMatch.retry()}
                 onClaimSkill={jobMatch.claimSkill}
                 onUnclaimSkill={jobMatch.unclaimSkill}
                 activeProfile={jobMatch.activeProfile}
+                profileSkills={jobMatch.profileSkills}
+                onReDetect={handleReDetectPage}
+                onUpdateJobSnapshot={handleUpdateJobSnapshot}
+                onHighlightJobRequirement={highlightJobRequirement}
+                onOpenJobDescription={handleOpenJobDescription}
               />
             </div>
           </div>

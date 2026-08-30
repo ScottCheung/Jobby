@@ -4,7 +4,7 @@ import {
   parseDescriptionBlocks,
   cleanDescription,
 } from '@jobby/ui/lib/job-description';
-import { parseAndFormatJobDate } from '../../shared/utils/date-formatter';
+import { parseAndFormatJobDate } from '@jobby/ui/lib/date-formatter';
 
 const MODAL_ROOT_ID = 'jobby-in-page-job-description-modal-root';
 
@@ -23,6 +23,34 @@ function isExtensionContextValid(): boolean {
     return typeof chrome !== 'undefined' && Boolean(chrome.runtime?.id);
   } catch {
     return false;
+  }
+}
+
+async function copyTextToClipboard(text: string): Promise<void> {
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return;
+    } catch {
+      // Fall through to execCommand for pages that block the Clipboard API.
+    }
+  }
+
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.setAttribute('readonly', '');
+  textarea.style.cssText =
+    'position: fixed; left: -9999px; top: 0; opacity: 0; pointer-events: none;';
+  document.body.appendChild(textarea);
+  textarea.select();
+  textarea.setSelectionRange(0, textarea.value.length);
+
+  try {
+    if (!document.execCommand('copy')) {
+      throw new Error('Copy command was rejected');
+    }
+  } finally {
+    textarea.remove();
   }
 }
 
@@ -454,7 +482,7 @@ export async function showInPageJobDescriptionModal(
   copyBtn?.addEventListener('click', async () => {
     try {
       const textToCopy = cleanDescription(description) || description;
-      await navigator.clipboard.writeText(textToCopy);
+      await copyTextToClipboard(textToCopy);
       if (copyBtn && copyText) {
         copyBtn.classList.add('copied');
         copyText.textContent = 'Copied!';
@@ -464,7 +492,7 @@ export async function showInPageJobDescriptionModal(
         }, 2000);
       }
     } catch {
-      // Fallback
+      // Leave the button unchanged when both clipboard methods are unavailable.
     }
   });
 

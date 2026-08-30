@@ -73,7 +73,7 @@ export function GeneratingResumeCard({
       {/* Header */}
       <div className='flex items-center justify-between border-b border-primary/20 pb-3'>
         <div className='flex items-center gap-2'>
-          <Sparkles className='h-4 w-4 text-primary animate-spin' />
+          <Sparkles className='h-4 w-4 text-primary animate-pulse' />
           <strong className='text-sm font-bold text-ink-primary'>
             Resume (CV)
           </strong>
@@ -135,7 +135,7 @@ export function GeneratingResumeCard({
 
           {/* Floating AI Progress Pill */}
           <div className='absolute bottom-3 left-3 z-10 flex items-center gap-2 rounded-xl bg-panel px-3 py-1.5 text-xs font-semibold text-primary shadow-md border border-primary/20 max-w-[90%]'>
-            <Sparkles className='h-3.5 w-3.5 text-primary shrink-0 animate-spin' />
+            <Sparkles className='h-3.5 w-3.5 text-primary shrink-0 animate-pulse' />
             <p className={`truncate transition-opacity duration-200 ${isFading ? 'opacity-0' : 'opacity-100'}`}>
               {messages[index]}
             </p>
@@ -188,7 +188,7 @@ export function GeneratingCoverLetterCard({
       {/* Header */}
       <div className='flex items-center justify-between border-b border-primary/20 pb-3'>
         <div className='flex items-center gap-2'>
-          <Sparkles className='h-4 w-4 text-primary animate-spin' />
+          <Sparkles className='h-4 w-4 text-primary animate-pulse' />
           <strong className='text-sm font-bold text-ink-primary'>
             Cover Letter (CL)
           </strong>
@@ -244,7 +244,7 @@ export function GeneratingCoverLetterCard({
 
           {/* Floating AI Progress Pill */}
           <div className='absolute bottom-3 left-3 z-10 flex items-center gap-2 rounded-xl bg-panel px-3 py-1.5 text-xs font-semibold text-primary shadow-md border border-primary/20 max-w-[90%]'>
-            <Sparkles className='h-3.5 w-3.5 text-primary shrink-0 animate-spin' />
+            <Sparkles className='h-3.5 w-3.5 text-primary shrink-0 animate-pulse' />
             <p className={`truncate transition-opacity duration-200 ${isFading ? 'opacity-0' : 'opacity-100'}`}>
               {messages[index]}
             </p>

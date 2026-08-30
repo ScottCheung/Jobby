@@ -7,6 +7,7 @@ import {
   Briefcase,
   Globe,
   HeartHandshake,
+  KeyRound,
   Layers,
   MapPin,
   ShieldCheck,
@@ -37,6 +38,11 @@ export const PROFILE_SECTIONS: SectionMeta[] = [
     id: 'contact',
     label: 'Contact & Address',
     Icon: MapPin,
+  },
+  {
+    id: 'application-credentials',
+    label: 'Application Credentials',
+    Icon: KeyRound,
   },
   {
     id: 'eligibility',

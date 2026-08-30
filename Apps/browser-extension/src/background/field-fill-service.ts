@@ -3,10 +3,24 @@ import type { FormInspection } from "../shared/contracts/form-inspection";
 import type { ProviderAutofillPolicy } from "../content/platforms/platform-definition";
 import { ashbyAutofillPolicy } from "../content/platforms/ashby/autofill-policy";
 
-import { autofillWorkdayStructuredActiveTab, inspectActiveTab, inspectFormActiveTab, fillActiveTabField, uploadActiveTabFile } from "./content-bridge";
+import { autofillWorkdayStructuredActiveTab, cancelWorkdayStructuredActiveTab, inspectActiveTab, inspectFormActiveTab, fillActiveTabField, uploadActiveTabFile } from "./content-bridge";
 import { apiClient } from "./api-client";
 import { logDiagnostic } from "./diagnostics";
 import { getAutofillSessionId } from "./session-store";
+
+let activeAutofillRunId: string | undefined;
+const cancelledAutofillRuns = new Set<string>();
+
+function isAutofillCancelled(runId: string): boolean {
+  return cancelledAutofillRuns.has(runId);
+}
+
+export async function cancelActiveAutofill(): Promise<void> {
+  const runId = activeAutofillRunId;
+  if (!runId) return;
+  cancelledAutofillRuns.add(runId);
+  await cancelWorkdayStructuredActiveTab(runId).catch(() => undefined);
+}
 
 function inferFormScene(form: FormInspection): string {
   if (form.kind !== "application_form" && form.kind !== "page_input_fields") return "job_application";
@@ -166,6 +180,7 @@ async function fillFormWithReactiveConvergence<T extends { instructions: Array<{
   getForm: () => Promise<FormInspection>,
   getInstructions: (form: FormInspection) => Promise<T>,
   maxPasses = 4,
+  shouldCancel: () => boolean = () => false,
 ): Promise<{
   results: FieldFillResult[];
   unansweredFields: Array<{ key: string; label: string; reason: string }>;
@@ -179,12 +194,14 @@ async function fillFormWithReactiveConvergence<T extends { instructions: Array<{
   const attemptsCount = new Map<string, number>();
 
   for (let pass = 1; pass <= maxPasses; pass += 1) {
+    if (shouldCancel()) break;
     let filledInThisPass = 0;
     let selectOrComboboxFilledInThisPass = false;
     let hitReactiveAddressBarrier = false;
     let fields = form.kind === "application_form" || form.kind === "page_input_fields" ? form.fields : [];
     const autofillPolicy = autofillPolicyFor(form);
     for (const instruction of instructions.instructions) {
+      if (shouldCancel()) break;
       const key = instruction.target.key;
       const field = fields.find((candidate) => candidate.key === key);
       const previousResult = resultsMap.get(key);
@@ -242,7 +259,7 @@ async function fillFormWithReactiveConvergence<T extends { instructions: Array<{
       }
     }
 
-    if (filledInThisPass === 0 && pass > 1) {
+    if (shouldCancel() || (filledInThisPass === 0 && pass > 1)) {
       break;
     }
 
@@ -290,54 +307,66 @@ export async function autofillDetectedFormForActiveTab(): Promise<{
   results: FieldFillResult[];
   unansweredFields: Array<{ key: string; label: string; reason: string }>;
 }> {
-  let initialForm = await inspectFormActiveTab();
-  let structuredResults: FieldFillResult[] = [];
-  if (
-    (initialForm.kind === "application_form" || initialForm.kind === "page_input_fields") &&
-    initialForm.platform === "workday"
-  ) {
-    const [profiles, savedSkills] = await Promise.all([
-      apiClient.getCareerProfiles(),
-      apiClient.getUserSkills().catch(() => []),
-    ]);
-    const profile = profiles.find((candidate) => candidate.is_default) || profiles[0];
-    if (profile?.resume_data) {
-      structuredResults = await autofillWorkdayStructuredActiveTab(
-        profile.resume_data,
-        savedSkills.map((skill) => skill.canonical_name || skill.skill_name),
-      );
-      initialForm = await inspectFormActiveTab();
+  const runId = makeCommandId("autofill-run");
+  activeAutofillRunId = runId;
+  cancelledAutofillRuns.delete(runId);
+  const shouldCancel = () => isAutofillCancelled(runId);
+  try {
+    let initialForm = await inspectFormActiveTab();
+    let structuredResults: FieldFillResult[] = [];
+    if (
+      !shouldCancel() &&
+      (initialForm.kind === "application_form" || initialForm.kind === "page_input_fields") &&
+      initialForm.platform === "workday"
+    ) {
+      const profiles = await apiClient.getCareerProfiles();
+      const profile = profiles.find((candidate) => candidate.is_default) || profiles[0];
+      if (!shouldCancel() && profile?.resume_data) {
+        structuredResults = await autofillWorkdayStructuredActiveTab(
+          profile.resume_data,
+          runId,
+        );
+        if (!shouldCancel()) initialForm = await inspectFormActiveTab();
+      }
     }
-  }
-  const autofillPolicy = autofillPolicyFor(initialForm);
-  if (autofillPolicy?.mode === "sequential") {
-    return autofillFieldsSequentially(initialForm, autofillPolicy);
-  }
+    if (shouldCancel()) return { results: structuredResults, unansweredFields: [] };
+    const autofillPolicy = autofillPolicyFor(initialForm);
+    if (autofillPolicy?.mode === "sequential") {
+      return autofillFieldsSequentially(initialForm, autofillPolicy, shouldCancel);
+    }
 
-  const page = await inspectActiveTab().catch(() => null);
-  const company = page?.kind === "job" ? page.snapshot.company : undefined;
-  const activeTab = (await chrome.tabs.query({ active: true, lastFocusedWindow: true }))[0];
-  const sessionId = activeTab?.id === undefined ? undefined : await getAutofillSessionId(activeTab.id);
+    const page = await inspectActiveTab().catch(() => null);
+    const company = page?.kind === "job" ? page.snapshot.company : undefined;
+    const activeTab = (await chrome.tabs.query({ active: true, lastFocusedWindow: true }))[0];
+    const sessionId = activeTab?.id === undefined ? undefined : await getAutofillSessionId(activeTab.id);
 
-  const result = await fillFormWithReactiveConvergence(
-    () => inspectFormActiveTab(),
-    (form: FormInspection) => {
-      const scene = inferFormScene(form);
-      const fields = form.kind === "application_form" || form.kind === "page_input_fields" ? form.fields : [];
-      const platform = form.kind === "application_form" || form.kind === "page_input_fields" ? form.platform : "generic";
-      return apiClient.getFormAutofillInstructions(
-        platform,
-        fields.map(({ frameId: _frameId, ...field }) => field),
-        company,
-        scene,
-        sessionId,
-      );
-    },
-  );
-  return {
-    ...result,
-    results: [...structuredResults, ...result.results],
-  };
+    const result = await fillFormWithReactiveConvergence(
+      () => inspectFormActiveTab(),
+      (form: FormInspection) => {
+        const scene = inferFormScene(form);
+        const fields = form.kind === "application_form" || form.kind === "page_input_fields" ? form.fields : [];
+        const platform = form.kind === "application_form" || form.kind === "page_input_fields" ? form.platform : "generic";
+        return apiClient.getFormAutofillInstructions(
+          platform,
+          fields
+            .filter((field) => !field.semanticFeatures?.includes("workday-structured-summary"))
+            .map(({ frameId: _frameId, ...field }) => field),
+          company,
+          scene,
+          sessionId,
+        );
+      },
+      4,
+      shouldCancel,
+    );
+    return {
+      ...result,
+      results: [...structuredResults, ...result.results],
+    };
+  } finally {
+    cancelledAutofillRuns.delete(runId);
+    if (activeAutofillRunId === runId) activeAutofillRunId = undefined;
+  }
 }
 
 /**
@@ -348,6 +377,7 @@ export async function autofillDetectedFormForActiveTab(): Promise<{
 async function autofillFieldsSequentially(
   initialForm: FormInspection,
   policy: ProviderAutofillPolicy,
+  shouldCancel: () => boolean = () => false,
 ): Promise<{
   results: FieldFillResult[];
   unansweredFields: Array<{ key: string; label: string; reason: string }>;
@@ -361,6 +391,7 @@ async function autofillFieldsSequentially(
   let form = initialForm;
 
   while (form.kind === "application_form" || form.kind === "page_input_fields") {
+    if (shouldCancel()) break;
     const field = form.fields.find((candidate) => !candidate.filled && !attempted.has(candidate.key));
     if (!field) break;
     attempted.add(field.key);

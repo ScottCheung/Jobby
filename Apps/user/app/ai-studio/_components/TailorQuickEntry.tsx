@@ -1,159 +1,138 @@
 /** @format */
 
-'use client';
+"use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useEffect, useState } from "react";
+import Image from "next/image";
 import {
-  Sparkles,
-  FileText,
-  Layers,
-  Link as LinkIcon,
-  Briefcase,
-  Building,
-  Loader2,
-  User,
-  FlaskConical,
-  Eye,
-  Edit3,
-  Trash2,
+  Button,
+  Checkbox,
+  InputField,
+  Modal,
+  Select,
+  StructuredJobDescription,
+  Textarea,
+  Tooltip,
+  jobRecognitionDescriptions,
+  type JobAnalysisCareerProfile,
+  type JobAnalysisDocType,
+  type JobAnalysisSnapshot,
+  type JobAnalysisUserSkill,
+} from "@jobby/ui";
+import {
+  ArrowUp,
   ClipboardPaste,
-  CheckCircle2,
-  Globe,
-  ExternalLink,
-} from 'lucide-react';
-import { Button, EmptyPlaceHolder } from '@jobby/ui';
-import { StructuredJobDescription } from '@/components/StructuredJobDescription';
-import { api } from '@/lib/api';
-import type { CareerProfile } from '@/lib/types';
-import { showGlobalToast } from '@/lib/toast';
-import { useConfirmStore } from '@/lib/store/confirm-store';
-import { cn } from '@/lib/utils';
+  X,
+} from "lucide-react";
+import { api } from "@/lib/api";
+import { inspectJobLink } from "@/lib/job-link-inspection";
+import type { CareerProfile } from "@/lib/types";
+import { showGlobalToast } from "@/lib/toast";
+import { cn } from "@/lib/utils";
+import {
+  TailorConversation,
+  type RecognizedTailorJob,
+  type TailorConversationMessage,
+} from "./TailorConversation";
 
-// Helper to format slug to title case
-function slugToTitle(slug: string): string {
-  return slug
-    .replace(/[-_]+/g, ' ')
-    .replace(/\b\w/g, (c) => c.toUpperCase())
-    .trim();
+function parsePostedDate(input: string): string | undefined {
+  const match = input.match(
+    /(?:date\s+)?posted(?:\s+on)?\s*[:\-]?\s*([^\n|]{3,50})/i,
+  );
+  if (!match?.[1]) return undefined;
+
+  const parsed = new Date(match[1].trim());
+  return Number.isNaN(parsed.getTime())
+    ? undefined
+    : parsed.toISOString().slice(0, 10);
 }
 
 interface ParsedJobMeta {
-  url?: string;
-  platform?: string;
   company?: string;
   jobTitle?: string;
-  domain?: string;
+  postedAt?: string;
 }
 
 export function parseJobUrlOrText(input: string): ParsedJobMeta {
   const trimmed = input.trim();
-  const meta: ParsedJobMeta = {};
+  const meta: ParsedJobMeta = { postedAt: parsePostedDate(trimmed) };
 
-  // Check if input starts with URL or contains a URL
-  const urlMatch = trimmed.match(/https?:\/\/[^\s]+/i);
-  if (urlMatch) {
-    meta.url = urlMatch[0];
-    try {
-      const parsedUrl = new URL(meta.url);
-      const host = parsedUrl.hostname.toLowerCase().replace(/^www\./, '');
-      meta.domain = host;
+  for (const rawLine of trimmed.split("\n").slice(0, 10)) {
+    const line = rawLine.trim();
+    const company = line.match(
+      /(?:company|employer|organization)\s*[:：]\s*(.+)/i,
+    );
+    const title = line.match(
+      /(?:role|title|position|job title)\s*[:：]\s*(.+)/i,
+    );
+    const at = line.match(
+      /^#?\s*([A-Za-z0-9\s/]+)\s+(?:at|@)\s+([A-Za-z0-9\s.,-]+)$/i,
+    );
 
-      if (host.includes('linkedin.com')) {
-        meta.platform = 'LinkedIn';
-      } else if (host.includes('seek.com')) {
-        meta.platform = 'Seek';
-      } else if (host.includes('indeed.com')) {
-        meta.platform = 'Indeed';
-      } else if (host.includes('glassdoor.com')) {
-        meta.platform = 'Glassdoor';
-      } else if (host.includes('greenhouse.io')) {
-        meta.platform = 'Greenhouse';
-        const parts = parsedUrl.pathname.split('/').filter(Boolean);
-        if (parts[0] && parts[0] !== 'embed') meta.company = slugToTitle(parts[0]);
-      } else if (host.includes('lever.co')) {
-        meta.platform = 'Lever';
-        const parts = parsedUrl.pathname.split('/').filter(Boolean);
-        if (parts[0]) meta.company = slugToTitle(parts[0]);
-      } else if (host.includes('ashbyhq.com')) {
-        meta.platform = 'Ashby';
-        const parts = parsedUrl.pathname.split('/').filter(Boolean);
-        if (parts[0]) meta.company = slugToTitle(parts[0]);
-      } else if (host.includes('workable.com')) {
-        meta.platform = 'Workable';
-        const parts = parsedUrl.pathname.split('/').filter(Boolean);
-        if (parts[0]) meta.company = slugToTitle(parts[0]);
-      } else if (host.includes('workday.com') || host.includes('myworkdayjobs.com')) {
-        meta.platform = 'Workday';
-        const sub = host.split('.')[0];
-        if (sub && sub !== 'myworkdayjobs') meta.company = slugToTitle(sub);
-      } else if (host.includes('bamboohr.com')) {
-        meta.platform = 'BambooHR';
-        const sub = host.split('.')[0];
-        if (sub) meta.company = slugToTitle(sub);
-      } else if (host.includes('smartrecruiters.com')) {
-        meta.platform = 'SmartRecruiters';
-      } else {
-        const domainParts = host.split('.');
-        if (domainParts[0]) {
-          meta.company = slugToTitle(domainParts[0]);
-        }
-      }
-
-      // Try extract job title from slug in path
-      const pathSegments = parsedUrl.pathname.split('/').filter(Boolean);
-      for (const segment of pathSegments) {
-        if (
-          segment.length > 5 &&
-          !/^\d+$/.test(segment) &&
-          !/^(jobs|job|view|careers|apply|detail|v)$/i.test(segment)
-        ) {
-          const cleanedSlug = segment.replace(/-\d{4,}$/, ''); // remove trailing numeric ids
-          if (cleanedSlug.length > 3) {
-            meta.jobTitle = slugToTitle(cleanedSlug);
-            break;
-          }
-        }
-      }
-    } catch {
-      // Ignore URL parse errors
+    if (company?.[1]) meta.company = company[1].replace(/[*_#]/g, "").trim();
+    if (title?.[1]) meta.jobTitle = title[1].replace(/[*_#]/g, "").trim();
+    if (at?.[1] && at[2] && !meta.jobTitle && !meta.company) {
+      meta.jobTitle = at[1].trim();
+      meta.company = at[2].trim();
     }
-    return meta;
   }
 
-  // Parse plain text patterns (e.g. "# Frontend Engineer at Linear" or "Company: Stripe")
-  const lines = trimmed.split('\n').slice(0, 10);
-  for (const line of lines) {
-    const l = line.trim();
-    const companyMatch = l.match(/(?:Company|Employer|Organization)\s*[:：]\s*(.+)/i);
-    if (companyMatch && companyMatch[1]) {
-      meta.company = companyMatch[1].replace(/[*_#]/g, '').trim();
-    }
-    const roleMatch = l.match(/(?:Role|Title|Position|Job Title)\s*[:：]\s*(.+)/i);
-    if (roleMatch && roleMatch[1]) {
-      meta.jobTitle = roleMatch[1].replace(/[*_#]/g, '').trim();
-    }
-    const atMatch = l.match(/^#?\s*([A-Za-z0-9\s/]+)\s+(?:at|@)\s+([A-Za-z0-9\s.,-]+)$/i);
-    if (atMatch && atMatch[1] && atMatch[2] && !meta.jobTitle && !meta.company) {
-      meta.jobTitle = atMatch[1].trim();
-      meta.company = atMatch[2].trim();
-    }
+  if (!meta.jobTitle) {
+    const title = trimmed.match(
+      /\b(?:full[-\s]stack|front[-\s]end|back[-\s]end|software|web|wordpress|mobile|data|devops|cloud|product|project|engineering|technical|ui\/?ux|ux|business|systems?|security|qa|quality assurance)\s+(?:developer|engineer|designer|manager|analyst|specialist|administrator|architect|consultant|coordinator|director|intern)\b/i,
+    );
+    if (title?.[0]) meta.jobTitle = title[0];
   }
 
   return meta;
 }
 
+export function isLikelyJobDescription(input: string): boolean {
+  const parsed = parseJobUrlOrText(input);
+  if (parsed.jobTitle && parsed.company) return true;
+
+  const signals = input.toLowerCase().match(
+    /\b(job|role|position|responsibilit(?:y|ies)|qualification|requirement|experience|skills?|candidate|apply|salary|benefits|full[- ]time|part[- ]time|remote|hybrid|developer|engineer|designer|manager|analyst|specialist|intern|react|typescript|python|java|aws|sql)\b/g,
+  );
+
+  return new Set(signals || []).size >= 2;
+}
+
 interface TailorQuickEntryProps {
   onGenerationStart: (params: {
-    docType: 'resume' | 'cover_letter' | 'both';
+    docType: "resume" | "cover_letter" | "both";
     jobTitle: string;
     company: string;
     jobDescription: string;
+    lastPostedAt?: string;
     mock?: boolean;
     careerProfileId?: string;
   }) => void;
   isGenerating?: boolean;
   selectedProfileId?: string;
   onProfileChange?: (id: string) => void;
+  value?: string;
+  onValueChange?: (value: string) => void;
+  mockMode?: boolean;
+  onMockModeChange?: (enabled: boolean) => void;
+  conversationMessages?: TailorConversationMessage[];
+  onInspectionStart: (requestId: string, input: string) => void;
+  onInspectionStatus: (requestId: string, status: string) => void;
+  onInspectionSuccess: (job: RecognizedTailorJob) => void;
+  onInspectionError: (requestId: string, message: string) => void;
+  onRetryEvaluation: (messageId: string, job: RecognizedTailorJob) => void;
+  onClaimSkill: (messageId: string, job: RecognizedTailorJob, skill: string) => Promise<void>;
+  onUnclaimSkill: (messageId: string, job: RecognizedTailorJob, skill: string) => Promise<void>;
+  onUpdateJob: (
+    messageId: string,
+    job: RecognizedTailorJob,
+    updates: Partial<JobAnalysisSnapshot>,
+  ) => void;
+  onReDetect: (messageId: string, job: RecognizedTailorJob) => void;
+  activeProfile?: JobAnalysisCareerProfile | null;
+  profileSkills?: JobAnalysisUserSkill[];
+  compact?: boolean;
+  onOpenFullscreen?: () => void;
   className?: string;
 }
 
@@ -162,376 +141,510 @@ export function TailorQuickEntry({
   isGenerating = false,
   selectedProfileId,
   onProfileChange,
+  value,
+  onValueChange,
+  mockMode: controlledMockMode,
+  onMockModeChange,
+  conversationMessages = [],
+  onInspectionStart,
+  onInspectionStatus,
+  onInspectionSuccess,
+  onInspectionError,
+  onRetryEvaluation,
+  onClaimSkill,
+  onUnclaimSkill,
+  onUpdateJob,
+  onReDetect,
+  activeProfile,
+  profileSkills,
+  compact = false,
+  onOpenFullscreen,
   className,
 }: TailorQuickEntryProps) {
-  const confirm = useConfirmStore((state) => state.confirm);
-
-  const [jobInput, setJobInput] = useState('');
-  const [jobTitle, setJobTitle] = useState('');
-  const [company, setCompany] = useState('');
-  const [detectedPlatform, setDetectedPlatform] = useState<string | undefined>();
-  const [mockMode, setMockMode] = useState(false);
+  const [internalJobInput, setInternalJobInput] = useState("");
+  const [jobTitle, setJobTitle] = useState("");
+  const [company, setCompany] = useState("");
+  const [postedAt, setPostedAt] = useState("");
+  const [resolvedJobDescription, setResolvedJobDescription] = useState("");
+  const [docType, setDocType] = useState<"resume" | "cover_letter" | "both">(
+    "both",
+  );
+  const [isConfirming, setIsConfirming] = useState(false);
+  const [isInspecting, setIsInspecting] = useState(false);
+  const [activeInspectionId, setActiveInspectionId] = useState("");
+  const [isEditingJobDescription, setIsEditingJobDescription] = useState(false);
+  const [internalMockMode, setInternalMockMode] = useState(false);
   const [profiles, setProfiles] = useState<CareerProfile[]>([]);
-  const [activeProfileId, setActiveProfileId] = useState<string>('');
-  const [viewMode, setViewMode] = useState<'structured' | 'raw'>('raw');
+  const [activeProfileId, setActiveProfileId] = useState("");
+  const jobInput = value ?? internalJobInput;
+  const mockMode = controlledMockMode ?? internalMockMode;
+
+  const setJobInput = (nextValue: string) => {
+    setInternalJobInput(nextValue);
+    onValueChange?.(nextValue);
+  };
+
+  const setMockMode = (enabled: boolean) => {
+    setInternalMockMode(enabled);
+    onMockModeChange?.(enabled);
+  };
 
   useEffect(() => {
     async function loadProfiles() {
-      try {
-        const list = await api.careerProfiles().catch(() => []);
-        if (list && list.length > 0) {
-          setProfiles(list);
-          const def = list.find((p) => p.is_default) || list[0];
-          setActiveProfileId(selectedProfileId || def.id);
-        }
-      } catch {
-        // Fallback
-      }
+      const list = await api.careerProfiles().catch(() => []);
+      if (list.length === 0) return;
+      const defaultProfile =
+        list.find((profile) => profile.is_default) || list[0];
+      setProfiles(list);
+      setActiveProfileId(selectedProfileId || defaultProfile.id);
     }
     void loadProfiles();
   }, [selectedProfileId]);
 
-  const handleProfileSelect = (id: string) => {
-    setActiveProfileId(id);
-    if (onProfileChange) onProfileChange(id);
-  };
+  const inspectingDescriptions =
+    jobRecognitionDescriptions?.inspectingDescriptions || [
+      'Recognizing Job Title...',
+      'Scanning Job Details...',
+      'Extracting Required Skills...',
+      'Analyzing Qualifications...',
+      'Parsing Experience Level...',
+      'Identifying Company Info...',
+      'Evaluating Tech Stack...',
+      'Scanning Core Responsibilities...',
+      'Checking Requirements...',
+    ];
 
-  // Smart auto extraction on input change
-  const handleInputChange = (val: string) => {
-    setJobInput(val);
-    if (!val.trim()) {
-      setDetectedPlatform(undefined);
-      return;
-    }
-    const meta = parseJobUrlOrText(val);
-    if (meta.platform) setDetectedPlatform(meta.platform);
-    if (meta.company && !company) setCompany(meta.company);
-    if (meta.jobTitle && !jobTitle) setJobTitle(meta.jobTitle);
-  };
+  const [messageIndex, setMessageIndex] = useState(() =>
+    Math.floor(Math.random() * inspectingDescriptions.length),
+  );
 
-  const handlePasteClipboard = async () => {
+  useEffect(() => {
+    if (!isInspecting) return;
+
+    setMessageIndex((prev) => {
+      const total = inspectingDescriptions.length;
+      if (total <= 1) return 0;
+      let next = Math.floor(Math.random() * total);
+      if (next === prev) {
+        next = (next + 1) % total;
+      }
+      return next;
+    });
+
+    const interval = setInterval(() => {
+      setMessageIndex((prev) => {
+        const total = inspectingDescriptions.length;
+        if (total <= 1) return 0;
+        let next = Math.floor(Math.random() * total);
+        if (next === prev) {
+          next = (next + 1) % total;
+        }
+        return next;
+      });
+    }, 1200);
+
+    return () => clearInterval(interval);
+  }, [isInspecting, inspectingDescriptions]);
+
+  const currentLoadingMessage =
+    inspectingDescriptions[messageIndex % inspectingDescriptions.length] ||
+    'Recognizing...';
+  const compactStatusMessage =
+    isInspecting ?
+      currentLoadingMessage
+    : conversationMessages.at(-1)?.role === "assistant" ?
+      conversationMessages.at(-1)?.content
+    : isGenerating ?
+      "Tailoring your documents..."
+    : null;
+
+  useEffect(() => {
+    if (!isInspecting || !activeInspectionId) return;
+    onInspectionStatus(activeInspectionId, currentLoadingMessage);
+  }, [
+    activeInspectionId,
+    currentLoadingMessage,
+    isInspecting,
+    onInspectionStatus,
+  ]);
+
+  const handlePasteFromClipboard = async () => {
+    if (!navigator.clipboard?.readText) return;
     try {
       const text = await navigator.clipboard.readText();
       if (text) {
-        handleInputChange(text);
-        showGlobalToast('Content pasted from clipboard');
+        setJobInput(text);
       }
     } catch {
-      showGlobalToast('Unable to read clipboard. Please paste manually.');
+      // Ignore clipboard permission errors
     }
   };
 
-  const handleClear = () => {
+  const handleClearInput = () => {
     setJobInput('');
-    setJobTitle('');
-    setCompany('');
-    setDetectedPlatform(undefined);
   };
 
-  const handleStart = async (docType: 'resume' | 'cover_letter' | 'both') => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (jobInput.trim()) {
+        void inspectInput();
+      }
+    }
+  };
+
+  const inspectInput = async () => {
     if (!jobInput.trim()) {
-      showGlobalToast('Please provide a Job Description or Job Posting Link to begin.');
+      showGlobalToast("Paste a job description or link to continue.");
       return;
     }
 
-    const targetDoc =
-      docType === 'resume' ? 'Resume (CV)'
-      : docType === 'cover_letter' ? 'Cover Letter (CL)'
-      : 'Both Resume & Cover Letter';
+    const submittedInput = jobInput.trim();
+    const requestId = crypto.randomUUID();
+    const localDetails = parseJobUrlOrText(submittedInput);
+    const url = submittedInput.match(/https?:\/\/[^\s]+/i)?.[0];
+    onInspectionStart(requestId, submittedInput);
+    setJobInput("");
+    if (compact) {
+      onOpenFullscreen?.();
+    }
 
-    const targetTarget =
-      [jobTitle.trim(), company.trim()].filter(Boolean).join(' at ') ||
-      'the provided job description';
+    if (!url && !isLikelyJobDescription(submittedInput)) {
+      onInspectionError(
+        requestId,
+        "This doesn't look like a job description. Paste a job link or the full JD.",
+      );
+      return;
+    }
 
-    const confirmed = await confirm({
-      title: `Confirm Tailoring ${targetDoc}`,
-      message: `Generate customized ${targetDoc} for "${targetTarget}"? ${
-        mockMode ?
-          '\n\n🧪 Debug Mock Mode is ON: This run is simulated and will consume 0 AI tokens.'
-        : ''
-      }`,
-      confirmLabel: mockMode ? 'Mock Generate (0 Tokens)' : 'Start Tailoring',
-      cancelLabel: 'Cancel',
-      type: 'info',
-    });
+    setActiveInspectionId(requestId);
+    setIsInspecting(true);
+    try {
+      const inspected = url ? await inspectJobLink(url) : null;
+      onInspectionSuccess({
+        requestId,
+        input: submittedInput,
+        url: inspected?.url || url,
+        platform: inspected?.platform || (url ? "generic" : "manual"),
+        externalId: inspected?.external_id || url || requestId,
+        title: inspected?.title || localDetails.jobTitle || "",
+        company: inspected?.company || localDetails.company || "",
+        location: inspected?.location,
+        postedAt:
+          inspected?.last_posted_at ||
+          inspected?.first_posted_at ||
+          localDetails.postedAt,
+        jobDescription: inspected?.job_description || submittedInput,
+        technologies: inspected?.technologies || [],
+        easyApply: inspected?.easy_apply,
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Could not inspect this job link.";
+      onInspectionError(requestId, message);
+      showGlobalToast(message);
+    } finally {
+      setIsInspecting(false);
+      setActiveInspectionId("");
+    }
+  };
 
-    if (!confirmed) return;
+  const openJobConfirmation = (
+    job: RecognizedTailorJob,
+    selectedDocType: JobAnalysisDocType,
+  ) => {
+    setJobTitle(job.title);
+    setCompany(job.company);
+    setPostedAt((job.postedAt || "").slice(0, 10));
+    setResolvedJobDescription(job.jobDescription);
+    setDocType(selectedDocType);
+    setIsEditingJobDescription(false);
+    setIsConfirming(true);
+  };
 
+  const confirmGeneration = () => {
+    setIsConfirming(false);
     onGenerationStart({
       docType,
       jobTitle: jobTitle.trim(),
       company: company.trim(),
-      jobDescription: jobInput.trim(),
+      jobDescription: resolvedJobDescription || jobInput.trim(),
+      lastPostedAt: postedAt || undefined,
       mock: mockMode,
       careerProfileId: activeProfileId || undefined,
     });
   };
 
-  const hasContent = jobInput.trim().length > 0;
-  const wordCount = useMemo(() => {
-    return jobInput.trim().split(/\s+/).filter(Boolean).length;
-  }, [jobInput]);
-
   return (
-    <div className={cn('flex flex-col w-full min-h-[calc(100vh-140px)] pb-24', className)}>
-      {/* ── Top Meta Bar: Title, Profile & Controls ── */}
-      <div className='flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-primary/20 bg-background/50 backdrop-blur-sm sticky top-0 z-20 py-2'>
-        <div className='flex items-center gap-3'>
-          <div className='flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary shadow-xs'>
-            <Sparkles className='h-5 w-5' />
-          </div>
-          <div>
-            <h1 className='text-lg font-bold tracking-tight text-ink-primary flex items-center gap-2'>
-              Tailor Studio
-            </h1>
-            <p className='text-xs text-ink-secondary'>
-              Paste any job link or description to tailor bespoke CV and Cover Letter.
-            </p>
-          </div>
-        </div>
+    <div className={cn("w-full", className)}>
+      {!compact && <div className="mb-5 flex items-center justify-end gap-3">
+        <label className="flex cursor-pointer items-center gap-2 text-xs font-medium text-ink-secondary">
+          <Checkbox
+            checked={mockMode}
+            onCheckedChange={(checked) => setMockMode(checked === true)}
+            disabled={isGenerating}
+          />
+          Mock AI
+        </label>
 
-        {/* Right Tools */}
-        <div className='flex flex-wrap items-center gap-2.5'>
-          {/* Debug Mock Toggle */}
-          <label className='flex items-center gap-1.5 cursor-pointer rounded-xl border border-amber-500/30 bg-amber-500/10 px-2.5 py-1.5 text-xs font-bold text-amber-600 dark:text-amber-400 hover:bg-amber-500/15 transition-all select-none'>
-            <input
-              type='checkbox'
-              checked={mockMode}
-              onChange={(e) => setMockMode(e.target.checked)}
-              className='rounded border-amber-500/40 text-amber-500 focus:ring-amber-500/30 cursor-pointer h-3.5 w-3.5'
-            />
-            <FlaskConical className='w-3.5 h-3.5' />
-            <span>Mock AI (0 Tokens)</span>
-          </label>
+        {profiles.length > 0 && (
+          <Select
+            value={activeProfileId}
+            onChange={(event) => {
+              setActiveProfileId(event.target.value);
+              onProfileChange?.(event.target.value);
+            }}
+            disabled={isGenerating}
+            aria-label="Career profile"
+            containerClassName="w-48"
+          >
+            {profiles.map((profile) => (
+              <option key={profile.id} value={profile.id}>
+                {profile.name || "Unnamed Profile"}
+              </option>
+            ))}
+          </Select>
+        )}
+      </div>}
 
-          {/* Profile Selector */}
-          {profiles.length > 0 && (
-            <div className='flex items-center gap-1.5 rounded-xl border border-primary/20 bg-panel/80 px-2.5 py-1 text-xs'>
-              <User className='h-3.5 w-3.5 text-primary shrink-0' />
-              <select
-                value={activeProfileId}
-                onChange={(e) => handleProfileSelect(e.target.value)}
-                className='bg-transparent text-xs font-semibold text-ink-primary focus:outline-none cursor-pointer py-0.5 max-w-[150px] truncate'
-              >
-                {profiles.map((p) => (
-                  <option key={p.id} value={p.id} className='bg-panel text-ink-primary'>
-                    {p.name || 'Unnamed Profile'} {p.is_default ? '(Default)' : ''}
-                  </option>
-                ))}
-              </select>
-            </div>
+      <div
+        className={cn(
+          "relative mx-auto flex w-full flex-col gap-3",
+          compact ? "max-w-none" : "max-w-3xl pt-6 sm:pt-10",
+        )}
+      >
+        {!compact && (
+          <TailorConversation
+            messages={conversationMessages}
+            onTailor={openJobConfirmation}
+            onRetryEvaluation={onRetryEvaluation}
+            onClaimSkill={onClaimSkill}
+            onUnclaimSkill={onUnclaimSkill}
+            onUpdateJob={onUpdateJob}
+            onReDetect={onReDetect}
+            activeProfile={activeProfile}
+            profileSkills={profileSkills}
+            activeGeneration={
+              isGenerating ?
+                {
+                  docType,
+                  jobTitle,
+                  company,
+                }
+              : null
+            }
+          />
+        )}
+
+        {compact && compactStatusMessage && (
+          <div
+            aria-live="polite"
+            className="absolute bottom-full left-0 mb-2 max-w-sm rounded-2xl rounded-bl-md border border-primary/30 bg-panel px-3 py-2 text-xs font-medium text-primary shadow-md"
+          >
+            {compactStatusMessage}
+          </div>
+        )}
+
+        <div
+          className={cn(
+            "relative flex w-full items-center rounded-full border transition-all duration-200",
+            "bg-glass dark:bg-black/20 hover:bg-panel/50 focus-within:bg-background-primary",
+            "border-border/60 hover:border-primary/50 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20",
+            compact ? "min-h-10 pl-3 pr-1 py-1 gap-2" : "min-h-12 pl-4 pr-1 py-1 gap-2.5",
+            "shadow-xs",
+            isInspecting && "opacity-95",
           )}
-        </div>
-      </div>
-
-      {/* ── Metadata In-Place Fields (Company & Title) ── */}
-      <div className='grid grid-cols-1 sm:grid-cols-2 gap-3 pt-4 pb-2'>
-        <div className='relative flex items-center'>
-          <Building className='absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-secondary' />
-          <input
-            type='text'
-            value={company}
-            onChange={(e) => setCompany(e.target.value)}
-            placeholder='Target Company (e.g. Stripe, Google, Canva)'
-            disabled={isGenerating}
-            className='w-full rounded-2xl border border-primary/20 bg-panel/60 pl-10 pr-3 py-2.5 text-xs font-medium text-ink-primary placeholder:text-ink-secondary/60 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all'
-          />
-        </div>
-
-        <div className='relative flex items-center'>
-          <Briefcase className='absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-secondary' />
-          <input
-            type='text'
-            value={jobTitle}
-            onChange={(e) => setJobTitle(e.target.value)}
-            placeholder='Target Role Title (e.g. Senior Frontend Engineer)'
-            disabled={isGenerating}
-            className='w-full rounded-2xl border border-primary/20 bg-panel/60 pl-10 pr-3 py-2.5 text-xs font-medium text-ink-primary placeholder:text-ink-secondary/60 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all'
-          />
-        </div>
-      </div>
-
-      {/* ── Main Spacious Job Description Workspace ── */}
-      <div className='flex-1 flex flex-col mt-3 rounded-2xl border border-primary/20 bg-panel/40 backdrop-blur-md overflow-hidden shadow-sm'>
-        {/* Workspace Toolbar Header */}
-        <div className='flex items-center justify-between px-4 py-2.5 border-b border-primary/15 bg-panel/80'>
-          <div className='flex items-center gap-2'>
-            <span className='text-xs font-bold text-ink-primary flex items-center gap-1.5'>
-              <FileText className='h-4 w-4 text-primary' />
-              Job Description (JD)
-            </span>
-            {detectedPlatform && (
-              <span className='inline-flex items-center gap-1 rounded-full bg-primary/10 border border-primary/20 px-2 py-0.5 text-[10px] font-bold text-primary'>
-                <Globe className='h-2.5 w-2.5' />
-                {detectedPlatform}
-              </span>
-            )}
-            {hasContent && (
-              <span className='text-[11px] text-ink-secondary font-medium pl-1'>
-                · {wordCount} words ({jobInput.length} chars)
-              </span>
-            )}
+        >
+          <div className="flex items-center justify-center shrink-0">
+            <Image
+              src="/favicon.svg"
+              alt="Jobby Logo"
+              width={compact ? 20 : 24}
+              height={compact ? 20 : 24}
+              className={cn(
+                "shrink-0 object-contain drop-shadow-xs select-none",
+                compact ? "size-5" : "size-6",
+              )}
+            />
           </div>
 
-          <div className='flex items-center gap-2'>
-            {/* View Mode Segmented Controls (Structured vs Raw) */}
-            {hasContent && (
-              <div className='flex items-center rounded-xl border border-primary/20 bg-background/80 p-0.5 text-xs'>
+          <textarea
+            rows={1}
+            wrap="soft"
+            value={jobInput}
+            onChange={(event) => setJobInput(event.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Paste a job description or job link"
+            aria-label="Job description or link"
+            className={cn(
+              "min-w-0 flex-1 resize-none overflow-y-auto break-words bg-transparent text-ink-primary placeholder:text-ink-secondary/60 outline-none leading-relaxed",
+              compact ? "max-h-20 py-1 text-xs" : "max-h-28 py-1.5 text-sm",
+            )}
+          />
+
+          <div className="flex items-center gap-1 shrink-0">
+            {jobInput.trim() ? (
+              <Tooltip content="Clear input" side="top">
                 <button
-                  type='button'
-                  onClick={() => setViewMode('structured')}
+                  type="button"
+                  onClick={handleClearInput}
                   className={cn(
-                    'flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer',
-                    viewMode === 'structured'
-                      ? 'bg-primary text-white shadow-xs'
-                      : 'text-ink-secondary hover:text-ink-primary',
+                    "flex items-center justify-center rounded-full bg-background-secondary/60 hover:bg-background-secondary dark:bg-white/5 dark:hover:bg-white/10 text-ink-secondary hover:text-ink-primary transition-all cursor-pointer",
+                    compact ? "size-8" : "size-9",
                   )}
+                  aria-label="Clear input"
                 >
-                  <Eye className='h-3 w-3' />
-                  Structured View
+                  <X className={compact ? "size-4" : "size-4.5"} />
                 </button>
+              </Tooltip>
+            ) : (
+              <Tooltip content="Paste from clipboard" side="top">
                 <button
-                  type='button'
-                  onClick={() => setViewMode('raw')}
+                  type="button"
+                  onClick={handlePasteFromClipboard}
                   className={cn(
-                    'flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer',
-                    viewMode === 'raw'
-                      ? 'bg-primary text-white shadow-xs'
-                      : 'text-ink-secondary hover:text-ink-primary',
+                    "flex items-center justify-center rounded-full bg-background-secondary/60 hover:bg-background-secondary dark:bg-white/5 dark:hover:bg-white/10 text-ink-secondary hover:text-ink-primary transition-all cursor-pointer",
+                    compact ? "size-8" : "size-9",
                   )}
+                  aria-label="Paste from clipboard"
                 >
-                  <Edit3 className='h-3 w-3' />
-                  Edit / Raw
+                  <ClipboardPaste className={compact ? "size-4" : "size-4.5"} />
                 </button>
+              </Tooltip>
+            )}
+
+            <Tooltip content="Submit" side="top">
+              <button
+                type="button"
+                onClick={() => {
+                  if (jobInput.trim()) {
+                    void inspectInput();
+                  }
+                }}
+                disabled={!jobInput.trim()}
+                className={cn(
+                  "flex items-center justify-center rounded-full transition-all",
+                  compact ? "size-8" : "size-9",
+                  jobInput.trim()
+                    ? "bg-primary text-primary-foreground shadow-xs hover:opacity-90 active:scale-95 cursor-pointer"
+                    : "bg-foreground/5 text-ink-secondary/30 dark:bg-white/5 dark:text-white/20 cursor-not-allowed",
+                )}
+                aria-label="Submit"
+              >
+                <ArrowUp className={compact ? "size-4" : "size-4.5"} />
+              </button>
+            </Tooltip>
+          </div>
+        </div>
+
+      </div>
+
+      <Modal
+        isOpen={isConfirming}
+        onClose={() => setIsConfirming(false)}
+        className="h-[78vh] w-[94vw] max-w-6xl text-ink-primary"
+      >
+
+          <h2 className="text-base font-semibold">Confirm job details</h2>
+  
+
+
+        <div className="grid min-h-0 flex-1 gap-4 body md:grid-cols-[320px_minmax(0,1fr)]">
+          <div className="space-y-4 overflow-y-auto">
+            <InputField
+              label="Job title"
+              value={jobTitle}
+              onChange={(event) => setJobTitle(event.target.value)}
+            />
+            <InputField
+              label="Company"
+              value={company}
+              onChange={(event) => setCompany(event.target.value)}
+            />
+            <InputField
+              label="Posted"
+              type="date"
+              value={postedAt}
+              onChange={(event) => setPostedAt(event.target.value)}
+            />
+
+
+          </div>
+
+          <div className="flex min-h-0 flex-col ">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold">Job description</h3>
+              <div className="flex items-center gap-2">
+                
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={isEditingJobDescription ? "ghost" : "secondary"}
+                  onClick={() => setIsEditingJobDescription(false)}
+                >
+                  Preview
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={isEditingJobDescription ? "secondary" : "ghost"}
+                  onClick={() => setIsEditingJobDescription(true)}
+                >
+                  Edit
+                </Button>
               </div>
-            )}
-
-            {!hasContent && (
-              <Button
-                variant='outline'
-                size='sm'
-                Icon={ClipboardPaste}
-                onClick={handlePasteClipboard}
-                className='!h-7 !px-2.5 text-xs'
-              >
-                Paste Clipboard
-              </Button>
-            )}
-
-            {hasContent && (
-              <Button
-                variant='ghost'
-                size='sm'
-                Icon={Trash2}
-                onClick={handleClear}
-                className='!h-7 !px-2 text-xs text-rose-500 hover:text-rose-600 hover:bg-rose-500/10'
-              >
-                Clear
-              </Button>
-            )}
-          </div>
-        </div>
-
-        {/* Content Body: Raw Textarea or Structured View */}
-        <div className='flex-1 flex flex-col min-h-[360px] p-4 overflow-y-auto'>
-          {viewMode === 'structured' && hasContent ? (
-            <div className='p-4 bg-background/60 rounded-xl border border-primary/10 select-text leading-relaxed'>
-              <StructuredJobDescription content={jobInput} />
             </div>
-          ) : (
-            <textarea
-              value={jobInput}
-              onChange={(e) => handleInputChange(e.target.value)}
-              placeholder={`Paste the complete Job Description, or paste a Job URL directly from LinkedIn, Seek, Indeed, Greenhouse, Lever, Ashby, Workable, Workday...\n\nExample:\n• Paste URL: https://boards.greenhouse.io/stripe/jobs/12345\n• Or paste raw job description with responsibilities and requirements`}
-              disabled={isGenerating}
-              className='w-full flex-1 min-h-[340px] bg-transparent text-xs font-normal text-ink-primary placeholder:text-ink-secondary/50 focus:outline-none leading-relaxed resize-none'
-            />
-          )}
-        </div>
-      </div>
-
-      {/* ── Floating Sticky Bottom Action Bar ── */}
-      <footer className='fixed bottom-0 left-0 right-0 z-40 bg-panel/90 backdrop-blur-xl border-t border-primary/25 px-6 py-3 shadow-2xl transition-all'>
-        <div className='max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4'>
-          {/* Target Role & Status Info */}
-          <div className='flex items-center gap-3 min-w-0'>
-            <div className='flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary'>
-              {isGenerating ? (
-                <Loader2 className='h-4.5 w-4.5 animate-spin' />
+            <div className="body">
+              {isEditingJobDescription ? (
+                <Textarea
+                  value={resolvedJobDescription}
+                  onChange={(event) =>
+                    setResolvedJobDescription(event.target.value)
+                  }
+                  minHeight="100%"
+                  showCharCount={false}
+                  showClearButton={false}
+                  className="h-full resize-none min-h-[600px]"
+                  containerClassName="h-full"
+                  aria-label="Edit job description"
+                />
               ) : (
-                <Sparkles className='h-4.5 w-4.5' />
+                <StructuredJobDescription content={resolvedJobDescription} />
               )}
             </div>
-            <div className='min-w-0'>
-              <p className='text-xs font-bold text-ink-primary truncate'>
-                {isGenerating ? (
-                  'AI Tailoring in Progress...'
-                ) : (
-                  [jobTitle, company].filter(Boolean).join(' at ') ||
-                  (hasContent ? 'Job details ready' : 'Paste job URL or text above')
-                )}
-              </p>
-              <div className='flex items-center gap-2 text-[11px] text-ink-secondary mt-0.5 truncate'>
-                {hasContent ? (
-                  <span className='flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium'>
-                    <CheckCircle2 className='h-3 w-3' /> Ready to tailor
-                  </span>
-                ) : (
-                  <span>Awaiting job description</span>
-                )}
-                {mockMode && (
-                  <>
-                    <span>•</span>
-                    <span className='text-amber-500 font-bold'>Mock Mode (0 tokens)</span>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* 3 Tailor Action Buttons */}
-          <div className='flex items-center gap-2.5 shrink-0'>
-            <Button
-              variant='outline'
-              Icon={isGenerating ? Loader2 : FileText}
-              iconClassName={isGenerating ? 'animate-spin' : undefined}
-              disabled={isGenerating || !hasContent}
-              onClick={() => void handleStart('cover_letter')}
-              className='!h-9 !px-3.5 text-xs font-semibold'
-            >
-              {isGenerating ? 'Generating...' : (
-                mockMode ? 'Mock CL' : 'Generate CL'
-              )}
-            </Button>
-
-            <Button
-              variant='secondary'
-              Icon={isGenerating ? Loader2 : Sparkles}
-              iconClassName={isGenerating ? 'animate-spin' : undefined}
-              disabled={isGenerating || !hasContent}
-              onClick={() => void handleStart('resume')}
-              className='!h-9 !px-4 text-xs font-semibold'
-            >
-              {isGenerating ? 'Generating...' : (
-                mockMode ? 'Mock CV' : 'Tailor Resume (CV)'
-              )}
-            </Button>
-
-            <Button
-              variant='default'
-              Icon={isGenerating ? Loader2 : Layers}
-              iconClassName={isGenerating ? 'animate-spin' : undefined}
-              disabled={isGenerating || !hasContent}
-              onClick={() => void handleStart('both')}
-              className='!h-9 !px-4 text-xs font-bold shadow-md'
-            >
-              {isGenerating ? 'Generating...' : (
-                mockMode ? 'Mock Both (CV + CL)' : 'Get Both (CV & CL)'
-              )}
-            </Button>
           </div>
         </div>
-      </footer>
+
+        <div className="footer justify-between w-full">
+
+                        <div className="flex flex-wrap items-center gap-2">
+                {(
+                  [
+                    ["resume", "Resume"],
+                    ["cover_letter", "Cover letter"],
+                    ["both", "Resume + Cover letter"],
+                  ] as const
+                ).map(([value, label]) => (
+                  <Button
+                    key={value}
+                    type="button"
+                    variant={docType === value ? null : "secondary"}
+                    onClick={() => setDocType(value)}
+                  >
+                    {label}
+                  </Button>
+                ))}
+              </div>
+              <div className="flex gap-2 flex-1 justify-end">
+
+          <Button variant="outline" onClick={() => setIsConfirming(false)}>
+            Cancel
+          </Button>
+          <Button onClick={confirmGeneration}>Generate</Button></div>
+        </div>
+      </Modal>
     </div>
   );
 }

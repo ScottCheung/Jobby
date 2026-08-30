@@ -4,7 +4,8 @@ export type WorkdaySectionKey =
   | "experience"
   | "education"
   | "certifications"
-  | "languages";
+  | "languages"
+  | "websites";
 
 export type WorkdayStructuredItem = Record<string, unknown>;
 
@@ -40,6 +41,17 @@ function fieldIdentifiers(field: WorkdayFieldIdentity): Set<string> {
 function matches(field: WorkdayFieldIdentity, aliases: readonly string[]): boolean {
   const identifiers = fieldIdentifiers(field);
   return aliases.some((alias) => identifiers.has(identifier(alias)));
+}
+
+function containsStableToken(
+  field: WorkdayFieldIdentity,
+  aliases: readonly string[],
+): boolean {
+  const identifiers = fieldIdentifiers(field);
+  return aliases.some((alias) => {
+    const token = identifier(alias);
+    return token.length > 0 && Array.from(identifiers).some((value) => value.includes(token));
+  });
 }
 
 const MONTH_NAMES = [
@@ -83,10 +95,34 @@ function joined(value: unknown): string {
     : cleanText(value);
 }
 
+function workdayDegree(value: unknown): string {
+  const degree = cleanText(value);
+  const normalizedDegree = degree.toLowerCase();
+  if (/\b(?:doctorate|doctoral|ph\.?d\.?)\b/.test(normalizedDegree)) return "Doctorate";
+  if (/\bmaster(?:s|'s)?\b|\bm\.?sc\.?\b|\bmba\b|\bmeng\b/.test(normalizedDegree)) return "Masters";
+  if (/\bbachelor(?:s|'s)?\b|\bb\.?sc\.?\b|\bbeng\b/.test(normalizedDegree)) return "Bachelors";
+  if (/\bassociate(?:s|'s)?\b/.test(normalizedDegree)) return "Associates";
+  if (/\bpost[ -]?graduate\b|\bgraduate (?:certificate|diploma)\b/.test(normalizedDegree)) return "Post Graduate";
+  if (/\bhigh school\b|\bsecondary school\b/.test(normalizedDegree)) return "High School";
+  return degree;
+}
+
 export function workdaySectionItems(
   resume: MasterResumeData,
   key: WorkdaySectionKey,
 ): WorkdayStructuredItem[] {
+  if (key === "websites") {
+    const basics = resume.basics || {};
+    const links = Array.isArray(resume.links)
+      ? resume.links as Array<{ name?: unknown; url?: unknown }>
+      : [];
+    const urls = [
+      basics.website,
+      basics.portfolio_url,
+      ...links.map((link) => link.url),
+    ].map(cleanText).filter(Boolean);
+    return Array.from(new Set(urls)).map((url) => ({ url }));
+  }
   if (key === "certifications") {
     return (resume.certifications || []).flatMap(
       (group) => group.certifications || [],
@@ -103,6 +139,13 @@ export function workdaySkills(
   const seen = new Set<string>();
   return [...profileSkills, ...savedSkills]
     .map(cleanText)
+    .flatMap((skill) => {
+      const compact = skill.toLowerCase().replace(/[,/&+]+/g, " ").replace(/\s+/g, " ").trim();
+      if (compact === ".net c#" || compact === "c# .net") {
+        return [".NET Framework", "C#"];
+      }
+      return [skill];
+    })
     .filter((skill) => {
       const key = skill.toLowerCase();
       if (!key || seen.has(key)) return false;
@@ -121,23 +164,29 @@ export function valueForWorkdayStructuredField(
     if (matches(field, ["company", "companyName", "employer", "Company"])) return joined(item.company);
     if (matches(field, ["location", "workLocation", "Location"])) return joined(item.location);
     if (matches(field, ["currentlyWorkHere", "currentJob", "I currently work here"])) {
-      return item.is_current === true;
+      return item.is_current === true || (
+        item.is_current == null &&
+        Boolean(cleanText(item.start_date)) &&
+        !cleanText(item.end_date)
+      );
     }
-    if (matches(field, ["startDate", "Start Date"])) return dateValue(item.start_date, field);
-    if (matches(field, ["endDate", "End Date"])) return dateValue(item.end_date, field);
+    if (containsStableToken(field, ["startDate"])) return dateValue(item.start_date, field);
+    if (containsStableToken(field, ["endDate"])) return dateValue(item.end_date, field);
     if (matches(field, ["roleDescription", "jobDescription", "description", "Role Description"])) {
       return joined(item.description);
     }
   }
   if (section === "education") {
     if (matches(field, ["school", "schoolName", "institution", "School or University"])) return joined(item.institution);
-    if (matches(field, ["degree", "degreeName", "Degree"])) return joined(item.degree);
-    if (matches(field, ["fieldOfStudy", "major", "Field of Study"])) return joined(item.field_of_study);
+    if (matches(field, ["degree", "degreeName", "Degree"])) {
+      return field.type === "select" ? workdayDegree(item.degree) : joined(item.degree);
+    }
+    if (containsStableToken(field, ["fieldOfStudy"]) || matches(field, ["major"])) return joined(item.field_of_study);
     if (matches(field, ["educationLocation", "location", "Location"])) return joined(item.location);
-    if (matches(field, ["startDate", "firstYearAttended", "Start Date", "First Year Attended"])) {
+    if (containsStableToken(field, ["startDate", "firstYearAttended"])) {
       return dateValue(item.start_date, field);
     }
-    if (matches(field, ["endDate", "lastYearAttended", "End Date", "Last Year Attended", "Graduation Year"])) {
+    if (containsStableToken(field, ["endDate", "lastYearAttended"]) || matches(field, ["Graduation Year"])) {
       return dateValue(item.end_date, field);
     }
   }
@@ -153,6 +202,11 @@ export function valueForWorkdayStructuredField(
   if (section === "languages") {
     if (matches(field, ["language", "languageName", "Language"])) return joined(item.name);
     if (matches(field, ["languageProficiency", "proficiency", "Proficiency"])) return joined(item.proficiency);
+  }
+  if (section === "websites") {
+    if (containsStableToken(field, ["url", "website", "webAddress"])) {
+      return joined(item.url);
+    }
   }
   return null;
 }

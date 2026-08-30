@@ -51,7 +51,7 @@ export function captureJobDate(
     /\breposted\b/i.test(rawValue) || /重新发布/.test(rawValue);
   const cleaned = rawValue
     .replace(
-      /^(?:posted\s+(?:on\s+)?|reposted\s+(?:on\s+)?|date\s*:\s*|发布于\s*|重新发布于\s*|over\s+|more\s+than\s+)/i,
+      /^(?:posted\s+(?:on\s+)?|reposted\s+(?:on\s+)?|date\s*:\s*|发布于\s*|重新发布于\s*|over\s+|more\s+than\s+|employer\s*active\s+|active\s+)/i,
       '',
     )
     .trim();
@@ -79,10 +79,10 @@ export function captureJobDate(
 
   const minutes = quantity(/(\d+)\s*(?:minutes?|mins?|min\b|分钟前)/i);
   const hours = quantity(/(\d+)\s*(?:hours?|hrs?|h\b|小时前)/i);
-  const days = quantity(/(\d+)\s*(?:days?|d\b|天前|日前的?)/i);
-  const weeks = quantity(/(\d+)\s*(?:weeks?|wks?|w\b|周前|星期前)/i);
-  const months = quantity(/(\d+)\s*(?:months?|mos?|mo\b|个月前|月前)/i);
-  const years = quantity(/(\d+)\s*(?:years?|yrs?|y\b|年前)/i);
+  const days = quantity(/(\d+)\s*\+?\s*(?:days?|d\b|天前|日前的?)/i);
+  const weeks = quantity(/(\d+)\s*\+?\s*(?:weeks?|wks?|w\b|周前|星期前)/i);
+  const months = quantity(/(\d+)\s*\+?\s*(?:months?|mos?|mo\b|m\b|个月前|月前)/i);
+  const years = quantity(/(\d+)\s*\+?\s*(?:years?|yrs?|y\b|年前)/i);
 
   if (minutes !== null) ageMs = minutes * 60_000;
   else if (hours !== null) ageMs = hours * 3_600_000;
@@ -139,8 +139,8 @@ export function parseAndFormatJobDate(
   let realDateStr: string | undefined = undefined;
 
   // 1. Try parsing relative hour and minute keywords
-  const hourMatch = lower.match(/(\d+)\s*(?:hours?|hrs?|h\b|小时前)/i);
-  const minMatch = lower.match(/(\d+)\s*(?:minutes?|mins?|分钟前)/i);
+  const hourMatch = lower.match(/(\d+)\s*\+?\s*(?:hours?|hrs?|h\b|小时前)/i);
+  const minMatch = lower.match(/(\d+)\s*\+?\s*(?:minutes?|mins?|分钟前)/i);
 
   if (hourMatch && hourMatch[1]) {
     ageInHours = parseInt(hourMatch[1], 10);
@@ -157,26 +157,26 @@ export function parseAndFormatJobDate(
   } else if (/\b(?:yesterday)\b/i.test(lower) || /昨天/.test(lower)) {
     ageInDays = 1;
   } else {
-    // Check day count: e.g. "3 days ago", "6d", "19d", "26d", "6天前"
-    const dayMatch = lower.match(/(\d+)\s*(?:days?|d\b|天前|日前的?)/i);
+    // Check day count: e.g. "3 days ago", "6d", "19d", "26d", "6天前", "30+ days ago"
+    const dayMatch = lower.match(/(\d+)\s*\+?\s*(?:days?|d\b|天前|日前的?)/i);
     if (dayMatch && dayMatch[1]) {
       ageInDays = parseInt(dayMatch[1], 10);
     } else {
       // Check week count: e.g. "1 week ago", "1w", "1周前", "Over 2 weeks"
-      const weekMatch = lower.match(/(\d+)\s*(?:weeks?|wks?|w\b|周前|星期前)/i);
+      const weekMatch = lower.match(/(\d+)\s*\+?\s*(?:weeks?|wks?|w\b|周前|星期前)/i);
       if (weekMatch && weekMatch[1]) {
         ageInDays = parseInt(weekMatch[1], 10) * 7;
       } else {
         // Check month count: e.g. "1 month ago", "1mo", "1个月前"
         const monthMatch = lower.match(
-          /(\d+)\s*(?:months?|mos?|mo\b|m\b|个月前|月前)/i,
+          /(\d+)\s*\+?\s*(?:months?|mos?|mo\b|m\b|个月前|月前)/i,
         );
         if (monthMatch && monthMatch[1]) {
           ageInDays = parseInt(monthMatch[1], 10) * 30;
         } else if (/30\+\s*(?:days?|d)/i.test(lower)) {
           ageInDays = 30;
         } else {
-          const yearMatch = lower.match(/(\d+)\s*(?:years?|yrs?|y\b|年前)/i);
+          const yearMatch = lower.match(/(\d+)\s*\+?\s*(?:years?|yrs?|y\b|年前)/i);
           if (yearMatch && yearMatch[1]) {
             ageInDays = parseInt(yearMatch[1], 10) * 365;
           }
@@ -188,7 +188,7 @@ export function parseAndFormatJobDate(
   // 2. Try parsing as an explicit date or timestamp (strip prefix words first)
   const cleanDateStr = trimmed
     .replace(
-      /^(?:posted\s+(?:on\s+)?|reposted\s+(?:on\s+)?|date\s*:\s*|发布于\s*|重新发布于\s*|over\s+|more\s+than\s+)/i,
+      /^(?:posted\s+(?:on\s+)?|reposted\s+(?:on\s+)?|date\s*:\s*|发布于\s*|重新发布于\s*|over\s+|more\s+than\s+|employer\s*active\s+|active\s+)/i,
       '',
     )
     .trim();

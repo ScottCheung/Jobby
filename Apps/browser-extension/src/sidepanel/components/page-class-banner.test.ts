@@ -16,17 +16,19 @@ vi.mock('@jobby/ui/components/UI/popover', () => ({
 vi.mock('@jobby/ui/components/UI/tooltip', () => ({
   Tooltip: ({ children }: { children?: unknown }) => children,
 }));
-vi.mock('./DetectionProviderBadge', () => ({
+vi.mock('@jobby/ui/components/UI/job-analysis/DetectionProviderBadge', () => ({
   DetectionProviderBadge: () => null,
 }));
-vi.mock('./EditJobModal', () => ({ EditJobModal: () => null }));
+vi.mock('@jobby/ui/components/UI/job-analysis/EditJobModal', () => ({
+  EditJobModal: () => null,
+}));
 
 import type { PageInspection } from '../../shared/contracts/page-inspection';
 import {
-  PageClassBanner,
+  JobDetails as PageClassBanner,
   getSkillSource,
   shouldShowTechnologyLoading,
-} from './PageClassBanner';
+} from '@jobby/ui/components/UI/job-analysis/JobDetails';
 
 describe('job details banner', () => {
   const inspection: PageInspection = {
@@ -136,6 +138,27 @@ describe('job details banner', () => {
     expect(html.indexOf('aria-label="Copy Job Title"')).toBeLessThan(
       html.indexOf('Company:'),
     );
+  });
+
+  it('keeps the plugin JD collapsed by default and fully expands the AI Studio JD', () => {
+    const collapsedHtml = renderToStaticMarkup(
+      createElement(PageClassBanner, {
+        latestInspection: inspection,
+        isInspecting: false,
+      }),
+    );
+    const expandedHtml = renderToStaticMarkup(
+      createElement(PageClassBanner, {
+        latestInspection: inspection,
+        isInspecting: false,
+        initialDescriptionExpanded: true,
+      }),
+    );
+
+    expect(collapsedHtml).toContain('Show More ▼');
+    expect(collapsedHtml).toContain('max-h-[110px]');
+    expect(expandedHtml).not.toContain('Show Less ▲');
+    expect(expandedHtml).not.toContain('max-h-[380px]');
   });
 
   it('renders original and repost dates on separate rows', () => {
@@ -268,4 +291,3 @@ describe('job details banner', () => {
     ).toBe('resume');
   });
 });
-

@@ -663,4 +663,37 @@ describe("ATS-specific job readers", () => {
     expect(inspection.snapshot.technologies).toContain("TypeScript");
     expect(inspection.snapshot.technologies).toContain("Vitest");
   });
+
+  it("rapidly identifies a non-job generic page without redundant delay", async () => {
+    setLocation("https://www.example.com/about-us");
+    document.body.innerHTML = `
+      <h1>About Example Corp</h1>
+      <p>We build web tools for people worldwide.</p>
+    `;
+
+    const inspection = await readCurrentPageWhenReady();
+    expect(inspection.kind).toBe("unsupported_page");
+  });
+
+  it("rapidly identifies a non-job LinkedIn page without waiting for 20 attempts", async () => {
+    setLocation("https://www.linkedin.com/feed/");
+    document.body.innerHTML = `
+      <h1>LinkedIn Feed</h1>
+      <div>Posts from connections</div>
+    `;
+
+    const inspection = await readCurrentPageWhenReady();
+    expect(inspection.kind).toBe("unsupported_page");
+  });
+
+  it("rapidly identifies an Indeed home/search page with no active job selected", async () => {
+    setLocation("https://www.indeed.com/career-advice");
+    document.body.innerHTML = `
+      <h1>Career Advice</h1>
+      <p>How to write a resume</p>
+    `;
+
+    const inspection = await readCurrentPageWhenReady();
+    expect(inspection.kind).toBe("unsupported_page");
+  });
 });

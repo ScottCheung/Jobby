@@ -1,7 +1,13 @@
 /** @format */
 
-import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { Sparkles } from 'lucide-react';
+import {
+  JobAnalysisPanel,
+  PlatformQuickSearchCard,
+  type JobAnalysisSnapshot,
+  type JobDescriptionOpenPayload,
+} from '@jobby/ui/components/UI/job-analysis';
 import { Button } from '@jobby/ui/components/UI/Button';
 import { Input } from '@jobby/ui/components/UI/input';
 import { Textarea } from '@jobby/ui/components/UI/textarea';
@@ -16,9 +22,6 @@ import { BottomNav, type TabType } from './components/BottomNav';
 import { DebugDrawer } from './components/DebugDrawer';
 import { DiagnosticsCard } from './components/DiagnosticsCard';
 import { HeaderQuickActions } from './components/HeaderQuickActions';
-import { JobScoreCard } from './components/JobScoreCard';
-import { PageClassBanner } from './components/PageClassBanner';
-import { PlatformQuickSearchCard } from './components/PlatformQuickSearchCard';
 import { ResultsDisplay } from './components/ResultsDisplay';
 import { WorkflowSection } from './components/WorkflowSection';
 import { useApplicationTools } from './hooks/useApplicationTools';
@@ -28,7 +31,10 @@ import { useInspection } from './hooks/useInspection';
 import { useJobMatch } from './hooks/useJobMatch';
 import { useTailoredResumeStudio } from './hooks/useTailoredResumeStudio';
 import { useThemeSync } from './hooks/useThemeSync';
-import { getActiveTab } from './services/messaging';
+import {
+  getActiveTab,
+  sendContentCommandToActiveTab,
+} from './services/messaging';
 import {
   createPageInspectionQueue,
   pageChangeInspectionRequest,
@@ -202,7 +208,9 @@ export function App() {
 
   const {
     loadingButton,
+    isCancellingAutofill,
     autofillForm,
+    cancelAutofill,
     recordApplication,
     canRecordApplication,
     isApplicationRecorded,
@@ -229,7 +237,7 @@ export function App() {
     void inspectForm(true);
   };
 
-  const handleUpdateJobSnapshot = (updates: Partial<JobSnapshot>) => {
+  const handleUpdateJobSnapshot = (updates: Partial<JobAnalysisSnapshot>) => {
     setLatestInspection((prev) => {
       if (!prev || prev.kind !== 'job') return prev;
       const updatedInspection: PageInspection = {
@@ -244,6 +252,15 @@ export function App() {
     });
   };
 
+  const handleOpenJobDescription = async (
+    payload: JobDescriptionOpenPayload,
+  ) => {
+    await sendContentCommandToActiveTab({
+      type: 'content.show-job-description',
+      ...payload,
+    });
+  };
+
   const tailorStudio = useTailoredResumeStudio(
     latestInspection,
     authStatus?.connected,
@@ -252,17 +269,47 @@ export function App() {
     signIn,
   );
 
-  const openGenerationConfirmation = (type: DocType) => {
-    setGenerationDraft({
-      type,
-      jobTitle: tailorStudio.jobTitle || tailorStudio.detectedJob?.title || '',
-      company: tailorStudio.company || tailorStudio.detectedJob?.company || '',
-      jobDescription:
-        tailorStudio.jobDescription ||
-        tailorStudio.detectedJob?.jobDescription ||
-        '',
-    });
-  };
+  const openGenerationConfirmation = useCallback(
+    (
+      type: DocType,
+      draftOverrides?: {
+        jobTitle?: string;
+        company?: string;
+        jobDescription?: string;
+      },
+    ) => {
+      const job =
+        latestInspection?.kind === 'job' ? latestInspection.snapshot : null;
+      setGenerationDraft({
+        type,
+        jobTitle:
+          draftOverrides?.jobTitle ||
+          job?.title ||
+          tailorStudio.jobTitle ||
+          tailorStudio.detectedJob?.title ||
+          '',
+        company:
+          draftOverrides?.company ||
+          job?.company ||
+          tailorStudio.company ||
+          tailorStudio.detectedJob?.company ||
+          '',
+        jobDescription:
+          draftOverrides?.jobDescription ||
+          (job && ('description' in job && job.description ? job.description : 'jobDescription' in job && (job as { jobDescription?: string }).jobDescription ? (job as { jobDescription?: string }).jobDescription : '')) ||
+          tailorStudio.jobDescription ||
+          tailorStudio.detectedJob?.jobDescription ||
+          '',
+      });
+    },
+    [
+      latestInspection,
+      tailorStudio.company,
+      tailorStudio.detectedJob,
+      tailorStudio.jobDescription,
+      tailorStudio.jobTitle,
+    ],
+  );
 
   const confirmGeneration = () => {
     if (!generationDraft) return;
@@ -277,13 +324,16 @@ export function App() {
     null;
 
   useEffect(() => {
-    const handleActionMessage = (message: unknown) => {
-      if (typeof message !== 'object' || message === null) return;
-      const candidate = message as {
-        type?: unknown;
-        docType?: DocType;
-        tab?: TabType;
+    const handleAction = (candidate: {
+      type?: unknown;
+      docType?: DocType;
+      tab?: TabType;
+      draft?: {
+        jobTitle?: string;
+        company?: string;
+        jobDescription?: string;
       };
+    }) => {
       if (candidate.type === 'sidepanel.open-tab' && candidate.tab) {
         setActiveTab(candidate.tab);
       } else if (
@@ -291,16 +341,36 @@ export function App() {
         candidate.docType
       ) {
         setActiveTab('home');
-        openGenerationConfirmation(candidate.docType);
+        openGenerationConfirmation(candidate.docType, candidate.draft);
       }
     };
+
+    const handleRuntimeMessage = (message: unknown) => {
+      if (typeof message !== 'object' || message === null) return;
+      handleAction(message as any);
+    };
+
+    const handleWindowMessage = (event: MessageEvent) => {
+      if (
+        event.data?.source === 'jobby-ball' &&
+        event.data?.type === 'sidepanel.trigger-tailor'
+      ) {
+        handleAction(event.data);
+      }
+    };
+
     if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
-      chrome.runtime.onMessage.addListener(handleActionMessage);
-      return () => {
-        chrome.runtime.onMessage.removeListener(handleActionMessage);
-      };
+      chrome.runtime.onMessage.addListener(handleRuntimeMessage);
     }
-  }, []);
+    window.addEventListener('message', handleWindowMessage);
+
+    return () => {
+      if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
+        chrome.runtime.onMessage.removeListener(handleRuntimeMessage);
+      }
+      window.removeEventListener('message', handleWindowMessage);
+    };
+  }, [openGenerationConfirmation]);
 
   useEffect(() => {
     if (activeTab === 'studio') tailorStudio.markDocumentsSeen();
@@ -534,35 +604,26 @@ export function App() {
                 }
 
                 return (
-                  <>
-                    <JobScoreCard
-                      latestInspection={latestInspection}
-                      latestMatch={jobMatch.evaluation}
-                      isMatchLoading={jobMatch.isEvaluating || isMatchPending}
-                      isInspecting={isInspectingPage}
-                      onTailor={openGenerationConfirmation}
-                      activeGeneration={activeTailorGeneration}
-                      authConnected={authStatus?.connected}
-                      onSignIn={signIn}
-                    />
-                    <PageClassBanner
-                      latestInspection={latestInspection}
-                      latestMatch={jobMatch.evaluation}
-                      isMatchLoading={jobMatch.isEvaluating || isMatchPending}
-                      isInspecting={isInspectingPage}
-                      error={jobMatch.error}
-                      onRetryMatch={() => void jobMatch.retry()}
-                      onClaimSkill={jobMatch.claimSkill}
-                      onUnclaimSkill={jobMatch.unclaimSkill}
-                      activeProfile={jobMatch.activeProfile}
-                      profileSkills={jobMatch.profileSkills}
-                      onReDetect={handleReDetectPage}
-                      onUpdateJobSnapshot={handleUpdateJobSnapshot}
-                      onHighlightJobRequirement={highlightJobRequirement}
-                      authConnected={authStatus?.connected}
-                      onSignIn={signIn}
-                    />
-                  </>
+                  <JobAnalysisPanel
+                    latestInspection={latestInspection}
+                    latestMatch={jobMatch.evaluation}
+                    isMatchLoading={jobMatch.isEvaluating || isMatchPending}
+                    isInspecting={isInspectingPage}
+                    onTailor={openGenerationConfirmation}
+                    activeGeneration={activeTailorGeneration}
+                    authConnected={authStatus?.connected}
+                    onSignIn={signIn}
+                    error={jobMatch.error}
+                    onRetryMatch={() => void jobMatch.retry()}
+                    onClaimSkill={jobMatch.claimSkill}
+                    onUnclaimSkill={jobMatch.unclaimSkill}
+                    activeProfile={jobMatch.activeProfile}
+                    profileSkills={jobMatch.profileSkills}
+                    onReDetect={handleReDetectPage}
+                    onUpdateJobSnapshot={handleUpdateJobSnapshot}
+                    onHighlightJobRequirement={highlightJobRequirement}
+                    onOpenJobDescription={handleOpenJobDescription}
+                  />
                 );
               })()}
             </section>
@@ -580,6 +641,8 @@ export function App() {
                 canRecordApplication={canRecordApplication}
                 isApplicationRecorded={isApplicationRecorded}
                 onAutofill={autofillForm}
+                onCancelAutofill={cancelAutofill}
+                isCancellingAutofill={isCancellingAutofill}
                 onClearAll={clearAllFormFields}
                 onRecordApplication={recordApplication}
                 authConnected={authStatus?.connected}
@@ -618,6 +681,8 @@ export function App() {
                 loadingButton={loadingButton}
                 isClearingForm={isClearingForm}
                 onAutofill={autofillForm}
+                onCancelAutofill={cancelAutofill}
+                isCancellingAutofill={isCancellingAutofill}
                 onClearAll={clearAllFormFields}
                 autofillOnly
                 authConnected={authStatus?.connected}

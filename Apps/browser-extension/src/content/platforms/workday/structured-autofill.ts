@@ -23,11 +23,13 @@ const SECTIONS: ReadonlyArray<{
   key: WorkdaySectionKey;
   label: RegExp;
   selectors: readonly string[];
+  entryPrefix: string;
 }> = [
-  { key: "experience", label: /^(?:work experience|employment history)$/i, selectors: ["[data-automation-id='workExperienceSection']"] },
-  { key: "education", label: /^education$/i, selectors: ["[data-automation-id='educationSection']"] },
-  { key: "certifications", label: /^(?:certifications?|licenses?)$/i, selectors: ["[data-automation-id='certificationsSection']", "[data-automation-id='certificationSection']"] },
-  { key: "languages", label: /^languages?$/i, selectors: ["[data-automation-id='languagesSection']", "[data-automation-id='languageSection']"] },
+  { key: "experience", label: /^(?:work experience|employment history)$/i, selectors: ["[data-automation-id='workExperienceSection']"], entryPrefix: "workExperience" },
+  { key: "education", label: /^education$/i, selectors: ["[data-automation-id='educationSection']"], entryPrefix: "education" },
+  { key: "certifications", label: /^(?:certifications?|licenses?)$/i, selectors: ["[data-automation-id='certificationsSection']", "[data-automation-id='certificationSection']"], entryPrefix: "certification" },
+  { key: "languages", label: /^languages?$/i, selectors: ["[data-automation-id='languagesSection']", "[data-automation-id='languageSection']"], entryPrefix: "language" },
+  { key: "websites", label: /^websites?$/i, selectors: ["[data-automation-id='websitesSection']", "[data-automation-id='websiteSection']"], entryPrefix: "website" },
 ];
 
 function cleanText(value: string | null | undefined): string {
@@ -65,10 +67,32 @@ function actionButton(scope: ParentNode, action: "add" | "save"): HTMLElement | 
     .find((button) => visible(button) && label.test(cleanText(button.textContent))) || null;
 }
 
+function editorForSave(save: HTMLElement, boundary: HTMLElement): HTMLElement | null {
+  let container = save.parentElement;
+  for (let depth = 0; container && depth < 7; depth += 1) {
+    if (inspectVisibleFormFields(container).length > 0) return container;
+    if (container === boundary) break;
+    container = container.parentElement;
+  }
+  return null;
+}
+
 function activeEditor(section: HTMLElement): HTMLElement | null {
-  if (inspectVisibleFormFields(section).length > 0) return section;
-  return Array.from(document.querySelectorAll<HTMLElement>("[role='dialog']"))
-    .find((dialog) => visible(dialog) && inspectVisibleFormFields(dialog).length > 0) || null;
+  const candidates = [
+    ...Array.from(document.querySelectorAll<HTMLElement>("[role='dialog']")).filter(visible),
+    section,
+  ];
+  for (const candidate of candidates) {
+    const save = actionButton(candidate, "save");
+    if (!save) continue;
+    const editor = editorForSave(save, candidate);
+    if (editor) return editor;
+  }
+  return null;
+}
+
+function hasFilledEditorFields(editor: HTMLElement): boolean {
+  return inspectVisibleFormFields(editor).some((field) => field.filled);
 }
 
 async function waitForEditor(section: HTMLElement): Promise<HTMLElement | null> {
@@ -108,31 +132,147 @@ function targetFor(field: FormFieldObservation): FormFieldTarget {
   return { key: field.key, id: field.id, name: field.name, label: field.label, type: field.type };
 }
 
+function sameObservedValue(
+  field: FormFieldObservation | undefined,
+  value: string | boolean,
+): boolean {
+  if (!field) return false;
+  if (typeof value === "boolean") return field.filled === value;
+  const expected = cleanText(value).toLowerCase();
+  const actual = cleanText(field.currentValue).toLowerCase();
+  if (/^\d+$/.test(expected) && /^\d+$/.test(actual)) {
+    return Number(expected) === Number(actual);
+  }
+  return actual === expected;
+}
+
+function liveField(
+  editor: HTMLElement,
+  target: FormFieldTarget,
+): FormFieldObservation | undefined {
+  return inspectVisibleFormFields(editor).find((field) =>
+    field.key === target.key ||
+    Boolean(target.id && field.id === target.id) ||
+    Boolean(target.name && field.name === target.name && field.label === target.label),
+  );
+}
+
 async function fillEditor(
   section: WorkdaySectionKey,
   item: WorkdayStructuredItem,
   editor: HTMLElement,
+  shouldCancel: () => boolean,
 ): Promise<FieldFillResult[]> {
   const results: FieldFillResult[] = [];
   for (const field of inspectVisibleFormFields(editor)) {
-    const identity: WorkdayFieldIdentity = { ...field, automationId: automationId(field, editor) };
+    if (shouldCancel()) break;
+    const control = controlFor(field, editor);
+    if (!control || !isVisibleElement(control)) continue;
+    const currentField = liveField(editor, targetFor(field)) || field;
+    const identity: WorkdayFieldIdentity = {
+      ...currentField,
+      automationId: automationId(currentField, editor),
+    };
     const value = valueForWorkdayStructuredField(section, item, identity);
     if (value === null || value === "") {
-      if (field.required) {
+      if (currentField.required) {
         results.push({
-          commandId: `workday-required-${Date.now()}-${field.key}`.slice(0, 64),
-          key: field.key,
+          commandId: `workday-required-${Date.now()}-${currentField.key}`.slice(0, 64),
+          key: currentField.key,
           status: "rejected",
-          message: `Required Workday field “${field.label}” has no exact Resume Profile value.`,
+          message: `Required Workday field “${currentField.label}” has no exact Resume Profile value.`,
         });
       }
       continue;
     }
-    const target = targetFor(field);
-    const exactChoice = typeof value === "string" && field.type === "select"
-      ? await fillExactWorkdayCombobox(target, value, editor)
+    const target = targetFor(currentField);
+    const exactChoice = typeof value === "string"
+      ? await fillExactWorkdayCombobox(target, value, editor, shouldCancel)
       : null;
-    results.push(exactChoice || await fillFormFieldValue(target, value, editor as FormScope));
+    let result = exactChoice || await fillFormFieldValue(target, value, editor as FormScope);
+    if (!exactChoice && (result.status === "filled" || result.status === "already_filled")) {
+      await new Promise((resolve) => window.setTimeout(resolve, 200));
+      if (!sameObservedValue(liveField(editor, target), value) && !shouldCancel()) {
+        result = await fillFormFieldValue(target, value, editor as FormScope);
+        await new Promise((resolve) => window.setTimeout(resolve, 200));
+        if (!sameObservedValue(liveField(editor, target), value)) {
+          result = {
+            ...result,
+            status: "rejected",
+            message: "Workday did not retain this value after updating the field.",
+          };
+        }
+      }
+    }
+    results.push(result);
+  }
+  return results;
+}
+
+function inlineEntryScopes(section: HTMLElement, entryPrefix: string): HTMLElement[] {
+  const groups = new Map<string, HTMLElement[]>();
+  for (const control of Array.from(section.querySelectorAll<HTMLElement>("[id]"))) {
+    const separator = control.id.indexOf("--");
+    if (separator < 0) continue;
+    const entryKey = control.id.slice(0, separator);
+    if (!entryKey.startsWith(`${entryPrefix}-`)) continue;
+    const controls = groups.get(entryKey) || [];
+    controls.push(control);
+    groups.set(entryKey, controls);
+  }
+
+  return Array.from(groups.values()).flatMap((controls) => {
+    let container = controls[0]?.parentElement || null;
+    for (let depth = 0; container && depth < 10; depth += 1) {
+      if (controls.every((control) => container?.contains(control))) return [container];
+      if (container === section) break;
+      container = container.parentElement;
+    }
+    return [];
+  });
+}
+
+function isInlineSection(
+  config: (typeof SECTIONS)[number],
+  section: HTMLElement,
+): boolean {
+  return inlineEntryScopes(section, config.entryPrefix).length > 0 ||
+    Array.from(section.querySelectorAll<HTMLElement>("h2[id], h3[id], h4[id], [role='heading'][id]"))
+      .some((heading) => config.label.test(cleanText(heading.textContent)) && /-section$/i.test(heading.id));
+}
+
+async function addInlineEntry(
+  section: HTMLElement,
+  entryPrefix: string,
+): Promise<HTMLElement | null> {
+  const previousCount = inlineEntryScopes(section, entryPrefix).length;
+  const add = actionButton(section, "add");
+  if (!add) return null;
+  add.click();
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const entries = inlineEntryScopes(section, entryPrefix);
+    if (entries.length > previousCount) return entries[previousCount] || null;
+    await new Promise((resolve) => window.setTimeout(resolve, 100));
+  }
+  return null;
+}
+
+async function fillInlineSection(
+  config: (typeof SECTIONS)[number],
+  section: HTMLElement,
+  items: WorkdayStructuredItem[],
+  shouldCancel: () => boolean,
+): Promise<FieldFillResult[]> {
+  const results: FieldFillResult[] = [];
+  for (let index = 0; index < items.length; index += 1) {
+    if (shouldCancel()) break;
+    const item = items[index];
+    if (!item || fingerprintTerms(config.key, item).length === 0) continue;
+    const entries = inlineEntryScopes(section, config.entryPrefix);
+    const editor = entries[index] || await addInlineEntry(section, config.entryPrefix);
+    if (!editor) break;
+    const entryResults = await fillEditor(config.key, item, editor, shouldCancel);
+    results.push(...entryResults);
   }
   return results;
 }
@@ -145,7 +285,9 @@ function fingerprintTerms(
     ? [item.company, item.title]
     : section === "education"
       ? [item.institution, item.degree]
-      : [item.name];
+      : section === "websites"
+        ? [item.url]
+        : [item.name];
   return values.map((value) => cleanText(String(value || ""))).filter(Boolean);
 }
 
@@ -170,15 +312,27 @@ async function waitForSavedEntry(
 export async function autofillWorkdayStructuredSections(
   resume: MasterResumeData,
   savedSkills: string[] = [],
+  shouldCancel: () => boolean = () => false,
 ): Promise<FieldFillResult[]> {
   const results: FieldFillResult[] = [];
   for (const config of SECTIONS) {
+    if (shouldCancel()) break;
     const section = findSection(config);
     if (!section) continue;
-    for (const item of workdaySectionItems(resume, config.key)) {
+    const items = workdaySectionItems(resume, config.key);
+    if (isInlineSection(config, section)) {
+      results.push(...await fillInlineSection(config, section, items, shouldCancel));
+      continue;
+    }
+    for (const item of items) {
+      if (shouldCancel()) break;
       const terms = fingerprintTerms(config.key, item);
       if (terms.length === 0 || entryExists(section, terms)) continue;
       let editor = activeEditor(section);
+      // An already-populated editor belongs to the applicant. Do not reuse it
+      // for a different resume entry, even when Workday exposes it in the same
+      // section as the Add control.
+      if (editor && hasFilledEditorFields(editor)) break;
       if (!editor) {
         const add = actionButton(section, "add");
         if (!add) break;
@@ -186,7 +340,7 @@ export async function autofillWorkdayStructuredSections(
         editor = await waitForEditor(section);
       }
       if (!editor) break;
-      const entryResults = await fillEditor(config.key, item, editor);
+      const entryResults = await fillEditor(config.key, item, editor, shouldCancel);
       results.push(...entryResults);
       if (entryResults.some((result) => result.status === "rejected" || result.status === "not_found")) break;
       const save = actionButton(editor, "save");
@@ -195,6 +349,8 @@ export async function autofillWorkdayStructuredSections(
       if (!await waitForSavedEntry(section, editor, terms)) break;
     }
   }
-  results.push(...await autofillWorkdaySkills(resume, savedSkills));
+  if (!shouldCancel()) {
+    results.push(...await autofillWorkdaySkills(resume, savedSkills, shouldCancel));
+  }
   return results;
 }

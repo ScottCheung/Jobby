@@ -212,6 +212,16 @@ def test_mobile_phone_alias_matches_phone_profile_value() -> None:
     assert match.rule.core_field_key == "identity.phone"
 
 
+def test_registration_password_aliases_match_the_saved_password() -> None:
+    for alias in ("Password", "New Password", "Verify New Password", "Confirm Password"):
+        match = match_mapping_rule(
+            RuleSession([]), user_id=uuid4(), alias=alias, scene="registration",
+            semantic_features=alias.casefold().split(), field_type="password",
+        )
+        assert match is not None
+        assert match.rule.core_field_key == "application.password"
+
+
 def test_gender_specify_alias_does_not_reuse_primary_gender() -> None:
     match = match_mapping_rule(
         RuleSession([]), user_id=uuid4(), alias="Gender (please specify)", scene="generic",

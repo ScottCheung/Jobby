@@ -28,6 +28,15 @@ describe('runtime upload message contract', () => {
       }).success,
     ).toBe(true);
   });
+
+  it('accepts a web-app request to inspect a job URL', () => {
+    expect(
+      runtimeMessageSchema.safeParse({
+        type: 'content.inspect-url',
+        url: 'https://www.seek.com.au/job/94260401',
+      }).success,
+    ).toBe(true);
+  });
 });
 
 describe('page inspection posting-date compatibility', () => {

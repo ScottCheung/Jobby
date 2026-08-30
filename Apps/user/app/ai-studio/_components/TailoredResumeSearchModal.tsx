@@ -70,7 +70,7 @@ export function TailoredResumeSearchModal({
   }, [items, query, filterType]);
 
   return (
-    <div className='flex h-full max-h-[85vh] flex-col p-6 space-y-4'>
+    <div className='flex h-full max-h-[85vh] flex-col space-y-4 body'>
       {/* Header & Title */}
       <div className='flex items-center justify-between border-b border-primary/20 pb-3'>
         <div className='flex items-center gap-2.5'>

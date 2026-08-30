@@ -167,11 +167,11 @@ function ApplicationQuickStart() {
 function QuickJumpTiles() {
   const tiles = [
     {
-      title: 'Resume Profile',
-      subtitle: 'Master resume PDF, AI evaluation & work experience',
-      href: '/settings/resumes',
-      icon: FileText,
-      badge: 'Profile',
+      title: 'Tailor CV & CL',
+      subtitle: 'Instant tailored resume & cover letter for target jobs',
+      href: '/ai-studio',
+      icon: Sparkles,
+      badge: 'Studio',
       color:
         'from-emerald-500/10 to-teal-500/5 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
     },
@@ -194,11 +194,11 @@ function QuickJumpTiles() {
         'from-purple-500/10 to-pink-500/5 text-purple-600 dark:text-purple-400 border-purple-500/20',
     },
     {
-      title: 'AI Memory',
-      subtitle: 'Manage reusable answers for job applications',
-      href: '/settings/ai-memory',
-      icon: MessageSquareCode,
-      badge: 'Memory',
+      title: 'Resume Profile',
+      subtitle: 'Master resume PDF, AI evaluation & work experience',
+      href: '/settings/resumes',
+      icon: FileText,
+      badge: 'Profile',
       color:
         'from-amber-500/10 to-orange-500/5 text-amber-600 dark:text-amber-400 border-amber-500/20',
     },

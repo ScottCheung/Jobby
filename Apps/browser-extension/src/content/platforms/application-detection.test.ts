@@ -203,6 +203,31 @@ describe("platform-specific application question detection", () => {
     expect(inspection.fields.some((field) => field.label === "Job alert email")).toBe(false);
   });
 
+  it("recognises Workday's application sign-in form", () => {
+    setLocation("https://tenant.myworkdayjobs.com/en-US/Careers/login?redirect=%2Fen-US%2FCareers%2Fjob%2FSydney%2FUI-Engineer_JR1043041%2Fapply");
+    document.body.innerHTML = `
+      <main data-automation-id="signInContent">
+        <form>
+          <label for="email">Email Address *</label><input id="email" type="text" autocomplete="email" />
+          <label for="password">Password *</label><input id="password" type="password" autocomplete="current-password" />
+          <label for="website">Enter website. This input is for robots only, do not enter if you're human.</label>
+          <input id="website" name="website" />
+          <button data-automation-id="signInSubmitButton">Sign In</button>
+        </form>
+      </main>
+    `;
+
+    const inspection = readCurrentForm();
+    expect(inspection.kind).toBe("application_form");
+    if (inspection.kind !== "application_form") return;
+    expect(inspection.platform).toBe("workday");
+    expect(inspection.fields).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "email", label: "Email Address", type: "text" }),
+      expect.objectContaining({ id: "password", label: "Password", type: "password" }),
+    ]));
+    expect(inspection.fields.some((field) => field.id === "website")).toBe(false);
+  });
+
   it("extracts all supported question types, accessible labels, options, and required state", () => {
     setLocation("https://tenant.myworkdayjobs.com/en-US/jobs/apply/123");
     document.body.innerHTML = `

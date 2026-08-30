@@ -14,12 +14,14 @@ import {
   focusActiveTabField,
   highlightJobRequirementInActiveTab,
   inspectActiveTab,
+  inspectJobUrl,
   inspectFormActiveTab,
   setTargetedTabId,
 } from './content-bridge';
 import { logDiagnostic } from './diagnostics';
 import {
   autofillDetectedFormForActiveTab,
+  cancelActiveAutofill,
   autofillSingleFieldForActiveTab,
   uploadDefaultResumeToActiveTab,
   uploadPreparedFileToActiveTab,
@@ -112,6 +114,17 @@ export async function handleRuntimeMessage(
           snapshot: await getRuntimeSnapshot(),
           inspection: await inspectActiveTab(messageTargetTabId),
         };
+      case 'content.inspect-url':
+        if (!isJobbyWebAppSender(sender))
+          return {
+            ok: false,
+            error: 'Only the Jobby web app can inspect a pasted job link.',
+          };
+        return {
+          ok: true,
+          snapshot: await getRuntimeSnapshot(),
+          inspection: await inspectJobUrl(parsed.data.url),
+        };
       case 'content.inspect-form-active':
         if (!isExtensionUiSender(sender))
           return {
@@ -142,6 +155,14 @@ export async function handleRuntimeMessage(
             ...(form ? { form } : {}),
           };
         }
+      case 'form.autofill-cancel-active':
+        if (!isExtensionUiSender(sender))
+          return {
+            ok: false,
+            error: 'Only the extension UI can cancel autofill.',
+          };
+        await cancelActiveAutofill();
+        return { ok: true, snapshot: await getRuntimeSnapshot() };
       case 'content.focus-form-field-active':
         if (!isExtensionUiSender(sender))
           return {
@@ -300,6 +321,23 @@ function isExtensionUiSender(sender?: chrome.runtime.MessageSender): boolean {
     sender?.id === chrome.runtime.id &&
     sender.url?.startsWith(`chrome-extension://${chrome.runtime.id}/`),
   );
+}
+
+function isJobbyWebAppSender(sender?: chrome.runtime.MessageSender): boolean {
+  if (sender?.id !== chrome.runtime.id || !sender.tab?.url) return false;
+  try {
+    const url = new URL(sender.tab.url);
+    const configuredOrigin = new URL(
+      import.meta.env.VITE_WEB_APP_URL || 'http://localhost:3000',
+    ).origin;
+    return (
+      url.origin === configuredOrigin ||
+      ((url.hostname === 'localhost' || url.hostname === '127.0.0.1') &&
+        (url.port === '3000' || url.port === '3001'))
+    );
+  } catch {
+    return false;
+  }
 }
 
 function readTargetedTabId(message: unknown): number | undefined {

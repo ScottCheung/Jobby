@@ -4,11 +4,12 @@ import type { PageInspection } from '../shared/contracts/page-inspection';
 
 interface BoundJobEntry {
   inspection: PageInspection;
+  originUrl?: string;
+  isInheritedChildTab?: boolean;
   timestamp: number;
 }
 
 const tabJobMap = new Map<number, BoundJobEntry>();
-const urlJobMap = new Map<string, BoundJobEntry>();
 const MAX_EXPIRY_MS = 30 * 60 * 1000; // 30 minutes
 
 function cleanExpiredEntries(): void {
@@ -18,39 +19,51 @@ function cleanExpiredEntries(): void {
       tabJobMap.delete(tabId);
     }
   }
-  for (const [url, entry] of urlJobMap.entries()) {
-    if (now - entry.timestamp > MAX_EXPIRY_MS) {
-      urlJobMap.delete(url);
-    }
-  }
 }
 
 export function bindTabJobInspection(
   tabId: number,
   inspection: PageInspection,
+  isInheritedChildTab = false,
 ): void {
   cleanExpiredEntries();
-  if (inspection.kind !== 'job') return;
+  if (inspection.kind !== 'job') {
+    tabJobMap.delete(tabId);
+    return;
+  }
   const entry: BoundJobEntry = {
     inspection,
+    originUrl: inspection.snapshot.url,
+    isInheritedChildTab,
     timestamp: Date.now(),
   };
   tabJobMap.set(tabId, entry);
-  if (inspection.snapshot.url) {
-    urlJobMap.set(inspection.snapshot.url.toLowerCase(), entry);
-  }
+}
+
+export function unbindTabJob(tabId: number): void {
+  tabJobMap.delete(tabId);
 }
 
 export function getTabJobInspection(tabId: number, currentUrl?: string): PageInspection | null {
   cleanExpiredEntries();
   const direct = tabJobMap.get(tabId);
-  if (direct?.inspection) return direct.inspection;
-
-  if (currentUrl) {
-    const urlKey = currentUrl.toLowerCase();
-    const byUrl = urlJobMap.get(urlKey);
-    if (byUrl?.inspection) return byUrl.inspection;
+  if (direct) {
+    if (direct.isInheritedChildTab) {
+      return direct.inspection;
+    }
+    if (currentUrl && direct.originUrl) {
+      try {
+        const current = new URL(currentUrl);
+        const origin = new URL(direct.originUrl);
+        if (current.origin === origin.origin && current.pathname === origin.pathname) {
+          return direct.inspection;
+        }
+      } catch {}
+    }
+    // Stale direct binding after navigating away
+    tabJobMap.delete(tabId);
   }
+
   return null;
 }
 
@@ -60,8 +73,25 @@ export function initializeJobBindingListeners(): void {
   chrome.tabs.onCreated.addListener((tab) => {
     if (tab.id === undefined || tab.openerTabId === undefined) return;
     const parentJob = tabJobMap.get(tab.openerTabId);
-    if (parentJob) {
-      bindTabJobInspection(tab.id, parentJob.inspection);
+    if (parentJob && parentJob.inspection.kind === 'job') {
+      bindTabJobInspection(tab.id, parentJob.inspection, true);
+    }
+  });
+
+  chrome.tabs.onUpdated?.addListener((tabId, changeInfo) => {
+    if (changeInfo.url) {
+      const entry = tabJobMap.get(tabId);
+      if (entry && !entry.isInheritedChildTab && entry.originUrl) {
+        try {
+          const next = new URL(changeInfo.url);
+          const prev = new URL(entry.originUrl);
+          if (next.origin !== prev.origin || next.pathname !== prev.pathname) {
+            tabJobMap.delete(tabId);
+          }
+        } catch {
+          tabJobMap.delete(tabId);
+        }
+      }
     }
   });
 

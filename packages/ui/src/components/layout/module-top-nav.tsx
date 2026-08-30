@@ -72,7 +72,7 @@ export function ModuleTopNav({
   }, [handleScroll]);
 
   return (
-    <div className='flex h-[calc(100vh-18px)] min-h-[500px] w-full max-w-full min-w-0 flex-col overflow-x-hidden px-page pt-3 pb-0!'>
+    <div className='flex  min-h-[500px] w-full max-w-full min-w-0 flex-col overflow-x-hidden px-page pb-0!'>
       <AnimatePresence initial={false}>
         {navVisible && (
           <motion.header
@@ -84,14 +84,23 @@ export function ModuleTopNav({
             className='z-20 flex w-full min-w-0 max-w-full shrink-0 items-center justify-between'
           >
             <nav
-              className='flex items-center px-2 pb-px min-w-0'
+              className='flex items-center px-2 pt-3  pb-px min-w-0'
               aria-label='Module navigation'
             >
               {tabs.map((tab) => {
                 const isActive =
-                  tab.exact || tab.href === tabs[0]?.href ?
+                  tab.exact ?
                     pathname === tab.href
-                  : (pathname ?? '').startsWith(tab.href);
+                  : pathname === tab.href ||
+                    (Boolean(pathname?.startsWith(tab.href)) &&
+                      !tabs.some(
+                        (other) =>
+                          other !== tab &&
+                          Boolean(pathname?.startsWith(other.href)) &&
+                          other.href.length > tab.href.length,
+                      )) ||
+                    (tab.href === '/ai-studio' &&
+                      Boolean(pathname?.startsWith('/ai-studio/tailor')));
 
                 return (
                   <Tooltip

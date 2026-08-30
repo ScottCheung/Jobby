@@ -3881,13 +3881,17 @@ def _phone_country_value(field: Any, phone: str | None, fallback_country: str | 
 
 def _form_scene(payload_scene: str | None, fields: list[Any]) -> str:
     scene = normalize_scene(payload_scene)
+    text = " ".join(str(field.label) for field in fields).casefold()
+    password_labels = [str(field.label or "").casefold() for field in fields if str(field.type or "").casefold() == "password"]
+    if any(term in text for term in ("register", "sign up", "create account")) or any(
+        "new password" in label or "verify" in label or "confirm" in label
+        for label in password_labels
+    ):
+        return "registration"
     if scene != "generic":
         return scene
-    text = " ".join(str(field.label) for field in fields).casefold()
     if any(term in text for term in ("visa", "immigration", "passport", "residency")):
         return "visa_application"
-    if any(term in text for term in ("register", "sign up", "create account")):
-        return "registration"
     return "generic"
 
 
@@ -4164,7 +4168,7 @@ def _build_form_autofill_instructions(
                 unanswered.append({"key": field.key, "label": field.label, "reason": reason})
                 traces.append({"key": field.key, "label": field.label, "intent_key": "identity.phone_country", "core_field_key": "identity.phone", "scene": scene, "semantic_features": features, "source": "phone_country_inference", "status": "unanswered", "reason": reason})
             continue
-        if field.type in {"password", "file", "unknown"}:
+        if field.type in {"file", "unknown"}:
             reason = "This field requires explicit user handling."
             unanswered.append({"key": field.key, "label": field.label, "reason": reason})
             traces.append({"key": field.key, "label": field.label, "intent_key": None, "core_field_key": None, "scene": scene, "semantic_features": features, "source": "none", "status": "unanswered", "reason": reason})
@@ -4302,7 +4306,8 @@ def _build_form_autofill_instructions(
             "target": field.model_dump(exclude_none=True),
             "value": value,
         })
-        traces.append({"key": field.key, "label": field.label, "intent_key": core_field_key, "core_field_key": core_field_key, "scene": scene, "semantic_features": features, "source": "intent_classifier" if intent_key else ("user_rule" if match.rule.is_user_defined else "system_rule"), "status": "filled", "value": value})
+        trace_value = "[redacted]" if core_field_key == "application.password" else value
+        traces.append({"key": field.key, "label": field.label, "intent_key": core_field_key, "core_field_key": core_field_key, "scene": scene, "semantic_features": features, "source": "intent_classifier" if intent_key else ("user_rule" if match.rule.is_user_defined else "system_rule"), "status": "filled", "value": trace_value})
         if not dry_run and match:
             match.rule.times_used += 1
             match.rule.last_used_at = datetime.utcnow()

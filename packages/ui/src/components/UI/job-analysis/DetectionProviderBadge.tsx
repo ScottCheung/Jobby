@@ -1,15 +1,17 @@
 /** @format */
 
+'use client';
+
 import { useState } from 'react';
 import { CircleCheck, TriangleAlert } from 'lucide-react';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '@jobby/ui/components/UI/popover';
-import { Tooltip } from '@jobby/ui/components/UI/tooltip';
-import { cn } from '@jobby/ui/lib/utils';
-import type { CareerProfile } from '../../shared/contracts/tailored-resume';
+} from '../popover';
+import { Tooltip } from '../tooltip';
+import { cn } from '../../../lib/utils';
+import type { JobAnalysisCareerProfile } from './types';
 import { PlatformQuickSearchList } from './PlatformQuickSearchCard';
 
 export function isGenericDetection(platform?: string): boolean {
@@ -123,7 +125,7 @@ export function DetectionProviderBadge({
 }: {
   platform?: string;
   url?: string;
-  activeProfile?: CareerProfile | null;
+  activeProfile?: JobAnalysisCareerProfile | null;
 }) {
   const [faviconFailed, setFaviconFailed] = useState(false);
   const isGeneric = isGenericDetection(platform);
@@ -185,9 +187,9 @@ export function DetectionProviderBadge({
       <PopoverContent
         side='bottom'
         align='end'
-        sideOffset={6}
-        collisionPadding={8}
-        className='w-[280px] max-w-[calc(100vw-16px)] p-2.5 rounded-2xl border border-primary/20 bg-background/95 backdrop-blur-xl shadow-xl z-[200] max-h-[min(420px,calc(100vh-80px))] overflow-y-auto'
+        sideOffset={8}
+        collisionPadding={12}
+        className='w-[640px] max-w-[calc(100vw-24px)] p-4 rounded-xl border border-primary/20 bg-background/95 backdrop-blur-xl shadow-brand z-[200] max-h-[min(560px,calc(100vh-96px))] overflow-y-auto'
       >
         <PlatformQuickSearchList activeProfile={activeProfile} />
       </PopoverContent>

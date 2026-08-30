@@ -1,11 +1,11 @@
 // @vitest-environment happy-dom
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   autofillWorkdayStructuredSections,
   valueForWorkdayStructuredField,
 } from "./structured-autofill";
-import { workdaySkills } from "./field-mapping";
+import { workdaySectionItems, workdaySkills } from "./field-mapping";
 
 const textField = (label: string, name = "") => ({
   type: "text",
@@ -67,6 +67,36 @@ describe("Workday structured resume field mapping", () => {
     })).toBe("2024");
   });
 
+  it("uses real Workday inline ids to distinguish repeated start and end dates", () => {
+    const experience = { start_date: "2022-08", end_date: "2024-03" };
+    const education = { start_date: "2017-02", end_date: "2020-11" };
+
+    expect(valueForWorkdayStructuredField("experience", experience, {
+      type: "number",
+      label: "Year",
+      id: "workExperience-6--startDate-dateSectionYear-input",
+      automationId: "dateSectionYear-input",
+    })).toBe("2022");
+    expect(valueForWorkdayStructuredField("experience", experience, {
+      type: "number",
+      label: "Year",
+      id: "workExperience-6--endDate-dateSectionYear-input",
+      automationId: "dateSectionYear-input",
+    })).toBe("2024");
+    expect(valueForWorkdayStructuredField("education", education, {
+      type: "number",
+      label: "Year",
+      id: "education-15--firstYearAttended-dateSectionYear-input",
+      automationId: "dateSectionYear-input",
+    })).toBe("2017");
+    expect(valueForWorkdayStructuredField("education", education, {
+      type: "number",
+      label: "Year",
+      id: "education-15--lastYearAttended-dateSectionYear-input",
+      automationId: "dateSectionYear-input",
+    })).toBe("2020");
+  });
+
   it("maps education fields", () => {
     const education = {
       institution: "University of Sydney",
@@ -80,6 +110,26 @@ describe("Workday structured resume field mapping", () => {
     expect(valueForWorkdayStructuredField("education", education, textField("Degree", "degree"))).toBe("Bachelor of Science");
     expect(valueForWorkdayStructuredField("education", education, textField("Field of Study", "fieldOfStudy"))).toBe("Computer Science");
     expect(valueForWorkdayStructuredField("education", education, textField("First Year Attended", "firstYearAttended"))).toBe("2017");
+  });
+
+  it("maps detailed resume degrees to Workday's supported degree choices", () => {
+    const education = { degree: "Master of Information Technology" };
+
+    expect(valueForWorkdayStructuredField(
+      "education",
+      education,
+      { type: "select", label: "Degree", name: "degree" },
+    )).toBe("Masters");
+  });
+
+  it("treats an experience with no end date as current when the profile omits the flag", () => {
+    const experience = { start_date: "2026-03", end_date: null };
+
+    expect(valueForWorkdayStructuredField(
+      "experience",
+      experience,
+      { type: "checkbox", label: "I currently work here", name: "currentlyWorkHere" },
+    )).toBe(true);
   });
 
   it("maps certification and language fields", () => {
@@ -99,6 +149,25 @@ describe("Workday structured resume field mapping", () => {
     expect(valueForWorkdayStructuredField("languages", language, { type: "select", label: "Proficiency", name: "languageProficiency" })).toBe("Native");
   });
 
+  it("maps profile websites and portfolio links to Workday website entries", () => {
+    expect(workdaySectionItems({
+      basics: {
+        website: "https://example.com",
+        portfolio_url: "https://portfolio.example.com",
+      },
+      links: [{ name: "GitHub", url: "https://github.com/example" }],
+    }, "websites")).toEqual([
+      { url: "https://example.com" },
+      { url: "https://portfolio.example.com" },
+      { url: "https://github.com/example" },
+    ]);
+    expect(valueForWorkdayStructuredField(
+      "websites",
+      { url: "https://portfolio.example.com" },
+      { type: "url", label: "Website URL", name: "webAddress" },
+    )).toBe("https://portfolio.example.com");
+  });
+
   it("uses only explicit profile and saved skills with stable deduplication", () => {
     expect(workdaySkills({
       core_competencies: ["Invented competency"],
@@ -112,6 +181,12 @@ describe("Workday structured resume field mapping", () => {
       "Docker",
       "Kubernetes",
     ]);
+  });
+
+  it("splits the common .NET C# compound skill into Workday-compatible skills", () => {
+    expect(workdaySkills({
+      skills: [{ type: "Languages", skills: [".NET C#", "C# .NET", ".NET / C#", "TypeScript"] }],
+    })).toEqual([".NET Framework", "C#", "TypeScript"]);
   });
 
   it("selects an exact Workday skill instead of the first similar suggestion", async () => {
@@ -142,6 +217,193 @@ describe("Workday structured resume field mapping", () => {
     expect(results).toHaveLength(1);
     expect(results[0]?.status).toBe("filled");
     expect(document.querySelector("#selected-skills")?.textContent).toBe("Java");
+  });
+
+  it("recognises Workday's real skills multiselect without ARIA combobox attributes", async () => {
+    document.body.innerHTML = `
+      <section>
+        <h4 id="Skills-section">Skills</h4>
+        <div data-automation-id="multiSelectContainer">
+          <label for="skills--skills">Type to Add Skills</label>
+          <input id="skills--skills" />
+          <div id="selected-skills"></div>
+        </div>
+      </section>
+      <div role="listbox" id="skill-options"></div>`;
+    const keys: string[] = [];
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") return;
+      keys.push(event.key);
+      if (keys.join(",") === "Enter") {
+        document.querySelector("#skill-options")!.innerHTML = `
+          <div role="option" data-automation-id="menuItem" aria-selected="false"><span data-automation-id="promptOption">TypeScript</span></div>`;
+        document.body.focus();
+      } else if (event.key === "ArrowDown") {
+        document.querySelector<HTMLElement>("[data-automation-id='menuItem']")!
+          .setAttribute("aria-selected", "true");
+      } else if (keys.join(",") === "Enter,ArrowDown,Enter") {
+        document.querySelector("#selected-skills")!.innerHTML =
+          `<div data-automation-id="selectedItem"><span data-automation-id="promptOption">TypeScript</span></div>`;
+      }
+    };
+    document.addEventListener("keydown", handleKey);
+
+    const results = await autofillWorkdayStructuredSections({
+      skills: [{ type: "Languages", skills: ["TypeScript"] }],
+    });
+    document.removeEventListener("keydown", handleKey);
+
+    expect(results).toEqual([
+      expect.objectContaining({ status: "filled", key: "workday-skill-typescript" }),
+    ]);
+    expect(keys).toEqual(["Enter", "ArrowDown", "Enter"]);
+    expect(document.querySelector("#selected-skills")?.textContent).toBe("TypeScript");
+  });
+
+  it("waits for a delayed Workday skill result before confirming it", async () => {
+    vi.useFakeTimers();
+    try {
+      document.body.innerHTML = `
+        <section>
+          <h4 id="Skills-section">Skills</h4>
+          <div data-automation-id="multiSelectContainer">
+            <label for="skills--skills">Type to Add Skills</label>
+            <input id="skills--skills" data-uxi-widget-type="selectinput" />
+            <div id="selected-skills"></div>
+          </div>
+        </section>
+        <div role="listbox" id="skill-options"></div>`;
+      document.addEventListener("keydown", function onKey(event) {
+        if (event.key !== "Enter") return;
+        window.setTimeout(() => {
+          const options = document.querySelector<HTMLElement>("#skill-options")!;
+          options.innerHTML = `
+            <div role="option" data-automation-id="menuItem"><span data-automation-id="promptLeafNode">TypeScript</span></div>`;
+          options.querySelector<HTMLElement>("[data-automation-id='promptLeafNode']")!
+            .addEventListener("click", () => {
+              document.querySelector("#selected-skills")!.innerHTML =
+                `<div data-automation-id="selectedItem">TypeScript</div>`;
+            });
+        }, 2500);
+        document.removeEventListener("keydown", onKey);
+      });
+
+      const pending = autofillWorkdayStructuredSections({
+        skills: [{ type: "Languages", skills: ["TypeScript"] }],
+      });
+      await vi.advanceTimersByTimeAsync(10000);
+
+      expect(await pending).toEqual([
+        expect.objectContaining({ status: "filled", key: "workday-skill-typescript" }),
+      ]);
+      expect(document.querySelector("#selected-skills")?.textContent).toBe("TypeScript");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("retries a Workday skill when its optimistic selected pill is rolled back", async () => {
+    vi.useFakeTimers();
+    try {
+      document.body.innerHTML = `
+        <section>
+          <h4 id="Skills-section">Skills</h4>
+          <div data-automation-id="multiSelectContainer">
+            <label for="skills--skills">Type to Add Skills</label>
+            <input id="skills--skills" data-uxi-widget-type="selectinput" />
+            <div id="selected-skills"></div>
+          </div>
+        </section>
+        <div role="listbox" id="skill-options"></div>`;
+      const input = document.querySelector<HTMLInputElement>("#skills--skills")!;
+      const options = document.querySelector<HTMLElement>("#skill-options")!;
+      let selections = 0;
+      input.addEventListener("input", () => {
+        if (!input.value) {
+          options.innerHTML = "";
+          return;
+        }
+        options.innerHTML = `<div role="option" data-automation-id="menuItem"><span data-automation-id="promptLeafNode">TypeScript</span></div>`;
+        options.querySelector<HTMLElement>("[data-automation-id='promptLeafNode']")!
+          .addEventListener("click", () => {
+            selections += 1;
+            document.querySelector("#selected-skills")!.innerHTML =
+              `<div data-automation-id="selectedItem">TypeScript</div>`;
+            input.value = "";
+            if (selections === 1) {
+              window.setTimeout(() => {
+                document.querySelector("#selected-skills")!.innerHTML = "";
+              }, 1000);
+            }
+          });
+      });
+
+      const pending = autofillWorkdayStructuredSections({
+        skills: [{ type: "Languages", skills: ["TypeScript"] }],
+      });
+      await vi.advanceTimersByTimeAsync(15000);
+
+      expect(await pending).toEqual([
+        expect.objectContaining({ status: "filled" }),
+        expect.objectContaining({ status: "filled" }),
+      ]);
+      expect(selections).toBe(2);
+      expect(document.querySelector("#selected-skills")?.textContent).toBe("TypeScript");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("stops before filling Workday sections when autofill is cancelled", async () => {
+    document.body.innerHTML = `
+      <section data-automation-id="workExperienceSection">
+        <input id="workExperience-1--jobTitle" name="jobTitle" />
+      </section>`;
+
+    const results = await autofillWorkdayStructuredSections(
+      { work_experience: [{ title: "UI Engineer" }] },
+      [],
+      () => true,
+    );
+
+    expect(results).toEqual([]);
+    expect(document.querySelector<HTMLInputElement>("#workExperience-1--jobTitle")?.value).toBe("");
+  });
+
+  it("does not confirm the first Workday skill when the exact search has no result", async () => {
+    document.body.innerHTML = `
+      <section>
+        <h4 id="Skills-section">Skills</h4>
+        <div data-automation-id="multiSelectContainer">
+          <label for="skills--skills">Type to Add Skills</label>
+          <input id="skills--skills" data-uxi-widget-type="selectinput" />
+          <div id="selected-skills"></div>
+        </div>
+      </section>
+      <div role="listbox" id="skill-options"></div>`;
+    const input = document.querySelector<HTMLInputElement>("#skills--skills")!;
+    const keys: string[] = [];
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") return;
+      keys.push(event.key);
+      if (event.key === "Enter") {
+        document.querySelector("#skill-options")!.innerHTML = `
+          <div role="option" data-automation-id="menuItem" aria-label="No Items.">No Items.</div>`;
+      }
+    };
+    document.addEventListener("keydown", handleKey);
+
+    const results = await autofillWorkdayStructuredSections({
+      skills: [{ type: "Tools", skills: ["Playright"] }],
+    });
+    document.removeEventListener("keydown", handleKey);
+
+    expect(results).toEqual([
+      expect.objectContaining({ status: "rejected" }),
+    ]);
+    expect(keys).toEqual(["Enter"]);
+    expect(document.querySelector("#selected-skills")?.textContent).toBe("");
+    expect(input.value).toBe("");
   });
 
   it("skips a skill when Workday has no exact suggestion", async () => {
@@ -225,6 +487,127 @@ describe("Workday structured resume field mapping", () => {
     expect(results).toHaveLength(4);
     expect(document.querySelector("#saved-experience")?.textContent).toContain("Senior Engineer — Acme");
     expect(document.querySelector("#saved-experience")?.textContent).toContain("Engineering Manager — Acme");
+  });
+
+  it("fills real Workday inline entries in resume order with entry-specific dates", async () => {
+    document.body.innerHTML = `
+      <section>
+        <h4 id="Work-Experience-section">Work Experience</h4>
+        <div>
+          <label for="workExperience-6--jobTitle">Job Title</label><input id="workExperience-6--jobTitle" name="jobTitle" />
+          <label for="workExperience-6--companyName">Company</label><input id="workExperience-6--companyName" name="companyName" />
+          <label for="workExperience-6--startDate-dateSectionYear-input">Year</label>
+          <input id="workExperience-6--startDate-dateSectionYear-input" data-automation-id="dateSectionYear-input" />
+        </div>
+        <div>
+          <label for="workExperience-59--jobTitle">Job Title</label><input id="workExperience-59--jobTitle" name="jobTitle" />
+          <label for="workExperience-59--companyName">Company</label><input id="workExperience-59--companyName" name="companyName" />
+          <label for="workExperience-59--startDate-dateSectionYear-input">Year</label>
+          <input id="workExperience-59--startDate-dateSectionYear-input" data-automation-id="dateSectionYear-input" />
+        </div>
+      </section>`;
+
+    await autofillWorkdayStructuredSections({
+      experience: [
+        { company: "Newest Co", title: "Lead Engineer", start_date: "2024-01" },
+        { company: "Earlier Co", title: "Engineer", start_date: "2021-06" },
+      ],
+    });
+
+    expect(document.querySelector<HTMLInputElement>("#workExperience-6--jobTitle")?.value).toBe("Lead Engineer");
+    expect(document.querySelector<HTMLInputElement>("#workExperience-6--companyName")?.value).toBe("Newest Co");
+    expect(document.querySelector<HTMLInputElement>("#workExperience-6--startDate-dateSectionYear-input")?.value).toBe("2024");
+    expect(document.querySelector<HTMLInputElement>("#workExperience-59--jobTitle")?.value).toBe("Engineer");
+    expect(document.querySelector<HTMLInputElement>("#workExperience-59--companyName")?.value).toBe("Earlier Co");
+    expect(document.querySelector<HTMLInputElement>("#workExperience-59--startDate-dateSectionYear-input")?.value).toBe("2021");
+  });
+
+  it("continues to the next inline experience when one field in the first entry is missing", async () => {
+    document.body.innerHTML = `
+      <section>
+        <h4 id="Work-Experience-section">Work Experience</h4>
+        <div>
+          <label for="workExperience-1--jobTitle">Job Title</label><input id="workExperience-1--jobTitle" name="jobTitle" />
+          <label for="workExperience-1--location">Location</label><input id="workExperience-1--location" name="location" required />
+        </div>
+        <div>
+          <label for="workExperience-2--jobTitle">Job Title</label><input id="workExperience-2--jobTitle" name="jobTitle" />
+        </div>
+      </section>`;
+
+    const results = await autofillWorkdayStructuredSections({
+      experience: [
+        { title: "Current Role" },
+        { title: "Previous Role" },
+      ],
+    });
+
+    expect(results.some((result) => result.key === "workExperience-1--location" && result.status === "rejected")).toBe(true);
+    expect(document.querySelector<HTMLInputElement>("#workExperience-2--jobTitle")?.value).toBe("Previous Role");
+  });
+
+  it("adds and fills Workday Languages when the section initially has no inputs", async () => {
+    document.body.innerHTML = `
+      <section>
+        <h4 id="Languages-section">Languages</h4>
+        <button data-automation-id="add-button">Add</button>
+      </section>`;
+    const section = document.querySelector<HTMLElement>("section")!;
+    section.querySelector("button")!.addEventListener("click", () => {
+      section.insertAdjacentHTML("beforeend", `
+        <div>
+          <label for="language-1--language">Language</label>
+          <select id="language-1--language" name="language"><option value="">Select One</option><option>English</option></select>
+          <label for="language-1--languageProficiency">Proficiency</label>
+          <select id="language-1--languageProficiency" name="languageProficiency"><option value="">Select One</option><option>Native</option></select>
+        </div>`);
+    });
+
+    await autofillWorkdayStructuredSections({
+      languages: [{ name: "English", proficiency: "Native" }],
+    });
+
+    expect(document.querySelector<HTMLSelectElement>("#language-1--language")?.value).toBe("English");
+    expect(document.querySelector<HTMLSelectElement>("#language-1--languageProficiency")?.value).toBe("Native");
+  });
+
+  it("adds and fills Workday Websites when the section initially has no inputs", async () => {
+    document.body.innerHTML = `
+      <section>
+        <h4 id="Websites-section">Websites</h4>
+        <button data-automation-id="add-button">Add</button>
+      </section>`;
+    const section = document.querySelector<HTMLElement>("section")!;
+    section.querySelector("button")!.addEventListener("click", () => {
+      section.insertAdjacentHTML("beforeend", `
+        <div><label for="website-1--url">Website URL</label><input id="website-1--url" name="webAddress" type="url" /></div>`);
+    });
+
+    await autofillWorkdayStructuredSections({
+      basics: { website: "https://example.com" },
+    });
+
+    expect(document.querySelector<HTMLInputElement>("#website-1--url")?.value).toBe("https://example.com");
+  });
+
+  it("does not overwrite a Workday entry that the applicant is already editing", async () => {
+    document.body.innerHTML = `
+      <section data-automation-id="workExperienceSection">
+        <h3>Work Experience</h3>
+        <div data-testid="experience-editor">
+          <label for="job-title">Job Title</label><input id="job-title" name="jobTitle" value="Applicant's existing title" />
+          <label for="company">Company</label><input id="company" name="company" value="Applicant's existing company" />
+          <button data-automation-id="save-button">Save</button>
+        </div>
+      </section>`;
+
+    const results = await autofillWorkdayStructuredSections({
+      experience: [{ company: "Acme", title: "Senior Engineer" }],
+    });
+
+    expect(results).toEqual([]);
+    expect(document.querySelector<HTMLInputElement>("#job-title")?.value).toBe("Applicant's existing title");
+    expect(document.querySelector<HTMLInputElement>("#company")?.value).toBe("Applicant's existing company");
   });
 
   it("does not save an entry when a required Workday field has no mapped profile value", async () => {

@@ -33,6 +33,12 @@ import {
 import { showInPageToast } from './dom/in-page-toast';
 import { highlightJobRequirement } from './dom/job-requirement-highlight';
 import { autofillWorkdayStructuredSections } from './platforms/workday/structured-autofill';
+import {
+  beginWorkdayAutofill,
+  cancelWorkdayAutofill,
+  finishWorkdayAutofill,
+  isWorkdayAutofillCancelled,
+} from './platforms/workday/autofill-cancellation';
 
 export async function handleContentCommand(message: unknown): Promise<unknown> {
   if (isHighlightJobRequirementCommand(message)) {
@@ -131,12 +137,27 @@ export async function handleContentCommand(message: unknown): Promise<unknown> {
     return { form };
   }
   if (isAutofillWorkdayStructuredCommand(message)) {
-    return {
-      fillResults: await autofillWorkdayStructuredSections(
-        (message as { resume: import('../shared/contracts/tailored-resume').MasterResumeData }).resume,
-        (message as { skills?: string[] }).skills || [],
-      ),
+    const payload = message as {
+      runId: string;
+      resume: import('../shared/contracts/tailored-resume').MasterResumeData;
+      skills?: string[];
     };
+    beginWorkdayAutofill(payload.runId);
+    try {
+      return {
+        fillResults: await autofillWorkdayStructuredSections(
+          payload.resume,
+          payload.skills || [],
+          () => isWorkdayAutofillCancelled(payload.runId),
+        ),
+      };
+    } finally {
+      finishWorkdayAutofill(payload.runId);
+    }
+  }
+  if (isCancelWorkdayStructuredCommand(message)) {
+    cancelWorkdayAutofill((message as { runId?: string }).runId);
+    return { cancelled: true };
   }
   if (isFocusFormFieldCommand(message)) {
     const target = formFieldTargetSchema.parse(
@@ -197,6 +218,14 @@ function isAutofillWorkdayStructuredCommand(message: unknown): boolean {
     typeof message === 'object' &&
     message !== null &&
     (message as { type?: unknown }).type === 'content.autofill-workday-structured'
+  );
+}
+
+function isCancelWorkdayStructuredCommand(message: unknown): boolean {
+  return (
+    typeof message === 'object' &&
+    message !== null &&
+    (message as { type?: unknown }).type === 'content.cancel-workday-structured'
   );
 }
 

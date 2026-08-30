@@ -3,7 +3,7 @@
 import type { MasterResumeData } from "../../shared/contracts/tailored-resume";
 import { formatResumeFilename } from "@jobby/ui/components/UI/Resume/helpers";
 import type { TailoredResume } from "../../shared/contracts/tailored-resume";
-import { formatRelativeTime } from "../../shared/utils/date-formatter";
+import { formatRelativeTime } from '@jobby/ui/lib/date-formatter';
 
 const MODAL_ROOT_ID = "jobby-in-page-resume-modal-root";
 const LIBRARY_ROOT_ID = "jobby-in-page-resume-library-root";

@@ -5,7 +5,7 @@
 import * as React from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence, HTMLMotionProps } from 'framer-motion';
-import { cn } from '@/lib/utils';
+import { cn } from '../../lib/utils';
 
 interface ModalProps extends Omit<HTMLMotionProps<'div'>, 'children'> {
   isOpen: boolean;
@@ -60,14 +60,17 @@ export function Modal({
   return createPortal(
     <AnimatePresence>
       {isOpen && (
-        <div
+        <motion.div
+          key='modal-portal-wrapper'
+          layoutRoot
           className={cn(
-            'fixed inset-0 z-50 flex items-center justify-center ',
+            'fixed inset-0 z-50 flex items-center justify-center',
             containerClassName,
           )}
         >
           {/* Backdrop Overlay */}
           <motion.div
+            key='modal-backdrop'
             initial={{ opacity: 0, backdropFilter: 'blur(0px) brightness(1)' }}
             animate={{
               opacity: 1,
@@ -81,40 +84,44 @@ export function Modal({
 
           {/* Modal Container */}
           <motion.div
-            initial={{ y: 10, scale: 0.9, opacity: 0 }}
-            animate={{
-              y: 0,
-              scale: 1,
-              opacity: 1,
-            }}
+            key='modal-content-container'
+            layout
+            layoutId={layoutId}
+            initial={layoutId ? undefined : { y: 10, scale: 0.9, opacity: 0 }}
+            animate={
+              layoutId
+                ? undefined
+                : {
+                    y: 0,
+                    scale: 1,
+                    opacity: 1,
+                  }
+            }
+            exit={
+              layoutId
+                ? undefined
+                : {
+                    y: 10,
+                    scale: 0.9,
+                    opacity: 0,
+                  }
+            }
             transition={{
               type: 'spring',
               duration: 0.7,
               bounce: 0.2,
               ease: [0.22, 1, 0.36, 1],
             }}
-            layoutId={layoutId}
-            // layout
+            style={layoutId ? { transition: 'none' } : undefined}
             className={cn(
-              'relative z-50 card backdrop-blur-[20px] md:shadow-brand  w-full flex flex-col overflow-hidden bg-background dark:bg-black/10!',
+              'relative z-50 card backdrop-blur-[20px] md:shadow-brand w-full flex flex-col overflow-hidden bg-background dark:bg-black/10!',
               className,
             )}
             {...props}
           >
-            {/* <motion.div className='absolute w-full h-full bg-red-500' /> */}
-            {/* <motion.div
-              transition={{
-                type: 'spring',
-                duration: 0.7,
-                bounce: 0.2,
-                ease: [0.22, 1, 0.36, 1],
-              }}
-              layoutId={layoutId}
-            > */}
             {children}
-            {/* </motion.div> */}
           </motion.div>
-        </div>
+        </motion.div>
       )}
     </AnimatePresence>,
     document.body,

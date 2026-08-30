@@ -2,7 +2,7 @@ import type { PageInspection, SeekJobSnapshot } from "../../../shared/contracts/
 
 import { extractTechnologyKeywords, mergeSkills } from "../../technology-keywords";
 import { extractStructuredText } from "../../text-utils";
-import { capturedJobDateFields } from "../../../shared/utils/date-formatter";
+import { capturedJobDateFields } from '@jobby/ui/lib/date-formatter';
 import { SEEK_SELECTORS } from "./selectors";
 import {
   clearJobDescriptionRoot,
