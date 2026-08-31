@@ -1,18 +1,31 @@
-/** @format */
-
 'use client';
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
-import { ArrowDown, History, X } from 'lucide-react';
-import { Tooltip, type JobAnalysisSnapshot } from '@jobby/ui';
+import { useRouter } from 'next/navigation';
+import {
+  ArrowRight,
+  Briefcase,
+  Building2,
+  Calendar,
+  FileText,
+  History,
+  Mail,
+  Plus,
+  Search,
+  Sparkles,
+  Trash2,
+  X,
+} from 'lucide-react';
+import type { JobAnalysisSnapshot } from '@jobby/ui';
+import { Button, EmptyPlaceHolder } from '@jobby/ui';
 import { api, type TailoredResume } from '@/lib/api';
 import { inspectJobLink } from '@/lib/job-link-inspection';
 import { showGlobalToast } from '@/lib/toast';
 import { formatRelativeTime } from '@/lib/use-relative-time';
 import type { CareerProfile, UserSkill } from '@/lib/types';
+import { useConfirmStore } from '@/lib/store/confirm-store';
 import { TailorQuickEntry } from './TailorQuickEntry';
-import { TailoredResumeStudio } from './tailored-resume-studio';
 import { documentTypeLabel } from './RecentTailorCarousel';
 import type {
   RecognizedTailorJob,
@@ -29,80 +42,22 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
   });
 }
 
-export function AiStudioContent({ targetId: initialTargetId }: { targetId?: string } = {}) {
-  const [activeTailorId, setActiveTailorId] = useState<string | undefined>(initialTargetId);
+export function AiStudioContent() {
+  const router = useRouter();
+  const confirm = useConfirmStore((state) => state.confirm);
+
   const [tailoredResumes, setTailoredResumes] = useState<TailoredResume[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isChatFullscreen, setIsChatFullscreen] = useState(false);
   const [jobInput, setJobInput] = useState('');
   const [mockMode, setMockMode] = useState(false);
   const [selectedProfileId, setSelectedProfileId] = useState('');
-  const [latestResume, setLatestResume] = useState<TailoredResume | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
   const [conversationMessages, setConversationMessages] = useState<
     TailorConversationMessage[]
   >([]);
   const [activeProfile, setActiveProfile] = useState<CareerProfile | null>(null);
   const [profileSkills, setProfileSkills] = useState<UserSkill[]>([]);
-  const [showScrollToBottom, setShowScrollToBottom] = useState(false);
-  const heroEntryRef = useRef<HTMLDivElement>(null);
-  const studioRef = useRef<HTMLDivElement>(null);
-
-  const scrollToStudio = useCallback((behavior: ScrollBehavior = 'smooth') => {
-    if (!studioRef.current) return;
-    const scrollParent = studioRef.current.closest('.overflow-y-auto') as HTMLElement | null;
-    if (scrollParent) {
-      scrollParent.scrollTo({
-        top: studioRef.current.offsetTop,
-        behavior,
-      });
-    } else {
-      studioRef.current.scrollIntoView({ behavior, block: 'start' });
-    }
-  }, []);
-
-  const scrollToBottom = useCallback(() => {
-    const scrollParent = (studioRef.current?.closest('.overflow-y-auto') ||
-      document.querySelector('.custom-scrollbar-primary')) as HTMLElement | null;
-    if (scrollParent) {
-      scrollParent.scrollTo({
-        top: scrollParent.scrollHeight,
-        behavior: 'smooth',
-      });
-    } else {
-      window.scrollTo({
-        top: document.documentElement.scrollHeight,
-        behavior: 'smooth',
-      });
-    }
-  }, []);
-
-  useEffect(() => {
-    const scrollParent = (studioRef.current?.closest('.overflow-y-auto') ||
-      document.querySelector('.custom-scrollbar-primary')) as HTMLElement | null;
-    if (!scrollParent) return;
-
-    const handleScroll = () => {
-      const { scrollTop, scrollHeight, clientHeight } = scrollParent;
-      const isNotBottom = scrollHeight - scrollTop - clientHeight > 80;
-      const hasOverflow = scrollHeight > clientHeight + 100;
-      setShowScrollToBottom(hasOverflow && isNotBottom);
-    };
-
-    scrollParent.addEventListener('scroll', handleScroll, { passive: true });
-    handleScroll();
-    return () => scrollParent.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  useEffect(() => {
-    if (initialTargetId) {
-      setActiveTailorId(initialTargetId);
-      requestAnimationFrame(() => {
-        setTimeout(() => {
-          scrollToStudio('instant');
-        }, 60);
-      });
-    }
-  }, [initialTargetId, scrollToStudio]);
 
   useEffect(() => {
     let isCancelled = false;
@@ -449,33 +404,7 @@ export function AiStudioContent({ targetId: initialTargetId }: { targetId?: stri
       if (generatedResume) {
         showGlobalToast('Tailored documents generated successfully!');
         const targetDocHash = params.docType === 'cover_letter' ? '#cl' : '#cv';
-        setLatestResume(generatedResume);
-        setActiveTailorId(generatedResume.id);
-        setTailoredResumes((prev) => [
-          generatedResume,
-          ...prev.filter((i) => i.id !== generatedResume.id),
-        ]);
-        setConversationMessages((messages) =>
-          messages.map((message) =>
-            message.id === `assistant-${requestId}` ?
-              {
-                ...message,
-                state: 'complete',
-                content: 'Done — your tailored documents are ready below.',
-              }
-            : message,
-          ),
-        );
-        window.history.replaceState(
-          null,
-          '',
-          `/ai-studio/tailor/${generatedResume.id}${targetDocHash}`,
-        );
-        requestAnimationFrame(() => {
-          setTimeout(() => {
-            scrollToStudio('smooth');
-          }, 50);
-        });
+        router.push(`/ai-studio/tailor/${generatedResume.id}${targetDocHash}`);
       } else {
         setConversationMessages((messages) =>
           messages.map((message) =>
@@ -483,7 +412,7 @@ export function AiStudioContent({ targetId: initialTargetId }: { targetId?: stri
               {
                 ...message,
                 state: 'complete',
-                content: 'Generation started. Your result will appear below when it is ready.',
+                content: 'Generation started. Your result will appear in the workspace.',
               }
             : message,
           ),
@@ -499,32 +428,52 @@ export function AiStudioContent({ targetId: initialTargetId }: { targetId?: stri
           : item,
         ),
       );
-      showGlobalToast(
-        message,
-      );
+      showGlobalToast(message);
     } finally {
       setIsGenerating(false);
     }
   };
 
-  const handleSelectRecentCard = (item: TailoredResume) => {
-    setActiveTailorId(item.id);
-    window.history.replaceState(null, '', `/ai-studio/tailor/${item.id}#cv`);
-    requestAnimationFrame(() => {
-      setTimeout(() => {
-        scrollToStudio('smooth');
-      }, 50);
+  const handleDeleteApplication = async (item: TailoredResume, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const roleName =
+      [item.job_title, item.company].filter(Boolean).join(' at ') ||
+      'this tailored record';
+
+    const confirmed = await confirm({
+      title: 'Delete Application',
+      message: `Are you sure you want to delete "${roleName}"? This action cannot be undone.`,
+      confirmLabel: 'Delete',
+      cancelLabel: 'Cancel',
+      type: 'delete',
     });
+
+    if (!confirmed) return;
+
+    try {
+      await api.deleteTailoredResume(item.id);
+      setTailoredResumes((prev) => prev.filter((i) => i.id !== item.id));
+      showGlobalToast('Tailored application deleted');
+    } catch {
+      showGlobalToast('Failed to delete application');
+    }
   };
 
+  const filteredResumes = useMemo(() => {
+    if (!searchQuery.trim()) return tailoredResumes;
+    const q = searchQuery.toLowerCase();
+    return tailoredResumes.filter(
+      (item) =>
+        (item.job_title && item.job_title.toLowerCase().includes(q)) ||
+        (item.company && item.company.toLowerCase().includes(q)),
+    );
+  }, [searchQuery, tailoredResumes]);
+
   return (
-    <div className='w-full space-y-8'>
-      {/* ── 1. Hero Section: GPT-style Centered Dialog with 5 Recent Cards Below ── */}
-      <div
-        ref={heroEntryRef}
-        className='flex min-h-[100vh] w-full flex-col items-center justify-center'
-      >
-        <div className='w-full max-w-3xl space-y-6'>
+    <div className='w-full max-w-5xl mx-auto space-y-8 py-2 sm:py-6 pb-20'>
+      {/* ── 1. Creation Entry & Conversation ── */}
+      <section className='flex flex-col items-center justify-center pt-2'>
+        <div className='w-full max-w-3xl'>
           <TailorQuickEntry
             onGenerationStart={handleStartGeneration}
             isGenerating={isGenerating}
@@ -547,110 +496,137 @@ export function AiStudioContent({ targetId: initialTargetId }: { targetId?: stri
             activeProfile={activeProfile}
             profileSkills={profileSkills}
           />
+        </div>
+      </section>
 
-          {tailoredResumes.length > 0 && conversationMessages.length === 0 && (
-            <div className='pt-2'>
-              <div className='grid grid-cols-1 gap-2.5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5'>
-                {tailoredResumes.slice(0, 5).map((item) => {
-                  const docLabels = documentTypeLabel(item);
-                  const isProcessing = item.status === 'processing';
-                  const timeAgo = isProcessing ? 'Generating' : formatRelativeTime(item.created_at);
+      {/* ── 2. Recent Applications Workspace Hub ── */}
+      {conversationMessages.length === 0 && (
+        <section className='space-y-5 pt-4 border-t border-border/50'>
+          {/* Header & Search */}
+          <div className='flex flex-wrap items-center justify-between gap-3'>
+            <div className='flex items-center gap-2'>
+              <History className='size-4 text-primary' />
+              <h2 className='text-sm font-bold uppercase tracking-wider text-ink-primary'>
+                Recent Tailored Applications
+              </h2>
+              <span className='rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-extrabold text-primary'>
+                {tailoredResumes.length}
+              </span>
+            </div>
 
-                  return (
-                    <button
-                      key={item.id}
-                      type='button'
-                      onClick={() => handleSelectRecentCard(item)}
-                      className='group relative flex min-h-[92px] flex-col justify-between rounded-2xl border border-primary/15 bg-popover dark:bg-zinc-900 p-3 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-xs cursor-pointer select-none'
-                    >
-                      <div className='w-full min-w-0 space-y-0.5'>
-                        <p className='truncate text-[10px] font-bold text-primary'>
-                          {item.job_title || 'Tailored Role'}
-                        </p>
-                        <p className='truncate text-xs font-bold text-ink-primary'>
-                          {item.company || 'Job Application'}
-                        </p>
+            {tailoredResumes.length > 0 && (
+              <div className='relative w-full sm:w-64'>
+                <Search className='absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-ink-secondary/70' />
+                <input
+                  type='text'
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder='Search by role or company...'
+                  className='w-full rounded-xl border border-border/70 bg-panel pl-8.5 pr-3 py-1.5 text-xs text-ink-primary placeholder:text-ink-secondary/60 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all'
+                />
+                {searchQuery && (
+                  <button
+                    type='button'
+                    onClick={() => setSearchQuery('')}
+                    className='absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-secondary hover:text-ink-primary'
+                  >
+                    <X className='size-3.5' />
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Card Grid */}
+          {filteredResumes.length > 0 ? (
+            <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
+              {filteredResumes.map((item) => {
+                const docLabels = documentTypeLabel(item);
+                const isProcessing = item.status === 'processing';
+                const timeAgo = isProcessing ? 'Generating...' : formatRelativeTime(item.created_at);
+
+                return (
+                  <div
+                    key={item.id}
+                    onClick={() => router.push(`/ai-studio/tailor/${item.id}#cv`)}
+                    className='group relative flex flex-col justify-between rounded-2xl border border-border/70 bg-panel/80 p-4.5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-md cursor-pointer select-none'
+                  >
+                    <div className='space-y-2 min-w-0'>
+                      <div className='flex items-start justify-between gap-2'>
+                        <div className='min-w-0 space-y-0.5'>
+                          <div className='flex items-center gap-1.5 text-xs font-bold text-ink-primary truncate'>
+                            <Building2 className='size-3.5 text-primary shrink-0' />
+                            <span className='truncate'>{item.company || 'Job Application'}</span>
+                          </div>
+                          <h3 className='text-sm font-extrabold text-ink-primary truncate group-hover:text-primary transition-colors'>
+                            {item.job_title || 'Tailored Role'}
+                          </h3>
+                        </div>
+
+                        {/* Delete Button */}
+                        <button
+                          type='button'
+                          onClick={(e) => void handleDeleteApplication(item, e)}
+                          className='opacity-0 group-hover:opacity-100 p-1 rounded-lg text-ink-secondary hover:text-destructive hover:bg-destructive/10 transition-all cursor-pointer'
+                          title='Delete application record'
+                        >
+                          <Trash2 className='size-3.5' />
+                        </button>
                       </div>
-                      <div className='flex items-center gap-1.5 pt-2'>
+
+                      {/* Snippet / Description Preview */}
+                      {item.job_description && (
+                        <p className='text-[11px] text-ink-secondary line-clamp-2 leading-relaxed'>
+                          {item.job_description.slice(0, 140)}...
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Bottom Metadata & Badges */}
+                    <div className='flex items-center justify-between border-t border-border/40 pt-3 mt-4'>
+                      <div className='flex items-center gap-1.5'>
                         {isProcessing ? (
-                          <span className='text-[8px] text-primary font-bold animate-pulse'>
-                            Working...
+                          <span className='text-[9px] text-primary font-bold animate-pulse'>
+                            AI Generating...
                           </span>
                         ) : (
                           docLabels.map((type, idx) => (
                             <span
                               key={idx}
-                              className='rounded-md bg-primary px-1.5 py-0.5 text-[8px] font-extrabold uppercase tracking-wide text-white shadow-2xs'
+                              className='rounded-md bg-primary/15 px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-primary'
                             >
                               {type}
                             </span>
                           ))
                         )}
-                        <span className='ml-auto text-[9px] font-medium text-ink-secondary'>
-                          {timeAgo}
-                        </span>
                       </div>
-                    </button>
-                  );
-                })}
-              </div>
+
+                      <div className='flex items-center gap-1 text-[10px] font-medium text-ink-secondary group-hover:text-primary transition-colors'>
+                        <span>{timeAgo}</span>
+                        <ArrowRight className='size-3 group-hover:translate-x-0.5 transition-transform' />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className='rounded-2xl border border-dashed border-border p-10 text-center space-y-2'>
+              <Briefcase className='size-8 text-ink-secondary/50 mx-auto' />
+              <p className='text-xs font-semibold text-ink-secondary'>
+                {searchQuery ? 'No tailored applications matching your search.' : 'No tailored applications created yet.'}
+              </p>
+              <p className='text-[11px] text-ink-secondary/70'>
+                Paste a job posting URL or description above to generate your first tailored document.
+              </p>
             </div>
           )}
-        </div>
-      </div>
-      <div ref={studioRef} className='scroll-mt-0'>
-        <TailoredResumeStudio
-          targetId={activeTailorId}
-          latestResume={latestResume}
-          compactEntry={
-            <TailorQuickEntry
-              compact
-              onGenerationStart={handleStartGeneration}
-              isGenerating={isGenerating}
-              value={jobInput}
-              onValueChange={setJobInput}
-              mockMode={mockMode}
-              onMockModeChange={setMockMode}
-              selectedProfileId={selectedProfileId}
-              onProfileChange={setSelectedProfileId}
-              conversationMessages={conversationMessages}
-              onInspectionStart={handleInspectionStart}
-              onInspectionStatus={handleInspectionStatus}
-              onInspectionSuccess={handleInspectionSuccess}
-              onInspectionError={handleInspectionError}
-              onRetryEvaluation={handleRetryEvaluation}
-              onClaimSkill={handleClaimSkill}
-              onUnclaimSkill={handleUnclaimSkill}
-              onUpdateJob={handleUpdateJob}
-              onReDetect={handleReDetect}
-              activeProfile={activeProfile}
-              profileSkills={profileSkills}
-              onOpenFullscreen={() => setIsChatFullscreen(true)}
-            />
-          }
-        />
-      </div>
-
-      {/* Floating Scroll to Bottom Button */}
-      {showScrollToBottom && (
-        <div className='fixed bottom-24 right-6 sm:right-10 z-40 animate-in fade-in slide-in-from-bottom-2 duration-200'>
-          <Tooltip content='Scroll to bottom' side='left'>
-            <button
-              type='button'
-              onClick={scrollToBottom}
-              className='flex size-10 items-center justify-center rounded-full border border-border/80 bg-panel/90 dark:bg-zinc-900/90 text-ink-primary shadow-lg backdrop-blur-md transition-all duration-200 hover:scale-110 hover:border-primary hover:bg-primary/10 hover:text-primary active:scale-95 cursor-pointer'
-              aria-label='Scroll to bottom'
-            >
-              <ArrowDown className='size-4' />
-            </button>
-          </Tooltip>
-        </div>
+        </section>
       )}
 
       {/* Full-Screen Chat Overlay */}
       {isChatFullscreen && (
         <div className='fixed inset-0 z-50 flex flex-col bg-background-primary/95 backdrop-blur-xl animate-in fade-in duration-200'>
-          {/* Top Bar with Title and Exit Button */}
           <div className='flex items-center justify-between border-b border-border/40 px-6 py-4'>
             <div className='flex items-center gap-2.5'>
               <Image
@@ -677,7 +653,6 @@ export function AiStudioContent({ targetId: initialTargetId }: { targetId?: stri
             </button>
           </div>
 
-          {/* Scrollable Conversation Body & Bottom Input */}
           <div className='flex-1 overflow-y-auto px-4 py-6'>
             <div className='mx-auto max-w-3xl space-y-6'>
               <TailorQuickEntry

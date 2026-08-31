@@ -4,12 +4,16 @@ import type {
   FormPlatform,
   SharedFormPlatform,
 } from "../../shared/contracts/platform";
+import { adzunaDefinition } from "./adzuna/definition";
 import { ashbyDefinition } from "./ashby/definition";
 import { bambooHrDefinition } from "./bamboohr/definition";
+import { careeroneDefinition } from "./careerone/definition";
+import { diceDefinition } from "./dice/definition";
 import { glassdoorDefinition } from "./glassdoor/definition";
 import { greenhouseDefinition } from "./greenhouse/definition";
 import { icimsDefinition } from "./icims/definition";
 import { indeedDefinition } from "./indeed/definition";
+import { joraDefinition } from "./jora/definition";
 import { leverDefinition } from "./lever/definition";
 import { linkedinDefinition } from "./linkedin/definition";
 import { oracleDefinition } from "./oracle/definition";
@@ -18,11 +22,14 @@ import type {
   ProviderDefinition,
 } from "./platform-definition";
 import { seekDefinition } from "./seek/definition";
+import { simplyHiredDefinition } from "./simplyhired/definition";
 import { smartRecruitersDefinition } from "./smartrecruiters/definition";
 import { successFactorsDefinition } from "./successfactors/definition";
 import { taleoDefinition } from "./taleo/definition";
+import { wellfoundDefinition } from "./wellfound/definition";
 import { workableDefinition } from "./workable/definition";
 import { workdayDefinition } from "./workday/definition";
+import { ziprecruiterDefinition } from "./ziprecruiter/definition";
 
 export const atsProviderDefinitions = [
   glassdoorDefinition,
@@ -37,6 +44,13 @@ export const atsProviderDefinitions = [
   oracleDefinition,
   workableDefinition,
   bambooHrDefinition,
+  joraDefinition,
+  ziprecruiterDefinition,
+  adzunaDefinition,
+  wellfoundDefinition,
+  diceDefinition,
+  simplyHiredDefinition,
+  careeroneDefinition,
 ] as const satisfies readonly AtsProviderDefinition[];
 
 export const providerDefinitions: readonly ProviderDefinition[] = [

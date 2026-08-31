@@ -1,14 +1,20 @@
 :root {
-  /* Score card corner: top-left and bottom-right accent corners */
+  /* Score card corner: top-left accent corner */
   --score-card-radius-accent: 45px;
   /* Inner padding of score card: gap between card edge and children */
   --score-card-padding: 12px;
   /* Derived inner-element concentric radius = accent - padding */
   --score-card-radius-inner: calc(var(--score-card-radius-accent) - var(--score-card-padding));
-  /* Floating dialog outer shell radius = accent + border width */
-  --score-card-radius-shell: calc(var(--score-card-radius-accent) + 4px);
-  /* Other three corners of the card */
-  --score-card-radius-base: 16px; /* rounded-2xl */
+  /* Base corner radius for inner cards (rounded-xl = 12px) */
+  --score-card-radius-base: 12px;
+  /* Floating dialog outer shell padding = 8px (p-2) */
+  --floating-dialog-padding: 8px;
+  /* Floating dialog outer shell accent radius = accent + outer padding */
+  --score-card-radius-shell-accent: calc(var(--score-card-radius-accent) + var(--floating-dialog-padding));
+  /* Floating dialog outer shell base radius = base + outer padding */
+  --score-card-radius-shell-base: calc(var(--score-card-radius-base) + var(--floating-dialog-padding));
+  /* Backwards compatibility / alias */
+  --score-card-radius-shell: var(--score-card-radius-shell-accent);
 }
 
 @layer utilities {

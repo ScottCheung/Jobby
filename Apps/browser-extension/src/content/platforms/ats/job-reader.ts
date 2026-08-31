@@ -81,6 +81,29 @@ function descriptionResult(
   return { text: "", element: null };
 }
 
+function isValidExplicitSkill(text: string): boolean {
+  if (!text || text.length < 2 || text.length > 40) return false;
+  if (text.includes("?") || text.includes("!")) return false;
+  // Reject phone numbers, digit sequences, and timestamps
+  if (/(?:\+?\d{1,3}[\s-]*)?\(?\d{2,4}\)?[\s-]*\d{3,4}[\s-]*\d{3,4}/.test(text)) return false;
+  if (/\b(?:\d[\s-]*){6,}\b/.test(text)) return false;
+  // Reject email addresses and URLs
+  if (/\S+@\S+\.\S+/.test(text) || /https?:\/\/|\.com\b|\.co\b|\.au\b|\.uk\b|\.org\b/i.test(text)) return false;
+  // Reject currency and salary expressions
+  if (/[$£€¥]\s*\d|\b\d+\s*(?:k|per annum|p\.a\.|hr|hour|usd|aud|gbp)\b/i.test(text)) return false;
+  // Reject non-skill UI or contact phrases
+  if (
+    /\b(?:call|phone|tel|mobile|email|contact|apply|located|location|full[- ]time|part[- ]time|permanent|contract|casual|salary|benefits|superannuation|per annum|p\.a\.|years? of experience|responsible for|about us|about the company|click here|learn more|read more|submit|qualifications|requirements|responsibilities)\b/i.test(
+      text,
+    )
+  ) {
+    return false;
+  }
+  // Reject sentences with more than 4 words
+  if (text.split(/\s+/).length > 4) return false;
+  return true;
+}
+
 function extractExplicitSkillsFromDom(root: ParentNode, selectors?: readonly string[]): string[] {
   if (!selectors || selectors.length === 0) return [];
   const skills: string[] = [];
@@ -89,22 +112,14 @@ function extractExplicitSkillsFromDom(root: ParentNode, selectors?: readonly str
     for (const container of containers) {
       const items = Array.from(
         container.querySelectorAll<HTMLElement>(
-          "li, button, [data-test*='qualification'], [data-test*='skill'], [class*='skill' i], [class*='pill' i], [class*='tag' i], [class*='chip' i], [class*='badge' i], [class*='qualification' i], span",
+          "li, span, button, [data-test*='qualification'], [data-test*='skill'], [class*='skill' i], [class*='pill' i], [class*='tag' i], [class*='chip' i], [class*='badge' i], [class*='qualification' i]",
         ),
       ).filter(visible);
 
       const targetElements = items.length > 0 ? items : [container];
       for (const el of targetElements) {
         const text = cleanText(el.textContent);
-        if (
-          text &&
-          text.length >= 2 &&
-          text.length <= 40 &&
-          !text.includes("?") &&
-          !/^(?:edit|apply|save|share|qualifications|requirements|skills)$/i.test(text) &&
-          !/^your qualifications/i.test(text) &&
-          !/^do you/i.test(text)
-        ) {
+        if (isValidExplicitSkill(text) && !skills.includes(text)) {
           skills.push(text);
         }
       }
@@ -167,16 +182,20 @@ export function readAtsJobPage(platform: AtsJobPlatform): PageInspection {
   // routes. Without a platform job root or JobPosting data this provider is
   // explicitly unable to handle the page, allowing the router to try generic.
   if (!root && !structured) {
-    return {
-      kind: "not_job_page",
-      platform,
-      url,
-      reason: `No ${platform} job detail root or JobPosting data was found.`,
-    };
+    const directTitle = firstText(document, config.title);
+    const directDesc = descriptionResult(document, config.description);
+    if (!directTitle || directDesc.text.length < 40) {
+      return {
+        kind: "not_job_page",
+        platform,
+        url,
+        reason: `No ${platform} job detail root or JobPosting data was found.`,
+      };
+    }
   }
 
   const source = root || document;
-  const domTitle = root ? firstText(source, config.title) : "";
+  const domTitle = firstText(source, config.title) || firstText(document, config.title);
   const structuredMatchesRoot = !domTitle || Boolean(structured?.title && (() => {
     const left = cleanText(domTitle).toLowerCase();
     const right = cleanText(structured.title).toLowerCase();
@@ -184,14 +203,17 @@ export function readAtsJobPage(platform: AtsJobPlatform): PageInspection {
   })());
   const rootStructured = structuredMatchesRoot ? structured : null;
   const title = domTitle || rootStructured?.title || "";
-  const domDescription = descriptionResult(source, config.description);
+  let domDescription = descriptionResult(source, config.description);
+  if (!domDescription.text && source !== document) {
+    domDescription = descriptionResult(document, config.description);
+  }
   if (domDescription.element) {
     rememberJobDescriptionRoot(platform, domDescription.element);
   }
   const description = domDescription.text || rootStructured?.description || "";
-  const company = firstText(source, config.company) || rootStructured?.company || config.companyFromPage?.(title) || companyFromMetadata();
-  const location = firstText(source, config.location) || config.locationFromRoot?.(source) || rootStructured?.location || "";
-  const applyAction = Boolean(firstElement(source, config.apply));
+  const company = firstText(source, config.company) || firstText(document, config.company) || rootStructured?.company || config.companyFromPage?.(title) || companyFromMetadata();
+  const location = firstText(source, config.location) || firstText(document, config.location) || config.locationFromRoot?.(source) || rootStructured?.location || "";
+  const applyAction = Boolean(firstElement(source, config.apply) || firstElement(document, config.apply));
   const enoughEvidence = Boolean(title) && (
     Boolean(rootStructured) || description.length >= 40 || (Boolean(company) && applyAction)
   );

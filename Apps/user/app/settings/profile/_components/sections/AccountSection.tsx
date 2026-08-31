@@ -7,7 +7,6 @@ import { Avatar, Button, ImageCropper, Tooltip } from '@jobby/ui';
 import { ImagePlus, LogOut, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { useAuthStore } from '@/lib/store';
 import type { User } from '@/lib/types';
 import { ProfileSectionCard } from '../ProfileSectionCard';
 
@@ -24,7 +23,6 @@ export function AccountSection({
 }: AccountSectionProps) {
   const router = useRouter();
   const supabase = createClient();
-  const authLogout = useAuthStore((state) => state.logout);
   const avatarInputId = useId();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -55,7 +53,6 @@ export function AccountSection({
     setIsSigningOut(true);
     try {
       await supabase.auth.signOut();
-      authLogout();
       router.push('/login');
     } catch (error) {
       console.error('Failed to sign out:', error);

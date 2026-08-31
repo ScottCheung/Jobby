@@ -946,6 +946,11 @@ export async function highlightJobRequirement(
     /(?:^|\.)glassdoor\.(?:com(?:\.[a-z]{2})?|co\.[a-z]{2}|[a-z]{2,3})$/i.test(
       window.location.hostname,
     );
+  const isJora =
+    platform === 'jora' ||
+    /(?:^|\.)jora\.(?:com(?:\.[a-z]{2})?|co\.[a-z]{2}|[a-z]{2,3})$/i.test(
+      window.location.hostname,
+    );
 
   const expanded = expandJobDescription(platform);
   if (expanded) {
@@ -973,6 +978,24 @@ export async function highlightJobRequirement(
       ).filter((el) => isVisible(el) && !isExcludedElement(el));
 
       targets = findAllMatchingTargets(fallbackRoots, terms);
+    } else if (isJora) {
+      const fallbackRoots = Array.from(
+        document.querySelectorAll<HTMLElement>(
+          "#job-description-container, .jdv-content, .job-description, #job-description, .jd-content, .templatetext, .description-content, [data-automation='jobDescription'], .job-abstract",
+        ),
+      ).filter((el) => isVisible(el) && !isExcludedElement(el));
+
+      targets = findAllMatchingTargets(fallbackRoots, terms);
+    } else {
+      const fallbackRoots = Array.from(
+        document.querySelectorAll<HTMLElement>(
+          ".jobDescriptionSection, [data-testid='job-description'], .job-description, [data-testid='description'], .adp-body, [data-test='JobDescription'], [class*='styles_description'], #jobdescSec, [data-cy='jobDescriptionText'], [data-testid='viewJobBody'], .viewjob-description",
+        ),
+      ).filter((el) => isVisible(el) && !isExcludedElement(el));
+
+      if (fallbackRoots.length > 0) {
+        targets = findAllMatchingTargets(fallbackRoots, terms);
+      }
     }
   }
 

@@ -21,10 +21,16 @@ export const supportedJobPlatforms = [
   { id: 'oracle', label: 'Oracle', mark: 'O', color: '#c74634' },
   { id: 'workable', label: 'Workable', mark: 'W', color: '#2c3e7f' },
   { id: 'bamboohr', label: 'BambooHR', mark: 'B', color: '#78a22f' },
+  { id: 'jora', label: 'Jora', mark: 'J', color: '#15a449' },
+  { id: 'ziprecruiter', label: 'ZipRecruiter', mark: 'Z', color: '#1f8435' },
+  { id: 'adzuna', label: 'Adzuna', mark: 'A', color: '#1e88e5' },
+  { id: 'wellfound', label: 'Wellfound', mark: 'W', color: '#141413' },
+  { id: 'dice', label: 'Dice', mark: 'D', color: '#e01a22' },
+  { id: 'simplyhired', label: 'SimplyHired', mark: 'S', color: '#205493' },
 ] as const;
 
 const platformDomains: Record<string, string> = {
-  seek: 'seek.com.au', linkedin: 'linkedin.com', indeed: 'indeed.com', glassdoor: 'glassdoor.com', workday: 'workday.com', greenhouse: 'greenhouse.io', lever: 'lever.co', ashby: 'ashbyhq.com', smartrecruiters: 'smartrecruiters.com', taleo: 'taleo.net', icims: 'icims.com', successfactors: 'successfactors.com', oracle: 'oracle.com', workable: 'workable.com', bamboohr: 'bamboohr.com',
+  seek: 'seek.com.au', linkedin: 'linkedin.com', indeed: 'indeed.com', glassdoor: 'glassdoor.com', workday: 'workday.com', greenhouse: 'greenhouse.io', lever: 'lever.co', ashby: 'ashbyhq.com', smartrecruiters: 'smartrecruiters.com', taleo: 'taleo.net', icims: 'icims.com', successfactors: 'successfactors.com', oracle: 'oracle.com', workable: 'workable.com', bamboohr: 'bamboohr.com', jora: 'jora.com', ziprecruiter: 'ziprecruiter.com', adzuna: 'adzuna.com.au', wellfound: 'wellfound.com', dice: 'dice.com', simplyhired: 'simplyhired.com.au',
 };
 
 export function PlatformTagSelector({

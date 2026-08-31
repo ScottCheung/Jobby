@@ -37,26 +37,10 @@ export function computeLayoutMetrics(text: string): CoverLetterMetrics {
   if (wordCount < 160 || charCount < 950) {
     // Short letter: spacious, elegant letterhead spacing
     return {
-      bodyFontSize: 11.5,
-      bodyLineHeight: 1.85,
-      paragraphGap: 20,
+      bodyFontSize: 11,
+      bodyLineHeight: 1.75,
+      paragraphGap: 16,
       paddingTop: 50,
-      paddingBottom: 45,
-      paddingX: 50,
-      headerGap: 20,
-      namePaddingBottom: 5,
-      ruleMarginTop: 9,
-      salutationGapTop: 16,
-      salutationGapBottom: 16,
-      signatureGapTop: 28,
-    };
-  } else if (wordCount < 260 || charCount < 1600) {
-    // Standard medium letter: balanced and open
-    return {
-      bodyFontSize: 10.8,
-      bodyLineHeight: 1.72,
-      paragraphGap: 15,
-      paddingTop: 115,
       paddingBottom: 40,
       paddingX: 48,
       headerGap: 18,
@@ -64,23 +48,55 @@ export function computeLayoutMetrics(text: string): CoverLetterMetrics {
       ruleMarginTop: 8,
       salutationGapTop: 14,
       salutationGapBottom: 14,
-      signatureGapTop: 22,
+      signatureGapTop: 24,
     };
-  } else {
-    // Long letter: compact to strictly preserve 1-page layout
+  } else if (wordCount < 260 || charCount < 1600) {
+    // Standard medium letter: balanced and open
     return {
-      bodyFontSize: 9.8,
-      bodyLineHeight: 1.58,
-      paragraphGap: 10,
-      paddingTop: 90,
+      bodyFontSize: 10.2,
+      bodyLineHeight: 1.62,
+      paragraphGap: 12,
+      paddingTop: 48,
       paddingBottom: 35,
       paddingX: 46,
       headerGap: 14,
       namePaddingBottom: 4,
       ruleMarginTop: 7,
       salutationGapTop: 12,
+      salutationGapBottom: 12,
+      signatureGapTop: 18,
+    };
+  } else if (wordCount < 340 || charCount < 2200) {
+    // Long letter: compact to strictly preserve 1-page layout
+    return {
+      bodyFontSize: 9.4,
+      bodyLineHeight: 1.5,
+      paragraphGap: 9,
+      paddingTop: 42,
+      paddingBottom: 30,
+      paddingX: 44,
+      headerGap: 12,
+      namePaddingBottom: 3,
+      ruleMarginTop: 6,
+      salutationGapTop: 10,
       salutationGapBottom: 10,
-      signatureGapTop: 16,
+      signatureGapTop: 14,
+    };
+  } else {
+    // Extra long letter: ultra compact fallback to prevent multi-page overflow
+    return {
+      bodyFontSize: 8.6,
+      bodyLineHeight: 1.38,
+      paragraphGap: 6,
+      paddingTop: 36,
+      paddingBottom: 24,
+      paddingX: 40,
+      headerGap: 10,
+      namePaddingBottom: 3,
+      ruleMarginTop: 5,
+      salutationGapTop: 8,
+      salutationGapBottom: 8,
+      signatureGapTop: 10,
     };
   }
 }
@@ -102,9 +118,10 @@ export function parseCoverLetterContent(
     .map((p) => p.trim())
     .filter((p): p is string => Boolean(p));
 
-  let salutation = '';
-  let signoff = 'Sincerely';
-  let signoffName =
+  const salutation =
+    company ? `Dear Hiring Manager at ${company}` : 'Dear Hiring Manager';
+  const signoff = 'Sincerely';
+  const signoffName =
     candidateData ? resumeFullName(candidateData) : 'Scott Zhang';
 
   const remainingParagraphs: string[] = [];
@@ -113,39 +130,22 @@ export function parseCoverLetterContent(
     const p = rawParagraphs[i];
     if (!p) continue;
 
-    // Check for salutation at beginning
+    // Check and strip salutation at beginning if present
     if (i === 0 && /^Dear\b/i.test(p)) {
-      salutation = p.replace(/,\s*$/, '');
       continue;
     }
 
-    // Check for signoff at end
+    // Check and strip signoff at end if present
     if (
-      i === rawParagraphs.length - 1 &&
+      i >= rawParagraphs.length - 2 &&
       /^(Sincerely|Best regards|Kind regards|Warm regards|Regards|Respectfully|Yours sincerely)/i.test(
         p,
       )
     ) {
-      const lines = p
-        .split('\n')
-        .map((l) => l.trim())
-        .filter((l): l is string => Boolean(l));
-      const firstLine = lines[0];
-      if (firstLine) {
-        signoff = firstLine.replace(/,\s*$/, '') || 'Sincerely';
-      }
-      if (lines.length > 1) {
-        signoffName = lines.slice(1).join(' ');
-      }
       continue;
     }
 
     remainingParagraphs.push(p);
-  }
-
-  if (!salutation) {
-    salutation =
-      company ? `Dear Hiring Team at ${company}` : 'Dear Hiring Manager';
   }
 
   return {

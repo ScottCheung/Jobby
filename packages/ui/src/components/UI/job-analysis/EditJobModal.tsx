@@ -84,7 +84,7 @@ export function EditJobModal({
         aria-modal='true'
         aria-labelledby='edit-job-modal-title'
       >
-        <div className='flex items-center justify-between px-5 pb-3 pt-5'>
+        <div className='header'>
           <div>
             <span className='modal-badge bg-primary text-primary-foreground'>
               Job Details
@@ -103,7 +103,7 @@ export function EditJobModal({
           </button>
         </div>
 
-        <div className='flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-5 py-3'>
+        <div className='body'>
           <p className='text-[11px] text-muted-foreground leading-relaxed'>
             Review or edit the job details before tailoring documents or recording the application.
           </p>
@@ -177,7 +177,7 @@ export function EditJobModal({
           </div>
         </div>
 
-        <div className='flex items-center justify-end gap-2 px-5 pb-5 pt-3'>
+        <div className='footer'>
           <Button
             variant='ghost'
             size='sm'

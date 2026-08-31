@@ -288,7 +288,7 @@ if (isTopLevelFrame && isExtensionContextValid()) {
         if (!target) return;
         const isJobClick = Boolean(
           target.closest(
-            "a[href*='/job/'], a[href*='/jobs/view/'], [data-automation='job-card'], [data-automation='normalJob'], [data-testid='job-card'], .job-card-container, [data-occludable-job-id], a[href*='vjk='], a[href*='jk='], .job_seen_beacon, [data-jk], [data-mobtk], [data-test='jobListing'][data-jobid], [data-selected][data-jobid], [id^='requisitionListInterface.reqTitleLinkAction'], [id*='pagerDiv'][id$='.Next'], [id*='pagerDiv'][id$='.Previous']"
+            "a[href*='/job/'], a[href*='/jobs/view/'], [data-automation='job-card'], [data-automation='normalJob'], [data-testid='job-card'], .job-card-container, [data-occludable-job-id], a[href*='vjk='], a[href*='jk='], .job_seen_beacon, [data-jk], [data-mobtk], [data-test='jobListing'][data-jobid], [data-selected][data-jobid], [id^='requisitionListInterface.reqTitleLinkAction'], [id*='pagerDiv'][id$='.Next'], [id*='pagerDiv'][id$='.Previous'], .job-card, [data-job-card], .show-job-description, .job-link, [job-id]"
           )
         );
         if (isJobClick) {

@@ -25,6 +25,32 @@ const PLATFORM_CARD_SELECTORS = [
   // Glassdoor card containers
   "[data-test='jobListing']",
   ".JobsList_jobListItem__JBkBU",
+
+  // Jora card containers
+  ".job-card[data-job-card='true']",
+  ".job-card",
+  "#jobresults .job-card",
+  ".job-card a.show-job-description",
+
+  // ZipRecruiter card containers
+  ".job_result",
+  "[data-testid='job-listing']",
+
+  // Adzuna card containers
+  ".results-container article",
+  "[data-aid]",
+
+  // Wellfound card containers
+  "[data-test='JobListing']",
+  "[class*='styles_jobListing']",
+
+  // Dice card containers
+  "dhi-search-card",
+  "[data-cy='card-title-link']",
+
+  // SimplyHired card containers
+  "[data-testid='searchSerpJob']",
+  ".SerpJob-jobCard",
 ];
 
 const SEARCH_OR_LIST_PAGE_PATTERNS = [
@@ -36,6 +62,7 @@ const SEARCH_OR_LIST_PAGE_PATTERNS = [
   /\/jobs\?.*keywords=/i,
   /-jobs(?:\/|\?|$)/i,
   /\/jobs-in-/i,
+  /\/j(?:\?|$)/i,
 ];
 
 export function isSearchOrListingPage(url = window.location.href): boolean {
@@ -60,6 +87,17 @@ export function isSearchOrListingPage(url = window.location.href): boolean {
       return true;
     }
 
+    // Dedicated Jora platform check
+    if (/(?:^|\.)jora\.(?:com(?:\.[a-z]{2})?|co\.[a-z]{2}|[a-z]{2,3})$/i.test(host)) {
+      if (/^\/job\/(?:[^-/]+-)*[a-f0-9]{24,32}/i.test(pathname)) {
+        return false;
+      }
+      if (/^\/(?:cms|users|login|salary|reviews)(?:\/|$)/i.test(pathname)) {
+        return false;
+      }
+      return true;
+    }
+
     return SEARCH_OR_LIST_PAGE_PATTERNS.some((pattern) =>
       pattern.test(pathAndSearch),
     );
@@ -77,7 +115,7 @@ function isElementVisible(element: HTMLElement): boolean {
 
 export function isJobAlreadySelected(root: ParentNode = document): boolean {
   const selected = root.querySelector<HTMLElement>(
-    "[data-automation='job-card'][data-selected='true'], [data-automation='job-card'][aria-current='true'], [data-testid='job-card'][aria-selected='true'], [data-testid='job-card'][data-selected='true'], [data-selected='true'], [aria-selected='true'], .jobs-search-results-list__list-item--active, [data-occludable-job-id].active",
+    "[data-automation='job-card'][data-selected='true'], [data-automation='job-card'][aria-current='true'], [data-testid='job-card'][aria-selected='true'], [data-testid='job-card'][data-selected='true'], [data-selected='true'], [aria-selected='true'], [data-active='true'], .job-card[data-active='true'], .jobs-search-results-list__list-item--active, [data-occludable-job-id].active",
   );
   return Boolean(selected);
 }

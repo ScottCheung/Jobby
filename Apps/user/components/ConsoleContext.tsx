@@ -13,7 +13,6 @@ import React, {
 import { usePathname } from 'next/navigation';
 import { api } from '@/lib/api';
 import { createClient } from '@/lib/supabase/client';
-import { useAuthStore } from '@/lib/store';
 import { openGlobalAuthModal } from '@/lib/store/auth-modal-store';
 import { showGlobalToast } from '@/lib/toast';
 import { withMinimumLoadingTime } from '@/lib/loading';
@@ -650,28 +649,15 @@ export function ConsoleProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    if (useAuthStore.getState().isTokenExpired()) {
-      const supabase = createClient();
-      supabase.auth.signOut().catch(() => {});
-      useAuthStore.getState().logout();
-    }
-
     loadData();
 
     const supabase = createClient();
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
+    } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
-        if (session?.access_token) {
-          const authState = useAuthStore.getState();
-          if (!authState.loginTime || event === 'SIGNED_IN') {
-            authState.login(session.access_token, authState.rememberMe ?? true);
-          }
-        }
         loadData();
       } else if (event === 'SIGNED_OUT') {
-        useAuthStore.getState().logout();
         setUser(null);
         setProfile(emptyProfile);
         setApplications([]);

@@ -1,28 +1,18 @@
 /** @format */
 
-'use client';
-import { BulletListInput, Button, Input, TagInput, Textarea } from '@jobby/ui';
+"use client";
+import { BulletListInput, Button, Input, TagInput, Textarea } from "@jobby/ui";
 
-import { useState } from 'react';
+import { useState } from "react";
 import {
   Check,
   Plus,
   Trash2,
-  User,
-  FileText,
-  Briefcase,
-  FolderGit2,
-  Wrench,
-  GraduationCap,
-  Award,
-  Link as LinkIcon,
-  Layers,
   X,
   ChevronUp,
   ChevronDown,
   GripVertical,
-  Sparkles,
-} from 'lucide-react';
+} from "lucide-react";
 
 import type {
   MasterResumeData,
@@ -32,51 +22,35 @@ import type {
   ResumeCertification,
   ResumeLink,
   ResumeOtherItem,
-} from '@/lib/types';
+} from "@/lib/types";
 
-type ResumeBasics = NonNullable<MasterResumeData['basics']>;
-type ResumeExperience = NonNullable<MasterResumeData['experience']>[number];
-type ResumeEducation = NonNullable<MasterResumeData['education']>[number];
-type ResumeProject = NonNullable<MasterResumeData['projects']>[number];
+type ResumeBasics = NonNullable<MasterResumeData["basics"]>;
+type ResumeExperience = NonNullable<MasterResumeData["experience"]>[number];
+type ResumeEducation = NonNullable<MasterResumeData["education"]>[number];
+type ResumeProject = NonNullable<MasterResumeData["projects"]>[number];
 
 function asValue(val?: string | null) {
-  return val ?? '';
+  return val ?? "";
 }
 
 function ModalHeader({
   title,
-  description,
-  icon: Icon,
   onClose,
 }: {
   title: string;
-  description?: string;
-  icon?: React.ElementType;
   onClose: () => void;
 }) {
   return (
-    <header className='header'>
-      <div className='flex min-w-0 items-start gap-3'>
-        {Icon && (
-          <div className='flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary'>
-            <Icon className='h-5 w-5' />
-          </div>
-        )}
-        <div>
-          <h2 className='title-section text-ink-primary'>{title}</h2>
-          {description && (
-            <p className='body-md mt-1 text-ink-secondary'>{description}</p>
-          )}
-        </div>
-      </div>
+    <header className="flex items-center justify-between border-b border-border/50 pb-3">
+      <h2 className="title-section text-ink-primary">{title}</h2>
       <button
-        type='button'
-        title='Close editor'
-        aria-label='Close editor'
+        type="button"
+        title="Close editor"
+        aria-label="Close editor"
         onClick={onClose}
-        className='flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-ink-secondary hover:bg-background-secondary hover:text-ink-primary'
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-ink-secondary hover:bg-background-secondary hover:text-ink-primary"
       >
-        <X className='h-4 w-4' />
+        <X className="h-4 w-4" />
       </button>
     </header>
   );
@@ -92,8 +66,8 @@ function ModalFooter({
   saving?: boolean;
 }) {
   return (
-    <footer className='footer'>
-      <Button variant='ghost' onClick={onClose} disabled={saving}>
+    <footer className="flex shrink-0 items-center justify-end gap-2 border-t border-border/50 pt-3">
+      <Button variant="ghost" onClick={onClose} disabled={saving}>
         Cancel
       </Button>
       <Button Icon={Check} isLoading={saving} onClick={onSave}>
@@ -171,130 +145,125 @@ export function BasicsEditor({
   };
 
   return (
-    <div className='flex max-h-[88vh] min-h-[420px] flex-col'>
-      <ModalHeader
-        title='Personal Info'
-        description='Update your name, contact information, and headline.'
-        icon={User}
-        onClose={onClose}
-      />
-      <div className='body space-y-4'>
-        <div className='grid gap-4 md:grid-cols-2'>
+    <div className="flex max-h-[88vh] min-h-[360px] flex-col">
+      <ModalHeader title="Personal Info" onClose={onClose} />
+      <div className="flex-1 overflow-y-auto custom-scrollbar py-3 pr-1">
+        <div className="grid gap-x-3 gap-y-2.5 md:grid-cols-2">
           <div>
-            <label className='text-xs font-medium text-ink-secondary mb-1 block'>
+            <label className="text-xs font-medium text-ink-secondary mb-1 block">
               First Name
             </label>
             <Input
-              className='font-semibold text-ink-primary'
+              className="font-semibold text-ink-primary"
               value={draft.first_name}
-              placeholder='First name'
+              placeholder="First name"
               onChange={(e) =>
                 setDraft({ ...draft, first_name: e.target.value })
               }
             />
           </div>
           <div>
-            <label className='text-xs font-medium text-ink-secondary mb-1 block'>
+            <label className="text-xs font-medium text-ink-secondary mb-1 block">
               Last Name
             </label>
             <Input
-              className='font-semibold text-ink-primary'
+              className="font-semibold text-ink-primary"
               value={draft.last_name}
-              placeholder='Last name'
+              placeholder="Last name"
               onChange={(e) =>
                 setDraft({ ...draft, last_name: e.target.value })
               }
             />
           </div>
           <div>
-            <label className='text-xs font-medium text-ink-secondary mb-1 block'>
+            <label className="text-xs font-medium text-ink-secondary mb-1 block">
               Email
             </label>
             <Input
-              className='font-semibold text-ink-primary'
+              className="font-semibold text-ink-primary"
               value={draft.email}
-              placeholder='email@example.com'
+              placeholder="email@example.com"
               onChange={(e) => setDraft({ ...draft, email: e.target.value })}
             />
           </div>
           <div>
-            <label className='text-xs font-medium text-ink-secondary mb-1 block'>
+            <label className="text-xs font-medium text-ink-secondary mb-1 block">
               Phone
             </label>
             <Input
-              className='font-semibold text-ink-primary'
+              className="font-semibold text-ink-primary"
               value={draft.phone}
-              placeholder='+1 (555) 000-0000'
+              placeholder="+1 (555) 000-0000"
               onChange={(e) => setDraft({ ...draft, phone: e.target.value })}
             />
           </div>
           <div>
-            <label className='text-xs font-medium text-ink-secondary mb-1 block'>
+            <label className="text-xs font-medium text-ink-secondary mb-1 block">
               City
             </label>
             <Input
-              className='font-semibold text-ink-primary'
+              className="font-semibold text-ink-primary"
               value={draft.city}
-              placeholder='City'
+              placeholder="City"
               onChange={(e) => setDraft({ ...draft, city: e.target.value })}
             />
           </div>
           <div>
-            <label className='text-xs font-medium text-ink-secondary mb-1 block'>
+            <label className="text-xs font-medium text-ink-secondary mb-1 block">
               Country
             </label>
             <Input
-              className='font-semibold text-ink-primary'
+              className="font-semibold text-ink-primary"
               value={draft.country}
-              placeholder='Country'
+              placeholder="Country"
               onChange={(e) => setDraft({ ...draft, country: e.target.value })}
             />
           </div>
           <div>
-            <label className='text-xs font-medium text-ink-secondary mb-1 block'>
+            <label className="text-xs font-medium text-ink-secondary mb-1 block">
               LinkedIn ID
             </label>
             <Input
-              className='font-semibold text-ink-primary'
+              className="font-semibold text-ink-primary"
               value={draft.linkedin_id}
-              placeholder='e.g. scottzhang1110'
+              placeholder="e.g. scottzhang1110"
               onChange={(e) =>
                 setDraft({ ...draft, linkedin_id: e.target.value })
               }
             />
           </div>
           <div>
-            <label className='text-xs font-medium text-ink-secondary mb-1 block'>
+            <label className="text-xs font-medium text-ink-secondary mb-1 block">
               Portfolio / Project URL
             </label>
             <Input
-              className='font-semibold text-ink-primary'
+              className="font-semibold text-ink-primary"
               value={draft.portfolio_url}
-              placeholder='https://...'
+              placeholder="https://..."
               onChange={(e) =>
                 setDraft({ ...draft, portfolio_url: e.target.value })
               }
             />
           </div>
-          <div className='md:col-span-2'>
-            <label className='text-xs font-medium text-ink-secondary mb-1 block'>
+          <div className="md:col-span-2">
+            <label className="text-xs font-medium text-ink-secondary mb-1 block">
               Personal Website
             </label>
             <Input
-              className='font-semibold text-ink-primary'
+              className="font-semibold text-ink-primary"
               value={draft.website}
-              placeholder='https://...'
+              placeholder="https://..."
               onChange={(e) => setDraft({ ...draft, website: e.target.value })}
             />
           </div>
-          <div className='md:col-span-2'>
-            <label className='text-xs font-medium text-ink-secondary mb-1 block'>
+          <div className="md:col-span-2">
+            <label className="text-xs font-medium text-ink-secondary mb-1 block">
               Professional Headline
             </label>
             <Input
-              className='font-semibold text-ink-primary'
+              className="font-semibold text-ink-primary"
               value={draft.headline}
-              placeholder='e.g. Senior Software Engineer'
+              placeholder="e.g. Senior Software Engineer"
               onChange={(e) => setDraft({ ...draft, headline: e.target.value })}
             />
           </div>
@@ -330,20 +299,15 @@ export function SummaryEditor({
   };
 
   return (
-    <div className='flex max-h-[88vh] min-h-[380px] flex-col'>
-      <ModalHeader
-        title='Summary'
-        description='Write a professional overview summarizing your expertise and value.'
-        icon={FileText}
-        onClose={onClose}
-      />
-      <div className='body'>
+    <div className="flex max-h-[88vh] min-h-[320px] flex-col">
+      <ModalHeader title="Summary" onClose={onClose} />
+      <div className="flex-1 overflow-y-auto custom-scrollbar py-3 pr-1">
         <Textarea
-          label='Professional Summary'
+          label="Professional Summary"
           value={summary}
-          placeholder='Brief professional summary...'
+          placeholder="Brief professional summary..."
           onChange={(e) => setSummary(e.target.value)}
-          minHeight={220}
+          minHeight={160}
         />
       </div>
       <ModalFooter onClose={onClose} onSave={handleSave} saving={saving} />
@@ -378,8 +342,8 @@ export function ExperienceEditor({
     setItems(items.filter((_, i) => i !== index));
   };
 
-  const moveItem = (index: number, direction: 'up' | 'down') => {
-    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+  const moveItem = (index: number, direction: "up" | "down") => {
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
     if (targetIndex < 0 || targetIndex >= items.length) return;
     const next = [...items];
     const [moved] = next.splice(index, 1);
@@ -391,11 +355,11 @@ export function ExperienceEditor({
     setItems([
       ...items,
       {
-        title: '',
-        company: '',
-        location: '',
-        start_date: '',
-        end_date: '',
+        title: "",
+        company: "",
+        location: "",
+        start_date: "",
+        end_date: "",
         description: [],
         technologies: [],
       },
@@ -412,56 +376,51 @@ export function ExperienceEditor({
   };
 
   return (
-    <div className='flex max-h-[88vh] min-h-[480px] flex-col'>
-      <ModalHeader
-        title='Experience'
-        description='Manage work history, bullet points, and key technologies. Reorder experiences using the arrow buttons.'
-        icon={Briefcase}
-        onClose={onClose}
-      />
-      <div className='body space-y-4'>
+    <div className="flex max-h-[88vh] min-h-[420px] flex-col">
+      <ModalHeader title="Experience" onClose={onClose} />
+      <div className="flex-1 space-y-3 overflow-y-auto custom-scrollbar py-3 pr-1">
         {items.map((item, index) => (
           <div
             key={`exp-${index}`}
-            className='rounded-xl bg-panel p-4 md:p-5 space-y-4 shadow-xs'
+            className="space-y-3 rounded-lg bg-panel p-3 shadow-xs"
           >
-            <div className='flex items-center justify-between gap-3 pb-3'>
-              <div className='flex items-center gap-2 min-w-0'>
-                <span className='inline-flex h-5 min-w-5 items-center justify-center rounded-md bg-primary/10 px-1.5 text-[11px] font-bold text-primary shrink-0'>
+            <div className="flex items-center justify-between gap-3 pb-3">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-md bg-primary/10 px-1.5 text-[11px] font-bold text-primary shrink-0">
                   {index + 1}
                 </span>
-                <h3 className='font-semibold text-ink-primary truncate text-sm'>
-                  {item.title || item.company ?
-                    `${item.title || 'Role'} at ${item.company || 'Company'}`
-                  : `Experience #${index + 1}`}
+                <h3 className="font-semibold text-ink-primary truncate text-sm">
+                  {item.title || item.company
+                    ? `${item.title || "Role"} at ${item.company || "Company"}`
+                    : `Experience #${index + 1}`}
                 </h3>
               </div>
-              <div className='flex items-center gap-1 shrink-0'>
+              <div className="flex items-center gap-1 shrink-0">
                 <button
-                  type='button'
-                  title='Move role up'
-                  aria-label='Move role up'
+                  type="button"
+                  title="Move role up"
+                  aria-label="Move role up"
                   disabled={index === 0}
-                  onClick={() => moveItem(index, 'up')}
-                  className='p-1 rounded-md text-ink-secondary hover:text-ink-primary hover:bg-background-secondary disabled:opacity-30 cursor-pointer'
+                  onClick={() => moveItem(index, "up")}
+                  className="p-1 rounded-md text-ink-secondary hover:text-ink-primary hover:bg-background-secondary disabled:opacity-30 cursor-pointer"
                 >
-                  <ChevronUp className='size-4' />
+                  <ChevronUp className="size-4" />
                 </button>
                 <button
-                  type='button'
-                  title='Move role down'
-                  aria-label='Move role down'
+                  type="button"
+                  title="Move role down"
+                  aria-label="Move role down"
                   disabled={index === items.length - 1}
-                  onClick={() => moveItem(index, 'down')}
-                  className='p-1 rounded-md text-ink-secondary hover:text-ink-primary hover:bg-background-secondary disabled:opacity-30 cursor-pointer'
+                  onClick={() => moveItem(index, "down")}
+                  className="p-1 rounded-md text-ink-secondary hover:text-ink-primary hover:bg-background-secondary disabled:opacity-30 cursor-pointer"
                 >
-                  <ChevronDown className='size-4' />
+                  <ChevronDown className="size-4" />
                 </button>
                 <Button
-                  type='button'
-                  size='sm'
-                  variant='ghost'
-                  className='text-red-500 hover:bg-red-500/10 hover:text-red-600'
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="text-red-500 hover:bg-red-500/10 hover:text-red-600"
                   Icon={Trash2}
                   onClick={() => removeItem(index)}
                 >
@@ -470,63 +429,63 @@ export function ExperienceEditor({
               </div>
             </div>
 
-            <div className='grid gap-3 md:grid-cols-2'>
+            <div className="grid gap-3 md:grid-cols-2">
               <div>
-                <label className='text-xs font-medium text-ink-secondary mb-1 block'>
+                <label className="text-xs font-medium text-ink-secondary mb-1 block">
                   Job Title
                 </label>
                 <Input
                   value={asValue(item.title)}
-                  placeholder='Job title'
+                  placeholder="Job title"
                   onChange={(e) =>
                     updateItem(index, { title: e.target.value || null })
                   }
                 />
               </div>
               <div>
-                <label className='text-xs font-medium text-ink-secondary mb-1 block'>
+                <label className="text-xs font-medium text-ink-secondary mb-1 block">
                   Company
                 </label>
                 <Input
                   value={asValue(item.company)}
-                  placeholder='Company name'
+                  placeholder="Company name"
                   onChange={(e) =>
                     updateItem(index, { company: e.target.value || null })
                   }
                 />
               </div>
               <div>
-                <label className='text-xs font-medium text-ink-secondary mb-1 block'>
+                <label className="text-xs font-medium text-ink-secondary mb-1 block">
                   Location
                 </label>
                 <Input
                   value={asValue(item.location)}
-                  placeholder='Location'
+                  placeholder="Location"
                   onChange={(e) =>
                     updateItem(index, { location: e.target.value || null })
                   }
                 />
               </div>
-              <div className='grid grid-cols-2 gap-2'>
+              <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className='text-xs font-medium text-ink-secondary mb-1 block'>
+                  <label className="text-xs font-medium text-ink-secondary mb-1 block">
                     Start Date
                   </label>
                   <Input
                     value={asValue(item.start_date)}
-                    placeholder='e.g. Jan 2022'
+                    placeholder="e.g. Jan 2022"
                     onChange={(e) =>
                       updateItem(index, { start_date: e.target.value || null })
                     }
                   />
                 </div>
                 <div>
-                  <label className='text-xs font-medium text-ink-secondary mb-1 block'>
+                  <label className="text-xs font-medium text-ink-secondary mb-1 block">
                     End Date
                   </label>
                   <Input
                     value={asValue(item.end_date)}
-                    placeholder='e.g. Present'
+                    placeholder="e.g. Present"
                     onChange={(e) =>
                       updateItem(index, { end_date: e.target.value || null })
                     }
@@ -536,29 +495,29 @@ export function ExperienceEditor({
             </div>
 
             <div>
-              <label className='text-xs font-semibold text-ink-secondary mb-1 block'>
-                Key Achievements / Responsibilities{' '}
-                <span className='text-ink-secondary/70 font-normal'>
+              <label className="text-xs font-semibold text-ink-secondary mb-1 block">
+                Key Achievements / Responsibilities{" "}
+                <span className="text-ink-secondary/70 font-normal">
                   (Drag to reorder)
                 </span>
               </label>
               <BulletListInput
                 values={item.description ?? []}
-                placeholder='Add an achievement point...'
+                placeholder="Add an achievement point..."
                 onChange={(desc) => updateItem(index, { description: desc })}
               />
             </div>
 
             <div>
-              <label className='text-xs font-semibold text-ink-secondary mb-1 block'>
+              <label className="text-xs font-semibold text-ink-secondary mb-1 block">
                 Technologies Used
               </label>
               <TagInput
                 values={item.technologies ?? []}
                 placeholder={[
-                  'Add technologies (e.g. Next.js, GraphQL, Redis)',
-                  'Tip: Type multiple items separated by commas (,)',
-                  'Press Enter or comma to add tags',
+                  "Add technologies (e.g. Next.js, GraphQL, Redis)",
+                  "Tip: Type multiple items separated by commas (,)",
+                  "Press Enter or comma to add tags",
                 ]}
                 onChange={(techs) => updateItem(index, { technologies: techs })}
               />
@@ -567,9 +526,9 @@ export function ExperienceEditor({
         ))}
 
         <Button
-          type='button'
-          variant='secondary'
-          className='w-full'
+          type="button"
+          variant="secondary"
+          className="w-full"
           Icon={Plus}
           onClick={addItem}
         >
@@ -612,10 +571,10 @@ export function ProjectsEditor({
     setItems([
       ...items,
       {
-        name: '',
-        url: '',
-        start_date: '',
-        end_date: '',
+        name: "",
+        url: "",
+        start_date: "",
+        end_date: "",
         description: [],
         technologies: [],
       },
@@ -632,28 +591,23 @@ export function ProjectsEditor({
   };
 
   return (
-    <div className='flex max-h-[88vh] min-h-[480px] flex-col'>
-      <ModalHeader
-        title='Projects'
-        description='Manage portfolio projects, descriptions (point by point), and technology tags.'
-        icon={FolderGit2}
-        onClose={onClose}
-      />
-      <div className='body'>
+    <div className="flex max-h-[88vh] min-h-[420px] flex-col">
+      <ModalHeader title="Projects" onClose={onClose} />
+      <div className="flex-1 overflow-y-auto custom-scrollbar py-3 pr-1">
         {items.map((item, index) => (
           <div
             key={`project-item-${index}`}
-            className='rounded-xl bg-panel p-4 md:p-5 space-y-4'
+            className="space-y-3 rounded-lg bg-panel p-3"
           >
-            <div className='flex items-center justify-between gap-3 pb-3'>
-              <h3 className='font-semibold text-ink-primary'>
+            <div className="flex items-center justify-between gap-3 pb-3">
+              <h3 className="font-semibold text-ink-primary">
                 {item.name || `Project #${index + 1}`}
               </h3>
               <Button
-                type='button'
-                size='sm'
-                variant='ghost'
-                className='text-red-500 hover:bg-red-500/10 hover:text-red-600'
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="text-red-500 hover:bg-red-500/10 hover:text-red-600"
                 Icon={Trash2}
                 onClick={() => removeItem(index)}
               >
@@ -661,50 +615,50 @@ export function ProjectsEditor({
               </Button>
             </div>
 
-            <div className='grid gap-3 md:grid-cols-2'>
+            <div className="grid gap-3 md:grid-cols-2">
               <div>
-                <label className='body-sm mb-1 block text-ink-secondary'>
+                <label className="body-sm mb-1 block text-ink-secondary">
                   Project Name
                 </label>
                 <Input
                   value={asValue(item.name)}
-                  placeholder='Project title'
+                  placeholder="Project title"
                   onChange={(e) =>
                     updateItem(index, { name: e.target.value || null })
                   }
                 />
               </div>
               <div>
-                <label className='body-sm mb-1 block text-ink-secondary'>
+                <label className="body-sm mb-1 block text-ink-secondary">
                   URL / Link
                 </label>
                 <Input
                   value={asValue(item.url)}
-                  placeholder='https://github.com/...'
+                  placeholder="https://github.com/..."
                   onChange={(e) =>
                     updateItem(index, { url: e.target.value || null })
                   }
                 />
               </div>
               <div>
-                <label className='body-sm mb-1 block text-ink-secondary'>
+                <label className="body-sm mb-1 block text-ink-secondary">
                   Start Date
                 </label>
                 <Input
                   value={asValue(item.start_date)}
-                  placeholder='e.g. Jan 2023'
+                  placeholder="e.g. Jan 2023"
                   onChange={(e) =>
                     updateItem(index, { start_date: e.target.value || null })
                   }
                 />
               </div>
               <div>
-                <label className='body-sm mb-1 block text-ink-secondary'>
+                <label className="body-sm mb-1 block text-ink-secondary">
                   End Date
                 </label>
                 <Input
                   value={asValue(item.end_date)}
-                  placeholder='e.g. Dec 2023'
+                  placeholder="e.g. Dec 2023"
                   onChange={(e) =>
                     updateItem(index, { end_date: e.target.value || null })
                   }
@@ -713,26 +667,26 @@ export function ProjectsEditor({
             </div>
 
             <div>
-              <label className='body-sm mb-1 block font-medium text-ink-primary'>
+              <label className="body-sm mb-1 block font-medium text-ink-primary">
                 Project Highlights / Features (Drag to reorder)
               </label>
               <BulletListInput
                 values={item.description ?? []}
-                placeholder='Add a project feature or achievement point...'
+                placeholder="Add a project feature or achievement point..."
                 onChange={(desc) => updateItem(index, { description: desc })}
               />
             </div>
 
             <div>
-              <label className='body-sm mb-1 block font-medium text-ink-primary'>
+              <label className="body-sm mb-1 block font-medium text-ink-primary">
                 Technologies Used
               </label>
               <TagInput
                 values={item.technologies ?? []}
                 placeholder={[
-                  'Add technologies (e.g. React, TailwindCSS, AWS)',
-                  'Tip: Type multiple items separated by commas (,)',
-                  'Press Enter or comma to add tags',
+                  "Add technologies (e.g. React, TailwindCSS, AWS)",
+                  "Tip: Type multiple items separated by commas (,)",
+                  "Press Enter or comma to add tags",
                 ]}
                 onChange={(techs) => updateItem(index, { technologies: techs })}
               />
@@ -741,9 +695,9 @@ export function ProjectsEditor({
         ))}
 
         <Button
-          type='button'
-          variant='secondary'
-          className='w-full'
+          type="button"
+          variant="secondary"
+          className="w-full"
           Icon={Plus}
           onClick={addItem}
         >
@@ -756,9 +710,9 @@ export function ProjectsEditor({
 }
 
 /* ========================================================================== */
-/* Skills Editor                                                              */
+/* Core Competencies Editor                                                   */
 /* ========================================================================== */
-export function SkillsEditor({
+export function CoreCompetenciesEditor({
   data,
   onSave,
   onClose,
@@ -778,6 +732,70 @@ export function SkillsEditor({
       (data as unknown as Record<string, string[]>).key_qualifications ??
       [],
   );
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await onSave(
+        { ...data, core_competencies: coreCompetencies },
+        coreCompetencies,
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="flex max-h-[88vh] min-h-[320px] flex-col">
+      <ModalHeader title="Core Competencies" onClose={onClose} />
+      <div className="flex-1 overflow-y-auto custom-scrollbar py-3 pr-1">
+        <div className="space-y-3 rounded-lg bg-primary/5 p-3">
+          <div className="flex items-center justify-between gap-3">
+            <label className="body-sm font-bold text-ink-primary">
+              Competencies (Drag to reorder)
+            </label>
+            {coreCompetencies.length > 0 && (
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="self-start text-red-500 hover:bg-red-500/10 hover:text-red-600"
+                Icon={Trash2}
+                onClick={() => setCoreCompetencies([])}
+              >
+                Clear All
+              </Button>
+            )}
+          </div>
+          <TagInput
+            values={coreCompetencies}
+            placeholder={[
+              "Add core competencies (e.g. AWS Cloud & Serverless Architecture)",
+              "Tip: Type or paste multiple competencies separated by commas (,)",
+              "Press Enter or comma to add tags",
+            ]}
+            onChange={setCoreCompetencies}
+          />
+        </div>
+      </div>
+      <ModalFooter onClose={onClose} onSave={handleSave} saving={saving} />
+    </div>
+  );
+}
+
+/* ========================================================================== */
+/* Skills Editor                                                              */
+/* ========================================================================== */
+export function SkillsEditor({
+  data,
+  onSave,
+  onClose,
+}: {
+  data: MasterResumeData;
+  onSave: (next: MasterResumeData) => Promise<void>;
+  onClose: () => void;
+}) {
   const [groups, setGroups] = useState<ResumeSkillGroup[]>(
     Array.isArray(data.skills) ? data.skills : [],
   );
@@ -794,65 +812,25 @@ export function SkillsEditor({
   };
 
   const addGroup = () => {
-    setGroups([...groups, { type: 'Languages & Frameworks', skills: [] }]);
+    setGroups([...groups, { type: "Languages & Frameworks", skills: [] }]);
   };
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      await onSave(
-        { ...data, skills: groups, core_competencies: coreCompetencies },
-        coreCompetencies,
-      );
+      await onSave({ ...data, skills: groups });
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <div className='flex max-h-[88vh] min-h-[440px] flex-col'>
-      <ModalHeader title='Skills & Core Competencies' onClose={onClose} />
-      <div className='body space-y-6'>
-        {/* 1. Core Competencies */}
-        <div className='rounded-xl bg-primary/5 p-4 md:p-5 space-y-3'>
-          <div className='flex items-center justify-between gap-3'>
-            <div>
-              <label className='body-sm font-bold text-ink-primary flex items-center gap-2'>
-                <Sparkles className='h-4 w-4 text-primary' />
-                Core Competencies (Drag to reorder)
-              </label>
-              <p className='text-xs text-ink-secondary mt-0.5'>
-                Recruiter-facing capability phrases and specializations.
-              </p>
-            </div>
-            {coreCompetencies.length > 0 && (
-              <Button
-                type='button'
-                size='sm'
-                variant='ghost'
-                className='text-red-500 hover:bg-red-500/10 hover:text-red-600 self-start'
-                Icon={Trash2}
-                onClick={() => setCoreCompetencies([])}
-              >
-                Clear All
-              </Button>
-            )}
-          </div>
-          <TagInput
-            values={coreCompetencies}
-            placeholder={[
-              'Add core competencies (e.g. AWS Cloud & Serverless Architecture)',
-              'Tip: Type or paste multiple competencies separated by commas (,)',
-              'Press Enter or comma to add tags',
-            ]}
-            onChange={setCoreCompetencies}
-          />
-        </div>
-
-        {/* 2. Skill Categories */}
-        <div className='space-y-4'>
-          <div className='flex items-center justify-between'>
-            <h4 className='text-sm font-bold text-ink-primary'>
+    <div className="flex max-h-[88vh] min-h-[380px] flex-col">
+      <ModalHeader title="Skills" onClose={onClose} />
+      <div className="flex-1 overflow-y-auto custom-scrollbar py-3 pr-1">
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-bold text-ink-primary">
               Skill Categories
             </h4>
           </div>
@@ -860,26 +838,26 @@ export function SkillsEditor({
           {groups.map((group, index) => (
             <div
               key={`skill-group-${index}`}
-              className='rounded-xl bg-panel p-4 md:p-5 space-y-3'
+              className="space-y-3 rounded-lg bg-panel p-3"
             >
-              <div className='flex items-center justify-between gap-3'>
-                <div className='flex-1 max-w-sm'>
-                  <label className='body-sm mb-1 block text-ink-secondary font-medium'>
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <label className="body-sm mb-1 block text-ink-secondary font-medium">
                     Category Name
                   </label>
                   <Input
                     value={asValue(group.type)}
-                    placeholder='e.g. Programming Languages'
+                    placeholder="e.g. Programming Languages"
                     onChange={(e) =>
-                      updateGroup(index, { type: e.target.value || 'Other' })
+                      updateGroup(index, { type: e.target.value || "Other" })
                     }
                   />
                 </div>
                 <Button
-                  type='button'
-                  size='sm'
-                  variant='ghost'
-                  className='text-red-500 hover:bg-red-500/10 hover:text-red-600 self-end'
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="text-red-500 hover:bg-red-500/10 hover:text-red-600 self-end"
                   Icon={Trash2}
                   onClick={() => removeGroup(index)}
                 >
@@ -888,15 +866,15 @@ export function SkillsEditor({
               </div>
 
               <div>
-                <label className='body-sm mb-1 block font-medium text-ink-primary'>
+                <label className="body-sm mb-1 block font-medium text-ink-primary">
                   Skills (Drag to reorder)
                 </label>
                 <TagInput
                   values={group.skills ?? []}
                   placeholder={[
-                    'Add skills (e.g. React, TypeScript, Python, Docker)',
-                    'Tip: Type or paste multiple skills separated by commas (,)',
-                    'Press Enter or comma to add tags in bulk',
+                    "Add skills (e.g. React, TypeScript, Python, Docker)",
+                    "Tip: Type or paste multiple skills separated by commas (,)",
+                    "Press Enter or comma to add tags in bulk",
                   ]}
                   onChange={(skills) => updateGroup(index, { skills })}
                 />
@@ -905,9 +883,9 @@ export function SkillsEditor({
           ))}
 
           <Button
-            type='button'
-            variant='ghost'
-            className='w-full bg-primary/10 hover:bg-primary/20 text-primary'
+            type="button"
+            variant="ghost"
+            className="w-full bg-primary/10 hover:bg-primary/20 text-primary"
             Icon={Plus}
             onClick={addGroup}
           >
@@ -951,12 +929,12 @@ export function EducationEditor({
     setItems([
       ...items,
       {
-        institution: '',
-        degree: '',
-        field_of_study: '',
-        location: '',
-        start_date: '',
-        end_date: '',
+        institution: "",
+        degree: "",
+        field_of_study: "",
+        location: "",
+        start_date: "",
+        end_date: "",
         highlights: [],
       },
     ]);
@@ -972,30 +950,25 @@ export function EducationEditor({
   };
 
   return (
-    <div className='flex max-h-[88vh] min-h-[460px] flex-col'>
-      <ModalHeader
-        title='Education'
-        description='Manage degree details, field of study, institutions, and achievements.'
-        icon={GraduationCap}
-        onClose={onClose}
-      />
-      <div className='body'>
+    <div className="flex max-h-[88vh] min-h-[400px] flex-col">
+      <ModalHeader title="Education" onClose={onClose} />
+      <div className="flex-1 overflow-y-auto custom-scrollbar py-3 pr-1">
         {items.map((item, index) => (
           <div
             key={`edu-${index}`}
-            className='rounded-xl bg-panel p-4 md:p-5 space-y-4'
+            className="space-y-3 rounded-lg bg-panel p-3"
           >
-            <div className='flex items-center justify-between gap-3 pb-3'>
-              <h3 className='font-semibold text-ink-primary'>
-                {item.degree || item.institution ?
-                  `${item.degree || 'Education'} - ${item.institution || 'School'}`
-                : `Education #${index + 1}`}
+            <div className="flex items-center justify-between gap-3 pb-3">
+              <h3 className="font-semibold text-ink-primary">
+                {item.degree || item.institution
+                  ? `${item.degree || "Education"} - ${item.institution || "School"}`
+                  : `Education #${index + 1}`}
               </h3>
               <Button
-                type='button'
-                size='sm'
-                variant='ghost'
-                className='text-red-500 hover:bg-red-500/10 hover:text-red-600'
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="text-red-500 hover:bg-red-500/10 hover:text-red-600"
                 Icon={Trash2}
                 onClick={() => removeItem(index)}
               >
@@ -1003,26 +976,26 @@ export function EducationEditor({
               </Button>
             </div>
 
-            <div className='grid gap-3 md:grid-cols-2'>
+            <div className="grid gap-3 md:grid-cols-2">
               <div>
-                <label className='body-sm mb-1 block text-ink-secondary'>
+                <label className="body-sm mb-1 block text-ink-secondary">
                   Degree
                 </label>
                 <Input
                   value={asValue(item.degree)}
-                  placeholder='e.g. Bachelor of Science'
+                  placeholder="e.g. Bachelor of Science"
                   onChange={(e) =>
                     updateItem(index, { degree: e.target.value || null })
                   }
                 />
               </div>
               <div>
-                <label className='body-sm mb-1 block text-ink-secondary'>
+                <label className="body-sm mb-1 block text-ink-secondary">
                   Field of Study
                 </label>
                 <Input
                   value={asValue(item.field_of_study)}
-                  placeholder='e.g. Computer Science'
+                  placeholder="e.g. Computer Science"
                   onChange={(e) =>
                     updateItem(index, {
                       field_of_study: e.target.value || null,
@@ -1030,50 +1003,50 @@ export function EducationEditor({
                   }
                 />
               </div>
-              <div className='md:col-span-2'>
-                <label className='body-sm mb-1 block text-ink-secondary'>
+              <div className="md:col-span-2">
+                <label className="body-sm mb-1 block text-ink-secondary">
                   Institution / University
                 </label>
                 <Input
                   value={asValue(item.institution)}
-                  placeholder='University name'
+                  placeholder="University name"
                   onChange={(e) =>
                     updateItem(index, { institution: e.target.value || null })
                   }
                 />
               </div>
               <div>
-                <label className='body-sm mb-1 block text-ink-secondary'>
+                <label className="body-sm mb-1 block text-ink-secondary">
                   Location
                 </label>
                 <Input
                   value={asValue(item.location)}
-                  placeholder='City, Country'
+                  placeholder="City, Country"
                   onChange={(e) =>
                     updateItem(index, { location: e.target.value || null })
                   }
                 />
               </div>
-              <div className='grid grid-cols-2 gap-2'>
+              <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className='body-sm mb-1 block text-ink-secondary'>
+                  <label className="body-sm mb-1 block text-ink-secondary">
                     Start Date
                   </label>
                   <Input
                     value={asValue(item.start_date)}
-                    placeholder='e.g. Sep 2018'
+                    placeholder="e.g. Sep 2018"
                     onChange={(e) =>
                       updateItem(index, { start_date: e.target.value || null })
                     }
                   />
                 </div>
                 <div>
-                  <label className='body-sm mb-1 block text-ink-secondary'>
+                  <label className="body-sm mb-1 block text-ink-secondary">
                     End Date
                   </label>
                   <Input
                     value={asValue(item.end_date)}
-                    placeholder='e.g. May 2022'
+                    placeholder="e.g. May 2022"
                     onChange={(e) =>
                       updateItem(index, { end_date: e.target.value || null })
                     }
@@ -1083,12 +1056,12 @@ export function EducationEditor({
             </div>
 
             <div>
-              <label className='body-sm mb-1 block font-medium text-ink-primary'>
+              <label className="body-sm mb-1 block font-medium text-ink-primary">
                 Highlights / Honors (Drag to reorder)
               </label>
               <BulletListInput
                 values={item.highlights ?? []}
-                placeholder='Add an education highlight or honor...'
+                placeholder="Add an education highlight or honor..."
                 onChange={(highlights) => updateItem(index, { highlights })}
               />
             </div>
@@ -1096,9 +1069,9 @@ export function EducationEditor({
         ))}
 
         <Button
-          type='button'
-          variant='secondary'
-          className='w-full'
+          type="button"
+          variant="secondary"
+          className="w-full"
           Icon={Plus}
           onClick={addItem}
         >
@@ -1143,7 +1116,7 @@ export function CertificationsEditor({
   const addGroup = () => {
     setGroups([
       ...groups,
-      { type: 'Professional Certifications', certifications: [] },
+      { type: "Professional Certifications", certifications: [] },
     ]);
   };
 
@@ -1151,11 +1124,11 @@ export function CertificationsEditor({
     const list = [...groups];
     const certs = [...(list[groupIndex].certifications ?? [])];
     certs.push({
-      name: '',
-      issuer: '',
-      issue_date: '',
-      expiry_date: '',
-      credential_url: '',
+      name: "",
+      issuer: "",
+      issue_date: "",
+      expiry_date: "",
+      credential_url: "",
     });
     list[groupIndex] = { ...list[groupIndex], certifications: certs };
     setGroups(list);
@@ -1192,37 +1165,32 @@ export function CertificationsEditor({
   };
 
   return (
-    <div className='flex max-h-[88vh] min-h-[460px] flex-col'>
-      <ModalHeader
-        title='Certifications'
-        description='Manage professional certificates and credentials.'
-        icon={Award}
-        onClose={onClose}
-      />
-      <div className='body'>
+    <div className="flex max-h-[88vh] min-h-[400px] flex-col">
+      <ModalHeader title="Certifications" onClose={onClose} />
+      <div className="flex-1 overflow-y-auto custom-scrollbar py-3 pr-1">
         {groups.map((group, groupIndex) => (
           <div
             key={`cert-group-${groupIndex}`}
-            className='rounded-xl bg-panel p-4 md:p-5 space-y-4'
+            className="space-y-3 rounded-lg bg-panel p-3"
           >
-            <div className='flex items-center justify-between gap-3'>
-              <div className='flex-1 max-w-sm'>
-                <label className='body-sm mb-1 block text-ink-secondary'>
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <label className="body-sm mb-1 block text-ink-secondary">
                   Category
                 </label>
                 <Input
                   value={asValue(group.type)}
-                  placeholder='e.g. Cloud & DevOps'
+                  placeholder="e.g. Cloud & DevOps"
                   onChange={(e) =>
-                    updateGroup(groupIndex, { type: e.target.value || 'Other' })
+                    updateGroup(groupIndex, { type: e.target.value || "Other" })
                   }
                 />
               </div>
               <Button
-                type='button'
-                size='sm'
-                variant='ghost'
-                className='text-red-500 hover:bg-red-500/10 hover:text-red-600 self-end'
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="text-red-500 hover:bg-red-500/10 hover:text-red-600 self-end"
                 Icon={Trash2}
                 onClick={() => removeGroup(groupIndex)}
               >
@@ -1230,29 +1198,29 @@ export function CertificationsEditor({
               </Button>
             </div>
 
-            <div className='space-y-3 pt-2'>
+            <div className="space-y-3 pt-2">
               {(group.certifications ?? []).map((cert, certIndex) => (
                 <div
                   key={`cert-${groupIndex}-${certIndex}`}
-                  className='rounded-md bg-background-secondary p-3 space-y-3'
+                  className="rounded-md bg-background-secondary p-3 space-y-3"
                 >
-                  <div className='flex items-center justify-between gap-2'>
-                    <span className='body-sm font-medium text-ink-primary'>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="body-sm font-medium text-ink-primary">
                       Certification #{certIndex + 1}
                     </span>
                     <button
-                      type='button'
+                      type="button"
                       onClick={() => removeCert(groupIndex, certIndex)}
-                      className='text-ink-secondary hover:text-red-500'
-                      title='Remove certification'
+                      className="text-ink-secondary hover:text-red-500"
+                      title="Remove certification"
                     >
-                      <Trash2 className='size-3.5' />
+                      <Trash2 className="size-3.5" />
                     </button>
                   </div>
-                  <div className='grid gap-3 md:grid-cols-2'>
+                  <div className="grid gap-3 md:grid-cols-2">
                     <Input
                       value={asValue(cert.name)}
-                      placeholder='Certification Name'
+                      placeholder="Certification Name"
                       onChange={(e) =>
                         updateCert(groupIndex, certIndex, {
                           name: e.target.value || null,
@@ -1261,7 +1229,7 @@ export function CertificationsEditor({
                     />
                     <Input
                       value={asValue(cert.issuer)}
-                      placeholder='Issuer (e.g. AWS, Google)'
+                      placeholder="Issuer (e.g. AWS, Google)"
                       onChange={(e) =>
                         updateCert(groupIndex, certIndex, {
                           issuer: e.target.value || null,
@@ -1270,7 +1238,7 @@ export function CertificationsEditor({
                     />
                     <Input
                       value={asValue(cert.issue_date)}
-                      placeholder='Issue Date'
+                      placeholder="Issue Date"
                       onChange={(e) =>
                         updateCert(groupIndex, certIndex, {
                           issue_date: e.target.value || null,
@@ -1279,7 +1247,7 @@ export function CertificationsEditor({
                     />
                     <Input
                       value={asValue(cert.expiry_date)}
-                      placeholder='Expiry Date'
+                      placeholder="Expiry Date"
                       onChange={(e) =>
                         updateCert(groupIndex, certIndex, {
                           expiry_date: e.target.value || null,
@@ -1287,9 +1255,9 @@ export function CertificationsEditor({
                       }
                     />
                     <Input
-                      className='md:col-span-2'
+                      className="md:col-span-2"
                       value={asValue(cert.credential_url)}
-                      placeholder='Credential URL'
+                      placeholder="Credential URL"
                       onChange={(e) =>
                         updateCert(groupIndex, certIndex, {
                           credential_url: e.target.value || null,
@@ -1301,9 +1269,9 @@ export function CertificationsEditor({
               ))}
 
               <Button
-                type='button'
-                size='sm'
-                variant='secondary'
+                type="button"
+                size="sm"
+                variant="secondary"
                 Icon={Plus}
                 onClick={() => addCert(groupIndex)}
               >
@@ -1314,9 +1282,9 @@ export function CertificationsEditor({
         ))}
 
         <Button
-          type='button'
-          variant='secondary'
-          className='w-full'
+          type="button"
+          variant="secondary"
+          className="w-full"
           Icon={Plus}
           onClick={addGroup}
         >
@@ -1356,7 +1324,7 @@ export function LinksEditor({
   };
 
   const addItem = () => {
-    setItems([...items, { type: '', link: '' }]);
+    setItems([...items, { type: "", link: "" }]);
   };
 
   const handleSave = async () => {
@@ -1369,52 +1337,47 @@ export function LinksEditor({
   };
 
   return (
-    <div className='flex max-h-[88vh] min-h-[400px] flex-col'>
-      <ModalHeader
-        title='Links'
-        description='Add online portfolio, GitHub, blog, or personal website links.'
-        icon={LinkIcon}
-        onClose={onClose}
-      />
-      <div className='body space-y-4'>
+    <div className="flex max-h-[88vh] min-h-[340px] flex-col">
+      <ModalHeader title="Links" onClose={onClose} />
+      <div className="flex-1 space-y-3 overflow-y-auto custom-scrollbar py-3 pr-1">
         {items.map((item, index) => (
           <div
             key={`link-${index}`}
-            className='flex items-center gap-3 rounded-lg bg-panel p-3'
+            className="flex items-center gap-3 rounded-lg bg-panel p-3"
           >
-            <div className='w-1/3'>
+            <div className="w-1/3">
               <Input
                 value={asValue(item.type)}
-                placeholder='Type (e.g. GitHub)'
+                placeholder="Type (e.g. GitHub)"
                 onChange={(e) =>
                   updateItem(index, { type: e.target.value || null })
                 }
               />
             </div>
-            <div className='flex-1'>
+            <div className="flex-1">
               <Input
                 value={asValue(item.link)}
-                placeholder='https://...'
+                placeholder="https://..."
                 onChange={(e) =>
                   updateItem(index, { link: e.target.value || null })
                 }
               />
             </div>
             <button
-              type='button'
+              type="button"
               onClick={() => removeItem(index)}
-              className='text-ink-secondary hover:text-red-500 p-1'
-              title='Remove link'
+              className="text-ink-secondary hover:text-red-500 p-1"
+              title="Remove link"
             >
-              <Trash2 className='size-4' />
+              <Trash2 className="size-4" />
             </button>
           </div>
         ))}
 
         <Button
-          type='button'
-          variant='secondary'
-          className='w-full'
+          type="button"
+          variant="secondary"
+          className="w-full"
           Icon={Plus}
           onClick={addItem}
         >
@@ -1457,11 +1420,11 @@ export function OtherEditor({
     setItems([
       ...items,
       {
-        type: 'Volunteering',
-        title: '',
-        organization: '',
-        location: '',
-        date: '',
+        type: "Volunteering",
+        title: "",
+        organization: "",
+        location: "",
+        date: "",
         description: [],
       },
     ]);
@@ -1477,28 +1440,23 @@ export function OtherEditor({
   };
 
   return (
-    <div className='flex max-h-[88vh] min-h-[460px] flex-col'>
-      <ModalHeader
-        title='Additional Information'
-        description='Manage volunteering, publications, awards, or extra activities.'
-        icon={Layers}
-        onClose={onClose}
-      />
-      <div className='body'>
+    <div className="flex max-h-[88vh] min-h-[400px] flex-col">
+      <ModalHeader title="Additional Information" onClose={onClose} />
+      <div className="flex-1 overflow-y-auto custom-scrollbar py-3 pr-1">
         {items.map((item, index) => (
           <div
             key={`other-${index}`}
-            className='rounded-xl bg-panel p-4 md:p-5 space-y-4'
+            className="space-y-3 rounded-lg bg-panel p-3"
           >
-            <div className='flex items-center justify-between gap-3 pb-3'>
-              <h3 className='font-semibold text-ink-primary'>
+            <div className="flex items-center justify-between gap-3 pb-3">
+              <h3 className="font-semibold text-ink-primary">
                 {item.title || item.type || `Entry #${index + 1}`}
               </h3>
               <Button
-                type='button'
-                size='sm'
-                variant='ghost'
-                className='text-red-500 hover:bg-red-500/10 hover:text-red-600'
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="text-red-500 hover:bg-red-500/10 hover:text-red-600"
                 Icon={Trash2}
                 onClick={() => removeItem(index)}
               >
@@ -1506,50 +1464,50 @@ export function OtherEditor({
               </Button>
             </div>
 
-            <div className='grid gap-3 md:grid-cols-2'>
+            <div className="grid gap-3 md:grid-cols-2">
               <div>
-                <label className='body-sm mb-1 block text-ink-secondary'>
+                <label className="body-sm mb-1 block text-ink-secondary">
                   Category Type
                 </label>
                 <Input
                   value={asValue(item.type)}
-                  placeholder='e.g. Volunteer, Publication'
+                  placeholder="e.g. Volunteer, Publication"
                   onChange={(e) =>
                     updateItem(index, { type: e.target.value || null })
                   }
                 />
               </div>
               <div>
-                <label className='body-sm mb-1 block text-ink-secondary'>
+                <label className="body-sm mb-1 block text-ink-secondary">
                   Role / Title
                 </label>
                 <Input
                   value={asValue(item.title)}
-                  placeholder='Role or activity title'
+                  placeholder="Role or activity title"
                   onChange={(e) =>
                     updateItem(index, { title: e.target.value || null })
                   }
                 />
               </div>
               <div>
-                <label className='body-sm mb-1 block text-ink-secondary'>
+                <label className="body-sm mb-1 block text-ink-secondary">
                   Organization
                 </label>
                 <Input
                   value={asValue(item.organization)}
-                  placeholder='Organization name'
+                  placeholder="Organization name"
                   onChange={(e) =>
                     updateItem(index, { organization: e.target.value || null })
                   }
                 />
               </div>
               <div>
-                <label className='body-sm mb-1 block text-ink-secondary'>
+                <label className="body-sm mb-1 block text-ink-secondary">
                   Date / Duration
                 </label>
                 <Input
                   value={asValue(item.date)}
-                  placeholder='e.g. 2023'
+                  placeholder="e.g. 2023"
                   onChange={(e) =>
                     updateItem(index, { date: e.target.value || null })
                   }
@@ -1558,12 +1516,12 @@ export function OtherEditor({
             </div>
 
             <div>
-              <label className='body-sm mb-1 block font-medium text-ink-primary'>
+              <label className="body-sm mb-1 block font-medium text-ink-primary">
                 Details (Drag to reorder)
               </label>
               <BulletListInput
                 values={item.description ?? []}
-                placeholder='Add a detail point...'
+                placeholder="Add a detail point..."
                 onChange={(desc) => updateItem(index, { description: desc })}
               />
             </div>
@@ -1571,9 +1529,9 @@ export function OtherEditor({
         ))}
 
         <Button
-          type='button'
-          variant='secondary'
-          className='w-full'
+          type="button"
+          variant="secondary"
+          className="w-full"
           Icon={Plus}
           onClick={addItem}
         >

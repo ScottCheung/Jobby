@@ -3632,6 +3632,12 @@ _ATS_PLATFORMS = {
     "oracle",
     "workable",
     "bamboohr",
+    "jora",
+    "ziprecruiter",
+    "adzuna",
+    "wellfound",
+    "dice",
+    "simplyhired",
 }
 
 

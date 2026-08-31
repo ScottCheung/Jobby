@@ -521,6 +521,11 @@ export function startFormDiscovery(readForm: () => FormInspection): void {
   };
   document.addEventListener("focusin", onFocus, true);
 
+  // Application pages such as SEEK can finish rendering before this content
+  // script starts at document_idle. Scan the DOM once immediately instead of
+  // waiting forever for a later mutation that may never happen.
+  scheduleDiscovery();
+
   window.__jobbyFormDiscoveryCleanup = () => {
     discovery.disconnect();
     document.removeEventListener("focusin", onFocus, true);

@@ -16,6 +16,7 @@ def test_platform_memory_is_scoped_to_ats_and_scene() -> None:
     assert platform_mapping_scene("oracle", "job application") == "ats_oracle__job_application"
     assert platform_mapping_scene("workable", "job application") == "ats_workable__job_application"
     assert platform_mapping_scene("bamboohr", "job application") == "ats_bamboohr__job_application"
+    assert platform_mapping_scene("jora", "job application") == "ats_jora__job_application"
     assert platform_mapping_scene("generic", "job application") == "job_application"
 
 
@@ -28,10 +29,14 @@ def test_platform_memory_falls_back_to_existing_generic_rules() -> None:
         "ats_workable__job_application",
         "job_application",
     )
+    assert fallback_mapping_scenes("jora", "job application") == (
+        "ats_jora__job_application",
+        "job_application",
+    )
 
 
 def test_new_ats_platforms_use_identifier_hints_for_autofill() -> None:
-    for platform in ("icims", "successfactors", "oracle", "workable", "bamboohr"):
+    for platform in ("icims", "successfactors", "oracle", "workable", "bamboohr", "jora"):
         field = DummyField(label="", name="first_name", id_="candidate_first_name")
         assert _autofill_intent_key_for_field(field, platform=platform) == "identity.first_name"
 

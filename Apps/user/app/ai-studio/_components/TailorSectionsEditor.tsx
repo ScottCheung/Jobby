@@ -24,6 +24,7 @@ import { useGlobalModalStore } from '@/lib/store/global-modal-store';
 import {
   BasicsEditor,
   CertificationsEditor,
+  CoreCompetenciesEditor,
   EducationEditor,
   ExperienceEditor,
   LinksEditor,
@@ -103,6 +104,7 @@ export function TailorSectionsEditor({
   const experienceList = resumeData.experience || [];
   const projectList = resumeData.projects || [];
   const educationList = resumeData.education || [];
+  const skillGroups = resumeData.skills || [];
 
   return (
     <div className='space-y-4 pt-2'>
@@ -235,65 +237,118 @@ export function TailorSectionsEditor({
         </SectionCard>
       </div>
 
-      {/* Core Competencies */}
-      <SectionCard
-        title='Core Competencies & Skills'
-        layoutId='tailored-section-skills'
-        onClick={() =>
-          openSectionModal(
-            'tailored-section-skills',
-            <SkillsEditor
-              data={resumeData}
-              initialCoreCompetencies={coreCompetencies}
-              onClose={closeModal}
-              onSave={async (next, nextCompetencies) => {
-                await onSave(next, nextCompetencies);
-                closeModal();
-              }}
-            />,
-          )
-        }
-        action={
-          <Button
-            size='sm'
-            variant='ghost'
-            Icon={Pencil}
-            onClick={() =>
-              openSectionModal(
-                'tailored-section-skills',
-                <SkillsEditor
-                  data={resumeData}
-                  initialCoreCompetencies={coreCompetencies}
-                  onClose={closeModal}
-                  onSave={async (next, nextCompetencies) => {
-                    await onSave(next, nextCompetencies);
-                    closeModal();
-                  }}
-                />,
-              )
+      <div className='grid grid-cols-1 gap-4 md:grid-cols-2'>
+        <SectionCard
+          title='Core Competencies'
+          layoutId='tailored-section-core-competencies'
+          onClick={() =>
+            openSectionModal(
+              'tailored-section-core-competencies',
+              <CoreCompetenciesEditor
+                data={resumeData}
+                initialCoreCompetencies={coreCompetencies}
+                onClose={closeModal}
+                onSave={async (next, nextCompetencies) => {
+                  await onSave(next, nextCompetencies);
+                  closeModal();
+                }}
+              />,
+            )
+          }
+          action={
+            <Button
+              size='sm'
+              variant='ghost'
+              Icon={Pencil}
+              onClick={() =>
+                openSectionModal(
+                  'tailored-section-core-competencies',
+                  <CoreCompetenciesEditor
+                    data={resumeData}
+                    initialCoreCompetencies={coreCompetencies}
+                    onClose={closeModal}
+                    onSave={async (next, nextCompetencies) => {
+                      await onSave(next, nextCompetencies);
+                      closeModal();
+                    }}
+                  />,
+                )
+              }
+            >
+              Edit
+            </Button>
+          }
+        >
+          <div className='flex flex-wrap gap-1.5'>
+            {coreCompetencies.length > 0 ?
+              coreCompetencies.map((competency, index) => (
+                <span
+                  key={index}
+                  className='rounded-md bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary'
+                >
+                  {competency}
+                </span>
+              ))
+            : <p className='text-xs text-ink-secondary'>
+                No core competencies listed.
+              </p>
             }
-          >
-            Edit
-          </Button>
-        }
-      >
-        <div className='flex flex-wrap gap-1.5'>
-          {coreCompetencies.length > 0 ? (
-            coreCompetencies.map((skill, idx) => (
-              <span
-                key={idx}
-                className='rounded-md bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary'
-              >
-                {skill}
-              </span>
-            ))
-          ) : (
-            <p className='text-xs text-ink-secondary'>
-              No core competencies listed.
-            </p>
-          )}
-        </div>
-      </SectionCard>
+          </div>
+        </SectionCard>
+
+        <SectionCard
+          title='Skills'
+          layoutId='tailored-section-skills'
+          onClick={() =>
+            openSectionModal(
+              'tailored-section-skills',
+              <SkillsEditor
+                data={resumeData}
+                onClose={closeModal}
+                onSave={async (next) => {
+                  await onSave(next);
+                  closeModal();
+                }}
+              />,
+            )
+          }
+          action={
+            <Button
+              size='sm'
+              variant='ghost'
+              Icon={Pencil}
+              onClick={() =>
+                openSectionModal(
+                  'tailored-section-skills',
+                  <SkillsEditor
+                    data={resumeData}
+                    onClose={closeModal}
+                    onSave={async (next) => {
+                      await onSave(next);
+                      closeModal();
+                    }}
+                  />,
+                )
+              }
+            >
+              Edit
+            </Button>
+          }
+        >
+          <div className='space-y-2'>
+            {skillGroups.length > 0 ?
+              skillGroups.map((group, index) => (
+                <p key={index} className='text-xs text-ink-secondary'>
+                  <span className='font-semibold text-ink-primary'>
+                    {group.type || 'Other'}:
+                  </span>{' '}
+                  {(group.skills || []).join(', ')}
+                </p>
+              ))
+            : <p className='text-xs text-ink-secondary'>No skills listed.</p>}
+          </div>
+        </SectionCard>
+      </div>
 
       {/* Work Experience */}
       <SectionCard

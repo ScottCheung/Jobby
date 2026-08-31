@@ -40,10 +40,16 @@ export function JobAnalysisPanel({
 }: JobAnalysisPanelProps) {
   return (
     <>
-    <div 
-    style={{ padding: hasBackground ? 'var(--score-card-padding)' : '0px' }}
-    className= {
-      cn(hasBackground && 'flex flex-col gap-3 flex flex-col w-full h-full max-h-full rounded-xl  bg-primary/10 dark:bg-primary/20 rounded-tl-[3em]!')} >
+      <div 
+        style={{
+          padding: hasBackground ? 'var(--score-card-padding)' : '0px',
+          borderTopLeftRadius: hasBackground ? 'var(--score-card-radius-accent)' : undefined,
+        }}
+        className={cn(
+          hasBackground &&
+            'flex flex-col gap-3 w-full max-h-full rounded-xl bg-primary/10 dark:bg-primary/20',
+        )}
+      >
       <JobScoreCard
         latestInspection={latestInspection}
         latestMatch={latestMatch}

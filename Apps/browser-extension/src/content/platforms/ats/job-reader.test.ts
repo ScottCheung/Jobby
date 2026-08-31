@@ -167,6 +167,98 @@ describe("ATS-specific job readers", () => {
       company: "Acme HR",
       pageTitle: "Acme HR - BambooHR Fullstack Engineer",
     },
+    {
+      platform: "jora",
+      url: "https://au.jora.com/job/Senior-Software-Engineer-4ed7e4a8ac7496963d7be06e2ba13ddc",
+      html: `<div class="jdv-panel"><div class="jdv-content">
+        <h1 class="heading -size-large">Senior Software Engineer</h1>
+        <div class="job-company">Canva</div>
+        <div class="job-location">Sydney NSW</div>
+        <div class="job-description">${LONG_DESCRIPTION}</div>
+        <a href="/apply" class="rounded-button -primary">Apply</a>
+      </div></div>`,
+      title: "Senior Software Engineer",
+      company: "Canva",
+      pageTitle: "Senior Software Engineer - Canva - Jora",
+    },
+    {
+      platform: "ziprecruiter",
+      url: "https://www.ziprecruiter.com/job/123456",
+      html: `<div data-testid="job-details">
+        <h1 data-testid="job-title">ZipRecruiter Lead Architect</h1>
+        <div class="hiring_company_text">Acme Inc</div>
+        <div class="location_text">Austin, TX</div>
+        <div class="jobDescriptionSection">${LONG_DESCRIPTION}</div>
+      </div>`,
+      title: "ZipRecruiter Lead Architect",
+      company: "Acme Inc",
+      pageTitle: "ZipRecruiter Lead Architect at Acme Inc in Austin, TX",
+    },
+    {
+      platform: "adzuna",
+      url: "https://www.adzuna.com.au/details/123456",
+      html: `<div class="job-details">
+        <h1 class="title">Adzuna Data Engineer</h1>
+        <div class="company">DataCorp</div>
+        <div class="location">Melbourne VIC</div>
+        <div class="job-description">${LONG_DESCRIPTION}</div>
+      </div>`,
+      title: "Adzuna Data Engineer",
+      company: "DataCorp",
+      pageTitle: "Adzuna Data Engineer - DataCorp - Adzuna",
+    },
+    {
+      platform: "wellfound",
+      url: "https://wellfound.com/jobs/123456-founder-engineer",
+      html: `<div data-test="JobListing">
+        <h1 class="styles_title__abc">Wellfound Founder Engineer</h1>
+        <div class="styles_companyName__xyz">Startup Labs</div>
+        <div class="styles_location__123">Remote</div>
+        <div data-test="JobDescription">${LONG_DESCRIPTION}</div>
+      </div>`,
+      title: "Wellfound Founder Engineer",
+      company: "Startup Labs",
+      pageTitle: "Wellfound Founder Engineer at Startup Labs",
+    },
+    {
+      platform: "dice",
+      url: "https://www.dice.com/job-detail/123456",
+      html: `<div data-cy="job-details">
+        <h1 data-cy="jobTitle">Dice Cloud Security Engineer</h1>
+        <div data-cy="companyName">SecureCloud</div>
+        <div data-cy="jobLocation">New York, NY</div>
+        <div id="jobdescSec">${LONG_DESCRIPTION}</div>
+      </div>`,
+      title: "Dice Cloud Security Engineer",
+      company: "SecureCloud",
+      pageTitle: "Dice Cloud Security Engineer - SecureCloud - Dice",
+    },
+    {
+      platform: "simplyhired",
+      url: "https://www.simplyhired.com.au/job/123456",
+      html: `<div data-testid="viewJobBody">
+        <h1 data-testid="viewJobTitle">SimplyHired Staff SRE</h1>
+        <div data-testid="viewJobCompany">Infra Systems</div>
+        <div data-testid="viewJobLocation">Sydney NSW</div>
+        <div class="viewjob-description">${LONG_DESCRIPTION}</div>
+      </div>`,
+      title: "SimplyHired Staff SRE",
+      company: "Infra Systems",
+      pageTitle: "SimplyHired Staff SRE - Infra Systems - SimplyHired",
+    },
+    {
+      platform: "careerone",
+      url: "https://www.careerone.com.au/jobview/aff-46/1414e5c6-a0d2-11f1-bc76-0231708ce3cd",
+      html: `<div data-testid="job-details">
+        <h1 class="job-title">Mid-Level Full Stack Developer</h1>
+        <a href="/jobs/br_yurra-pty-ltd" class="company-name">Yurra Pty Ltd</a>
+        <a href="/jobs/in-perth-wa-6000" class="job-location">Perth WA 6000</a>
+        <div class="job-description">${LONG_DESCRIPTION}</div>
+      </div>`,
+      title: "Mid-Level Full Stack Developer",
+      company: "Yurra Pty Ltd",
+      pageTitle: "Mid-Level Full Stack Developer | Yurra Pty Ltd | CareerOne",
+    },
   ] as const)("extracts the current $platform posting from its owned root", ({ platform, url, html, title, company, pageTitle }) => {
     setLocation(url);
     document.title = pageTitle;
@@ -551,7 +643,7 @@ describe("ATS-specific job readers", () => {
     const inspection = readCurrentPage();
     expect(inspection.kind).toBe("job");
     if (inspection.kind !== "job") return;
-    expect(inspection.snapshot.platform).toBe("generic");
+    expect(inspection.snapshot.platform).toBe("workday");
     expect(inspection.snapshot.title).toBe("White-label Engineering Role");
   });
 
@@ -695,5 +787,52 @@ describe("ATS-specific job readers", () => {
 
     const inspection = await readCurrentPageWhenReady();
     expect(inspection.kind).toBe("unsupported_page");
+  });
+
+  it("extracts complete job posting from Jora standalone job page structure", () => {
+    setLocation("https://au.jora.com/job/Financial-Accountant-Sydney-NSW-4ed7e4a8ac7496963d7be06e2ba13ddc");
+    document.title = "Financial Accountant - Appreciating Talent - Sydney NSW - Jora";
+    document.body.innerHTML = `
+      <div class="job-details-page content-container -width-xl grid-container -two-columns">
+        <div class="job-view-content grid-content" id="job-view" job-id="j_4ed7e4a8ac7496963d7be06e2ba13ddc">
+          <div class="-desktop-no-padding-top" id="job-info-container">
+            <h1 class="job-title heading -size-xxlarge -weight-700">Financial Accountant</h1>
+            <div class="font-small" id="company-location-container">
+              <span class="company">Appreciating Talent</span>
+              <span class="divider">&ndash;</span>
+              <span class="location">Sydney NSW</span>
+            </div>
+            <div class="badge -default-badge"><div class="content">Full time, Permanent</div></div>
+            <div class="font-xsmall" id="job-meta">
+              <span class="listed-date">12h ago</span>, from <span class="site">Appreciating Talent</span>
+            </div>
+          </div>
+          <div class="job-view-actions-container top-actions-container">
+            <a class="apply-button rounded-button -primary" href="/job/rd/4ed7e4a8ac7496963d7be06e2ba13ddc">Apply on company site</a>
+          </div>
+          <div class="-desktop-no-padding-top" id="job-description-container">
+            <div>
+              <div>
+                <p>We are seeking an experienced Financial Accountant to join our high-performing finance team.</p>
+                <p>${LONG_DESCRIPTION}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const inspection = readAtsJobPage("jora");
+    expect(inspection.kind).toBe("job");
+    if (inspection.kind === "job") {
+      expect(inspection.snapshot.platform).toBe("jora");
+      expect(inspection.snapshot.title).toBe("Financial Accountant");
+      expect(inspection.snapshot.company).toBe("Appreciating Talent");
+      expect(inspection.snapshot.location).toBe("Sydney NSW");
+      expect(inspection.snapshot.externalId).toBe("4ed7e4a8ac7496963d7be06e2ba13ddc");
+      expect(inspection.snapshot.description).toContain("experienced Financial Accountant");
+      expect(inspection.snapshot.description).toContain("Build reliable customer-facing products");
+      expect(inspection.snapshot.postingDateRaw?.label).toBe("12h ago");
+    }
   });
 });

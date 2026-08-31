@@ -88,10 +88,8 @@ const adminNavigation = [
   },
 ];
 
-import { useAuthStore } from '@/lib/store';
 import { useLayoutStore } from '@/lib/store/layout-store';
 import { useConsole } from '@/components/ConsoleContext';
-import { useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 
@@ -99,7 +97,6 @@ export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const supabase = createClient();
-  const { fetchMe, logout: authLogout } = useAuthStore();
   const { user, profile, isDesktopApp } = useConsole();
   const isCollapsed = useLayoutStore((state) => state.isSidebarCollapsed);
   const { toggleSidebar, openDrawer } = useLayoutStore(
@@ -113,16 +110,9 @@ export function Sidebar() {
     });
   };
 
-  useEffect(() => {
-    if (!user) {
-      fetchMe();
-    }
-  }, [user, fetchMe]);
-
   const handleLogout = async () => {
     try {
       await supabase.auth.signOut();
-      authLogout();
       router.push('/login');
     } catch (err) {
       console.error('Failed to log out:', err);

@@ -175,6 +175,69 @@ export const MAJOR_PLATFORM_RULES: ReadonlyArray<MajorPlatformRule> = [
     ],
     nonJobDescription: (pathname) => `Glassdoor non-job page (${pathname}) is not a job listing`,
   },
+  {
+    name: "Jora",
+    hostRegex: /^(?:[a-z0-9-]+\.)*jora\.(?:com(?:\.[a-z]{2})?|co\.[a-z]{2}|[a-z]{2,3})$/i,
+    nonJobPatterns: [
+      /^\/salary(?:\/|$)/i,
+      /^\/reviews(?:\/|$)/i,
+      /^\/cms\//i,
+      /^\/users\//i,
+      /^\/login(?:\/|$)/i,
+      /^\/?$/i,
+    ],
+    jobPatterns: [
+      /\/job\//i,
+      /\/jobs\//i,
+      /\/jobs-in-/i,
+      /\/j\b/i,
+      /\/viewjob\b/i,
+      /[?&]job(?:_id)?=[a-z0-9]+/i,
+    ],
+    nonJobDescription: (pathname) => `Jora non-job page (${pathname}) is not a job listing`,
+  },
+  {
+    name: "ZipRecruiter",
+    hostRegex: /^(?:[a-z0-9-]+\.)*ziprecruiter\.(?:com(?:\.[a-z]{2})?|co\.[a-z]{2}|[a-z]{2,3})$/i,
+    nonJobPatterns: [/^\/salaries(?:\/|$)/i, /^\/blog(?:\/|$)/i, /^\/company(?:\/|$)/i, /^\/?$/i],
+    jobPatterns: [/\/job\//i, /\/jobs\//i, /\/jobs-search/i, /\/c\/[^/]+\/Job\//i, /[?&]job_id=[a-z0-9_-]+/i],
+    nonJobDescription: (pathname) => `ZipRecruiter non-job page (${pathname}) is not a job listing`,
+  },
+  {
+    name: "Adzuna",
+    hostRegex: /^(?:[a-z0-9-]+\.)*adzuna\.(?:com(?:\.[a-z]{2})?|co\.[a-z]{2}|[a-z]{2,3})$/i,
+    nonJobPatterns: [/^\/stats(?:\/|$)/i, /^\/blog(?:\/|$)/i, /^\/?$/i],
+    jobPatterns: [/\/details\//i, /\/land\//i, /\/jobs\//i, /\/search\b/i, /[?&]id=\d+/i],
+    nonJobDescription: (pathname) => `Adzuna non-job page (${pathname}) is not a job listing`,
+  },
+  {
+    name: "Wellfound",
+    hostRegex: /^(?:[a-z0-9-]+\.)*(?:wellfound\.com|angel\.co)$/i,
+    nonJobPatterns: [/^\/discover(?:\/|$)/i, /^\/blog(?:\/|$)/i, /^\/about(?:\/|$)/i, /^\/?$/i],
+    jobPatterns: [/\/jobs\b/i, /\/l\//i, /\/company\/[^/]+\/jobs/i, /[?&]job_id=\d+/i],
+    nonJobDescription: (pathname) => `Wellfound non-job page (${pathname}) is not a job listing`,
+  },
+  {
+    name: "Dice",
+    hostRegex: /^(?:[a-z0-9-]+\.)*dice\.com$/i,
+    nonJobPatterns: [/^\/career-advice(?:\/|$)/i, /^\/skills(?:\/|$)/i, /^\/?$/i],
+    jobPatterns: [/\/job-detail\//i, /\/jobs\/detail\//i, /\/jobs\b/i, /[?&]jobId=[a-z0-9_-]+/i, /[?&]selectedJobId=[a-z0-9_-]+/i],
+    nonJobDescription: (pathname) => `Dice non-job page (${pathname}) is not a job listing`,
+  },
+  {
+    name: "SimplyHired",
+    hostRegex: /^(?:[a-z0-9-]+\.)*simplyhired\.(?:com(?:\.[a-z]{2})?|co\.[a-z]{2}|[a-z]{2,3})$/i,
+    nonJobPatterns: [/^\/salaries(?:\/|$)/i, /^\/guides(?:\/|$)/i, /^\/?$/i],
+    jobPatterns: [/\/job\//i, /\/search\b/i, /[?&]jk=[a-z0-9_-]+/i],
+    nonJobDescription: (pathname) => `SimplyHired non-job page (${pathname}) is not a job listing`,
+  },
+  {
+    name: "CareerOne",
+    hostRegex: /^(?:[a-z0-9-]+\.)*careerone\.com\.au$/i,
+    nonJobPatterns: [/^\/career-advice(?:\/|$)/i, /^\/resume-writing(?:\/|$)/i, /^\/discover(?:\/|$)/i, /^\/?$/i],
+    jobPatterns: [/\/jobview\//i, /\/jobs?\//i, /[?&]job_id=[a-z0-9_-]+/i],
+    nonJobDescription: (pathname) => `CareerOne non-job page (${pathname}) is not a job listing`,
+  },
 ];
 
 /** URL path patterns strongly associated with individual job postings. */
@@ -286,6 +349,12 @@ export function classifyCurrentPage(): PageClass {
       SEEK: "[data-automation='job-detail-title'], [data-automation='jobDetails'], [data-automation='jobAdDetails'], h1[data-automation='job-detail-title']",
       Indeed: "#jobDescriptionText, [class*='jobsearch-jobDescriptionText'], [data-testid='jobsearch-JobInfoHeader-title'], .jobsearch-JobInfoHeader-title, #viewJobSSRRoot, [data-jk], [data-testid='inlineHeader-companyName']",
       Glassdoor: "[class*='JobDetails_jobDetailsContainer'], [data-test='job-details-header'], [id^='jd-job-title-']",
+      Jora: ".jdv-content, [class*='jdv-content'], [data-automation='jobTitle'], .job-card[data-job-card='true'], .job-description, .job-view, #jobresults",
+      ZipRecruiter: "[data-testid='job-details'], .jobDescriptionSection, .job_details, .job_result, #job_desc",
+      Adzuna: ".job-details, .ui-details, [data-testid='job-details'], .adp-body, .results-container",
+      Wellfound: "[data-test='JobListing'], [class*='styles_jobListing'], [data-test='JobDescription'], [class*='styles_companyHeader']",
+      Dice: "[data-cy='job-details'], #jobdescSec, [data-cy='jobDescriptionText'], dhi-search-card",
+      SimplyHired: "[data-testid='viewJobBody'], .viewjob-content, [data-testid='searchSerpJob'], #job-details",
     };
     const selector = platformDomSelectors[matchedPlatform.name];
     const hasPlatformDomSignal = Boolean(selector && document.querySelector(selector));

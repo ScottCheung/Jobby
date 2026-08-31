@@ -31,6 +31,16 @@ describe("platform provider routing", () => {
     ["fa.ocs.oraclecloud.com", "/hcmUI/CandidateExperience/en/sites/CX/job/123", "oracle"],
     ["apply.workable.com", "/company/j/123ABC", "workable"],
     ["acme.bamboohr.com", "/careers/123", "bamboohr"],
+    ["au.jora.com", "/job/software-engineer-123456", "jora"],
+    ["uk.jora.com", "/jobs-in-London", "jora"],
+    ["www.jora.com", "/job/123456", "jora"],
+    ["www.ziprecruiter.com", "/job/123456", "ziprecruiter"],
+    ["www.adzuna.com.au", "/details/123456", "adzuna"],
+    ["wellfound.com", "/jobs/123456-engineer", "wellfound"],
+    ["www.dice.com", "/job-detail/123456", "dice"],
+    ["www.simplyhired.com.au", "/job/123456", "simplyhired"],
+    ["www.careerone.com.au", "/jobview/123456", "careerone"],
+    ["www.careerone.com.au", "/jobview/aff-46/1414e5c6-a0d2-11f1-bc76-0231708ce3cd", "careerone"],
   ] as const)("routes %s%s to %s", (hostname, pathname, expected) => {
     expect(detectDedicatedPlatform(locationFor(hostname, pathname))).toBe(expected);
   });
@@ -49,6 +59,13 @@ describe("platform provider routing", () => {
     ["<div data-qa='oracle-cloud-candidate-experience'></div>", "oracle"],
     ["<div data-ui='job-title'></div>", "workable"],
     ["<div id='BambooHR'></div>", "bamboohr"],
+    ["<div class='brand-jora'></div>", "jora"],
+    ["<div data-ziprecruiter='true'></div>", "ziprecruiter"],
+    ["<div data-adzuna='true'></div>", "adzuna"],
+    ["<div data-wellfound='true'></div>", "wellfound"],
+    ["<dhi-sjt-job-details></dhi-sjt-job-details>", "dice"],
+    ["<div data-simplyhired='true'></div>", "simplyhired"],
+    ["<div data-careerone='true'></div>", "careerone"],
   ] as const)("routes a current white-label marker to %s", (html, platform) => {
     document.body.innerHTML = html;
     expect(detectDedicatedPlatform(locationFor("careers.example.com"))).toBe(platform);

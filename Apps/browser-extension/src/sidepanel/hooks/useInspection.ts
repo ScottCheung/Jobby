@@ -5,9 +5,16 @@ import type { FormInspection } from '../../shared/contracts/form-inspection';
 import type { FormFieldObservation } from '../../shared/contracts/form-inspection';
 import type { PageInspection } from '../../shared/contracts/page-inspection';
 import type { TailoredResume } from '../../shared/contracts/tailored-resume';
-import { canonicalizeFormFields } from '../../shared/utils/form-field-resolution';
-import { formatResumeFilename } from '@jobby/ui/components/UI/Resume/helpers';
+import {
+  formatCoverLetterFilename,
+  formatResumeFilename,
+} from '@jobby/ui/components/UI/Resume/helpers';
 import { renderResumePdfOnce } from '@jobby/ui/components/UI/Resume/ResumePdfPreview';
+import {
+  canonicalizeFormFields,
+  fileFieldPurpose,
+} from '../../shared/utils/form-field-resolution';
+import { renderCoverLetterPdfInWorker } from '../services/cover-letter-pdf-renderer';
 import { getActiveTab, send, wait } from '../services/messaging';
 
 export type UploadSyncState = {
@@ -552,34 +559,62 @@ export function useInspection(onJobChanged?: () => void) {
     async (field: FormFieldObservation, resume: TailoredResume) => {
       const resumeName =
         [resume.company, resume.job_title].filter(Boolean).join(' · ') ||
-        'Tailored Resume';
+        'Tailored Record';
+      const purpose = fileFieldPurpose(field);
+      const isCoverLetter = purpose === 'cover_letter';
+      const docLabel = isCoverLetter ? 'Cover Letter' : 'Resume';
       setUploadStates((previous) => ({
         ...previous,
         [field.key]: {
           phase: 'uploading',
-          message: `Preparing ${resumeName} for upload...`,
+          message: `Preparing ${docLabel} (${resumeName}) for upload...`,
           updatedAt: Date.now(),
         },
       }));
       let response;
-      let filename = 'Tailored-Resume.pdf';
+      let filename = isCoverLetter ? 'Cover-Letter.pdf' : 'Tailored-Resume.pdf';
       try {
-        const { blob } = await renderResumePdfOnce(
-          resume.resume_data,
-          1,
-          resume.core_competencies || [],
-          resume.key_qualifications || [],
-        );
-        if (blob.size > 10 * 1024 * 1024) {
-          throw new Error(
-            'The selected tailored resume is larger than the 10 MB upload limit.',
+        let blob: Blob;
+        if (isCoverLetter) {
+          const coverLetter =
+            resume.cover_letter ||
+            (resume.raw_ai_response as any)?.cover_letter;
+          if (!coverLetter) {
+            throw new Error(
+              'No tailored cover letter is saved for this application. Generate one in AI Studio first.',
+            );
+          }
+          const rendered = await renderCoverLetterPdfInWorker(
+            coverLetter,
+            resume.resume_data,
+            resume.company || undefined,
+            resume.job_title || undefined,
+          );
+          blob = rendered.blob;
+          filename = formatCoverLetterFilename(
+            resume.resume_data,
+            resume.company || undefined,
+            resume.job_title || undefined,
+          );
+        } else {
+          const rendered = await renderResumePdfOnce(
+            resume.resume_data,
+            1,
+            resume.core_competencies || [],
+            resume.key_qualifications || [],
+          );
+          blob = rendered.blob;
+          filename = formatResumeFilename(
+            resume.resume_data,
+            resume.company || undefined,
+            resume.job_title || undefined,
           );
         }
-        filename = formatResumeFilename(
-          resume.resume_data,
-          resume.company || undefined,
-          resume.job_title || undefined,
-        );
+        if (blob.size > 10 * 1024 * 1024) {
+          throw new Error(
+            `The selected tailored ${docLabel.toLowerCase()} is larger than the 10 MB upload limit.`,
+          );
+        }
         if (filename.length > 255) {
           filename = `${filename.slice(0, 251).replace(/\.?$/, '')}.pdf`;
         }
@@ -594,7 +629,7 @@ export function useInspection(onJobChanged?: () => void) {
         const message =
           error instanceof Error ?
             error.message
-          : 'Could not prepare the selected tailored resume.';
+          : `Could not prepare the selected tailored ${docLabel.toLowerCase()}.`;
         setUploadStates((previous) => ({
           ...previous,
           [field.key]: {

@@ -1,7 +1,7 @@
 /** @format */
 
 import { JobMatchSummary } from '../JobMatchSummary';
-import { FileText, Layers, Loader2, Sparkles } from 'lucide-react';
+import { FileText, Layers, Sparkles } from 'lucide-react';
 import { parseAndFormatJobDate } from '../../../lib/date-formatter';
 import { cn } from '../../../lib/utils';
 import type {
@@ -116,10 +116,7 @@ export function JobScoreCard({
     Math.min(100, Math.max(0, Math.round((value ?? fallback) * 100)));
 
   return (
-    <div
-      className='flex flex-col gap-3 '
-      
-    >
+    <div className={cn('flex flex-col gap-3', className)}>
       <JobMatchSummary
         score={hasScore ? percentage : null}
         label={matchLabel}
@@ -189,12 +186,11 @@ export function JobScoreCard({
               aria-live='polite'
               className='mb-2.5 flex items-start gap-2 rounded-xl border border-primary/20 bg-primary/10 px-2.5 py-2'
             >
-              <Loader2 className='mt-0.5 h-3 w-3 shrink-0 animate-pulse text-primary' />
-              <p className='text-[9px] leading-relaxed text-muted-foreground'>
+              <p className='text-[9px] leading-relaxed animate-text-shimmer animate-text-shimmer-primary'>
                 {isCurrentJob ? (
                   <>
                     Generating {generationLabel} for{' '}
-                    <span className='font-bold text-foreground'>
+                    <span className='font-bold'>
                       {activeGeneration.jobTitle || 'this role'}
                       {activeGeneration.company ?
                         ` at ${activeGeneration.company}`
@@ -205,7 +201,7 @@ export function JobScoreCard({
                 ) : (
                   <>
                     Background task: Generating {generationLabel} for{' '}
-                    <span className='font-bold text-foreground'>
+                    <span className='font-bold'>
                       {activeGeneration.jobTitle || 'another role'}
                       {activeGeneration.company ?
                         ` at ${activeGeneration.company}`
@@ -225,10 +221,16 @@ export function JobScoreCard({
               aria-busy={resumeGenerating}
               className='inline-flex items-center justify-center gap-1.5 rounded-lg bg-primary-gradient px-2.5 py-2 text-[10px] font-bold text-primary-foreground transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-55 cursor-pointer'
             >
-              {resumeGenerating ?
-                <Loader2 className='h-3 w-3 animate-pulse' />
-              : <Sparkles className='h-3 w-3' />}
-              <span>{resumeGenerating ? 'Tailoring...' : 'Tailor CV'}</span>
+              <Sparkles className='h-3 w-3 shrink-0' />
+              <span
+                className={
+                  resumeGenerating ?
+                    'animate-text-shimmer animate-text-shimmer-primary'
+                  : undefined
+                }
+              >
+                {resumeGenerating ? 'Tailoring...' : 'Tailor CV'}
+              </span>
             </button>
             <button
               type='button'
@@ -237,10 +239,16 @@ export function JobScoreCard({
               aria-busy={coverLetterGenerating}
               className='inline-flex items-center justify-center gap-1.5 rounded-lg border border-primary/25 bg-primary/8 px-2.5 py-2 text-[10px] font-bold text-primary transition-all hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-45 cursor-pointer'
             >
-              {coverLetterGenerating ?
-                <Loader2 className='h-3 w-3 animate-pulse' />
-              : <FileText className='h-3 w-3' />}
-              <span>{coverLetterGenerating ? 'Tailoring...' : 'Tailor CL'}</span>
+              <FileText className='h-3 w-3 shrink-0' />
+              <span
+                className={
+                  coverLetterGenerating ?
+                    'animate-text-shimmer animate-text-shimmer-primary'
+                  : undefined
+                }
+              >
+                {coverLetterGenerating ? 'Tailoring...' : 'Tailor CL'}
+              </span>
             </button>
             <button
               type='button'
@@ -250,10 +258,16 @@ export function JobScoreCard({
               className='inline-flex items-center justify-center gap-1.5 rounded-lg border border-primary/25 bg-primary/8 px-2.5 py-2 text-[10px] font-bold text-primary transition-all hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-45 cursor-pointer'
               // style={{ borderEndEndRadius: 'var(--score-card-radius-inner)' }}
             >
-              {bothGenerating ?
-                <Loader2 className='h-3 w-3 animate-pulse' />
-              : <Layers className='h-3 w-3' />}
-              <span>{bothGenerating ? 'Tailoring...' : 'Tailor Both'}</span>
+              <Layers className='h-3 w-3 shrink-0' />
+              <span
+                className={
+                  bothGenerating ?
+                    'animate-text-shimmer animate-text-shimmer-primary'
+                  : undefined
+                }
+              >
+                {bothGenerating ? 'Tailoring...' : 'Tailor Both'}
+              </span>
             </button>
           </div>
         </div>

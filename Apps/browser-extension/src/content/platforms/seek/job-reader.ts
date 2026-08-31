@@ -55,6 +55,24 @@ function firstDescriptionElement(selectors: readonly string[]): HTMLElement | nu
   return null;
 }
 
+function applicationHeaderCompany(): string {
+  if (!/\/(?:apply|application)(?:\/|$)/i.test(window.location.pathname)) return "";
+  const title = document.querySelector<HTMLElement>("h1");
+  const header = title?.parentElement;
+  if (!title || !header || !/applying for/i.test(cleanText(header.textContent))) return "";
+
+  const company = Array.from(header.children)
+    .map((element) => cleanText(element.textContent))
+    .find((text) =>
+      Boolean(text) &&
+      text !== cleanText(title.textContent) &&
+      !/^(?:applying for|view job description)$/i.test(text),
+    );
+  if (company) return company;
+
+  return cleanText(header.parentElement?.querySelector<HTMLImageElement>("img[alt]")?.alt);
+}
+
 function jobIdFromUrl(url: string): string {
   const root = getSeekDetailRoot();
 
@@ -234,7 +252,7 @@ export function readSeekPage(): PageInspection {
     externalId: jobId,
     url,
     title,
-    company: firstText(SEEK_SELECTORS.company) || "Unknown company",
+    company: firstText(SEEK_SELECTORS.company) || applicationHeaderCompany() || "Unknown company",
     location: firstText(SEEK_SELECTORS.location) || undefined,
     ...capturedJobDateFields(rawDatePosted),
     description: description || undefined,

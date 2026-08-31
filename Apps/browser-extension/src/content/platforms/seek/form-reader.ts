@@ -14,15 +14,42 @@ function cleanText(value: string | null | undefined): string {
 }
 
 function isApplicationPage(url: string): boolean {
-  if (/\/apply(?:\/|$)|\/application(?:\/|$)/i.test(url)) return true;
+  try {
+    const parsed = new URL(url);
+    if (
+      /\/apply(?:[/?#]|$)/i.test(parsed.pathname) ||
+      /\/application(?:[/?#]|$)/i.test(parsed.pathname)
+    ) {
+      return true;
+    }
+  } catch {
+    if (
+      /\/apply(?:[/?#]|$)/i.test(url) ||
+      /\/application(?:[/?#]|$)/i.test(url)
+    ) {
+      return true;
+    }
+  }
   const bodyText = cleanText(document.body?.textContent);
-  return /application|personal details|resume|cover letter/i.test(bodyText) && Boolean(getSeekApplicationActionLabel());
+  return (
+    /application|personal details|resume|cover letter/i.test(bodyText) &&
+    Boolean(getSeekApplicationActionLabel())
+  );
 }
 
 function isSeekJobPage(url: string): boolean {
   try {
     const parsed = new URL(url);
-    return /\/job\/\d+/i.test(parsed.pathname) || /^\d+$/.test(parsed.searchParams.get("jobId") || "");
+    if (
+      /\/apply(?:[/?#]|$)/i.test(parsed.pathname) ||
+      /\/application(?:[/?#]|$)/i.test(parsed.pathname)
+    ) {
+      return false;
+    }
+    return (
+      /\/job\/\d+/i.test(parsed.pathname) ||
+      /^\d+$/.test(parsed.searchParams.get("jobId") || "")
+    );
   } catch {
     return false;
   }
@@ -37,28 +64,54 @@ function hasQuickApplyLink(): boolean {
 }
 
 export function getSeekApplicationScope(): FormScope {
-  return document.querySelector<HTMLElement>(
-    [
-      "[data-automation='applicationForm']",
-      "[data-automation='applyForm']",
-      "[data-testid='application-form']",
-      "form[action*='/apply']",
-      "[role='dialog'][aria-modal='true']",
-    ].join(", "),
-  ) || findActiveFormScope() || document;
+  return (
+    document.querySelector<HTMLElement>(
+      [
+        "[data-automation='applicationForm']",
+        "[data-automation='application-form']",
+        "[data-automation='applyForm']",
+        "[data-automation='apply-form']",
+        "[data-automation='apply-container']",
+        "[data-testid='application-form']",
+        "[data-testid='apply-form']",
+        "form[action*='/apply']",
+        "[role='dialog'][aria-modal='true']",
+      ].join(", "),
+    ) ||
+    findActiveFormScope() ||
+    document
+  );
 }
 
 export function readSeekFormPage(): FormInspection {
   const url = window.location.href;
+  const isApp = isApplicationPage(url);
   const scope = getSeekApplicationScope();
-  const inspection = readSeekForm(
+  let inspection = readSeekForm(
     url,
-    isApplicationPage(url),
+    isApp,
     getSeekApplicationActionLabel(),
     getSeekApplicationActionKind(),
     Boolean(getSeekApplicationAction("previous")),
     scope,
   );
+  if (
+    inspection.kind === "application_form" &&
+    inspection.fields.length === 0 &&
+    scope !== document
+  ) {
+    const docInspection = readSeekForm(
+      url,
+      isApp,
+      getSeekApplicationActionLabel(),
+      getSeekApplicationActionKind(),
+      Boolean(getSeekApplicationAction("previous")),
+      document,
+    );
+    if (docInspection.kind === "application_form" && docInspection.fields.length > 0) {
+      inspection = docInspection;
+    }
+  }
   if (inspection.kind === "not_application_form") {
     const pageInputs = readPageInputFields(url, "seek");
     if (pageInputs) return pageInputs;

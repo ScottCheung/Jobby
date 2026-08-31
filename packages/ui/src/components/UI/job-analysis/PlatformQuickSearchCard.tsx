@@ -103,6 +103,125 @@ export const SUPPORTED_PLATFORMS: JobPlatform[] = [
         : 'https://www.glassdoor.com/Job/index.htm';
     },
   },
+  {
+    id: 'jora',
+    name: 'Jora',
+    category: 'boards',
+    domain: 'jora.com',
+    typeLabel: 'Global Job Aggregator',
+    brandColor: '#15A449',
+    getSearchUrl: (title, location) => {
+      const params = new URLSearchParams();
+      if (title) params.set('q', title);
+      if (location) params.set('l', location);
+      const query = params.toString();
+      return query ?
+          `https://au.jora.com/j?${query}`
+        : 'https://au.jora.com/';
+    },
+  },
+  {
+    id: 'ziprecruiter',
+    name: 'ZipRecruiter',
+    category: 'boards',
+    domain: 'ziprecruiter.com',
+    typeLabel: '1-Click Apply',
+    brandColor: '#1F8435',
+    getSearchUrl: (title, location) => {
+      const params = new URLSearchParams();
+      if (title) params.set('search', title);
+      if (location) params.set('location', location);
+      const query = params.toString();
+      return query ?
+          `https://www.ziprecruiter.com/candidate/search?${query}`
+        : 'https://www.ziprecruiter.com/';
+    },
+  },
+  {
+    id: 'adzuna',
+    name: 'Adzuna',
+    category: 'boards',
+    domain: 'adzuna.com.au',
+    typeLabel: 'Millions of Jobs',
+    brandColor: '#1E88E5',
+    getSearchUrl: (title, location) => {
+      const params = new URLSearchParams();
+      if (title) params.set('q', title);
+      if (location) params.set('w', location);
+      const query = params.toString();
+      return query ?
+          `https://www.adzuna.com.au/search?${query}`
+        : 'https://www.adzuna.com.au/';
+    },
+  },
+  {
+    id: 'wellfound',
+    name: 'Wellfound',
+    category: 'boards',
+    domain: 'wellfound.com',
+    typeLabel: 'Startups & Tech',
+    brandColor: '#141413',
+    getSearchUrl: (title, location) => {
+      const params = new URLSearchParams();
+      if (title) params.set('role', title);
+      if (location) params.set('location', location);
+      const query = params.toString();
+      return query ?
+          `https://wellfound.com/jobs?${query}`
+        : 'https://wellfound.com/jobs';
+    },
+  },
+  {
+    id: 'dice',
+    name: 'Dice',
+    category: 'boards',
+    domain: 'dice.com',
+    typeLabel: 'Tech Careers',
+    brandColor: '#E01A22',
+    getSearchUrl: (title, location) => {
+      const params = new URLSearchParams();
+      if (title) params.set('q', title);
+      if (location) params.set('location', location);
+      const query = params.toString();
+      return query ?
+          `https://www.dice.com/jobs?${query}`
+        : 'https://www.dice.com/';
+    },
+  },
+  {
+    id: 'simplyhired',
+    name: 'SimplyHired',
+    category: 'boards',
+    domain: 'simplyhired.com.au',
+    typeLabel: 'Job Search Engine',
+    brandColor: '#205493',
+    getSearchUrl: (title, location) => {
+      const params = new URLSearchParams();
+      if (title) params.set('q', title);
+      if (location) params.set('l', location);
+      const query = params.toString();
+      return query ?
+          `https://www.simplyhired.com.au/search?${query}`
+        : 'https://www.simplyhired.com.au/';
+    },
+  },
+  {
+    id: 'careerone',
+    name: 'CareerOne',
+    category: 'boards',
+    domain: 'careerone.com.au',
+    typeLabel: 'Australian Career Portal',
+    brandColor: '#F26522',
+    getSearchUrl: (title, location) => {
+      const params = new URLSearchParams();
+      if (title) params.set('q', title);
+      if (location) params.set('where', location);
+      const query = params.toString();
+      return query ?
+          `https://www.careerone.com.au/jobs?${query}`
+        : 'https://www.careerone.com.au/jobs/in-australia';
+    },
+  },
   // ATS Portals
   {
     id: 'greenhouse',

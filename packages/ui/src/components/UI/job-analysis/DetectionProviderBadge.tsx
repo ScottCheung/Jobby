@@ -34,6 +34,13 @@ const PLATFORM_DOMAIN_MAP: Record<string, string> = {
   oracle: 'oracle.com',
   workable: 'workable.com',
   bamboohr: 'bamboohr.com',
+  jora: 'jora.com',
+  ziprecruiter: 'ziprecruiter.com',
+  adzuna: 'adzuna.com.au',
+  wellfound: 'wellfound.com',
+  dice: 'dice.com',
+  simplyhired: 'simplyhired.com.au',
+  careerone: 'careerone.com.au',
 };
 
 const PLATFORM_BRAND_STYLES: Record<string, string> = {
@@ -48,6 +55,26 @@ const PLATFORM_BRAND_STYLES: Record<string, string> = {
   // Glassdoor - Vibrant Emerald Green
   glassdoor:
     'border-[#0caa41]/25 bg-[#0caa41]/10 text-[#0caa41] dark:border-[#0caa41]/35 dark:bg-[#0caa41]/15 dark:text-[#34d399]',
+  // Jora - Leaf Green
+  jora: 'border-[#15A449]/25 bg-[#15A449]/10 text-[#0e8136] dark:border-[#15A449]/35 dark:bg-[#15A449]/15 dark:text-[#4ade80]',
+  // ZipRecruiter - Forest Green
+  ziprecruiter:
+    'border-[#1F8435]/25 bg-[#1F8435]/10 text-[#1F8435] dark:border-[#1F8435]/35 dark:bg-[#1F8435]/15 dark:text-[#4ade80]',
+  // Adzuna - Sky Blue
+  adzuna:
+    'border-[#1E88E5]/25 bg-[#1E88E5]/10 text-[#1E88E5] dark:border-[#1E88E5]/35 dark:bg-[#1E88E5]/15 dark:text-[#60a5fa]',
+  // Wellfound - Deep Charcoal
+  wellfound:
+    'border-[#141413]/25 bg-[#141413]/10 text-[#141413] dark:border-[#a3a3a3]/35 dark:bg-[#ffffff]/10 dark:text-[#e5e5e5]',
+  // Dice - Bold Red
+  dice:
+    'border-[#E01A22]/25 bg-[#E01A22]/10 text-[#E01A22] dark:border-[#E01A22]/35 dark:bg-[#E01A22]/15 dark:text-[#f87171]',
+  // SimplyHired - Royal Blue
+  simplyhired:
+    'border-[#205493]/25 bg-[#205493]/10 text-[#205493] dark:border-[#205493]/35 dark:bg-[#205493]/15 dark:text-[#60a5fa]',
+  // CareerOne - Vibrant Coral Orange
+  careerone:
+    'border-[#F26522]/25 bg-[#F26522]/10 text-[#d04a08] dark:border-[#F26522]/35 dark:bg-[#F26522]/15 dark:text-[#fb923c]',
   // Greenhouse - Deep Forest Green
   greenhouse:
     'border-[#008552]/25 bg-[#008552]/10 text-[#008552] dark:border-[#008552]/35 dark:bg-[#008552]/15 dark:text-[#4ade80]',

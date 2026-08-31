@@ -26,7 +26,7 @@ import {
 } from '../services/page-change-inspection';
 import { Toaster } from '@jobby/ui/components/UI/toast/toaster';
 import { cn } from '@jobby/ui/lib/utils';
-import { jobRecognitionDescriptions } from '@jobby/ui';
+import jobRecognitionDescriptions from '@jobby/ui/constants/job-recognition-descriptions.json';
 
 const { inspectingDescriptions, matchingDescriptions } = jobRecognitionDescriptions;
 
@@ -350,7 +350,7 @@ export function FloatingJobCardDialog() {
   );
 
   return (
-    <div className='h-screen w-full bg-transparent text-foreground overflow-hidden font-sans select-text box-border'>
+    <div className='w-full bg-transparent text-foreground overflow-hidden font-sans select-text box-border'>
       {isLoading ? (
         <div className={cn(bubblePositionClass, 'animate-in fade-in duration-100')}>
           <div className='flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-background-primary border border-primary/40 backdrop-blur-md text-foreground shadow-sm'>
@@ -367,9 +367,12 @@ export function FloatingJobCardDialog() {
           <div
             className='flex flex-col w-full h-full max-h-full bg-background-primary p-2 border border-primary/20 overflow-hidden box-border'
             style={{
-              borderRadius: 'var(--score-card-radius-shell) var(--score-card-radius-base) var(--score-card-radius-base) var(--score-card-radius-base)',
-              clipPath: 'inset(0 round var(--score-card-radius-shell) var(--score-card-radius-base) var(--score-card-radius-base) var(--score-card-radius-base))',
-              WebkitClipPath: 'inset(0 round var(--score-card-radius-shell) var(--score-card-radius-base) var(--score-card-radius-base) var(--score-card-radius-base))',
+              borderRadius:
+                'var(--score-card-radius-shell-accent) var(--score-card-radius-shell-base) var(--score-card-radius-shell-base) var(--score-card-radius-shell-base)',
+              clipPath:
+                'inset(0 round var(--score-card-radius-shell-accent) var(--score-card-radius-shell-base) var(--score-card-radius-shell-base) var(--score-card-radius-shell-base))',
+              WebkitClipPath:
+                'inset(0 round var(--score-card-radius-shell-accent) var(--score-card-radius-shell-base) var(--score-card-radius-shell-base) var(--score-card-radius-shell-base))',
             }}
           >
             <div

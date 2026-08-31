@@ -14,6 +14,13 @@ export const dedicatedPlatforms = [
   "oracle",
   "workable",
   "bamboohr",
+  "jora",
+  "ziprecruiter",
+  "adzuna",
+  "wellfound",
+  "dice",
+  "simplyhired",
+  "careerone",
 ] as const;
 
 export type DedicatedPlatform = (typeof dedicatedPlatforms)[number];
@@ -31,6 +38,13 @@ export const atsJobPlatforms = [
   "oracle",
   "workable",
   "bamboohr",
+  "jora",
+  "ziprecruiter",
+  "adzuna",
+  "wellfound",
+  "dice",
+  "simplyhired",
+  "careerone",
 ] as const;
 
 export type AtsJobPlatform = (typeof atsJobPlatforms)[number];

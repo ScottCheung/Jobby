@@ -381,14 +381,47 @@ function createFloatingBall() {
       cursor: grabbing;
       transition: none;
     }
+    /* Atmospheric Diffusion Glow for Floating Ball */
+    #jobby-ball-wrapper::before {
+      content: '';
+      position: absolute;
+      inset: 0px;
+      border-radius: 9999px;
+      background: linear-gradient(
+        90deg,
+        rgba(16, 185, 129, 0.85),
+        rgba(6, 182, 212, 0.85),
+        rgba(139, 92, 246, 0.85),
+        rgba(236, 72, 153, 0.75),
+        rgba(245, 158, 11, 0.85),
+        rgba(16, 185, 129, 0.85)
+      );
+      background-size: 300% 100%;
+      animation: aiFlow 6s linear infinite, aiDiffuse 3.6s ease-in-out infinite alternate;
+      filter: blur(12px);
+      z-index: 0;
+      pointer-events: none;
+      opacity: 0;
+      transform: scale(0.9);
+      transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    #jobby-ball-wrapper:not(.is-dragging):hover::before {
+      opacity: 1;
+      transform: scale(1.15);
+    }
+    #jobby-ball-wrapper:not(.is-dragging):active::before {
+      transform: scale(0.95);
+    }
     #jobby-ball-wrapper:not(.is-dragging):hover .jobby-logo-img {
-      filter: drop-shadow(0 0 16px var(--primary-glow)) drop-shadow(0 4px 14px var(--primary-shadow));
+      filter: drop-shadow(0 0 14px rgba(6, 182, 212, 0.4)) drop-shadow(0 4px 14px var(--primary-shadow));
       transform: scale(1.12);
     }
     #jobby-ball-wrapper:not(.is-dragging):active .jobby-logo-img {
       transform: scale(0.92);
     }
     .jobby-logo-img {
+      position: relative;
+      z-index: 1;
       width: 85%;
       height: 85%;
       object-fit: contain;
@@ -397,6 +430,18 @@ function createFloatingBall() {
       filter: drop-shadow(0 4px 14px var(--primary-shadow)) drop-shadow(0 2px 6px rgba(0, 0, 0, 0.2));
       transition: filter 0.2s ease, transform 0.2s ease;
       -webkit-user-drag: none;
+    }
+    @keyframes aiFlow {
+      0% { background-position: 0% 50%; }
+      100% { background-position: 300% 50%; }
+    }
+    @keyframes aiDiffuse {
+      0% {
+        filter: blur(10px);
+      }
+      100% {
+        filter: blur(16px);
+      }
     }
     #close-btn {
       position: absolute;

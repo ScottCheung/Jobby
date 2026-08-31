@@ -54,6 +54,7 @@ provider-routing
 | Oracle | Shared ATS | Shared ATS | Candidate Experience selectors |
 | Workable | Shared ATS | Shared ATS | `data-ui` selectors |
 | BambooHR | Shared ATS | Shared ATS | BambooHR career-page selectors |
+| Jora | Shared ATS | Shared ATS | Split-SERP pane & card selectors, Quick Apply roots |
 
 Platforms recognised only by the page classifier, but not registered here, intentionally remain `generic`.
 

@@ -28,6 +28,12 @@ describe('DetectionProviderBadge', () => {
     expect(getPlatformDomain(undefined, 'oracle')).toBe('oracle.com');
     expect(getPlatformDomain(undefined, 'workable')).toBe('workable.com');
     expect(getPlatformDomain(undefined, 'bamboohr')).toBe('bamboohr.com');
+    expect(getPlatformDomain(undefined, 'jora')).toBe('jora.com');
+    expect(getPlatformDomain(undefined, 'ziprecruiter')).toBe('ziprecruiter.com');
+    expect(getPlatformDomain(undefined, 'adzuna')).toBe('adzuna.com.au');
+    expect(getPlatformDomain(undefined, 'wellfound')).toBe('wellfound.com');
+    expect(getPlatformDomain(undefined, 'dice')).toBe('dice.com');
+    expect(getPlatformDomain(undefined, 'simplyhired')).toBe('simplyhired.com.au');
     expect(getPlatformDomain(undefined, 'unknown')).toBe(null);
     expect(getPlatformDomain(undefined, undefined)).toBe(null);
   });
@@ -46,6 +52,12 @@ describe('DetectionProviderBadge', () => {
     expect(getPlatformBadgeStyle('oracle')).toContain('#b91c1c');
     expect(getPlatformBadgeStyle('workable')).toContain('#00756a');
     expect(getPlatformBadgeStyle('bamboohr')).toContain('#658800');
+    expect(getPlatformBadgeStyle('jora')).toContain('#15A449');
+    expect(getPlatformBadgeStyle('ziprecruiter')).toContain('#1F8435');
+    expect(getPlatformBadgeStyle('adzuna')).toContain('#1E88E5');
+    expect(getPlatformBadgeStyle('wellfound')).toContain('#141413');
+    expect(getPlatformBadgeStyle('dice')).toContain('#E01A22');
+    expect(getPlatformBadgeStyle('simplyhired')).toContain('#205493');
     expect(getPlatformBadgeStyle('custom_ats')).toContain('border-primary');
   });
 });

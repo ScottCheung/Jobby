@@ -48,6 +48,15 @@ describe("platform-specific application question detection", () => {
     },
     {
       platform: "seek",
+      url: "https://au.seek.com/job/94231469/apply?token=1~1bfade42-e6cc-4128-8e62-8334db0b2873",
+      root: `<form data-automation="applicationForm" action="/job/94231469/apply">
+        <label for="platform-question">SEEK custom question *</label>
+        <input id="platform-question" name="seek_question" />
+        <button>Continue</button></form>`,
+      label: "SEEK custom question",
+    },
+    {
+      platform: "seek",
       url: "https://www.seek.com.au/job/123/apply",
       root: `<form data-automation="applicationForm" action="/job/123/apply">
         <label for="platform-question">SEEK custom question *</label>
@@ -182,6 +191,60 @@ describe("platform-specific application question detection", () => {
         <button>Submit Application</button></div>`,
       label: "BambooHR custom question",
     },
+    {
+      platform: "jora",
+      url: "https://au.jora.com/job/Senior-Engineer-4ed7e4a8ac7496963d7be06e2ba13ddc/apply",
+      root: `<form class="application-form" action="/apply">
+        <label for="platform-question">Jora custom question *</label>
+        <input id="platform-question" name="jora_question" />
+        <button type="submit">Submit application</button></form>`,
+      label: "Jora custom question",
+    },
+    {
+      platform: "ziprecruiter",
+      url: "https://www.ziprecruiter.com/job/123/apply",
+      root: `<form class="job_apply_form" action="/apply">
+        <label for="platform-question">ZipRecruiter custom question *</label>
+        <input id="platform-question" name="ziprecruiter_question" />
+        <button type="submit">Submit</button></form>`,
+      label: "ZipRecruiter custom question",
+    },
+    {
+      platform: "adzuna",
+      url: "https://www.adzuna.com.au/details/123/apply",
+      root: `<form class="apply-form" action="/apply">
+        <label for="platform-question">Adzuna custom question *</label>
+        <input id="platform-question" name="adzuna_question" />
+        <button type="submit">Submit</button></form>`,
+      label: "Adzuna custom question",
+    },
+    {
+      platform: "wellfound",
+      url: "https://wellfound.com/jobs/123/apply",
+      root: `<form data-test="JobApplicationForm" action="/apply">
+        <label for="platform-question">Wellfound custom question *</label>
+        <input id="platform-question" name="wellfound_question" />
+        <button type="submit">Submit</button></form>`,
+      label: "Wellfound custom question",
+    },
+    {
+      platform: "dice",
+      url: "https://www.dice.com/job-detail/123/apply",
+      root: `<form data-cy="easyApplyForm" action="/apply">
+        <label for="platform-question">Dice custom question *</label>
+        <input id="platform-question" name="dice_question" />
+        <button type="submit">Submit</button></form>`,
+      label: "Dice custom question",
+    },
+    {
+      platform: "simplyhired",
+      url: "https://www.simplyhired.com.au/job/123/apply",
+      root: `<form data-testid="applyForm" action="/apply">
+        <label for="platform-question">SimplyHired custom question *</label>
+        <input id="platform-question" name="simplyhired_question" />
+        <button type="submit">Submit</button></form>`,
+      label: "SimplyHired custom question",
+    },
   ] as const)("uses the $platform form root instead of unrelated page controls", ({ platform, url, root, label }) => {
     setLocation(url);
     document.body.innerHTML = `
@@ -226,6 +289,36 @@ describe("platform-specific application question detection", () => {
       expect.objectContaining({ id: "password", label: "Password", type: "password" }),
     ]));
     expect(inspection.fields.some((field) => field.id === "website")).toBe(false);
+  });
+
+  it("recognises SEEK's form controls when the application page has no form element", () => {
+    setLocation(
+      "https://au.seek.com/job/94120995/apply?token=1~1bfade42-e6cc-4128-8e62-8334db0b2873",
+    );
+    document.body.innerHTML = `
+      <div data-automation="job-header"><h1>Senior Software Engineer</h1></div>
+      <fieldset role="radiogroup" aria-label="Resumé">
+        <label><input name="document-select" type="radio" value="resume-1" />CV.pdf</label>
+      </fieldset>
+      <div data-testid="resumeFileInput">
+        <label for="resume-fileFile">Upload a reséumé</label>
+        <input id="resume-fileFile" data-testid="file-input" type="file" style="display: none" />
+        <button data-testid="upload-button">Upload</button>
+      </div>
+      <label for="cover-letter">Write a cover letter</label>
+      <textarea id="cover-letter" data-testid="coverLetterTextInput"></textarea>
+      <button data-testid="continue-button">Continue</button>
+    `;
+
+    const inspection = readCurrentForm();
+    expect(inspection.kind).toBe("application_form");
+    if (inspection.kind !== "application_form") return;
+    expect(inspection.action).toBe("next");
+    expect(inspection.fields).toEqual(expect.arrayContaining([
+      expect.objectContaining({ label: "Resumé", type: "radio" }),
+      expect.objectContaining({ id: "resume-fileFile", type: "file" }),
+      expect.objectContaining({ id: "cover-letter", type: "textarea" }),
+    ]));
   });
 
   it("extracts all supported question types, accessible labels, options, and required state", () => {

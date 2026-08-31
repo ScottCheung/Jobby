@@ -62,17 +62,18 @@ export function readCurrentPage(apiData?: import('./platforms/linkedin/api-clien
   const platform = detectDedicatedPlatform(window.location, document);
   if (platform === "seek") {
     const inspection = readSeekPage();
-    return inspection.kind === "job" ? inspection : fallbackToGenericJob(inspection);
+    return inspection.kind === "job" ? inspection : fallbackToGenericJob(inspection, "seek");
   }
   if (platform === "linkedin") {
     return readLinkedInPage(apiData);
   }
   if (platform === "indeed") {
-    return readIndeedJobPage();
+    const inspection = readIndeedJobPage();
+    return inspection.kind === "job" ? inspection : fallbackToGenericJob(inspection, "indeed");
   }
   if (platform && isAtsJobPlatform(platform)) {
     const inspection = readAtsJobPage(platform);
-    return inspection.kind === "job" ? inspection : fallbackToGenericJob(inspection);
+    return inspection.kind === "job" ? inspection : fallbackToGenericJob(inspection, platform);
   }
   return readGenericJobPage();
 }
@@ -97,6 +98,15 @@ function postingDateWaitPolicy(
 
 function providerReadinessWaitUntilAttempt(): number {
   const platform = detectDedicatedPlatform(window.location, document);
+  if (
+    platform === "seek" &&
+    /\/(?:apply|application)(?:\/|$)/i.test(window.location.pathname)
+  ) {
+    // SEEK's application route first renders a loading shell, then mounts the
+    // job header and form client-side. Keep inspecting long enough for that
+    // initial render instead of returning the loading shell as a non-job page.
+    return 60;
+  }
   if (!platform || !isAtsJobPlatform(platform)) return 0;
   return getAtsProviderDefinition(platform).job.readinessWaitUntilAttempt || 0;
 }
@@ -112,11 +122,12 @@ export async function readCurrentPageWhenReady(): Promise<PageInspection> {
 
   let previousSnapshotSignature = "";
   const readinessWaitAttempts = providerReadinessWaitUntilAttempt();
+  const maxAttempts = Math.max(15, readinessWaitAttempts + 1);
 
   // Split views can replace the selected job after the click while keeping the
   // same URL. Require a short stable window so a previous card's complete DOM
   // is not returned while the new detail pane is still mounting.
-  for (let attempt = 0; attempt < 15; attempt += 1) {
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     if (inspection.kind === "job") {
       const snapshotSignature = [
         inspection.snapshot.platform,
@@ -135,7 +146,9 @@ export async function readCurrentPageWhenReady(): Promise<PageInspection> {
       previousSnapshotSignature = snapshotSignature;
     } else {
       previousSnapshotSignature = "";
-      if (attempt >= 1 && readinessWaitAttempts === 0) {
+      const isClassifiedJob = Boolean(lastPageClass?.isJobPage);
+      const minAttempts = isClassifiedJob ? 8 : 1;
+      if (attempt >= minAttempts && readinessWaitAttempts === 0) {
         return inspection;
       }
     }
@@ -207,12 +220,26 @@ async function readIndeedPageWhenReady(): Promise<PageInspection> {
   return readIndeedJobPage();
 }
 
-function fallbackToGenericJob(preferredInspection: PageInspection): PageInspection {
+function fallbackToGenericJob(
+  preferredInspection: PageInspection,
+  platform?: DedicatedPlatform | AtsJobPlatform,
+): PageInspection {
   if (lastPageClass && !lastPageClass.isJobPage) {
     return preferredInspection;
   }
   const genericInspection = readGenericJobPage();
-  if (genericInspection.kind === "job") return genericInspection;
+  if (genericInspection.kind === "job") {
+    if (platform && platform !== "generic") {
+      return {
+        ...genericInspection,
+        snapshot: {
+          ...genericInspection.snapshot,
+          platform: platform as AtsJobPlatform,
+        },
+      };
+    }
+    return genericInspection;
+  }
 
   // An authentication or application route frequently has no stable job ID.
   // In that situation the useful diagnosis is whether job content is actually

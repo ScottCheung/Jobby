@@ -1,16 +1,16 @@
 import type { FormFieldObservation } from '../contracts/form-inspection';
 
+export type FileFieldPurpose =
+  | 'resume'
+  | 'cover_letter'
+  | 'profile_image'
+  | 'portfolio'
+  | 'other';
+
 type DocumentPurpose = 'resume' | 'cover_letter' | 'other';
 
 function normalized(value: string | undefined): string {
   return (value || '').replace(/\s+/g, ' ').trim().toLowerCase();
-}
-
-function identityText(field: FormFieldObservation): string {
-  return [field.key, field.id, field.name]
-    .filter(Boolean)
-    .join(' ')
-    .toLowerCase();
 }
 
 function stableMetadataText(field: FormFieldObservation): string {
@@ -20,18 +20,41 @@ function stableMetadataText(field: FormFieldObservation): string {
     .toLowerCase();
 }
 
-function documentPurpose(field: FormFieldObservation): DocumentPurpose {
+export function fileFieldPurpose(
+  field: FormFieldObservation,
+): FileFieldPurpose {
   if (field.type !== 'file') return 'other';
-  const metadata = identityText(field);
-  const label = normalized(field.label);
-  const allText = `${metadata} ${label}`;
-  if (/cover[\s_-]*(?:letter|note)|motivation[\s_-]*letter|求职信|自荐信|附言/.test(allText)) {
+  const identity = [
+    field.label,
+    field.key,
+    field.id,
+    field.name,
+    ...(field.semanticFeatures || []),
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+  if (
+    /cover[\s_-]*(?:letter|note)|motivation[\s_-]*letter|求职信|自荐信|附言/.test(
+      identity,
+    )
+  )
     return 'cover_letter';
-  }
-  if (/resume|curriculum[\s_-]*vitae|(?:^|[^a-z])cv(?:[^a-z]|$)|简历|履历/.test(allText)) {
+  if (/profile[\s_-]*(?:image|photo)|avatar|headshot|头像/.test(identity))
+    return 'profile_image';
+  if (/portfolio|work[\s_-]*sample|作品集/.test(identity)) return 'portfolio';
+  if (
+    /resume|curriculum[\s_-]*vitae|(?:^|[^a-z])cv(?:[^a-z]|$)|简历|履历/.test(
+      identity,
+    )
+  )
     return 'resume';
-  }
   return 'other';
+}
+
+function documentPurpose(field: FormFieldObservation): DocumentPurpose {
+  const purpose = fileFieldPurpose(field);
+  return purpose === 'resume' || purpose === 'cover_letter' ? purpose : 'other';
 }
 
 function samePhysicalField(

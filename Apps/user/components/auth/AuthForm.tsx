@@ -13,7 +13,6 @@ import {
 } from '@/lib/auth/extension-redirect';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useAuthStore } from '@/lib/store';
 
 // Use components from @jobby/ui
 import { InputField, Button, Checkbox } from '@jobby/ui';
@@ -45,9 +44,6 @@ export function AuthForm({
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
-  const [rememberMe, setRememberMe] = useState(
-    () => useAuthStore.getState().rememberMe ?? true,
-  );
 
   const isLogin = mode === 'login';
 
@@ -104,9 +100,6 @@ export function AuthForm({
         }
 
         if (data.session) {
-          useAuthStore
-            .getState()
-            .login(data.session.access_token, rememberMe);
           handlePostAuthRedirect();
         }
       } else {
@@ -134,9 +127,6 @@ export function AuthForm({
         }
 
         if (data.session) {
-          useAuthStore
-            .getState()
-            .login(data.session.access_token, rememberMe);
           handlePostAuthRedirect();
         } else {
           setSuccessMessage(
@@ -279,21 +269,8 @@ export function AuthForm({
           showCharCount={false}
         />
 
-        {/* Checkboxes: Trust this device & Terms consent */}
+        {/* Terms consent */}
         <div className='space-y-2.5 pt-1 pb-1'>
-          <label className='flex items-center gap-2.5 cursor-pointer select-none text-ink-secondary hover:text-ink-primary transition-colors'>
-            <Checkbox
-              checked={rememberMe}
-              onCheckedChange={(checked) => {
-                const val = !!checked;
-                setRememberMe(val);
-                useAuthStore.getState().setRememberMe(val);
-              }}
-              className='rounded-md'
-            />
-            <span className='text-xs font-medium'>Trust this device for 7 days</span>
-          </label>
-
           <label className='flex items-start gap-2.5 cursor-pointer select-none text-ink-secondary hover:text-ink-primary transition-colors'>
             <Checkbox
               checked={agreedToTerms}
@@ -385,4 +362,3 @@ export function AuthForm({
     </div>
   );
 }
-

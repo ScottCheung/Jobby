@@ -622,6 +622,59 @@ describe("E2E Date Extraction Across All Platforms", () => {
   });
 
   describe("SEEK", () => {
+    it("recognizes a directly opened SEEK application page", () => {
+      document.body.innerHTML = `
+        <div>
+          <span>Applying for</span>
+          <h1>Senior Software Engineer</h1>
+          <span>The Onset</span>
+          <span><span role="button">View job description</span></span>
+        </div>
+      `;
+      Object.defineProperty(window, "location", {
+        writable: true,
+        value: new URL(
+          "https://au.seek.com/job/94120995/apply?token=1~1bfade42-e6cc-4128-8e62-8334db0b2873",
+        ),
+      });
+
+      const inspection = readSeekPage();
+      expect(inspection.kind).toBe("job");
+      if (inspection.kind !== "job") return;
+      expect(inspection.snapshot.externalId).toBe("94120995");
+      expect(inspection.snapshot.title).toBe("Senior Software Engineer");
+      expect(inspection.snapshot.company).toBe("The Onset");
+    });
+
+    it("waits for SEEK's application header to mount after its loading shell", async () => {
+      vi.useFakeTimers();
+      try {
+        document.body.innerHTML = `<div role="alert">Loading</div>`;
+        Object.defineProperty(window, "location", {
+          writable: true,
+          value: new URL(
+            "https://au.seek.com/job/94120995/apply?token=1~1bfade42-e6cc-4128-8e62-8334db0b2873",
+          ),
+        });
+        window.setTimeout(() => {
+          document.body.innerHTML = `
+            <div><span>Applying for</span><h1>Senior Software Engineer</h1><span>The Onset</span></div>
+          `;
+        }, 2_000);
+
+        const pending = readCurrentPageWhenReady();
+        await vi.advanceTimersByTimeAsync(2_500);
+        const inspection = await pending;
+
+        expect(inspection.kind).toBe("job");
+        if (inspection.kind !== "job") return;
+        expect(inspection.snapshot.externalId).toBe("94120995");
+        expect(inspection.snapshot.company).toBe("The Onset");
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
     it("extracts posted date from Seek job-detail-date attribute", () => {
       document.body.innerHTML = `
         <h1 data-automation="job-detail-title">Senior DevOps Engineer</h1>
@@ -1364,6 +1417,214 @@ describe("E2E Date Extraction Across All Platforms", () => {
         expect(inspection.snapshot.lastPostedAt).toBe("2026-08-10T08:00:00.000Z");
         const formatted = parseAndFormatJobDate(inspection.snapshot.lastPostedAt!, new Date("2026-08-13T00:00:00Z"));
         expect(formatted.displayText).toBe("2 days ago");
+      }
+    });
+  });
+
+  describe("Jora", () => {
+    it("extracts job details and posting date on Jora job page", async () => {
+      document.body.innerHTML = `
+        <div class="search-results-page split-serp">
+          <div class="results-list-container">
+            <div id="jobresults">
+              <div class="job-card result organic-job" data-job-id="4ed7e4a8ac7496963d7be06e2ba13ddc" data-active="true">
+                <div class="job-card-body">
+                  <h2 class="job-title"><a href="/job/Senior-Software-Engineer-4ed7e4a8ac7496963d7be06e2ba13ddc">Senior Software Engineer</a></h2>
+                  <span class="job-company">Canva</span>
+                  <span class="job-location">Sydney NSW</span>
+                  <div class="job-listed-date">Posted 2 hours ago</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="grid-aside-pane">
+            <div class="jdv-panel">
+              <div class="jdv-content">
+                <h1 class="heading -size-large">Senior Software Engineer</h1>
+                <div class="job-company">Canva</div>
+                <div class="job-location">Sydney NSW</div>
+                <div class="job-description">
+                  We are looking for a Senior Software Engineer with strong experience in React, TypeScript, Node.js, and cloud architecture.
+                </div>
+                <a href="/apply" class="rounded-button -primary">Quick Apply</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+      Object.defineProperty(window, "location", {
+        writable: true,
+        value: new URL("https://au.jora.com/job/Senior-Software-Engineer-4ed7e4a8ac7496963d7be06e2ba13ddc"),
+      });
+
+      expect(classifyCurrentPage().isJobPage).toBe(true);
+      const inspection = await readCurrentPageWhenReady();
+      expect(inspection.kind).toBe("job");
+      if (inspection.kind === "job") {
+        expect(inspection.snapshot.platform).toBe("jora");
+        expect(inspection.snapshot.title).toBe("Senior Software Engineer");
+        expect(inspection.snapshot.company).toBe("Canva");
+        expect(inspection.snapshot.location).toBe("Sydney NSW");
+        expect(inspection.snapshot.description).toContain("React, TypeScript, Node.js");
+        expect(inspection.snapshot.externalId).toBe("4ed7e4a8ac7496963d7be06e2ba13ddc");
+        expect(inspection.snapshot.postingDateRaw?.label).toContain("2 hours ago");
+      }
+    });
+  });
+
+  describe("ZipRecruiter", () => {
+    it("extracts complete job posting and posted time from ZipRecruiter detail DOM", async () => {
+      document.body.innerHTML = `
+        <div data-testid="job-details">
+          <h1 data-testid="job-title">Staff Infrastructure Engineer</h1>
+          <div class="hiring_company_text">TechFlow Inc</div>
+          <div class="location_text">San Francisco, CA</div>
+          <div class="job_age">Posted 3 days ago</div>
+          <div class="jobDescriptionSection">
+            We are hiring a Staff Infrastructure Engineer to lead Kubernetes and AWS platform engineering. Experience with Go, Terraform, and distributed systems is essential.
+          </div>
+        </div>
+      `;
+      Object.defineProperty(window, "location", {
+        writable: true,
+        value: new URL("https://www.ziprecruiter.com/job/staff-infrastructure-engineer-abc12345"),
+      });
+
+      expect(classifyCurrentPage().isJobPage).toBe(true);
+      const inspection = await readCurrentPageWhenReady();
+      expect(inspection.kind).toBe("job");
+      if (inspection.kind === "job") {
+        expect(inspection.snapshot.platform).toBe("ziprecruiter");
+        expect(inspection.snapshot.title).toBe("Staff Infrastructure Engineer");
+        expect(inspection.snapshot.company).toBe("TechFlow Inc");
+        expect(inspection.snapshot.location).toBe("San Francisco, CA");
+        expect(inspection.snapshot.description).toContain("Kubernetes and AWS platform engineering");
+        expect(inspection.snapshot.postingDateRaw?.label).toContain("3 days ago");
+      }
+    });
+  });
+
+  describe("Adzuna", () => {
+    it("extracts complete job posting and date from Adzuna details DOM", async () => {
+      document.body.innerHTML = `
+        <div class="job-details">
+          <h1 class="title">Senior Backend Developer</h1>
+          <div class="company">Adzuna Partners</div>
+          <div class="location">Sydney NSW</div>
+          <div class="posted">1 day ago</div>
+          <div class="job-description">
+            Looking for a Senior Backend Developer proficient in Python, PostgreSQL, Redis, and microservices architecture to scale our core backend systems.
+          </div>
+        </div>
+      `;
+      Object.defineProperty(window, "location", {
+        writable: true,
+        value: new URL("https://www.adzuna.com.au/details/987654321"),
+      });
+
+      expect(classifyCurrentPage().isJobPage).toBe(true);
+      const inspection = await readCurrentPageWhenReady();
+      expect(inspection.kind).toBe("job");
+      if (inspection.kind === "job") {
+        expect(inspection.snapshot.platform).toBe("adzuna");
+        expect(inspection.snapshot.title).toBe("Senior Backend Developer");
+        expect(inspection.snapshot.company).toBe("Adzuna Partners");
+        expect(inspection.snapshot.location).toBe("Sydney NSW");
+        expect(inspection.snapshot.description).toContain("Python, PostgreSQL, Redis");
+        expect(inspection.snapshot.externalId).toBe("987654321");
+      }
+    });
+  });
+
+  describe("Wellfound", () => {
+    it("extracts complete job posting from Wellfound startup listing", async () => {
+      document.body.innerHTML = `
+        <div data-test="JobListing">
+          <h1 class="styles_title__abc">Founding Full Stack Engineer</h1>
+          <div class="styles_companyName__xyz">Nexus AI</div>
+          <div class="styles_location__123">Remote</div>
+          <div class="styles_posted__time">Just now</div>
+          <div data-test="JobDescription">
+            Join our founding team to build the next-generation AI workflows platform. Strong skills in Next.js, TypeScript, Python, and LLM APIs required.
+          </div>
+        </div>
+      `;
+      Object.defineProperty(window, "location", {
+        writable: true,
+        value: new URL("https://wellfound.com/jobs/555123-founding-engineer"),
+      });
+
+      expect(classifyCurrentPage().isJobPage).toBe(true);
+      const inspection = await readCurrentPageWhenReady();
+      expect(inspection.kind).toBe("job");
+      if (inspection.kind === "job") {
+        expect(inspection.snapshot.platform).toBe("wellfound");
+        expect(inspection.snapshot.title).toBe("Founding Full Stack Engineer");
+        expect(inspection.snapshot.company).toBe("Nexus AI");
+        expect(inspection.snapshot.location).toBe("Remote");
+        expect(inspection.snapshot.description).toContain("Next.js, TypeScript, Python");
+      }
+    });
+  });
+
+  describe("Dice", () => {
+    it("extracts complete tech job posting from Dice job details", async () => {
+      document.body.innerHTML = `
+        <div data-cy="job-details">
+          <h1 data-cy="jobTitle">Lead Cloud Security Engineer</h1>
+          <div data-cy="companyName">CyberShield Corp</div>
+          <div data-cy="jobLocation">Austin, TX</div>
+          <div data-cy="postedDate">2 hours ago</div>
+          <div id="jobdescSec">
+            CyberShield is looking for a Lead Cloud Security Engineer with deep expertise in AWS IAM, Terraform security policies, SIEM integration, and DevSecOps.
+          </div>
+        </div>
+      `;
+      Object.defineProperty(window, "location", {
+        writable: true,
+        value: new URL("https://www.dice.com/job-detail/999888-lead-cloud-security"),
+      });
+
+      expect(classifyCurrentPage().isJobPage).toBe(true);
+      const inspection = await readCurrentPageWhenReady();
+      expect(inspection.kind).toBe("job");
+      if (inspection.kind === "job") {
+        expect(inspection.snapshot.platform).toBe("dice");
+        expect(inspection.snapshot.title).toBe("Lead Cloud Security Engineer");
+        expect(inspection.snapshot.company).toBe("CyberShield Corp");
+        expect(inspection.snapshot.location).toBe("Austin, TX");
+        expect(inspection.snapshot.description).toContain("AWS IAM, Terraform security policies");
+      }
+    });
+  });
+
+  describe("SimplyHired", () => {
+    it("extracts complete job posting from SimplyHired viewjob container", async () => {
+      document.body.innerHTML = `
+        <div data-testid="viewJobBody">
+          <h1 data-testid="viewJobTitle">Senior Site Reliability Engineer</h1>
+          <div data-testid="viewJobCompany">CloudScale Systems</div>
+          <div data-testid="viewJobLocation">Melbourne VIC</div>
+          <div data-testid="viewJobAge">1 day ago</div>
+          <div class="viewjob-description">
+            CloudScale Systems is hiring an experienced SRE to maintain high availability and reliability for mission-critical infrastructure across multi-cloud regions.
+          </div>
+        </div>
+      `;
+      Object.defineProperty(window, "location", {
+        writable: true,
+        value: new URL("https://www.simplyhired.com.au/job/777666555"),
+      });
+
+      expect(classifyCurrentPage().isJobPage).toBe(true);
+      const inspection = await readCurrentPageWhenReady();
+      expect(inspection.kind).toBe("job");
+      if (inspection.kind === "job") {
+        expect(inspection.snapshot.platform).toBe("simplyhired");
+        expect(inspection.snapshot.title).toBe("Senior Site Reliability Engineer");
+        expect(inspection.snapshot.company).toBe("CloudScale Systems");
+        expect(inspection.snapshot.location).toBe("Melbourne VIC");
+        expect(inspection.snapshot.description).toContain("mission-critical infrastructure");
       }
     });
   });

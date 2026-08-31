@@ -60,14 +60,16 @@ export function useApplicationTools(
     setIsCancellingAutofill(false);
     try {
       let form =
-        latestForm?.kind === 'application_form' ||
-        latestForm?.kind === 'page_input_fields' ?
+        (latestForm?.kind === 'application_form' ||
+          latestForm?.kind === 'page_input_fields') &&
+        latestForm.fields.length > 0 ?
           latestForm
         : await inspectForm();
       if (
         !form ||
         (form.kind !== 'application_form' &&
-          form.kind !== 'page_input_fields')
+          form.kind !== 'page_input_fields') ||
+        form.fields.length === 0
       ) {
         await wait(150);
         form = await inspectForm();
@@ -75,7 +77,8 @@ export function useApplicationTools(
       if (
         !form ||
         (form.kind !== 'application_form' &&
-          form.kind !== 'page_input_fields')
+          form.kind !== 'page_input_fields') ||
+        form.fields.length === 0
       ) {
         reportError('No supported form was detected on this page.');
         return;

@@ -9,6 +9,9 @@ import type {
   FormInspection,
 } from '../../shared/contracts/form-inspection';
 import type { TailoredResume } from '../../shared/contracts/tailored-resume';
+import { fileFieldPurpose } from '../../shared/utils/form-field-resolution';
+export { fileFieldPurpose };
+export type { FileFieldPurpose } from '../../shared/utils/form-field-resolution';
 import { formatRelativeTime } from '@jobby/ui/lib/date-formatter';
 import type { UploadSyncState } from '../hooks/useInspection';
 
@@ -193,45 +196,6 @@ export function displayValue(field: FormFieldObservation): string {
   );
 }
 
-export type FileFieldPurpose =
-  | 'resume'
-  | 'cover_letter'
-  | 'profile_image'
-  | 'portfolio'
-  | 'other';
-
-export function fileFieldPurpose(
-  field: FormFieldObservation,
-): FileFieldPurpose {
-  if (field.type !== 'file') return 'other';
-  const identity = [
-    field.label,
-    field.key,
-    field.id,
-    field.name,
-    ...(field.semanticFeatures || []),
-  ]
-    .filter(Boolean)
-    .join(' ')
-    .toLowerCase();
-  if (
-    /cover[\s_-]*(?:letter|note)|motivation[\s_-]*letter|求职信|自荐信|附言/.test(
-      identity,
-    )
-  )
-    return 'cover_letter';
-  if (/profile[\s_-]*(?:image|photo)|avatar|headshot|头像/.test(identity))
-    return 'profile_image';
-  if (/portfolio|work[\s_-]*sample|作品集/.test(identity)) return 'portfolio';
-  if (
-    /resume|curriculum[\s_-]*vitae|(?:^|[^a-z])cv(?:[^a-z]|$)|简历|履历/.test(
-      identity,
-    )
-  )
-    return 'resume';
-  return 'other';
-}
-
 function displayLabel(field: FormFieldObservation): string {
   const purpose = fileFieldPurpose(field);
   if (purpose === 'resume') return 'Resume';
@@ -396,19 +360,30 @@ function FormFieldRow({
   const editable = !['file', 'unknown'].includes(field.type);
   const purpose = fileFieldPurpose(field);
   const isResumeUpload = purpose === 'resume';
+  const isCoverLetterUpload = purpose === 'cover_letter';
   const isDocumentUpload =
-    isResumeUpload || purpose === 'cover_letter' || purpose === 'other';
+    isResumeUpload || isCoverLetterUpload || purpose === 'other';
+  const documentLabel =
+    isCoverLetterUpload ? 'Cover Letter'
+    : isResumeUpload ? 'Resume'
+    : 'Document';
   const recentTailoredResumes = tailoredResumes.filter((resume) => {
+    if (resume.isGenerating) return false;
     const generated = resume.raw_ai_response?.generated_documents as
       | { resume?: boolean; cover_letter?: boolean }
       | undefined;
-    // Cover-letter-only records retain base resume data so the letter can
-    // include candidate details. They are not CVs available for upload.
+    if (isCoverLetterUpload) {
+      return Boolean(
+        resume.cover_letter ||
+          (resume.raw_ai_response as any)?.cover_letter ||
+          generated?.cover_letter === true,
+      );
+    }
     const hasGeneratedResume =
       generated && ('resume' in generated || 'cover_letter' in generated) ?
         generated.resume === true
       : Boolean(resume.resume_data);
-    return !resume.isGenerating && hasGeneratedResume;
+    return hasGeneratedResume;
   });
   const selectedResume = recentTailoredResumes.find(
     (resume) => resume.id === selectedResumeId,
@@ -674,16 +649,17 @@ function FormFieldRow({
           >
             {isDocumentUpload ?
               isUploadInFlight ?
-                'Uploading selected Document...'
+                `Uploading selected ${documentLabel}...`
               : field.filled ?
-                'Reupload selected Resume'
-              : 'Upload selected Resume'
+                `Reupload selected ${documentLabel}`
+              : `Upload selected ${documentLabel}`
             : 'Go to Upload'}
           </button>
           <UploadState
             field={field}
             state={uploadState}
             isResumeUpload={isDocumentUpload}
+            documentLabel={documentLabel}
             selectedResumeTitle={selectedResume?.job_title || undefined}
           />
         </div>
@@ -696,11 +672,13 @@ function UploadState({
   field,
   state,
   isResumeUpload,
+  documentLabel = 'Resume',
   selectedResumeTitle,
 }: {
   field: FormFieldObservation;
   state?: UploadSyncState;
   isResumeUpload: boolean;
+  documentLabel?: string;
   selectedResumeTitle?: string;
 }) {
   const phase =
@@ -718,7 +696,7 @@ function UploadState({
       field.upload.detail || 'The website rejected the file.'
     : isResumeUpload ?
       selectedResumeTitle ? `Ready to upload: ${selectedResumeTitle}`
-      : 'Select a resume from Recent Tailor to upload.'
+      : `Select a ${documentLabel.toLowerCase()} from Recent Tailor to upload.`
     : 'Please select a file on the webpage.');
 
   return (
