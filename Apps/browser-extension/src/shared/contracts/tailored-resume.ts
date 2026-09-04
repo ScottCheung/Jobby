@@ -55,6 +55,8 @@ export type TailoredResume = {
   core_competencies?: string[];
   targeted_projects?: Array<Record<string, unknown>>;
   cover_letter?: string | null;
+  cover_letter_file_size?: number | null;
+  resume_file_size?: number | null;
   prompt_version?: string;
   status?: 'processing' | 'ready' | 'failed';
   error_message?: string | null;

@@ -1,6 +1,6 @@
 'use client';
 import * as React from "react"
-import { LucideIcon, ChevronDown, ChevronLeft, ChevronRight, Calendar as CalendarIcon, X } from "lucide-react"
+import { LucideIcon, ChevronDown, ChevronLeft, ChevronRight, Calendar as CalendarIcon, X } from "@jobby/ui/components/icons"
 import { cn } from "@/lib/utils"
 import { LabelWithHelp } from "../label/with-help"
 import { Error } from "../text/typography"

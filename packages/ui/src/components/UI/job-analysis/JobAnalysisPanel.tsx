@@ -22,8 +22,17 @@ export interface JobAnalysisPanelProps
   isMatchLoading?: boolean;
   isInspecting?: boolean;
   onTailor?: (type: JobAnalysisDocType) => void;
+  onPreview?: (type: 'resume' | 'cover_letter') => void;
+  existingDocuments?: {
+    resume?: boolean;
+    cover_letter?: boolean;
+  };
   activeGeneration?: JobAnalysisGeneration | null;
   hasBackground?: boolean;
+  onRecordApplication?: () => void;
+  canRecordApplication?: boolean;
+  isApplicationRecorded?: boolean;
+  isRecordingApplication?: boolean;
 }
 
 export function JobAnalysisPanel({
@@ -32,9 +41,15 @@ export function JobAnalysisPanel({
   isMatchLoading = false,
   isInspecting = false,
   onTailor,
+  onPreview,
+  existingDocuments,
   activeGeneration,
   authConnected = true,
   onSignIn,
+  onRecordApplication,
+  canRecordApplication = false,
+  isApplicationRecorded = false,
+  isRecordingApplication = false,
   hasBackground = true,
   ...detailsProps
 }: JobAnalysisPanelProps) {
@@ -56,9 +71,15 @@ export function JobAnalysisPanel({
         isMatchLoading={isMatchLoading}
         isInspecting={isInspecting}
         onTailor={onTailor}
+        onPreview={onPreview}
+        existingDocuments={existingDocuments}
         activeGeneration={activeGeneration}
         authConnected={authConnected}
         onSignIn={onSignIn}
+        onRecordApplication={onRecordApplication}
+        canRecordApplication={canRecordApplication}
+        isApplicationRecorded={isApplicationRecorded}
+        isRecordingApplication={isRecordingApplication}
       />
       </div>
       <JobDetails

@@ -55,6 +55,7 @@ provider-routing
 | Workable | Shared ATS | Shared ATS | `data-ui` selectors |
 | BambooHR | Shared ATS | Shared ATS | BambooHR career-page selectors |
 | Jora | Shared ATS | Shared ATS | Split-SERP pane & card selectors, Quick Apply roots |
+| Micro1 | Shared ATS | Shared ATS | `micro1.ai` post pages and Next.js / JSON-LD ATS markers |
 
 Platforms recognised only by the page classifier, but not registered here, intentionally remain `generic`.
 

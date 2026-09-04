@@ -3,7 +3,7 @@
 'use client';
 
 import { useState } from 'react';
-import { CircleCheck, TriangleAlert } from 'lucide-react';
+import { CircleCheck, TriangleAlert } from '@jobby/ui/components/icons';
 import {
   Popover,
   PopoverContent,
@@ -41,6 +41,8 @@ const PLATFORM_DOMAIN_MAP: Record<string, string> = {
   dice: 'dice.com',
   simplyhired: 'simplyhired.com.au',
   careerone: 'careerone.com.au',
+  micro1: 'micro1.ai',
+  dayforce: 'dayforcehcm.com',
 };
 
 const PLATFORM_BRAND_STYLES: Record<string, string> = {
@@ -75,6 +77,9 @@ const PLATFORM_BRAND_STYLES: Record<string, string> = {
   // CareerOne - Vibrant Coral Orange
   careerone:
     'border-[#F26522]/25 bg-[#F26522]/10 text-[#d04a08] dark:border-[#F26522]/35 dark:bg-[#F26522]/15 dark:text-[#fb923c]',
+  // Micro1 - Indigo Blue
+  micro1:
+    'border-[#6366F1]/25 bg-[#6366F1]/10 text-[#4F46E5] dark:border-[#6366F1]/35 dark:bg-[#6366F1]/15 dark:text-[#818cf8]',
   // Greenhouse - Deep Forest Green
   greenhouse:
     'border-[#008552]/25 bg-[#008552]/10 text-[#008552] dark:border-[#008552]/35 dark:bg-[#008552]/15 dark:text-[#4ade80]',
@@ -108,6 +113,8 @@ const PLATFORM_BRAND_STYLES: Record<string, string> = {
   // BambooHR - Lime Pine Green
   bamboohr:
     'border-[#658800]/25 bg-[#658800]/10 text-[#658800] dark:border-[#A3E635]/35 dark:bg-[#A3E635]/15 dark:text-[#a3e635]',
+  dayforce:
+    'border-[#1e51be]/25 bg-[#1e51be]/10 text-[#1e51be] dark:border-[#4d82e8]/35 dark:bg-[#4d82e8]/15 dark:text-[#8db3ff]',
 };
 
 export function getPlatformDomain(

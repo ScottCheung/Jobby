@@ -343,4 +343,84 @@ describe('highlightJobRequirement', () => {
     expect(result.highlighted).toBe(true);
     expect(expanded).toBe(true);
   });
+
+  it('locates and highlights skills on SimplyHired within aside-wrapped job detail pane', async () => {
+    setLocation('https://www.simplyhired.com.au/search?q=Golang+Engineer&l=Melbourne');
+    document.body.innerHTML = `
+      <div class="serp-layout">
+        <div class="serp-list">
+          <div data-testid="searchSerpJob" data-jobkey="simply-go-1">
+            <h3>React Lead</h3>
+          </div>
+        </div>
+        <aside class="serp-detail-pane viewjob-pane">
+          <div data-testid="viewJobBody" data-jobkey="simply-go-1">
+            <h1 data-testid="viewJobTitle">Lead Golang Engineer</h1>
+            <div data-testid="companyName">Envato</div>
+            <div data-testid="location">Melbourne VIC</div>
+            <div data-testid="jobDescriptionText">
+              <p>We are seeking a Lead Golang Engineer with deep Kubernetes and Docker experience.</p>
+            </div>
+          </div>
+        </aside>
+      </div>
+    `;
+
+    // Should ignore React in left serp list and highlight Kubernetes in right JD pane
+    const reactResult = await highlightJobRequirement(['React']);
+    expect(reactResult.highlighted).toBe(false);
+
+    const k8sResult = await highlightJobRequirement(['Kubernetes']);
+    expect(k8sResult.highlighted).toBe(true);
+    expect(k8sResult.matchCount).toBe(1);
+    expect(k8sResult.currentIndex).toBe(1);
+  });
+
+  it('automatically clicks SimplyHired show more button to expand the job description', async () => {
+    setLocation('https://www.simplyhired.com/job/abc-123-sre-sydney');
+    let expanded = false;
+    document.body.innerHTML = `
+      <div data-testid="viewJobBody">
+        <h1 data-testid="viewJobTitle">Staff SRE</h1>
+        <div data-testid="viewJobCompany">Canva</div>
+        <div data-testid="jobDescriptionText" class="viewjob-description">
+          <p>Initial snippet...</p>
+        </div>
+        <button data-testid="viewJobExpandButton" class="showMore" aria-expanded="false">
+          Show more
+        </button>
+      </div>
+    `;
+
+    const button = document.querySelector<HTMLButtonElement>(
+      "[data-testid='viewJobExpandButton']",
+    )!;
+    button.addEventListener('click', () => {
+      expanded = true;
+      button.setAttribute('aria-expanded', 'true');
+      const details = document.querySelector("[data-testid='jobDescriptionText']")!;
+      details.innerHTML = '<p>Full description with AWS and Terraform requirements.</p>';
+    });
+
+    const result = await highlightJobRequirement(['Terraform']);
+    expect(result.highlighted).toBe(true);
+    expect(expanded).toBe(true);
+  });
+
+  it('locates and scrolls to job title in the page header even when absent in the description text', async () => {
+    setLocation('https://www.seek.com.au/job/76543210');
+    document.body.innerHTML = `
+      <div data-automation="jobDetails">
+        <h1 data-automation="job-detail-title">Principal Cloud Architect</h1>
+        <div data-automation="jobDescription">
+          <p>We are looking for someone to lead our cloud infrastructure team.</p>
+        </div>
+      </div>
+    `;
+
+    const result = await highlightJobRequirement(['Principal Cloud Architect']);
+    expect(result.highlighted).toBe(true);
+    expect(result.matchCount).toBe(1);
+    expect(result.currentIndex).toBe(1);
+  });
 });

@@ -17,7 +17,7 @@ import {
   Layers,
   Filter,
   RefreshCw,
-} from 'lucide-react';
+} from '@jobby/ui/components/icons';
 import { api } from '@/lib/api';
 import type {
   InterviewQuestion,
@@ -38,11 +38,15 @@ type CommentSubFilter = 'liked' | 'mine';
 const PAGE_SIZE = 15;
 const MIN_SKELETON_DELAY_MS = 500;
 
-export function FavoritesDrawer() {
+export function FavoritesDrawer({
+  initialTab = 'questions',
+}: {
+  initialTab?: TabType;
+} = {}) {
   const router = useRouter();
   const closeDrawer = useLayoutStore((state) => state.actions.closeDrawer);
 
-  const [activeTab, setActiveTab] = useState<TabType>('questions');
+  const [activeTab, setActiveTab] = useState<TabType>(initialTab);
   const [commentFilter, setCommentFilter] = useState<CommentSubFilter>('liked');
   const [searchQuery, setSearchQuery] = useState('');
   const [counts, setCounts] = useState<UserFavoritesCounts | null>(null);

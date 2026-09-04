@@ -3,7 +3,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Check, X } from 'lucide-react';
+import { Check, X } from '@jobby/ui/components/icons';
 import { Button } from '../Button';
 import { Input } from '../input';
 import { Modal } from '../../layout/modal';
@@ -177,7 +177,7 @@ export function EditJobModal({
           </div>
         </div>
 
-        <div className='footer'>
+        <div className='flex justify-end gap-3'>
           <Button
             variant='ghost'
             size='sm'

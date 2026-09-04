@@ -2,6 +2,7 @@
 
 'use client';
 
+import { ArrowRight } from '@jobby/ui/components/icons';
 import { parseDescriptionBlocks } from '../../lib/job-description';
 import { cn } from '../../lib/utils';
 
@@ -10,6 +11,7 @@ export interface StructuredJobDescriptionProps {
   className?: string;
   maxBlocks?: number;
   size?: 'sm' | 'base';
+  onHighlightHeader?: (headerText: string) => void;
 }
 
 export function StructuredJobDescription({
@@ -17,6 +19,7 @@ export function StructuredJobDescription({
   className,
   maxBlocks,
   size = 'base',
+  onHighlightHeader,
 }: StructuredJobDescriptionProps) {
   if (!content) return null;
 
@@ -40,25 +43,62 @@ export function StructuredJobDescription({
           return (
             <div
               key={index}
+              onClick={
+                onHighlightHeader ?
+                  () => onHighlightHeader(block.text)
+                : undefined
+              }
+              title={
+                onHighlightHeader ?
+                  `Locate "${block.text}" in job description`
+                : undefined
+              }
+              role={onHighlightHeader ? 'button' : undefined}
+              tabIndex={onHighlightHeader ? 0 : undefined}
+              onKeyDown={
+                onHighlightHeader ?
+                  (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      onHighlightHeader(block.text);
+                    }
+                  }
+                : undefined
+              }
               className={cn(
-                'flex items-center gap-2.5',
+                'group/hdr flex items-center gap-2.5 transition-all select-none',
+                onHighlightHeader &&
+                  'cursor-pointer hover:opacity-90',
                 isSm ? 'mt-3.5 mb-1.5 first:mt-0' : 'mt-6 mb-3 first:mt-0',
               )}
             >
               <span
                 className={cn(
-                  'rounded-full bg-primary shrink-0',
+                  'rounded-full bg-primary shrink-0 transition-transform duration-150',
+                  onHighlightHeader &&
+                    'group-hover/hdr:scale-y-125 group-hover/hdr:scale-x-110',
                   isSm ? 'w-1 h-3.5' : 'w-1 h-4',
                 )}
               />
               <h4
                 className={cn(
-                  'font-bold text-foreground tracking-tight',
+                  'font-bold text-foreground tracking-tight transition-colors duration-150',
+                  onHighlightHeader &&
+                    'group-hover/hdr:text-primary group-hover/hdr:underline underline-offset-2',
                   isSm ? 'text-[12px]' : 'text-[14.5px]',
                 )}
               >
                 {block.text}
               </h4>
+              {onHighlightHeader && (
+                <ArrowRight
+                  className={cn(
+                    'text-muted-foreground/45 group-hover/hdr:text-primary group-hover/hdr:translate-x-0.5 transition-all duration-150 stroke-[2.5] shrink-0',
+                    isSm ? 'w-2.5 h-2.5' : 'w-3 h-3',
+                  )}
+                  aria-hidden='true'
+                />
+              )}
             </div>
           );
         }

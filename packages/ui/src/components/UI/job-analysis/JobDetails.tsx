@@ -16,7 +16,7 @@ import {
   Plus,
   RefreshCw,
   RotateCcw,
-} from 'lucide-react';
+} from '@jobby/ui/components/icons';
 import { getSkillSearchTerms } from '../../../lib/job-skills';
 import { classifySkills } from '../../../lib/job-skills/classification';
 import { motion, LayoutGroup } from 'framer-motion';
@@ -196,10 +196,12 @@ function PostingDateRow({
   label,
   value,
   showFreshness = false,
+  onLocate,
 }: {
   label: string;
   value?: string;
   showFreshness?: boolean;
+  onLocate?: () => void;
 }) {
   const formatted = value ? parseAndFormatJobDate(value) : null;
   const tier = showFreshness ? formatted?.freshnessTier : undefined;
@@ -210,7 +212,33 @@ function PostingDateRow({
       </span>
       {formatted ?
         <div className='flex items-center gap-1.5 flex-wrap'>
-          <span>{formatted.displayText}</span>
+          <span
+            className={cn(
+              'transition-colors',
+              onLocate &&
+                'cursor-pointer hover:underline hover:text-primary',
+            )}
+            onClick={onLocate}
+            title={
+              onLocate ?
+                `Locate ${label.toLowerCase()} on page`
+              : undefined
+            }
+            role={onLocate ? 'button' : undefined}
+            tabIndex={onLocate ? 0 : undefined}
+            onKeyDown={
+              onLocate ?
+                (e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    onLocate();
+                  }
+                }
+              : undefined
+            }
+          >
+            {formatted.displayText}
+          </span>
           {tier && (
             <span
               className={cn(
@@ -294,20 +322,46 @@ function CopyableFieldRow({
   value,
   valueClassName,
   truncate = false,
+  onLocate,
+  locateTitle,
 }: {
   label: string;
-  value: string;
+  value?: string;
   valueClassName?: string;
   truncate?: boolean;
+  onLocate?: () => void;
+  locateTitle?: string;
 }) {
+  if (!value) return null;
+
   const valueElement = (
     <span
       className={cn(
-        'align-middle',
+        'align-middle transition-colors',
         valueClassName,
+        onLocate &&
+          'cursor-pointer hover:underline hover:text-primary',
         truncate &&
           'inline-block max-w-[calc(100%-1.25rem)] truncate whitespace-nowrap',
       )}
+      onClick={onLocate}
+      title={
+        onLocate ?
+          (locateTitle || `Locate ${label.toLowerCase()} on page`)
+        : undefined
+      }
+      role={onLocate ? 'button' : undefined}
+      tabIndex={onLocate ? 0 : undefined}
+      onKeyDown={
+        onLocate ?
+          (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              onLocate();
+            }
+          }
+        : undefined
+      }
     >
       {value}
     </span>
@@ -353,15 +407,14 @@ export function JobDetails({
   onUpdateJobSnapshot,
   onHighlightJobRequirement,
   onOpenJobDescription,
-  initialDescriptionExpanded = false,
+  initialDescriptionExpanded = true,
   authConnected = true,
   onSignIn: _onSignIn,
 }: JobDetailsProps) {
   const [isDescExpanded, setIsDescExpanded] = useState(
     initialDescriptionExpanded,
   );
-  const isDescriptionFullyVisible =
-    initialDescriptionExpanded || isDescExpanded;
+  const isDescriptionFullyVisible = isDescExpanded;
   const [editOpen, setEditOpen] = useState(false);
   const [claimingSkills, setClaimingSkills] = useState<Set<string>>(new Set());
   const [unclaimingSkills, setUnclaimingSkills] = useState<Set<string>>(
@@ -495,10 +548,21 @@ export function JobDetails({
       firstPostedAt,
       lastPostedAt,
       isReposted,
+      postingDateRaw,
       description,
       technologies,
       externalId,
     } = latestInspection.snapshot;
+
+    const isLocatableDomDate = (rawLabel?: string): boolean => {
+      if (!rawLabel || typeof rawLabel !== 'string') return false;
+      const trimmed = rawLabel.trim();
+      if (!trimmed) return false;
+      if (/^\d{4}-\d{2}-\d{2}(?:T|\b)/i.test(trimmed)) {
+        return false;
+      }
+      return true;
+    };
 
     const handleOpenInPageJobDescription = async () => {
       if (!description) return;
@@ -526,6 +590,15 @@ export function JobDetails({
     const matchedSet = new Set(
       matchedTerms.map((t: string) => t.toLowerCase()),
     );
+
+    const handleLocateJobSection = (sectionTitle: string) => {
+      if (!onHighlightJobRequirement || !sectionTitle) return;
+      const cleanTerm = sectionTitle.replace(/[:：?？!！]+$/g, '').trim();
+      const searchTerms = Array.from(
+        new Set([sectionTitle.trim(), cleanTerm].filter(Boolean)),
+      );
+      void onHighlightJobRequirement(searchTerms);
+    };
 
     return (
       <div
@@ -583,12 +656,28 @@ export function JobDetails({
             label='Job Title'
             value={title}
             valueClassName='font-bold text-ink-primary'
+            onLocate={
+              title && onHighlightJobRequirement ?
+                () => {
+                  void onHighlightJobRequirement([title]);
+                }
+              : undefined
+            }
+            locateTitle='Locate job title on page'
           />
 
           <CopyableFieldRow
             label='Company'
             value={company}
             valueClassName='font-bold text-ink-primary'
+            onLocate={
+              company && hasResolvedCompany(company) && onHighlightJobRequirement ?
+                () => {
+                  void onHighlightJobRequirement([company]);
+                }
+              : undefined
+            }
+            locateTitle='Locate company on page'
           />
 
           {eligibilityRequirements.length > 0 && (
@@ -601,65 +690,114 @@ export function JobDetails({
                   if (!requirement || typeof requirement.label !== 'string')
                     return null;
                   const isPreferred = requirement.priority === 'preferred';
-                  return (
-                    <button
-                      type='button'
-                      key={requirement.label}
-                      className={cn(
-                        'group inline-flex skill-claim-pill items-center gap-1 border py-0.5 pl-1.5 pr-0.5 text-[10px] font-semibold transition-colors cursor-pointer',
-                        isPreferred ?
-                          'border-warning/30 bg-warning/10 text-warning hover:bg-warning/20'
-                        : 'border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/20',
-                      )}
-                      onClick={() => {
-                        void onHighlightJobRequirement?.(
-                          requirement.searchTerms,
-                        );
-                      }}
-                      title='Show this requirement in the job description'
-                      aria-label={`Show ${requirement.label} in the job description`}
-                    >
-                      <span>{requirement.label}</span>
-                      <span
+                  return onHighlightJobRequirement ?
+                    (
+                      <button
+                        type='button'
+                        key={requirement.label}
                         className={cn(
-                          'inline-flex h-3.5 w-3.5 items-center justify-center rounded-full',
+                          'group inline-flex skill-claim-pill items-center gap-1 border py-0.5 pl-1.5 pr-0.5 text-[10px] font-semibold transition-colors cursor-pointer',
                           isPreferred ?
-                            'bg-warning/10 text-warning group-hover:bg-warning group-hover:text-warning-foreground'
-                          : 'bg-destructive/10 text-destructive group-hover:bg-destructive group-hover:text-destructive-foreground',
+                            'border-warning/30 bg-warning/10 text-warning hover:bg-warning/20'
+                          : 'border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/20',
+                        )}
+                        onClick={() => {
+                          void onHighlightJobRequirement(
+                            requirement.searchTerms,
+                          );
+                        }}
+                        title='Show this requirement in the job description'
+                        aria-label={`Show ${requirement.label} in the job description`}
+                      >
+                        <span>{requirement.label}</span>
+                        <span
+                          className={cn(
+                            'inline-flex h-3.5 w-3.5 items-center justify-center rounded-full',
+                            isPreferred ?
+                              'bg-warning/10 text-warning group-hover:bg-warning group-hover:text-warning-foreground'
+                            : 'bg-destructive/10 text-destructive group-hover:bg-destructive group-hover:text-destructive-foreground',
+                          )}
+                        >
+                          <ArrowRight className='h-2.5 w-2.5 stroke-[2.5]' />
+                        </span>
+                      </button>
+                    )
+                  : (
+                      <span
+                        key={requirement.label}
+                        className={cn(
+                          'inline-flex skill-claim-pill items-center border py-0.5 px-1.5 text-[10px] font-semibold',
+                          isPreferred ?
+                            'border-warning/30 bg-warning/10 text-warning'
+                          : 'border-destructive/30 bg-destructive/10 text-destructive',
                         )}
                       >
-                        <ArrowRight className='h-2.5 w-2.5 stroke-[2.5]' />
+                        {requirement.label}
                       </span>
-                    </button>
-                  );
+                    );
                 })}
-                {/* <CopyFieldButton
-                  label='Eligibility'
-                  value={eligibilityRequirements
-                    .map((requirement) => requirement.label)
-                    .join(', ')}
-                /> */}
               </div>
             </div>
           )}
 
           {location && (
-            <CopyableFieldRow label='Location' value={location} truncate />
+            <CopyableFieldRow
+              label='Location'
+              value={location}
+              truncate
+              onLocate={
+                onHighlightJobRequirement ?
+                  () => {
+                    const parts = location
+                      .split(/[,/|•-]/)
+                      .map((p) => p.trim())
+                      .filter(Boolean);
+                    void onHighlightJobRequirement(
+                      Array.from(new Set([location, ...parts])),
+                    );
+                  }
+                : undefined
+              }
+              locateTitle='Locate location on page'
+            />
           )}
 
           {isReposted ?
             <>
-              <PostingDateRow label='First posted' value={firstPostedAt} />
+              <PostingDateRow
+                label='First posted'
+                value={firstPostedAt}
+              />
               <PostingDateRow
                 label='Reposted'
                 value={lastPostedAt}
                 showFreshness
+                onLocate={
+                  isLocatableDomDate(postingDateRaw?.label) &&
+                  onHighlightJobRequirement ?
+                    () => {
+                      void onHighlightJobRequirement([
+                        postingDateRaw!.label!.trim(),
+                      ]);
+                    }
+                  : undefined
+                }
               />
             </>
           : <PostingDateRow
               label='Posted'
               value={lastPostedAt || firstPostedAt}
               showFreshness
+              onLocate={
+                isLocatableDomDate(postingDateRaw?.label) &&
+                onHighlightJobRequirement ?
+                  () => {
+                    void onHighlightJobRequirement([
+                      postingDateRaw!.label!.trim(),
+                    ]);
+                  }
+                : undefined
+              }
             />
           }
 
@@ -1315,15 +1453,13 @@ export function JobDetails({
                     label='Job Description'
                     value={description}
                   />
-                  {!initialDescriptionExpanded && (
-                    <button
-                      type='button'
-                      className='text-[11px] font-medium text-primary hover:underline cursor-pointer bg-transparent border-0 p-0 ml-0.5'
-                      onClick={() => setIsDescExpanded((prev) => !prev)}
-                    >
-                      {isDescExpanded ? 'Show Less ▲' : 'Show More ▼'}
-                    </button>
-                  )}
+                  <button
+                    type='button'
+                    className='text-[11px] font-medium text-primary hover:underline cursor-pointer bg-transparent border-0 p-0 ml-0.5'
+                    onClick={() => setIsDescExpanded((prev) => !prev)}
+                  >
+                    {isDescExpanded ? 'Show Less ▲' : 'Show More ▼'}
+                  </button>
                 </div>
               </div>
               <div
@@ -1338,6 +1474,11 @@ export function JobDetails({
                   content={description}
                   size='sm'
                   maxBlocks={isDescriptionFullyVisible ? undefined : 4}
+                  onHighlightHeader={
+                    onHighlightJobRequirement ?
+                      handleLocateJobSection
+                    : undefined
+                  }
                 />
                 {/* {!isDescExpanded && (
                   <div className='absolute bottom-0 inset-x-0 h-8 bg-gradient-to-t from-panel to-transparent pointer-events-none' />

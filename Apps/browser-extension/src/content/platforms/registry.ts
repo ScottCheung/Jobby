@@ -9,6 +9,7 @@ import { ashbyDefinition } from "./ashby/definition";
 import { bambooHrDefinition } from "./bamboohr/definition";
 import { careeroneDefinition } from "./careerone/definition";
 import { diceDefinition } from "./dice/definition";
+import { dayforceDefinition } from "./dayforce/definition";
 import { glassdoorDefinition } from "./glassdoor/definition";
 import { greenhouseDefinition } from "./greenhouse/definition";
 import { icimsDefinition } from "./icims/definition";
@@ -16,6 +17,7 @@ import { indeedDefinition } from "./indeed/definition";
 import { joraDefinition } from "./jora/definition";
 import { leverDefinition } from "./lever/definition";
 import { linkedinDefinition } from "./linkedin/definition";
+import { micro1Definition } from "./micro1/definition";
 import { oracleDefinition } from "./oracle/definition";
 import type {
   AtsProviderDefinition,
@@ -51,6 +53,8 @@ export const atsProviderDefinitions = [
   diceDefinition,
   simplyHiredDefinition,
   careeroneDefinition,
+  micro1Definition,
+  dayforceDefinition,
 ] as const satisfies readonly AtsProviderDefinition[];
 
 export const providerDefinitions: readonly ProviderDefinition[] = [

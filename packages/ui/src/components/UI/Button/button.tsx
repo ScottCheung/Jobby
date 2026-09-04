@@ -7,7 +7,7 @@ import * as React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import { Loader2, LucideIcon } from 'lucide-react';
+import { Loader2, LucideIcon } from '@jobby/ui/components/icons';
 
 const MIN_LOADING_MS = 200;
 

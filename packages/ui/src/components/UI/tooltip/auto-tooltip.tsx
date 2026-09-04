@@ -1,22 +1,38 @@
 "use client"
 
 import * as React from "react"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./index"
+import { Tooltip } from "./index"
 import { cn } from "@/lib/utils"
+
+const LINE_CLAMP_CLASSES: Record<number, string> = {
+    1: "line-clamp-1",
+    2: "line-clamp-2",
+    3: "line-clamp-3",
+    4: "line-clamp-4",
+    5: "line-clamp-5",
+    6: "line-clamp-6",
+}
 
 interface AutoTooltipProps extends Omit<React.HTMLAttributes<HTMLDivElement>, "content"> {
     children: React.ReactNode
     content?: React.ReactNode
+    lineClamp?: number
 }
 
-export function AutoTooltip({ children, content, className, ...props }: AutoTooltipProps) {
+export function AutoTooltip({ children, content, className, lineClamp, ...props }: AutoTooltipProps) {
     const [isTruncated, setIsTruncated] = React.useState(false)
+    const elementRef = React.useRef<HTMLDivElement | null>(null)
 
-    const ref = React.useCallback((element: HTMLDivElement | null) => {
+    const hasLineClamp = lineClamp !== undefined || /\bline-clamp\b/.test(className || "")
+
+    React.useEffect(() => {
+        const element = elementRef.current
         if (!element) return
 
         const checkTruncation = () => {
-            setIsTruncated(element.scrollWidth > element.clientWidth)
+            const isHorizontalOverflow = element.scrollWidth > element.clientWidth
+            const isVerticalOverflow = element.scrollHeight > element.clientHeight
+            setIsTruncated(isHorizontalOverflow || isVerticalOverflow)
         }
 
         const observer = new ResizeObserver(() => {
@@ -29,15 +45,21 @@ export function AutoTooltip({ children, content, className, ...props }: AutoTool
         return () => {
             observer.disconnect()
         }
-    }, [children])
+    }, [children, content, className, lineClamp])
 
     const tooltipContent = content || children
+
+    const combinedClassName = cn(
+        !hasLineClamp && "truncate block",
+        lineClamp && (LINE_CLAMP_CLASSES[lineClamp] || `line-clamp-[${lineClamp}]`),
+        className
+    )
 
     if (!isTruncated) {
         return (
             <div
-                ref={ref}
-                className={cn("truncate block", className)}
+                ref={elementRef}
+                className={combinedClassName}
                 {...props}
             >
                 {children}
@@ -48,8 +70,8 @@ export function AutoTooltip({ children, content, className, ...props }: AutoTool
     return (
         <Tooltip content={tooltipContent}>
             <div
-                ref={ref}
-                className={cn("truncate block cursor-default", className)}
+                ref={elementRef}
+                className={cn(combinedClassName, "cursor-default")}
                 {...props}
             >
                 {children}

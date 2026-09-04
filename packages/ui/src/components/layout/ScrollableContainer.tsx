@@ -3,7 +3,7 @@
 'use client';
 
 import React, { useRef, useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from '@jobby/ui/components/icons';
 import { cn } from '@/lib/utils';
 import { Stagger, StaggerItem } from '../animation/container/stagger';
 

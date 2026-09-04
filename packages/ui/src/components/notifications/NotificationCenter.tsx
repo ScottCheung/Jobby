@@ -12,7 +12,7 @@ import {
   AlertCircle,
   MessageSquare,
   Edit3,
-} from 'lucide-react';
+} from '@jobby/ui/components/icons';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import type { UserNotification } from '@/lib/types';

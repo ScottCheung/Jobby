@@ -6,7 +6,7 @@ import React, { Suspense } from 'react';
 import { motion } from 'framer-motion';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Compass } from 'lucide-react';
+import { ArrowLeft, ChevronRight, Compass } from 'lucide-react';
 import { AuthForm } from '@/components/auth/AuthForm';
 
 function LoginContent() {
@@ -54,13 +54,14 @@ function LoginContent() {
         />
 
         {/* Guest browse footer link */}
-        <div className='mt-6 pt-5 border-t border-primary/50 text-center flex items-center justify-center gap-2'>
-          <Compass className='w-3.5 h-3.5 text-primary' />
+        <div className='mt-5'>
           <Link
             href='/interview-prep/explore'
-            className='text-xs text-ink-secondary hover:text-primary transition-colors font-medium'
+            className='group flex w-full items-center gap-2 rounded-full px-3 py-2 text-xs font-medium text-ink-secondary transition-colors hover:bg-surface-secondary hover:text-primary'
           >
-            Prefer to explore first? Browse questions as guest →
+            <Compass className='h-3.5 w-3.5 shrink-0 text-primary' />
+            <span>Prefer to explore first? Browse questions as guest</span>
+            <ChevronRight className='ml-auto h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5' />
           </Link>
         </div>
       </motion.div>

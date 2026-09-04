@@ -2,6 +2,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { readCurrentForm } from "../page-reader";
+import { fillFormField } from "../dom/form-driver";
 import { linkedinAdapter } from "./linkedin/adapter";
 
 function visibleRect(): DOMRect {
@@ -245,6 +246,24 @@ describe("platform-specific application question detection", () => {
         <button type="submit">Submit</button></form>`,
       label: "SimplyHired custom question",
     },
+    {
+      platform: "micro1",
+      url: "https://jobs.micro1.ai/post/aeda6c13-c58d-4e11-bf6a-edcb9fdf65c2?first_page=/home&last_page=/experts",
+      root: `<form action="/apply">
+        <label for="platform-question">micro1 custom question *</label>
+        <input id="platform-question" name="micro1_question" />
+        <button type="submit">Apply</button></form>`,
+      label: "micro1 custom question",
+    },
+    {
+      platform: "dayforce",
+      url: "https://jobs.dayforcehcm.com/en-US/acme/CANDIDATEPORTAL/jobs/12345/apply",
+      root: `<form test-id="manual-application">
+        <label for="platform-question">Dayforce custom question *</label>
+        <input id="platform-question" name="dayforce_question" />
+        <button type="submit">Next</button></form>`,
+      label: "Dayforce custom question",
+    },
   ] as const)("uses the $platform form root instead of unrelated page controls", ({ platform, url, root, label }) => {
     setLocation(url);
     document.body.innerHTML = `
@@ -319,6 +338,35 @@ describe("platform-specific application question detection", () => {
       expect.objectContaining({ id: "resume-fileFile", type: "file" }),
       expect.objectContaining({ id: "cover-letter", type: "textarea" }),
     ]));
+  });
+
+  it("recognises SEEK generated questionnaire radio groups by their labelled fieldset", () => {
+    setLocation("https://au.seek.com/job/94310194/apply/role-requirements");
+    document.body.innerHTML = `
+      <fieldset id="question-1" role="radiogroup" aria-labelledby="question-1-label">
+        <legend id="question-1-label"><strong>Do you currently have Australian working rights?</strong></legend>
+        <div><input id="id-_r_31_" style="opacity: 0; position: absolute" type="radio" name="questionnaire.indirect_question-1" value="generated_0" />
+          <label for="id-_r_31_"><span>Australian Citizen</span></label></div>
+        <div><input id="id-_r_34_" style="opacity: 0; position: absolute" type="radio" name="questionnaire.indirect_question-1" value="generated_1" />
+          <label for="id-_r_34_"><span>Permanent Resident</span></label></div>
+      </fieldset>
+      <button>Continue</button>
+    `;
+
+    const inspection = readCurrentForm();
+    expect(inspection.kind).toBe("application_form");
+    if (inspection.kind !== "application_form") return;
+    expect(inspection.fields).toEqual([
+      expect.objectContaining({
+        key: "questionnaire.indirect_question-1",
+        type: "radio",
+        label: "Do you currently have Australian working rights?",
+        options: [
+          { label: "Australian Citizen", value: "generated_0" },
+          { label: "Permanent Resident", value: "generated_1" },
+        ],
+      }),
+    ]);
   });
 
   it("extracts all supported question types, accessible labels, options, and required state", () => {
@@ -450,6 +498,106 @@ describe("platform-specific application question detection", () => {
         required: true,
       }),
     ]);
+  });
+
+  it("reads Ashby's main form and Diversity Survey, then fills multi-value answers", async () => {
+    setLocation("https://jobs.ashbyhq.com/mitti/fede1e72-bb71-4ded-8305-b46e8ec54c86/application");
+    document.body.innerHTML = `<div id="form">
+      <div class="ashby-application-form-container">
+        <div class="ashby-application-form-field-entry">
+          <label for="_systemfield_name">Full name *</label>
+          <input id="_systemfield_name" name="_systemfield_name" required />
+        </div>
+      </div>
+      <div class="ashby-survey-form-container" aria-hidden="true" data-aria-hidden="true">
+        <div data-field-path="survey.gender" data-field-entry-id="gender-entry">
+          <fieldset class="ashby-application-form-field-entry ashby-application-form-input-radio-group">
+            <label class="ashby-application-form-question-title">What is your gender identity?</label>
+            <span><input id="gender-man" type="radio" name="gender" /></span><label for="gender-man">Man</label>
+            <span><input id="gender-woman" type="radio" name="gender" /></span><label for="gender-woman">Woman</label>
+            <span><input id="gender-private" type="radio" name="gender" /></span><label for="gender-private">I prefer not to answer</label>
+          </fieldset>
+        </div>
+        <div class="ashby-application-form-field-entry" data-field-entry-id="ethnicity-entry">
+          <div data-field-path="survey.ethnicity">
+            <div class="ashby-application-form-question-title">How would you describe your ethnicity?</div>
+            <div class="ashby-application-form-input-checkbox-group">
+              <label><input id="ethnicity-asian" type="checkbox" name="Asian" /> Asian</label>
+              <label><input id="ethnicity-white" type="checkbox" name="White" /> White</label>
+              <label><input id="ethnicity-mixed" type="checkbox" name="Mixed" /> Mixed or multiple ethnic groups</label>
+            </div>
+          </div>
+        </div>
+      </div>
+      <button>Submit application</button>
+    </div>`;
+
+    const inspection = readCurrentForm();
+    expect(inspection.kind).toBe("application_form");
+    if (inspection.kind !== "application_form") return;
+    expect(inspection.fields).toEqual(expect.arrayContaining([
+      expect.objectContaining({ label: "Full name", type: "text" }),
+      expect.objectContaining({
+        key: "survey.gender",
+        label: "What is your gender identity?",
+        type: "radio",
+        options: [
+          { label: "Man", value: "Man" },
+          { label: "Woman", value: "Woman" },
+          { label: "I prefer not to answer", value: "I prefer not to answer" },
+        ],
+      }),
+      expect.objectContaining({
+        key: "survey.ethnicity",
+        label: "How would you describe your ethnicity?",
+        type: "multiselect",
+        options: [
+          { label: "Asian", value: "Asian" },
+          { label: "White", value: "White" },
+          { label: "Mixed or multiple ethnic groups", value: "Mixed or multiple ethnic groups" },
+        ],
+      }),
+    ]));
+    expect(inspection.fields.some((field) => field.label === "Asian")).toBe(false);
+
+    const ethnicity = inspection.fields.find((field) => field.type === "multiselect");
+    if (!ethnicity) throw new Error("Ashby ethnicity multi-select was not detected");
+    const fillResult = await fillFormField({
+      type: "content.fill-field",
+      commandId: "ashby-multiselect",
+      source: "backend",
+      target: {
+        key: ethnicity.key,
+        id: ethnicity.id,
+        name: ethnicity.name,
+        type: ethnicity.type,
+        label: ethnicity.label,
+      },
+      value: ["Asian", "White"],
+    }, document.getElementById("form") || document);
+
+    expect(fillResult.status).toBe("filled");
+    expect(document.querySelector<HTMLInputElement>("#ethnicity-asian")?.checked).toBe(true);
+    expect(document.querySelector<HTMLInputElement>("#ethnicity-white")?.checked).toBe(true);
+    expect(document.querySelector<HTMLInputElement>("#ethnicity-mixed")?.checked).toBe(false);
+
+    const gender = inspection.fields.find((field) => field.key === "survey.gender");
+    if (!gender) throw new Error("Ashby gender radio group was not detected");
+    const genderResult = await fillFormField({
+      type: "content.fill-field",
+      commandId: "ashby-radio",
+      source: "backend",
+      target: {
+        key: gender.key,
+        id: gender.id,
+        name: gender.name,
+        type: gender.type,
+        label: gender.label,
+      },
+      value: "Woman",
+    }, document.getElementById("form") || document);
+    expect(genderResult.status).toBe("filled");
+    expect(document.querySelector<HTMLInputElement>("#gender-woman")?.checked).toBe(true);
   });
 
   it("falls back to generic inspection only when a known provider has no owned form root", () => {

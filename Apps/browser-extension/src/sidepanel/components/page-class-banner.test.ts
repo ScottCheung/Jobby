@@ -140,25 +140,25 @@ describe('job details banner', () => {
     );
   });
 
-  it('keeps the plugin JD collapsed by default and fully expands the AI Studio JD', () => {
+  it('keeps the JD expanded by default and supports collapsing via initialDescriptionExpanded: false', () => {
+    const defaultExpandedHtml = renderToStaticMarkup(
+      createElement(PageClassBanner, {
+        latestInspection: inspection,
+        isInspecting: false,
+      }),
+    );
     const collapsedHtml = renderToStaticMarkup(
       createElement(PageClassBanner, {
         latestInspection: inspection,
         isInspecting: false,
-      }),
-    );
-    const expandedHtml = renderToStaticMarkup(
-      createElement(PageClassBanner, {
-        latestInspection: inspection,
-        isInspecting: false,
-        initialDescriptionExpanded: true,
+        initialDescriptionExpanded: false,
       }),
     );
 
+    expect(defaultExpandedHtml).toContain('Show Less ▲');
+    expect(defaultExpandedHtml).not.toContain('max-h-[110px]');
     expect(collapsedHtml).toContain('Show More ▼');
     expect(collapsedHtml).toContain('max-h-[110px]');
-    expect(expandedHtml).not.toContain('Show Less ▲');
-    expect(expandedHtml).not.toContain('max-h-[380px]');
   });
 
   it('renders original and repost dates on separate rows', () => {
@@ -199,6 +199,7 @@ describe('job details banner', () => {
       createElement(PageClassBanner, {
         latestInspection: restrictedInspection,
         isInspecting: false,
+        onHighlightJobRequirement: vi.fn(),
       }),
     );
 
@@ -289,5 +290,86 @@ describe('job details banner', () => {
     expect(
       getSkillSource('Financial Services', new Set(['financial services']), null, userSkills),
     ).toBe('resume');
+  });
+
+  it('makes only genuinely locatable DOM field values clickable without arrow buttons', () => {
+    const onHighlight = vi.fn();
+    const html = renderToStaticMarkup(
+      createElement(PageClassBanner, {
+        latestInspection: {
+          ...inspection,
+          snapshot: {
+            ...inspection.snapshot,
+            location: 'Sydney, Australia',
+            postingDateRaw: {
+              label: 'Posted 2 days ago',
+            },
+          },
+        },
+        isInspecting: false,
+        onHighlightJobRequirement: onHighlight,
+      }),
+    );
+
+    // No separate arrow buttons for fields
+    expect(html).not.toContain('aria-label="Locate job title on page"');
+
+    // Job ID is non-locatable and does NOT have hover/locate title
+    expect(html).not.toContain('title="Locate job ID on page"');
+
+    // Present DOM field texts have title tooltips and hover classes
+    expect(html).toContain('title="Locate job title on page"');
+    expect(html).toContain('title="Locate company on page"');
+    expect(html).toContain('title="Locate location on page"');
+    expect(html).toContain('title="Locate posted on page"');
+    expect(html).toContain('cursor-pointer hover:underline hover:text-primary');
+
+    // Copy buttons remain intact
+    expect(html).toContain('aria-label="Copy Job Title"');
+    expect(html).toContain('aria-label="Copy Company"');
+  });
+
+  it('does not make date fields hoverable/clickable when date is an ISO string without DOM label', () => {
+    const onHighlight = vi.fn();
+    const html = renderToStaticMarkup(
+      createElement(PageClassBanner, {
+        latestInspection: {
+          ...inspection,
+          snapshot: {
+            ...inspection.snapshot,
+            postingDateRaw: {
+              label: '2026-08-27T06:31:48.763Z',
+            },
+          },
+        },
+        isInspecting: false,
+        onHighlightJobRequirement: onHighlight,
+      }),
+    );
+
+    // ISO timestamp from API should not be locatable / hoverable
+    expect(html).not.toContain('title="Locate posted on page"');
+  });
+
+  it('renders interactive JD section headers with icon hint that can be clicked to locate in page', () => {
+    const onHighlight = vi.fn();
+    const html = renderToStaticMarkup(
+      createElement(PageClassBanner, {
+        latestInspection: {
+          ...inspection,
+          snapshot: {
+            ...inspection.snapshot,
+            description: `Why join us?\n\nWe are building the future.\n\nKey responsibilities:\n\n• Build web apps\n• Write clean code`,
+          },
+        },
+        isInspecting: false,
+        onHighlightJobRequirement: onHighlight,
+      }),
+    );
+
+    expect(html).toContain('title="Locate &quot;Why join us?&quot; in job description"');
+    expect(html).toContain('title="Locate &quot;Key responsibilities:&quot; in job description"');
+    expect(html).toContain('group-hover/hdr:text-primary');
+    expect(html).toContain('lucide-arrow-right');
   });
 });

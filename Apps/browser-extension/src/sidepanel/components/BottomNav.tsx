@@ -22,7 +22,7 @@ export function BottomNav({
     { id: 'home', label: 'Home', icon: <Home className='w-5 h-5' /> },
     { id: 'form', label: 'AutoFill', icon: <Pen className='w-5 h-5' /> },
     { id: 'studio', label: 'CV & CL', icon: <Sparkles className='w-5 h-5' /> },
-    { id: 'tools', label: 'Tools', icon: <Settings className='w-5 h-5' /> },
+    { id: 'tools', label: 'Settings', icon: <Settings className='w-5 h-5' /> },
   ];
 
   return (

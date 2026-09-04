@@ -77,6 +77,11 @@ export const simplyHiredDefinition = {
   jobDescriptionExpandSelectors: [
     "button[data-testid='viewJobExpandButton']",
     "button[class*='showMore']",
+    "button[class*='show-more']",
+    "button[class*='ShowMore']",
+    "[data-testid='viewJobExpandButton']",
+    ".viewjob-expand",
+    "[data-testid='expandable-text-box'] button",
   ],
   applicationRoots: [
     "form[data-testid='applyForm']",

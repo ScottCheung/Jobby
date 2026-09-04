@@ -6,15 +6,14 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import {
   JobAnalysisPanel,
-  Modal,
-  StructuredJobDescription,
   type JobAnalysisCareerProfile,
   type JobAnalysisDocType,
   type JobAnalysisGeneration,
   type JobAnalysisSnapshot,
   type JobAnalysisUserSkill,
   type JobDescriptionOpenPayload,
-} from '@jobby/ui';
+} from '@jobby/ui/components/UI/job-analysis';
+import { Modal, StructuredJobDescription } from '@jobby/ui';
 import { cn } from '@/lib/utils';
 import type { JobMatchEvaluation } from '@/lib/api';
 
@@ -127,7 +126,6 @@ function JobResultBubble({
           onUpdateJob(message.id, job, updates)
         }
         onReDetect={() => onReDetect(message.id, job)}
-        onHighlightJobRequirement={() => Promise.resolve(false)}
         onOpenJobDescription={onOpenJobDescription}
         initialDescriptionExpanded
       />
@@ -147,26 +145,20 @@ export function TailorConversation({
   profileSkills,
   activeGeneration,
 }: TailorConversationProps) {
-  const conversationRef = useRef<HTMLDivElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
   const [jobDescriptionPreview, setJobDescriptionPreview] =
     useState<JobDescriptionOpenPayload | null>(null);
 
   useEffect(() => {
-    const conversation = conversationRef.current;
-    if (!conversation) return;
-    conversation.scrollTo({
-      top: conversation.scrollHeight,
-      behavior: 'smooth',
-    });
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
   if (messages.length === 0) return null;
 
   return (
     <div
-      ref={conversationRef}
       aria-live='polite'
-      className='mx-auto flex  min-h-[80vh] w-full max-w-3xl flex-col gap-2.5 overflow-hidden '
+      className='mx-auto flex w-full max-w-3xl flex-col gap-3 py-2'
     >
       {messages.map((message) => {
         if (message.kind === 'job') {
@@ -192,7 +184,7 @@ export function TailorConversation({
           <div
             key={message.id}
             className={cn(
-              'max-w-[78%] shrink-0 whitespace-pre-wrap break-words [overflow-wrap:anywhere] px-3.5 py-2.5 text-xs leading-relaxed shadow-xs',
+              'max-w-[78%] shrink-0  whitespace-pre-wrap break-words [overflow-wrap:anywhere] px-3.5 py-2.5 text-xs leading-relaxed shadow-xs',
               message.role === 'user' ?
                 'ml-auto rounded-2xl rounded-br-xs bg-primary text-primary-foreground font-medium'
               : message.state === 'error' ?
@@ -200,9 +192,9 @@ export function TailorConversation({
               : 'mr-auto rounded-2xl rounded-bl-xs border border-primary/20 bg-panel text-ink-primary',
             )}
           >
-            <span className='flex min-w-0 items-start gap-2'>
+            <span className='flex min-w-0 items-center gap-2'>
               {message.state === 'loading' && (
-                <Loader2 className='mt-0.5 h-3.5 w-3.5 shrink-0 animate-spin text-primary' />
+                <Loader2 className='h-3.5 w-3.5 shrink-0 animate-spin text-primary' />
               )}
               <span
                 className={cn(
@@ -217,6 +209,7 @@ export function TailorConversation({
           </div>
         );
       })}
+      <div ref={bottomRef} />
       <Modal
         isOpen={Boolean(jobDescriptionPreview)}
         onClose={() => setJobDescriptionPreview(null)}

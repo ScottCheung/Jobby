@@ -2,7 +2,6 @@
 
 import {
   getValidAuthSession,
-  refreshAuthSession,
   restoreWebSession,
 } from './auth-service';
 import {
@@ -175,10 +174,6 @@ export class ApiClient {
       let session = null;
       try {
         session = await getValidAuthSession();
-        if (!session) {
-          await restoreWebSession();
-          session = await getValidAuthSession();
-        }
       } catch (error) {
         throw new ApiClientError(
           error instanceof Error ?
@@ -203,13 +198,10 @@ export class ApiClient {
         timeoutMs,
       );
       if (authenticated && response.status === 401) {
-        // The access token can be revoked before its local expiry. Recover the
-        // latest Supabase session and retry once before surfacing a login error.
-        let recovered = await refreshAuthSession().catch(() => null);
-        if (!recovered) {
-          await restoreWebSession().catch(() => null);
-          recovered = await getValidAuthSession().catch(() => null);
-        }
+        // The web app owns the Supabase session. Recover a fresh short-lived
+        // access token from that session and retry once.
+        await restoreWebSession().catch(() => null);
+        const recovered = await getValidAuthSession().catch(() => null);
         if (recovered) {
           headers.set('Authorization', `Bearer ${recovered.accessToken}`);
           response = await fetchWithTimeout(

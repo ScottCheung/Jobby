@@ -1,445 +1,281 @@
 /** @format */
 
 'use client';
-import React, { useDeferredValue, useEffect, useMemo, useState } from 'react';
-import { Search } from 'lucide-react';
-import { ApplicationDetails } from './_components/ApplicationDetails';
-import { TailoredResumeModal } from './_components/TailoredResumeModal';
-import { useConsole } from '@/components/ConsoleContext';
-import { ScrollLayout, WaterfallLayout } from '@jobby/ui';
-import { api } from '@/lib/api';
-import { formatRelativeDate } from '@/components/ConsoleUtils';
-import { withMinimumLoadingTime } from '@/lib/loading';
-import { useLayoutStore } from '@/lib/store/layout-store';
-import { useConfirmStore } from '@/lib/store/confirm-store';
+
+import React from 'react';
+import Link from 'next/link';
 import {
-  getCurrentApplicationStageTimestamp,
+  DashboardStats,
+  EmptyPlaceHolder,
+  H2,
+  ToggleGroup,
+} from '@jobby/ui';
+import { Chart, ChartWrapper } from '@jobby/ui/components/UI/Chart';
+import { CityVectorMap } from '@jobby/ui/components/UI/Map/CityVectorMap';
+import { useConsole } from '@/components/ConsoleContext';
+import {
   getDisplayApplicationStatus,
   getStatusBadgeClasses,
-  isProcessingApplication,
-  isStaleProcessingApplication,
-  type JobApplication,
 } from '@/lib/types';
-import { type ApplicationCardViewModel } from './_components/ApplicationCard';
-import { ApplicationCard } from './_components/ApplicationCard';
+import {
+  ChartNoAxesGantt,
+  CalendarSearch,
+  ChevronRight,
+  Briefcase,
+  Layers,
+  Sparkles,
+  ArrowUpRight,
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { formatDate } from '@/components/ConsoleUtils';
 
-const PAGE_SIZE = 20;
-
-function matchesApplication(application: JobApplication, searchText: string) {
-  const effectiveStatus =
-    getDisplayApplicationStatus(application).toLowerCase();
-
-  const query = searchText.trim().toLowerCase();
-  if (!query) return true;
-
-  return [
-    application.title,
-    application.company,
-    application.job_id,
-    effectiveStatus,
-  ].some((value) =>
-    String(value ?? '')
-      .toLowerCase()
-      .includes(query),
-  );
-}
-
-const SKELETON_HEIGHTS = [340, 420, 280, 380, 320, 400, 460, 290];
-
-export default function ApplicationsPage() {
-  const { applications, saveApplicationPatch, deleteApplication } =
-    useConsole();
-
-  const [searchText, setSearchText] = useState('');
-  const [items, setItems] = useState<JobApplication[]>([]);
-  const [hasMore, setHasMore] = useState(true);
-  const [isLoading, setIsLoading] = useState(true);
-  const [scrollContainer, setScrollContainer] = useState<HTMLDivElement | null>(
-    null,
-  );
-  const [activeResumeModal, setActiveResumeModal] = useState<{
-    id: string;
-    title: string;
-    company: string;
-  } | null>(null);
-
-  const deferredSearchText = useDeferredValue(searchText);
-  const scrollContainerRef = React.useRef<HTMLDivElement | null>(null);
-  const offsetRef = React.useRef(0);
-  const isFetchingRef = React.useRef(false);
-  const requestVersionRef = React.useRef(0);
-  const applicationsById = useMemo(
-    () =>
-      new Map(applications.map((application) => [application.id, application])),
-    [applications],
-  );
-  const openDrawer = useLayoutStore((state) => state.actions.openDrawer);
-  const isDrawerOpen = useLayoutStore((state) => state.isDrawerOpen);
-  const drawerOpenId = useLayoutStore((state) => state.drawerConfig.id);
-  const confirm = useConfirmStore((state) => state.confirm);
-
-  const setContainerRef = React.useCallback((el: HTMLDivElement | null) => {
-    scrollContainerRef.current = el;
-    setScrollContainer(el);
-  }, []);
-
-  const fetchMore = React.useCallback(
-    async (reset = false) => {
-      if (isFetchingRef.current && !reset) return;
-
-      const requestVersion = requestVersionRef.current + 1;
-      requestVersionRef.current = requestVersion;
-      isFetchingRef.current = true;
-      setIsLoading(true);
-
-      if (reset) {
-        setItems([]);
-        offsetRef.current = 0;
-        setHasMore(true);
-      }
-
-      const currentOffset = reset ? 0 : offsetRef.current;
-      try {
-        const data = await withMinimumLoadingTime(
-          api.applications(
-            undefined,
-            PAGE_SIZE,
-            currentOffset,
-            deferredSearchText,
-          ),
-          800,
-        );
-
-        // Ignore a response for an older filter/search request.
-        if (requestVersion !== requestVersionRef.current) return;
-
-        if (reset) {
-          setItems(data);
-          offsetRef.current = data.length;
-          setHasMore(data.length === PAGE_SIZE);
-          return;
-        }
-
-        setItems((prev) => {
-          const existingIds = new Set(prev.map((item) => item.id));
-          const nextItems = data.filter((item) => !existingIds.has(item.id));
-          return [...prev, ...nextItems];
-        });
-        offsetRef.current = currentOffset + data.length;
-        setHasMore(data.length === PAGE_SIZE);
-      } catch (err) {
-        if (requestVersion === requestVersionRef.current) {
-          console.error('Failed to fetch applications', err);
-        }
-      } finally {
-        if (requestVersion === requestVersionRef.current) {
-          isFetchingRef.current = false;
-          setIsLoading(false);
-        }
-      }
-    },
-    [deferredSearchText],
-  );
-
-  const handleDeleteApplication = React.useCallback(
-    async (applicationId: string, title?: string, company?: string) => {
-      const roleText = title ? ` for "${title}"` : '';
-      const companyText = company ? ` at "${company}"` : '';
-      const isConfirmed = await confirm({
-        title: 'Delete Application',
-        message: `Are you sure you want to delete this job application${roleText}${companyText}? This action cannot be undone.`,
-        confirmLabel: 'Delete Application',
-        cancelLabel: 'Cancel',
-        type: 'delete',
-      });
-
-      if (!isConfirmed) return;
-
-      setItems((prev) => prev.filter((item) => item.id !== applicationId));
-
-      try {
-        await deleteApplication(applicationId);
-      } catch (err) {
-        console.error('Failed to delete application:', err);
-        void fetchMore(true);
-      }
-    },
-    [confirm, deleteApplication, fetchMore],
-  );
-
-  useEffect(() => {
-    void fetchMore(true);
-  }, [fetchMore]);
-
-  useEffect(() => {
-    if (isLoading) return;
-    setItems((prevItems) => {
-      const syncedItems = prevItems
-        .map((item) => applicationsById.get(item.id) ?? item)
-        .filter((item) => matchesApplication(item, deferredSearchText));
-      return syncedItems;
-    });
-  }, [applicationsById, deferredSearchText, isLoading]);
-
-  const handleCardScroll = React.useCallback(
-    (event: React.UIEvent<HTMLDivElement>) => {
-      if (isLoading || !hasMore) return;
-
-      const target = event.currentTarget;
-      const distanceToBottom =
-        target.scrollHeight - (target.scrollTop + target.clientHeight);
-      if (distanceToBottom < 160) {
-        void fetchMore();
-      }
-    },
-    [fetchMore, hasMore, isLoading],
-  );
-
-  const rowItems = useMemo<ApplicationCardViewModel[]>(
-    () =>
-      items.map((item) => {
-        const displayStatus = getDisplayApplicationStatus(item);
-        const isLiveProcessing =
-          isProcessingApplication(item) && !isStaleProcessingApplication(item);
-        const stageTimestamp = getCurrentApplicationStageTimestamp(item);
-
-        return {
-          id: item.id,
-          title: item.title || 'Untitled role',
-          company: item.company || 'Unknown',
-          jobId: item.job_id || 'Unknown',
-          platform: item.platform,
-          workStyle: item.work_style,
-          workLocation: item.work_location || 'Location not recorded',
-          displayStatus,
-          statusBadgeClassName: getStatusBadgeClasses(displayStatus),
-          isLiveProcessing,
-          stageTimestamp,
-          displayStageTime: formatRelativeDate(stageTimestamp),
-          jobLink: item.job_link || item.external_job_link,
-          hasTailoredResume: Boolean(
-            item.has_tailored_resume || item.job_description,
-          ),
-          firstPostedAt: item.first_posted_at || null,
-          lastPostedAt: item.last_posted_at || null,
-          displayFirstPostedAt:
-            item.first_posted_at ?
-              formatRelativeDate(item.first_posted_at)
-            : null,
-          displayLastPostedAt:
-            item.last_posted_at ?
-              formatRelativeDate(item.last_posted_at)
-            : null,
-          isReposted: Boolean(item.is_reposted),
-          jobDescription: item.job_description || null,
-        };
-      }),
-    [items],
-  );
-
-  const updateUrlParams = React.useCallback(
-    (appId?: string | null, tab?: string | null, replace = false) => {
-      if (typeof window === 'undefined') return;
-      const url = new URL(window.location.href);
-      if (appId) {
-        url.searchParams.set('appId', appId);
-        if (tab) {
-          url.searchParams.set('tab', tab);
-        } else {
-          url.searchParams.delete('tab');
-        }
-      } else {
-        url.searchParams.delete('appId');
-        url.searchParams.delete('tab');
-      }
-
-      const newUrl = url.pathname + (url.search ? url.search : '');
-      if (window.location.pathname + window.location.search !== newUrl) {
-        if (replace) {
-          window.history.replaceState(window.history.state, '', newUrl);
-        } else {
-          window.history.pushState({ appId, tab }, '', newUrl);
-        }
-      }
-    },
-    [],
-  );
-
-  const openApplicationDetails = React.useCallback(
-    (
-      applicationId: string,
-      initialTab: 'overview' | 'qa' | 'description' = 'overview',
-      updateUrl = true,
-      replaceUrl = false,
-    ) => {
-      const application = applicationsById.get(applicationId);
-      if (!application) {
-        return;
-      }
-
-      if (updateUrl) {
-        updateUrlParams(applicationId, initialTab, replaceUrl);
-      }
-
-      openDrawer({
-        width: 640,
-        id: applicationId,
-        content: (
-          <ApplicationDetails
-            application={application}
-            initialTab={initialTab}
-            onTabChange={(tab) => {
-              updateUrlParams(applicationId, tab, true);
-            }}
-            onSave={saveApplicationPatch}
-          />
-        ),
-      });
-    },
-    [applicationsById, openDrawer, saveApplicationPatch, updateUrlParams],
-  );
-
-  // Sync URL when drawer is closed via close button / backdrop click / ESC
-  const prevIsDrawerOpenRef = React.useRef(isDrawerOpen);
-  useEffect(() => {
-    if (prevIsDrawerOpenRef.current && !isDrawerOpen) {
-      updateUrlParams(null, null, true);
-    }
-    prevIsDrawerOpenRef.current = isDrawerOpen;
-  }, [isDrawerOpen, updateUrlParams]);
-
-  // Handle browser Back / Forward (popstate)
-  useEffect(() => {
-    const handlePopState = () => {
-      if (typeof window === 'undefined') return;
-      const params = new URLSearchParams(window.location.search);
-      const appId = params.get('appId');
-      const tab =
-        (params.get('tab') as 'overview' | 'qa' | 'description') || 'overview';
-
-      if (appId) {
-        if (applicationsById.has(appId)) {
-          openApplicationDetails(appId, tab, false);
-        }
-      } else if (useLayoutStore.getState().isDrawerOpen) {
-        useLayoutStore.getState().actions.closeDrawer();
-      }
-    };
-
-    window.addEventListener('popstate', handlePopState);
-    return () => {
-      window.removeEventListener('popstate', handlePopState);
-    };
-  }, [applicationsById, openApplicationDetails]);
-
-  // Deep-link auto open drawer on initial load
-  const hasInitialOpenedRef = React.useRef(false);
-  useEffect(() => {
-    if (hasInitialOpenedRef.current || isLoading || items.length === 0) return;
-
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const appId = params.get('appId');
-      const tab =
-        (params.get('tab') as 'overview' | 'qa' | 'description') || 'overview';
-
-      if (appId && applicationsById.has(appId)) {
-        hasInitialOpenedRef.current = true;
-        openApplicationDetails(appId, tab, false, true);
-      }
-    }
-  }, [applicationsById, isLoading, items.length, openApplicationDetails]);
+export default function ApplicationsDashboardPage() {
+  const {
+    dashboardData,
+    trendRange,
+    setTrendRange,
+  } = useConsole();
 
   return (
-    <div className='flex h-full min-h-[500px] flex-col overflow-hidden'>
-      <div className='app-drag select-none shrink-0'>
-        <ScrollLayout
-          key={scrollContainer ? 'scrolling' : 'static'}
-          scrollContainerRef={scrollContainerRef}
-          progressRange={[0, 100]}
-          heightRange={[130, 65]}
-        >
-          <ScrollLayout.TopToLeft>
-            <div className='flex items-center gap-2 font-bold shrink-0'>
-              <h2 className='title-page bg-primary-gradient bg-clip-text text-transparent shrink-0'>
-                Application History
-              </h2>
-            </div>
-          </ScrollLayout.TopToLeft>
+    <div className='flex flex-col gap-6 pb-12 w-full'>
+      {/* Top Banner with Quick Actions */}
+      <div className='flex flex-col md:flex-row md:items-center justify-between gap-4'>
+        <div>
+          <h2 className='title-page bg-primary-gradient bg-clip-text text-transparent'>
+            Applications Dashboard & Analytics
+          </h2>
+          <p className='mt-1 text-xs text-ink-secondary'>
+            Real-time insights on your job search performance, submission trends, and status distribution.
+          </p>
+        </div>
 
-          <ScrollLayout.BtmToRight>
-            <div className='flex items-center gap-3 w-full'>
-              <div className='relative flex-1'>
-                <Search className='absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400' />
-                <input
-                  placeholder='Search title, company, job id...'
-                  value={searchText}
-                  onChange={(event) => setSearchText(event.target.value)}
-                  className='body-md pl-9 pr-4 py-1.5 w-full rounded-xl bg-panel dark:bg-zinc-955 focus:outline-none focus:ring-1 focus:ring-primary/20 dark:focus:ring-zinc-750 text-ink-primary'
-                />
-              </div>
-            </div>
-          </ScrollLayout.BtmToRight>
-        </ScrollLayout>
+        <div className='flex items-center gap-3 shrink-0'>
+          <Link
+            href='/applications/history'
+            className='flex items-center gap-1.5 rounded-xl bg-panel px-4 py-2.5 text-xs font-bold text-ink-primary border border-primary/20 hover:border-primary/40 hover:bg-background-secondary transition-all shadow-xs'
+          >
+            <Briefcase className='size-3.5 text-primary' />
+            <span>View All Cards</span>
+            <ChevronRight className='size-3 text-ink-secondary' />
+          </Link>
+          <Link
+            href='/applications/recommendations'
+            className='flex items-center gap-1.5 rounded-xl bg-primary-gradient px-4 py-2.5 text-xs font-bold text-white shadow-md hover:scale-105 transition-all'
+          >
+            <Sparkles className='size-3.5' />
+            <span>AI Recommendations</span>
+            <ArrowUpRight className='size-3' />
+          </Link>
+        </div>
       </div>
 
-      {items.length === 0 && !isLoading ?
-        <div className='p-8 text-center text-ink-primary0 dark:text-zinc-400 flex-1 flex items-center justify-center'>
-          No applications match this view.
-        </div>
-      : <div
-          ref={setContainerRef}
-          onScroll={handleCardScroll}
-          className='flex-1 body overflow-y-auto custom-scrollbar-primary pt-page relative'
-        >
-          <WaterfallLayout minColumnWidth={340} gap={20}>
-            {isLoading &&
-              items.length === 0 &&
-              [1, 2, 3, 4, 5, 6].map((n, index) => (
-                <div
-                  key={n}
-                  style={{
-                    height: `${SKELETON_HEIGHTS[index % SKELETON_HEIGHTS.length]}px`,
-                  }}
-                  className='rounded-2xl rounded-tl-3xl! bg-background-secondary animate-pulse'
-                />
-              ))}
-            {rowItems.map((item) => (
-              <ApplicationCard
-                key={item.id}
-                entry={item}
-                isSelected={isDrawerOpen && drawerOpenId === item.id}
-                onOpenDetails={openApplicationDetails}
-                onDelete={handleDeleteApplication}
-                onOpenResume={(id, title, company) =>
-                  setActiveResumeModal({ id, title, company })
-                }
-              />
-            ))}
-            {isLoading &&
-              hasMore &&
-              items.length > 0 &&
-              [1, 2, 3, 4, 5, 6].map((n, index) => (
-                <div
-                  key={`card-skeleton-bottom-${n}`}
-                  style={{
-                    height: `${SKELETON_HEIGHTS[(index + 3) % SKELETON_HEIGHTS.length]}px`,
-                  }}
-                  className='rounded-2xl rounded-tl-3xl! bg-background-secondary animate-pulse'
-                />
-              ))}
-          </WaterfallLayout>
-        </div>
-      }
+      {/* Global Dashboard Stats */}
+      <DashboardStats />
 
-      {activeResumeModal && (
-        <TailoredResumeModal
-          applicationId={activeResumeModal.id}
-          title={activeResumeModal.title}
-          company={activeResumeModal.company}
-          onClose={() => setActiveResumeModal(null)}
-        />
-      )}
+      {/* Row 1: Trend & Distribution Charts */}
+      <div className='grid grid-cols-12 gap-6'>
+        {/* Trend Chart - Span 7 Columns */}
+        <div className='col-span-12 lg:col-span-7 bg-panel rounded-card p-card'>
+          <div className='flex items-start justify-between mb-2'>
+            <div>
+              <H2>Application Trend</H2>
+              <p className='text-meta text-ink-secondary'>
+                Daily submitted applications over time
+              </p>
+            </div>
+
+            <ToggleGroup
+              id='trend-range-toggle'
+              items={[
+                {
+                  value: '7',
+                  label: '7 Days',
+                  icon: ({ className }) => (
+                    <ChartNoAxesGantt className={className} />
+                  ),
+                },
+                {
+                  value: '30',
+                  label: '30 Days',
+                  icon: ({ className }) => (
+                    <CalendarSearch className={className} />
+                  ),
+                },
+              ]}
+              value={String(trendRange)}
+              onValueChange={(val) => setTrendRange(Number(val) as 7 | 30)}
+            />
+          </div>
+
+          <div className='w-full h-72 flex'>
+            <Chart
+              type='area'
+              data={dashboardData.trend}
+              showXAxis={false}
+              showYAxis={false}
+              xKey='date'
+              yKeys={['Submitted']}
+              showLegend
+              yDomain={[0, 'dataMax']}
+              gradientFill
+              className='h-full flex w-full'
+            />
+          </div>
+        </div>
+
+        {/* Donut Chart - Span 5 Columns */}
+        <div className='col-span-12 lg:col-span-5 h-full bg-panel rounded-card p-card'>
+          <div>
+            <H2>Status Breakdown</H2>
+            <p className='text-meta text-ink-secondary mb-4'>
+              Proportions of all logged job application states
+            </p>
+          </div>
+
+          <div className='w-full flex h-72 items-center justify-center relative'>
+            <Chart
+              type='pie'
+              data={dashboardData.statusDistribution}
+              nameKey='name'
+              valueKey='value'
+              showLegend={false}
+              className='h-full flex'
+              pieCornerRadius={999}
+              piePaddingAngle={5}
+              pieInnerRadius='65%'
+              pieOuterRadius='80%'
+              gradientFill
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Row 2: Top Companies & Cities */}
+      <div className='grid grid-cols-12 gap-6'>
+        {/* Top Companies Card */}
+        <div className='col-span-12 md:col-span-6 bg-panel rounded-card p-card'>
+          <div>
+            <H2>Top Applied Companies</H2>
+            <p className='text-meta text-ink-secondary mb-4'>
+              Companies you have applied to most frequently
+            </p>
+            <Chart
+              type='bar-list'
+              data={dashboardData.topCompanies}
+              xKey='name'
+              yKey='applications'
+              maxEquivalent={true}
+              barColorClassName='bg-gradient-to-r from-[#57b78b] to-[#9ec2d3]'
+              emptyMessage='No submitted companies yet.'
+              valueFormatter={(val) => `${val}`}
+            />
+          </div>
+        </div>
+
+        {/* Top Cities Card */}
+        <div className='col-span-12 md:col-span-6 bg-panel rounded-card p-card'>
+          <div>
+            <H2>Geographic Distribution</H2>
+            <p className='text-meta text-ink-secondary mb-4'>
+              Geographical concentration of submitted applications
+            </p>
+            <ChartWrapper className='h-64'>
+              <CityVectorMap data={dashboardData.topCities} className='h-full' />
+            </ChartWrapper>
+          </div>
+        </div>
+      </div>
+
+      {/* Row 3: Recent Activity Table */}
+      <div className='bg-panel rounded-card p-card'>
+        <div className='flex items-center justify-between mb-4'>
+          <div>
+            <H2>Recent Application Activity</H2>
+            <p className='text-meta text-ink-secondary'>
+              Your latest submitted applications
+            </p>
+          </div>
+          <Link
+            href='/applications/history'
+            className='label-sm inline-flex items-center gap-1 text-primary hover:underline cursor-pointer'
+          >
+            View all history <ChevronRight className='w-3.5 h-3.5' />
+          </Link>
+        </div>
+
+        <div className='overflow-x-auto'>
+          <table className='body-md w-full text-left border-collapse'>
+            <thead>
+              <tr className='border-b border-primary/40 text-[10px] font-bold text-ink-secondary uppercase tracking-wider'>
+                <th className='pb-3 pr-4'>Position</th>
+                <th className='pb-3 px-4'>Company</th>
+                <th className='pb-3 px-4'>Workplace Style</th>
+                <th className='pb-3 px-4'>Status</th>
+                <th className='pb-3 pl-4 text-right'>Applied Date</th>
+              </tr>
+            </thead>
+            <tbody className='divide-y divide-border/40'>
+              {(
+                dashboardData.recentActivities &&
+                dashboardData.recentActivities.length > 0
+              ) ?
+                dashboardData.recentActivities.map((item) => {
+                  const displayStatus = getDisplayApplicationStatus(item);
+                  return (
+                    <tr
+                      key={item.id}
+                      className='text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50/50 dark:hover:bg-zinc-900/10 transition-colors'
+                    >
+                      <td className='py-3 pr-4'>
+                        <Link
+                          href={`/applications/history?appId=${item.id}`}
+                          className='font-bold text-ink-primary hover:text-primary transition-colors truncate max-w-xs block'
+                        >
+                          {item.title || 'Untitled Role'}
+                        </Link>
+                        <span className='text-[10px] text-zinc-400 font-mono'>
+                          ID: {item.job_id}
+                        </span>
+                      </td>
+                      <td className='py-3 px-4 font-semibold text-ink-primary truncate max-w-[150px]'>
+                        {item.company || 'Unknown'}
+                      </td>
+                      <td className='text-meta py-3 px-4 text-ink-secondary capitalize'>
+                        {item.work_location || 'Not specified'}
+                      </td>
+                      <td className='py-3 px-4'>
+                        <span
+                          className={cn(
+                            'inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider border',
+                            getStatusBadgeClasses(displayStatus),
+                          )}
+                        >
+                          {displayStatus}
+                        </span>
+                      </td>
+                      <td className='body-sm py-3 pl-4 text-right text-ink-secondary whitespace-nowrap'>
+                        {formatDate(
+                          item.date_applied ??
+                            item.updated_at ??
+                            item.created_at,
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })
+              : <tr>
+                  <td colSpan={5} className='py-6'>
+                    <EmptyPlaceHolder
+                      message='No application activities recorded yet.'
+                      className='border-0 bg-transparent py-4'
+                    />
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 }

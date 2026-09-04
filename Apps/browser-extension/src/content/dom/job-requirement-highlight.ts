@@ -11,30 +11,26 @@ import {
 
 const EXCLUDED_CONTAINERS_SELECTOR = [
   'nav',
-  'header',
-  'footer',
-  'aside',
+  'footer:not([class*="viewjob"]):not([class*="job"])',
   '[role="navigation"]',
   '[role="banner"]',
   '[role="search"]',
-  '[role="complementary"]',
   '.job-card-container',
   '.jobs-search-results-list',
   '.jobs-search-results',
   '.jobsearch-LeftPane',
   '.jobsearch-ResultsList',
-  '.search-results',
+  '.serp-list',
+  "[data-testid='searchSerpJob']",
   '.related-jobs',
   '.recommended-jobs',
   "[data-automation='job-card']",
   "[data-testid='job-card']",
   "[data-test*='job-card' i]",
-  '[data-jk]',
   'input',
   'textarea',
   'select',
   'button',
-  'form',
 ].join(', ');
 
 type HighlightTarget = {
@@ -200,7 +196,6 @@ function scrollRangeIntoView(range: Range, fallbackElement: HTMLElement): void {
           top: Math.max(0, targetScrollTop),
           behavior: 'smooth',
         });
-        return;
       }
 
       const targetY =
@@ -478,6 +473,13 @@ function forceUnclampJobDescription(
     "[class*='jobDescriptionWrapper']",
     "[data-test='job-description']",
     "[data-test='job-description-container']",
+    // SimplyHired
+    "[data-testid='viewJobBody']",
+    "[data-testid='jobDescriptionText']",
+    "[data-testid='viewJobDescription']",
+    '.viewjob-description',
+    '.viewjob-content',
+    "[data-testid='viewJobSection']",
     // Seek / Indeed / ATS / Generic
     "[data-automation='jobDescription']",
     "[data-automation='jobDetails']",
@@ -951,6 +953,11 @@ export async function highlightJobRequirement(
     /(?:^|\.)jora\.(?:com(?:\.[a-z]{2})?|co\.[a-z]{2}|[a-z]{2,3})$/i.test(
       window.location.hostname,
     );
+  const isSimplyHired =
+    platform === 'simplyhired' ||
+    /(?:^|\.)simplyhired\.(?:com(?:\.[a-z]{2})?|co\.[a-z]{2}|[a-z]{2,3})$/i.test(
+      window.location.hostname,
+    );
 
   const expanded = expandJobDescription(platform);
   if (expanded) {
@@ -986,7 +993,15 @@ export async function highlightJobRequirement(
       ).filter((el) => isVisible(el) && !isExcludedElement(el));
 
       targets = findAllMatchingTargets(fallbackRoots, terms);
-    } else {
+    } else if (isSimplyHired) {
+      const fallbackRoots = Array.from(
+        document.querySelectorAll<HTMLElement>(
+          "[data-testid='jobDescriptionText'], [data-testid='viewJobDescription'], .viewjob-description, [data-testid='jobDescription'], [data-testid='viewJobBody'], .viewjob-content, [data-testid='viewJobSection'], #jobDescriptionText, #job-details, .viewjob-pane, .job-description, #job-description",
+        ),
+      ).filter((el) => isVisible(el) && !isExcludedElement(el));
+
+      targets = findAllMatchingTargets(fallbackRoots, terms);
+    } else if (candidateRoots.length === 0 && platform) {
       const fallbackRoots = Array.from(
         document.querySelectorAll<HTMLElement>(
           ".jobDescriptionSection, [data-testid='job-description'], .job-description, [data-testid='description'], .adp-body, [data-test='JobDescription'], [class*='styles_description'], #jobdescSec, [data-cy='jobDescriptionText'], [data-testid='viewJobBody'], .viewjob-description",
@@ -996,6 +1011,25 @@ export async function highlightJobRequirement(
       if (fallbackRoots.length > 0) {
         targets = findAllMatchingTargets(fallbackRoots, terms);
       }
+    }
+  }
+
+  if (targets.length === 0 && platform) {
+    let broadRoots: HTMLElement[] = [];
+    if (isAtsJobPlatform(platform as any)) {
+      const definition = getAtsProviderDefinition(platform as any);
+      broadRoots = matchingElements(document, definition.job.roots);
+    } else {
+      const definition = getProviderDefinition(platform as any);
+      if (definition.jobDescriptionRootSelectors) {
+        broadRoots = matchingElements(
+          document,
+          definition.jobDescriptionRootSelectors,
+        );
+      }
+    }
+    if (broadRoots.length > 0) {
+      targets = findAllMatchingTargets(broadRoots, terms);
     }
   }
 

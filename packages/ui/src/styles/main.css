@@ -43,7 +43,7 @@
 }
 
 .page-class-banner--job {
-  @apply bg-primary/10 dark:bg-primary/20 text-primary font-medium backdrop-blur-2xl;
+  @apply bg-primary/10 dark:bg-primary/20 text-primary font-medium;
 }
 
 .page-class-banner--job .page-class-banner__icon {

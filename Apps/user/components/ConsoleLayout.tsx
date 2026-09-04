@@ -8,7 +8,6 @@ import {
   GlobalDrawer,
   GlobalConfirm,
   GlobalModal,
-  DashboardStats,
   LayoutGroup,
 } from '@jobby/ui';
 
@@ -70,23 +69,6 @@ export default function ConsoleLayout({
                   isFullHeightRoute && 'h-full flex flex-col overflow-hidden',
                 )}
               >
-                {/* Hero Header */}
-                {pathname === '/' && (
-                  <header className='hero bg-gradient-to-br from-green-800 via-emerald-900 to-zinc-950'>
-                    <span className='inline-block text-[10px] font-bold uppercase tracking-wider text-emerald-300 mb-2 px-2 py-0.5 rounded-md bg-emerald-500/20'>
-                      Job Application Assistant
-                    </span>
-                    <h1>Jobby Dashboard</h1>
-                    <p>
-                      Recognise job pages, autofill forms, and track the
-                      applications you have submitted.
-                    </p>
-                  </header>
-                )}
-
-                {/* Stats Bar */}
-                {pathname === '/' && <DashboardStats />}
-
                 {error && (
                   <div className='label-sm fixed bottom-1/2 flex items-center gap-2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 text-error bg-red-500/30 backdrop-blur-sm py-3 px-card rounded-card animate-in fade-in slide-in-from-bottom-2 duration-300'>
                     <div>{error}</div>

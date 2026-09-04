@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+import re
 from typing import Any
 
 from services.shared.autofill_profile import normalize_alias
@@ -104,6 +105,36 @@ def _option_value(options: list[dict[str, str]], candidates: list[str]) -> str |
     return best_option
 
 
+def _multiselect_values(options: list[dict[str, str]], raw_answer: str) -> list[str]:
+    normalized_answer = normalize_alias(raw_answer)
+    if not normalized_answer:
+        return []
+
+    exact: list[str] = []
+    contained: list[str] = []
+    for option in options:
+        value = str(option.get("value") or option.get("label") or "")
+        label = normalize_alias(option.get("label", ""))
+        normalized_value = normalize_alias(value)
+        if not value or not label or label in {"select", "choose", "please select", "-- select --"}:
+            continue
+        if normalized_answer in {label, normalized_value}:
+            exact.append(value)
+        elif f" {label} " in f" {normalized_answer} " or f" {normalized_value} " in f" {normalized_answer} ":
+            contained.append(value)
+    if exact:
+        return exact
+    if contained:
+        return list(dict.fromkeys(contained))
+
+    matched: list[str] = []
+    for answer in re.split(r"[,;|\n]+", raw_answer):
+        value = _option_value(options, [answer.strip()])
+        if value is not None and value not in matched:
+            matched.append(value)
+    return matched
+
+
 def _format_date(raw_answer: str, field: Any, core_field_key: str | None) -> str:
     field_label = str(getattr(field, "label", "") or "")
     if core_field_key != "employment.date_available" and "available" not in field_label.lower():
@@ -120,11 +151,16 @@ def _format_date(raw_answer: str, field: Any, core_field_key: str | None) -> str
     return raw_answer
 
 
-def coerce_form_value(raw_answer: str, field: Any, core_field_key: str | None = None) -> tuple[str | bool | None, str | None]:
+def coerce_form_value(raw_answer: str, field: Any, core_field_key: str | None = None) -> tuple[str | bool | list[str] | None, str | None]:
     if field.type == "checkbox":
         if raw_answer.casefold() not in {"true", "false"}:
             return None, "Checkbox value is not boolean."
         return raw_answer.casefold() == "true", None
+    if field.type == "multiselect":
+        values = _multiselect_values(list(getattr(field, "options", None) or []), raw_answer)
+        if values:
+            return values, None
+        return None, "Value does not match any available options."
     if field.type in {"select", "radio"}:
         value = _option_value(
             list(getattr(field, "options", None) or []),

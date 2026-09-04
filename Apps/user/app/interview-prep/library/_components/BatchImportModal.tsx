@@ -202,7 +202,9 @@ export function BatchImportModal({
 
       {/* Step 1: Input Area */}
       {step === 1 && (
-        <div className='flex-1 p-6 flex flex-col gap-5 overflow-y-auto'>
+        <div className='flex flex-col '>
+          <div className='body'>
+            
           <div className='flex flex-col gap-1.5  '>
             <label className='label'>Paste Questions Text</label>
             <Tooltip
@@ -302,8 +304,10 @@ export function BatchImportModal({
             />
           </div>
 
+          </div>
+
           {/* Footer buttons for step 1 */}
-          <div className='flex justify-end gap-2 pt-4 border-t border-primary/40 shrink-0'>
+          <div className='footer'>
             <Button variant='ghost' onClick={onClose}>
               Cancel
             </Button>

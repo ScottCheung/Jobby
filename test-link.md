@@ -201,6 +201,15 @@ Taleo is older and many employers are migrating away from it, but it is useful f
 
 ---
 
+## 16. micro1
+
+1. [micro1 — Substance Use - Adolescent Addiction Specialist](https://jobs.micro1.ai/post/aeda6c13-c58d-4e11-bf6a-edcb9fdf65c2?first_page=/home&last_page=/experts)
+2. [micro1 — AI Expert / Contractor Role](https://jobs.micro1.ai/post/aeda6c13-c58d-4e11-bf6a-edcb9fdf65c2)
+
+**Detection:** `jobs.micro1.ai` or `micro1.ai`, typically under `/post/<uuid>`.
+
+---
+
 # Suggested Regression Order
 
 For autofill development, I would test in this order:

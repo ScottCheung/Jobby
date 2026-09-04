@@ -4,7 +4,7 @@
 // ... imports
 import { cn } from '@/lib/utils';
 import { motion, useReducedMotion } from 'framer-motion';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown } from '@jobby/ui/components/icons';
 import React, { useCallback, useId, useRef, useState } from 'react';
 import { H4 } from '../text/typography';
 import { Collapse } from '../../animation';

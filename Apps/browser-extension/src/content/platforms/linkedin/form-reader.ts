@@ -1,6 +1,7 @@
 import type { FormInspection } from "../../../shared/contracts/form-inspection";
 
 import { readApplicationForm } from "../../dom/form-inspector";
+import { isVisibleElement } from "../../dom/form-inspector";
 import { findActiveFormScope, hasGenericBackAction, readGenericAction } from "../../dom/form-scope";
 import { linkedinAdapter } from "./adapter";
 
@@ -10,6 +11,16 @@ function isLikelyLinkedInApplicationScope(scope: HTMLElement): boolean {
 
   const text = (scope.textContent || "").replace(/\s+/g, " ").trim();
   return /easy apply|application questions|additional questions|review your application|contact information|work experience|resume|cover letter/i.test(text);
+}
+
+function linkedInFieldScope(applicationRoot: HTMLElement): HTMLElement {
+  // The Easy Apply modal can keep non-form UI controls alongside the current
+  // step. Read its actual form when it is available so those controls are not
+  // presented as application questions.
+  const forms = Array.from(
+    applicationRoot.querySelectorAll<HTMLFormElement>("form.jobs-easy-apply-form, form"),
+  );
+  return forms.find((form) => isVisibleElement(form)) || applicationRoot;
 }
 
 export function readLinkedInFormPage(): FormInspection {
@@ -28,6 +39,7 @@ export function readLinkedInFormPage(): FormInspection {
       ? genericFallback
       : null);
   const genericAction = applicationRoot ? readGenericAction(applicationRoot) : {};
+  const fieldScope = applicationRoot ? linkedInFieldScope(applicationRoot) : null;
   const actionLabel = linkedinAdapter.getCurrentApplicationActionLabel() || genericAction.label;
   const actionKind = linkedinAdapter.getCurrentApplicationActionKind() || genericAction.action;
   const inspection = readApplicationForm(
@@ -35,7 +47,7 @@ export function readLinkedInFormPage(): FormInspection {
     "linkedin",
     Boolean(applicationRoot),
     actionLabel,
-    applicationRoot,
+    fieldScope,
     actionKind,
     Boolean(linkedinAdapter.getCurrentApplicationAction("previous")) ||
       Boolean(applicationRoot && hasGenericBackAction(applicationRoot)),

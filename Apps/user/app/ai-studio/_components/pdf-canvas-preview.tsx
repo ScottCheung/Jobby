@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Loader2, Pencil } from 'lucide-react';
 import type {
   PDFDocumentProxy,
   TextItem,
@@ -36,7 +35,7 @@ type PdfPageDescriptor = {
 type PdfCanvasPreviewProps = {
   url: string;
   documentType: 'resume' | 'cover_letter';
-  interactive: boolean;
+  interactive?: boolean;
   activeSection: PdfEditableSectionKey | null;
   onSectionSelect: (section: PdfEditableSectionKey) => void;
 };
@@ -127,6 +126,16 @@ async function describePdfPages(
     );
 
     if (documentType === 'cover_letter') {
+      const salutation = textItems.find((item) => item.text.startsWith('DEAR '));
+      const signoff = textItems.find((item) =>
+        /^(?:SINCERELY|BEST REGARDS|KIND REGARDS|WARM REGARDS|REGARDS|RESPECTFULLY|YOURS SINCERELY),?$/.test(
+          item.text,
+        ),
+      );
+      const bodyTop = salutation ? salutation.bottom + 6 : contentTop;
+      const bodyBottom =
+        signoff && signoff.top > bodyTop ? signoff.top - 6 : Math.max(bodyTop + 40, contentBottom);
+
       descriptors.push({
         pageNumber,
         height: viewport.height,
@@ -135,8 +144,8 @@ async function describePdfPages(
           {
             section: 'cover_letter',
             label: sectionLabel.cover_letter,
-            top: contentTop,
-            height: Math.max(40, contentBottom - contentTop),
+            top: bodyTop,
+            height: Math.max(40, bodyBottom - bodyTop),
           },
         ],
       });
@@ -201,13 +210,13 @@ async function describePdfPages(
 function PdfCanvasPage({
   pdf,
   descriptor,
-  interactive,
+  interactive = true,
   activeSection,
   onSectionSelect,
 }: {
   pdf: PDFDocumentProxy;
   descriptor: PdfPageDescriptor;
-  interactive: boolean;
+  interactive?: boolean;
   activeSection: PdfEditableSectionKey | null;
   onSectionSelect: PdfCanvasPreviewProps['onSectionSelect'];
 }) {
@@ -251,7 +260,8 @@ function PdfCanvasPage({
 
   return (
     <div
-      className='relative aspect-[0.7727] w-full max-w-[780px] shrink-0 overflow-hidden bg-white shadow-xl'
+      className='relative w-full max-w-[780px] shrink-0 overflow-hidden bg-white shadow-md'
+      style={{ aspectRatio: `${PAGE_WIDTH} / ${descriptor.height}` }}
       data-testid={`pdf-page-${descriptor.pageNumber}`}
     >
       <canvas ref={canvasRef} className='absolute inset-0 block h-full w-full bg-white' />
@@ -261,27 +271,23 @@ function PdfCanvasPage({
           <button
             key={`${zone.section}-${index}`}
             type='button'
-            aria-label={`Edit ${zone.label} on page ${descriptor.pageNumber}`}
+            aria-label={`Edit ${zone.label}`}
             onClick={() => onSectionSelect(zone.section)}
             className={cn(
-              'group absolute left-0 z-10 w-full cursor-pointer border-2 border-transparent bg-transparent text-left transition-colors',
+              'group absolute left-0 z-10 w-full cursor-pointer border border-transparent bg-transparent text-left transition-colors',
               activeSection === zone.section ?
-                'border-primary bg-primary/10 ring-1 ring-primary/40'
-              : 'hover:border-primary/60 hover:bg-primary/[0.04]',
+                'border-primary bg-primary/10'
+              : 'hover:border-primary/40 hover:bg-primary/[0.03]',
             )}
             style={{
               top: `${(zone.top / descriptor.height) * 100}%`,
               height: `${(zone.height / descriptor.height) * 100}%`,
             }}
-          >
-            <span className='absolute right-3 top-2 hidden items-center gap-1 rounded-lg bg-primary px-2.5 py-1 text-[10px] font-bold text-white shadow-md group-hover:flex group-focus-visible:flex'>
-              <Pencil className='size-2.5' /> Edit {zone.label}
-            </span>
-          </button>
+          />
         ))}
 
-      <span className='pointer-events-none absolute bottom-2 left-2 rounded-md bg-black/55 px-2 py-0.5 text-[10px] font-semibold text-white'>
-        Page {descriptor.pageNumber}
+      <span className='pointer-events-none absolute bottom-4 left-1/2 transform -translate-x-1/2 text-[0.4rem] text-ink-secondary/70'>
+{descriptor.pageNumber} 
       </span>
     </div>
   );
@@ -290,7 +296,7 @@ function PdfCanvasPage({
 export function PdfCanvasPreview({
   url,
   documentType,
-  interactive,
+  interactive = true,
   activeSection,
   onSectionSelect,
 }: PdfCanvasPreviewProps) {
@@ -349,15 +355,14 @@ export function PdfCanvasPreview({
   if (!pdf || pages.length === 0) {
     return (
       <div className='flex h-full flex-col items-center justify-center gap-2 text-xs text-ink-secondary'>
-        <Loader2 className='size-6 animate-spin text-primary' />
-        Preparing PDF pages...
+        Loading PDF...
       </div>
     );
   }
 
   return (
     <div
-      className='h-full w-full overflow-y-auto overflow-x-hidden bg-background-secondary/80 px-3 py-4 custom-scrollbar-primary'
+      className='h-full w-full overflow-y-auto overflow-x-hidden bg-background-secondary/40 p-4'
       data-testid='pdf-pages-scroll'
     >
       <div className='flex min-h-full flex-col items-center gap-4'>

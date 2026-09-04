@@ -14,6 +14,7 @@ import {
   X,
 } from 'lucide-react';
 import { Button } from '@jobby/ui/components/UI/Button';
+import { formatResumeFilename } from '@jobby/ui/components/UI/Resume/helpers';
 import type { MasterResumeData } from '../../shared/contracts/tailored-resume';
 
 interface LiveResumePreviewProps {
@@ -21,28 +22,6 @@ interface LiveResumePreviewProps {
   coreCompetencies?: string[];
   company?: string;
   jobTitle?: string;
-}
-
-export function formatResumeFilename(
-  data?: MasterResumeData | null,
-  company?: string | null,
-  jobTitle?: string | null,
-): string {
-  const fullName = [data?.basics?.first_name, data?.basics?.last_name]
-    .filter(Boolean)
-    .join('_')
-    .replace(/[^a-zA-Z0-9_\u4e00-\u9fa5]/g, '');
-  const cleanCompany = (company || '')
-    .trim()
-    .replace(/\s+/g, '_')
-    .replace(/[^a-zA-Z0-9_\u4e00-\u9fa5]/g, '');
-  const cleanTitle = (jobTitle || '')
-    .trim()
-    .replace(/\s+/g, '_')
-    .replace(/[^a-zA-Z0-9_\u4e00-\u9fa5]/g, '');
-
-  const parts = ['CV', fullName, cleanCompany, cleanTitle].filter(Boolean);
-  return `${parts.join('-')}.pdf`;
 }
 
 export function LiveResumePreview({

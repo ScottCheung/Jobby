@@ -38,10 +38,10 @@ export function JobMatchSummary({
     typeof score === 'number' ? Math.min(100, Math.max(0, score)) : null;
 
   return (
-    <div className={cn('flex items-center gap-3', className)}>
+    <div className={cn('flex items-start gap-3', className)}>
       <div
         className={cn(
-          'relative flex shrink-0 items-center justify-center rounded-full bg-primary/10 shadow-xs',
+          'relative flex shrink-0 items-start justify-center rounded-full bg-primary/10 shadow-xs',
           compact ? 'size-14' : 'size-18',
         )}
       >

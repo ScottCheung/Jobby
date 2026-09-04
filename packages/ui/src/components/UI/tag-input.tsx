@@ -4,7 +4,7 @@
 
 import { useState, useRef, useEffect, useMemo, type DragEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { GripVertical, Plus, X } from 'lucide-react';
+import { GripVertical, Plus, X } from '@jobby/ui/components/icons';
 import { cn } from '@/lib/utils';
 import { Input } from './input';
 import { Button } from './Button';

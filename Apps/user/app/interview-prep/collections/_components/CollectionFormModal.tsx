@@ -4,10 +4,10 @@
 import {
   Button,
   CardSelector,
-  ImageCropper,
   Textarea,
   type CardSelectorOption,
 } from '@jobby/ui';
+import { ImageCropper } from '@jobby/ui/components/UI/ImageCropper';
 
 import React, { useEffect, useId, useState } from 'react';
 import {

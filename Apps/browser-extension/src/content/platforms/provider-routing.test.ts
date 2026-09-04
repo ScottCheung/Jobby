@@ -41,6 +41,10 @@ describe("platform provider routing", () => {
     ["www.simplyhired.com.au", "/job/123456", "simplyhired"],
     ["www.careerone.com.au", "/jobview/123456", "careerone"],
     ["www.careerone.com.au", "/jobview/aff-46/1414e5c6-a0d2-11f1-bc76-0231708ce3cd", "careerone"],
+    ["jobs.micro1.ai", "/post/aeda6c13-c58d-4e11-bf6a-edcb9fdf65c2", "micro1"],
+    ["micro1.ai", "/post/123456", "micro1"],
+    ["jobs.dayforcehcm.com", "/en-US/acme/CANDIDATEPORTAL/jobs/12345", "dayforce"],
+    ["dfid.dayforcehcm.com", "/globalidentity/account/register", "dayforce"],
   ] as const)("routes %s%s to %s", (hostname, pathname, expected) => {
     expect(detectDedicatedPlatform(locationFor(hostname, pathname))).toBe(expected);
   });
@@ -66,6 +70,7 @@ describe("platform provider routing", () => {
     ["<dhi-sjt-job-details></dhi-sjt-job-details>", "dice"],
     ["<div data-simplyhired='true'></div>", "simplyhired"],
     ["<div data-careerone='true'></div>", "careerone"],
+    ["<div data-micro1='true'></div>", "micro1"],
   ] as const)("routes a current white-label marker to %s", (html, platform) => {
     document.body.innerHTML = html;
     expect(detectDedicatedPlatform(locationFor("careers.example.com"))).toBe(platform);

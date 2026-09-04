@@ -11,7 +11,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2 } from '@jobby/ui/components/icons';
 
 export interface VirtualListProps<T> {
   items: T[];

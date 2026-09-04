@@ -21,7 +21,6 @@ export const runtimeMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('diagnostics.list') }),
   z.object({ type: z.literal('diagnostics.clear') }),
   z.object({ type: z.literal('auth.status') }),
-  z.object({ type: z.literal('auth.restore-web-session') }),
   z.object({ type: z.literal('auth.disconnect') }),
   z.object({ type: z.literal('auth.open-login') }),
   z.object({ type: z.literal('content.inspect-active') }),
@@ -58,7 +57,11 @@ export const runtimeMessageSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('content.edit-form-field-active'),
     target: formFieldTargetSchema,
-    value: z.union([z.string().max(10000), z.boolean()]),
+    value: z.union([
+      z.string().max(10000),
+      z.boolean(),
+      z.array(z.string().max(10000)).max(100),
+    ]),
   }),
   z.object({ type: z.literal('sidepanel.query-state') }),
   z.object({ type: z.literal('sidepanel.open') }),

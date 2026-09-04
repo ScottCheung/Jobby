@@ -21,6 +21,17 @@ function cleanExpiredEntries(): void {
   }
 }
 
+function isSameSeekJob(currentUrl: string, inspection: PageInspection): boolean {
+  if (inspection.kind !== 'job' || inspection.snapshot.platform !== 'seek') return false;
+  try {
+    const current = new URL(currentUrl);
+    const jobId = current.pathname.match(/\/job\/(\d+)/i)?.[1] || current.searchParams.get('jobId');
+    return Boolean(jobId && jobId === inspection.snapshot.externalId);
+  } catch {
+    return false;
+  }
+}
+
 export function bindTabJobInspection(
   tabId: number,
   inspection: PageInspection,
@@ -59,6 +70,7 @@ export function getTabJobInspection(tabId: number, currentUrl?: string): PageIns
           return direct.inspection;
         }
       } catch {}
+      if (isSameSeekJob(currentUrl, direct.inspection)) return direct.inspection;
     }
     // Stale direct binding after navigating away
     tabJobMap.delete(tabId);

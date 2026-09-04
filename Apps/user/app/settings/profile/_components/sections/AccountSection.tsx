@@ -3,7 +3,8 @@
 'use client';
 
 import React, { useId, useRef, useState } from 'react';
-import { Avatar, Button, ImageCropper, Tooltip } from '@jobby/ui';
+import { Avatar, Button, Tooltip } from '@jobby/ui';
+import { ImageCropper } from '@jobby/ui/components/UI/ImageCropper';
 import { ImagePlus, LogOut, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';

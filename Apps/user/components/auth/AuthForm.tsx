@@ -211,13 +211,12 @@ export function AuthForm({
       </button>
 
       {/* Divider */}
-      <div className='relative my-5 flex items-center justify-center'>
-        <div className='absolute inset-0 flex items-center'>
-          <div className='w-full border-t border-primary/60' />
-        </div>
-        <span className='relative bg-panel px-3 text-xs text-ink-secondary'>
+      <div className='my-5 flex items-center gap-3'>
+        <div className='h-px flex-1 bg-primary/30' />
+        <span className='shrink-0 text-xs text-ink-secondary'>
           or continue with email
         </span>
+        <div className='h-px flex-1 bg-primary/30' />
       </div>
 
       {/* Alert Error / Success */}

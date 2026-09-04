@@ -4,7 +4,7 @@
 
 import * as React from 'react';
 import { motion } from 'framer-motion';
-import { Loader2 } from 'lucide-react';
+import { Loader2 } from '@jobby/ui/components/icons';
 import { cn } from '@/lib/utils';
 
 interface SwitchProps {

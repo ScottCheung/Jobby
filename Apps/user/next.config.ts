@@ -1,8 +1,9 @@
+import path from "path";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  outputFileTracingRoot: process.cwd(),
+  outputFileTracingRoot: path.resolve(__dirname, "../../"),
   experimental: {
     optimizePackageImports: [
       "lucide-react",
@@ -14,6 +15,15 @@ const nextConfig: NextConfig = {
     proxyTimeout: 120_000,
   },
   transpilePackages: ["@jobby/ui"],
+  webpack: (config) => {
+    config.resolve = config.resolve || {};
+    config.resolve.modules = [
+      path.resolve(__dirname, "node_modules"),
+      path.resolve(__dirname, "../../node_modules"),
+      path.resolve(__dirname, "../../packages/ui/node_modules"),
+    ];
+    return config;
+  },
   images: {
     formats: ["image/avif", "image/webp"],
   },

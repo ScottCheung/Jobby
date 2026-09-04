@@ -1,6 +1,6 @@
 /** @format */
 
-import { useEffect, useState } from 'react';
+import { useDeferredValue, useEffect, useState } from 'react';
 import type {
   JobSnapshot,
   PageInspection,
@@ -33,17 +33,18 @@ const { inspectingDescriptions, matchingDescriptions } = jobRecognitionDescripti
 const PAGE_READY_DELAY_MS = 150;
 
 export function FloatingJobCardDialog() {
-  const { authStatus, refreshAuth, signIn } = useAuth();
+  const { authStatus, refreshAuth, signIn, isCheckingAuth } = useAuth();
   useThemeSync(authStatus);
 
   const [ballPosition, setBallPosition] = useState<{
     edge: 'left' | 'right';
-    pos: 'top' | 'middle' | 'bottom';
+    pos: 'top' | 'bottom';
   }>(() => {
     const params = new URLSearchParams(window.location.search);
+    const p = params.get('pos');
     return {
       edge: (params.get('edge') as 'left' | 'right') || 'right',
-      pos: (params.get('pos') as 'top' | 'middle' | 'bottom') || 'middle',
+      pos: p === 'top' ? 'top' : 'bottom',
     };
   });
 
@@ -55,12 +56,21 @@ export function FloatingJobCardDialog() {
       ) {
         setBallPosition({
           edge: event.data.edge || 'right',
-          pos: event.data.pos || 'middle',
+          pos: event.data.pos === 'top' ? 'top' : 'bottom',
         });
       }
     };
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
+  }, []);
+
+  const [minLoadingDone, setMinLoadingDone] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setMinLoadingDone(true);
+    }, 400);
+    return () => clearTimeout(timer);
   }, []);
 
   const {
@@ -77,20 +87,23 @@ export function FloatingJobCardDialog() {
   const isJobPage = latestInspection?.kind === 'job';
   const jobMatch = useJobMatch(latestInspection, authStatus?.connected, signIn);
   const isMatchPending = Boolean(
-    authStatus?.connected &&
     isJobPage &&
-    !jobMatch.evaluation &&
-    !jobMatch.error,
+    (isCheckingAuth ||
+      (authStatus?.connected &&
+        (jobMatch.isEvaluating || (!jobMatch.evaluation && !jobMatch.error)))),
   );
 
   const isInspecting =
     isInspectingPage || (!latestInspection && !inspectionError);
-  const isEvaluatingMatch =
-    isJobPage &&
-    authStatus?.connected &&
-    !jobMatch.evaluation &&
-    !jobMatch.error;
-  const isLoading = isInspecting || isEvaluatingMatch;
+  const isEvaluatingMatch = isMatchPending;
+  const isConfirmedNonJob = Boolean(
+    latestInspection && !isJobPage && !isInspectingPage,
+  );
+  const isLoading =
+    !isConfirmedNonJob &&
+    (isInspecting || isEvaluatingMatch || !minLoadingDone);
+  const deferredIsLoading = useDeferredValue(isLoading);
+  const isShowingLoading = isLoading || deferredIsLoading;
 
   const activeDescriptions = isEvaluatingMatch
     ? matchingDescriptions
@@ -100,7 +113,7 @@ export function FloatingJobCardDialog() {
   );
 
   useEffect(() => {
-    if (!isLoading) return;
+    if (!isShowingLoading) return;
 
     setMessageIndex((prev) => {
       const total = activeDescriptions.length;
@@ -122,10 +135,10 @@ export function FloatingJobCardDialog() {
         }
         return next;
       });
-    }, 1200);
+    }, 600);
 
     return () => clearInterval(interval);
-  }, [isLoading, isEvaluatingMatch, activeDescriptions]);
+  }, [isShowingLoading, isEvaluatingMatch, activeDescriptions]);
 
   const currentLoadingMessage =
     activeDescriptions[messageIndex % activeDescriptions.length] ||
@@ -141,7 +154,7 @@ export function FloatingJobCardDialog() {
       if (!prev || prev.kind !== 'job') return prev;
       const updatedInspection: PageInspection = {
         ...prev,
-        originalSnapshot: prev.snapshot,
+        originalSnapshot: prev.originalSnapshot || prev.snapshot,
         snapshot: {
           ...prev.snapshot,
           ...updates,
@@ -227,7 +240,7 @@ export function FloatingJobCardDialog() {
   // or dismiss if not a job page
   useEffect(() => {
     try {
-      if (isLoading) {
+      if (isShowingLoading) {
         window.parent?.postMessage(
           {
             source: 'jobby-dialog',
@@ -255,7 +268,7 @@ export function FloatingJobCardDialog() {
         );
       }
     } catch {}
-  }, [isLoading, isJobPage]);
+  }, [isShowingLoading, isJobPage]);
 
   useEffect(() => {
     refreshAuth();
@@ -338,35 +351,31 @@ export function FloatingJobCardDialog() {
   }, [autoInspectActivePage, inspectForm, refreshAuth]);
 
   const isAlignRight = ballPosition.edge === 'right';
-  const isAlignBottom = ballPosition.pos === 'bottom';
   const isAlignTop = ballPosition.pos === 'top';
 
-  const bubblePositionClass = cn(
-    'flex w-full h-full p-2',
-    isAlignRight ? 'justify-end' : 'justify-start',
-    isAlignTop ? 'items-start'
-    : isAlignBottom ? 'items-end'
-    : 'items-center',
-  );
-
   return (
-    <div className='w-full bg-transparent text-foreground overflow-hidden font-sans select-text box-border'>
-      {isLoading ? (
-        <div className={cn(bubblePositionClass, 'animate-in fade-in duration-100')}>
-          <div className='flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-background-primary border border-primary/40 backdrop-blur-md text-foreground shadow-sm'>
+    <div className='relative h-full w-full bg-transparent text-foreground overflow-hidden font-sans select-text box-border pointer-events-none'>
+      <div
+        className={cn(
+          'flex h-full w-full p-1 box-border',
+          isAlignRight ? 'justify-end' : 'justify-start',
+          isAlignTop ? 'items-start' : 'items-end',
+        )}
+      >
+        {isShowingLoading ? (
+          <div className='pointer-events-auto flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-background-primary border border-primary/40 text-foreground shadow-md'>
             <span
               key={currentLoadingMessage}
-              className='text-[11.5px] font-bold tracking-tight animate-text-shimmer animate-text-shimmer-primary whitespace-nowrap animate-in fade-in duration-200'
+              className='text-[11.5px] font-bold tracking-tight animate-text-shimmer animate-text-shimmer-primary whitespace-nowrap'
             >
               {currentLoadingMessage}
             </span>
           </div>
-        </div>
-      ) : isJobPage ? (
-        <div className='flex flex-col h-full max-h-screen w-full box-border'>
+        ) : isJobPage ? (
           <div
-            className='flex flex-col w-full h-full max-h-full bg-background-primary p-2 border border-primary/20 overflow-hidden box-border'
+            className='pointer-events-auto flex flex-col w-full h-full max-h-screen bg-background-primary p-2 border border-primary/20 overflow-hidden box-border shadow-xl'
             style={{
+              contain: 'layout paint',
               borderRadius:
                 'var(--score-card-radius-shell-accent) var(--score-card-radius-shell-base) var(--score-card-radius-shell-base) var(--score-card-radius-shell-base)',
               clipPath:
@@ -378,9 +387,12 @@ export function FloatingJobCardDialog() {
             <div
               className='flex flex-col gap-2.5 w-full h-full overflow-y-auto overflow-x-hidden overscroll-contain custom-scrollbar'
               style={{
-                borderRadius: 'var(--score-card-radius-accent) var(--score-card-radius-base) var(--score-card-radius-base) var(--score-card-radius-base)',
-                clipPath: 'inset(0 round var(--score-card-radius-accent) var(--score-card-radius-base) var(--score-card-radius-base) var(--score-card-radius-base))',
-                WebkitClipPath: 'inset(0 round var(--score-card-radius-accent) var(--score-card-radius-base) var(--score-card-radius-base) var(--score-card-radius-base))',
+                borderRadius:
+                  'var(--score-card-radius-accent) var(--score-card-radius-base) var(--score-card-radius-base) var(--score-card-radius-base)',
+                clipPath:
+                  'inset(0 round var(--score-card-radius-accent) var(--score-card-radius-base) var(--score-card-radius-base) var(--score-card-radius-base))',
+                WebkitClipPath:
+                  'inset(0 round var(--score-card-radius-accent) var(--score-card-radius-base) var(--score-card-radius-base) var(--score-card-radius-base))',
               }}
             >
               <JobAnalysisPanel
@@ -405,8 +417,8 @@ export function FloatingJobCardDialog() {
               />
             </div>
           </div>
-        </div>
-      ) : null}
+        ) : null}
+      </div>
 
       <Toaster />
     </div>

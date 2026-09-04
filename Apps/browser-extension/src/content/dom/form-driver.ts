@@ -28,6 +28,10 @@ import {
   inspectPageCombobox,
   selectPageCombobox,
 } from './combobox-bridge';
+import {
+  findAshbyChoiceGroup,
+  type AshbyChoiceGroup,
+} from '../platforms/ashby/choice-groups';
 
 type FormControl = HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
 
@@ -558,6 +562,197 @@ function decodeBase64(contentBase64: string): Uint8Array | null {
   }
 }
 
+function isUploadChoiceOption(
+  element: HTMLElement,
+  target: FormFieldTarget,
+  scope: FormScope,
+): boolean {
+  const isCover = /(?:cover[\s_-]*letter|cover[\s_-]*note|motivation[\s_-]*letter|求职信|自荐信|附言)/i.test(
+    `${target.label} ${target.key} ${target.id || ''} ${target.name || ''}`,
+  );
+  const text = normalized(
+    optionLabelFor(element, scope) ||
+      labelTextWithoutControl(element.closest('label')) ||
+      (element instanceof HTMLInputElement ? element.value : '') ||
+      element.getAttribute('aria-label') ||
+      element.getAttribute('data-automation') ||
+      element.getAttribute('data-testid') ||
+      element.textContent ||
+      '',
+  );
+
+  if (!text) return false;
+
+  if (
+    /(?:don'?t|do not|no\b|none\b|write|type|paste|无需|不包含|不提供|在线填写|在线编写)/i.test(
+      text,
+    )
+  ) {
+    return false;
+  }
+
+  const hasUpload = /(?:upload|attach|provide|choose|add|import|上传|添加|提供|附加)/i.test(
+    text,
+  );
+  if (!hasUpload) return false;
+
+  if (isCover) {
+    const inCoverSection = Boolean(
+      element.closest(
+        "fieldset, section, [data-automation*='cover' i], [data-testid*='cover' i], [class*='cover' i]",
+      ),
+    );
+    const mentionsCover = /(?:cover|letter|求职信|自荐信|doc|file|文件)/i.test(
+      text,
+    );
+    return inCoverSection || mentionsCover;
+  }
+
+  const inResumeSection = Boolean(
+    element.closest(
+      "fieldset, section, [data-automation*='resume' i], [data-testid*='resume' i], [class*='resume' i]",
+    ),
+  );
+  const mentionsResume = /(?:resume|cv|简历|履历|doc|file|文件)/i.test(text);
+  return inResumeSection || mentionsResume;
+}
+
+function findUploadChoiceOption(
+  target: FormFieldTarget,
+  input: HTMLInputElement | null,
+  scope: FormScope,
+): HTMLElement | null {
+  const isCover = /(?:cover[\s_-]*letter|cover[\s_-]*note|motivation[\s_-]*letter|求职信|自荐信|附言)/i.test(
+    `${target.label} ${target.key} ${target.id || ''} ${target.name || ''}`,
+  );
+  const root =
+    scope instanceof Document || scope instanceof ShadowRoot
+      ? scope
+      : (input?.getRootNode() as ParentNode) || document;
+
+  if (input) {
+    let container: HTMLElement | null = input.parentElement;
+    for (let depth = 0; container && depth < 8; depth += 1) {
+      const candidates = Array.from(
+        container.querySelectorAll<HTMLElement>(
+          "input[type='radio'], [role='radio']",
+        ),
+      );
+      const match = candidates.find((cand) =>
+        isUploadChoiceOption(cand, target, scope),
+      );
+      if (match) return match;
+      container = container.parentElement;
+    }
+  }
+
+  if (isCover) {
+    const coverSections = Array.from(
+      root.querySelectorAll<HTMLElement>(
+        "fieldset, [data-automation*='cover' i], [data-testid*='cover' i], section, [role='region'], div",
+      ),
+    ).filter((sec) => {
+      const heading =
+        sec.querySelector('legend, h1, h2, h3, h4, h5, h6, [role="heading"]')
+          ?.textContent || '';
+      return /(?:cover[\s_-]*letter|求职信|自荐信)/i.test(heading);
+    });
+
+    for (const section of coverSections) {
+      const candidates = Array.from(
+        section.querySelectorAll<HTMLElement>(
+          "input[type='radio'], [role='radio']",
+        ),
+      );
+      const match = candidates.find((cand) =>
+        isUploadChoiceOption(cand, target, scope),
+      );
+      if (match) return match;
+    }
+  } else {
+    const resumeSections = Array.from(
+      root.querySelectorAll<HTMLElement>(
+        "fieldset, [data-automation*='resume' i], [data-testid*='resume' i], section, [role='region'], div",
+      ),
+    ).filter((sec) => {
+      const heading =
+        sec.querySelector('legend, h1, h2, h3, h4, h5, h6, [role="heading"]')
+          ?.textContent || '';
+      return /(?:resume|\bcv\b|简历|履历)/i.test(heading);
+    });
+
+    for (const section of resumeSections) {
+      const candidates = Array.from(
+        section.querySelectorAll<HTMLElement>(
+          "input[type='radio'], [role='radio']",
+        ),
+      );
+      const match = candidates.find((cand) =>
+        isUploadChoiceOption(cand, target, scope),
+      );
+      if (match) return match;
+    }
+  }
+
+  const allCandidates = Array.from(
+    root.querySelectorAll<HTMLElement>(
+      "input[type='radio'], [role='radio']",
+    ),
+  );
+  return (
+    allCandidates.find((cand) => isUploadChoiceOption(cand, target, scope)) ||
+    null
+  );
+}
+
+async function ensureUploadOptionSelected(
+  target: FormFieldTarget,
+  input: HTMLInputElement | null,
+  scope: FormScope,
+): Promise<HTMLInputElement | null> {
+  const option = findUploadChoiceOption(target, input, scope);
+  if (!option) return input;
+
+  const root =
+    scope instanceof Document || scope instanceof ShadowRoot
+      ? scope
+      : document;
+  const radio =
+    option instanceof HTMLInputElement && option.type.toLowerCase() === 'radio'
+      ? option
+      : option.querySelector<HTMLInputElement>("input[type='radio']") ||
+        (option.id
+          ? (root.querySelector<HTMLInputElement>(
+              `input[type='radio'][id='${CSS.escape(option.id)}']`,
+            ) ?? null)
+          : null);
+
+  if (!radio && option.getAttribute('role') !== 'radio') {
+    return input;
+  }
+
+  const isAlreadyChecked =
+    (radio && radio.checked) ||
+    option.getAttribute('aria-checked') === 'true' ||
+    option.classList.contains('selected') ||
+    option.getAttribute('data-state') === 'checked';
+
+  if (!isAlreadyChecked) {
+    if (radio) {
+      clickRadioOption(radio, scope);
+    } else {
+      try {
+        option.focus({ preventScroll: true });
+      } catch {}
+      clickControl(option);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    return findFileInput(target, scope) || input;
+  }
+
+  return input;
+}
+
 export async function uploadFormFile(
   instruction: FileUploadInstruction,
   scope: FormScope | null = document,
@@ -569,7 +764,15 @@ export async function uploadFormFile(
       status: 'not_found',
       message: 'No supported application form is open.',
     };
-  const input = findFileInput(instruction.target, scope);
+  let input = findFileInput(instruction.target, scope);
+  const activeInput = await ensureUploadOptionSelected(
+    instruction.target,
+    input,
+    scope,
+  );
+  if (activeInput) {
+    input = activeInput;
+  }
   if (!input)
     return {
       commandId: instruction.commandId,
@@ -1243,10 +1446,10 @@ function optionLabelFor(element: HTMLElement, scope: FormScope): string {
       element.parentElement?.textContent ||
       '',
   );
-  if (siblingText && siblingText.length <= 50) return siblingText;
+  if (siblingText && siblingText.length <= 300) return siblingText;
 
   const previousText = cleanText(element.previousElementSibling?.textContent || '');
-  if (previousText && previousText.length <= 50) return previousText;
+  if (previousText && previousText.length <= 300) return previousText;
 
   if (element instanceof HTMLInputElement && element.value)
     return element.value;
@@ -1254,38 +1457,80 @@ function optionLabelFor(element: HTMLElement, scope: FormScope): string {
 }
 
 function isSeekHost(): boolean {
-  const hostname = window.location.hostname.toLowerCase();
-  return (
-    hostname === 'seek.com' ||
-    hostname.endsWith('.seek.com') ||
-    hostname === 'seek.com.au' ||
-    hostname.endsWith('.seek.com.au')
+  return /^(?:[a-z0-9-]+\.)*seek\.(?:com(?:\.au)?|co\.nz)$/i.test(
+    window.location.hostname,
   );
 }
 
-function clickRadioOption(element: HTMLInputElement, scope: FormScope): void {
-  // SEEK's document and cover-letter controls are native radios. Its React
-  // state updates from the input's own change path; clicking the text label
-  // from an isolated extension world can update only the panel's mirror.
-  if (isSeekHost()) {
-    element.focus({ preventScroll: true });
-    element.click();
-    if (element.checked) return;
+function setRadioChecked(radio: HTMLInputElement): void {
+  try {
+    const tracker = (
+      radio as unknown as {
+        _valueTracker?: { setValue: (v: string) => void };
+      }
+    )._valueTracker;
+    if (tracker) {
+      tracker.setValue(String(!radio.checked));
+    }
+  } catch {}
+
+  try {
+    const setter = Object.getOwnPropertyDescriptor(
+      HTMLInputElement.prototype,
+      'checked',
+    )?.set;
+    if (setter) {
+      setter.call(radio, true);
+    } else {
+      radio.checked = true;
+    }
+  } catch {
+    radio.checked = true;
   }
+
+  const eventOptions = { bubbles: true, composed: true };
+  try {
+    radio.dispatchEvent(new Event('input', eventOptions));
+    radio.dispatchEvent(new Event('change', eventOptions));
+  } catch {}
+}
+
+function clickRadioOption(element: HTMLInputElement, scope: FormScope): void {
   const root = element.getRootNode();
   const queryScope =
     root instanceof Document || root instanceof ShadowRoot ? root : scope;
-  const explicitLabel =
-    element.id ?
-      queryScope.querySelector<HTMLLabelElement>(
+  const explicitLabel = element.id
+    ? queryScope.querySelector<HTMLLabelElement>(
         `label[for='${CSS.escape(element.id)}']`,
       )
     : null;
-  const target =
-    explicitLabel ||
-    element.closest<HTMLElement>("label, [role='radio']") ||
-    element;
+  const parentLabel = element.closest<HTMLElement>('label');
+  const roleRadio = element.closest<HTMLElement>("[role='radio']");
+  const label = explicitLabel || parentLabel;
+  const textSpan = label
+    ? Array.from(
+        label.querySelectorAll<HTMLElement>('span, div, p, b, strong'),
+      ).find(
+        (node) =>
+          node.textContent &&
+          node.textContent.trim().length > 0 &&
+          node.children.length === 0,
+      )
+    : null;
+
+  const target = textSpan || label || roleRadio || element;
+  try {
+    target.focus({ preventScroll: true });
+  } catch {}
   clickControl(target);
+
+  if (!element.checked) {
+    try {
+      element.click();
+    } catch {}
+  }
+
+  setRadioChecked(element);
 }
 
 function fillRadio(
@@ -1338,8 +1583,10 @@ function fillRadio(
       return true;
     }
     return (
-      (targetNorm.length > 1 && (candLabel.includes(targetNorm) || targetNorm.includes(candLabel))) ||
-      (targetNorm.length > 1 && (candVal.includes(targetNorm) || targetNorm.includes(candVal)))
+      (targetNorm.length > 3 && candLabel.length > 3 &&
+        (candLabel.includes(targetNorm) || targetNorm.includes(candLabel))) ||
+      (targetNorm.length > 3 && candVal.length > 3 && candVal !== 'on' &&
+        (candVal.includes(targetNorm) || targetNorm.includes(candVal)))
     );
   });
   if (!selected) return false;
@@ -1408,6 +1655,46 @@ function fillCheckboxChoiceGroup(
   return checkboxIsChecked(selected, scope);
 }
 
+function optionMatchesRequested(
+  option: HTMLInputElement,
+  requested: string,
+  scope: FormScope,
+): boolean {
+  const target = normalized(requested);
+  const value = normalized(option.value);
+  const label = normalized(optionLabelFor(option, scope));
+  return option.value === requested || value === target || label === target ||
+    (target.length > 1 && (label.includes(target) || target.includes(label)));
+}
+
+function fillMultiSelectGroup(
+  group: AshbyChoiceGroup,
+  values: string[],
+  scope: FormScope,
+  source: FieldFillInstruction['source'],
+): 'filled' | 'already_filled' | 'unavailable' | 'rejected' {
+  const selected = values.map((value) =>
+    group.options.find((option) => optionMatchesRequested(option, value, scope)),
+  );
+  if (selected.some((option) => !option)) return 'unavailable';
+  const desired = new Set(selected as HTMLInputElement[]);
+  const alreadyFilled = group.options.every(
+    (option) => checkboxIsChecked(option, scope) === desired.has(option),
+  );
+  if (alreadyFilled) return 'already_filled';
+
+  const scrollPosition = { left: window.scrollX, top: window.scrollY };
+  for (const option of group.options) {
+    markAutofillWrite(option, source);
+    if (checkboxIsChecked(option, scope) !== desired.has(option) &&
+      !updateCheckbox(option, desired.has(option), scope)) return 'rejected';
+  }
+  restoreScrollAfterRerender(scrollPosition);
+  return group.options.every((option) => checkboxIsChecked(option, scope) === desired.has(option))
+    ? 'filled'
+    : 'rejected';
+}
+
 export async function fillFormField(
   instruction: FieldFillInstruction,
   scope: FormScope | null = document,
@@ -1418,6 +1705,33 @@ export async function fillFormField(
       'not_found',
       'No supported application form is open.',
     );
+
+  if (instruction.target.type === 'multiselect') {
+    if (!Array.isArray(instruction.value))
+      return result(instruction, 'rejected', 'Multi-select values must be a list.');
+    const group = findAshbyChoiceGroup(instruction.target, scope, 'multiselect');
+    if (!group)
+      return result(instruction, 'not_found', 'The targeted multi-select field is no longer visible.');
+    const status = fillMultiSelectGroup(group, instruction.value, scope, instruction.source);
+    if (status === 'unavailable')
+      return result(instruction, 'rejected', 'One or more requested options are unavailable.');
+    if (status === 'rejected')
+      return result(instruction, 'rejected', 'The webpage did not accept the multi-select change.');
+    return result(
+      instruction,
+      status,
+      status === 'filled' ? 'Multi-select options updated.' : 'Multi-select already has the requested values.',
+    );
+  }
+
+  if (instruction.target.type === 'radio' && typeof instruction.value === 'string') {
+    const group = findAshbyChoiceGroup(instruction.target, scope, 'radio');
+    if (group) {
+      if (!fillRadio(group.options[0]!, instruction.value, scope))
+        return result(instruction, 'rejected', 'The requested radio option is unavailable.');
+      return result(instruction, 'filled', 'Radio option selected.');
+    }
+  }
 
   const jobAdderCountryResult = fillJobAdderPhoneCountry(instruction, scope);
   if (jobAdderCountryResult) return jobAdderCountryResult;
@@ -1690,7 +2004,7 @@ export async function fillFormField(
 
 export function fillFormFieldValue(
   target: FormFieldTarget,
-  value: string | boolean,
+  value: FieldFillInstruction['value'],
   scope: FormScope | null = document,
 ): Promise<FieldFillResult> {
   const safeKey = target.key.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 32);
@@ -1837,6 +2151,24 @@ export function focusFormField(
       message:
         'Upload control highlighted. Click the upload button on the webpage to choose a local file.',
     };
+  }
+  if (target.type === 'multiselect') {
+    const group = findAshbyChoiceGroup(target, scope, 'multiselect');
+    if (!group)
+      return {
+        key: target.key,
+        status: 'not_found',
+        message: 'The multi-select field is no longer visible.',
+      };
+    scrollAndHighlightQuestion(group.container);
+    return { key: target.key, status: 'focused', message: 'Field focused.' };
+  }
+  if (target.type === 'radio') {
+    const group = findAshbyChoiceGroup(target, scope, 'radio');
+    if (group) {
+      scrollAndHighlightQuestion(group.container);
+      return { key: target.key, status: 'focused', message: 'Field focused.' };
+    }
   }
   const element = findFormElement(target, scope);
   if (!element)

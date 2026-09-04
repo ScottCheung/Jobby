@@ -259,6 +259,21 @@ describe("ATS-specific job readers", () => {
       company: "Yurra Pty Ltd",
       pageTitle: "Mid-Level Full Stack Developer | Yurra Pty Ltd | CareerOne",
     },
+    {
+      platform: "micro1",
+      url: "https://jobs.micro1.ai/post/aeda6c13-c58d-4e11-bf6a-edcb9fdf65c2?first_page=/home&last_page=/experts",
+      html: `<main>
+        <section class="mt-6">
+          <h1 class="job-title">Substance Use - Adolescent Addiction Specialist</h1>
+          <div data-testid="company" class="company">micro1</div>
+          <div data-testid="location" class="location">Remote</div>
+          <div class="job-description">${LONG_DESCRIPTION}</div>
+        </section>
+      </main>`,
+      title: "Substance Use - Adolescent Addiction Specialist",
+      company: "micro1",
+      pageTitle: "Substance Use - Adolescent Addiction Specialist | Apply on Job",
+    },
   ] as const)("extracts the current $platform posting from its owned root", ({ platform, url, html, title, company, pageTitle }) => {
     setLocation(url);
     document.title = pageTitle;
@@ -833,6 +848,32 @@ describe("ATS-specific job readers", () => {
       expect(inspection.snapshot.description).toContain("experienced Financial Accountant");
       expect(inspection.snapshot.description).toContain("Build reliable customer-facing products");
       expect(inspection.snapshot.postingDateRaw?.label).toBe("12h ago");
+    }
+  });
+
+  it("extracts complete job posting from a Dayforce career portal", () => {
+    setLocation("https://jobs.dayforcehcm.com/en-US/acme/CANDIDATEPORTAL/jobs/12345");
+    document.body.innerHTML = `
+      <main test-id="job-details-dayforce-jobs">
+        <header test-id="job-detail-header">
+          <h1 test-id="job-detail-title">Senior Software Engineer</h1>
+          <div test-id="job-detail-location-list">
+            <span test-id="job-detail-location-name">Sydney, NSW</span>
+          </div>
+        </header>
+        <section test-id="job-detail-body">${LONG_DESCRIPTION}</section>
+        <a test-id="apply-button" href="/apply">Apply</a>
+      </main>
+    `;
+
+    const inspection = readAtsJobPage("dayforce");
+    expect(inspection.kind).toBe("job");
+    if (inspection.kind === "job") {
+      expect(inspection.snapshot.platform).toBe("dayforce");
+      expect(inspection.snapshot.title).toBe("Senior Software Engineer");
+      expect(inspection.snapshot.location).toBe("Sydney, NSW");
+      expect(inspection.snapshot.externalId).toBe("12345");
+      expect(inspection.snapshot.description).toContain("customer-facing products");
     }
   });
 });

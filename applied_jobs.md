@@ -11,6 +11,18 @@
 | :--- | :--- | :---: | :--- |
 | BioScout — Full Stack Software Engineer (dotnet/React) | https://au.seek.com/job/94020228 | 87 | 5 项技能/资历匹配，覆盖 C#/.NET、EF Core、React/TypeScript、云基础设施与 CI/CD |
 
+## 本轮实际提交回执
+
+| 岗位 | 网址 | 实时分数 | 状态 |
+| :--- | :--- | :---: | :--- |
+| The Onset — Senior Software Engineer | https://au.seek.com/job/94120995/apply/success | 70 | 已提交，SEEK 显示 “Your application has been sent to The Onset” |
+| youX powered — Full Stack Developer | https://au.seek.com/job/94257878/apply/success | 40 | 已提交，SEEK 显示 “Your application has been sent to youX powered” |
+| Appsmart Pty Ltd — Full Stack Developer | https://au.seek.com/job/93923210/apply/success | 40 | 已提交，SEEK 显示 “Your application has been sent to Appsmart Pty Ltd” |
+| 5x Recruitment — Full Stack Dev | https://au.seek.com/job/94222211/apply/success | 40 | 已提交，SEEK 显示 “Your application has been sent to 5x Recruitment” |
+| Nine — Associate Software Engineer and AI Agent Orchestrator | https://nine.wd105.myworkdayjobs.com/Nine_External_Career_Site/job/North-Sydney-New-South-Wales/Associate-Software-Engineer-and-AI-Agent-Orchestrator_JR001227-2/apply | 57 | 待确认：已到达 Workday 开始申请页；SEEK 仅记录“访问招聘方网站”，尚未上传简历、填写资料或向招聘方提交 |
+| Coadys Personnel — Software Engineer (Developer) | https://au.seek.com/job/93953663/apply | 67 | 跳过：资料页 Continue 未推进，标记 `blocked_page_error` |
+| Opus Recruitment — AI Software Engineer | https://au.seek.com/job/94159899/apply | 69 | 跳过：存在无法从档案可靠回答的 GenAI/Python/LLM 经验问题，标记 `blocked_unknown_answer` |
+
 ---
 
 ## 🎯 核心高分匹配岗位深度解析与一键投递方案（Top Tier $\ge 90$ 分）

@@ -25,6 +25,7 @@ export function useApplicationTools(
   ) => void,
   authConnected = false,
   onSignIn?: () => void,
+  autofillDocuments?: (form: FormInspection) => Promise<void>,
 ) {
   const [loadingButton, setLoadingButton] = useState<string | null>(null);
   const [isCancellingAutofill, setIsCancellingAutofill] = useState(false);
@@ -101,13 +102,20 @@ export function useApplicationTools(
       const results = response.fillResults || [];
       applyAutofillResults(results, response.form);
       reportError('');
-      await inspectForm();
+
+      const refreshedForm = await inspectForm();
+      const targetForm = refreshedForm || response.form || form;
+      if (autofillDocuments && targetForm) {
+        await autofillDocuments(targetForm);
+        await inspectForm();
+      }
     } finally {
       setIsCancellingAutofill(false);
       setLoadingButton(null);
     }
   }, [
     applyAutofillResults,
+    autofillDocuments,
     inspectForm,
     latestForm,
     reportError,

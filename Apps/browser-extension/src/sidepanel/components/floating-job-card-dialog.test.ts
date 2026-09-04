@@ -10,6 +10,7 @@ import { flushSync } from 'react-dom';
 vi.mock('../hooks/useAuth', () => ({
   useAuth: () => ({
     authStatus: { connected: true },
+    isCheckingAuth: false,
     refreshAuth: vi.fn(),
     signIn: vi.fn(),
   }),
@@ -129,11 +130,30 @@ describe('FloatingJobCardDialog', () => {
 
     await new Promise((r) => setTimeout(r, 10));
 
-    expect(postedMessages).toContainEqual({
-      source: 'jobby-dialog',
-      type: 'jobby.dialog-close',
-    });
+    expect(postedMessages).toContainEqual(
+      expect.objectContaining({
+        source: 'jobby-dialog',
+        type: 'jobby.dialog-close',
+      }),
+    );
     expect(container!.querySelector('[data-testid="job-score-card"]')).toBeNull();
+  });
+
+  it('aligns the loading bubble with a bottom-positioned ball', () => {
+    window.history.replaceState(
+      null,
+      '',
+      '?floatingDialog=true&edge=right&pos=bottom',
+    );
+
+    const root = createRoot(container!);
+    flushSync(() => {
+      root.render(createElement(FloatingJobCardDialog));
+    });
+
+    expect(container!.querySelector('.items-end')).not.toBeNull();
+    expect(document.documentElement.classList).toContain('is-floating-dialog');
+    expect(document.body.classList).toContain('is-floating-dialog');
   });
 
   it('renders JobScoreCard and resizes to expanded when on a valid job page with evaluated match', async () => {
@@ -155,13 +175,15 @@ describe('FloatingJobCardDialog', () => {
       root.render(createElement(FloatingJobCardDialog));
     });
 
-    await new Promise((r) => setTimeout(r, 10));
+    await new Promise((r) => setTimeout(r, 650));
 
-    expect(postedMessages).toContainEqual({
-      source: 'jobby-dialog',
-      type: 'jobby.dialog-resize',
-      mode: 'expanded',
-    });
+    expect(postedMessages).toContainEqual(
+      expect.objectContaining({
+        source: 'jobby-dialog',
+        type: 'jobby.dialog-resize',
+        mode: 'expanded',
+      }),
+    );
     expect(container!.querySelector('[data-testid="job-score-card"]')).not.toBeNull();
   });
 });

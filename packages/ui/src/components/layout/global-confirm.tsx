@@ -6,7 +6,7 @@ import React from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useConfirmStore, resolveConfirm } from '@/lib/store/confirm-store';
 import { Button } from '../UI/Button';
-import { Trash2, FolderMinus, AlertTriangle, Info } from 'lucide-react';
+import { Trash2, FolderMinus, AlertTriangle, Info } from '@jobby/ui/components/icons';
 
 export function GlobalConfirm() {
   const { isOpen, title, message, confirmLabel, cancelLabel, type } =
@@ -60,12 +60,17 @@ export function GlobalConfirm() {
             initial={{ opacity: 0, scale: 0.96, y: 8 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 8 }}
-            className='relative w-full max-w-md rounded-3xl border border-primary/60 bg-panel p-6 shadow-2xl'
-          >
-            {getIcon()}
-            <h3 className='title-card'>{title}</h3>
-            <p className='body-md mt-2 text-ink-secondary'>{message}</p>
-            <div className='mt-6 flex items-center justify-end gap-3'>
+                  className='flex flex-col relative w-full max-w-md max-h-[90vh] rounded-3xl border border-primary/60 bg-panel p-6 shadow-2xl'
+                >
+                  {getIcon()}
+
+                  <h3 className='title-card shrink-0'>{title}</h3>
+
+                  <p className='body text-ink-secondary overflow-y-auto min-h-0'>
+                    {message}
+                  </p>
+
+            <div className='footer'>
               <Button variant={'ghost'} onClick={() => resolveConfirm(false)}>
                 {cancelLabel}
               </Button>

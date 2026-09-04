@@ -21,7 +21,7 @@ import {
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, X } from 'lucide-react';
+import { GripVertical, X } from '@jobby/ui/components/icons';
 import { Switch } from '../switch';
 import { ColumnDef, VisibilityState } from '@tanstack/react-table';
 import { H2, H3, P } from '../text/typography';

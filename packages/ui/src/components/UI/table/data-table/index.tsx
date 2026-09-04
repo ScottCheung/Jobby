@@ -20,7 +20,7 @@ import {
   ArrowDown,
   Settings2,
   GripVertical,
-} from 'lucide-react';
+} from '@jobby/ui/components/icons';
 
 import { Button } from '../../Button';
 import { cn } from '@/lib/utils';

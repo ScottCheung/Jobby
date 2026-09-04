@@ -1,19 +1,83 @@
-/** @format */
-
 import { useEffect, useRef, useState } from 'react';
-import { Check, RotateCw, Circle, History, ChevronDown } from 'lucide-react';
+import {
+  Check,
+  RotateCw,
+  Circle,
+  History,
+  ChevronDown,
+  Sparkles,
+  Trash2,
+  Star,
+} from 'lucide-react';
 import { IPEmotion } from '@jobby/ui/components/UI/IPEmotion';
+import { Tooltip } from '@jobby/ui/components/UI/tooltip';
 import { cn } from '@jobby/ui/lib/utils';
 import type {
   FormFieldObservation,
   FormInspection,
 } from '../../shared/contracts/form-inspection';
-import type { TailoredResume } from '../../shared/contracts/tailored-resume';
+import type {
+  DocType,
+  TailoredResume,
+} from '../../shared/contracts/tailored-resume';
 import { fileFieldPurpose } from '../../shared/utils/form-field-resolution';
 export { fileFieldPurpose };
 export type { FileFieldPurpose } from '../../shared/utils/form-field-resolution';
 import { formatRelativeTime } from '@jobby/ui/lib/date-formatter';
 import type { UploadSyncState } from '../hooks/useInspection';
+
+type CurrentJob = {
+  title?: string;
+  company?: string;
+};
+
+function matchesCurrentJob(resume: TailoredResume, currentJob?: CurrentJob) {
+  const currentTitle = currentJob?.title?.trim().toLowerCase();
+  const currentCompany = currentJob?.company?.trim().toLowerCase();
+  const resumeTitle = resume.job_title?.trim().toLowerCase();
+  const resumeCompany = resume.company?.trim().toLowerCase();
+
+  if (!currentTitle || !currentCompany || !resumeTitle || !resumeCompany) {
+    return false;
+  }
+
+  const titleMatches = Boolean(
+    currentTitle &&
+      resumeTitle &&
+      (currentTitle.includes(resumeTitle) || resumeTitle.includes(currentTitle)),
+  );
+  const companyMatches = Boolean(
+    currentCompany &&
+      resumeCompany &&
+      (currentCompany.includes(resumeCompany) ||
+        resumeCompany.includes(currentCompany)),
+  );
+
+  return titleMatches && companyMatches;
+}
+
+function createdAtTime(resume: TailoredResume) {
+  return resume.created_at ? new Date(resume.created_at).getTime() || 0 : 0;
+}
+
+export function sortRecentTailoredResumes(
+  resumes: TailoredResume[],
+  currentJob: CurrentJob | undefined,
+  defaultResumeId: string,
+) {
+  const currentJobResumeId = resumes
+    .filter((resume) => matchesCurrentJob(resume, currentJob))
+    .sort((a, b) => createdAtTime(b) - createdAtTime(a))[0]?.id;
+
+  return [...resumes].sort((a, b) => {
+    const rank = (resume: TailoredResume) =>
+      resume.id === currentJobResumeId ? 0
+      : resume.id === defaultResumeId ? 1
+      : 2;
+
+    return rank(a) - rank(b) || createdAtTime(b) - createdAtTime(a);
+  });
+}
 
 interface ResultsDisplayProps {
   latestForm: FormInspection | null;
@@ -24,6 +88,11 @@ interface ResultsDisplayProps {
     field: FormFieldObservation,
     resume: TailoredResume,
   ) => Promise<void>;
+  onUploadDefaultResume?: (
+    field: FormFieldObservation,
+    defaultResume?: TailoredResume,
+  ) => Promise<void> | void;
+  onDeleteTailoredResume?: (id: string) => Promise<void> | void;
   onEditField: (
     field: FormFieldObservation,
     value: string | boolean,
@@ -31,6 +100,14 @@ interface ResultsDisplayProps {
   uploadStates: Record<string, UploadSyncState>;
   tailoredResumes: TailoredResume[];
   isAutofilling: boolean;
+  onTailor?: (type: DocType) => void;
+  existingDocuments?: {
+    resume: boolean;
+    cover_letter: boolean;
+  };
+  currentJob?: CurrentJob;
+  selectedDocumentId?: string;
+  onSelectDocument?: (id: string) => void;
 }
 
 export function ResultsDisplay({
@@ -39,10 +116,17 @@ export function ResultsDisplay({
   onFocusField,
   onFillSingleField,
   onUploadTailoredResume,
+  onUploadDefaultResume,
+  onDeleteTailoredResume,
   onEditField,
   uploadStates,
   tailoredResumes = [],
   isAutofilling,
+  onTailor,
+  existingDocuments,
+  currentJob,
+  selectedDocumentId,
+  onSelectDocument,
 }: ResultsDisplayProps) {
   const formFields =
     (
@@ -64,10 +148,17 @@ export function ResultsDisplay({
             onFocusField={onFocusField}
             onFillSingleField={onFillSingleField}
             onUploadTailoredResume={onUploadTailoredResume}
+            onUploadDefaultResume={onUploadDefaultResume}
+            onDeleteTailoredResume={onDeleteTailoredResume}
             onEditField={onEditField}
             uploadStates={uploadStates}
             tailoredResumes={tailoredResumes}
             isAutofilling={isAutofilling}
+            onTailor={onTailor}
+            existingDocuments={existingDocuments}
+            currentJob={currentJob}
+            selectedDocumentId={selectedDocumentId}
+            onSelectDocument={onSelectDocument}
           />
         </div>
       : <div className='relative page-class-banner--job flex flex-col items-center justify-center text-center p-6  bg-panel/50 rounded-2xl gap-3 mt-2'>
@@ -109,6 +200,11 @@ interface FormFieldsProps {
     field: FormFieldObservation,
     resume: TailoredResume,
   ) => Promise<void>;
+  onUploadDefaultResume?: (
+    field: FormFieldObservation,
+    defaultResume?: TailoredResume,
+  ) => Promise<void> | void;
+  onDeleteTailoredResume?: (id: string) => Promise<void> | void;
   onEditField: (
     field: FormFieldObservation,
     value: string | boolean,
@@ -116,6 +212,14 @@ interface FormFieldsProps {
   uploadStates: Record<string, UploadSyncState>;
   tailoredResumes: TailoredResume[];
   isAutofilling: boolean;
+  onTailor?: (type: DocType) => void;
+  existingDocuments?: {
+    resume: boolean;
+    cover_letter: boolean;
+  };
+  currentJob?: CurrentJob;
+  selectedDocumentId?: string;
+  onSelectDocument?: (id: string) => void;
 }
 
 function FormFields({
@@ -123,13 +227,20 @@ function FormFields({
   onFocusField,
   onFillSingleField,
   onUploadTailoredResume,
+  onUploadDefaultResume,
+  onDeleteTailoredResume,
   onEditField,
   uploadStates,
   tailoredResumes,
   isAutofilling,
+  onTailor,
+  existingDocuments,
+  currentJob,
+  selectedDocumentId,
+  onSelectDocument,
 }: FormFieldsProps) {
   return (
-    <div className=''>
+    <div className='page-class-banner--job form-fields'>
       {fields.map((field) => (
         <FormFieldRow
           key={`${field.key}:${field.id || field.name || ''}`}
@@ -137,10 +248,17 @@ function FormFields({
           onFocusField={onFocusField}
           onFillSingleField={onFillSingleField}
           onUploadTailoredResume={onUploadTailoredResume}
+          onUploadDefaultResume={onUploadDefaultResume}
+          onDeleteTailoredResume={onDeleteTailoredResume}
           onEditField={onEditField}
           uploadState={uploadStates[field.key]}
           tailoredResumes={tailoredResumes}
           isAutofilling={isAutofilling}
+          onTailor={onTailor}
+          existingDocuments={existingDocuments}
+          currentJob={currentJob}
+          selectedDocumentId={selectedDocumentId}
+          onSelectDocument={onSelectDocument}
         />
       ))}
     </div>
@@ -155,6 +273,11 @@ interface FormFieldRowProps {
     field: FormFieldObservation,
     resume: TailoredResume,
   ) => Promise<void>;
+  onUploadDefaultResume?: (
+    field: FormFieldObservation,
+    defaultResume?: TailoredResume,
+  ) => Promise<void> | void;
+  onDeleteTailoredResume?: (id: string) => Promise<void> | void;
   onEditField: (
     field: FormFieldObservation,
     value: string | boolean,
@@ -162,6 +285,14 @@ interface FormFieldRowProps {
   uploadState?: UploadSyncState;
   tailoredResumes: TailoredResume[];
   isAutofilling: boolean;
+  onTailor?: (type: DocType) => void;
+  existingDocuments?: {
+    resume: boolean;
+    cover_letter: boolean;
+  };
+  currentJob?: CurrentJob;
+  selectedDocumentId?: string;
+  onSelectDocument?: (id: string) => void;
 }
 
 function formValue(field: FormFieldObservation): string {
@@ -262,13 +393,6 @@ export function ExpandableAnswer({
     setIsExpanded(false);
   }, [value]);
 
-  const handleToggle = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-    e.nativeEvent?.stopImmediatePropagation?.();
-    setIsExpanded((prev) => !prev);
-  };
-
   return (
     <div className='flex flex-col min-w-0 max-w-full'>
       <div
@@ -298,24 +422,7 @@ export function ExpandableAnswer({
         </span>
       </div>
 
-      {isClamped && (
-        <button
-          type='button'
-          onClick={handleToggle}
-          aria-expanded={isExpanded}
-          className='group/expand inline-flex items-center gap-1 text-[10px] font-semibold text-primary/80 hover:text-primary transition-all duration-200 mt-1 self-start cursor-pointer select-none py-0.5 px-1 -ml-1 rounded hover:bg-primary/10 active:scale-95'
-        >
-          <span className='tracking-tight'>
-            {isExpanded ? 'Show less' : 'Show more'}
-          </span>
-          <ChevronDown
-            className={cn(
-              'w-3 h-3 text-primary/70 group-hover/expand:text-primary transition-transform duration-300 ease-out',
-              isExpanded ? 'rotate-180' : 'rotate-0',
-            )}
-          />
-        </button>
-      )}
+
     </div>
   );
 }
@@ -325,39 +432,29 @@ function FormFieldRow({
   onFocusField,
   onFillSingleField,
   onUploadTailoredResume,
+  onUploadDefaultResume,
+  onDeleteTailoredResume,
   onEditField,
   uploadState,
   tailoredResumes,
   isAutofilling,
+  onTailor,
+  existingDocuments,
+  currentJob,
+  selectedDocumentId,
+  onSelectDocument,
 }: FormFieldRowProps) {
   const [draft, setDraft] = useState(() => formValue(field));
   const [editing, setEditing] = useState(false);
   const [isSingleFilling, setIsSingleFilling] = useState(false);
-  const [selectedResumeId, setSelectedResumeId] = useState('');
+  const [isRecentTailorExpanded, setIsRecentTailorExpanded] = useState(true);
   const timer = useRef<number | undefined>(undefined);
   const isStructuredSummary = field.semanticFeatures?.includes(
     'workday-structured-summary',
   );
 
-  const handleSingleFill = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-    e.nativeEvent?.stopImmediatePropagation?.();
-    if (isSingleFilling) return;
-    setIsSingleFilling(true);
-    try {
-      await onFocusField(field);
-      if (field.type === 'file') return;
-      await onFillSingleField(field);
-    } finally {
-      setIsSingleFilling(false);
-    }
-  };
-  // Track the most recent value we've dispatched to the page so we don't
-  // overwrite the user's in-progress input when the inspection poll fires
-  // before the page has accepted the change.
   const pendingValue = useRef<string | boolean | undefined>(undefined);
-  const editable = !['file', 'unknown'].includes(field.type);
+  const editable = !['file', 'unknown', 'multiselect'].includes(field.type);
   const purpose = fileFieldPurpose(field);
   const isResumeUpload = purpose === 'resume';
   const isCoverLetterUpload = purpose === 'cover_letter';
@@ -367,7 +464,36 @@ function FormFieldRow({
     isCoverLetterUpload ? 'Cover Letter'
     : isResumeUpload ? 'Resume'
     : 'Document';
-  const recentTailoredResumes = tailoredResumes.filter((resume) => {
+  const showGenerateNew = Boolean(
+    onTailor &&
+      ((isResumeUpload && !existingDocuments?.resume) ||
+        (isCoverLetterUpload && !existingDocuments?.cover_letter)),
+  );
+  const cardListRef = useRef<HTMLDivElement | null>(null);
+  const hasManuallySelectedResume = useRef(false);
+  const DEFAULT_RESUME_STORAGE_KEY = 'jobby_default_tailored_resume_id';
+  const [defaultResumeId, setDefaultResumeId] = useState<string>(() => {
+    try {
+      return localStorage?.getItem(DEFAULT_RESUME_STORAGE_KEY) || '';
+    } catch {
+      return '';
+    }
+  });
+  const [confirmDeleteTarget, setConfirmDeleteTarget] =
+    useState<TailoredResume | null>(null);
+  const [confirmDefaultTarget, setConfirmDefaultTarget] =
+    useState<TailoredResume | null>(null);
+
+  const handleSetDefaultResume = (id: string) => {
+    setDefaultResumeId(id);
+    try {
+      localStorage?.setItem(DEFAULT_RESUME_STORAGE_KEY, id);
+    } catch {
+      // ignore
+    }
+  };
+
+  const rawRecentResumes = tailoredResumes.filter((resume) => {
     if (resume.isGenerating) return false;
     const generated = resume.raw_ai_response?.generated_documents as
       | { resume?: boolean; cover_letter?: boolean }
@@ -385,32 +511,135 @@ function FormFieldRow({
       : Boolean(resume.resume_data);
     return hasGeneratedResume;
   });
+
+  const recentTailoredResumes = sortRecentTailoredResumes(
+    rawRecentResumes,
+    currentJob,
+    defaultResumeId,
+  );
+
+  const [selectedResumeId, setSelectedResumeId] = useState(() => {
+    if (recentTailoredResumes.length > 0) {
+      const match = recentTailoredResumes.find((r) =>
+        matchesCurrentJob(r, currentJob),
+      );
+      if (match) return match.id;
+      if (
+        defaultResumeId &&
+        recentTailoredResumes.some((r) => r.id === defaultResumeId)
+      ) {
+        return defaultResumeId;
+      }
+    }
+    return '';
+  });
   const selectedResume = recentTailoredResumes.find(
     (resume) => resume.id === selectedResumeId,
   );
 
-  useEffect(() => {
-    if (recentTailoredResumes.length > 0) {
-      const firstId = recentTailoredResumes[0]?.id;
-      if (
-        firstId &&
-        (!selectedResumeId ||
-          !recentTailoredResumes.some((r) => r.id === selectedResumeId))
-      ) {
-        setSelectedResumeId(firstId);
+  const handleSelectResume = (id: string, manual = true) => {
+    if (manual) hasManuallySelectedResume.current = true;
+    setSelectedResumeId(id);
+    onSelectDocument?.(id);
+    requestAnimationFrame(() => {
+      const cardEl = cardListRef.current?.querySelector<HTMLElement>(
+        `[data-resume-id="${id}"]`,
+      );
+      cardEl?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+        inline: 'center',
+      });
+    });
+  };
+
+  const handleSingleFill = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    e.nativeEvent?.stopImmediatePropagation?.();
+    if (isSingleFilling) return;
+    setIsSingleFilling(true);
+    try {
+      if (field.type === 'file') {
+        const purpose = fileFieldPurpose(field);
+        if (purpose === 'resume' || purpose === 'cover_letter') {
+          if (selectedResume) {
+            try {
+              await onUploadTailoredResume(field, selectedResume);
+            } catch {
+              // handled
+            }
+          } else {
+            const defaultTarget = recentTailoredResumes.find(
+              (r) => r.id === defaultResumeId,
+            );
+            try {
+              await onUploadDefaultResume?.(field, defaultTarget);
+            } catch {
+              // handled
+            }
+          }
+        }
+        return;
       }
+      await onFillSingleField(field);
+    } finally {
+      setIsSingleFilling(false);
     }
-  }, [recentTailoredResumes, selectedResumeId]);
+  };
+
+  useEffect(() => {
+    if (
+      selectedDocumentId &&
+      recentTailoredResumes.some((resume) => resume.id === selectedDocumentId)
+    ) {
+      setSelectedResumeId(selectedDocumentId);
+    }
+  }, [recentTailoredResumes, selectedDocumentId]);
+
+  useEffect(() => {
+    const selectedExists = recentTailoredResumes.some(
+      (resume) => resume.id === selectedResumeId,
+    );
+    if (hasManuallySelectedResume.current && selectedExists) return;
+    if (!selectedExists) hasManuallySelectedResume.current = false;
+
+    const matchingResume = recentTailoredResumes.find((resume) =>
+      matchesCurrentJob(resume, currentJob),
+    );
+    const preferredId =
+      matchingResume?.id ||
+      (defaultResumeId &&
+      recentTailoredResumes.some((resume) => resume.id === defaultResumeId) ?
+        defaultResumeId
+      : '');
+    if (preferredId !== selectedResumeId) {
+      setSelectedResumeId(preferredId);
+    }
+  }, [recentTailoredResumes, selectedResumeId, defaultResumeId, currentJob]);
+
+  useEffect(() => {
+    if (selectedResumeId && isRecentTailorExpanded) {
+      const timer = setTimeout(() => {
+        const cardEl = cardListRef.current?.querySelector<HTMLElement>(
+          `[data-resume-id="${selectedResumeId}"]`,
+        );
+        cardEl?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'nearest',
+          inline: 'center',
+        });
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [selectedResumeId, isRecentTailorExpanded]);
 
   const isUploadInFlight = uploadState?.phase === 'uploading';
   const currentValue = displayValue(field);
 
   useEffect(() => {
-    // Don't reset while the user is actively typing or has a save in-flight.
     if (editing || timer.current !== undefined) return;
     const incoming = formValue(field);
-    // If the page value matches what we last sent, no need to reset at all —
-    // the user's draft is already consistent with the source of truth.
     if (
       pendingValue.current !== undefined &&
       incoming === String(pendingValue.current)
@@ -433,8 +662,6 @@ function FormFieldRow({
     if (timer.current !== undefined) window.clearTimeout(timer.current);
     const save = () => {
       void onEditField(field, value).then(() => {
-        // Once the page has accepted the value, clear the pending marker so
-        // the next inspection poll can freely reset draft if the page diverges.
         if (pendingValue.current === value) pendingValue.current = undefined;
       });
     };
@@ -446,32 +673,41 @@ function FormFieldRow({
       }, 150);
   };
 
-  const updateText = (value: string) => {
-    setDraft(value);
-    commit(value);
+  const finishEditing = () => {
+    setEditing(false);
+    commit(draft, true);
   };
 
   const commitOnBlur = () => {
     setEditing(false);
-    if (timer.current !== undefined) {
-      window.clearTimeout(timer.current);
-      timer.current = undefined;
-    }
-    void onEditField(field, draft).then(() => {
-      if (pendingValue.current === draft) pendingValue.current = undefined;
-    });
+    commit(draft, true);
   };
 
-  const finishEditing = () => {
-    setEditing(false);
-    if (timer.current !== undefined) {
-      window.clearTimeout(timer.current);
-      timer.current = undefined;
-    }
-    void onEditField(field, draft).then(() => {
-      if (pendingValue.current === draft) pendingValue.current = undefined;
-    });
-  };
+  const isFile = field.type === 'file';
+  const isSelectedTailoredForJob = Boolean(
+    selectedResume && matchesCurrentJob(selectedResume, currentJob),
+  );
+
+  const resolvedUploadedDocumentId = uploadState?.sourceDocumentId || null;
+
+  const uploadedDocument = recentTailoredResumes.find(
+    (resume) => resume.id === resolvedUploadedDocumentId,
+  );
+  const uploadedDocumentName =
+    uploadedDocument?.company ||
+    uploadedDocument?.job_title ||
+    uploadState?.sourceLabel ||
+    field.upload?.filename ||
+    currentValue;
+  const hasKnownSource = Boolean(
+    uploadedDocument || uploadState?.sourceLabel,
+  );
+  const hasUploadedFile = Boolean(
+    field.filled ||
+      field.upload?.state === 'ready' ||
+      uploadState?.phase === 'confirmed' ||
+      uploadState?.phase === 'unconfirmed',
+  );
 
   return (
     <article className='form-field-row min-w-0 max-w-full overflow-hidden'>
@@ -509,11 +745,49 @@ function FormFieldRow({
           <span
             className={`transition-all duration-700 min-w-0 max-w-full block overflow-hidden ${field.filled ? 'form-field-value' : 'form-field-label'} `}
           >
-            <ExpandableAnswer
-              value={currentValue}
-              isFilled={field.filled}
-              isAutofilling={isAutofilling}
-            />
+            {isFile ? (
+              <Tooltip
+                content={
+                  <div className='flex flex-col gap-0.5 text-xs max-w-64'>
+                    <div className='flex items-center gap-1.5'>
+                      <span className='font-semibold text-foreground truncate'>
+                        {uploadedDocumentName}
+                      </span>
+                      {hasKnownSource && (
+                        <span className='text-[10px] px-1.5 py-0.2 rounded bg-primary/20 text-primary font-medium shrink-0'>
+                          Source
+                        </span>
+                      )}
+                    </div>
+                    {uploadedDocument?.job_title && (
+                      <span className='text-[10px] text-muted-foreground truncate'>
+                        {uploadedDocument.job_title}
+                      </span>
+                    )}
+
+                    <div className='mt-3 text-[10px] text-muted-foreground '>
+
+                      Filename adjusted for this application. Your source {documentLabel.toLowerCase()} as above remains unchanged.
+
+                    </div>
+
+                  </div>
+                }
+                side='top'
+                align='start'
+                delay={150}
+              >
+                <span className='truncate block font-semibold text-xs text-foreground whitespace-nowrap'>
+                  {currentValue}
+                </span>
+              </Tooltip>
+            ) : (
+              <ExpandableAnswer
+                value={currentValue}
+                isFilled={field.filled}
+                isAutofilling={isAutofilling}
+              />
+            )}
           </span>
         </div>
         {editable && (
@@ -569,10 +843,10 @@ function FormFieldRow({
           draft={draft}
           onFocus={() => setEditing(true)}
           onBlur={commitOnBlur}
-          onTextChange={updateText}
-          onValueChange={(value, immediate = true) => {
-            if (typeof value === 'string') setDraft(value);
-            commit(value, immediate);
+          onTextChange={(val) => setDraft(val)}
+          onValueChange={(val, imm = true) => {
+            if (typeof val === 'string') setDraft(val);
+            commit(val, imm);
           }}
         />
       : field.type === 'file' ?
@@ -584,6 +858,7 @@ function FormFieldRow({
                   <input
                     type='radio'
                     name={`panel-file-${field.key}`}
+                    value={option.value}
                     checked={field.currentValue === option.label}
                     onChange={() => void onEditField(field, option.value)}
                   />
@@ -594,148 +869,318 @@ function FormFieldRow({
           )}
           {isDocumentUpload && (
             <div className='form-resume-picker'>
-              <span className='form-resume-picker-title'>
-                <History className='h-3 w-3 text-primary' />
-                Recent Tailor ({recentTailoredResumes.length})
-              </span>
               <div
-                className='form-resume-card-list no-scrollbar'
-                aria-label='Select from Recent Tailor'
+                role='button'
+                tabIndex={0}
+                className='flex items-center justify-between w-full cursor-pointer select-none py-1'
+                onClick={() => setIsRecentTailorExpanded((prev) => !prev)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setIsRecentTailorExpanded((prev) => !prev);
+                  }
+                }}
+                aria-expanded={isRecentTailorExpanded}
               >
-                {recentTailoredResumes.length > 0 ?
-                  recentTailoredResumes.map((resume) => {
-                    const isSelected = resume.id === selectedResumeId;
-                    return (
-                      <button
-                        key={resume.id}
-                        type='button'
-                        className={`form-resume-card ${isSelected ? 'is-selected' : ''}`}
-                        disabled={isUploadInFlight}
-                        aria-pressed={isSelected}
-                        onClick={() => setSelectedResumeId(resume.id)}
-                      >
-                        <span className='form-resume-card-topline'>
-                          <span className='form-resume-card-role'>
-                            {resume.job_title || 'Tailored Resume'}
-                          </span>
-                          <span className='form-resume-card-time'>
-                            {formatRelativeTime(resume.created_at)}
-                          </span>
-                        </span>
-                        <span className='form-resume-card-company'>
-                          <span>{resume.company || 'Job Application'}</span>
-                          {isSelected && (
-                            <Check className='h-3 w-3 shrink-0 text-primary' />
-                          )}
-                        </span>
-                      </button>
-                    );
-                  })
-                : <span className='form-resume-empty'>
-                    No tailored resumes available. Create one in Studio first.
+                <div className='flex items-center gap-1.5 min-w-0'>
+                  <History className='h-3 w-3 text-primary shrink-0' />
+                  <span className='form-resume-picker-title'>
+                    Recent Tailor ({recentTailoredResumes.length})
                   </span>
-                }
+                </div>
+                <div className='flex items-center gap-1 text-[10px] font-semibold text-primary/80 hover:text-primary transition-colors'>
+                  <span>
+                    {isRecentTailorExpanded ? 'Show less' : 'Show more'}
+                  </span>
+                  <ChevronDown
+                    className={cn(
+                      'w-3 h-3 transition-transform duration-200',
+                      isRecentTailorExpanded ? 'rotate-180' : 'rotate-0',
+                    )}
+                  />
+                </div>
               </div>
+              {isRecentTailorExpanded && (
+                <div
+                  ref={cardListRef}
+                  className='form-resume-card-list no-scrollbar'
+                  aria-label='Select from Recent Tailor'
+                >
+                  {recentTailoredResumes.length > 0 ?
+                    recentTailoredResumes.map((resume) => {
+                      const isSelected = resume.id === selectedResumeId;
+                      const isDefault = resume.id === defaultResumeId;
+                      const isUploaded = Boolean(
+                        hasUploadedFile &&
+                          resolvedUploadedDocumentId === resume.id,
+                      );
+                      return (
+                        <button
+                          key={resume.id}
+                          data-resume-id={resume.id}
+                          type='button'
+                          className={`form-resume-card group/card ${isSelected ? 'is-selected' : ''}`}
+                          disabled={isUploadInFlight}
+                          aria-pressed={isSelected}
+                          onClick={() => handleSelectResume(resume.id)}
+                        >
+                          <span className='form-resume-card-topline'>
+                            <span
+                              className='form-resume-card-role truncate'
+                              title={resume.job_title || 'Tailored Resume'}
+                            >
+                              {resume.job_title || 'Tailored Resume'}
+                            </span>
+                            <div className='flex items-center gap-0.5 shrink-0'>
+                              <span
+                                role='button'
+                                tabIndex={0}
+                                className={`p-0.5 transition-opacity cursor-pointer ${
+                                  isDefault ? 'opacity-100 text-amber-400'
+                                  : 'opacity-0 group-hover/card:opacity-100 hover:text-amber-400 text-muted-foreground/60'
+                                }`}
+                                title={
+                                  isDefault ? 'Default resume'
+                                  : 'Set as default resume'
+                                }
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (!isDefault)
+                                    setConfirmDefaultTarget(resume);
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter' || e.key === ' ') {
+                                    e.stopPropagation();
+                                    if (!isDefault)
+                                      setConfirmDefaultTarget(resume);
+                                  }
+                                }}
+                              >
+                                <Star
+                                  className={`w-2.5 h-2.5 ${isDefault ? 'fill-amber-400 text-amber-400' : ''}`}
+                                />
+                              </span>
+                              {onDeleteTailoredResume && (
+                                <span
+                                  role='button'
+                                  tabIndex={0}
+                                  className='opacity-0 group-hover/card:opacity-100 hover:text-destructive p-0.5 text-muted-foreground/60 transition-opacity cursor-pointer'
+                                  title='Delete tailored record'
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setConfirmDeleteTarget(resume);
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                      e.stopPropagation();
+                                      setConfirmDeleteTarget(resume);
+                                    }
+                                  }}
+                                >
+                                  <Trash2 className='w-2.5 h-2.5' />
+                                </span>
+                              )}
+                            </div>
+                          </span>
+                          <span className='form-resume-card-company'>
+                            <span
+                              className='truncate'
+                              title={resume.company || 'Job Application'}
+                            >
+                              {resume.company || 'Job Application'}
+                            </span>
+                          </span>
+                          <div className='flex items-center justify-between gap-1 mt-1'>
+                            <div className='flex items-center gap-1 min-w-0'>
+                              {isDefault && (
+                                <Star className='w-2.5 h-2.5 fill-amber-400 text-amber-400 shrink-0' />
+                              )}
+                              <span className='form-resume-card-time shrink-0'>
+                                {formatRelativeTime(resume.created_at)}
+                              </span>
+                            </div>
+                            <div className='flex items-center gap-1 shrink-0'>
+                              {isUploaded && (
+                                <span className='text-[8px] font-bold px-1 py-0.5 rounded bg-primary/20 text-primary uppercase tracking-tight'>
+                                  Uploaded
+                                </span>
+                              )}
+                              {isSelected && (
+                                <Check className='h-3 w-3 shrink-0 text-primary' />
+                              )}
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })
+                  : <span className='form-resume-empty'>
+                      No tailored resumes available. Create one in Studio first.
+                    </span>
+                  }
+                </div>
+              )}
+            </div>
+          )}
+          {isDocumentUpload && showGenerateNew && (
+            <div className='flex items-center gap-2 w-full'>
+              <button
+                type='button'
+                className='flex-1 min-h-[28px] py-1 px-2.5 rounded-full text-xs font-medium bg-muted/80 hover:bg-muted text-foreground border border-border/40 transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1 shadow-2xs'
+                onClick={() =>
+                  onTailor?.(isCoverLetterUpload ? 'cover_letter' : 'resume')
+                }
+              >
+                <Sparkles className='w-3 h-3 text-primary shrink-0' />
+                <span>Generate New</span>
+              </button>
+              <button
+                type='button'
+                className='flex-1 min-h-[28px] py-1 px-2.5 rounded-full text-xs font-medium bg-muted/80 hover:bg-muted text-foreground border border-border/40 transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-1 shadow-2xs disabled:opacity-50 disabled:cursor-not-allowed'
+                disabled={isUploadInFlight}
+                onClick={async () => {
+                  const defaultTarget = recentTailoredResumes.find(
+                    (r) => r.id === defaultResumeId,
+                  );
+                  try {
+                    await onUploadDefaultResume?.(field, defaultTarget);
+                    if (defaultTarget) {
+                      handleSelectResume(defaultTarget.id, false);
+                    }
+                  } catch {
+                    // handled
+                  }
+                }}
+              >
+                Upload default one
+              </button>
             </div>
           )}
           <button
             type='button'
+            className='w-full min-h-[30px] py-1.5 px-3 rounded-full text-xs font-bold bg-primary-gradient text-primary-foreground shadow-xs hover:opacity-95 active:scale-95 transition-all cursor-pointer border-0 disabled:opacity-50 disabled:cursor-not-allowed'
             disabled={isUploadInFlight || (isDocumentUpload && !selectedResume)}
-            onClick={() =>
-              void (isDocumentUpload && selectedResume ?
-                onUploadTailoredResume(field, selectedResume)
-              : onFocusField(field))
-            }
+            onClick={async () => {
+              if (isDocumentUpload && selectedResume) {
+                try {
+                  await onUploadTailoredResume(field, selectedResume);
+                } catch {
+                  // handled
+                }
+              } else {
+                await onFocusField(field);
+              }
+            }}
           >
             {isDocumentUpload ?
               isUploadInFlight ?
-                `Uploading selected ${documentLabel}...`
+                `Uploading ${isSelectedTailoredForJob ? 'Tailored' : 'selected'} ${documentLabel}...`
               : field.filled ?
-                `Reupload selected ${documentLabel}`
-              : `Upload selected ${documentLabel}`
+                resolvedUploadedDocumentId &&
+                resolvedUploadedDocumentId === selectedResumeId ?
+                  `Reupload ${isSelectedTailoredForJob ? 'Tailored' : 'selected'} ${documentLabel}`
+                : `Upload selected ${documentLabel} to replace`
+              : `Upload ${isSelectedTailoredForJob ? 'Tailored' : 'selected'} ${documentLabel}`
             : 'Go to Upload'}
           </button>
-          <UploadState
-            field={field}
-            state={uploadState}
-            isResumeUpload={isDocumentUpload}
-            documentLabel={documentLabel}
-            selectedResumeTitle={selectedResume?.job_title || undefined}
-          />
         </div>
       : null}
+
+      {confirmDeleteTarget && (
+        <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4'>
+          <div
+            className='w-full max-w-[320px] rounded-xl bg-panel p-4 shadow-xl border border-border flex flex-col gap-3'
+            role='dialog'
+            aria-modal='true'
+          >
+            <div className='flex flex-col gap-1'>
+              <h3 className='text-sm font-bold text-foreground'>
+                Delete Tailored Record
+              </h3>
+              <p className='text-xs text-muted-foreground leading-relaxed'>
+                Are you sure you want to permanently delete the tailored record for{' '}
+                <strong className='text-foreground font-semibold'>
+                  {confirmDeleteTarget.job_title || 'this role'}
+                  {confirmDeleteTarget.company ?
+                    ` at ${confirmDeleteTarget.company}`
+                  : ''}
+                </strong>
+                ?
+              </p>
+            </div>
+            <div className='flex items-center justify-end gap-2 pt-1'>
+              <button
+                type='button'
+                className='min-h-[28px] px-3 py-1 rounded-full text-xs font-medium bg-muted hover:bg-muted/80 text-foreground transition-colors cursor-pointer'
+                onClick={() => setConfirmDeleteTarget(null)}
+              >
+                Cancel
+              </button>
+              <button
+                type='button'
+                className='min-h-[28px] px-3 py-1 rounded-full text-xs font-medium bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors cursor-pointer'
+                onClick={async () => {
+                  const target = confirmDeleteTarget;
+                  setConfirmDeleteTarget(null);
+                  if (target && onDeleteTailoredResume) {
+                    await onDeleteTailoredResume(target.id);
+                  }
+                }}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmDefaultTarget && (
+        <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4'>
+          <div
+            className='w-full max-w-[320px] rounded-xl bg-panel p-4 shadow-xl border border-border flex flex-col gap-3'
+            role='dialog'
+            aria-modal='true'
+          >
+            <div className='flex flex-col gap-1'>
+              <h3 className='text-sm font-bold text-foreground'>
+                Set as Default Resume
+              </h3>
+              <p className='text-xs text-muted-foreground leading-relaxed'>
+                Set the tailored resume for{' '}
+                <strong className='text-foreground font-semibold'>
+                  {confirmDefaultTarget.job_title || 'this role'}
+                  {confirmDefaultTarget.company ?
+                    ` at ${confirmDefaultTarget.company}`
+                  : ''}
+                </strong>{' '}
+                as your default resume?
+              </p>
+            </div>
+            <div className='flex items-center justify-end gap-2 pt-1'>
+              <button
+                type='button'
+                className='min-h-[28px] px-3 py-1 rounded-full text-xs font-medium bg-muted hover:bg-muted/80 text-foreground transition-colors cursor-pointer'
+                onClick={() => setConfirmDefaultTarget(null)}
+              >
+                Cancel
+              </button>
+              <button
+                type='button'
+                className='min-h-[28px] px-3 py-1 rounded-full text-xs font-medium bg-primary text-primary-foreground hover:opacity-90 transition-colors cursor-pointer'
+                onClick={() => {
+                  const target = confirmDefaultTarget;
+                  setConfirmDefaultTarget(null);
+                  if (target) {
+                    handleSetDefaultResume(target.id);
+                  }
+                }}
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </article>
-  );
-}
-
-function UploadState({
-  field,
-  state,
-  isResumeUpload,
-  documentLabel = 'Resume',
-  selectedResumeTitle,
-}: {
-  field: FormFieldObservation;
-  state?: UploadSyncState;
-  isResumeUpload: boolean;
-  documentLabel?: string;
-  selectedResumeTitle?: string;
-}) {
-  const phase =
-    state?.phase ||
-    (field.upload?.state === 'ready' ? 'confirmed'
-    : field.upload?.state === 'rejected' ? 'failed'
-    : 'idle');
-  const message =
-    state?.message ||
-    (field.upload?.state === 'ready' ?
-      field.upload.filename ?
-        `Confirm: ${field.upload.filename}`
-      : 'Confirm: file is ready.'
-    : field.upload?.state === 'rejected' ?
-      field.upload.detail || 'The website rejected the file.'
-    : isResumeUpload ?
-      selectedResumeTitle ? `Ready to upload: ${selectedResumeTitle}`
-      : `Select a ${documentLabel.toLowerCase()} from Recent Tailor to upload.`
-    : 'Please select a file on the webpage.');
-
-  return (
-    <>
-      <p className={`form-upload-status form-upload-status--${phase}`}>
-        {message}
-      </p>
-      <details className='form-upload-debug'>
-        <summary>Upload diagnostic</summary>
-        <dl>
-          <div>
-            <dt>Website status</dt>
-            <dd>{field.upload?.state || 'unknown'}</dd>
-          </div>
-          <div>
-            <dt>Field</dt>
-            <dd>{field.key}</dd>
-          </div>
-          {field.upload?.filename && (
-            <div>
-              <dt>File</dt>
-              <dd>{field.upload.filename}</dd>
-            </div>
-          )}
-          {state && (
-            <div>
-              <dt>Sync</dt>
-              <dd>{state.phase}</dd>
-            </div>
-          )}
-          {state && (
-            <div>
-              <dt>Updated</dt>
-              <dd>{new Date(state.updatedAt).toLocaleTimeString()}</dd>
-            </div>
-          )}
-        </dl>
-      </details>
-    </>
   );
 }
 

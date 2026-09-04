@@ -35,7 +35,7 @@ export function fileFieldPurpose(
     .join(' ')
     .toLowerCase();
   if (
-    /cover[\s_-]*(?:letter|note)|motivation[\s_-]*letter|求职信|自荐信|附言/.test(
+    /cover[\s_-]*(?:letter|note)|motivation[\s_-]*letter|additional[\s_-]*(?:files?|documents?|attachments?)|supporting[\s_-]*(?:files?|documents?)|求职信|自荐信|附言/.test(
       identity,
     )
   )

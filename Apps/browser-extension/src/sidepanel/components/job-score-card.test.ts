@@ -116,4 +116,82 @@ describe('job match score card', () => {
     expect(html).toContain('Tailoring...');
     expect(html).toContain('disabled=""');
   });
+
+  it('renders Record button and transforms to Applied when recorded', () => {
+    const onRecord = vi.fn();
+    const currentJob: PageInspection = {
+      kind: 'job',
+      snapshot: {
+        platform: 'seek',
+        externalId: '123',
+        url: 'https://www.seek.com.au/job/123',
+        title: 'Full Stack Engineer',
+        company: 'Synechron',
+        technologies: ['React'],
+      },
+    };
+
+    const unrecordedHtml = renderToStaticMarkup(
+      createElement(JobScoreCard, {
+        latestInspection: currentJob,
+        latestMatch: null,
+        authConnected: true,
+        onRecordApplication: onRecord,
+        canRecordApplication: true,
+        isApplicationRecorded: false,
+      }),
+    );
+
+    expect(unrecordedHtml).toContain('Record');
+    expect(unrecordedHtml).toContain('Mark as applied in Jobby');
+
+    const recordedHtml = renderToStaticMarkup(
+      createElement(JobScoreCard, {
+        latestInspection: currentJob,
+        latestMatch: null,
+        authConnected: true,
+        onRecordApplication: onRecord,
+        canRecordApplication: true,
+        isApplicationRecorded: true,
+      }),
+    );
+
+    expect(recordedHtml).toContain('Applied');
+    expect(recordedHtml).toContain('Application recorded in Jobby');
+  });
+
+  it('keeps only the missing document action when a CV exists', () => {
+    const onPreview = vi.fn();
+    const onTailor = vi.fn();
+    const currentJob: PageInspection = {
+      kind: 'job',
+      snapshot: {
+        platform: 'seek',
+        externalId: '123',
+        url: 'https://www.seek.com.au/job/123',
+        title: 'Full Stack Engineer',
+        company: 'Synechron',
+        technologies: ['React'],
+      },
+    };
+
+    const html = renderToStaticMarkup(
+      createElement(JobScoreCard, {
+        latestInspection: currentJob,
+        latestMatch: null,
+        authConnected: true,
+        onTailor,
+        onPreview,
+        existingDocuments: {
+          resume: true,
+          cover_letter: false,
+        },
+      }),
+    );
+
+    expect(html).toContain('Preview CV');
+    expect(html).toContain('Tailor CL');
+    expect(html).not.toContain('Preview CL');
+    expect(html).not.toContain('Tailor Both');
+  });
 });

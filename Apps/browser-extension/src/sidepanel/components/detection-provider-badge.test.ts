@@ -34,6 +34,8 @@ describe('DetectionProviderBadge', () => {
     expect(getPlatformDomain(undefined, 'wellfound')).toBe('wellfound.com');
     expect(getPlatformDomain(undefined, 'dice')).toBe('dice.com');
     expect(getPlatformDomain(undefined, 'simplyhired')).toBe('simplyhired.com.au');
+    expect(getPlatformDomain(undefined, 'careerone')).toBe('careerone.com.au');
+    expect(getPlatformDomain(undefined, 'micro1')).toBe('micro1.ai');
     expect(getPlatformDomain(undefined, 'unknown')).toBe(null);
     expect(getPlatformDomain(undefined, undefined)).toBe(null);
   });
@@ -58,6 +60,8 @@ describe('DetectionProviderBadge', () => {
     expect(getPlatformBadgeStyle('wellfound')).toContain('#141413');
     expect(getPlatformBadgeStyle('dice')).toContain('#E01A22');
     expect(getPlatformBadgeStyle('simplyhired')).toContain('#205493');
+    expect(getPlatformBadgeStyle('careerone')).toContain('#F26522');
+    expect(getPlatformBadgeStyle('micro1')).toContain('#6366F1');
     expect(getPlatformBadgeStyle('custom_ats')).toContain('border-primary');
   });
 });

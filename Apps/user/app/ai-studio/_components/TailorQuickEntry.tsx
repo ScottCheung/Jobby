@@ -4,36 +4,18 @@
 
 import React, { useEffect, useState } from "react";
 import Image from "next/image";
-import {
-  Button,
-  Checkbox,
-  InputField,
-  Modal,
-  Select,
-  StructuredJobDescription,
-  Textarea,
-  Tooltip,
-  jobRecognitionDescriptions,
-  type JobAnalysisCareerProfile,
-  type JobAnalysisDocType,
-  type JobAnalysisSnapshot,
-  type JobAnalysisUserSkill,
-} from "@jobby/ui";
+import { motion, Tooltip } from "@jobby/ui";
+import jobRecognitionDescriptions from "@jobby/ui/constants/job-recognition-descriptions.json";
 import {
   ArrowUp,
   ClipboardPaste,
+  Loader2,
   X,
 } from "lucide-react";
-import { api } from "@/lib/api";
 import { inspectJobLink } from "@/lib/job-link-inspection";
-import type { CareerProfile } from "@/lib/types";
 import { showGlobalToast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
-import {
-  TailorConversation,
-  type RecognizedTailorJob,
-  type TailorConversationMessage,
-} from "./TailorConversation";
+import type { RecognizedTailorJob } from "./TailorConversation";
 
 function parsePostedDate(input: string): string | undefined {
   const match = input.match(
@@ -98,108 +80,42 @@ export function isLikelyJobDescription(input: string): boolean {
   return new Set(signals || []).size >= 2;
 }
 
-interface TailorQuickEntryProps {
-  onGenerationStart: (params: {
-    docType: "resume" | "cover_letter" | "both";
-    jobTitle: string;
-    company: string;
-    jobDescription: string;
-    lastPostedAt?: string;
-    mock?: boolean;
-    careerProfileId?: string;
-  }) => void;
-  isGenerating?: boolean;
-  selectedProfileId?: string;
-  onProfileChange?: (id: string) => void;
-  value?: string;
-  onValueChange?: (value: string) => void;
-  mockMode?: boolean;
-  onMockModeChange?: (enabled: boolean) => void;
-  conversationMessages?: TailorConversationMessage[];
+export interface TailorQuickEntryProps {
   onInspectionStart: (requestId: string, input: string) => void;
   onInspectionStatus: (requestId: string, status: string) => void;
   onInspectionSuccess: (job: RecognizedTailorJob) => void;
   onInspectionError: (requestId: string, message: string) => void;
-  onRetryEvaluation: (messageId: string, job: RecognizedTailorJob) => void;
-  onClaimSkill: (messageId: string, job: RecognizedTailorJob, skill: string) => Promise<void>;
-  onUnclaimSkill: (messageId: string, job: RecognizedTailorJob, skill: string) => Promise<void>;
-  onUpdateJob: (
-    messageId: string,
-    job: RecognizedTailorJob,
-    updates: Partial<JobAnalysisSnapshot>,
-  ) => void;
-  onReDetect: (messageId: string, job: RecognizedTailorJob) => void;
-  activeProfile?: JobAnalysisCareerProfile | null;
-  profileSkills?: JobAnalysisUserSkill[];
+  value?: string;
+  onValueChange?: (value: string) => void;
+  isGenerating?: boolean;
   compact?: boolean;
+  isHero?: boolean;
   onOpenFullscreen?: () => void;
   className?: string;
 }
 
 export function TailorQuickEntry({
-  onGenerationStart,
-  isGenerating = false,
-  selectedProfileId,
-  onProfileChange,
-  value,
-  onValueChange,
-  mockMode: controlledMockMode,
-  onMockModeChange,
-  conversationMessages = [],
   onInspectionStart,
   onInspectionStatus,
   onInspectionSuccess,
   onInspectionError,
-  onRetryEvaluation,
-  onClaimSkill,
-  onUnclaimSkill,
-  onUpdateJob,
-  onReDetect,
-  activeProfile,
-  profileSkills,
+  value,
+  onValueChange,
+  isGenerating = false,
   compact = false,
+  isHero = false,
   onOpenFullscreen,
   className,
 }: TailorQuickEntryProps) {
   const [internalJobInput, setInternalJobInput] = useState("");
-  const [jobTitle, setJobTitle] = useState("");
-  const [company, setCompany] = useState("");
-  const [postedAt, setPostedAt] = useState("");
-  const [resolvedJobDescription, setResolvedJobDescription] = useState("");
-  const [docType, setDocType] = useState<"resume" | "cover_letter" | "both">(
-    "both",
-  );
-  const [isConfirming, setIsConfirming] = useState(false);
   const [isInspecting, setIsInspecting] = useState(false);
   const [activeInspectionId, setActiveInspectionId] = useState("");
-  const [isEditingJobDescription, setIsEditingJobDescription] = useState(false);
-  const [internalMockMode, setInternalMockMode] = useState(false);
-  const [profiles, setProfiles] = useState<CareerProfile[]>([]);
-  const [activeProfileId, setActiveProfileId] = useState("");
   const jobInput = value ?? internalJobInput;
-  const mockMode = controlledMockMode ?? internalMockMode;
 
   const setJobInput = (nextValue: string) => {
     setInternalJobInput(nextValue);
     onValueChange?.(nextValue);
   };
-
-  const setMockMode = (enabled: boolean) => {
-    setInternalMockMode(enabled);
-    onMockModeChange?.(enabled);
-  };
-
-  useEffect(() => {
-    async function loadProfiles() {
-      const list = await api.careerProfiles().catch(() => []);
-      if (list.length === 0) return;
-      const defaultProfile =
-        list.find((profile) => profile.is_default) || list[0];
-      setProfiles(list);
-      setActiveProfileId(selectedProfileId || defaultProfile.id);
-    }
-    void loadProfiles();
-  }, [selectedProfileId]);
 
   const inspectingDescriptions =
     jobRecognitionDescriptions?.inspectingDescriptions || [
@@ -249,14 +165,6 @@ export function TailorQuickEntry({
   const currentLoadingMessage =
     inspectingDescriptions[messageIndex % inspectingDescriptions.length] ||
     'Recognizing...';
-  const compactStatusMessage =
-    isInspecting ?
-      currentLoadingMessage
-    : conversationMessages.at(-1)?.role === "assistant" ?
-      conversationMessages.at(-1)?.content
-    : isGenerating ?
-      "Tailoring your documents..."
-    : null;
 
   useEffect(() => {
     if (!isInspecting || !activeInspectionId) return;
@@ -351,300 +259,152 @@ export function TailorQuickEntry({
     }
   };
 
-  const openJobConfirmation = (
-    job: RecognizedTailorJob,
-    selectedDocType: JobAnalysisDocType,
-  ) => {
-    setJobTitle(job.title);
-    setCompany(job.company);
-    setPostedAt((job.postedAt || "").slice(0, 10));
-    setResolvedJobDescription(job.jobDescription);
-    setDocType(selectedDocType);
-    setIsEditingJobDescription(false);
-    setIsConfirming(true);
-  };
-
-  const confirmGeneration = () => {
-    setIsConfirming(false);
-    onGenerationStart({
-      docType,
-      jobTitle: jobTitle.trim(),
-      company: company.trim(),
-      jobDescription: resolvedJobDescription || jobInput.trim(),
-      lastPostedAt: postedAt || undefined,
-      mock: mockMode,
-      careerProfileId: activeProfileId || undefined,
-    });
-  };
-
   return (
     <div className={cn("w-full", className)}>
-      {/* {!compact && <div className="mb-5 flex items-center justify-end gap-3">
-        <label className="flex cursor-pointer items-center gap-2 text-xs font-medium text-ink-secondary">
-          <Checkbox
-            checked={mockMode}
-            onCheckedChange={(checked) => setMockMode(checked === true)}
-            disabled={isGenerating}
-          />
-          Mock AI
-        </label>
-
-        {profiles.length > 0 && (
-          <Select
-            value={activeProfileId}
-            onChange={(event) => {
-              setActiveProfileId(event.target.value);
-              onProfileChange?.(event.target.value);
-            }}
-            disabled={isGenerating}
-            aria-label="Career profile"
-            containerClassName="w-48"
-          >
-            {profiles.map((profile) => (
-              <option key={profile.id} value={profile.id}>
-                {profile.name || "Unnamed Profile"}
-              </option>
-            ))}
-          </Select>
-        )}
-      </div>} */}
-
       <div
         className={cn(
-          "relative mx-auto flex w-full flex-col gap-3",
-          compact ? "max-w-none" : "max-w-3xl ",
+          "relative mx-auto flex w-full flex-col gap-2 transition-all",
+          compact ? "max-w-none" : isHero ? "max-w-3xl" : "max-w-3xl",
         )}
       >
-        {!compact && (
-          <TailorConversation
-            messages={conversationMessages}
-            onTailor={openJobConfirmation}
-            onRetryEvaluation={onRetryEvaluation}
-            onClaimSkill={onClaimSkill}
-            onUnclaimSkill={onUnclaimSkill}
-            onUpdateJob={onUpdateJob}
-            onReDetect={onReDetect}
-            activeProfile={activeProfile}
-            profileSkills={profileSkills}
-            activeGeneration={
-              isGenerating ?
-                {
-                  docType,
-                  jobTitle,
-                  company,
-                }
-              : null
-            }
-          />
-        )}
+        <div className="relative group/glow w-full rounded-full">
+          {/* Ambient Atmospheric Diffusion Glow */}
+<motion.div
+  layout
+  className="
+    pointer-events-none
+    absolute -inset-1
+    scale-105 rounded-full blur-xl
+    opacity-0
+    duration-700
+    group-focus-within/glow:opacity-100
+    group-focus-within/glow:duration-300
+    transition-opacity
+    animate-ai-diffuse
+  "
+  style={{
+    background:
+      "linear-gradient(90deg, rgba(16,185,129,.75), rgba(6,182,212,.75), rgba(139,92,246,.75), rgba(236,72,153,.65), rgba(245,158,11,.75), rgba(16,185,129,.75))",
+    backgroundSize: "300% 100%",
+  }}
+/>
 
-        {compact && compactStatusMessage && (
+          {/* Animated Glowing Gradient Border */}
           <div
-            aria-live="polite"
-            className="absolute bottom-full left-0 mb-2 max-w-sm rounded-2xl rounded-bl-md border border-primary/30 bg-panel px-3 py-2 text-xs font-medium text-primary shadow-md"
+            className="relative w-full rounded-full p-[1.5px] transition-all duration-300 animate-ai-glow-flow shadow-lg"
           >
-            {compactStatusMessage}
-          </div>
-        )}
-
-        <div
-          className={cn(
-            "relative flex w-full items-center rounded-full border transition-all duration-200",
-            "bg-glass dark:bg-black/20 hover:bg-panel/50 focus-within:bg-background-primary",
-            "border-border/60 hover:border-primary/50 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20",
-            compact ? "min-h-10 pl-3 pr-1 py-1 gap-2" : "min-h-12 pl-4 pr-1 py-1 gap-2.5",
-            "shadow-xs",
-            isInspecting && "opacity-95",
-          )}
-        >
-          <div className="flex items-center justify-center shrink-0">
-            <Image
-              src="/favicon.svg"
-              alt="Jobby Logo"
-              width={compact ? 20 : 24}
-              height={compact ? 20 : 24}
+            <div
               className={cn(
-                "shrink-0 object-contain drop-shadow-xs select-none",
-                compact ? "size-5" : "size-6",
+                "relative flex w-full items-center rounded-full transition-all duration-300",
+                "bg-background-primary ] group-focus-within/glow:bg-primary-foreground backdrop-blur-xl",
+                compact
+                  ? "min-h-10 pl-3 pr-1 py-1 gap-2"
+                  : isHero
+                  ? "min-h-14 pl-4.5 pr-2 py-1.5 gap-3"
+                  : "min-h-12 pl-4 pr-1.5 py-1 gap-2.5",
+                isInspecting && "opacity-95",
               )}
-            />
-          </div>
-
-          <textarea
-            rows={1}
-            wrap="soft"
-            value={jobInput}
-            onChange={(event) => setJobInput(event.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Paste a job description or job link"
-            aria-label="Job description or link"
-            className={cn(
-              "min-w-0 flex-1 resize-none overflow-y-auto break-words bg-transparent text-ink-primary placeholder:text-ink-secondary/60 outline-none leading-relaxed",
-              compact ? "max-h-20 py-1 text-xs" : "max-h-28 py-1.5 text-sm",
-            )}
-          />
-
-          <div className="flex items-center gap-1 shrink-0">
-            {jobInput.trim() ? (
-              <Tooltip content="Clear input" side="top">
-                <button
-                  type="button"
-                  onClick={handleClearInput}
+            >
+              <div className="flex items-center justify-center shrink-0">
+                <Image
+                  src="/favicon.svg"
+                  alt="Jobby Logo"
+                  width={compact ? 20 : isHero ? 28 : 24}
+                  height={compact ? 20 : isHero ? 28 : 24}
                   className={cn(
-                    "flex items-center justify-center rounded-full bg-background-secondary/60 hover:bg-background-secondary dark:bg-white/5 dark:hover:bg-white/10 text-ink-secondary hover:text-ink-primary transition-all cursor-pointer",
-                    compact ? "size-8" : "size-9",
+                    "shrink-0 object-contain drop-shadow-xs select-none transition-transform",
+                    compact ? "size-5" : isHero ? "size-7" : "size-6",
                   )}
-                  aria-label="Clear input"
-                >
-                  <X className={compact ? "size-4" : "size-4.5"} />
-                </button>
-              </Tooltip>
-            ) : (
-              <Tooltip content="Paste from clipboard" side="top">
-                <button
-                  type="button"
-                  onClick={handlePasteFromClipboard}
-                  className={cn(
-                    "flex items-center justify-center rounded-full bg-background-secondary/60 hover:bg-background-secondary dark:bg-white/5 dark:hover:bg-white/10 text-ink-secondary hover:text-ink-primary transition-all cursor-pointer",
-                    compact ? "size-8" : "size-9",
-                  )}
-                  aria-label="Paste from clipboard"
-                >
-                  <ClipboardPaste className={compact ? "size-4" : "size-4.5"} />
-                </button>
-              </Tooltip>
-            )}
-
-            <Tooltip content="Submit" side="top">
-              <button
-                type="button"
-                onClick={() => {
-                  if (jobInput.trim()) {
-                    void inspectInput();
-                  }
-                }}
-                disabled={!jobInput.trim()}
-                className={cn(
-                  "flex items-center justify-center rounded-full transition-all",
-                  compact ? "size-8" : "size-9",
-                  jobInput.trim()
-                    ? "bg-primary text-primary-foreground shadow-xs hover:opacity-90 active:scale-95 cursor-pointer"
-                    : "bg-foreground/5 text-ink-secondary/30 dark:bg-white/5 dark:text-white/20 cursor-not-allowed",
-                )}
-                aria-label="Submit"
-              >
-                <ArrowUp className={compact ? "size-4" : "size-4.5"} />
-              </button>
-            </Tooltip>
-          </div>
-        </div>
-
-      </div>
-
-      <Modal
-        isOpen={isConfirming}
-        onClose={() => setIsConfirming(false)}
-        className="h-[78vh] w-[94vw] max-w-6xl text-ink-primary"
-      >
-
-          <h2 className="text-base font-semibold">Confirm job details</h2>
-  
-
-
-        <div className="grid min-h-0 flex-1 gap-4 body md:grid-cols-[320px_minmax(0,1fr)]">
-          <div className="space-y-4 overflow-y-auto">
-            <InputField
-              label="Job title"
-              value={jobTitle}
-              onChange={(event) => setJobTitle(event.target.value)}
-            />
-            <InputField
-              label="Company"
-              value={company}
-              onChange={(event) => setCompany(event.target.value)}
-            />
-            <InputField
-              label="Posted"
-              type="date"
-              value={postedAt}
-              onChange={(event) => setPostedAt(event.target.value)}
-            />
-
-
-          </div>
-
-          <div className="flex min-h-0 flex-col ">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold">Job description</h3>
-              <div className="flex items-center gap-2">
-                
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={isEditingJobDescription ? "ghost" : "secondary"}
-                  onClick={() => setIsEditingJobDescription(false)}
-                >
-                  Preview
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={isEditingJobDescription ? "secondary" : "ghost"}
-                  onClick={() => setIsEditingJobDescription(true)}
-                >
-                  Edit
-                </Button>
-              </div>
-            </div>
-            <div className="body">
-              {isEditingJobDescription ? (
-                <Textarea
-                  value={resolvedJobDescription}
-                  onChange={(event) =>
-                    setResolvedJobDescription(event.target.value)
-                  }
-                  minHeight="100%"
-                  showCharCount={false}
-                  showClearButton={false}
-                  className="h-full resize-none min-h-[600px]"
-                  containerClassName="h-full"
-                  aria-label="Edit job description"
                 />
-              ) : (
-                <StructuredJobDescription content={resolvedJobDescription} />
-              )}
+              </div>
+
+              <textarea
+                rows={1}
+                wrap="soft"
+                value={jobInput}
+                onChange={(event) => setJobInput(event.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder={
+                  isHero
+                    ? "Paste a job posting URL (LinkedIn, Seek, Indeed...) or paste full Job Description"
+                    : "Paste a job description or link to tailor..."
+                }
+                aria-label="Job description or link"
+                className={cn(
+                  "min-w-0 flex-1 resize-none overflow-y-auto break-words bg-transparent text-ink-primary placeholder:text-ink-secondary/60 outline-none leading-relaxed",
+                  compact
+                    ? "max-h-20 py-1 text-xs"
+                    : isHero
+                    ? "max-h-36 py-2 text-sm sm:text-base placeholder:text-sm"
+                    : "max-h-28 py-1.5 text-sm",
+                )}
+              />
+
+              <div className="flex items-center gap-1.5 shrink-0">
+                {jobInput.trim() ? (
+                  <>
+                    <Tooltip content="Clear input" side="top">
+                      <button
+                        type="button"
+                        onClick={handleClearInput}
+                        className={cn(
+                          "flex items-center justify-center rounded-full transition-all cursor-pointer select-none",
+                          compact ? "size-8" : isHero ? "size-10" : "size-9",
+                          "bg-background-secondary/50 text-ink-secondary/70 hover:bg-background-secondary hover:text-ink-primary dark:bg-white/5 dark:text-ink-secondary/60 dark:hover:bg-white/10 dark:hover:text-white",
+                        )}
+                        aria-label="Clear input"
+                      >
+                        <X className={compact ? "size-4" : isHero ? "size-5" : "size-4.5"} />
+                      </button>
+                    </Tooltip>
+
+                    <Tooltip content={isInspecting ? "Analyzing..." : "Analyze & Tailor"} side="top">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (jobInput.trim()) {
+                            void inspectInput();
+                          }
+                        }}
+                        disabled={isInspecting || isGenerating}
+                        className={cn(
+                          "flex items-center justify-center rounded-full transition-all select-none",
+                          compact ? "size-8" : isHero ? "size-10" : "size-9",
+                          !isInspecting && !isGenerating
+                            ? "bg-primary text-primary-foreground shadow-md hover:opacity-95 active:scale-95 cursor-pointer hover:shadow-primary/30 hover:shadow-lg"
+                            : "bg-foreground/5 text-ink-secondary/35 dark:bg-white/5 dark:text-white/25 cursor-not-allowed",
+                        )}
+                        aria-label="Submit"
+                      >
+                        {isInspecting ? (
+                          <Loader2 className={cn("animate-spin", compact ? "size-4" : isHero ? "size-5" : "size-4.5")} />
+                        ) : (
+                          <ArrowUp className={compact ? "size-4" : isHero ? "size-5" : "size-4.5"} />
+                        )}
+                      </button>
+                    </Tooltip>
+                  </>
+                ) : (
+                  <Tooltip content="Paste from clipboard" side="top">
+                    <button
+                      type="button"
+                      onClick={handlePasteFromClipboard}
+                      className={cn(
+                        "flex items-center justify-center rounded-full transition-all cursor-pointer select-none",
+                        compact ? "size-8" : isHero ? "size-10" : "size-9",
+                        "bg-primary text-primary-foreground shadow-md hover:opacity-95 active:scale-95 hover:shadow-primary/30 hover:shadow-lg",
+                      )}
+                      aria-label="Paste from clipboard"
+                    >
+                      <ClipboardPaste className={compact ? "size-4" : isHero ? "size-5" : "size-4.5"} />
+                    </button>
+                  </Tooltip>
+                )}
+              </div>
             </div>
           </div>
         </div>
-
-        <div className="footer justify-between w-full">
-
-                        <div className="flex flex-wrap items-center gap-2">
-                {(
-                  [
-                    ["resume", "Resume"],
-                    ["cover_letter", "Cover letter"],
-                    ["both", "Resume + Cover letter"],
-                  ] as const
-                ).map(([value, label]) => (
-                  <Button
-                    key={value}
-                    type="button"
-                    variant={docType === value ? null : "secondary"}
-                    onClick={() => setDocType(value)}
-                  >
-                    {label}
-                  </Button>
-                ))}
-              </div>
-              <div className="flex gap-2 flex-1 justify-end">
-
-          <Button variant="outline" onClick={() => setIsConfirming(false)}>
-            Cancel
-          </Button>
-          <Button onClick={confirmGeneration}>Generate</Button></div>
-        </div>
-      </Modal>
+      </div>
     </div>
   );
 }

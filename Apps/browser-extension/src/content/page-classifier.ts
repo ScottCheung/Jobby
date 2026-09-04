@@ -43,6 +43,8 @@ const DEDICATED_ATS_HOSTS: ReadonlyArray<RegExp> = [
   /^(?:www\.)?recruitcrm\.io$/,
   /^app\.vbench\.com\.au$/,
   /(?:^|\.)t1cloud\.com$/,
+  /(?:^|\.)micro1\.ai$/,
+  /(?:^|\.)dayforcehcm\.com$/,
 ];
 
 export interface MajorPlatformRule {
@@ -249,6 +251,7 @@ const JOB_URL_PATTERNS: ReadonlyArray<RegExp> = [
   /[/._#-]roles?(?:[/._?#-]|$)/i,
   /[/._#-]openings?(?:[/._?#-]|$)/i,
   /[/._#-]postings?(?:[/._?#-]|$)/i,
+  /[/._#-]post\/[a-z0-9-]+/i,
   /[/._#-]requisitions?(?:[/._?#-]|$)/i,
   /[/._#-]apply(?:[/._?#-]|$)/i,
   /[/._#-]application(?:wizard)?(?:[/._?#-]|$)/i,
@@ -288,6 +291,8 @@ const JOB_DOM_SELECTORS = [
   "[class*='t1-' i]",
   "[class*='application-wizard' i]",
   "[class*='wizard' i]",
+  "[test-id='job-detail-title']",
+  "[test-id='job-detail-body']",
 ] as const;
 
 /** Headings that almost always appear on a job detail page. */

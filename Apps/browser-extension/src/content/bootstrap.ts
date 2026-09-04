@@ -176,6 +176,25 @@ const onJobInspectionMessage = (event: MessageEvent) => {
 window.addEventListener("message", onJobInspectionMessage);
 cleanupCallbacks.push(() => window.removeEventListener("message", onJobInspectionMessage));
 
+const onTailoredResumeMessage = (event: MessageEvent) => {
+  if (
+    event.source !== window ||
+    event.origin !== window.location.origin ||
+    !isJobbyWebAppPage() ||
+    event.data?.source !== 'jobby-web-app' ||
+    event.data?.type !== 'JOBBY_TAILORED_RESUME_UPDATED' ||
+    !isExtensionContextValid() ||
+    !chrome.storage?.local
+  ) {
+    return;
+  }
+  void chrome.storage.local.set({ 'jobby-tailored-resume-version': Date.now() });
+};
+window.addEventListener('message', onTailoredResumeMessage);
+cleanupCallbacks.push(() =>
+  window.removeEventListener('message', onTailoredResumeMessage),
+);
+
 // Broadcast extension theme changes to web app window in real-time
 if (isExtensionContextValid() && chrome.storage?.onChanged) {
   const onStorageChanged = (changes: Record<string, chrome.storage.StorageChange>, areaName: string) => {

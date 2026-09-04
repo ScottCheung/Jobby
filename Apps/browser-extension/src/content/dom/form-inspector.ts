@@ -90,8 +90,11 @@ function isHoneypotField(element: HTMLElement, label: string): boolean {
 function isLikelyHelperText(value: string): boolean {
   const text = cleanText(value);
   if (!text) return true;
-  return /^(?:optional|required|please (?:enter|select|choose)|this field is|required|invalid|error:|must be|we(?:'| a)ll use|your information will|by continuing|learn more|privacy (?:policy|notice)|character limit)/i.test(text) ||
-    /^(?:accepted formats?|supported formats?|maximum file size|format:|e\.g\.?)/i.test(text);
+  return (
+    /^(?:optional|required|please (?:enter|select|choose)|this field is|invalid|error:|must be|we(?:'| a)ll use|your information will|by continuing|learn more|privacy (?:policy|notice)|character limit)/i.test(text) ||
+    /^(?:accepted formats?|supported formats?|maximum file size|format:|e\.g\.?)/i.test(text) ||
+    /(?:is required|is invalid|cannot be empty|can't be blank|is missing|please enter a valid|url is required)$/i.test(text)
+  );
 }
 
 function isValidationElement(element: HTMLElement): boolean {
@@ -99,8 +102,9 @@ function isValidationElement(element: HTMLElement): boolean {
   return (
     element.getAttribute("role") === "alert" ||
     element.hasAttribute("aria-live") ||
-    /(?:^|[-_\s])(?:error|errors|invalid|validation|helper|hint)(?:$|[-_\s])/i.test(className) ||
-    /(?:error|validation|helper|hint)/i.test(element.id)
+    /(?:^|[-_\s])(?:error|errors|invalid|validation|helper|hint|text-red)(?:$|[-_\s])/i.test(className) ||
+    /(?:error|validation|helper|hint)/i.test(element.id) ||
+    isLikelyHelperText(element.textContent || "")
   );
 }
 
@@ -425,10 +429,37 @@ function ariaCheckboxIsChecked(element: HTMLElement): boolean {
 }
 
 function isDocumentSelectionRadio(element: HTMLInputElement): boolean {
-  return (
-    element.type.toLowerCase() === "radio" &&
-    (element.id.startsWith("jobsDocumentCardToggle") || Boolean(element.closest(".jobs-document-upload-redesign-card")))
+  if (element.type.toLowerCase() !== "radio") return false;
+  if (
+    element.id.startsWith("jobsDocumentCardToggle") ||
+    Boolean(element.closest(".jobs-document-upload-redesign-card"))
+  ) {
+    return true;
+  }
+  const name = cleanText(element.getAttribute("name")).toLowerCase();
+  const id = cleanText(element.id).toLowerCase();
+  const value = cleanText(element.value).toLowerCase();
+  if (
+    /(?:resume|cv)[-_]?option/i.test(name) ||
+    /(?:resume|cv)[-_]?(?:upload|profile|stored|select)/i.test(id) ||
+    /(?:resume|cv)[-_]?(?:upload|profile|stored|select)/i.test(value)
+  ) {
+    return true;
+  }
+
+  const container = element.closest<HTMLElement>("fieldset, [role='radiogroup'], section, div");
+  const heading = cleanText(
+    container?.querySelector("legend, h1, h2, h3, h4, [role='heading']")?.textContent,
   );
+  if (/^(?:resume|curriculum vitae|cv|简历|履历)$/i.test(heading)) {
+    const hasUploadOption = Boolean(
+      container?.querySelector("input[type='file']") ||
+        /(?:upload|stored|profile|上传)/i.test(cleanText(container?.textContent)),
+    );
+    if (hasUploadOption) return true;
+  }
+
+  return false;
 }
 
 function fieldType(element: HTMLElement): FormFieldType {
@@ -1112,6 +1143,31 @@ export function labelFor(element: HTMLElement, scope: QueryScope): string {
     const parentLabel = element.closest("label");
     const parentText = labelTextWithoutControl(parentLabel);
     if (parentText) return cleanLabel(parentText);
+
+    // Immediate previous sibling label: e.g. <label>Last name</label><input>
+    let prev = element.previousElementSibling as HTMLElement | null;
+    while (prev) {
+      if (prev.matches("label, [class*='label' i], [class*='prompt' i], [class*='title' i]")) {
+        const text = labelTextWithoutControl(prev);
+        if (text && !isLikelyHelperText(text) && !isValidationElement(prev)) {
+          return cleanLabel(text);
+        }
+      }
+      prev = prev.previousElementSibling as HTMLElement | null;
+    }
+
+    // Direct local container's label if it contains only this input (e.g. <div><label>Last name</label><input></div>)
+    const localWrapper = element.parentElement;
+    if (localWrapper && !localWrapper.matches("form, body, html, [role='form'], [class*='grid' i], [class*='row' i]")) {
+      const localLabels = Array.from(localWrapper.querySelectorAll<HTMLElement>("label, [class*='label' i]"))
+        .filter((l) => !isOptionLabelElement(l, element) && !isValidationElement(l));
+      if (localLabels.length === 1 && localLabels[0]) {
+        const text = labelTextWithoutControl(localLabels[0]);
+        if (text && !isLikelyHelperText(text)) {
+          return cleanLabel(text);
+        }
+      }
+    }
   }
 
   const fieldset = element.closest("fieldset");
@@ -1706,14 +1762,32 @@ export function controlsInScope(scope: FormScope): Array<HTMLInputElement | HTML
   return queryAllInScope<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(scope, CONTROL_SELECTOR);
 }
 
+function hasVisibleChoiceLabel(element: HTMLInputElement): boolean {
+  const type = element.type.toLowerCase();
+  if (type !== "radio" && type !== "checkbox") return false;
+  return Array.from(element.labels || []).some((label) => isVisibleElement(label));
+}
+
 export function visibleControlsInScope(scope: FormScope): Array<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement> {
-  return controlsInScope(scope).filter((element) => isVisibleElement(element) && isInspectableControl(element));
+  return controlsInScope(scope).filter(
+    (element) =>
+      (isVisibleElement(element) ||
+        (element instanceof HTMLInputElement && hasVisibleChoiceLabel(element))) &&
+      isInspectableControl(element),
+  );
 }
 
 export function fieldKeyFor(element: HTMLElement, index: number, scope?: FormScope): string {
   if (element instanceof HTMLInputElement && element.type.toLowerCase() === 'file') {
     const semanticKey = semanticFileKey(element);
     if (semanticKey) return semanticKey;
+  }
+  if (
+    element instanceof HTMLInputElement &&
+    element.type.toLowerCase() === "radio" &&
+    /^questionnaire\.indirect_/i.test(cleanText(element.getAttribute("name")))
+  ) {
+    return cleanText(element.getAttribute("name"));
   }
   const explicit = cleanText(element.id) || cleanText(element.getAttribute("name"));
   if (explicit) return explicit;

@@ -261,6 +261,7 @@ async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
 export const api = {
   health: () => apiRequest<{ status: string }>("/health"),
   reviewJob: (payload: {
+    tailored_resume_id?: string;
     job_description: string;
     title?: string;
     company?: string;

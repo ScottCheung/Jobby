@@ -2,6 +2,7 @@
 
 import {
   Document,
+  Font,
   Link as PdfLink,
   Page,
   Path as PdfPath,
@@ -12,8 +13,23 @@ import {
 } from '@react-pdf/renderer';
 import { resumeContactItems, resumeFullName, COVER_LETTER_SIGNATURE_STYLE } from './helpers';
 import type { MasterResumeData } from './types';
+import { CLBG_MAIN_PATH_D } from './cover-letter-contour';
+import { SACRAMENTO_FONT_SOURCE } from './cover-letter-font';
+import { coverLetterBody } from './cover-letter-content';
+import {
+  createResumeHighlightRules,
+  tokenizeResumeText,
+  type ResumeHighlightRules,
+} from './highlights';
+
+export { coverLetterBody };
 
 export { COVER_LETTER_SIGNATURE_STYLE };
+
+Font.register({
+  family: 'Sacramento',
+  src: SACRAMENTO_FONT_SOURCE,
+});
 
 interface CoverLetterMetrics {
   bodyFontSize: number;
@@ -30,11 +46,16 @@ interface CoverLetterMetrics {
   signatureGapTop: number;
 }
 
-export function computeLayoutMetrics(text: string): CoverLetterMetrics {
-  const wordCount = text.trim().split(/\s+/).filter(Boolean).length;
-  const charCount = text.length;
+export function computeLayoutMetrics(text?: string | null): CoverLetterMetrics {
+  const safeText = text || '';
+  const wordCount = safeText.trim().split(/\s+/).filter(Boolean).length;
+  const charCount = safeText.length;
+  const paragraphCount = safeText
+    .trim()
+    .split(/\n\s*\n/)
+    .filter(Boolean).length;
 
-  if (wordCount < 160 || charCount < 950) {
+  if (wordCount < 160 && charCount < 950) {
     // Short letter: spacious, elegant letterhead spacing
     return {
       bodyFontSize: 11,
@@ -50,7 +71,10 @@ export function computeLayoutMetrics(text: string): CoverLetterMetrics {
       salutationGapBottom: 14,
       signatureGapTop: 24,
     };
-  } else if (wordCount < 260 || charCount < 1600) {
+  } else if (
+    (wordCount < 260 || charCount < 1600) &&
+    !(paragraphCount >= 3 && charCount > 1400)
+  ) {
     // Standard medium letter: balanced and open
     return {
       bodyFontSize: 10.2,
@@ -109,11 +133,12 @@ interface ParsedCoverLetter {
 }
 
 export function parseCoverLetterContent(
-  text: string,
+  text?: string | null,
   candidateData?: MasterResumeData,
   company?: string,
 ): ParsedCoverLetter {
-  const rawParagraphs = text
+  const body = coverLetterBody(text);
+  const paragraphs = body
     .split(/\n\s*\n/)
     .map((p) => p.trim())
     .filter((p): p is string => Boolean(p));
@@ -124,34 +149,9 @@ export function parseCoverLetterContent(
   const signoffName =
     candidateData ? resumeFullName(candidateData) : 'Scott Zhang';
 
-  const remainingParagraphs: string[] = [];
-
-  for (let i = 0; i < rawParagraphs.length; i++) {
-    const p = rawParagraphs[i];
-    if (!p) continue;
-
-    // Check and strip salutation at beginning if present
-    if (i === 0 && /^Dear\b/i.test(p)) {
-      continue;
-    }
-
-    // Check and strip signoff at end if present
-    if (
-      i >= rawParagraphs.length - 2 &&
-      /^(Sincerely|Best regards|Kind regards|Warm regards|Regards|Respectfully|Yours sincerely)/i.test(
-        p,
-      )
-    ) {
-      continue;
-    }
-
-    remainingParagraphs.push(p);
-  }
-
   return {
     salutation,
-    paragraphs:
-      remainingParagraphs.length > 0 ? remainingParagraphs : rawParagraphs,
+    paragraphs,
     signoff,
     signoffName,
   };
@@ -163,6 +163,7 @@ function renderPdfFormattedParagraph(
   lineHeight: number,
   marginBottom: number,
   keyPrefix: string,
+  rules: ResumeHighlightRules,
 ) {
   const parts = text.split(/(\*\*.*?\*\*)/g);
   return (
@@ -176,21 +177,23 @@ function renderPdfFormattedParagraph(
         textAlign: 'justify',
       }}
     >
-      {parts.map((part, index) => {
-        if (part.startsWith('**') && part.endsWith('**')) {
-          return (
-            <Text
-              key={index}
-              style={{
-                fontFamily: 'Helvetica-Bold',
-                color: '#1C1917',
-              }}
-            >
-              {part.slice(2, -2)}
-            </Text>
-          );
-        }
-        return <Text key={index}>{part}</Text>;
+      {parts.flatMap((part, index) => {
+        const manuallyEmphasized =
+          part.startsWith('**') && part.endsWith('**');
+        const value = manuallyEmphasized ? part.slice(2, -2) : part;
+
+        return tokenizeResumeText(value, rules).map((token, tokenIndex) => (
+          <Text
+            key={`${index}-${tokenIndex}`}
+            style={
+              manuallyEmphasized || token.kind !== 'plain' ?
+                { fontFamily: 'Helvetica-Bold', color: '#1C1917' }
+              : undefined
+            }
+          >
+            {token.value}
+          </Text>
+        ));
       })}
     </Text>
   );
@@ -303,6 +306,7 @@ export function CoverLetterPdfDocument({
   const name = candidateData ? resumeFullName(candidateData) : 'Scott Zhang';
   const headline = candidateData?.basics?.headline;
   const contacts = candidateData ? resumeContactItems(candidateData) : [];
+  const highlightRules = createResumeHighlightRules(candidateData ?? {});
   const metrics = computeLayoutMetrics(coverLetter);
   const { salutation, paragraphs, signoff, signoffName } =
     parseCoverLetterContent(coverLetter, candidateData, company);
@@ -323,7 +327,7 @@ export function CoverLetterPdfDocument({
       <Page
         size='A4'
         style={{
-          paddingTop: metrics.paddingTop,
+          paddingTop: metrics.paddingTop + 8,
           paddingBottom: metrics.paddingBottom,
           paddingLeft: metrics.paddingX,
           paddingRight: metrics.paddingX,
@@ -333,60 +337,43 @@ export function CoverLetterPdfDocument({
           position: 'relative',
         }}
       >
-        {/* Top-Right Decorative Accent (Ultra-lightweight vector contour) */}
+        {/* Top-Right Decorative Contour */}
         <PdfSvg
-          viewBox='0 0 100 100'
+          viewBox='0 0 928 888'
           style={{
             position: 'absolute',
-            top: -20,
-            right: -20,
-            width: 120,
-            height: 120,
-            opacity: 0.85,
+            top: -72,
+            right: -52,
+            width: 250,
+            height: 250,
+            opacity: 1,
+            transform: 'rotate(-85deg)',
           }}
         >
           <PdfPath
-            d='M 20,0 C 60,10 90,40 100,80 L 100,0 Z'
-            fill='#FAF5EC'
-          />
-          <PdfPath
-            d='M 40,0 C 70,15 85,45 100,75'
-            fill='none'
-            stroke='#D4A853'
-            strokeWidth={1.2}
-            opacity={0.7}
-          />
-          <PdfPath
-            d='M 60,0 C 80,18 90,42 100,65'
-            fill='none'
-            stroke='#D4A853'
-            strokeWidth={0.8}
-            opacity={0.4}
+            d={CLBG_MAIN_PATH_D}
+            fill='#D4A853'
+            transform='matrix(0.866025, 0.5, -0.500207, 0.866384, 309.4571, 6.361)'
           />
         </PdfSvg>
 
-        {/* Bottom-Left Decorative Accent (Ultra-lightweight vector contour) */}
+        {/* Bottom-Left Decorative Contour */}
         <PdfSvg
-          viewBox='0 0 100 100'
+          viewBox='0 0 928 888'
           style={{
             position: 'absolute',
-            bottom: -30,
-            left: -30,
-            width: 140,
-            height: 140,
-            opacity: 0.55,
+            bottom: -225,
+            left: -150,
+            width: 560,
+            height: 560,
+            opacity: 0.28,
+            transform: 'rotate(-25deg)',
           }}
         >
           <PdfPath
-            d='M 0,20 C 10,60 40,90 80,100 L 0,100 Z'
-            fill='#FAF5EC'
-          />
-          <PdfPath
-            d='M 0,40 C 15,70 45,85 75,100'
-            fill='none'
-            stroke='#D4A853'
-            strokeWidth={1}
-            opacity={0.6}
+            d={CLBG_MAIN_PATH_D}
+            fill='#D4A853'
+            transform='matrix(0.866025, 0.5, -0.500207, 0.866384, 309.4571, 6.361)'
           />
         </PdfSvg>
         {/* ── 2. DETAILED REFERENCE / SUBJECT SECTION (Placed on top) ── */}
@@ -410,7 +397,7 @@ export function CoverLetterPdfDocument({
           >
             <Text
               style={{
-                fontSize: 8.8,
+                fontSize: 7,
                 fontFamily: 'Helvetica-Bold',
                 color: '#784508',
                 letterSpacing: 0.2,
@@ -559,6 +546,7 @@ export function CoverLetterPdfDocument({
               metrics.bodyLineHeight,
               metrics.paragraphGap,
               `para-${i}`,
+              highlightRules,
             ),
           )}
         </View>
@@ -585,9 +573,10 @@ export function CoverLetterPdfDocument({
           </Text>
           <Text
             style={{
-              fontSize: 22,
-              fontFamily: 'Times-Italic',
+              fontSize: 26,
+              fontFamily: 'Sacramento',
               color: '#784508',
+              transform: 'rotate(-4deg)',
             }}
           >
             {signoffName}

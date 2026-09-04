@@ -1,5 +1,7 @@
 /** @format */
 
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import { apiClient } from '../../background/api-client';
 import type { PageInspection } from '../../shared/contracts/page-inspection';
@@ -9,6 +11,7 @@ import type {
   TailoredResume,
 } from '../../shared/contracts/tailored-resume';
 import { tailorGenerationFingerprint } from '../hooks/useTailoredResumeStudio';
+import { TailorStudioCard } from './TailorStudioCard';
 
 describe('Document Studio & Resume Tailoring (Zero-Token Mock Mode)', () => {
   const sampleInspection: PageInspection = {
@@ -307,16 +310,38 @@ describe('Document Studio & Resume Tailoring (Zero-Token Mock Mode)', () => {
       'TechnologyOne',
       '.NET Developer',
     );
-    expect(filename).toBe('Scott Zhang_CV_TechnologyOne_.NET Developer.pdf');
+    expect(filename).toBe('Scott Zhang - CV - TechnologyOne - .NET Developer.pdf');
 
     // Without company or job title
     expect(formatResumeFilename(testResume, 'Google', '')).toBe(
-      'Scott Zhang_CV_Google.pdf',
+      'Scott Zhang - CV - Google.pdf',
     );
     expect(formatResumeFilename(testResume, '', 'Frontend Lead')).toBe(
-      'Scott Zhang_CV_Frontend Lead.pdf',
+      'Scott Zhang - CV - Frontend Lead.pdf',
     );
-    expect(formatResumeFilename(testResume, '', '')).toBe('Scott Zhang_CV.pdf');
+    expect(formatResumeFilename(testResume, '', '')).toBe('Scott Zhang - CV.pdf');
+
+    // Sanitizes special characters and normalizes Unicode dashes
+    expect(
+      formatResumeFilename(
+        testResume,
+        'Macquarie Group',
+        'C# Developer – Trading Desk Software Engineer (Relocation) - J12730',
+      ),
+    ).toBe(
+      'Scott Zhang - CV - Macquarie Group - C Developer - Trading Desk Software Engineer (Relocation) - J12730.pdf',
+    );
+
+    // Sanitizes quotes, slashes, and complex punctuation
+    expect(
+      formatResumeFilename(
+        testResume,
+        'AT&T / "Acme" Corp',
+        'Senior Fullstack/Backend Engineer (Node.js & C++) - #101',
+      ),
+    ).toBe(
+      'Scott Zhang - CV - AT T Acme Corp - Senior Fullstack Backend Engineer (Node.js C ) - 101.pdf',
+    );
   });
 
   it('aligns preview filename with the selected tailored document rather than current page', async () => {
@@ -355,8 +380,50 @@ describe('Document Studio & Resume Tailoring (Zero-Token Mock Mode)', () => {
       resolvedJobTitle,
     );
 
-    expect(resumeFilename).toBe('Scott Zhang_CV_Google_Staff Engineer.pdf');
-    expect(clFilename).toBe('Scott Zhang_CL_Google_Staff Engineer.pdf');
+    expect(resumeFilename).toBe('Scott Zhang - CV - Google - Staff Engineer.pdf');
+    expect(clFilename).toBe('Scott Zhang - CL - Google - Staff Engineer.pdf');
+  });
+
+  it('prioritizes user-modified job details from inspection snapshot over previous document metadata', async () => {
+    const { formatResumeFilename, formatCoverLetterFilename } = await import(
+      '@jobby/ui/components/UI/Resume/helpers'
+    );
+    const testResume: MasterResumeData = {
+      basics: {
+        first_name: 'Scott',
+        last_name: 'Zhang',
+      },
+    };
+
+    const savedDoc = {
+      company: 'Old Recognized Company',
+      job_title: 'Old Recognized Title',
+    };
+    const userModifiedSnapshot = {
+      company: 'User Overridden Corp',
+      title: 'Senior Principal Engineer',
+    };
+
+    const effectiveCompany = userModifiedSnapshot.company || savedDoc.company;
+    const effectiveJobTitle = userModifiedSnapshot.title || savedDoc.job_title;
+
+    const resumeFilename = formatResumeFilename(
+      testResume,
+      effectiveCompany,
+      effectiveJobTitle,
+    );
+    const clFilename = formatCoverLetterFilename(
+      testResume,
+      effectiveCompany,
+      effectiveJobTitle,
+    );
+
+    expect(resumeFilename).toBe(
+      'Scott Zhang - CV - User Overridden Corp - Senior Principal Engineer.pdf',
+    );
+    expect(clFilename).toBe(
+      'Scott Zhang - CL - User Overridden Corp - Senior Principal Engineer.pdf',
+    );
   });
 
   it('provides concise AI status messages for resume, cover letter, and bundle generation', async () => {
@@ -436,17 +503,25 @@ describe('Document Studio & Resume Tailoring (Zero-Token Mock Mode)', () => {
   });
 
   it('renders cover letter PDF with vector SVG in milliseconds without hanging', async () => {
-    const { COVER_LETTER_SIGNATURE_STYLE, renderCoverLetterPdfOnce } =
+    const {
+      COVER_LETTER_SIGNATURE_STYLE,
+      coverLetterBody,
+      renderCoverLetterPdfOnce,
+    } =
       await import('@jobby/ui/components/UI/Resume/cover-letter-pdf-document');
 
     expect(COVER_LETTER_SIGNATURE_STYLE).toEqual({
       fontFamily:
-        "'Sacramento', 'Dancing Script', 'Caveat', 'Brush Script MT', 'Segoe Script', cursive",
+        "'Sacramento', 'Segoe Script', cursive",
       fontStyle: 'normal',
       fontWeight: 400,
     });
 
     const sampleLetter = `Dear Hiring Team,\n\nI am writing to express my enthusiasm for the Senior Frontend Engineer position at Acme Corp. With extensive experience in React, TypeScript, and modern design systems, I have delivered robust user interfaces and high-performance web applications.\n\nThank you for considering my application.\n\nSincerely,\nScott Zhang`;
+
+    expect(coverLetterBody(sampleLetter)).toBe(
+      'I am writing to express my enthusiasm for the Senior Frontend Engineer position at Acme Corp. With extensive experience in React, TypeScript, and modern design systems, I have delivered robust user interfaces and high-performance web applications.\n\nThank you for considering my application.',
+    );
 
     const start = Date.now();
     const { blob, pages } = await renderCoverLetterPdfOnce(
@@ -463,7 +538,7 @@ describe('Document Studio & Resume Tailoring (Zero-Token Mock Mode)', () => {
     expect(duration).toBeLessThan(3000);
   });
 
-  it('shows the worker-generated cover letter PDF size in preview metadata', async () => {
+  it('shows the generated cover letter PDF size in preview metadata', async () => {
     const { formatCoverLetterPdfFileSize } = await import(
       '@jobby/ui/components/UI/Resume/helpers'
     );
@@ -505,5 +580,103 @@ describe('Document Studio & Resume Tailoring (Zero-Token Mock Mode)', () => {
     expect(resumeMessages.some((m) => m.toLowerCase().includes('resume'))).toBe(true);
     expect(clMessages.some((m) => m.toLowerCase().includes('cover letter'))).toBe(true);
     expect(bothMessages.some((m) => m.toLowerCase().includes('resume') || m.toLowerCase().includes('letter'))).toBe(true);
+  });
+
+  it('renders empty state placeholder with re-detect and action buttons when no documents exist', () => {
+    const mockStudio: any = {
+      jobTitle: '',
+      company: '',
+      datePosted: '',
+      jobDescription: '',
+      mockMode: false,
+      setMockMode: vi.fn(),
+      isPreviewLoading: false,
+      generationTasks: [],
+      isGeneratingType: vi.fn().mockReturnValue(false),
+      activeOptimisticId: null,
+      preview: null,
+      showPreviewModal: false,
+      setShowPreviewModal: vi.fn(),
+      result: null,
+      savedResumes: [],
+      careerProfiles: [],
+      selectedProfileId: '',
+      switchProfile: vi.fn(),
+      makeDefaultProfile: vi.fn(),
+      originalResume: null,
+      detectedJob: null,
+      populateFromDetected: vi.fn(),
+      loadSavedResume: vi.fn(),
+      previewPrompt: vi.fn(),
+      generateTailoredResume: vi.fn(),
+      cancelGeneration: vi.fn(),
+      deleteSavedResume: vi.fn(),
+      simulateDevGeneration: vi.fn(),
+      clearDevGeneration: vi.fn(),
+    };
+
+    const html = renderToStaticMarkup(
+      createElement(TailorStudioCard, {
+        studio: mockStudio,
+        latestInspection: null,
+        managementOnly: true,
+        onNavigateHome: vi.fn(),
+        onReDetect: vi.fn(),
+        isInspecting: false,
+      }),
+    );
+
+    expect(html).toContain('No Tailored Documents');
+    expect(html).toContain('Re-scan Current Page');
+    expect(html).toContain('Go to Home');
+    expect(html).toContain('Master Resume');
+    expect(html).toContain('ip-0');
+  });
+
+  it('shows re-scanning state when isInspecting is true on empty state', () => {
+    const mockStudio: any = {
+      jobTitle: '',
+      company: '',
+      datePosted: '',
+      jobDescription: '',
+      mockMode: false,
+      setMockMode: vi.fn(),
+      isPreviewLoading: false,
+      generationTasks: [],
+      isGeneratingType: vi.fn().mockReturnValue(false),
+      activeOptimisticId: null,
+      preview: null,
+      showPreviewModal: false,
+      setShowPreviewModal: vi.fn(),
+      result: null,
+      savedResumes: [],
+      careerProfiles: [],
+      selectedProfileId: '',
+      switchProfile: vi.fn(),
+      makeDefaultProfile: vi.fn(),
+      originalResume: null,
+      detectedJob: null,
+      populateFromDetected: vi.fn(),
+      loadSavedResume: vi.fn(),
+      previewPrompt: vi.fn(),
+      generateTailoredResume: vi.fn(),
+      cancelGeneration: vi.fn(),
+      deleteSavedResume: vi.fn(),
+      simulateDevGeneration: vi.fn(),
+      clearDevGeneration: vi.fn(),
+    };
+
+    const html = renderToStaticMarkup(
+      createElement(TailorStudioCard, {
+        studio: mockStudio,
+        latestInspection: null,
+        managementOnly: true,
+        onNavigateHome: vi.fn(),
+        onReDetect: vi.fn(),
+        isInspecting: true,
+      }),
+    );
+
+    expect(html).toContain('Re-scanning page...');
   });
 });

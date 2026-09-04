@@ -3,7 +3,7 @@
 'use client';
 
 import * as React from 'react';
-import { ClipboardPaste, LucideIcon, X, Eye, EyeOff } from 'lucide-react';
+import { ClipboardPaste, LucideIcon, X, Eye, EyeOff } from '@jobby/ui/components/icons';
 import { cn } from '@/lib/utils';
 import { LabelWithHelp } from '../label/with-help';
 import { Tooltip } from '../tooltip';

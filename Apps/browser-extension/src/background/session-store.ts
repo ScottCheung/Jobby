@@ -5,11 +5,15 @@ import {
 } from "../shared/contracts/execution";
 import { authSessionSchema, type AuthSession, type AuthStatus } from "../shared/contracts/auth";
 import { runtimeSnapshotSchema } from "../shared/contracts/messages";
+import { pageInspectionSchema, type PageInspection } from "../shared/contracts/page-inspection";
+
+type JobPageInspection = Extract<PageInspection, { kind: "job" }>;
 
 const RUNTIME_KEY = "jobby.runtime.snapshot";
 const DIAGNOSTICS_KEY = "jobby.runtime.diagnostics";
 const AUTH_KEY = "jobby.auth.session";
 const AUTOFILL_SESSIONS_KEY = "jobby.autofill.sessions";
+const ASHBY_JOB_INSPECTIONS_KEY = "jobby.ashby.job-inspections";
 const MAX_DIAGNOSTIC_ENTRIES = 200;
 
 let writeQueue: Promise<void> = Promise.resolve();
@@ -114,4 +118,56 @@ export async function clearAutofillSession(tabId: number): Promise<void> {
   const sessions = { ...((stored[AUTOFILL_SESSIONS_KEY] as Record<string, unknown> | undefined) || {}) };
   delete sessions[String(tabId)];
   await chrome.storage.session.set({ [AUTOFILL_SESSIONS_KEY]: sessions });
+}
+
+function ashbyJobCacheKey(rawUrl: string): string | null {
+  try {
+    const url = new URL(rawUrl);
+    if (url.hostname.toLowerCase() !== "jobs.ashbyhq.com") return null;
+    const jobId = url.pathname.split("/").filter(Boolean)[1];
+    return jobId ? `ashby:${jobId.toLowerCase()}` : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function getCachedAshbyJobInspection(
+  rawUrl: string,
+): Promise<JobPageInspection | null> {
+  const cacheKey = ashbyJobCacheKey(rawUrl);
+  if (!cacheKey) return null;
+  const stored = await chrome.storage.session.get(ASHBY_JOB_INSPECTIONS_KEY);
+  const inspections = stored[ASHBY_JOB_INSPECTIONS_KEY];
+  if (!inspections || typeof inspections !== "object") return null;
+  const parsed = pageInspectionSchema.safeParse(
+    (inspections as Record<string, unknown>)[cacheKey],
+  );
+  return parsed.success && parsed.data.kind === "job" ? parsed.data : null;
+}
+
+export async function cacheAshbyJobInspection(
+  inspection: PageInspection,
+): Promise<void> {
+  if (
+    inspection.kind !== "job" ||
+    inspection.snapshot.platform !== "ashby" ||
+    !inspection.snapshot.description?.trim()
+  ) {
+    return;
+  }
+  const cacheKey = `ashby:${inspection.snapshot.externalId.toLowerCase()}`;
+  await serializeWrite(async () => {
+    const stored = await chrome.storage.session.get(ASHBY_JOB_INSPECTIONS_KEY);
+    const inspections =
+      stored[ASHBY_JOB_INSPECTIONS_KEY] &&
+      typeof stored[ASHBY_JOB_INSPECTIONS_KEY] === "object"
+        ? (stored[ASHBY_JOB_INSPECTIONS_KEY] as Record<string, unknown>)
+        : {};
+    await chrome.storage.session.set({
+      [ASHBY_JOB_INSPECTIONS_KEY]: {
+        ...inspections,
+        [cacheKey]: inspection,
+      },
+    });
+  });
 }

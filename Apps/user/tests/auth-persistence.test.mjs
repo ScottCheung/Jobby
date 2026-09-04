@@ -164,3 +164,21 @@ test('the application does not impose a second local login deadline', async () =
   );
   assert.match(serverSource, /cookieStore\.set\(name, value, options\)/);
 });
+
+test('the extension callback does not expose the web refresh token', async () => {
+  const callbackSource = await readFile(
+    new URL('../app/auth/extension-callback/route.ts', import.meta.url),
+    'utf8',
+  );
+  const extensionAuthSource = await readFile(
+    new URL(
+      '../../browser-extension/src/background/auth-service.ts',
+      import.meta.url,
+    ),
+    'utf8',
+  );
+
+  assert.doesNotMatch(callbackSource, /refresh_token/);
+  assert.doesNotMatch(extensionAuthSource, /refresh_token|refreshAuthSession/);
+  assert.match(callbackSource, /supabase\.auth\.getUser\(\)/);
+});

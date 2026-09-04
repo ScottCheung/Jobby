@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { describe, expect, it, beforeEach } from "vitest";
-import { readCurrentPageWhenReady } from "../page-reader";
+import { readCurrentForm, readCurrentPageWhenReady } from "../page-reader";
 import { classifyCurrentPage } from "../page-classifier";
 
 function setLocation(url: string): void {
@@ -1106,6 +1106,275 @@ describe("End-to-End Job Boards Multi-Job Recognition (5+ Jobs per Platform)", (
         expect(inspection.snapshot.platform).toBe("careerone");
         expect(inspection.snapshot.title).toBe("Cyber Security Analyst");
         expect(inspection.snapshot.company).toBe("Commonwealth Bank");
+      }
+    });
+  });
+
+  // ==========================================
+  // 6. MICRO1 (5 Distinct Job Scenarios)
+  // ==========================================
+  describe("micro1 (5 Distinct Job Scenarios)", () => {
+    it("Job 1: Live user URL with JSON-LD and Next.js layout", async () => {
+      setLocation("https://jobs.micro1.ai/post/aeda6c13-c58d-4e11-bf6a-edcb9fdf65c2?first_page=/home&last_page=/experts");
+      document.title = "Substance Use - Adolescent Addiction Specialist | Apply on Job";
+      document.head.innerHTML = `
+        <script id="jobPosting-jsonld" type="application/ld+json">
+        {
+          "@context": "https://schema.org/",
+          "@type": "JobPosting",
+          "title": "Substance Use - Adolescent Addiction Specialist",
+          "description": "Clinical reasoning, Child/Adolescent Clinical Safety expertise, Clinical risk assessment, Severity staging, Intervention judgment",
+          "datePosted": "2026-09-01",
+          "hiringOrganization": {
+            "@type": "Organization",
+            "name": "micro1",
+            "sameAs": "https://micro1.ai"
+          },
+          "jobLocationType": "TELECOMMUTE",
+          "skills": ["Clinical reasoning", "Child/Adolescent Clinical Safety expertise"]
+        }
+        </script>
+        <meta property="og:site_name" content="micro1 Job Portal" />
+      `;
+      document.body.innerHTML = `
+        <main>
+          <div class="grid grid-cols-1 md:grid-cols-10">
+            <div class="col-span-6">
+              <section class="mt-6">
+                <h1>Substance Use - Adolescent Addiction Specialist</h1>
+                <div class="job-description">${LONG_JD}</div>
+              </section>
+            </div>
+            <div class="col-span-4">
+              <form>
+                <input name="name" placeholder="Full name" />
+                <button type="submit">Submit Application</button>
+              </form>
+            </div>
+          </div>
+        </main>
+      `;
+
+      expect(classifyCurrentPage().isJobPage).toBe(true);
+      const inspection = await readCurrentPageWhenReady();
+      expect(inspection.kind).toBe("job");
+      if (inspection.kind === "job") {
+        expect(inspection.snapshot.platform).toBe("micro1");
+        expect(inspection.snapshot.title).toBe("Substance Use - Adolescent Addiction Specialist");
+        expect(inspection.snapshot.company).toBe("micro1");
+        expect(inspection.snapshot.externalId).toBe("aeda6c13-c58d-4e11-bf6a-edcb9fdf65c2");
+        expect(inspection.snapshot.lastPostedAt).toBe("2026-09-01T00:00:00.000Z");
+      }
+    });
+
+    it("Job 2: Senior AI Full Stack Engineer with explicit company and location", async () => {
+      setLocation("https://jobs.micro1.ai/post/f1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d");
+      document.title = "Senior AI Full Stack Engineer | Apply on Job";
+      document.body.innerHTML = `
+        <main>
+          <section>
+            <h1 class="job-title">Senior AI Full Stack Engineer</h1>
+            <div data-testid="company" class="company">OpenTech Labs</div>
+            <div data-testid="location" class="location">San Francisco, CA</div>
+            <div class="description">${LONG_JD}</div>
+            <button type="submit">Apply with 1-Click</button>
+          </section>
+        </main>
+      `;
+
+      expect(classifyCurrentPage().isJobPage).toBe(true);
+      const inspection = await readCurrentPageWhenReady();
+      expect(inspection.kind).toBe("job");
+      if (inspection.kind === "job") {
+        expect(inspection.snapshot.platform).toBe("micro1");
+        expect(inspection.snapshot.title).toBe("Senior AI Full Stack Engineer");
+        expect(inspection.snapshot.company).toBe("OpenTech Labs");
+        expect(inspection.snapshot.location).toBe("San Francisco, CA");
+        expect(inspection.snapshot.externalId).toBe("f1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d");
+      }
+    });
+
+    it("Job 3: Root micro1.ai domain with query parameter ID", async () => {
+      setLocation("https://micro1.ai/post/98765432-abcd-ef01-2345-6789abcdef01?source=board");
+      document.title = "Lead Machine Learning Engineer | micro1";
+      document.head.innerHTML = `
+        <meta property="og:site_name" content="micro1" />
+      `;
+      document.body.innerHTML = `
+        <main>
+          <h2>Lead Machine Learning Engineer</h2>
+          <div class="job-description">${LONG_JD}</div>
+          <button data-action="apply">Apply Now</button>
+        </main>
+      `;
+
+      expect(classifyCurrentPage().isJobPage).toBe(true);
+      const inspection = await readCurrentPageWhenReady();
+      expect(inspection.kind).toBe("job");
+      if (inspection.kind === "job") {
+        expect(inspection.snapshot.platform).toBe("micro1");
+        expect(inspection.snapshot.title).toBe("Lead Machine Learning Engineer");
+        expect(inspection.snapshot.company).toBe("micro1");
+        expect(inspection.snapshot.externalId).toBe("98765432-abcd-ef01-2345-6789abcdef01");
+      }
+    });
+
+    it("Job 4: Skill tags and qualification badges extraction", async () => {
+      setLocation("https://jobs.micro1.ai/post/bbcc1122-3344-5566-7788-99aabbccddeeff");
+      document.title = "Frontend Specialist (React / Next.js) | Apply on Job";
+      document.body.innerHTML = `
+        <main>
+          <h1>Frontend Specialist (React / Next.js)</h1>
+          <div class="flex gap-2">
+            <span class="skill-tag">React</span>
+            <span class="skill-tag">TypeScript</span>
+            <span class="skill-tag">Tailwind CSS</span>
+          </div>
+          <div class="job-description">${LONG_JD}</div>
+          <button type="submit">Submit</button>
+        </main>
+      `;
+
+      expect(classifyCurrentPage().isJobPage).toBe(true);
+      const inspection = await readCurrentPageWhenReady();
+      expect(inspection.kind).toBe("job");
+      if (inspection.kind === "job") {
+        expect(inspection.snapshot.platform).toBe("micro1");
+        expect(inspection.snapshot.technologies).toEqual(
+          expect.arrayContaining(["React", "TypeScript"]),
+        );
+      }
+    });
+
+    it("Job 5: White-label marker on custom domain", async () => {
+      setLocation("https://careers.ai-company.com/open-roles/addiction-specialist");
+      document.title = "Specialist Evaluator";
+      document.head.innerHTML = `
+        <meta property="og:site_name" content="micro1 Job Portal" />
+      `;
+      document.body.innerHTML = `
+        <main data-micro1="true">
+          <h1>Specialist Evaluator</h1>
+          <div class="job-description">${LONG_JD}</div>
+          <button type="submit">Apply</button>
+        </main>
+      `;
+
+      const inspection = await readCurrentPageWhenReady();
+      expect(inspection.kind).toBe("job");
+      if (inspection.kind === "job") {
+        expect(inspection.snapshot.platform).toBe("micro1");
+        expect(inspection.snapshot.title).toBe("Specialist Evaluator");
+        expect(inspection.snapshot.company).toBe("micro1");
+      }
+    });
+
+    it("Job 6: Live micro1 Fullstack Developer page with inline application form", async () => {
+      setLocation("https://jobs.micro1.ai/post/5b7f7477-9ae0-414d-8594-e41ebd207414");
+      document.title = "Fullstack Developer | Apply on Job";
+      document.head.innerHTML = `
+        <script id="jobPosting-jsonld" type="application/ld+json">
+        {
+          "@context": "https://schema.org/",
+          "@type": "JobPosting",
+          "title": "Fullstack Developer",
+          "description": "micro1 is engaging Fullstack Developers to contribute to an innovative customer project.",
+          "datePosted": "2026-04-24",
+          "hiringOrganization": {
+            "@type": "Organization",
+            "name": "micro1",
+            "sameAs": "https://micro1.ai"
+          },
+          "skills": ["React", "Node.js", "JavaScript", "Angular"]
+        }
+        </script>
+        <meta property="og:site_name" content="micro1 Job Portal" />
+      `;
+      document.body.innerHTML = `
+        <main class="relative bg-white">
+          <div class="min-h-screen md:flex relative">
+            <div class="flex-1">
+              <div class="mx-auto max-w-[82vw] mt-6 flex gap-11">
+                <div class="flex w-full max-w-[51vw] flex-col gap-6" data-testid="job-details-container">
+                  <section class="w-full" data-jobby-job-description-root="micro1">
+                    <h1>Fullstack Developer</h1>
+                    <div class="job-html"><div class="ql-editor"><p>Fullstack Developer role</p></div></div>
+                  </section>
+                </div>
+                <div class="flex flex-col gap-2 w-[465px] max-w-[465px]">
+                  <div class="flex flex-col items-start w-full px-5 py-[21px] rounded-[10px] bg-[#F1F2FB]">
+                    <form class="flex flex-col flex-1 min-h-0 w-full grid-cols-1 gap-[15px]">
+                      <div class="flex justify-between items-center shrink-0" data-testid="apply-form-header">
+                        <h2>Interested?</h2>
+                      </div>
+                      <div class="relative flex-1 flex flex-col w-full">
+                        <div class="flex flex-col gap-3">
+                          <div class="grid grid-cols-2 gap-4 w-full">
+                            <div>
+                              <label class="block first-letter:capitalize mb-1 text-[11px] font-normal text-black/80"> First name </label>
+                              <input class="border outline-none font-medium block w-full px-3 !py-2 h-9 placeholder-[#8D8E92]" placeholder="Enter your first name" type="text" value="" name="first_name" />
+                              <div class="text-xs text-red-500">First name is required</div>
+                            </div>
+                            <div>
+                              <label class="block first-letter:capitalize mb-1 text-[11px] font-normal text-black/80"> Last name </label>
+                              <input class="border outline-none font-medium block w-full px-3 !py-2 h-9 placeholder-[#8D8E92]" placeholder="Enter your last name" type="text" value="" name="last_name" />
+                              <div class="text-xs text-red-500">Last name is required</div>
+                            </div>
+                          </div>
+                          <div>
+                            <label class="block mb-1 text-[11px] font-normal first-letter:capitalize text-black/80">Phone number </label>
+                            <input autocomplete="tel" class="PhoneInputInput" type="tel" value="+61" />
+                            <div class="text-xs text-red-500">Phone number is required</div>
+                          </div>
+                          <div>
+                            <label class="block first-letter:capitalize mb-1 text-[11px] font-normal text-black/80"> Linkedin profile URL  </label>
+                            <input class="border outline-none font-medium block w-full px-3 !py-2 h-9 placeholder-[#8D8E92]" placeholder="Enter your LinkedIn URL" type="text" value="" name="linkedin_url" />
+                            <div class="text-xs text-red-500">LinkedIn URL is required</div>
+                          </div>
+                          <div>
+                            <label class="block first-letter:capitalize mb-1 text-[11px] font-normal text-black/80">Upload your resume (in English) </label>
+                            <input accept=".pdf" id="file" type="file" name="file" />
+                          </div>
+                        </div>
+                        <button type="submit">Next</button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </main>
+      `;
+
+      const jobInspection = await readCurrentPageWhenReady();
+      expect(jobInspection.kind).toBe("job");
+      if (jobInspection.kind === "job") {
+        expect(jobInspection.snapshot.platform).toBe("micro1");
+        expect(jobInspection.snapshot.title).toBe("Fullstack Developer");
+        expect(jobInspection.snapshot.company).toBe("micro1");
+        expect(jobInspection.snapshot.externalId).toBe("5b7f7477-9ae0-414d-8594-e41ebd207414");
+      }
+
+      const formInspection = readCurrentForm();
+      expect(formInspection.kind).toBe("application_form");
+      if (formInspection.kind === "application_form") {
+        expect(formInspection.platform).toBe("micro1");
+        expect(formInspection.fields.length).toBeGreaterThanOrEqual(4);
+        const firstName = formInspection.fields.find((f) => f.name === "first_name");
+        expect(firstName?.label).toBe("First name");
+
+        const lastName = formInspection.fields.find((f) => f.name === "last_name");
+        expect(lastName?.label).toBe("Last name");
+
+        const linkedin = formInspection.fields.find((f) => f.name === "linkedin_url");
+        expect(linkedin?.label).toBe("LinkedIn profile");
+
+        const resume = formInspection.fields.find((f) => f.type === "file");
+        expect(resume?.label).toBe("Resume");
+
+        expect(formInspection.submitLabel).toBe("Next");
+        expect(formInspection.action).toBe("next");
       }
     });
   });

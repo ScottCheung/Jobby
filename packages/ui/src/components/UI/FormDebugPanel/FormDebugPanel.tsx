@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useWatch } from 'react-hook-form';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Eye, X, Copy, Check, Bug } from 'lucide-react';
+import { Eye, X, Copy, Check, Bug } from '@jobby/ui/components/icons';
 import { cn } from '@/lib/utils';
 
 interface FormDebugPanelProps {

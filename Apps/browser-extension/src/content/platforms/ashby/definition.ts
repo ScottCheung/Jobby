@@ -1,5 +1,6 @@
 import type { AtsProviderDefinition } from "../platform-definition";
 import { ashbyAutofillPolicy } from "./autofill-policy";
+import { adaptAshbyFormFields } from "./form-field-adapter";
 
 function cleanText(value: string | null | undefined): string {
   return (value || "").replace(/\s+/g, " ").trim();
@@ -36,11 +37,11 @@ export const ashbyDefinition = {
     dom: ".ashby-job-posting-heading, .ashby-application-form-container, [data-testid='job-posting']",
   },
   applicationRoots: [
-    ".ashby-application-form-container",
     "#form",
     "[data-testid='application-form']",
     "form[data-testid*='application' i]",
   ],
+  adaptFormFields: adaptAshbyFormFields,
   autofill: ashbyAutofillPolicy,
   job: {
     roots: ["#root", ".ashby-job-posting-left-pane", "[data-testid='job-posting']", "[data-testid='job-posting-page']"],

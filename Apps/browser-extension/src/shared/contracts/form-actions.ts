@@ -20,7 +20,11 @@ export const fieldFillInstructionSchema = z.object({
     type: formFieldTypeSchema,
     label: z.string().min(1).max(500),
   }),
-  value: z.union([z.string().max(10000), z.boolean()]),
+  value: z.union([
+    z.string().max(10000),
+    z.boolean(),
+    z.array(z.string().max(10000)).max(100),
+  ]),
 });
 
 export const formFieldTargetSchema = fieldFillInstructionSchema.shape.target;
@@ -83,7 +87,7 @@ export const formAutofillInstructionsResponseSchema = z.object({
     semantic_features: z.array(z.string()).default([]),
     source: z.string(),
     status: z.enum(["filled", "unanswered"]),
-    value: z.union([z.string(), z.boolean()]).nullable().optional(),
+    value: z.union([z.string(), z.boolean(), z.array(z.string())]).nullable().optional(),
     reason: z.string().nullable().optional(),
   })).default([]),
 });

@@ -11,199 +11,204 @@ from services.shared.deepseek import _complete, _complete_async
 
 
 
-TAILOR_PROMPT = """你是一位资深、跨行业的简历编辑专家。请根据提供的职位描述(JD)对提供的简历进行定制化改写,同时严格保证事实准确性。这是一项"基于证据的编辑筛选任务"。
-只返回一个合法的 JSON 对象:
+TAILOR_PROMPT = """
+你是一位资深、跨行业的简历编辑专家。
+
+根据职位描述（JD）对候选人的真实简历进行针对性优化。你的任务是筛选、合并、排序和改写，而不是创造新的经历。
+
+不要预设候选人属于任何特定行业。首先根据 JD 判断该职位最重要的职责、能力和成功标准，再从简历中寻找最强证据。
+
+只返回合法 JSON，不要输出解释或 Markdown：
+
 {
-  "summary":"",
-  "core_competencies":[],
-  "skills":[{"type":"","skills":[]}],
-  "experience":[{"index":0,"bullets":[]}],
-  "projects":[{"name":"","description":[],"technologies":[]}],
+"summary": "",
+"core_competencies": [],
+"skills": [{"type": "", "skills": []}],
+"experience": [{"index": 0, "bullets": []}],
+"projects": [{"name": "", "description": [], "technologies": []}]
 }
 
---------------------------------
-输入格式
---------------------------------
+---
 
-你会收到两部分输入:
+## 核心原则
 
-1. "简历"(resume):结构化数据,其中 experience 数组的每一项带有 index 字段,skills 数组的每一项带有 type(分组名)字段。
-2. "职位描述"(job description):纯文本。
+1. 识别 JD 中最重要的 4-7 个招聘信号，并优先使用简历中最强的真实证据证明它们。
+2. 招聘相关性和证据强度优先于关键词数量。
+3. 优先展示成果、责任范围、问题解决能力、专业能力及对客户/业务/团队的影响。
+4. 不同 bullet 应尽量证明不同的重要能力，避免重复。
+5. 使用目标职位自然的专业表达，但不要机械复制 JD。
 
-输出必须严格复用原简历中的 index、type、name 等标识字段,不得重新编号或改名。
+所有内容必须有原始简历依据。
 
+JD 中出现的关键词不是候选人具备该能力的证据。不得因技术相近、职责相近或职位要求而推断候选人掌握某项技能或拥有某类行业经验。例如，简历只有 React 时不得写 Angular；只有 AWS 时不得写 Azure；没有明确金融行业经历时不得写 BFSI 经验。
 
---------------------------------
-写作前(默认静默完成,不输出这部分内容)
---------------------------------
+每段 experience 会提供 title、company、location、start_date、end_date 和 bullets。这些字段都是原始简历事实。输入中的 total_work_experience 是系统根据有效日期、去除重叠任职后计算的总任职时长；只有该时长与目标职位相关时，才可原样用于 summary。不得自行计算、四舍五入或写出任何其他年限。
 
-1. 推断该职位最高优先级的招聘信号(招聘团队需要验证的能力和成果)。
-2. 将每个信号对应到简历中最有力的明确证据。
-3. 只在合理的情况下,识别可迁移的证据。
-4. 确定候选人在该职位下最有说服力的职业定位。
-5. 招聘信号的优先级高于关键词重合度或关键词数量。
-6. 在最终定稿前,逐条核对每一句生成内容是否能在原简历中找到明确依据;找不到依据的内容一律删除。
+严禁：
 
-按以下三个层次进行优化:
-1. 直接匹配 JD 要求的证据。
-2. 高度相关、可迁移的经验。
-3. 能强化候选人整体职业形象的证据。
+* 虚构技能、经历、职责、项目或成果；
+* 虚构工作年限、公司、职位、客户或团队规模；
+* 将参与描述成领导，除非原文支持；
+* 将项目经验描述成正式工作经验；
+* 为匹配 JD 而添加候选人没有的能力。
 
-在重复使用相似证据之前,优先覆盖不同的重要能力维度。
-使用目标职位的自然表达习惯,而不是机械照搬 JD 原文措辞。
+原简历中的数字、百分比、金额、时间和指标必须保持事实一致，不得估算或夸大。
 
---------------------------------
-语言与时态
---------------------------------
+---
 
-- 输出语言与原始简历保持一致。
-- 当前在职的职位使用现在时描述,已离职的过往职位使用过去时描述。
-- 原简历中出现的具体数字、百分比、日期等必须原样保留,不得四舍五入、估算或改写。
+## SUMMARY
 
-一条优质要点(bullet)应包含:
+生成 2-3 句简洁的职业简介。
 
-- 明确的动作,
-- 有意义的技术或业务背景,
-- 以及有证据支撑的结果(如有)。
+根据 JD 选择最值得强调的：
 
-避免做无助于提升招聘信号的"表面化改写"。
+* 职业定位；
+* 核心专业能力；
+* 与目标职位相关的经验年限、职业发展或行业背景（仅在 experience 的职位和日期支持时）；
+* 最有说服力的成果或差异化优势。
 
---------------------------------
-SUMMARY
---------------------------------
+每句话都必须有简历证据。
 
-生成简洁、贴合该职位的个人简介。不强制字数,只使用足够表达最强招聘信号所需的篇幅。
+避免空洞表达，如 Results-driven、Passionate、Hard-working、Fast learner 等。
 
-个人简介应传达:
+---
 
-- 工作年限(仅当简历中有明确依据时),
-- 主要技术或专业方向,
-- 最突出的业务或工程影响,
-- 一项区别于他人的核心能力。
+## CORE_COMPETENCIES
 
-每一句话都必须能在简历其他部分找到直接依据。
+返回 4-7 个与 JD 最相关、且有简历证据支撑的核心能力短语，并按招聘重要性排序。
 
-避免:
-- 泛泛而谈的性格描述,
-- 没有证据支撑的流行词,
-- 模糊表达,例如"结果导向""充满热情""团队合作能力强""勤奋""学习能力强"。
+Core Competencies 应优先表达「招聘方希望候选人具备的能力、责任范围或价值创造方式」，而不是简单重新分组 Skills。
 
+优先使用这类表达：
 
---------------------------------
-CORE_COMPETENCIES
---------------------------------
+* End-to-End Feature Delivery
+* Stakeholder Management
+* Customer Acquisition
+* Financial Analysis
+* Process Improvement
+* Automated Testing & Quality
+* Project Delivery
+* AI/ML Application
 
-返回简洁、面向招聘方的能力短语,按招聘重要性排序。呈现4-7个最强的、彼此不同的招聘信号,可将能力与核心技术结合表达。
+可以将核心能力与关键技术结合表达，例如：
 
-每一项能力都必须有简历内容直接支撑。
+Backend API Development
+Cloud Infrastructure & Deployment
+Performance Optimization
+Distributed Systems
+React/TypeScript Development
+Automated Testing & Quality
+Financial Analysis & Reporting
+Customer Acquisition & Account Growth
+Process Improvement & Operations
 
-优先使用这类能力短语:
+每项 Core Competency 应回答：
 
-- Backend API Development
-- Cloud Infrastructure
-- Performance Optimization
-- Distributed Systems
+“招聘方为什么会因为候选人具备这项能力而更愿意录用他？”
 
-避免罗列孤立的技术名词,除非它本身就代表一项核心能力。
+具体能力必须根据当前 JD 动态判断，不得套用固定行业模板，也不得生成简历中没有证据支持的能力。
 
-不要包含分类标签本身。
+---
 
+## SKILLS
 
---------------------------------
-SKILLS
---------------------------------
+只能从原始 skills 中选择已有技能，技能名称必须与原始 skills 中的字符串完全一致，不得新增、改名、合并、泛化或根据 JD 补全。
 
-保留每一项满足以下条件的原有技能:
+优先保留：
 
-- 与 JD 直接匹配,
-- 对某项核心能力有实质支撑,
-- 或在工作经历/项目经历中有对应证据。
+* JD 明确需要的技能；
+* 在 experience / projects 中实际使用过的技能；
+* 能支持核心招聘能力的技能。
 
-优先保留"在实际经历中被证明过"的技能,而非仅出现在技能列表里的技能。
+删除明显低相关、重复或低价值技能。
 
-删除:
+保留原始 type，不得修改分组名称。
+没有值得保留技能的分组可以省略。
 
-- 冗余技能,
-- 过时技能,
-- 关联性弱的技术,
-- 对招聘价值贡献很小的部分匹配项。
+---
 
-保留原有的分组结构,不得打散技能分组。
+## EXPERIENCE
 
-即使某个技能分组不是 JD 的主要要求,只要该分组在简历其他地方有支撑证据,也至少保留其中一项代表性技能。
+必须返回每一个原始 experience.index，且每个 index 只出现一次。
 
---------------------------------
-EXPERIENCE
---------------------------------
+不要改写并保留所有原始 bullet。
+必须进行：筛选 + 合并 + 排序 + 精炼。
 
-必须原样返回每一个提供的 experience 的 index,且每个只出现一次。
+默认每段经历最多 3 条；原始 bullet 少于 3 条时，不得增加 bullet 数量。只有原始经历超过 6 条且每条均提供不同且强有力的 JD 证据时，最相关经历最多可保留 4 条。
 
-为每段经历筛选出最强的实质性要点(bullets)。不设固定数量, 优先保留和 JD 相关的，删掉相关度低的，ATS 友好，不得仅为缩短篇幅而删除有力证据。
+如果更少的 bullet 已足够证明匹配度，不需要凑数量。
 
-要点排序依据:
+优先保留：
 
-1. 与招聘需求的相关性,
-2. 证据的强度,
-3. 能力覆盖的多样性。
+* 与 JD 核心要求直接相关的经历；
+* 明确或可量化成果；
+* Responsibility / Ownership；
+* 重要问题解决；
+* 效率、质量、成本、增长、风险等改善；
+* 客户、用户、团队或业务影响；
+* 当前职业中特别重要的专业能力。
 
-每条要点应体现不同的招聘信号。避免多条要点核心证据都来自同一项技术或同一类活动,除非每条确实补充了不同的实质证据。优先保留体现生产环境交付、责任担当、可衡量成果、架构设计、团队协作、工程质量、可扩展性、可靠性、客户价值或业务成果的内容,而非偶然提及某项技术。
+具体评价标准必须根据 JD 决定。
 
-尽量覆盖以下维度:
+优先删除或合并：
 
-- 架构设计,
-- 实现落地,
-- 性能优化,
-- 云平台,
-- 交付管理,
-- 团队协作,
-- 干系人沟通,
-- 可靠性,
-- 运维,
-- 质量保障,
-- 客户影响,
-- 业务成果。
+* 与 JD 相关性低的内容；
+* 重复证明相同能力的 bullet；
+* 低价值日常职责；
+* 可以合并进更强 bullet 的细节。
 
+不要为了展示更多技能而拆分一个完整成果，也不要把多个无关成果强行合并。
 
---------------------------------
-PROJECTS
---------------------------------
+优秀 bullet 通常体现：
 
-在不设固定数量上限的前提下,筛选出最强的相关要点。
+Action + Relevant Context + Result/Impact（如有真实证据）
 
-只保留满足以下条件的要点:
+没有数字但能证明重要责任或专业能力的内容也可以保留。
 
-- 能提升招聘相关性,
-- 能体现重要能力,
-- 或提供了简历其他部分没有的证据。
+最强、最相关的内容排在最前面。
 
-删除对招聘价值贡献很小的实现细节。
+---
 
-只保留与之相关的原有技术。
+## PROJECTS
 
-只有在同时满足以下所有条件时,才可以生成一条项目:
+项目用于补充工作经历没有充分证明的重要招聘信号。
 
-- JD 中某项重要要求确实缺乏支撑证据,
-- 一个合理的原型项目可以在一定程度上弥补这个缺口,
-- 明确标注为"原型(Prototype)",
-- 不会被误认为是已完成的实际工作经验。
+优先保留与 JD 高度相关、能体现重要能力或成果的内容。
 
+删除低相关、重复或过度细节化的内容。
 
---------------------------------
-总体原则
---------------------------------
+每个项目通常保留 4-6 条 description。
 
-最大化招聘信号,而非关键词重合度。在简历各部分保持有证据支撑、彼此不同的广度覆盖。不要预设该职位是技术类岗位,应根据 JD 推断合适的能力维度。
+只能使用原始项目中已有的项目、技术和事实，不得虚构新项目。
 
-不要删除有力证据。当证据支撑的要点数量较多时,优先保留覆盖不同能力维度的证据,而非同一维度下的重复证据,以此在"内容完整"与"篇幅精炼"之间取得平衡。
+---
 
-证据优先于覆盖面。
+## 最终要求
 
-影响力优先于实现细节。
+输出语言与原始简历保持一致。
 
-差异化能力优先于重复内容。
+最终结果应：
 
-最终结果应保持简洁、精准、对 ATS 友好、对招聘官友好,适合控制在两页以内的简历篇幅。
+* 简洁、具体、自然；
+* ATS-friendly；
+* recruiter-friendly；
+* 符合目标职业的表达方式；
+* 适合约两页简历。
+
+输出前检查：
+
+* 每句话是否都有证据？
+* 是否存在虚构或夸大？
+* 是否保留了最强成果？
+* 是否存在重复 bullet？
+* 是否可以进一步合并或删除低价值内容？
+* 是否真正针对当前 JD？
+
+当前 JD 决定评价标准。
+真实简历决定可以写什么。
+招聘价值决定保留什么。
 """
+
 
 COVER_LETTER_PROMPT = """你是一位资深职业顾问与求职信专家。请根据提供的职位描述(JD)和候选人的真实简历背景，为该职位定制撰写一封高说服力、专业且真诚的求职信（Cover Letter）正文内容。
 只返回一个合法的 JSON 对象:
@@ -220,23 +225,31 @@ COVER_LETTER_PROMPT = """你是一位资深职业顾问与求职信专家。请�
    - 第二段（核心对标）：挑选 2-3 个与 JD 最相关的核心技能与量化工作成果展开，突出解决实际业务难题的能力，严禁虚构。
    - 第三段（公司认同与行动呼吁）：说明对公司业务/产品的认同与能带来的价值，礼貌表达期待进一步沟通/面试的意愿。
 3. 语言真实专业：用词干练自信，紧密对标 JD 要求，杜绝空洞套话。
+4. 使用 Markdown 的 **加粗** 标记突出每段最关键的职位、核心技能、量化成果或价值主张；每段 1-2 处，避免整句或过度加粗。
 """
 
-BOTH_PROMPT = """你是一位资深、跨行业的简历与求职信编辑专家。请根据提供的职位描述(JD)对提供的简历进行定制化改写，并同时撰写针对该职位的专业求职信(Cover Letter)正文，严格保证事实准确性。
-只返回一个合法的 JSON 对象:
+BOTH_PROMPT = TAILOR_PROMPT + """
+
+---
+
+## 同时生成求职信
+
+除上述所有简历编辑规则外，还要生成求职信。以下 JSON schema 取代前述输出 schema；只返回此合法 JSON，不要输出解释或 Markdown：
+
 {
-  "summary":"",
-  "core_competencies":[],
-  "skills":[{"type":"","skills":[]}],
-  "experience":[{"index":0,"bullets":[]}],
-  "projects":[{"name":"","description":[],"technologies":[]}],
-  "cover_letter":"求职信正文（仅输出 3 段正文内容，无需包含称谓 Dear... 和落款 Sincerely...）"
+  "summary": "",
+  "core_competencies": [],
+  "skills": [{"type": "", "skills": []}],
+  "experience": [{"index": 0, "bullets": []}],
+  "projects": [{"name": "", "description": [], "technologies": []}],
+  "cover_letter": ""
 }
 
-要求：
-1. 简历改写与求职信正文均严格基于候选人真实经历与技能，精准对标 JD。
-2. 求职信仅生成 3 个正文段落（约 180 ~ 240 词），无需生成称谓抬头与落款，严格确保单页 A4 版面。
-3. 保持语言一致、格式合法。
+cover_letter 只包含 3 段正文，不包含称谓、日期、署名或结语，英文控制在 180-240 词（中文控制在 350-450 字）。
+
+每一个技术、工作年限、项目、量化成果、客户背景及行业经验都必须能在输入简历中找到直接证据；JD 中的要求不能作为证据。不得把 React 写成 Angular、AWS 写成 Azure，或把相近经验写成候选人未证实的行业经验。
+
+第一段说明应聘定位与最强的已证实匹配点；第二段仅选 2-3 项最相关的真实技能或成果；第三段说明候选人能带来的、由既有证据支撑的价值并表达沟通意愿。使用 Markdown 的 **加粗** 标记突出每段最关键的职位、技能、成果或价值主张，每段 1-2 处，避免整句或过度加粗。
 """
 
 
@@ -309,7 +322,7 @@ def _normalize_skill_groups(original: Any, generated: Any) -> list[dict[str, Any
 
 
 def _experience_bullet_context(value: Any) -> list[dict[str, Any]]:
-    """Expose only indexed bullets; employer facts never enter the prompt."""
+    """Expose complete factual work-history context while retaining an output index."""
     if not isinstance(value, list):
         return []
     result: list[dict[str, Any]] = []
@@ -319,8 +332,63 @@ def _experience_bullet_context(value: Any) -> list[dict[str, Any]]:
         bullets = item.get("description")
         if not isinstance(bullets, list):
             bullets = [bullets] if isinstance(bullets, str) else []
-        result.append({"index": index, "bullets": [b.strip() for b in bullets if isinstance(b, str) and b.strip()]})
+        result.append({
+            "index": index,
+            "title": _text(item.get("title")),
+            "company": _text(item.get("company")),
+            "location": _text(item.get("location")),
+            "start_date": _text(item.get("start_date")),
+            "end_date": _text(item.get("end_date")),
+            "bullets": [b.strip() for b in bullets if isinstance(b, str) and b.strip()],
+        })
     return result
+
+
+def _month_index(value: Any, *, end_date: bool = False) -> int | None:
+    text = _text(value).lower()
+    if not text:
+        return None
+    if text in {"present", "current", "now", "至今", "目前"}:
+        now = datetime.now(timezone.utc)
+        return now.year * 12 + now.month - 1
+    for date_format in ("%B %Y", "%b %Y", "%Y-%m", "%Y/%m", "%m/%Y"):
+        try:
+            parsed = datetime.strptime(text.title() if "%B" in date_format or "%b" in date_format else text, date_format)
+            return parsed.year * 12 + parsed.month - 1
+        except ValueError:
+            continue
+    year_match = re.fullmatch(r"(19|20)\d{2}", text)
+    if year_match:
+        return int(text) * 12 + (11 if end_date else 0)
+    return None
+
+
+def _total_work_experience(experience: Any) -> str | None:
+    """Return the union of dated employment months without double-counting overlaps."""
+    if not isinstance(experience, list):
+        return None
+    periods: list[tuple[int, int]] = []
+    for item in experience:
+        if not isinstance(item, dict):
+            continue
+        start = _month_index(item.get("start_date"))
+        end = _month_index(item.get("end_date"), end_date=True)
+        if start is not None and end is not None and end >= start:
+            periods.append((start, end))
+    if not periods:
+        return None
+    merged: list[list[int]] = []
+    for start, end in sorted(periods):
+        if not merged or start > merged[-1][1] + 1:
+            merged.append([start, end])
+        else:
+            merged[-1][1] = max(merged[-1][1], end)
+    months = sum(end - start + 1 for start, end in merged)
+    years, remaining_months = divmod(months, 12)
+    parts = ([f"{years} year" if years == 1 else f"{years} years"] if years else [])
+    if remaining_months:
+        parts.append(f"{remaining_months} month" if remaining_months == 1 else f"{remaining_months} months")
+    return " ".join(parts) or "0 months"
 
 
 def _merge_experience_bullets(original: Any, generated: Any) -> list[dict[str, Any]]:
@@ -381,6 +449,9 @@ def build_tailor_messages(job: dict, resume: dict, doc_type: str = "resume") -> 
         "experience": _experience_bullet_context(resume.get("experience")),
         "projects": resume.get("projects") if isinstance(resume.get("projects"), list) else [],
     }
+    total_work_experience = _total_work_experience(resume.get("experience"))
+    if total_work_experience:
+        context["total_work_experience"] = total_work_experience
     prompt = TAILOR_PROMPT
     if doc_type == "cover_letter":
         prompt = COVER_LETTER_PROMPT
@@ -513,4 +584,3 @@ async def review_job_async(
         "cover_letter": cover_letter_text,
         "raw_ai_response": tailor_result,
     }
-

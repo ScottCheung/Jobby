@@ -7,6 +7,7 @@ import {
   ModuleTopNav,
   type ModuleNavigationItem,
 } from '@jobby/ui';
+import { GamificationStats } from '@/app/interview-prep/_components/GamificationStats';
 
 const settingsNavigation: ModuleNavigationItem[] = [
   {
@@ -50,6 +51,7 @@ export default function SettingsLayout({
     <ModuleTopNav
       tabs={settingsNavigation}
       activeLayoutId='settings-active-tab'
+      rightContent={<GamificationStats />}
       contentClassName='pt-5'
     >
       {children}

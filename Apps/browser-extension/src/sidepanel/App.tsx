@@ -1,5 +1,3 @@
-/** @format */
-
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { Sparkles } from 'lucide-react';
 import {
@@ -12,17 +10,25 @@ import { Button } from '@jobby/ui/components/UI/Button';
 import { Input } from '@jobby/ui/components/UI/input';
 import { Textarea } from '@jobby/ui/components/UI/textarea';
 import type {
+  FormFieldObservation,
+  FormInspection,
+} from '../shared/contracts/form-inspection';
+import type {
   JobSnapshot,
   PageInspection,
 } from '../shared/contracts/page-inspection';
-import type { DocType } from '../shared/contracts/tailored-resume';
+import type {
+  DocType,
+  TailoredResume,
+} from '../shared/contracts/tailored-resume';
+import { fileFieldPurpose } from '../shared/utils/form-field-resolution';
 import { AuthCard } from './components/AuthCard';
 import { AuthGuardBanner } from './components/AuthGuardBanner';
 import { BottomNav, type TabType } from './components/BottomNav';
-import { DebugDrawer } from './components/DebugDrawer';
 import { DiagnosticsCard } from './components/DiagnosticsCard';
 import { HeaderQuickActions } from './components/HeaderQuickActions';
 import { ResultsDisplay } from './components/ResultsDisplay';
+import { SettingsSection } from './components/SettingsSection';
 import { WorkflowSection } from './components/WorkflowSection';
 import { useApplicationTools } from './hooks/useApplicationTools';
 import { useAuth } from './hooks/useAuth';
@@ -40,8 +46,22 @@ import {
   pageChangeInspectionRequest,
 } from './services/page-change-inspection';
 import { Toaster } from '@jobby/ui/components/UI/toast/toaster';
+import { cn } from '@jobby/ui/lib/utils';
+import { notify } from '@jobby/ui/components/UI/toast/toast-store';
+import { renderResumePdfOnce } from '@jobby/ui/components/UI/Resume/ResumePdfPreview';
+import {
+  formatResumeFilename,
+  formatCoverLetterFilename,
+} from '@jobby/ui/components/UI/Resume/helpers';
+import { renderCoverLetterPdfForExtension } from './services/cover-letter-pdf-renderer';
+import {
+  findTailoredDocumentForJob,
+  resolveAutofillDocument,
+  tailoredDocumentAvailability,
+} from './services/tailored-document-state';
 
 const PAGE_READY_DELAY_MS = 150;
+const TAILORED_RESUME_VERSION_KEY = 'jobby-tailored-resume-version';
 const TailorStudioCard = lazy(() =>
   import('./components/TailorStudioCard').then((module) => ({
     default: module.TailorStudioCard,
@@ -62,6 +82,8 @@ export function App() {
   } | null>(null);
   const [isFinalizingFormAction, setIsFinalizingFormAction] = useState(false);
   const [formActionError, setFormActionError] = useState<string | null>(null);
+  const [selectedAutofillDocumentId, setSelectedAutofillDocumentId] =
+    useState('');
 
   const { diagnostics, errorMessage, refresh, clearLogs } = useDiagnostics();
   const {
@@ -72,8 +94,14 @@ export function App() {
     disconnect,
     isSigningIn,
   } = useAuth();
-  const { themeColor, themeMode, toggleThemeColor, toggleThemeMode } =
-    useThemeSync(authStatus);
+  const {
+    themeColor,
+    themeMode,
+    toggleThemeColor,
+    toggleThemeMode,
+    setThemeColor,
+    setThemeMode,
+  } = useThemeSync(authStatus);
   const {
     latestInspection,
     setLatestInspection,
@@ -91,6 +119,7 @@ export function App() {
     highlightJobRequirement,
     autofillSingleField,
     uploadTailoredResume,
+    uploadDefaultResume,
     editFormField,
     clearAllFormFields,
     uploadStates,
@@ -206,24 +235,6 @@ export function App() {
     };
   }, []);
 
-  const {
-    loadingButton,
-    isCancellingAutofill,
-    autofillForm,
-    cancelAutofill,
-    recordApplication,
-    canRecordApplication,
-    isApplicationRecorded,
-  } = useApplicationTools(
-    latestInspection,
-    latestForm,
-    inspectForm,
-    setInspectionError,
-    applyAutofillResults,
-    authStatus?.connected,
-    signIn,
-  );
-
   const jobMatch = useJobMatch(latestInspection, authStatus?.connected, signIn);
   const isMatchPending = Boolean(
     authStatus?.connected &&
@@ -242,7 +253,7 @@ export function App() {
       if (!prev || prev.kind !== 'job') return prev;
       const updatedInspection: PageInspection = {
         ...prev,
-        originalSnapshot: prev.snapshot,
+        originalSnapshot: prev.originalSnapshot || prev.snapshot,
         snapshot: {
           ...prev.snapshot,
           ...updates,
@@ -315,6 +326,11 @@ export function App() {
     if (!generationDraft) return;
     const draft = generationDraft;
     setGenerationDraft(null);
+    handleUpdateJobSnapshot({
+      title: draft.jobTitle,
+      company: draft.company,
+      description: draft.jobDescription,
+    });
     void tailorStudio.generateTailoredResume(draft.type, draft);
   };
 
@@ -322,6 +338,222 @@ export function App() {
   const activeTailorGeneration =
     tailorStudio.generationTasks[tailorStudio.generationTasks.length - 1] ||
     null;
+
+  const webAppBaseUrl = (
+    import.meta.env.VITE_WEB_APP_URL || 'http://localhost:3000'
+  ).replace(/\/$/, '');
+
+  const matchingTailoredDoc = findTailoredDocumentForJob(
+    tailorStudio.savedResumes,
+    latestInspection?.kind === 'job' ? latestInspection.snapshot.title || '' : '',
+    latestInspection?.kind === 'job' ?
+      latestInspection.snapshot.company || ''
+    : '',
+  );
+  const existingDocuments = tailoredDocumentAvailability(matchingTailoredDoc);
+
+  const resolveAutofillResume = useCallback(
+    (field: FormFieldObservation): TailoredResume | undefined => {
+      const isCoverLetter = fileFieldPurpose(field) === 'cover_letter';
+      let defaultResumeId = '';
+      try {
+        defaultResumeId =
+          localStorage?.getItem('jobby_default_tailored_resume_id') || '';
+      } catch {}
+
+      return resolveAutofillDocument(
+        tailorStudio.savedResumes,
+        selectedAutofillDocumentId,
+        matchingTailoredDoc,
+        defaultResumeId,
+        isCoverLetter ? 'cover_letter' : 'resume',
+      );
+    },
+    [matchingTailoredDoc, selectedAutofillDocumentId, tailorStudio.savedResumes],
+  );
+
+  const autofillDocuments = useCallback(
+    async (form: FormInspection) => {
+      if (
+        form.kind !== 'application_form' &&
+        form.kind !== 'page_input_fields'
+      ) {
+        return;
+      }
+      const fileFields = form.fields.filter(
+        (field) =>
+          field.type === 'file' &&
+          !field.filled &&
+          field.upload?.state !== 'ready',
+      );
+      for (const field of fileFields) {
+        const purpose = fileFieldPurpose(field);
+        if (purpose === 'resume') {
+          const candidateResume = resolveAutofillResume(field);
+          if (candidateResume) {
+            await uploadTailoredResume(field, candidateResume);
+          } else {
+            await uploadDefaultResume(field);
+          }
+        } else if (purpose === 'cover_letter') {
+          const candidateCoverLetter = resolveAutofillResume(field);
+          if (candidateCoverLetter) {
+            await uploadTailoredResume(field, candidateCoverLetter);
+          } else {
+            await uploadDefaultResume(field);
+          }
+        }
+      }
+    },
+    [
+      resolveAutofillResume,
+      uploadDefaultResume,
+      uploadTailoredResume,
+    ],
+  );
+
+  const {
+    loadingButton,
+    isCancellingAutofill,
+    autofillForm,
+    cancelAutofill,
+    recordApplication,
+    canRecordApplication,
+    isApplicationRecorded,
+  } = useApplicationTools(
+    latestInspection,
+    latestForm,
+    inspectForm,
+    setInspectionError,
+    applyAutofillResults,
+    authStatus?.connected,
+    signIn,
+    autofillDocuments,
+  );
+
+  const handlePreviewDocument = useCallback(
+    async (type: 'resume' | 'cover_letter') => {
+      if (!matchingTailoredDoc) return;
+      const docResume = matchingTailoredDoc.resume_data;
+      const docCompany =
+        (latestInspection?.kind === 'job' && latestInspection.snapshot.company ?
+          latestInspection.snapshot.company
+        : matchingTailoredDoc.company) || '';
+      const docTitle =
+        (latestInspection?.kind === 'job' && latestInspection.snapshot.title ?
+          latestInspection.snapshot.title
+        : matchingTailoredDoc.job_title) || '';
+      const docCoverLetter =
+        matchingTailoredDoc.cover_letter ||
+        (matchingTailoredDoc.raw_ai_response?.cover_letter as
+          | string
+          | undefined);
+
+      try {
+        const [activeTab] = await chrome.tabs.query({
+          active: true,
+          currentWindow: true,
+        });
+        if (!activeTab?.id) {
+          notify.error('Could not find the active page for preview.');
+          return;
+        }
+
+        let blob: Blob;
+        let pages: number;
+        let pdfScale: number | undefined;
+        let filename: string;
+
+        if (type === 'cover_letter') {
+          if (!docCoverLetter) {
+            notify.error('No cover letter is saved for this job.');
+            return;
+          }
+          const rendered = await renderCoverLetterPdfForExtension(
+            docCoverLetter,
+            docResume,
+            docCompany || undefined,
+            docTitle || undefined,
+          );
+          blob = rendered.blob;
+          pages = rendered.pages || 1;
+          filename = formatCoverLetterFilename(
+            docResume,
+            docCompany || undefined,
+            docTitle || undefined,
+          );
+        } else {
+          if (!docResume) {
+            notify.error('No tailored CV is saved for this job.');
+            return;
+          }
+          const competencies =
+            matchingTailoredDoc.core_competencies ||
+            matchingTailoredDoc.key_qualifications ||
+            [];
+          const rendered = await renderResumePdfOnce(
+            docResume,
+            1,
+            competencies,
+            [],
+          );
+          blob = rendered.blob;
+          pages = rendered.pages;
+          pdfScale = rendered.scale;
+          filename = formatResumeFilename(
+            docResume,
+            docCompany || '',
+            docTitle || '',
+          );
+        }
+
+        const pdfDataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+
+        const payload = {
+          type: 'content.show-resume-preview',
+          data: docResume,
+          ...(type === 'resume' ?
+            {
+              coreCompetencies:
+                matchingTailoredDoc.core_competencies ||
+                matchingTailoredDoc.key_qualifications ||
+                [],
+            }
+          : {}),
+          company: docCompany || undefined,
+          jobTitle: docTitle || undefined,
+          filename,
+          pdfDataUrl,
+          pages,
+          fileSize: blob.size,
+          ...(pdfScale === undefined ? {} : { pdfScale }),
+          generatedAt:
+            matchingTailoredDoc.created_at || new Date().toISOString(),
+          editUrl: `${webAppBaseUrl}/ai-studio/tailor/${matchingTailoredDoc.id}`,
+        };
+
+        try {
+          await chrome.tabs.sendMessage(activeTab.id, payload);
+        } catch {
+          await chrome.scripting.executeScript({
+            target: { tabId: activeTab.id },
+            files: ['src/content/bootstrap.ts-loader.js'],
+          });
+          await chrome.tabs.sendMessage(activeTab.id, payload);
+        }
+      } catch (error) {
+        notify.error(
+          error instanceof Error ? error.message : 'Could not open preview.',
+        );
+      }
+    },
+    [matchingTailoredDoc, latestInspection, webAppBaseUrl],
+  );
 
   useEffect(() => {
     const handleAction = (candidate: {
@@ -373,8 +605,74 @@ export function App() {
   }, [openGenerationConfirmation]);
 
   useEffect(() => {
-    if (activeTab === 'studio') tailorStudio.markDocumentsSeen();
-  }, [activeTab, tailorStudio.markDocumentsSeen]);
+    if (typeof chrome === 'undefined' || !chrome.storage?.onChanged) return;
+    const onStorageChanged = (
+      changes: Record<string, chrome.storage.StorageChange>,
+      areaName: string,
+    ) => {
+      if (areaName === 'local' && changes[TAILORED_RESUME_VERSION_KEY]) {
+        void tailorStudio.refreshSavedResumes();
+      }
+    };
+    chrome.storage.onChanged.addListener(onStorageChanged);
+    return () => chrome.storage.onChanged.removeListener(onStorageChanged);
+  }, [tailorStudio.refreshSavedResumes]);
+
+  useEffect(() => {
+    if (activeTab === 'studio' && tailorStudio.hasNewDocuments) {
+      tailorStudio.markDocumentsSeen();
+    }
+  }, [
+    activeTab,
+    tailorStudio.hasNewDocuments,
+    tailorStudio.markDocumentsSeen,
+  ]);
+
+  const automaticTabContextRef = useRef({
+    page: '',
+    form: '',
+    hasNewDocuments: false,
+  });
+
+  useEffect(() => {
+    const pageContext =
+      latestInspection?.kind === 'job' ?
+        `job:${latestInspection.snapshot.platform}:${latestInspection.snapshot.externalId}`
+      : latestInspection ?
+        `${latestInspection.kind}:${latestInspection.url}`
+      : '';
+    const formContext =
+      latestForm?.kind === 'application_form' && latestForm.fields.length > 0 ?
+        `form:${latestForm.url}`
+      : '';
+    const previous = automaticTabContextRef.current;
+
+    automaticTabContextRef.current = {
+      page: pageContext,
+      form: formContext,
+      hasNewDocuments: tailorStudio.hasNewDocuments,
+    };
+
+    if (
+      tailorStudio.hasNewDocuments &&
+      !previous.hasNewDocuments
+    ) {
+      setActiveTab('studio');
+      return;
+    }
+
+    if (formContext && formContext !== previous.form) {
+      setActiveTab('form');
+      return;
+    }
+
+    if (
+      latestInspection?.kind === 'job' &&
+      pageContext !== previous.page
+    ) {
+      setActiveTab('home');
+    }
+  }, [latestForm, latestInspection, tailorStudio.hasNewDocuments]);
   // dependencies. Including them there created a loop: inspect → state update
   // → effect restart → forced inspect, which made the panel and some dynamic
   // pages visibly jump.
@@ -610,9 +908,15 @@ export function App() {
                     isMatchLoading={jobMatch.isEvaluating || isMatchPending}
                     isInspecting={isInspectingPage}
                     onTailor={openGenerationConfirmation}
+                    onPreview={handlePreviewDocument}
+                    existingDocuments={existingDocuments}
                     activeGeneration={activeTailorGeneration}
                     authConnected={authStatus?.connected}
                     onSignIn={signIn}
+                    onRecordApplication={recordApplication}
+                    canRecordApplication={canRecordApplication}
+                    isApplicationRecorded={isApplicationRecorded}
+                    isRecordingApplication={loadingButton === 'record'}
                     error={jobMatch.error}
                     onRetryMatch={() => void jobMatch.retry()}
                     onClaimSkill={jobMatch.claimSkill}
@@ -626,28 +930,6 @@ export function App() {
                   />
                 );
               })()}
-            </section>
-
-            <section
-              id='panel-actions'
-              className='sidebar-menu sidebar-menu--actions panel-section'
-              aria-label='Application actions'
-            >
-              <p className='menu-label'>Actions</p>
-              <WorkflowSection
-                latestForm={latestForm}
-                loadingButton={loadingButton}
-                isClearingForm={isClearingForm}
-                canRecordApplication={canRecordApplication}
-                isApplicationRecorded={isApplicationRecorded}
-                onAutofill={autofillForm}
-                onCancelAutofill={cancelAutofill}
-                isCancellingAutofill={isCancellingAutofill}
-                onClearAll={clearAllFormFields}
-                onRecordApplication={recordApplication}
-                authConnected={authStatus?.connected}
-                onSignIn={signIn}
-              />
             </section>
           </>
         )}
@@ -663,8 +945,12 @@ export function App() {
                 studio={tailorStudio}
                 latestInspection={latestInspection}
                 managementOnly
-                authConnected={authStatus?.connected}
-                onSignIn={signIn}
+                onNavigateHome={() => setActiveTab('home')}
+                onReDetect={async () => {
+                  await handleReDetectPage();
+                  void tailorStudio.refreshSavedResumes();
+                }}
+                isInspecting={isInspectingPage}
               />
             </Suspense>
           </section>
@@ -701,10 +987,24 @@ export function App() {
                 onFocusField={focusFormField}
                 onFillSingleField={autofillSingleField}
                 onUploadTailoredResume={uploadTailoredResume}
+                onUploadDefaultResume={uploadDefaultResume}
+                onDeleteTailoredResume={tailorStudio.deleteSavedResume}
                 onEditField={editFormField}
                 uploadStates={uploadStates}
                 tailoredResumes={tailorStudio.savedResumes}
                 isAutofilling={loadingButton === 'autofill'}
+                onTailor={openGenerationConfirmation}
+                existingDocuments={existingDocuments}
+                currentJob={
+                  latestInspection?.kind === 'job' ?
+                    {
+                      title: latestInspection.snapshot.title,
+                      company: latestInspection.snapshot.company,
+                    }
+                  : undefined
+                }
+                selectedDocumentId={selectedAutofillDocumentId}
+                onSelectDocument={setSelectedAutofillDocumentId}
               />
             </section>
           </div>
@@ -713,10 +1013,14 @@ export function App() {
         {activeTab === 'tools' && (
           <section
             id='panel-tools'
-            className='sidebar-menu sidebar-menu--tools'
-            aria-label='Advanced tools'
+            className='sidebar-menu sidebar-menu--tools flex flex-col gap-4'
+            aria-label='Settings and tools'
           >
-            <DebugDrawer
+            <SettingsSection
+              themeColor={themeColor}
+              themeMode={themeMode}
+              onSetThemeColor={setThemeColor}
+              onSetThemeMode={setThemeMode}
               onInspectPage={inspectPage}
               onInspectForm={inspectForm}
             />
@@ -755,10 +1059,60 @@ export function App() {
               </span>
             </div>
             <div className='modal-body flex flex-col gap-3'>
-              <p className='text-[11px] text-muted-foreground'>
-                Review or edit the job details before the background task
-                starts.
-              </p>
+              <div className='grid grid-cols-3 gap-2'>
+                <button
+                  type='button'
+                  onClick={() =>
+                    setGenerationDraft({
+                      ...generationDraft,
+                      type: 'resume',
+                    })
+                  }
+                  className={cn(
+                    'inline-flex items-center justify-center gap-1.5 rounded-full px-2.5 py-2 text-[10px] font-bold transition-all cursor-pointer',
+                    generationDraft.type === 'resume' ?
+                      'bg-primary-gradient text-primary-foreground shadow-xs'
+                    : 'border border-primary/25 bg-primary/8 text-primary hover:bg-primary/20 active:scale-95',
+                  )}
+                >
+                  <span>Resume</span>
+                </button>
+                <button
+                  type='button'
+                  onClick={() =>
+                    setGenerationDraft({
+                      ...generationDraft,
+                      type: 'cover_letter',
+                    })
+                  }
+                  className={cn(
+                    'inline-flex items-center justify-center gap-1.5 rounded-full px-2.5 py-2 text-[10px] font-bold transition-all cursor-pointer',
+                    generationDraft.type === 'cover_letter' ?
+                      'bg-primary-gradient text-primary-foreground shadow-xs'
+                    : 'border border-primary/25 bg-primary/8 text-primary hover:bg-primary/20 active:scale-95',
+                  )}
+                >
+                  <span>Cover Letter</span>
+                </button>
+                <button
+                  type='button'
+                  onClick={() =>
+                    setGenerationDraft({
+                      ...generationDraft,
+                      type: 'both',
+                    })
+                  }
+                  className={cn(
+                    'inline-flex items-center justify-center gap-1.5 rounded-full px-2.5 py-2 text-[10px] font-bold transition-all cursor-pointer',
+                    generationDraft.type === 'both' ?
+                      'bg-primary-gradient text-primary-foreground shadow-xs'
+                    : 'border border-primary/25 bg-primary/8 text-primary hover:bg-primary/20 active:scale-95',
+                  )}
+                >
+
+                  <span>Both</span>
+                </button>
+              </div>
               <Input
                 value={generationDraft.jobTitle}
                 onChange={(event) =>

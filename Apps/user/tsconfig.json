@@ -21,13 +21,17 @@
     "paths": {
       "@/*": ["./*"],
       "@jobby/ui": ["../../packages/ui/src/index.ts"],
-      "@jobby/ui/*": ["../../packages/ui/src/*"]
+      "@jobby/ui/*": ["../../packages/ui/src/*"],
+      "next": ["./node_modules/next"],
+      "next/*": ["./node_modules/next/*"],
+      "@tanstack/react-query": ["./node_modules/@tanstack/react-query"]
     }
   },
   "include": [
     "next-env.d.ts",
     "app/**/*.ts",
     "app/**/*.tsx",
+    "pages/**/*.ts",
     "lib/**/*.ts",
     "components/**/*.ts",
     "components/**/*.tsx",

@@ -13,7 +13,7 @@ import {
   Loader2,
   Maximize2,
   X,
-} from 'lucide-react';
+} from '@jobby/ui/components/icons';
 import {
   Defs,
   Document,
@@ -53,6 +53,7 @@ export type ResumePdfPreviewProps = {
   keyQualifications?: string[];
   company?: string;
   jobTitle?: string;
+  fileSize?: number | null;
   showSectionHeader?: boolean;
   thumbnailClassName?: string;
   onOpenModal?: (content: ReactNode) => void;
@@ -927,6 +928,7 @@ export function ResumePdfPreview({
   keyQualifications = [],
   company,
   jobTitle,
+  fileSize: suppliedFileSize,
   showSectionHeader = false,
   thumbnailClassName = '',
   onOpenModal,
@@ -938,13 +940,14 @@ export function ResumePdfPreview({
   const activeUrlRef = useRef<string | null>(null);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [pages, setPages] = useState<number | null>(null);
-  const [fileSize, setFileSize] = useState<number | null>(null);
+  const [generatedFileSize, setGeneratedFileSize] = useState<number | null>(null);
   const [pdfScale, setPdfScale] = useState<number | null>(null);
   const [generatedAt, setGeneratedAt] = useState<Date | null>(null);
   const [error, setError] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const smartPage = useSmartOnePage(defaultResumeTemplate, data);
+  const fileSize = generatedFileSize ?? suppliedFileSize ?? null;
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [containerSize, setContainerSize] = useState<{
@@ -993,7 +996,10 @@ export function ResumePdfPreview({
   ].join('|');
 
   useEffect(() => {
-    if (!smartPage.settled) return;
+    if (onPreview || !smartPage.settled) {
+      setIsGenerating(false);
+      return;
+    }
 
     let cancelled = false;
     const timer = window.setTimeout(() => {
@@ -1016,7 +1022,7 @@ export function ResumePdfPreview({
           activeUrlRef.current = nextUrl;
           setPdfUrl(nextUrl);
           setPages(pageCount);
-          setFileSize(blob.size);
+          setGeneratedFileSize(blob.size);
           setPdfScale(scale);
           setGeneratedAt(new Date());
           setIsGenerating(false);

@@ -89,9 +89,8 @@ const buttonItemVariants = {
     opacity: 1,
     y: 0,
     scale: 1,
-    transition: { type: 'spring', stiffness: 400, damping: 25 },
+    transition: { type: 'spring' as const, stiffness: 400, damping: 25, delay: 0.3 },
   },
-  transition: { delay: 0.3},
 };
 
 export function AiWorkflowGuideModal({

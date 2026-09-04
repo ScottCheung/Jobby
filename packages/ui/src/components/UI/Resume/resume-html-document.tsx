@@ -2,7 +2,7 @@
 
 'use client';
 
-import { Mail, Phone, MapPin, FolderGit2, Globe } from 'lucide-react';
+import { Mail, Phone, MapPin, FolderGit2, Globe } from '@jobby/ui/components/icons';
 import { Fragment, type ReactNode } from 'react';
 import type { MasterResumeData, ResumeSectionKey, ResumeTemplateConfig } from './types';
 import {

@@ -3,7 +3,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutGrid,
   User as UserIcon,
@@ -11,19 +11,27 @@ import {
   Settings2,
   Briefcase,
   FileText,
-  Target,
   ShieldCheck,
   MessagesSquare,
   LogOut,
-  Sun,
   GraduationCap,
-  Palette,
   Star,
   MessageSquareCode,
   UserCheck,
   Sparkles,
   LogIn,
-} from 'lucide-react';
+  LayoutDashboard,
+  Library,
+  Dumbbell,
+  Calendar,
+  MessageSquare,
+  Bookmark,
+  Layers,
+  Mail,
+  Bell,
+  ChevronRight,
+} from '@jobby/ui/components/icons';
+import * as PopoverPrimitive from '@radix-ui/react-popover';
 import { openGlobalAuthModal } from '@/lib/store/auth-modal-store';
 import { cn } from '@/lib/utils';
 import { ModeToggle } from '@/components/mode-toggle';
@@ -34,79 +42,454 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FavoritesDrawer } from './FavoritesDrawer';
 import {
   Tooltip,
-  TooltipRoot,
-  TooltipTrigger,
-  TooltipContent,
-  TooltipProvider,
 } from '../UI/tooltip';
 import { H4 } from '../UI/text/typography';
 import { NotificationCenter } from '../notifications/NotificationCenter';
-import { Stagger, StaggerItem } from '../animation';
+import { useLayoutStore } from '@/lib/store/layout-store';
+import { useConsole } from '@/components/ConsoleContext';
+import { createClient } from '@/lib/supabase/client';
+import React, { useState, useRef } from 'react';
 
-const ChromeIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    xmlns='http://www.w3.org/2000/svg'
-    width='24'
-    height='24'
-    viewBox='0 0 24 24'
-    fill='none'
-    stroke='currentColor'
-    strokeWidth='2'
-    strokeLinecap='round'
-    strokeLinejoin='round'
-    {...props}
-  >
-    <circle cx='12' cy='12' r='10' />
-    <circle cx='12' cy='12' r='4' />
-    <line x1='21.17' x2='12' y1='8' y2='8' />
-    <line x1='3.95' x2='8.54' y1='6.06' y2='14' />
-    <line x1='10.88' x2='15.46' y1='21.94' y2='14' />
-  </svg>
-);
+export type SubmenuItem = {
+  name: string;
+  href?: string;
+  icon: React.ComponentType<{ className?: string }>;
+  description: string;
+  exact?: boolean;
+  isAction?: boolean;
+  actionTab?: 'questions' | 'comments' | 'answers' | 'collections';
+};
 
-const navigation = [
-  { name: 'Home', href: '/', icon: LayoutGrid },
-  { name: 'AI Networking Assistant', href: '/ai-studio/prospects', icon: UserCheck },
-  { name: 'AI Studio', href: '/ai-studio', icon: Sparkles },
-  { name: 'Applications', href: '/applications', icon: Briefcase },
-  { name: 'Interview Prep', href: '/interview-prep', icon: GraduationCap },
+export type SidebarNavigationItem = {
+  name: string;
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+  description?: string;
+  isAction?: boolean;
+  submenus?: SubmenuItem[];
+};
+
+const navigation: SidebarNavigationItem[] = [
   {
-    name: 'Favorites & Bookmarks',
+    name: 'Home',
+    href: '/',
+    icon: LayoutGrid,
+    description: 'Dashboard overview & quick start',
+    submenus: [
+      {
+        name: 'Dashboard Overview',
+        href: '/',
+        icon: LayoutGrid,
+        description: 'Application trends, stats & quick jump',
+        exact: true,
+      },
+    ],
+  },
+  {
+    name: 'AI Studio',
+    href: '/ai-studio',
+    icon: Sparkles,
+    description: 'AI tailoring, recommendations & networking',
+    submenus: [
+      {
+        name: 'Tailor CV & CL',
+        href: '/ai-studio',
+        icon: Sparkles,
+        description: 'Instant tailored resume & cover letter',
+        exact: true,
+      },
+      {
+        name: 'Job Recommendations',
+        href: '/ai-studio/recommendations',
+        icon: Sparkles,
+        description: 'AI-matched job opportunities',
+      },
+      {
+        name: 'AI Networking',
+        href: '/ai-studio/prospects',
+        icon: UserCheck,
+        description: 'Discover key hiring contacts & outreach',
+      },
+    ],
+  },
+  {
+    name: 'Applications',
+    href: '/applications',
+    icon: Briefcase,
+    description: 'Application tracking, trends & analytics',
+    submenus: [
+      {
+        name: 'Dashboard & Analytics',
+        href: '/applications',
+        icon: LayoutDashboard,
+        description: 'Application trends, stats & distribution',
+        exact: true,
+      },
+      {
+        name: 'Application History',
+        href: '/applications/history',
+        icon: Briefcase,
+        description: 'Submitted applications & status tracking',
+      },
+      {
+        name: 'Job Recommendations',
+        href: '/applications/recommendations',
+        icon: Sparkles,
+        description: 'AI-recommended job opportunities',
+      },
+    ],
+  },
+  {
+    name: 'Interview Copilot',
+    href: '/interview-prep',
+    icon: GraduationCap,
+    description: 'Master interview Q&A and AI mock simulator',
+    submenus: [
+      {
+        name: 'Dashboard',
+        href: '/interview-prep',
+        icon: LayoutDashboard,
+        description: 'Practice metrics, streak & daily mission',
+        exact: true,
+      },
+      {
+        name: 'Question Discovery',
+        href: '/interview-prep/explore',
+        icon: Search,
+        description: 'Explore curated questions & question sets',
+      },
+      {
+        name: 'Question Library',
+        href: '/interview-prep/library',
+        icon: Library,
+        description: 'Manage, tag & organize your question bank',
+      },
+      {
+        name: 'Practice Simulator',
+        href: '/interview-prep/practice',
+        icon: Dumbbell,
+        description: 'Interactive AI practice simulator & feedback',
+      },
+      {
+        name: 'Schedule Plan',
+        href: '/interview-prep/schedule',
+        icon: Calendar,
+        description: 'Daily practice schedule & roadmap',
+      },
+    ],
+  },
+  {
+    name: 'Favorite',
     href: '#favorites',
     icon: Star,
     isAction: true,
+    description: 'Saved questions, answers, comments & packs',
+    submenus: [
+      {
+        name: 'Favorited Questions',
+        icon: Star,
+        description: 'Starred interview questions',
+        isAction: true,
+        actionTab: 'questions',
+      },
+      {
+        name: 'Saved Comments',
+        icon: MessageSquare,
+        description: 'Liked & personal discussion comments',
+        isAction: true,
+        actionTab: 'comments',
+      },
+      {
+        name: 'Saved Answers',
+        icon: Bookmark,
+        description: 'Bookmarked reference & model answers',
+        isAction: true,
+        actionTab: 'answers',
+      },
+      {
+        name: 'Saved Collections',
+        icon: Layers,
+        description: 'Unlocked & saved question sets',
+        isAction: true,
+        actionTab: 'collections',
+      },
+    ],
   },
-  { name: 'Settings & Profile', href: '/settings', icon: Settings2 },
+  {
+    name: 'Setting',
+    href: '/settings',
+    icon: Settings2,
+    description: 'Profile, master resume, cover letter & AI memory',
+    submenus: [
+      {
+        name: 'Profile',
+        href: '/settings/profile',
+        icon: UserIcon,
+        description: 'Personal details and contact info for autofill',
+      },
+      {
+        name: 'Resume Profile',
+        href: '/settings/resumes',
+        icon: FileText,
+        description: 'Master resume, score & work experience',
+      },
+      {
+        name: 'Cover Letter Profile',
+        href: '/settings/cover-letter-profile',
+        icon: Mail,
+        description: 'Master cover letter and career motivation',
+      },
+      {
+        name: 'AI Memory',
+        href: '/settings/ai-memory',
+        icon: MessageSquareCode,
+        description: 'Reusable answers & autofill field mapping rules',
+      },
+      {
+        name: 'Notifications',
+        href: '/settings/notifications',
+        icon: Bell,
+        description: 'Manage email and system notifications',
+      },
+    ],
+  },
 ];
 
-const adminNavigation = [
-  { name: 'Incentive Admin', href: '/admin/incentives', icon: ShieldCheck },
+const adminNavigation: SidebarNavigationItem[] = [
+  {
+    name: 'Incentive Admin',
+    href: '/admin/incentives',
+    icon: ShieldCheck,
+    description: 'Manage XP, quests and rewards',
+  },
   {
     name: 'Celebration Admin',
     href: '/admin/celebrations',
     icon: MessagesSquare,
+    description: 'Tune celebration styles and animations',
   },
 ];
 
-import { useLayoutStore } from '@/lib/store/layout-store';
-import { useConsole } from '@/components/ConsoleContext';
-import { createClient } from '@/lib/supabase/client';
-import { useRouter } from 'next/navigation';
+function NavItemFlyout({
+  item,
+  isCollapsed,
+  isActive,
+  onOpenFavoritesTab,
+}: {
+  item: SidebarNavigationItem;
+  isCollapsed: boolean;
+  isActive: boolean;
+  onOpenFavoritesTab: (tab?: 'questions' | 'comments' | 'answers' | 'collections') => void;
+}) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const [isOpen, setIsOpen] = useState(false);
+  const enterTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const leaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleMouseEnter = () => {
+    if (leaveTimeoutRef.current) {
+      clearTimeout(leaveTimeoutRef.current);
+      leaveTimeoutRef.current = null;
+    }
+    enterTimeoutRef.current = setTimeout(() => {
+      setIsOpen(true);
+    }, 120);
+  };
+
+  const handleMouseLeave = () => {
+    if (enterTimeoutRef.current) {
+      clearTimeout(enterTimeoutRef.current);
+      enterTimeoutRef.current = null;
+    }
+    leaveTimeoutRef.current = setTimeout(() => {
+      setIsOpen(false);
+    }, 180);
+  };
+
+  const handleItemClick = (e: React.MouseEvent) => {
+    setIsOpen(false);
+    if (item.isAction) {
+      e.preventDefault();
+      onOpenFavoritesTab();
+    }
+  };
+
+  const handleSubmenuClick = (sub: SubmenuItem) => {
+    setIsOpen(false);
+    if (sub.isAction) {
+      onOpenFavoritesTab(sub.actionTab);
+    } else if (sub.href) {
+      router.push(sub.href);
+    }
+  };
+
+  const navItemContent = (
+    <div
+      className={cn(
+        'app-no-drag group flex items-center gap-3 transition-all cursor-pointer select-none',
+        isCollapsed ?
+          'justify-center p-2.5 rounded-full'
+        : 'px-4 py-3.5 rounded-full',
+        isActive ?
+          'text-primary-foreground bg-primary-gradient shadow-xs'
+        : 'text-ink-secondary hover:bg-background-secondary hover:text-ink-primary',
+      )}
+    >
+      <motion.div layout className='shrink-0'>
+        <item.icon className={cn('size-5')} />
+      </motion.div>
+      <AnimatePresence mode='popLayout'>
+        {!isCollapsed && (
+          <motion.p
+            initial={{ opacity: 0, x: -10, width: 0, display: 'none' }}
+            animate={{
+              opacity: 1,
+              x: 0,
+              width: 'auto',
+              display: 'block',
+              transition: { delay: 0.05, duration: 0.2 },
+            }}
+            exit={{ opacity: 0, x: -10, width: 0, transition: { duration: 0.1 } }}
+            className={cn(
+              'whitespace-nowrap overflow-hidden flex-1',
+              isActive ? 'font-bold' : 'font-medium',
+            )}
+          >
+            {item.name}
+          </motion.p>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+
+  return (
+    <PopoverPrimitive.Root open={isOpen} onOpenChange={setIsOpen}>
+      <div
+        className='relative'
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
+        <PopoverPrimitive.Anchor asChild>
+          {item.isAction ?
+            <button
+              type='button'
+              onClick={handleItemClick}
+              className='w-full text-left font-normal focus:outline-hidden'
+            >
+              {navItemContent}
+            </button>
+          : <Link href={item.href} onClick={handleItemClick}>
+              {navItemContent}
+            </Link>
+          }
+        </PopoverPrimitive.Anchor>
+
+        <PopoverPrimitive.Portal>
+          <PopoverPrimitive.Content
+            side='right'
+            align='start'
+            sideOffset={14}
+            collisionPadding={16}
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
+            className='z-50 w-72 rounded-2xl border border-primary/30 bg-panel/95 p-3 text-ink-primary shadow-2xl backdrop-blur-2xl outline-hidden animate-in fade-in-0 zoom-in-95 data-[side=right]:slide-in-from-left-2 data-[side=left]:slide-in-from-right-2 duration-150'
+          >
+            {/* Flyout Header */}
+            <div className='flex items-center gap-2.5 pb-2.5 mb-2 border-b border-primary/15'>
+              <div className='flex size-8 shrink-0 items-center justify-center rounded-xl bg-primary-gradient text-white shadow-xs'>
+                <item.icon className='size-4' />
+              </div>
+              <div className='min-w-0 flex-1'>
+                <h4 className='text-xs font-bold leading-tight text-ink-primary truncate'>
+                  {item.name}
+                </h4>
+                {item.description && (
+                  <p className='text-[10px] text-ink-secondary line-clamp-1 mt-0.5'>
+                    {item.description}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Submenu List */}
+            {item.submenus && item.submenus.length > 0 && (
+              <div className='flex flex-col gap-1'>
+                {item.submenus.map((sub) => {
+                  const isSubActive =
+                    !sub.isAction &&
+                    Boolean(
+                      sub.exact ?
+                        pathname === sub.href
+                      : sub.href && (pathname === sub.href || pathname?.startsWith(sub.href)),
+                    );
+
+                  const SubIcon = sub.icon;
+
+                  return (
+                    <button
+                      key={sub.name}
+                      type='button'
+                      onClick={() => handleSubmenuClick(sub)}
+                      className={cn(
+                        'group/sub flex items-center gap-2.5 p-2 rounded-xl text-left transition-all cursor-pointer',
+                        isSubActive ?
+                          'bg-primary/15 text-primary font-bold'
+                        : 'hover:bg-background-secondary/80 text-ink-secondary hover:text-ink-primary',
+                      )}
+                    >
+                      <div
+                        className={cn(
+                          'flex size-7 shrink-0 items-center justify-center rounded-lg transition-colors',
+                          isSubActive ?
+                            'bg-primary text-white'
+                          : 'bg-background-secondary group-hover/sub:bg-primary/10 group-hover/sub:text-primary text-ink-secondary',
+                        )}
+                      >
+                        <SubIcon className='size-3.5' />
+                      </div>
+                      <div className='min-w-0 flex-1'>
+                        <div className='flex items-center justify-between gap-1'>
+                          <span
+                            className={cn(
+                              'text-xs font-bold leading-none truncate',
+                              isSubActive ? 'text-primary' : 'text-ink-primary',
+                            )}
+                          >
+                            {sub.name}
+                          </span>
+                          <ChevronRight className='size-3 opacity-0 -translate-x-1 group-hover/sub:opacity-100 group-hover/sub:translate-x-0 transition-all text-primary shrink-0' />
+                        </div>
+                        <p className='text-[10px] text-ink-secondary line-clamp-1 mt-0.5'>
+                          {sub.description}
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </PopoverPrimitive.Content>
+        </PopoverPrimitive.Portal>
+      </div>
+    </PopoverPrimitive.Root>
+  );
+}
 
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const supabase = createClient();
-  const { user, profile, isDesktopApp } = useConsole();
+  const { user, profile } = useConsole();
   const isCollapsed = useLayoutStore((state) => state.isSidebarCollapsed);
   const { toggleSidebar, openDrawer } = useLayoutStore(
     (state) => state.actions,
   );
 
-  const handleOpenFavorites = () => {
+  const handleOpenFavorites = (tab: 'questions' | 'comments' | 'answers' | 'collections' = 'questions') => {
     openDrawer({
       width: 440,
-      content: <FavoritesDrawer />,
+      content: <FavoritesDrawer initialTab={tab} />,
     });
   };
 
@@ -162,26 +545,10 @@ export function Sidebar() {
     exit: { opacity: 0, x: -10, width: 0, transition: { duration: 0.1 } },
   };
 
-  const desktopNavigation = [
-    { name: 'Home', href: '/', icon: LayoutGrid },
-    { name: 'AI Networking Assistant', href: '/ai-studio/prospects', icon: UserCheck },
-    { name: 'AI Studio', href: '/ai-studio', icon: Sparkles },
-    { name: 'Applications', href: '/applications', icon: Briefcase },
-    { name: 'Interview Prep', href: '/interview-prep', icon: GraduationCap },
-    {
-      name: 'Favorites & Bookmarks',
-      href: '#favorites',
-      icon: Star,
-      isAction: true,
-    },
-    { name: 'Settings & Profile', href: '/settings', icon: Settings2 },
-  ];
-
-  const activeNavigation = isDesktopApp ? desktopNavigation : navigation;
   const visibleNavigation =
     user?.role === 'admin' ?
-      [...activeNavigation, ...adminNavigation]
-    : activeNavigation;
+      [...navigation, ...adminNavigation]
+    : navigation;
 
   return (
     <motion.aside
@@ -231,7 +598,6 @@ export function Sidebar() {
         </div>
 
         {/* Navigation */}
-
         <nav className='app-no-drag overflow-y-auto no-scrollbar flex-1 flex flex-col gap-1 min-h-0'>
           {visibleNavigation.map((item) => {
             const isAction = 'isAction' in item && item.isAction;
@@ -240,65 +606,28 @@ export function Sidebar() {
               (pathname === item.href ||
                 (item.href === '/settings' &&
                   pathname?.startsWith('/settings')) ||
+                (item.href === '/interview-prep' &&
+                  pathname?.startsWith('/interview-prep')) ||
+                (item.href === '/ai-studio' &&
+                  pathname?.startsWith('/ai-studio')) ||
+                (item.href === '/applications' &&
+                  (pathname?.startsWith('/applications') || pathname?.startsWith('/job-application'))) ||
                 (item.href !== '/' &&
                   item.href !== '/settings' &&
+                  item.href !== '/interview-prep' &&
+                  item.href !== '/ai-studio' &&
+                  item.href !== '/applications' &&
                   !item.href.startsWith('#') &&
-                  Boolean(pathname?.startsWith(item.href)) &&
-                  !visibleNavigation.some(
-                    (other) =>
-                      other.href !== item.href &&
-                      other.href !== '/' &&
-                      !('isAction' in other && other.isAction) &&
-                      !other.href.startsWith('#') &&
-                      Boolean(pathname?.startsWith(other.href)) &&
-                      other.href.length > item.href.length,
-                  )));
-
-            const navItemContent = (
-              <div
-                className={cn(
-                  'app-no-drag group flex items-center gap-3 transition-all cursor-pointer',
-                  isCollapsed ?
-                    'justify-center p-2.5 rounded-full '
-                  : 'px-4 py-3.5 rounded-full',
-                  isActive ?
-                    'text-primary-foreground bg-primary-gradient '
-                  : 'text-ink-secondary hover:bg-background-secondary hover:text-ink-primary',
-                )}
-              >
-                <motion.div layout className='shrink-0'>
-                  <item.icon className={cn('size-5')} />
-                </motion.div>
-                <AnimatePresence mode='popLayout'>
-                  {!isCollapsed && (
-                    <motion.p
-                      className={cn(
-                        'whitespace-nowrap overflow-hidden',
-                        isActive ? 'font-bold' : 'font-medium',
-                      )}
-                    >
-                      {item.name}
-                    </motion.p>
-                  )}
-                </AnimatePresence>
-              </div>
-            );
+                  Boolean(pathname?.startsWith(item.href))));
 
             return (
-              <Tooltip
+              <NavItemFlyout
                 key={item.name}
-                content={isCollapsed ? item.name : null}
-                side='right'
-              >
-                {isAction ?
-                  <button
-                    onClick={handleOpenFavorites}
-                    className='w-full text-left font-normal focus:outline-hidden'
-                  >
-                    {navItemContent}
-                  </button>
-                : <Link href={item.href}>{navItemContent}</Link>}
-              </Tooltip>
+                item={item}
+                isCollapsed={isCollapsed}
+                isActive={isActive}
+                onOpenFavoritesTab={handleOpenFavorites}
+              />
             );
           })}
         </nav>
@@ -308,36 +637,7 @@ export function Sidebar() {
       <div className='shrink-0 pt-4 border-t border-primary/40'>
         <AnimatePresence mode='popLayout'>
           {!isCollapsed ?
-            <motion.div
-              // key='expanded-footer'
-              // variants={{
-              //   hidden: {
-              //     opacity: 0,
-              //     height: 0,
-              //     marginBottom: 0,
-              //     paddingTop: 0,
-              //     borderTopWidth: 0,
-              //   },
-              //   visible: {
-              //     opacity: 1,
-              //     height: 'auto',
-              //     marginBottom: 24,
-              //     paddingTop: 24,
-              //     borderTopWidth: 1,
-              //   },
-              //   exit: {
-              //     opacity: 0,
-              //     height: 0,
-              //     marginBottom: 0,
-              //     paddingTop: 0,
-              //     borderTopWidth: 0,
-              //   },
-              // }}
-              // initial='hidden'
-              // animate='visible'
-              // exit='exit'
-              className='app-no-drag flex flex-col gap-4 border-primary/10 overflow-hidden'
-            >
+            <motion.div className='app-no-drag flex flex-col gap-4 border-primary/10 overflow-hidden'>
               <div className='flex items-center justify-between'>
                 <p className='label-sm dark:text-gray-400'>Theme</p>
                 <ModeToggle />
@@ -352,32 +652,6 @@ export function Sidebar() {
             </motion.div>
           : <motion.div
               key='collapsed-footer'
-              // variants={{
-              //   hidden: {
-              //     opacity: 0,
-              //     height: 0,
-              //     marginBottom: 0,
-              //     paddingTop: 0,
-              //     borderTopWidth: 0,
-              //   },
-              //   visible: {
-              //     opacity: 1,
-              //     height: 'auto',
-              //     marginBottom: 24,
-              //     paddingTop: 24,
-              //     borderTopWidth: 1,
-              //   },
-              //   exit: {
-              //     opacity: 0,
-              //     height: 0,
-              //     marginBottom: 0,
-              //     paddingTop: 0,
-              //     borderTopWidth: 0,
-              //   },
-              // }}
-              // initial='hidden'
-              // animate='visible'
-              // exit='exit'
               className='app-no-drag flex flex-col items-center gap-2 border-primary/10 overflow-hidden'
             >
               <ThemeToggle />

@@ -2,17 +2,23 @@
 
 'use client';
 
-import { BriefcaseBusiness, Sparkles } from 'lucide-react';
+import { BriefcaseBusiness, LayoutDashboard, Sparkles } from 'lucide-react';
 import { ModuleTopNav, type ModuleNavigationItem } from '@jobby/ui';
 import { GamificationStats } from '@/app/interview-prep/_components/GamificationStats';
 
 const tabs: ModuleNavigationItem[] = [
   {
-    name: 'Application History',
+    name: 'Dashboard',
     href: '/applications',
-    icon: BriefcaseBusiness,
-    description: 'Review submitted applications',
+    icon: LayoutDashboard,
+    description: 'Application statistics, trends & geographic distribution',
     exact: true,
+  },
+  {
+    name: 'Application History',
+    href: '/applications/history',
+    icon: BriefcaseBusiness,
+    description: 'Review submitted applications and status tracking',
   },
   {
     name: 'Recommendations',

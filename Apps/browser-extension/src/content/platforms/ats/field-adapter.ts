@@ -11,6 +11,9 @@ const IDENTIFIER_LABELS: ReadonlyArray<[RegExp, string]> = [
   [/(?:^|[_-])last[_-]?(?:name|surname)(?:$|[_-])/i, 'Last name'],
   [/(?:^|[_-])e?mail(?:address)?(?:$|[_-])/i, 'Email'],
   [/(?:^|[_-])(?:mobile|phone|telephone)(?:$|[_-])/i, 'Phone'],
+  [/(?:^|[_-])(?:linkedin|linked[_-]?in)(?:[_-]?(?:profile|url))?(?:$|[_-])/i, 'LinkedIn profile'],
+  [/(?:^|[_-])(?:github|git[_-]?hub)(?:[_-]?(?:profile|url))?(?:$|[_-])/i, 'GitHub profile'],
+  [/(?:^|[_-])(?:portfolio|website|personal[_-]?site|personal[_-]?url)(?:$|[_-])/i, 'Portfolio URL'],
   [/(?:work[_-]?(?:authorization|rights)|right[_-]?to[_-]?work)/i, 'Work authorization'],
   [/(?:visa[_-]?(?:sponsorship|status|type)|sponsorship)/i, 'Visa sponsorship'],
   [/(?:notice[_-]?(?:period|time)|availability)/i, 'Notice period'],
@@ -19,7 +22,11 @@ const IDENTIFIER_LABELS: ReadonlyArray<[RegExp, string]> = [
 
 function isUsableLabel(label: string): boolean {
   const normalized = label.replace(/\s+/g, ' ').trim().toLowerCase();
-  return Boolean(normalized) && !/^(?:unnamed field|question|field|select|choose|enter)$/i.test(normalized);
+  return (
+    Boolean(normalized) &&
+    !/^(?:unnamed field|question|field|select|choose|enter)$/i.test(normalized) &&
+    !/(?:is required|is invalid|cannot be empty|can't be blank|is missing)$/i.test(normalized)
+  );
 }
 
 function labelFromIdentifier(field: FormFieldObservation): string | undefined {

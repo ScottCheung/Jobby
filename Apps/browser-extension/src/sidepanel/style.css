@@ -37,6 +37,14 @@ body.is-floating-dialog {
   overflow: hidden !important;
 }
 
+html.is-floating-dialog,
+html.is-floating-dialog body,
+html.is-floating-dialog #root {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
 .custom-scrollbar {
   scrollbar-width: thin;
   scrollbar-color: rgba(100, 116, 139, 0.3) transparent;
@@ -424,10 +432,10 @@ p {
   @apply grid gap-4 p-3 pb-24 max-w-full;
 }
 .form-fields {
-  @apply grid gap-0 overflow-hidden rounded-2xl bg-panel max-w-full;
+  @apply grid gap-0 overflow-hidden rounded-xl ;
 }
 .form-field-row {
-  @apply grid gap-2 border-b border-primary py-2 last:border-b-0 min-w-0 max-w-full overflow-hidden;
+  @apply grid gap-2 border-b border-primary/20 py-2.5 px-3 last:border-b-0 min-w-0 max-w-full overflow-hidden;
 }
 .form-field-heading {
   @apply flex items-start gap-2 min-w-0 max-w-full relative;
@@ -465,13 +473,10 @@ p {
 .form-field-edit:hover:not(:disabled) {
   @apply bg-primary/20;
 }
+.form-field-tag {
+  @apply inline-flex items-center px-1.5 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 text-[9px] font-semibold uppercase tracking-wide shrink-0;
+}
 
-.form-field-meta {
-  @apply block mt-0.5 text-[10px] font-normal text-muted-foreground;
-}
-.form-field-locate {
-  @apply shrink-0 min-h-0 w-6 h-6 p-0 leading-none text-base text-primary;
-}
 .form-field-input {
   @apply w-full min-h-[30px] border border-primary rounded-xl bg-panel px-3 py-1.5 text-xs text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20;
 }
@@ -495,28 +500,31 @@ textarea.form-field-input {
   @apply text-[11px] text-amber-700 bg-amber-500/10 border border-amber-500/20 px-2 py-1 rounded-lg;
 }
 .form-file-action {
-  @apply grid gap-1.5 text-[11px] text-muted-foreground min-w-0 max-w-full overflow-hidden;
+  @apply grid gap-2 text-[11px] text-muted-foreground min-w-0 max-w-full overflow-hidden;
 }
 .form-file-action button {
-  @apply min-h-[28px] px-3 rounded-full text-[11px] font-semibold text-primary border border-primary/30 bg-primary/10 hover:bg-primary/20;
+  @apply min-h-[28px] px-3 rounded-full text-[11px] font-semibold;
 }
 .form-file-action button:disabled {
   @apply cursor-not-allowed opacity-60;
 }
 .form-resume-picker {
-  @apply grid gap-1 text-[10px] font-semibold text-muted-foreground min-w-0;
+  @apply grid gap-1.5 text-[10px] font-semibold text-muted-foreground min-w-0;
 }
 .form-resume-picker-title {
-  @apply flex items-center gap-1 px-1 uppercase tracking-wider;
+  @apply flex items-center gap-1 uppercase tracking-wider text-[10px] font-bold text-muted-foreground shrink-0;
+}
+.form-resume-preview-line {
+  @apply truncate text-[10px] text-muted-foreground font-normal min-w-0;
 }
 .form-resume-card-list {
   @apply flex w-full min-w-0 max-w-full items-stretch gap-2 overflow-x-auto pb-1 pt-0.5 scroll-smooth;
 }
 .form-file-action button.form-resume-card {
-  @apply flex min-h-[50px] w-[138px] shrink-0 cursor-pointer flex-col justify-center gap-1 rounded-xl border border-primary/60 bg-panel p-2 text-left text-foreground transition-all duration-200 hover:border-primary hover:bg-muted/40;
+  @apply flex min-h-[46px] w-[138px] shrink-0 cursor-pointer flex-col justify-center gap-0.5 rounded-md border border-primary/40 bg-panel p-1.5 text-left text-foreground transition-all duration-150 hover:border-primary hover:bg-muted/40;
 }
 .form-file-action button.form-resume-card.is-selected {
-  @apply border-primary/40 bg-primary/15 text-primary shadow-xs ring-1 ring-primary/30;
+  @apply border-primary bg-primary/15 text-primary shadow-xs ring-1 ring-primary/40;
 }
 .form-resume-card-topline {
   @apply flex w-full min-w-0 items-center justify-between gap-1;
@@ -534,7 +542,7 @@ textarea.form-field-input {
   @apply line-clamp-1 min-w-0 flex-1 break-words;
 }
 .form-resume-empty {
-  @apply w-full rounded-xl border border-dashed border-transparent bg-muted/20 px-3 py-2 text-[10px] font-medium normal-case tracking-normal text-muted-foreground;
+  @apply w-full rounded-md border border-dashed border-transparent bg-muted/20 px-3 py-2 text-[10px] font-medium normal-case tracking-normal text-muted-foreground;
 }
 .form-file-options {
   @apply grid gap-1;
@@ -544,40 +552,6 @@ textarea.form-field-input {
 }
 .form-file-options input {
   @apply accent-primary shrink-0;
-}
-.form-upload-status {
-  @apply m-0 text-[11px] leading-snug break-all [overflow-wrap:anywhere] max-w-full;
-}
-.form-upload-status--idle {
-  @apply text-muted-foreground;
-}
-.form-upload-status--uploading,
-.form-upload-status--unconfirmed {
-  @apply text-amber-600 dark:text-amber-400;
-}
-.form-upload-status--confirmed {
-  @apply text-primary font-semibold;
-}
-.form-upload-status--failed {
-  @apply text-destructive;
-}
-.form-upload-debug {
-  @apply text-[10px] text-muted-foreground min-w-0 max-w-full;
-}
-.form-upload-debug summary {
-  @apply cursor-pointer select-none;
-}
-.form-upload-debug dl {
-  @apply grid gap-0.5 m-0 pt-1 min-w-0 max-w-full;
-}
-.form-upload-debug dl div {
-  @apply grid grid-cols-[54px_minmax(0,1fr)] gap-1 min-w-0 max-w-full;
-}
-.form-upload-debug dt {
-  @apply text-muted-foreground;
-}
-.form-upload-debug dd {
-  @apply m-0 break-all [overflow-wrap:anywhere] text-foreground min-w-0 max-w-full;
 }
 /* ── Diagnostics ─────────────────────────────────────────────────────────── */
 .diagnostics {

@@ -27,10 +27,12 @@ export const supportedJobPlatforms = [
   { id: 'wellfound', label: 'Wellfound', mark: 'W', color: '#141413' },
   { id: 'dice', label: 'Dice', mark: 'D', color: '#e01a22' },
   { id: 'simplyhired', label: 'SimplyHired', mark: 'S', color: '#205493' },
+  { id: 'careerone', label: 'CareerOne', mark: 'C', color: '#f26522' },
+  { id: 'micro1', label: 'micro1', mark: 'm', color: '#6366f1' },
 ] as const;
 
 const platformDomains: Record<string, string> = {
-  seek: 'seek.com.au', linkedin: 'linkedin.com', indeed: 'indeed.com', glassdoor: 'glassdoor.com', workday: 'workday.com', greenhouse: 'greenhouse.io', lever: 'lever.co', ashby: 'ashbyhq.com', smartrecruiters: 'smartrecruiters.com', taleo: 'taleo.net', icims: 'icims.com', successfactors: 'successfactors.com', oracle: 'oracle.com', workable: 'workable.com', bamboohr: 'bamboohr.com', jora: 'jora.com', ziprecruiter: 'ziprecruiter.com', adzuna: 'adzuna.com.au', wellfound: 'wellfound.com', dice: 'dice.com', simplyhired: 'simplyhired.com.au',
+  seek: 'seek.com.au', linkedin: 'linkedin.com', indeed: 'indeed.com', glassdoor: 'glassdoor.com', workday: 'workday.com', greenhouse: 'greenhouse.io', lever: 'lever.co', ashby: 'ashbyhq.com', smartrecruiters: 'smartrecruiters.com', taleo: 'taleo.net', icims: 'icims.com', successfactors: 'successfactors.com', oracle: 'oracle.com', workable: 'workable.com', bamboohr: 'bamboohr.com', jora: 'jora.com', ziprecruiter: 'ziprecruiter.com', adzuna: 'adzuna.com.au', wellfound: 'wellfound.com', dice: 'dice.com', simplyhired: 'simplyhired.com.au', careerone: 'careerone.com.au', micro1: 'micro1.ai',
 };
 
 export function PlatformTagSelector({

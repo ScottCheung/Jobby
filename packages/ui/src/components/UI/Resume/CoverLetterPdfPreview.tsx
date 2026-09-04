@@ -13,9 +13,9 @@ import {
   Loader2,
   Maximize2,
   X,
-} from 'lucide-react';
+} from '@jobby/ui/components/icons';
 import { Button } from '../Button';
-import { Mail, Phone, MapPin, FolderGit2, Globe } from 'lucide-react';
+import { Mail, Phone, MapPin, FolderGit2, Globe } from '@jobby/ui/components/icons';
 import {
   formatCoverLetterFilename,
   formatCoverLetterPdfFileSize,
@@ -25,7 +25,13 @@ import {
   COVER_LETTER_SIGNATURE_STYLE,
 } from './helpers';
 import type { MasterResumeData } from './types';
+import {
+  createResumeHighlightRules,
+  tokenizeResumeText,
+  type ResumeHighlightRules,
+} from './highlights';
 import { COVER_LETTER_GOLD_SVG_DATA_URI } from './cover-letter-contour';
+import { SACRAMENTO_FONT_URL } from './cover-letter-font';
 import {
   computeLayoutMetrics,
   parseCoverLetterContent,
@@ -57,6 +63,7 @@ function renderHtmlFormattedParagraph(
   lineHeight: number,
   marginBottom: number,
   key: number | string,
+  rules: ResumeHighlightRules,
 ) {
   const parts = text.split(/(\*\*.*?\*\*)/g);
   return (
@@ -70,17 +77,22 @@ function renderHtmlFormattedParagraph(
       className='text-stone-800 dark:text-stone-200 text-justify tracking-normal'
     >
       {parts.map((part, index) => {
-        if (part.startsWith('**') && part.endsWith('**')) {
-          return (
+        const manuallyEmphasized =
+          part.startsWith('**') && part.endsWith('**');
+        const value = manuallyEmphasized ? part.slice(2, -2) : part;
+
+        return tokenizeResumeText(value, rules).map((token, tokenIndex) =>
+          manuallyEmphasized || token.kind !== 'plain' ? (
             <strong
-              key={index}
+              key={`${index}-${tokenIndex}`}
               className='font-bold text-stone-950 dark:text-white'
             >
-              {part.slice(2, -2)}
+              {token.value}
             </strong>
-          );
-        }
-        return <span key={index}>{part}</span>;
+          ) : (
+            <span key={`${index}-${tokenIndex}`}>{token.value}</span>
+          ),
+        );
       })}
     </p>
   );
@@ -157,6 +169,7 @@ export function CoverLetterHtmlDocument({
   const name = candidateData ? resumeFullName(candidateData) : 'Scott Zhang';
   const headline = candidateData?.basics?.headline;
   const contacts = candidateData ? resumeContactItems(candidateData) : [];
+  const highlightRules = createResumeHighlightRules(candidateData ?? {});
   const metrics = computeLayoutMetrics(coverLetter);
   const { salutation, paragraphs, signoff, signoffName } =
     parseCoverLetterContent(coverLetter, candidateData, company);
@@ -177,7 +190,7 @@ export function CoverLetterHtmlDocument({
       style={{
         width: 816,
         minHeight: 1056,
-        paddingTop: `${metrics.paddingTop * 1.35}px`,
+        paddingTop: `${(metrics.paddingTop + 8) * 1.35}px`,
         paddingBottom: `${metrics.paddingBottom * 1.35}px`,
         paddingLeft: `${metrics.paddingX * 1.35}px`,
         paddingRight: `${metrics.paddingX * 1.35}px`,
@@ -191,6 +204,9 @@ export function CoverLetterHtmlDocument({
       }}
       className='flex flex-col text-left select-none'
     >
+      <style>
+        {`@font-face { font-family: 'Sacramento'; src: url('${SACRAMENTO_FONT_URL}') format('truetype'); font-style: normal; font-weight: 400; }`}
+      </style>
       {/* Top-Right Decorative Contour: Exact vector SVG from clbg.svg in matching Warm Gold */}
       <img
         src={COVER_LETTER_GOLD_SVG_DATA_URI}
@@ -280,6 +296,7 @@ export function CoverLetterHtmlDocument({
               metrics.bodyLineHeight,
               metrics.paragraphGap,
               i,
+              highlightRules,
             ),
           )}
         </div>
@@ -309,6 +326,19 @@ export function CoverLetterHtmlDocument({
 
 export { formatCoverLetterPdfFileSize } from './helpers';
 
+function isDesktopApp(): boolean {
+  if (typeof window === 'undefined') return false;
+  const win = window as any;
+  const ua = navigator.userAgent || '';
+  return Boolean(
+    win.electron ||
+    win.electronAPI ||
+    win.ipcRenderer ||
+    win.__TAURI__ ||
+    /Electron|Tauri|Jobby|Desktop/i.test(ua),
+  );
+}
+
 export function CoverLetterPdfPreview({
   coverLetter,
   candidateData,
@@ -325,9 +355,11 @@ export function CoverLetterPdfPreview({
 }: CoverLetterPdfPreviewProps) {
   const activeUrlRef = useRef<string | null>(null);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [pages, setPages] = useState<number | null>(1);
   const [generatedFileSize, setGeneratedFileSize] = useState<number | null>(
     null,
   );
+  const [generatedAt, setGeneratedAt] = useState<Date | null>(null);
   const [error, setError] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -377,28 +409,51 @@ export function CoverLetterPdfPreview({
     filename || formatCoverLetterFilename(candidateData, company, jobTitle);
   const downloadName = `${resolvedFilename.replace(/\.pdf$/i, '') || 'cover-letter'}.pdf`;
 
-  const generatePdfBlob = async () => {
-    if (pdfUrl) return;
-    setIsGenerating(true);
-    setError('');
-    try {
-      const { blob } = await renderCoverLetterPdfOnce(
+  useEffect(() => {
+    if (onPreview || !coverLetter || !coverLetter.trim()) {
+      setIsGenerating(false);
+      setError('');
+      setPdfUrl(null);
+      return;
+    }
+
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      setIsGenerating(true);
+      setError('');
+
+      void renderCoverLetterPdfOnce(
         coverLetter,
         candidateData,
         company,
         jobTitle,
-      );
-      const nextUrl = URL.createObjectURL(blob);
-      if (activeUrlRef.current) URL.revokeObjectURL(activeUrlRef.current);
-      activeUrlRef.current = nextUrl;
-      setPdfUrl(nextUrl);
-      setGeneratedFileSize(blob.size);
-    } catch {
-      setError('Could not generate Cover Letter PDF.');
-    } finally {
-      setIsGenerating(false);
-    }
-  };
+      )
+        .then(({ blob, pages: pageCount }) => {
+          const nextUrl = URL.createObjectURL(blob);
+          if (cancelled) {
+            URL.revokeObjectURL(nextUrl);
+            return;
+          }
+          if (activeUrlRef.current) URL.revokeObjectURL(activeUrlRef.current);
+          activeUrlRef.current = nextUrl;
+          setPdfUrl(nextUrl);
+          setPages(pageCount);
+          setGeneratedFileSize(blob.size);
+          setGeneratedAt(new Date());
+          setIsGenerating(false);
+        })
+        .catch(() => {
+          if (cancelled) return;
+          setError('Could not generate Cover Letter PDF.');
+          setIsGenerating(false);
+        });
+    }, 400);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [coverLetter, candidateData, company, jobTitle, onPreview]);
 
   useEffect(
     () => () => {
@@ -459,11 +514,25 @@ export function CoverLetterPdfPreview({
                   {downloadName}
                 </p>
                 <div className='flex items-center gap-2 text-xs text-ink-secondary mt-0.5 truncate'>
-                  <span>1 page</span>
+                  <span>
+                    {pages ?? 1} page{pages === 1 ? '' : 's'}
+                  </span>
                   {fileSize ? (
                     <>
                       <span className='opacity-40'>•</span>
                       <span>{formatCoverLetterPdfFileSize(fileSize)}</span>
+                    </>
+                  ) : null}
+                  {generatedAt ? (
+                    <>
+                      <span className='opacity-40'>•</span>
+                      <span>
+                        Generated{' '}
+                        {generatedAt.toLocaleTimeString([], {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </span>
                     </>
                   ) : null}
                 </div>
@@ -476,9 +545,10 @@ export function CoverLetterPdfPreview({
                 size='sm'
                 Icon={Download}
                 onClick={download}
+                disabled={!pdfUrl || isGenerating}
                 className='!h-8 !px-3 text-xs'
               >
-                Download PDF
+                {isGenerating ? 'Compiling PDF...' : 'Download PDF'}
               </Button>
               <button
                 type='button'
@@ -490,21 +560,33 @@ export function CoverLetterPdfPreview({
             </div>
           </header>
 
-          <div className='flex-1 overflow-auto p-6 bg-slate-900/10 flex justify-center'>
-            <div className='shadow-2xl rounded-sm overflow-hidden bg-white max-w-4xl w-full'>
-              <CoverLetterHtmlDocument
-                coverLetter={coverLetter}
-                candidateData={candidateData}
-                company={company}
-                jobTitle={jobTitle}
-              />
+          {isDesktopApp() ? (
+            <div className='flex-1 overflow-auto p-6 bg-slate-900/10 flex justify-center'>
+              <div className='shadow-2xl rounded-sm overflow-hidden bg-white max-w-4xl w-full'>
+                <CoverLetterHtmlDocument
+                  coverLetter={coverLetter}
+                  candidateData={candidateData}
+                  company={company}
+                  jobTitle={jobTitle}
+                />
+              </div>
             </div>
-          </div>
+          ) : pdfUrl ? (
+            <iframe
+              title='Cover Letter PDF preview'
+              src={pdfUrl}
+              className='h-full w-full border-0 bg-background-secondary transform-gpu'
+            />
+          ) : (
+            <div className='flex h-full flex-col items-center justify-center gap-2 text-ink-secondary'>
+              <Loader2 className='h-6 w-6 animate-spin text-primary' />
+              <p className='text-xs font-medium'>Loading PDF engine...</p>
+            </div>
+          )}
         </div>,
       );
     } else {
       setIsModalOpen(true);
-      void generatePdfBlob();
     }
   };
 
@@ -627,8 +709,8 @@ export function CoverLetterPdfPreview({
         <div className='absolute bottom-1.5 left-1.5 z-10 flex items-center gap-1 rounded-md bg-panel/60 backdrop-blur-xs px-1.5 py-0.5 text-[9.5px] font-medium text-ink-primary'>
           <FileText className='h-3 w-3 text-primary shrink-0' />
           <span>
-            1 page
-            {fileSize ? `· ${formatCoverLetterPdfFileSize(fileSize)}` : ''}
+            {pages ?? 1} page{pages === 1 ? '' : 's'}
+            {fileSize ? ` · ${formatCoverLetterPdfFileSize(fileSize)}` : ''}
           </span>
         </div>
       </div>
@@ -653,16 +735,30 @@ export function CoverLetterPdfPreview({
                   </div>
                   <div className='min-w-0'>
                     <p className='label font-semibold text-ink-primary truncate'>
-                      {resolvedFilename}
+                      {downloadName}
                     </p>
                     <div className='flex flex-wrap items-center gap-1 text-[10px] text-ink-secondary'>
-                      <span>1 page</span>
+                      <span>
+                        {pages ?? 1} page{pages === 1 ? '' : 's'}
+                      </span>
                       {fileSize && (
                         <>
                           <span className='opacity-40'>•</span>
                           <span>{formatCoverLetterPdfFileSize(fileSize)}</span>
                         </>
                       )}
+                      {generatedAt ? (
+                        <>
+                          <span className='opacity-40'>•</span>
+                          <span>
+                            Generated{' '}
+                            {generatedAt.toLocaleTimeString([], {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </span>
+                        </>
+                      ) : null}
                     </div>
                   </div>
                 </div>
@@ -672,7 +768,7 @@ export function CoverLetterPdfPreview({
                     size='sm'
                     Icon={Download}
                     onClick={download}
-                    disabled={isGenerating}
+                    disabled={!pdfUrl || isGenerating}
                   >
                     {isGenerating ? 'Compiling PDF...' : 'Download PDF'}
                   </Button>
@@ -688,16 +784,29 @@ export function CoverLetterPdfPreview({
               </header>
 
               {/* Modal Body */}
-              <div className='flex-1 overflow-auto p-6 bg-slate-900/10 flex justify-center custom-scrollbar'>
-                <div className='shadow-2xl rounded-sm overflow-hidden bg-white max-w-4xl w-full my-auto'>
-                  <CoverLetterHtmlDocument
-                    coverLetter={coverLetter}
-                    candidateData={candidateData}
-                    company={company}
-                    jobTitle={jobTitle}
-                  />
+              {isDesktopApp() ? (
+                <div className='flex-1 overflow-auto p-6 bg-slate-900/10 flex justify-center custom-scrollbar'>
+                  <div className='shadow-2xl rounded-sm overflow-hidden bg-white max-w-4xl w-full my-auto'>
+                    <CoverLetterHtmlDocument
+                      coverLetter={coverLetter}
+                      candidateData={candidateData}
+                      company={company}
+                      jobTitle={jobTitle}
+                    />
+                  </div>
                 </div>
-              </div>
+              ) : pdfUrl ? (
+                <iframe
+                  title='Cover Letter PDF preview'
+                  src={pdfUrl}
+                  className='h-full w-full border-0 bg-background-secondary transform-gpu'
+                />
+              ) : (
+                <div className='flex h-full flex-col items-center justify-center gap-2 text-ink-secondary'>
+                  <Loader2 className='h-6 w-6 animate-spin text-primary' />
+                  <p className='text-xs font-medium'>Loading PDF engine...</p>
+                </div>
+              )}
             </div>
           </div>,
           document.body,

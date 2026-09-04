@@ -2,7 +2,7 @@
 
 'use client';
 
-import type { LucideIcon } from 'lucide-react';
+import type { LucideIcon } from '@jobby/ui/components/icons';
 import { motion } from 'framer-motion';
 import AnimatedIcon from '../SVGanimation/StatusSVG';
 import { cn } from '@/lib/utils';

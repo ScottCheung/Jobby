@@ -1,4 +1,5 @@
 import { bindTabJobInspection, getTabJobInspection } from "./job-binding-service";
+import { cacheAshbyJobInspection, getCachedAshbyJobInspection } from "./session-store";
 import { z } from "zod";
 
 import { pageInspectionSchema, type PageInspection } from "../shared/contracts/page-inspection";
@@ -43,6 +44,7 @@ const highlightResponseSchema = z.discriminatedUnion("ok", [
 
 let targetedTabId: number | undefined;
 const activeFormFrameByTab = new Map<number, number>();
+const inFlightJobInspections = new Map<string, Promise<PageInspection>>();
 const CONTENT_SCRIPT_STARTUP_RETRY_MS = 100;
 const CONTENT_SCRIPT_STARTUP_ATTEMPTS = 30;
 
@@ -66,15 +68,112 @@ export async function inspectActiveTab(
     };
   }
 
+  const activeUrl = activeTab.url || "";
+  const isAshbyApplicationPage = isAshbyApplicationUrl(activeUrl);
+  if (isAshbyApplicationPage) {
+    const cachedInspection = await getCachedAshbyJobInspection(activeUrl);
+    if (cachedInspection) {
+      const resolvedInspection: PageInspection = {
+        kind: "job",
+        snapshot: {
+          ...cachedInspection.snapshot,
+          url: activeUrl,
+        },
+      };
+      bindTabJobInspection(activeTab.id, resolvedInspection);
+      return resolvedInspection;
+    }
+  }
+
   const rawResponse = await sendToTab(activeTab.id, { type: "content.inspect" });
   const parsed = contentResponseSchema.safeParse(rawResponse);
   if (!parsed.success) throw new Error("The page returned an invalid inspection response.");
   if (!parsed.data.ok) throw new Error(parsed.data.error);
 
   const inspection = parsed.data.inspection;
+  const resolvedActiveUrl = activeUrl || (inspection.kind === "job" ? inspection.snapshot.url : inspection.url);
+
+  if (activeTab.id && inspection.kind !== "job" && isAshbyApplicationPage) {
+    const boundInspection = getTabJobInspection(activeTab.id, resolvedActiveUrl);
+    if (boundInspection) return boundInspection;
+
+    const detailInspection = await inspectJobUrl(resolvedActiveUrl).catch(() => undefined);
+    if (detailInspection?.kind === "job") {
+      const resolvedInspection: PageInspection = {
+        kind: "job",
+        snapshot: {
+          ...detailInspection.snapshot,
+          url: resolvedActiveUrl,
+        },
+      };
+      await cacheAshbyJobInspection(resolvedInspection);
+      bindTabJobInspection(activeTab.id, resolvedInspection);
+      return resolvedInspection;
+    }
+  }
+
   if (activeTab?.id && inspection.kind === "job") {
-    bindTabJobInspection(activeTab.id, inspection);
-    return inspection;
+    const boundInspection = getTabJobInspection(activeTab.id, resolvedActiveUrl);
+    if (
+      boundInspection?.kind === "job" &&
+      boundInspection.snapshot.platform === inspection.snapshot.platform &&
+      boundInspection.snapshot.externalId === inspection.snapshot.externalId
+    ) {
+      return boundInspection;
+    }
+
+    let resolvedInspection = inspection;
+    const isSeekApplicationPage =
+      inspection.snapshot.platform === "seek" &&
+      /\/(?:apply|application)(?:\/|$)/i.test(new URL(resolvedActiveUrl).pathname);
+    const shouldReadDetailPage =
+      !inspection.snapshot.description?.trim() &&
+      (isSeekApplicationPage || isAshbyApplicationPage);
+
+    if (shouldReadDetailPage) {
+      const detailInspection = await inspectJobUrl(resolvedActiveUrl).catch(() => undefined);
+      if (
+        detailInspection?.kind === "job" &&
+        detailInspection.snapshot.externalId === inspection.snapshot.externalId
+      ) {
+        resolvedInspection = {
+          kind: "job",
+          snapshot: {
+            ...detailInspection.snapshot,
+            ...inspection.snapshot,
+            url: resolvedActiveUrl,
+            location:
+              inspection.snapshot.location || detailInspection.snapshot.location,
+            firstPostedAt:
+              inspection.snapshot.firstPostedAt ||
+              detailInspection.snapshot.firstPostedAt,
+            lastPostedAt:
+              inspection.snapshot.lastPostedAt ||
+              detailInspection.snapshot.lastPostedAt,
+            postingObservedAt:
+              inspection.snapshot.postingObservedAt ||
+              detailInspection.snapshot.postingObservedAt,
+            isReposted:
+              inspection.snapshot.isReposted ??
+              detailInspection.snapshot.isReposted,
+            postingDateRaw:
+              inspection.snapshot.postingDateRaw ||
+              detailInspection.snapshot.postingDateRaw,
+            description: detailInspection.snapshot.description,
+            technologies: Array.from(
+              new Set([
+                ...detailInspection.snapshot.technologies,
+                ...inspection.snapshot.technologies,
+              ]),
+            ),
+          },
+        };
+      }
+    }
+
+    await cacheAshbyJobInspection(resolvedInspection);
+    bindTabJobInspection(activeTab.id, resolvedInspection);
+    return resolvedInspection;
   }
 
   // If the active page does not identify a job directly (e.g. an external ATS
@@ -87,6 +186,16 @@ export async function inspectActiveTab(
   }
 
   return inspection;
+}
+
+function isAshbyApplicationUrl(rawUrl: string): boolean {
+  try {
+    const url = new URL(rawUrl);
+    return url.hostname.toLowerCase() === "jobs.ashbyhq.com" &&
+      /\/(?:apply|application)\/?$/i.test(url.pathname);
+  } catch {
+    return false;
+  }
 }
 
 export function jobInspectionUrl(rawUrl: string): string {
@@ -114,48 +223,157 @@ export function jobInspectionUrl(rawUrl: string): string {
     }
   }
 
+  if (host === "jobs.ashbyhq.com" && /\/(?:apply|application)\/?$/i.test(url.pathname)) {
+    url.pathname = url.pathname.replace(/\/(?:apply|application)\/?$/i, "");
+    return url.toString();
+  }
+
   return url.toString();
 }
 
-export async function inspectJobUrl(rawUrl: string): Promise<PageInspection> {
+export async function inspectJobUrl(
+  rawUrl: string,
+  restoreTabId?: number,
+): Promise<PageInspection> {
   const inspectionUrl = jobInspectionUrl(rawUrl);
+  const inFlight = inFlightJobInspections.get(inspectionUrl);
+  if (inFlight) return inFlight;
+
+  const inspection = inspectJobUrlOnce(inspectionUrl, restoreTabId);
+  inFlightJobInspections.set(inspectionUrl, inspection);
+  try {
+    return await inspection;
+  } finally {
+    inFlightJobInspections.delete(inspectionUrl);
+  }
+}
+
+async function inspectJobUrlOnce(
+  inspectionUrl: string,
+  restoreTabId?: number,
+): Promise<PageInspection> {
+  const existingTab = await findOpenJobTab(inspectionUrl);
+  if (existingTab?.id !== undefined) {
+    await waitForTabLoad(existingTab.id);
+    return inspectTabForJob(existingTab.id);
+  }
+
+  const restoreTab =
+    restoreTabId !== undefined
+      ? await chrome.tabs.get(restoreTabId).catch(() => undefined)
+      : chrome.tabs.query
+        ? (await chrome.tabs.query({ active: true, lastFocusedWindow: true }).catch(() => []))?.[0]
+        : undefined;
   const tab = await chrome.tabs.create({ url: inspectionUrl, active: false });
   if (tab.id === undefined) {
     throw new Error("Could not open the job page for inspection.");
   }
 
   try {
-    for (let attempt = 0; attempt < 100; attempt += 1) {
-      const current = await chrome.tabs.get(tab.id).catch(() => undefined);
-      if (!current) {
-        throw new Error("The job page closed before it could be inspected.");
-      }
-      if (current.status === "complete") break;
-      await new Promise((resolve) => setTimeout(resolve, 100));
+    // LinkedIn throttles rendering and network work in background tabs. Make
+    // the temporary page visible while it is being read so its normal client
+    // side loading lifecycle can complete.
+    if (chrome.tabs.update) {
+      await chrome.tabs.update(tab.id, { active: true });
+    }
+    if (tab.windowId !== undefined && chrome.windows?.update) {
+      await chrome.windows.update(tab.windowId, { focused: true });
     }
 
-    let lastInspection: PageInspection | undefined;
-    for (let attempt = 0; attempt < 3; attempt += 1) {
-      lastInspection = await settleWithin(
-        inspectActiveTab(tab.id),
-        6_000,
-      );
-      if (lastInspection?.kind === "job" && lastInspection.snapshot.description?.trim()) {
-        return lastInspection;
-      }
-      await new Promise((resolve) => setTimeout(resolve, 500));
-    }
-
-    throw new Error(
-      lastInspection?.kind === "job"
-        ? "The job description did not become available."
-        : lastInspection?.kind === "unsupported_page" || lastInspection?.kind === "not_job_page"
-          ? lastInspection.reason
-          : "The job details did not become available.",
-    );
+    await waitForTabLoad(tab.id);
+    return inspectTabForJob(tab.id);
   } finally {
     await chrome.tabs.remove(tab.id).catch(() => undefined);
+    if (restoreTab?.id !== undefined) {
+      if (chrome.tabs.update) {
+        await chrome.tabs.update(restoreTab.id, { active: true }).catch(() => undefined);
+      }
+      if (restoreTab.windowId !== undefined && chrome.windows?.update) {
+        await chrome.windows.update(restoreTab.windowId, { focused: true }).catch(() => undefined);
+      }
+    }
   }
+}
+
+async function findOpenJobTab(inspectionUrl: string): Promise<chrome.tabs.Tab | undefined> {
+  if (!chrome.tabs.query) return undefined;
+  const tabs = await chrome.tabs.query({}).catch(() => []);
+  return tabs.find((tab) => {
+    if (tab.id === undefined || !isSupportedUrl(tab.url)) return false;
+    try {
+      return jobInspectionUrl(tab.url || "") === inspectionUrl;
+    } catch {
+      return false;
+    }
+  });
+}
+
+async function waitForTabLoad(tabId: number): Promise<void> {
+  const current = await chrome.tabs.get(tabId).catch(() => undefined);
+  if (!current) throw new Error("The job page closed before it could be inspected.");
+  if (current.status === "complete") return;
+
+  const completed = chrome.webNavigation?.onCompleted;
+  const failed = chrome.webNavigation?.onErrorOccurred;
+  if (!completed?.addListener) {
+    for (let attempt = 0; attempt < 100; attempt += 1) {
+      const tab = await chrome.tabs.get(tabId).catch(() => undefined);
+      if (!tab) throw new Error("The job page closed before it could be inspected.");
+      if (tab.status === "complete") return;
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    return;
+  }
+
+  await new Promise<void>((resolve, reject) => {
+    let settled = false;
+    // Some SPA pages keep the top-level document in a loading state while
+    // their job data is already readable. Do not make inspection wait for the
+    // browser's load event indefinitely; inspectTabForJob has its own
+    // readiness retries.
+    const timeoutId = setTimeout(() => finish(), 8_000);
+    const finish = (error?: Error) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeoutId);
+      completed.removeListener(onCompleted);
+      failed?.removeListener(onError);
+      if (error) reject(error);
+      else resolve();
+    };
+    const onCompleted = (details: chrome.webNavigation.WebNavigationFramedCallbackDetails) => {
+      if (details.tabId === tabId && details.frameId === 0) finish();
+    };
+    const onError = (details: chrome.webNavigation.WebNavigationFramedCallbackDetails) => {
+      if (details.tabId === tabId && details.frameId === 0) {
+        finish(new Error("The job page failed to load."));
+      }
+    };
+    completed.addListener(onCompleted);
+    failed?.addListener(onError);
+    void chrome.tabs.get(tabId).then((tab) => {
+      if (tab.status === "complete") finish();
+    }).catch(() => finish(new Error("The job page closed before it could be inspected.")));
+  });
+}
+
+async function inspectTabForJob(tabId: number): Promise<PageInspection> {
+  let lastInspection: PageInspection | undefined;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    lastInspection = await settleWithin(inspectActiveTab(tabId), 6_000);
+    if (lastInspection?.kind === "job" && lastInspection.snapshot.description?.trim()) {
+      return lastInspection;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+
+  throw new Error(
+    lastInspection?.kind === "job"
+      ? "The job description did not become available."
+      : lastInspection?.kind === "unsupported_page" || lastInspection?.kind === "not_job_page"
+        ? lastInspection.reason
+        : "The job details did not become available.",
+  );
 }
 
 function settleWithin<T>(promise: Promise<T>, timeoutMs: number): Promise<T | undefined> {
@@ -254,7 +472,7 @@ export async function cancelWorkdayStructuredActiveTab(runId: string): Promise<v
   await sendToActiveTab({ type: "content.cancel-workday-structured", runId });
 }
 
-export async function editActiveTabField(target: FormFieldTarget, value: string | boolean): Promise<FieldFillResult> {
+export async function editActiveTabField(target: FormFieldTarget, value: FieldFillInstruction["value"]): Promise<FieldFillResult> {
   const mainWorldResult = await selectGreenhouseCombobox(target, value, `panel-${Date.now()}-${target.key}`);
   if (mainWorldResult) return mainWorldResult;
 
@@ -265,7 +483,7 @@ export async function editActiveTabField(target: FormFieldTarget, value: string 
   return parsed.data.fillResult;
 }
 
-async function selectGreenhouseCombobox(target: FormFieldTarget, value: string | boolean, commandId: string): Promise<FieldFillResult | null> {
+async function selectGreenhouseCombobox(target: FormFieldTarget, value: FieldFillInstruction["value"], commandId: string): Promise<FieldFillResult | null> {
   if (target.type !== "select" || typeof value !== "string" || !target.id) return null;
 
   const activeTab = await findActiveTab();

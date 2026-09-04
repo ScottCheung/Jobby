@@ -10,6 +10,7 @@ describe('Floating Ball & Auto-Show Card', () => {
 
   beforeEach(() => {
     document.body.innerHTML = '';
+    sessionStorage.clear();
     mockStorage = {};
 
     // Mock chrome APIs
@@ -140,5 +141,171 @@ describe('Floating Ball & Auto-Show Card', () => {
     expect(root.style.getPropertyValue('--primary-shadow')).toBe('rgba(167, 139, 250, 0.4)');
     expect(root.style.getPropertyValue('--primary-glow')).toBe('rgba(196, 181, 253, 0.65)');
     expect(root.style.getPropertyValue('--primary-color')).toBe('#a78bfa');
+  });
+
+  it('switches dialog iframe container mode between compact and expanded on resize messages', async () => {
+    cleanup = initializeFloatingBall();
+
+    const root = document.getElementById('jobby-floating-ball-root') as HTMLDivElement;
+    expect(root).not.toBeNull();
+    const shadow = root?.shadowRoot;
+    const dialogWrapper = shadow!.getElementById('jobby-dialog-iframe-wrapper') as HTMLDivElement;
+    expect(dialogWrapper).not.toBeNull();
+
+    // Send compact mode resize message
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        data: {
+          source: 'jobby-dialog',
+          type: 'jobby.dialog-resize',
+          mode: 'compact',
+        },
+      }),
+    );
+
+    expect(dialogWrapper.classList.contains('is-compact')).toBe(true);
+    expect(dialogWrapper.classList.contains('is-expanded')).toBe(false);
+
+    // Send expanded mode resize message
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        data: {
+          source: 'jobby-dialog',
+          type: 'jobby.dialog-resize',
+          mode: 'expanded',
+        },
+      }),
+    );
+
+    expect(dialogWrapper.classList.contains('is-expanded')).toBe(true);
+    expect(dialogWrapper.classList.contains('is-compact')).toBe(false);
+  });
+
+  it('clamps the dialog inside the viewport when the ball is in the middle', () => {
+    const viewportHeight = window.innerHeight;
+    const ballTop = viewportHeight / 2;
+    sessionStorage.setItem(
+      'jobby-floating-ball-position',
+      JSON.stringify({ edge: 'right', top: ballTop }),
+    );
+
+    cleanup = initializeFloatingBall();
+
+    const root = document.getElementById(
+      'jobby-floating-ball-root',
+    ) as HTMLDivElement;
+    const wrapper = root.shadowRoot!.getElementById(
+      'jobby-ball-wrapper',
+    ) as HTMLDivElement;
+    const offset = Number.parseFloat(
+      wrapper.style.getPropertyValue('--jobby-dialog-offset-y'),
+    );
+    const dialogHeight = Math.min(600, viewportHeight - 40);
+    const dialogTop = ballTop + offset;
+
+    expect(dialogTop).toBeGreaterThanOrEqual(20);
+    expect(dialogTop + dialogHeight).toBeLessThanOrEqual(
+      viewportHeight - 20,
+    );
+  });
+
+  it('opens in-page sidepanel iframe when floating ball is clicked', async () => {
+    cleanup = initializeFloatingBall();
+
+    const root = document.getElementById('jobby-floating-ball-root') as HTMLDivElement;
+    expect(root).not.toBeNull();
+    const shadow = root?.shadowRoot;
+    const wrapper = shadow!.getElementById('jobby-ball-wrapper') as HTMLDivElement;
+    expect(wrapper).not.toBeNull();
+
+    // Click on the floating ball wrapper
+    wrapper.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0 }));
+    wrapper.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, button: 0 }));
+
+    await new Promise((r) => setTimeout(r, 20));
+
+    // Verify sidepanel iframe container was created and shown
+    const iframeRoot = document.getElementById('jobby-in-page-sidepanel-root');
+    expect(iframeRoot).not.toBeNull();
+    const iframeShadow = iframeRoot?.shadowRoot;
+    const iframeWrapper = iframeShadow?.getElementById('jobby-iframe-wrapper');
+    expect(iframeWrapper).not.toBeNull();
+    expect(iframeWrapper?.classList.contains('is-visible')).toBe(true);
+  });
+
+  it('hides floating ball and in-page sidebar when native sidepanel is opened, and restores ball when closed', async () => {
+    let runtimeListener: ((message: any) => void) | null = null;
+    vi.mocked(chrome.runtime.onMessage.addListener).mockImplementation((fn: any) => {
+      runtimeListener = fn;
+    });
+
+    cleanup = initializeFloatingBall();
+
+    // Floating ball is initially present
+    expect(document.getElementById('jobby-floating-ball-root')).not.toBeNull();
+
+    // Simulate native sidepanel opening
+    runtimeListener?.({ type: 'sidepanel.state-changed', isOpen: true });
+
+    // Floating ball and dialog should be completely removed from DOM
+    expect(document.getElementById('jobby-floating-ball-root')).toBeNull();
+
+    // Simulate native sidepanel closing
+    runtimeListener?.({ type: 'sidepanel.state-changed', isOpen: false });
+
+    // Floating ball should be restored in the DOM
+    expect(document.getElementById('jobby-floating-ball-root')).not.toBeNull();
+  });
+
+  it('hides floating ball on initial load if native sidepanel query returns open', async () => {
+    vi.mocked(chrome.runtime.sendMessage).mockImplementation((msg: any, cb?: (res: any) => void) => {
+      if (msg?.type === 'sidepanel.query-state') {
+        cb?.({ ok: true, isOpen: true, canHostSidepanel: true });
+      }
+    });
+
+    cleanup = initializeFloatingBall();
+
+    // Because query returned isOpen: true, floating ball should be removed from DOM
+    expect(document.getElementById('jobby-floating-ball-root')).toBeNull();
+  });
+
+  it('toggles is-loading class on the ball wrapper when loading messages are received', async () => {
+    cleanup = initializeFloatingBall();
+
+    const root = document.getElementById('jobby-floating-ball-root') as HTMLDivElement;
+    expect(root).not.toBeNull();
+    const shadow = root?.shadowRoot;
+    const wrapper = shadow!.getElementById('jobby-ball-wrapper') as HTMLDivElement;
+    expect(wrapper).not.toBeNull();
+    expect(wrapper.classList.contains('is-loading')).toBe(false);
+
+    // Send compact mode with isLoading: true
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        data: {
+          source: 'jobby-dialog',
+          type: 'jobby.dialog-resize',
+          mode: 'compact',
+          isLoading: true,
+        },
+      }),
+    );
+
+    expect(wrapper.classList.contains('is-loading')).toBe(true);
+
+    // Send expanded mode with isLoading: false
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        data: {
+          source: 'jobby-dialog',
+          type: 'jobby.dialog-resize',
+          mode: 'expanded',
+          isLoading: false,
+        },
+      }),
+    );
+
+    expect(wrapper.classList.contains('is-loading')).toBe(false);
   });
 });

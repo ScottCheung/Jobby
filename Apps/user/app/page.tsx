@@ -1,46 +1,31 @@
 /** @format */
 
 'use client';
-import {
-  Chart,
-  ChartWrapper,
-  CityVectorMap,
-  EmptyPlaceHolder,
-  H2,
-  ToggleGroup,
-} from '@jobby/ui';
 
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useConsole } from '@/components/ConsoleContext';
-
 import {
-  getDisplayApplicationStatus,
-  getStatusBadgeClasses,
-} from '@/lib/types';
-import {
-  ChartNoAxesGantt,
-  CalendarSearch,
-  MonitorCog,
-  Globe,
-  Activity,
-  Check,
-  ChevronRight,
-  ContactRound,
-  FileText,
-  Search,
   Sparkles,
   Briefcase,
   GraduationCap,
-  MessageSquareCode,
+  FileText,
+  UserCheck,
+  Star,
+  ChevronRight,
+  ContactRound,
+  Search,
+  Check,
+  Bot,
+  BrainCircuit,
 } from 'lucide-react';
-
 import { cn } from '@/lib/utils';
-import { formatDate } from '@/components/ConsoleUtils';
+import { useLayoutStore } from '@/lib/store/layout-store';
+import { AutoTooltip, Avatar, CardWithNorth, FavoritesDrawer, IPEmotion } from '@jobby/ui';
 
 type QuickStartStep = {
   title: string;
-  description: string;
   href: string;
   action: string;
   icon: React.ComponentType<{ className?: string }>;
@@ -65,29 +50,23 @@ function ApplicationQuickStart() {
 
   const steps: QuickStartStep[] = [
     {
-      title: 'Add your contact details',
-      description:
-        'Your first name, last name, and phone number are required for application forms.',
+      title: 'Contact details',
       href: '/settings/profile',
-      action: 'Complete profile',
+      action: 'Set up',
       icon: ContactRound,
       complete: hasPersonalDetails,
     },
     {
-      title: 'Set your target roles',
-      description:
-        'Add job titles or keywords for resume tailoring and recommendations.',
+      title: 'Target roles',
       href: '/settings/career-profiles',
-      action: 'Set search target',
+      action: 'Add target',
       icon: Search,
       complete: hasSearchTarget,
     },
     {
-      title: 'Attach your resume',
-      description:
-        'Use the active job profile to provide the resume used for uploads and form answers.',
-      href: '/settings/career-profiles',
-      action: 'Upload resume',
+      title: 'Master resume',
+      href: '/settings/resumes',
+      action: 'Upload PDF',
       icon: FileText,
       complete: hasResume,
     },
@@ -96,518 +75,415 @@ function ApplicationQuickStart() {
   if (steps.every((step) => step.complete)) return null;
 
   return (
-    <section className='col-span-12 panel-xl relative overflow-hidden'>
-      <div className='absolute inset-y-0 left-0 w-1.5 bg-primary/50' />
-      <div className='grid gap-6 lg:grid-cols-[minmax(220px,0.8fr)_minmax(0,2.2fr)]'>
-        <div className='border-b border-primary/50 pb-5 lg:border-b-0 lg:border-r lg:pb-0 lg:pr-6'>
-          <Sparkles className='mb-2 h-7 w-7 text-primary' />
-          <h2 className='title-sub text-ink-primary'>2 Min Quick Start</h2>
-          <p className='body-sm mt-1 text-ink-secondary'>
-            Complete these essentials once so job recognition, autofill, and
-            document tailoring have the information they need.
-          </p>
-        </div>
-
-        <div className='grid gap-4 md:grid-cols-3'>
+    <div className='col-span-12'>
+      <CardWithNorth
+        title={
+          <span className='flex items-center gap-1.5 text-xs font-bold text-primary'>
+            <Sparkles className='size-3.5' />
+            <span>2 Min Quick Start</span>
+          </span>
+        }
+        size='sm'
+        className='w-full'
+        tabClassName='bg-panel'
+        contentClassName='p-4! bg-panel'
+      >
+        <div className='grid gap-3 md:grid-cols-3'>
           {steps.map((step, index) => {
             const Icon = step.icon;
             return (
-              <div key={step.title} className='flex min-w-0 gap-3'>
-                <div
-                  className={cn(
-                    'label flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2',
-                    step.complete ?
-                      'border-emerald-500 bg-emerald-500/10 text-emerald-600'
-                    : 'border-primary bg-primary/10 text-primary',
-                  )}
-                  aria-label={
-                    step.complete ?
-                      `${step.title} complete`
-                    : `Step ${index + 1}`
-                  }
-                >
-                  {step.complete ?
-                    <Check className='h-4 w-4' />
-                  : index + 1}
-                </div>
-                <div className='min-w-0'>
-                  <div className='flex items-center gap-1.5'>
-                    <Icon className='h-4 w-4 shrink-0 text-ink-secondary' />
-                    <h3
+              <Link
+                key={step.title}
+                href={step.href}
+                className={cn(
+                  'group flex items-center justify-between rounded-2xl p-3.5 transition-all duration-200',
+                  step.complete
+                    ? 'bg-emerald-500/10 text-ink-secondary'
+                    : 'bg-background-secondary/70 hover:bg-background-secondary',
+                )}
+              >
+                <div className='flex items-center gap-3 min-w-0'>
+                  <div
+                    className={cn(
+                      'flex size-7 items-center justify-center rounded-xl font-bold text-xs shrink-0',
+                      step.complete
+                        ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400'
+                        : 'bg-primary/15 text-primary',
+                    )}
+                  >
+                    {step.complete ? <Check className='size-3.5' /> : index + 1}
+                  </div>
+                  <div className='truncate'>
+                    <span
                       className={cn(
-                        'label text-sm',
-                        step.complete ?
-                          'text-ink-secondary line-through'
-                        : 'text-ink-primary',
+                        'text-xs font-semibold block truncate',
+                        step.complete ? 'line-through text-ink-secondary' : 'text-ink-primary group-hover:text-primary',
                       )}
                     >
                       {step.title}
-                    </h3>
+                    </span>
                   </div>
-                  <p className='body-sm mt-1 text-ink-secondary'>
-                    {step.description}
-                  </p>
-                  <Link
-                    href={step.href}
-                    className='label-sm mt-2 inline-flex items-center gap-1 text-primary hover:underline'
-                  >
-                    {step.complete ? 'Review details' : step.action}
-                    <ChevronRight className='h-3.5 w-3.5' />
-                  </Link>
                 </div>
-              </div>
+
+                <span className='text-[11px] font-bold text-primary flex items-center gap-0.5 shrink-0 ml-2 group-hover:underline'>
+                  {step.complete ? 'Completed' : step.action}
+                  <ChevronRight className='size-3 transition-transform group-hover:translate-x-0.5' />
+                </span>
+              </Link>
             );
           })}
         </div>
-      </div>
-    </section>
+      </CardWithNorth>
+    </div>
   );
 }
 
-function QuickJumpTiles() {
-  const tiles = [
+function WelcomeHero() {
+  const { user, profile } = useConsole();
+
+  const greeting = (() => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 18) return 'Good afternoon';
+    return 'Good evening';
+  })();
+
+  const displayName = (() => {
+    if (!user) return 'Scott';
+    if (user?.display_name && !user.display_name.includes('@')) {
+      return user.display_name;
+    }
+    if (profile?.first_name) {
+      return profile.first_name;
+    }
+    return user?.email?.split('@')[0] || 'Scott';
+  })();
+
+  return (
+    <div className='col-span-12 relative overflow-hidden rounded-3xl bg-panel p-6 md:p-8 backdrop-blur-2xl'>
+      {/* Background Decorative Glow */}
+      <div className='pointer-events-none absolute -right-12 -top-12 size-72 rounded-full bg-primary/10 blur-3xl' />
+      <div className='pointer-events-none absolute -bottom-12 left-1/4 size-56 rounded-full bg-teal-500/10 blur-3xl' />
+
+      <div className='relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5'>
+        {/* Left Welcome Info with User Avatar */}
+        <div className='flex items-center gap-4.5'>
+          <Avatar
+            src={user?.avatar_url || undefined}
+            name={displayName}
+            customSize='68px'
+            rounded='rounded-2xl'
+            className='shrink-0 text-base font-bold'
+          />
+
+          <div>
+            <h1 className='text-xl md:text-2xl font-extrabold text-ink-primary tracking-tight'>
+              {greeting}, <span className='bg-primary-gradient bg-clip-text text-transparent'>{displayName}</span>
+            </h1>
+
+            {/* Brand Slogan */}
+            <p className='text-xs text-ink-secondary mt-1.5 font-medium'>
+              Empowering every application · Your AI Career Copilot
+            </p>
+          </div>
+        </div>
+
+        {/* Quick Shortcut Action Buttons */}
+        <div className='flex flex-wrap items-center gap-2 shrink-0'>
+          <Link
+            href='/ai-studio'
+            className='flex items-center gap-1.5 rounded-2xl bg-primary-gradient px-4 py-2 text-xs font-bold text-white hover:opacity-90 transition-all'
+          >
+            <Sparkles className='size-3.5' />
+            <span>Tailor CV & CL</span>
+          </Link>
+          <Link
+            href='/interview-prep/practice'
+            className='flex items-center gap-1.5 rounded-2xl bg-background-secondary/80 px-4 py-2 text-xs font-bold text-ink-primary hover:bg-background-secondary hover:text-primary transition-all'
+          >
+            <GraduationCap className='size-3.5 text-purple-500' />
+            <span>Mock Simulator</span>
+          </Link>
+          <Link
+            href='/applications'
+            className='flex items-center gap-1.5 rounded-2xl bg-background-secondary/80 px-4 py-2 text-xs font-bold text-ink-primary hover:bg-background-secondary hover:text-primary transition-all'
+          >
+            <Briefcase className='size-3.5 text-blue-500' />
+            <span>Applications</span>
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+type SubLink = {
+  label: string;
+  href?: string;
+  onClick?: () => void;
+};
+
+type CardItem = {
+  title: string;
+  subtitle: string;
+  href: string;
+  emotionId: number;
+  dropShadow: string;
+  subLinks: SubLink[];
+  isAction?: boolean;
+};
+
+function NavigationCards() {
+  const router = useRouter();
+  const openDrawer = useLayoutStore((state) => state.actions.openDrawer);
+
+  const handleOpenFavoritesTab = (tab: 'questions' | 'answers' | 'collections') => {
+    openDrawer({
+      width: 440,
+      content: <FavoritesDrawer initialTab={tab} />,
+    });
+  };
+
+  const cards: CardItem[] = [
     {
-      title: 'Tailor CV & CL',
-      subtitle: 'Instant tailored resume & cover letter for target jobs',
+      title: 'AI Studio',
+      subtitle: 'Tailor resumes & cover letters for specific job postings with instant AI scoring.',
       href: '/ai-studio',
-      icon: Sparkles,
-      badge: 'Studio',
-      color:
-        'from-emerald-500/10 to-teal-500/5 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
+      emotionId: 2, 
+      dropShadow: 'drop-shadow(0 14px 24px rgba(16, 185, 129, 0.45))',
+      subLinks: [
+        { label: 'Tailor CV/CL', href: '/ai-studio' },
+        { label: 'Job Recommendations', href: '/ai-studio/recommendations' },
+        { label: 'Networking', href: '/ai-studio/prospects' },
+      ],
     },
     {
-      title: 'Application History',
-      subtitle: 'Track submitted roles, interventions & tailored resumes',
+      title: 'Job Applications',
+      subtitle: 'Track application pipelines, interview stages, and conversion analytics in real time.',
       href: '/applications',
-      icon: Briefcase,
-      badge: 'History',
-      color:
-        'from-blue-500/10 to-indigo-500/5 text-blue-600 dark:text-blue-400 border-blue-500/20',
+      emotionId: 13, // Analytics 📊
+      dropShadow: 'drop-shadow(0 14px 24px rgba(59, 130, 246, 0.45))',
+      subLinks: [
+        { label: 'Dashboard', href: '/applications' },
+        { label: 'History', href: '/applications/history' },
+        // { label: 'Recommendations', href: '/applications/recommendations' },
+      ],
     },
     {
-      title: 'Interview Prep',
-      subtitle: 'Targeted Q&A practice & interview library',
+      title: 'Interview Copilot',
+      subtitle: 'Practice interactive AI mock interviews with curated question banks and STAR feedback.',
       href: '/interview-prep',
-      icon: GraduationCap,
-      badge: 'Prep',
-      color:
-        'from-purple-500/10 to-pink-500/5 text-purple-600 dark:text-purple-400 border-purple-500/20',
+      emotionId: 12, // Goal & Flag 🚩
+      dropShadow: 'drop-shadow(0 14px 24px rgba(168, 85, 247, 0.45))',
+      subLinks: [
+        { label: 'Practice', href: '/interview-prep/practice' },
+        { label: 'Library', href: '/interview-prep/Library' },
+        { label: 'Explore Questions', href: '/interview-prep/explore' },
+        { label: 'Question Sets', href: '/interview-prep/collections' },
+      ],
     },
     {
       title: 'Resume Profile',
-      subtitle: 'Master resume PDF, AI evaluation & work experience',
+      subtitle: 'Manage master resume PDFs, structured career histories, and ATS evaluations.',
       href: '/settings/resumes',
-      icon: FileText,
-      badge: 'Profile',
-      color:
-        'from-amber-500/10 to-orange-500/5 text-amber-600 dark:text-amber-400 border-amber-500/20',
+      emotionId: 7, // Master Resume 📄
+      dropShadow: 'drop-shadow(0 14px 24px rgba(245, 158, 11, 0.45))',
+      subLinks: [
+        { label: 'Master Resume', href: '/settings/resumes' },
+        { label: 'Career Profiles', href: '/settings/career-profiles' },
+        { label: 'Personal Info', href: '/settings/profile' },
+      ],
+    },
+    {
+      title: 'AI Networking',
+      subtitle: 'Discover key recruiters and hiring managers with automated outreach message templates.',
+      href: '/ai-studio/prospects',
+      emotionId: 9, // Call & Networking 📞
+      dropShadow: 'drop-shadow(0 14px 24px rgba(6, 182, 212, 0.45))',
+      subLinks: [
+        { label: 'Recruiter Leads', href: '/ai-studio/prospects' },
+        { label: 'AI Memory', href: '/settings/ai-memory' },
+        { label: 'Cover Letter Prefs', href: '/settings/cover-letter-profile' },
+      ],
+    },
+    {
+      title: 'Favorites & Bookmarks',
+      subtitle: 'Saved high-frequency interview questions, reference answers, and custom collections.',
+      href: '#favorites',
+      isAction: true,
+      emotionId: 3, // Favorites Heart ❤️
+      dropShadow: 'drop-shadow(0 14px 24px rgba(244, 63, 94, 0.45))',
+      subLinks: [
+        { label: 'Saved Questions', onClick: () => handleOpenFavoritesTab('questions') },
+        { label: 'Model Answers', onClick: () => handleOpenFavoritesTab('answers') },
+        { label: 'Collections', onClick: () => handleOpenFavoritesTab('collections') },
+      ],
     },
   ];
 
   return (
-    <div className='col-span-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4'>
-      {tiles.map((tile) => {
-        const Icon = tile.icon;
+    <div className='col-span-12 grid gap-8 md:grid-cols-2 lg:grid-cols-3'>
+      {cards.map((card) => {
+
+        const handleCardClick = () => {
+          if (card.isAction) {
+            handleOpenFavoritesTab('questions');
+          } else {
+            router.push(card.href);
+          }
+        };
+
         return (
-          <Link
-            key={tile.title}
-            href={tile.href}
-            className={cn(
-              'group relative overflow-hidden rounded-2xl border bg-panel p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg',
-              tile.color,
-            )}
+          <div
+            key={card.title}
+            onClick={handleCardClick}
+            className='group relative block h-full cursor-pointer '
           >
-            <div className='flex items-center justify-between mb-3'>
-              <div className='flex h-10 w-10 items-center justify-center rounded-xl bg-background-secondary/80 dark:bg-panel/80 shadow-xs group-hover:scale-110 transition-transform'>
-                <Icon className='h-5 w-5' />
+            <CardWithNorth
+              title={
+                card.title
+              }
+              size='sm'
+              className='w-full h-full'
+              // tabClassName='bg-panel'
+              // contentClassName='relative overflow-visible p-5 flex flex-col justify-start h-full bg-panel'
+            >
+              {/* Middle Section: Concise Prompt + Large Break-out IP Bear Mascot */}
+              <div className='relative z-10 flex items-start justify-between gap-3'>
+                <div className='flex-1 min-w-0 pr-1 pt-1'>
+                  <AutoTooltip
+                    className='line-clamp-2'
+                    content={card.subtitle}
+                  >
+                    <p className='text-xs text-ink-secondary font-medium leading-relaxed group-hover:text-ink-primary transition-colors '>
+                      {card.subtitle}
+                    </p>
+                  </AutoTooltip>
+                </div>
+
+                {/* Brand IP Bear Mascot: Bigger size, seamless background, theme drop-shadow */}
+                <div
+                  className='shrink-0 -mr-2 -mt-20 transition-transform duration-300 group-hover:scale-115  group-hover:-translate-y-1'
+                  style={{ filter: card.dropShadow }}
+                >
+                  <IPEmotion emotionId={card.emotionId} className='size-40 pointer-events-none' />
+                </div>
               </div>
-              <span className='rounded-full bg-background-secondary/60 dark:bg-panel/60 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-ink-secondary'>
-                {tile.badge}
-              </span>
-            </div>
-            <h3 className='font-bold text-ink-primary group-hover:text-primary transition-colors flex items-center gap-1.5'>
-              {tile.title}
-              <ChevronRight className='h-4 w-4 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all text-primary' />
-            </h3>
-            <p className='body-sm mt-1 text-ink-secondary line-clamp-1'>
-              {tile.subtitle}
-            </p>
-          </Link>
+
+              {/* Bottom Secondary Route Menu Buttons */}
+              <div className='relative z-10  flex items-center gap-2 flex-wrap'>
+                {card.subLinks.map((sub) => {
+                  if (sub.onClick) {
+                    return (
+                      <button
+                        key={sub.label}
+                        type='button'
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          sub.onClick?.();
+                        }}
+                        className='inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold bg-background-secondary/70 hover:bg-background-secondary text-ink-secondary hover:text-ink-primary transition-all cursor-pointer'
+                      >
+                        <span>{sub.label}</span>
+                        <ChevronRight className='size-3 opacity-60' />
+                      </button>
+                    );
+                  }
+
+                  return (
+                    <button
+                      key={sub.label}
+                      type='button'
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (sub.href) router.push(sub.href);
+                      }}
+                      className='inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold bg-background-secondary/70 hover:bg-background-secondary text-ink-secondary hover:text-ink-primary transition-all cursor-pointer'
+                    >
+                      <span>{sub.label}</span>
+                      <ChevronRight className='size-3 opacity-60' />
+                    </button>
+                  );
+                })}
+              </div>
+            </CardWithNorth>
+          </div>
         );
       })}
     </div>
   );
 }
 
-export default function OverviewPage() {
-  const {
-    dashboardData,
-    trendRange,
-    setTrendRange,
-    desktopRuntime,
-    desktopServiceStatus,
-    isDesktopApp,
-    desktopConnectionConfig,
-    saveDesktopConnectionConfig,
-    resetDesktopConnectionConfig,
-  } = useConsole();
-  const [connectionForm, setConnectionForm] = useState({
-    environmentName: '',
-    apiUrl: '',
-    dashboardUrl: '',
-  });
-
-  useEffect(() => {
-    if (!desktopConnectionConfig) {
-      return;
-    }
-
-    setConnectionForm({
-      environmentName: desktopConnectionConfig.environmentName,
-      apiUrl: desktopConnectionConfig.apiUrl,
-      dashboardUrl: desktopConnectionConfig.dashboardUrl,
-    });
-  }, [desktopConnectionConfig]);
-
-  const desktopServices =
-    desktopServiceStatus ?
-      [
-        {
-          key: 'api',
-          label: 'API Service',
-          icon: Globe,
-          status: desktopServiceStatus.api,
-          mode: desktopRuntime?.api?.mode,
-        },
-        {
-          key: 'dashboard',
-          label: 'Dashboard',
-          icon: MonitorCog,
-          status: desktopServiceStatus.dashboard,
-          mode: desktopRuntime?.dashboard?.mode,
-        },
-        {
-          key: 'worker',
-          label: 'Worker Agent',
-          icon: Activity,
-          status: desktopServiceStatus.worker,
-          mode: desktopRuntime?.worker?.mode,
-        },
-      ]
-    : [];
-
-  const handleConnectionSave = async () => {
-    if (!desktopConnectionConfig) {
-      return;
-    }
-
-    await saveDesktopConnectionConfig({
-      ...desktopConnectionConfig,
-      environmentName: connectionForm.environmentName,
-      apiUrl: connectionForm.apiUrl,
-      dashboardUrl: connectionForm.dashboardUrl,
-    });
-  };
-
-  const handleConnectionReset = async () => {
-    const result = await resetDesktopConnectionConfig();
-    if (result.ok) {
-      setConnectionForm({
-        environmentName: result.config.environmentName,
-        apiUrl: result.config.apiUrl,
-        dashboardUrl: result.config.dashboardUrl,
-      });
-    }
-  };
+function WorkflowShortcuts() {
+  const router = useRouter();
 
   return (
-    <div className='grid grid-cols-12 gap-6'>
-      <QuickJumpTiles />
-      <ApplicationQuickStart />
-
-      {/* {isDesktopApp && desktopConnectionConfig && (
-        <div className='col-span-12 bg-panel rounded-card p-card'>
-          <div className='flex items-start justify-between gap-4 mb-5'>
-            <div>
-              <H2>Cloud Connection</H2>
-              <p className='text-meta dark:text-ink-primary0'>
-                Persisted desktop endpoints for your current environment
-              </p>
+    <div className='col-span-12 grid gap-8 lg:grid-cols-2'>
+      <div
+        onClick={() => router.push('/settings/ai-memory')}
+        className='group block h-full cursor-pointer transition-transform duration-200 hover:-translate-y-1'
+      >
+        <CardWithNorth
+          title={'AI Memory & Custom Rules'}
+          size='sm'
+          className='w-full h-full'
+          tabClassName='bg-panel'
+          contentClassName='relative overflow-visible p-5 bg-panel'
+        >
+          <div className='relative z-10 flex items-center justify-between gap-3'>
+            <p className='text-xs text-ink-secondary font-medium leading-relaxed flex-1'>
+              Set custom guidelines and answers once. Autofill and tailoring will strictly match your voice.
+            </p>
+            <div
+              className='shrink-0 -mr-2 -mt-4 transition-transform duration-300 group-hover:scale-115 group-hover:-rotate-3'
+              style={{ filter: 'drop-shadow(0 12px 20px rgba(16, 185, 129, 0.45))' }}
+            >
+              <IPEmotion emotionId={15} className='size-18 pointer-events-none' />
             </div>
-            <span className='inline-flex items-center rounded-full bg-secondary px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-white dark:bg-background-secondary dark:text-ink-primary'>
-              {desktopRuntime?.environmentName || connectionForm.environmentName}
-            </span>
           </div>
+        </CardWithNorth>
+      </div>
 
-          <div className='grid gap-4 md:grid-cols-3'>
-            <label className='body-md grid gap-2'>
-              <span className='text-ink-primary0 dark:text-zinc-400'>Environment</span>
-              <input
-                value={connectionForm.environmentName}
-                onChange={(event) =>
-                  setConnectionForm((current) => ({
-                    ...current,
-                    environmentName: event.target.value,
-                  }))
-                }
-                className='body-md rounded-2xl bg-panel px-4 py-3 text-ink-primary outline-none transition focus:border-emerald-500 dark:border-primary dark:bg-background dark:text-ink-primary'
-                placeholder='Production'
-              />
-            </label>
-
-            <label className='body-md grid gap-2 md:col-span-2'>
-              <span className='text-ink-primary0 dark:text-zinc-400'>API URL</span>
-              <input
-                value={connectionForm.apiUrl}
-                onChange={(event) =>
-                  setConnectionForm((current) => ({
-                    ...current,
-                    apiUrl: event.target.value,
-                  }))
-                }
-                className='body-md rounded-2xl bg-panel px-4 py-3 text-ink-primary outline-none transition focus:border-emerald-500 dark:border-primary dark:bg-background dark:text-ink-primary'
-                placeholder='https://api.example.com'
-              />
-            </label>
-
-            <label className='body-md grid gap-2 md:col-span-3'>
-              <span className='text-ink-primary0 dark:text-zinc-400'>Dashboard URL</span>
-              <input
-                value={connectionForm.dashboardUrl}
-                onChange={(event) =>
-                  setConnectionForm((current) => ({
-                    ...current,
-                    dashboardUrl: event.target.value,
-                  }))
-                }
-                className='body-md rounded-2xl bg-panel px-4 py-3 text-ink-primary outline-none transition focus:border-emerald-500 dark:border-primary dark:bg-background dark:text-ink-primary'
-                placeholder='https://app.example.com'
-              />
-            </label>
-          </div>
-
-          <div className='mt-4 flex flex-wrap items-center gap-3'>
-            <button
-              onClick={handleConnectionSave}
-              className='label rounded-full bg-emerald-600 px-4 py-2 transition hover:bg-emerald-500'
+      <div
+        onClick={() => router.push('/interview-prep/practice')}
+        className='group block h-full cursor-pointer transition-transform duration-200 hover:-translate-y-1'
+      >
+        <CardWithNorth
+          title={
+           'Interview Copilot Simulator'
+          }
+          size='sm'
+          className='w-full h-full'
+          tabClassName='bg-panel'
+          contentClassName='relative overflow-visible p-5 bg-panel'
+        >
+          <div className='relative z-10 flex items-center justify-between gap-3'>
+            <p className='text-xs text-ink-secondary font-medium leading-relaxed flex-1'>
+              Real-time speech simulation and scoring to ace behavioral and technical interviews.
+            </p>
+            <div
+              className='shrink-0 -mr-2 -mt-4 transition-transform duration-300 group-hover:scale-115 group-hover:-rotate-3'
+              style={{ filter: 'drop-shadow(0 12px 20px rgba(245, 158, 11, 0.45))' }}
             >
-              Save And Reconnect
-            </button>
-            <button
-              onClick={handleConnectionReset}
-              className='label rounded-full border border-zinc-200 px-4 py-2 transition hover:bg-zinc-100 dark:border-primary dark:hover:bg-zinc-900'
-            >
-              Reset Defaults
-            </button>
-            <p className='text-meta dark:text-ink-primary0'>
-              API mode: {desktopConnectionConfig.apiMode} | Dashboard mode:{' '}
-              {desktopConnectionConfig.dashboardMode} | Worker mode:{' '}
-              {desktopConnectionConfig.workerMode}
-            </p>
+              <IPEmotion emotionId={5} className='size-18 pointer-events-none' />
+            </div>
           </div>
-        </div>
-      )} */}
-
-      {/* Row 1: Trend & Distribution Charts */}
-      {/* Trend Chart - Span 2 Columns */}
-      <div className='col-span-12 md:col-span-7 bg-panel rounded-card p-card'>
-        <div className='flex items-start justify-between mb-2'>
-          <div>
-            <H2>Application Trend</H2>
-            <p className='text-meta dark:text-ink-primary0'>
-              Daily submitted applications
-            </p>
-          </div>
-
-          <ToggleGroup
-            id='trend-range-toggle'
-            items={[
-              {
-                value: '7',
-                label: '7 Days',
-                // 使用 Lucide 图标替换原来的 span
-                icon: ({ className }) => (
-                  <ChartNoAxesGantt className={className} />
-                ),
-              },
-              {
-                value: '30',
-                label: '30 Days',
-                icon: ({ className }) => (
-                  <CalendarSearch className={className} />
-                ),
-              },
-            ]}
-            value={String(trendRange)}
-            onValueChange={(val) => setTrendRange(Number(val) as 7 | 30)}
-          />
-        </div>
-
-        <div className='w-full h-75 flex '>
-          <Chart
-            type='area'
-            data={dashboardData.trend}
-            showXAxis={false}
-            showYAxis={false}
-            xKey='date'
-            yKeys={['Submitted']}
-            showLegend
-            yDomain={[0, 'dataMax']}
-            // stacked
-            gradientFill
-            className='h-full flex w-full'
-          />
-        </div>
-      </div>
-
-      {/* Donut Chart - Span 1 Column */}
-      <div className='col-span-12  md:col-span-5 h-full bg-panel rounded-card p-card'>
-        <div>
-          <H2>Application Status Breakdown</H2>
-          <p className='text-meta dark:text-ink-primary0 mb-4'>
-            Proportions of all logged job application states
-          </p>
-        </div>
-
-        <div className='w-full flex h-80 items-center justify-center relative'>
-          <Chart
-            type='pie'
-            data={dashboardData.statusDistribution}
-            nameKey='name'
-            valueKey='value'
-            showLegend={false}
-            className='h-full flex'
-            pieCornerRadius={999}
-            piePaddingAngle={5}
-            pieInnerRadius='65%'
-            pieOuterRadius='80%'
-            gradientFill
-          />
-        </div>
-      </div>
-
-      {/* Top Companies Card */}
-      <div className='col-span-12 md:col-span-6 bg-panel rounded-card p-card'>
-        <div>
-          <H2>Top Applied Companies</H2>
-          <p className='text-meta dark:text-ink-primary0 mb-4'>
-            Companies you have applied to most often
-          </p>
-          <Chart
-            type='bar-list'
-            data={dashboardData.topCompanies}
-            xKey='name'
-            yKey='applications'
-            maxEquivalent={true}
-            barColorClassName='bg-gradient-to-r from-[#57b78b] to-[#9ec2d3] '
-            emptyMessage='No submitted companies yet.'
-            valueFormatter={(val) => `${val}`}
-          />
-        </div>
-      </div>
-
-      {/* Top Cities Card */}
-      <div className='col-span-12 md:col-span-6 bg-panel rounded-card p-card'>
-        <div>
-          <H2>Cities</H2>
-          <p className='text-meta dark:text-ink-primary0 mb-4'>
-            Geographical distribution of submitted applications
-          </p>
-          <ChartWrapper className='h-64'>
-            <CityVectorMap data={dashboardData.topCities} className='h-full' />
-          </ChartWrapper>
-        </div>
-      </div>
-
-      {/* Row 3: Recent Activity Feed */}
-      <div className='col-span-12 md:col-span-12 bg-panel rounded-card p-card'>
-        <div className='flex items-center justify-between mb-4'>
-          <div>
-            <H2>Recent Application History</H2>
-            <p className='text-meta dark:text-ink-primary0'>
-              Your latest submitted applications
-            </p>
-          </div>
-          <Link
-            href='/applications'
-            className='label-sm inline-flex items-center gap-1 text-primary/50 hover:text-primary cursor-pointer'
-          >
-            View all history <ChevronRight className='w-3.5 h-3.5' />
-          </Link>
-        </div>
-
-        <div className='overflow-x-auto'>
-          <table className='body-md w-full text-left border-collapse'>
-            <thead>
-              <tr className='border-b border-primary/40 text-[10px] font-bold text-ink-primary0 dark:text-ink-primary0 uppercase tracking-wider'>
-                <th className='pb-3 pr-4'>Position</th>
-                <th className='pb-3 px-4'>Company</th>
-                <th className='pb-3 px-4'>Workplace Style</th>
-                <th className='pb-3 px-4'>Status</th>
-                <th className='pb-3 pl-4 text-right'>Applied Date</th>
-              </tr>
-            </thead>
-            <tbody className='divide-y divide-border/40'>
-              {(
-                dashboardData.recentActivities &&
-                dashboardData.recentActivities.length > 0
-              ) ?
-                dashboardData.recentActivities.map((item) =>
-                  (() => {
-                    const displayStatus = getDisplayApplicationStatus(item);
-                    return (
-                      <tr
-                        key={item.id}
-                        className='text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50/50 dark:hover:bg-zinc-900/10 transition-colors'
-                      >
-                        <td className='py-3 pr-4'>
-                          <div className='font-bold text-ink-primary truncate max-w-xs'>
-                            {item.title || 'Untitled Role'}
-                          </div>
-                          <span className='text-[10px] text-zinc-400 font-mono'>
-                            ID: {item.job_id}
-                          </span>
-                        </td>
-                        <td className='py-3 px-4 font-semibold text-ink-primary truncate max-w-[150px]'>
-                          {item.company || 'Unknown'}
-                        </td>
-                        <td className='text-meta py-3 px-4 text-ink-primary0 capitalize'>
-                          {item.work_location || 'Not specified'}
-                        </td>
-                        <td className='py-3 px-4'>
-                          <span
-                            className={cn(
-                              'inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider border',
-                              getStatusBadgeClasses(displayStatus),
-                            )}
-                          >
-                            {displayStatus}
-                          </span>
-                        </td>
-                        <td className='body-sm py-3 pl-4 text-right text-ink-primary0 dark:text-ink-primary0 whitespace-nowrap'>
-                          {formatDate(
-                            item.date_applied ??
-                              item.updated_at ??
-                              item.created_at,
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })(),
-                )
-              : <tr>
-                  <td colSpan={5} className='py-6'>
-                    <EmptyPlaceHolder
-                      message='No application activities recorded yet.'
-                      className='border-0 bg-transparent py-4'
-                    />
-                  </td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
+        </CardWithNorth>
       </div>
     </div>
   );
 }
+
+export default function HomePage() {
+  return (
+    <div className='grid grid-cols-12 gap-8  w-full'>
+      <WelcomeHero />
+      <ApplicationQuickStart />
+      <NavigationCards />
+      <WorkflowShortcuts />
+    </div>
+  );
+}
+

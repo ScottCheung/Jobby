@@ -4,7 +4,11 @@ import { formInspectionSchema } from '../../shared/contracts/form-inspection';
 import type { FormInspection } from '../../shared/contracts/form-inspection';
 import type { FormFieldObservation } from '../../shared/contracts/form-inspection';
 import type { PageInspection } from '../../shared/contracts/page-inspection';
-import type { TailoredResume } from '../../shared/contracts/tailored-resume';
+import type {
+  MasterResumeData,
+  TailoredResume,
+} from '../../shared/contracts/tailored-resume';
+import { apiClient } from '../../background/api-client';
 import {
   formatCoverLetterFilename,
   formatResumeFilename,
@@ -14,13 +18,15 @@ import {
   canonicalizeFormFields,
   fileFieldPurpose,
 } from '../../shared/utils/form-field-resolution';
-import { renderCoverLetterPdfInWorker } from '../services/cover-letter-pdf-renderer';
+import { renderCoverLetterPdfForExtension } from '../services/cover-letter-pdf-renderer';
 import { getActiveTab, send, wait } from '../services/messaging';
 
 export type UploadSyncState = {
   phase: 'idle' | 'uploading' | 'confirmed' | 'unconfirmed' | 'failed';
   message: string;
   updatedAt: number;
+  sourceDocumentId?: string;
+  sourceLabel?: string;
 };
 
 function pageUploadState(field: FormFieldObservation): UploadSyncState | null {
@@ -44,12 +50,12 @@ function pageUploadState(field: FormFieldObservation): UploadSyncState | null {
   }
   return {
     phase: 'idle',
-    message: 'Idle: File not detected yet',
+    message: '',
     updatedAt: Date.now(),
   };
 }
 
-function reconcileUploadStates(
+export function reconcileUploadStates(
   previous: Record<string, UploadSyncState>,
   form: FormInspection,
 ): Record<string, UploadSyncState> {
@@ -74,7 +80,11 @@ function reconcileUploadStates(
       prior.phase !== observed.phase ||
       prior.message !== observed.message
     ) {
-      next[field.key] = observed;
+      next[field.key] = {
+        ...observed,
+        sourceDocumentId: prior?.sourceDocumentId,
+        sourceLabel: prior?.sourceLabel,
+      };
       changed = true;
     }
   }
@@ -126,16 +136,30 @@ function mergePageInspection(
     return next;
   }
 
-  // Merge snapshot fields, keeping previous valid values if next is temporarily partial
+  const orig = previous.originalSnapshot;
+  const userOverrodeTitle = orig ? previous.snapshot.title !== orig.title : false;
+  const userOverrodeCompany = orig ? previous.snapshot.company !== orig.company : false;
+  const userOverrodeLocation = orig ? previous.snapshot.location !== orig.location : false;
+  const userOverrodeDescription = orig ? previous.snapshot.description !== orig.description : false;
+  const userOverrodeSalary = orig ? previous.snapshot.salary !== orig.salary : false;
+  const userOverrodeTechnologies = orig ? previous.snapshot.technologies !== orig.technologies : false;
+
+  // Merge snapshot fields, keeping previous valid values or user edits if next is temporarily partial
   return {
     ...next,
+    originalSnapshot: orig || next.originalSnapshot,
     snapshot: {
       ...next.snapshot,
-      company: hasResolvedCompany(next.snapshot.company)
-        ? next.snapshot.company
-        : previous.snapshot.company,
-      location: next.snapshot.location || previous.snapshot.location,
-      description: next.snapshot.description || previous.snapshot.description,
+      title: userOverrodeTitle ? previous.snapshot.title : (next.snapshot.title || previous.snapshot.title),
+      company: userOverrodeCompany
+        ? previous.snapshot.company
+        : (hasResolvedCompany(next.snapshot.company)
+          ? next.snapshot.company
+          : previous.snapshot.company),
+      location: userOverrodeLocation ? previous.snapshot.location : (next.snapshot.location || previous.snapshot.location),
+      description: userOverrodeDescription ? previous.snapshot.description : (next.snapshot.description || previous.snapshot.description),
+      salary: userOverrodeSalary ? previous.snapshot.salary : (next.snapshot.salary || previous.snapshot.salary),
+      technologies: userOverrodeTechnologies ? previous.snapshot.technologies : (next.snapshot.technologies || previous.snapshot.technologies),
       firstPostedAt: next.snapshot.firstPostedAt || previous.snapshot.firstPostedAt,
       lastPostedAt: next.snapshot.lastPostedAt || previous.snapshot.lastPostedAt,
       postingObservedAt:
@@ -298,10 +322,15 @@ export function useInspection(onJobChanged?: () => void) {
   const formChangeTimer = useRef<number | undefined>(undefined);
   const linkedInClearTimer = useRef<number | undefined>(undefined);
   const latestFormRef = useRef<FormInspection | null>(null);
+  const latestInspectionRef = useRef<PageInspection | null>(null);
 
   useEffect(() => {
     latestFormRef.current = latestForm;
   }, [latestForm]);
+
+  useEffect(() => {
+    latestInspectionRef.current = latestInspection;
+  }, [latestInspection]);
 
   const setFormIfChanged = useCallback((form: FormInspection) => {
     const reconciledForm = retainUploadedFileFields(
@@ -563,18 +592,32 @@ export function useInspection(onJobChanged?: () => void) {
       const purpose = fileFieldPurpose(field);
       const isCoverLetter = purpose === 'cover_letter';
       const docLabel = isCoverLetter ? 'Cover Letter' : 'Resume';
+      const sourceLabel = resumeName;
       setUploadStates((previous) => ({
         ...previous,
         [field.key]: {
           phase: 'uploading',
           message: `Preparing ${docLabel} (${resumeName}) for upload...`,
           updatedAt: Date.now(),
+          sourceDocumentId: resume.id,
+          sourceLabel,
         },
       }));
       let response;
       let filename = isCoverLetter ? 'Cover-Letter.pdf' : 'Tailored-Resume.pdf';
       try {
         let blob: Blob;
+        const currentInspection =
+          latestInspectionRef.current || latestInspection;
+        const currentSnapshot =
+          currentInspection && 'snapshot' in currentInspection ?
+            currentInspection.snapshot
+          : undefined;
+        const effectiveCompany =
+          currentSnapshot?.company || resume.company || undefined;
+        const effectiveTitle =
+          currentSnapshot?.title || resume.job_title || undefined;
+
         if (isCoverLetter) {
           const coverLetter =
             resume.cover_letter ||
@@ -584,17 +627,17 @@ export function useInspection(onJobChanged?: () => void) {
               'No tailored cover letter is saved for this application. Generate one in AI Studio first.',
             );
           }
-          const rendered = await renderCoverLetterPdfInWorker(
+          const rendered = await renderCoverLetterPdfForExtension(
             coverLetter,
             resume.resume_data,
-            resume.company || undefined,
-            resume.job_title || undefined,
+            effectiveCompany,
+            effectiveTitle,
           );
           blob = rendered.blob;
           filename = formatCoverLetterFilename(
             resume.resume_data,
-            resume.company || undefined,
-            resume.job_title || undefined,
+            effectiveCompany,
+            effectiveTitle,
           );
         } else {
           const rendered = await renderResumePdfOnce(
@@ -606,8 +649,8 @@ export function useInspection(onJobChanged?: () => void) {
           blob = rendered.blob;
           filename = formatResumeFilename(
             resume.resume_data,
-            resume.company || undefined,
-            resume.job_title || undefined,
+            effectiveCompany,
+            effectiveTitle,
           );
         }
         if (blob.size > 10 * 1024 * 1024) {
@@ -636,6 +679,8 @@ export function useInspection(onJobChanged?: () => void) {
             phase: 'failed',
             message,
             updatedAt: Date.now(),
+            sourceDocumentId: resume.id,
+            sourceLabel,
           },
         }));
         setInspectionError(message);
@@ -648,6 +693,8 @@ export function useInspection(onJobChanged?: () => void) {
             phase: 'failed',
             message: response.error,
             updatedAt: Date.now(),
+            sourceDocumentId: resume.id,
+            sourceLabel,
           },
         }));
         setInspectionError(response.error);
@@ -664,6 +711,8 @@ export function useInspection(onJobChanged?: () => void) {
             phase: 'failed',
             message: fillResult.message,
             updatedAt: Date.now(),
+            sourceDocumentId: resume.id,
+            sourceLabel,
           },
         }));
         setInspectionError(fillResult.message);
@@ -690,6 +739,8 @@ export function useInspection(onJobChanged?: () => void) {
                   `Confirmed: ${upload.filename}`
                 : `Confirmed: ${filename}`,
               updatedAt: Date.now(),
+              sourceDocumentId: resume.id,
+              sourceLabel,
             },
           }));
           return;
@@ -703,10 +754,253 @@ export function useInspection(onJobChanged?: () => void) {
           message:
             'File command completed, but the website has not confirmed it yet; please check the upload status on the website.',
           updatedAt: Date.now(),
+          sourceDocumentId: resume.id,
+          sourceLabel,
         },
       }));
     },
-    [inspectForm],
+    [inspectForm, latestInspection],
+  );
+
+  const uploadDefaultResume = useCallback(
+    async (field: FormFieldObservation, defaultResume?: TailoredResume) => {
+      const purpose = fileFieldPurpose(field);
+      const isCoverLetter = purpose === 'cover_letter';
+      const docLabel = isCoverLetter ? 'Cover Letter' : 'Resume';
+      let sourceLabel =
+        defaultResume ?
+          [defaultResume.company, defaultResume.job_title]
+            .filter(Boolean)
+            .join(' · ') || 'Default tailored record'
+        : 'Default profile';
+      setUploadStates((previous) => ({
+        ...previous,
+        [field.key]: {
+          phase: 'uploading',
+          message: `Preparing default ${docLabel.toLowerCase()} for upload...`,
+          updatedAt: Date.now(),
+          sourceDocumentId: defaultResume?.id,
+          sourceLabel,
+        },
+      }));
+      let response;
+      let filename = isCoverLetter ? 'Cover-Letter.pdf' : 'Resume.pdf';
+      try {
+        const currentInspection =
+          latestInspectionRef.current || latestInspection;
+        const currentSnapshot =
+          currentInspection && 'snapshot' in currentInspection ?
+            currentInspection.snapshot
+          : undefined;
+        const effectiveCompany =
+          currentSnapshot?.company || defaultResume?.company || undefined;
+        const effectiveTitle =
+          currentSnapshot?.title || defaultResume?.job_title || undefined;
+
+        let blob: Blob;
+        if (defaultResume) {
+          if (isCoverLetter) {
+            const coverLetter =
+              defaultResume.cover_letter ||
+              (defaultResume.raw_ai_response as any)?.cover_letter ||
+              '';
+            const rendered = await renderCoverLetterPdfForExtension(
+              coverLetter,
+              defaultResume.resume_data,
+              effectiveCompany,
+              effectiveTitle,
+            );
+            blob = rendered.blob;
+            filename = formatCoverLetterFilename(
+              defaultResume.resume_data,
+              effectiveCompany,
+              effectiveTitle,
+            );
+          } else {
+            const rendered = await renderResumePdfOnce(
+              defaultResume.resume_data,
+              1,
+              defaultResume.core_competencies || [],
+              defaultResume.key_qualifications || [],
+            );
+            blob = rendered.blob;
+            filename = formatResumeFilename(
+              defaultResume.resume_data,
+              effectiveCompany,
+              effectiveTitle,
+            );
+          }
+        } else {
+          let masterData: MasterResumeData | null = null;
+          let defaultCoverLetter = '';
+          try {
+            const profiles = await apiClient.getCareerProfiles();
+            const defaultProfile =
+              profiles.find((p) => p.is_default) || profiles[0];
+            sourceLabel = defaultProfile?.name || 'Default profile';
+            defaultCoverLetter = defaultProfile?.cover_letter || '';
+            masterData =
+              (defaultProfile?.resume_data ||
+                (defaultProfile as any)?.data ||
+                null) as MasterResumeData | null;
+          } catch {
+            // fallback
+          }
+
+          if (isCoverLetter) {
+            const rendered = await renderCoverLetterPdfForExtension(
+              defaultCoverLetter,
+              masterData || undefined,
+              effectiveCompany,
+              effectiveTitle,
+            );
+            blob = rendered.blob;
+            filename = formatCoverLetterFilename(
+              masterData,
+              effectiveCompany,
+              effectiveTitle,
+            );
+          } else if (
+            masterData &&
+            (masterData.contact ||
+              masterData.experience?.length ||
+              masterData.education?.length)
+          ) {
+            const rendered = await renderResumePdfOnce(
+              masterData,
+              1,
+              [],
+              [],
+            );
+            blob = rendered.blob;
+            filename = formatResumeFilename(
+              masterData,
+              effectiveCompany,
+              effectiveTitle,
+            );
+          } else {
+            const downloaded = await apiClient.downloadDefaultResume();
+            filename = downloaded.filename;
+            response = await send({
+              type: 'content.upload-file-active',
+              target: targetFor(field),
+              filename: downloaded.filename,
+              mimeType: downloaded.mimeType,
+              contentBase64: downloaded.contentBase64,
+            });
+            blob = new Blob();
+          }
+        }
+
+        if (!response) {
+          if (blob.size > 10 * 1024 * 1024) {
+            throw new Error(
+              `The default ${docLabel.toLowerCase()} is larger than the 10 MB upload limit.`,
+            );
+          }
+          if (filename.length > 255) {
+            filename = `${filename.slice(0, 251).replace(/\.?$/, '')}.pdf`;
+          }
+          response = await send({
+            type: 'content.upload-file-active',
+            target: targetFor(field),
+            filename,
+            mimeType: blob.type || 'application/pdf',
+            contentBase64: arrayBufferToBase64(await blob.arrayBuffer()),
+          });
+        }
+      } catch (error) {
+        const message =
+          error instanceof Error ?
+            error.message
+          : `Could not prepare default ${docLabel.toLowerCase()}.`;
+        setUploadStates((previous) => ({
+          ...previous,
+          [field.key]: {
+            phase: 'failed',
+            message,
+            updatedAt: Date.now(),
+            sourceDocumentId: defaultResume?.id,
+            sourceLabel,
+          },
+        }));
+        setInspectionError(message);
+        return;
+      }
+      if (!response.ok) {
+        setUploadStates((previous) => ({
+          ...previous,
+          [field.key]: {
+            phase: 'failed',
+            message: response.error,
+            updatedAt: Date.now(),
+            sourceDocumentId: defaultResume?.id,
+            sourceLabel,
+          },
+        }));
+        setInspectionError(response.error);
+        return;
+      }
+      const fillResult = response.fillResult;
+      if (
+        fillResult &&
+        !['filled', 'already_filled'].includes(fillResult.status)
+      ) {
+        setUploadStates((previous) => ({
+          ...previous,
+          [field.key]: {
+            phase: 'failed',
+            message: fillResult.message,
+            updatedAt: Date.now(),
+            sourceDocumentId: defaultResume?.id,
+            sourceLabel,
+          },
+        }));
+        setInspectionError(fillResult.message);
+        return;
+      }
+      setInspectionError('');
+      for (let attempt = 0; attempt < 4; attempt += 1) {
+        const form = await inspectForm(true);
+        const uploadedField =
+          (
+            form?.kind === 'application_form' ||
+            form?.kind === 'page_input_fields'
+          ) ?
+            form.fields.find((candidate) => candidate.key === field.key)
+          : undefined;
+        const upload = uploadedField?.upload;
+        if (upload?.state === 'ready') {
+          setUploadStates((previous) => ({
+            ...previous,
+            [field.key]: {
+              phase: 'confirmed',
+              message:
+                upload.filename ?
+                  `Confirmed: ${upload.filename}`
+                : `Confirmed: ${filename}`,
+              updatedAt: Date.now(),
+              sourceDocumentId: defaultResume?.id,
+              sourceLabel,
+            },
+          }));
+          return;
+        }
+        if (attempt < 3) await wait(250);
+      }
+      setUploadStates((previous) => ({
+        ...previous,
+        [field.key]: {
+          phase: 'unconfirmed',
+          message:
+            'File command completed, but the website has not confirmed it yet; please check the upload status on the website.',
+          updatedAt: Date.now(),
+          sourceDocumentId: defaultResume?.id,
+          sourceLabel,
+        },
+      }));
+    },
+    [inspectForm, latestInspection],
   );
 
   const editFormField = useCallback(
@@ -778,13 +1072,14 @@ export function useInspection(onJobChanged?: () => void) {
     setInspectionError('');
     setUploadStates({});
     try {
-      await Promise.all(
-        form.fields
-          .filter((field) => !['password', 'radio'].includes(field.type))
-          .map((field) =>
-            editFormField(field, field.type === 'checkbox' ? false : ''),
-          ),
+      const clearableFields = form.fields.filter(
+        (field) => !['password', 'radio', 'multiselect'].includes(field.type),
       );
+      for (const field of clearableFields) {
+        await editFormField(field, field.type === 'checkbox' ? false : '');
+        if (form.platform === 'ashby') await wait(180);
+      }
+      if (form.platform === 'ashby') await wait(300);
       await inspectForm(true);
       notify.success('All form fields cleared.');
     } finally {
@@ -890,6 +1185,7 @@ export function useInspection(onJobChanged?: () => void) {
     highlightJobRequirement,
     autofillSingleField,
     uploadTailoredResume,
+    uploadDefaultResume,
     editFormField,
     clearAllFormFields,
     uploadStates,

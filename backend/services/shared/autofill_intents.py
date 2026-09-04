@@ -47,6 +47,15 @@ def _autofill_answer_category(label: str) -> str | None:
     if any(term in norm for term in ["work restriction", "restriction on work", "limitation on hours", "工作限制"]):
         return "work_restrictions"
     if any(term in norm for term in ["years of experience", "years experience", "experience years", "professional experience", "工作年限", "经验年限", "工作经验"]):
+        # Do not reuse total years of experience for employer questions about
+        # a specific product, technology, industry, or capability.
+        if any(term in norm for term in [
+            "ai product", "ai solution", "ai chatbot", "ai voice", "generative ai",
+            "large language model", "llm", "nlp", "nlu", "retail", "e-commerce",
+            "rest api", "webhook", "crm", "commercial environment", "technology engineering",
+            "software engineering", "ai/ml",
+        ]):
+            return None
         return "experience"
     if any(term in norm for term in ["relocate", "relocation", "move for this role", "异地搬迁", "接受异地"]):
         return "relocation"
@@ -76,9 +85,36 @@ def _autofill_intent_key(label: str) -> str | None:
     if norm in {"name", "full name", "姓名", "全名"}:
         return "identity.full_name"
     if any(term in norm for term in ["email", "e-mail", "邮箱", "电子邮箱"]):
-        return "identity.email"
+        if not any(
+            alert_term in norm
+            for alert_term in [
+                "alert",
+                "notification",
+                "update",
+                "marketing",
+                "newsletter",
+                "consent",
+                "opt in",
+                "opt-in",
+                "subscribe",
+                "receive",
+                "send me",
+                "message",
+                "promot",
+                "communication",
+            ]
+        ):
+            return "identity.email"
     if any(term in norm for term in ["phone", "mobile", "contact number", "telephone", "电话", "手机", "联系电话"]):
         return "identity.phone"
+    if any(term in norm for term in ["linkedin", "linked in", "领英"]):
+        return "employment.linkedin_url"
+    if any(term in norm for term in ["github", "git hub"]):
+        return "employment.github_url"
+    if any(term in norm for term in ["portfolio", "portfolio url", "作品集"]):
+        return "employment.portfolio_url"
+    if any(term in norm for term in ["website", "personal website", "personal site", "个人网站"]):
+        return "employment.website"
     if any(term in norm for term in ["day rate", "daily rate", "per day", "aud/day", "期望日薪"]):
         return "compensation.desired_day_rate"
     if (
@@ -121,19 +157,25 @@ _ATS_PLATFORMS = {
     "wellfound",
     "dice",
     "simplyhired",
+    "careerone",
+    "micro1",
+    "dayforce",
 }
 
 
 def _autofill_intent_key_for_field(field: Any, platform: str = "generic") -> str | None:
     """Use ATS identifiers only after the cleaned visible label did not match."""
+    field_type = str(getattr(field, "type", "") or "").lower()
     intent = _autofill_intent_key(str(getattr(field, "label", "") or ""))
-    if intent or platform not in _ATS_PLATFORMS:
-        return intent
-    for hint in (getattr(field, "name", None), getattr(field, "id", None)):
-        intent = _autofill_intent_key(str(hint or "").replace("_", " ").replace("-", " "))
-        if intent:
-            return intent
-    return None
+    if not intent and platform in _ATS_PLATFORMS:
+        for hint in (getattr(field, "name", None), getattr(field, "id", None)):
+            intent = _autofill_intent_key(str(hint or "").replace("_", " ").replace("-", " "))
+            if intent:
+                break
+    if intent in {"identity.email", "identity.first_name", "identity.last_name", "identity.phone", "employment.linkedin_url", "employment.github_url", "employment.portfolio_url", "employment.website"}:
+        if field_type in {"radio", "checkbox", "select"}:
+            return None
+    return intent
 
 
 def _inverse_sponsorship_answer(value: str | None) -> str | None:

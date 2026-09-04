@@ -17,19 +17,23 @@ export async function GET(request: Request) {
   }
 
   const supabase = await createClient()
-  const { data, error } = await supabase.auth.getSession()
-  const session = data.session
-  if (error || !session?.access_token || !session.refresh_token || !session.user.email) {
-    return errorRedirect(redirectUri, error?.message || 'The Jobby web session is not available.')
+  const { data: userData, error: userError } = await supabase.auth.getUser()
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+  const session = sessionData.session
+  const user = userData.user
+  if (userError || sessionError || !session?.access_token || !user?.email) {
+    return errorRedirect(
+      redirectUri,
+      userError?.message || sessionError?.message || 'The Jobby web session is not available.',
+    )
   }
 
   const callback = new URL(redirectUri)
   callback.hash = new URLSearchParams({
     access_token: session.access_token,
-    refresh_token: session.refresh_token,
     expires_at: String(session.expires_at || Math.floor(Date.now() / 1000) + (session.expires_in || 3600)),
-    user_id: session.user.id,
-    email: session.user.email,
+    user_id: user.id,
+    email: user.email,
   }).toString()
   return NextResponse.redirect(callback)
 }

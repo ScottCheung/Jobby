@@ -9,7 +9,7 @@ import {
   Layers,
   RefreshCw,
   Sparkles,
-} from 'lucide-react';
+} from '@jobby/ui/components/icons';
 import { motion, type Variants } from 'framer-motion';
 import { IPEmotion } from '../IPEmotion';
 import { cn } from '../../../lib/utils';
@@ -335,6 +335,34 @@ export const SUPPORTED_PLATFORMS: JobPlatform[] = [
       return `https://www.google.com/search?q=${encodeURIComponent(terms)}`;
     },
   },
+  {
+    id: 'micro1',
+    name: 'micro1',
+    category: 'ats',
+    domain: 'micro1.ai',
+    typeLabel: 'AI & Tech Talent',
+    brandColor: '#6366F1',
+    getSearchUrl: (title, location) => {
+      const terms = ['site:jobs.micro1.ai/post', title, location]
+        .filter(Boolean)
+        .join(' ');
+      return `https://www.google.com/search?q=${encodeURIComponent(terms)}`;
+    },
+  },
+  {
+    id: 'dayforce',
+    name: 'Dayforce',
+    category: 'ats',
+    domain: 'dayforcehcm.com',
+    typeLabel: 'Enterprise Portals',
+    brandColor: '#1E51BE',
+    getSearchUrl: (title, location) => {
+      const terms = ['site:jobs.dayforcehcm.com', title, location]
+        .filter(Boolean)
+        .join(' ');
+      return `https://www.google.com/search?q=${encodeURIComponent(terms)}`;
+    },
+  },
 ];
 
 export function extractProfileSearchCriteria(
@@ -517,7 +545,7 @@ export function PlatformQuickSearchList({
   return (
     <motion.div
       className={cn(
-        'flex flex-col gap-4 max-h-[520px] overflow-y-auto pr-0.5',
+        'flex flex-col gap-4 h-full overflow-y-auto pr-0.5',
         className,
       )}
       variants={containerVariants}

@@ -1627,5 +1627,44 @@ describe("E2E Date Extraction Across All Platforms", () => {
         expect(inspection.snapshot.description).toContain("mission-critical infrastructure");
       }
     });
+
+    it("extracts exact ISO posted date from micro1 JSON-LD JobPosting schema", async () => {
+      document.head.innerHTML = `
+        <script id="jobPosting-jsonld" type="application/ld+json">
+        {
+          "@context": "https://schema.org/",
+          "@type": "JobPosting",
+          "title": "Substance Use - Adolescent Addiction Specialist",
+          "description": "<p>Clinical reasoning and assessment for youth substance use disorders.</p>",
+          "datePosted": "2026-09-01",
+          "hiringOrganization": {
+            "@type": "Organization",
+            "name": "micro1"
+          }
+        }
+        </script>
+        <meta property="og:site_name" content="micro1 Job Portal" />
+      `;
+      document.body.innerHTML = `
+        <main>
+          <h1>Substance Use - Adolescent Addiction Specialist</h1>
+          <div class="job-description">Clinical reasoning and assessment for youth substance use disorders.</div>
+        </main>
+      `;
+      Object.defineProperty(window, "location", {
+        writable: true,
+        value: new URL("https://jobs.micro1.ai/post/aeda6c13-c58d-4e11-bf6a-edcb9fdf65c2"),
+      });
+
+      expect(classifyCurrentPage().isJobPage).toBe(true);
+      const inspection = await readCurrentPageWhenReady();
+      expect(inspection.kind).toBe("job");
+      if (inspection.kind === "job") {
+        expect(inspection.snapshot.platform).toBe("micro1");
+        expect(inspection.snapshot.title).toBe("Substance Use - Adolescent Addiction Specialist");
+        expect(inspection.snapshot.company).toBe("micro1");
+        expect(inspection.snapshot.lastPostedAt).toBe("2026-09-01T00:00:00.000Z");
+      }
+    });
   });
 });

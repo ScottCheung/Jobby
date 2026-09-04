@@ -233,6 +233,16 @@ def upsert_core_profile_value(
             UserCoreProfile.core_field_key == key,
         )
     )
+    if key == "identity.email":
+        cleaned_email = str(value or "").strip()
+        if not cleaned_email or "@" not in cleaned_email or len(cleaned_email) < 5:
+            if row is not None:
+                try:
+                    decrypted = decrypt_profile_value(row.field_value)
+                    if "@" in decrypted:
+                        return row
+                except Exception:
+                    pass
     encrypted = encrypt_profile_value(value)
     if row is None:
         row = UserCoreProfile(
@@ -265,7 +275,8 @@ def delete_core_profile_value(db: Session, *, user_id: UUID, core_field_key: str
 
 def ensure_identity_core_values(db: Session, user: User) -> None:
     values = core_profile_values(db, user.id)
-    if not values.get("identity.email") and user.email:
+    saved_email = str(values.get("identity.email") or "").strip()
+    if (not saved_email or "@" not in saved_email) and user.email:
         upsert_core_profile_value(
             db, user_id=user.id, core_field_key="identity.email", value=user.email
         )

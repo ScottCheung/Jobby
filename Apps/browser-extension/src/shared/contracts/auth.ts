@@ -2,7 +2,6 @@ import { z } from "zod";
 
 export const authSessionSchema = z.object({
   accessToken: z.string().min(1),
-  refreshToken: z.string().min(1),
   expiresAt: z.string().datetime(),
   user: z.object({
     id: z.string().min(1),

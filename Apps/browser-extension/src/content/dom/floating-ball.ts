@@ -26,7 +26,6 @@ const FIXED_PANEL_HOST_STYLE =
 type PanelState = 'idle' | 'native' | 'iframe';
 
 let panelState: PanelState = 'idle';
-let openIframeAfterNativeClose = false;
 
 let ballRoot: HTMLDivElement | null = null;
 let iframeRoot: HTMLDivElement | null = null;
@@ -236,9 +235,7 @@ function shouldShowBall(): boolean {
   if (isDismissed()) return false;
   if (disableAllPages) return false;
   if (isDomainDisabled()) return false;
-  // Keep the in-page entry point available while the native panel is open so
-  // the user can switch modes without first hunting for Chrome's close button.
-  return panelState === 'idle' || panelState === 'native';
+  return panelState === 'idle';
 }
 
 function updateBallVisibility() {
@@ -272,24 +269,38 @@ function showFloatingDialog() {
   dialogIframeWrapper.classList.add('is-visible');
 }
 
+function setBallLoading(isLoading: boolean) {
+  const wrapper = ballRoot?.shadowRoot?.getElementById('jobby-ball-wrapper');
+  if (!wrapper) return;
+  if (isLoading) {
+    wrapper.classList.add('is-loading');
+  } else {
+    wrapper.classList.remove('is-loading');
+  }
+}
+
 function hideFloatingDialog() {
   if (!isDialogVisible && !dialogIframeWrapper?.classList.contains('is-visible')) return;
   isDialogVisible = false;
   dialogIframeWrapper?.classList.remove('is-visible');
+  setBallLoading(false);
 }
 
 export function runJobDetectionForBall(_showDialog = true): void {
   if (!isExtensionContextValid() || panelState !== 'idle') return;
   if (!autoShowJobDialog) {
     hideFloatingDialog();
+    setBallLoading(false);
     return;
   }
   const pageClass = classifyCurrentPage();
   if (pageClass.isJobPage) {
     dialogIframeWrapper?.classList.add('is-compact');
     dialogIframeWrapper?.classList.remove('is-expanded');
+    setBallLoading(true);
     showFloatingDialog();
   } else {
+    setBallLoading(false);
     hideFloatingDialog();
   }
 }
@@ -308,6 +319,7 @@ function createFloatingBall() {
 
   const SIZE = 60;
   const EDGE_MARGIN = 20;
+  const DIALOG_HEIGHT = 600;
   const DRAG_THRESHOLD = 6;
 
   const initialPos = getSavedBallPosition();
@@ -317,7 +329,7 @@ function createFloatingBall() {
     Math.min(vh - SIZE - EDGE_MARGIN, initialPos.top),
   );
   const initialVertical =
-    boundedTop < vh * 0.35 ? 'top' : boundedTop > vh * 0.65 ? 'bottom' : 'middle';
+    boundedTop < vh * 0.5 ? 'top' : 'bottom';
 
   let logoUrl = '';
   let dialogIframeSrc = '';
@@ -381,43 +393,72 @@ function createFloatingBall() {
       cursor: grabbing;
       transition: none;
     }
-    /* Atmospheric Diffusion Glow for Floating Ball */
+    /* Atmospheric Diffusion Theme Glow on Hover */
     #jobby-ball-wrapper::before {
       content: '';
       position: absolute;
-      inset: 0px;
+      inset: -2px;
       border-radius: 9999px;
-      background: linear-gradient(
-        90deg,
-        rgba(16, 185, 129, 0.85),
-        rgba(6, 182, 212, 0.85),
-        rgba(139, 92, 246, 0.85),
-        rgba(236, 72, 153, 0.75),
-        rgba(245, 158, 11, 0.85),
-        rgba(16, 185, 129, 0.85)
+      background: radial-gradient(
+        circle,
+        var(--primary-glow) 0%,
+        var(--primary-color) 45%,
+        var(--primary-shadow) 70%,
+        transparent 100%
       );
-      background-size: 300% 100%;
-      animation: aiFlow 6s linear infinite, aiDiffuse 3.6s ease-in-out infinite alternate;
-      filter: blur(12px);
+      filter: blur(10px);
       z-index: 0;
       pointer-events: none;
       opacity: 0;
       transform: scale(0.9);
-      transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1), transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
     }
     #jobby-ball-wrapper:not(.is-dragging):hover::before {
-      opacity: 1;
+      opacity: 0.95;
       transform: scale(1.15);
     }
     #jobby-ball-wrapper:not(.is-dragging):active::before {
       transform: scale(0.95);
     }
     #jobby-ball-wrapper:not(.is-dragging):hover .jobby-logo-img {
-      filter: drop-shadow(0 0 14px rgba(6, 182, 212, 0.4)) drop-shadow(0 4px 14px var(--primary-shadow));
+      filter: drop-shadow(0 0 12px var(--primary-glow)) drop-shadow(0 4px 14px var(--primary-shadow));
       transform: scale(1.12);
     }
     #jobby-ball-wrapper:not(.is-dragging):active .jobby-logo-img {
       transform: scale(0.92);
+    }
+    /* Compositor-only loading glow; avoid animating blur/background paints. */
+    #jobby-ball-wrapper::after {
+      content: '';
+      position: absolute;
+      inset: -2px;
+      border-radius: 9999px;
+      background: conic-gradient(
+        from 0deg,
+        rgba(16, 185, 129, 0.88),
+        rgba(6, 182, 212, 0.88),
+        rgba(139, 92, 246, 0.88),
+        rgba(236, 72, 153, 0.8),
+        rgba(245, 158, 11, 0.88),
+        rgba(16, 185, 129, 0.88)
+      );
+      animation: aiRotate 1.8s linear infinite;
+      filter: blur(12px);
+      z-index: 0;
+      pointer-events: none;
+      opacity: 0;
+      transform: scale(0.9);
+      rotate: 0deg;
+      will-change: rotate, transform, opacity;
+      transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    #jobby-ball-wrapper.is-loading::after {
+      opacity: 1;
+      transform: scale(1.18);
+    }
+    #jobby-ball-wrapper.is-loading .jobby-logo-img {
+      filter: drop-shadow(0 0 14px rgba(6, 182, 212, 0.6)) drop-shadow(0 4px 14px var(--primary-shadow));
+      animation: logoPulse 1.2s ease-in-out infinite alternate;
     }
     .jobby-logo-img {
       position: relative;
@@ -429,18 +470,20 @@ function createFloatingBall() {
       pointer-events: none;
       filter: drop-shadow(0 4px 14px var(--primary-shadow)) drop-shadow(0 2px 6px rgba(0, 0, 0, 0.2));
       transition: filter 0.2s ease, transform 0.2s ease;
+      will-change: transform;
       -webkit-user-drag: none;
     }
-    @keyframes aiFlow {
-      0% { background-position: 0% 50%; }
-      100% { background-position: 300% 50%; }
+    @keyframes aiRotate {
+      to {
+        rotate: 360deg;
+      }
     }
-    @keyframes aiDiffuse {
+    @keyframes logoPulse {
       0% {
-        filter: blur(10px);
+        transform: scale(1);
       }
       100% {
-        filter: blur(16px);
+        transform: scale(1.08);
       }
     }
     #close-btn {
@@ -620,7 +663,7 @@ function createFloatingBall() {
     #jobby-dialog-iframe-wrapper {
       position: absolute !important;
       width: 376px !important;
-      height: 600px !important;
+      height: ${DIALOG_HEIGHT}px !important;
       max-height: calc(100vh - 40px) !important;
       max-width: calc(100vw - 80px) !important;
       z-index: 2147483646 !important;
@@ -631,8 +674,25 @@ function createFloatingBall() {
       opacity: 0 !important;
       visibility: hidden !important;
       pointer-events: none !important;
+      top: var(--jobby-dialog-offset-y, 0px) !important;
+      bottom: auto !important;
       transform: scale(0.96) !important;
-      transition: opacity 0.16s ease, transform 0.16s ease, visibility 0.16s ease !important;
+      transform-origin: center right !important;
+      transition: opacity 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+                  transform 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+                  visibility 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    }
+
+    #jobby-dialog-iframe-wrapper.is-compact {
+      width: 376px !important;
+      height: ${DIALOG_HEIGHT}px !important;
+    }
+
+    #jobby-dialog-iframe-wrapper.is-expanded {
+      width: 376px !important;
+      height: ${DIALOG_HEIGHT}px !important;
+      max-height: calc(100vh - 40px) !important;
+      max-width: calc(100vw - 80px) !important;
     }
 
     /* Horizontal: Right edge vs Left edge */
@@ -643,55 +703,14 @@ function createFloatingBall() {
     #jobby-ball-wrapper.edge-left #jobby-dialog-iframe-wrapper {
       left: calc(100% + 10px) !important;
       right: auto !important;
-    }
-
-    /* Vertical: Top half vs Bottom half vs Middle */
-    #jobby-ball-wrapper.pos-top #jobby-dialog-iframe-wrapper {
-      top: 0 !important;
-      bottom: auto !important;
-      transform: scale(0.96) !important;
-      transform-origin: top right !important;
-    }
-    #jobby-ball-wrapper.edge-left.pos-top #jobby-dialog-iframe-wrapper {
-      transform-origin: top left !important;
-    }
-    #jobby-ball-wrapper.pos-top #jobby-dialog-iframe-wrapper.is-visible {
-      opacity: 1 !important;
-      visibility: visible !important;
-      pointer-events: auto !important;
-      transform: scale(1) !important;
-    }
-
-    #jobby-ball-wrapper.pos-bottom #jobby-dialog-iframe-wrapper {
-      bottom: 0 !important;
-      top: auto !important;
-      transform: scale(0.96) !important;
-      transform-origin: bottom right !important;
-    }
-    #jobby-ball-wrapper.edge-left.pos-bottom #jobby-dialog-iframe-wrapper {
-      transform-origin: bottom left !important;
-    }
-    #jobby-ball-wrapper.pos-bottom #jobby-dialog-iframe-wrapper.is-visible {
-      opacity: 1 !important;
-      visibility: visible !important;
-      pointer-events: auto !important;
-      transform: scale(1) !important;
-    }
-
-    #jobby-ball-wrapper.pos-middle #jobby-dialog-iframe-wrapper {
-      top: 50% !important;
-      bottom: auto !important;
-      transform: translateY(-50%) scale(0.96) !important;
-      transform-origin: center right !important;
-    }
-    #jobby-ball-wrapper.edge-left.pos-middle #jobby-dialog-iframe-wrapper {
       transform-origin: center left !important;
     }
-    #jobby-ball-wrapper.pos-middle #jobby-dialog-iframe-wrapper.is-visible {
+
+    #jobby-dialog-iframe-wrapper.is-visible {
       opacity: 1 !important;
       visibility: visible !important;
       pointer-events: auto !important;
-      transform: translateY(-50%) scale(1) !important;
+      transform: scale(1) !important;
     }
 
     .jobby-dialog-iframe {
@@ -709,6 +728,7 @@ function createFloatingBall() {
   wrapper.classList.add(
     initialPos.edge === 'right' ? 'edge-right' : 'edge-left',
   );
+  wrapper.classList.add(initialVertical === 'top' ? 'pos-top' : 'pos-bottom');
 
   const logo = document.createElement('img');
   logo.src = logoUrl;
@@ -894,20 +914,34 @@ function createFloatingBall() {
 
   const onWindowMessage = (event: MessageEvent) => {
     if (event.data?.source === 'jobby-dialog') {
+      if (typeof event.data?.isLoading === 'boolean') {
+        if (event.data.isLoading) {
+          wrapper.classList.add('is-loading');
+        } else {
+          wrapper.classList.remove('is-loading');
+        }
+      }
       if (event.data?.type === 'jobby.dialog-resize') {
         if (event.data.mode === 'compact') {
           dialogIframeWrapper?.classList.add('is-compact');
           dialogIframeWrapper?.classList.remove('is-expanded');
+          if (event.data.isLoading !== false) {
+            wrapper.classList.add('is-loading');
+          }
         } else if (event.data.mode === 'expanded') {
           dialogIframeWrapper?.classList.add('is-expanded');
           dialogIframeWrapper?.classList.remove('is-compact');
+          wrapper.classList.remove('is-loading');
         }
       } else if (event.data?.type === 'jobby.dialog-close') {
+        wrapper.classList.remove('is-loading');
         hideFloatingDialog();
       } else if (event.data?.type === 'jobby.dialog-open-sidepanel') {
+        wrapper.classList.remove('is-loading');
         hideFloatingDialog();
         showSidepanelIframe();
       } else if (event.data?.type === 'jobby.dialog-trigger-tailor') {
+        wrapper.classList.remove('is-loading');
         hideFloatingDialog();
         showSidepanelIframe();
         const docType = event.data?.docType;
@@ -949,17 +983,29 @@ function createFloatingBall() {
 
   function updateVerticalPositionClass() {
     const vh = window.innerHeight > 0 ? window.innerHeight : 800;
-    wrapper.classList.remove('pos-top', 'pos-middle', 'pos-bottom');
-    let pos: 'top' | 'middle' | 'bottom' = 'middle';
-    if (posTop < vh * 0.35) {
-      pos = 'top';
-      wrapper.classList.add('pos-top');
-    } else if (posTop > vh * 0.65) {
-      pos = 'bottom';
-      wrapper.classList.add('pos-bottom');
-    } else {
-      wrapper.classList.add('pos-middle');
-    }
+    wrapper.classList.remove('pos-top', 'pos-bottom');
+    const pos: 'top' | 'bottom' = posTop < vh * 0.5 ? 'top' : 'bottom';
+    wrapper.classList.add(pos === 'top' ? 'pos-top' : 'pos-bottom');
+
+    const dialogHeight = Math.min(
+      DIALOG_HEIGHT,
+      Math.max(0, vh - EDGE_MARGIN * 2),
+    );
+    const preferredTop =
+      pos === 'top' ? posTop : posTop + SIZE - dialogHeight;
+    const maxTop = Math.max(
+      EDGE_MARGIN,
+      vh - EDGE_MARGIN - dialogHeight,
+    );
+    const dialogTop = Math.min(
+      maxTop,
+      Math.max(EDGE_MARGIN, preferredTop),
+    );
+    wrapper.style.setProperty(
+      '--jobby-dialog-offset-y',
+      `${dialogTop - posTop}px`,
+    );
+
     try {
       dialogIframe?.contentWindow?.postMessage(
         {
@@ -1028,7 +1074,10 @@ function createFloatingBall() {
   };
   window.addEventListener('resize', handleWindowResize);
 
+  let pointerDownActive = false;
+
   wrapper.addEventListener('pointerdown', (e: PointerEvent) => {
+    if (e.button !== 0) return;
     const target = e.target as HTMLElement | null;
     if (
       target?.closest('#close-btn') ||
@@ -1036,6 +1085,7 @@ function createFloatingBall() {
       target?.closest('#jobby-dialog-iframe-wrapper')
     )
       return;
+    pointerDownActive = true;
     dismissMenu.classList.remove('is-open');
     wrapper.classList.remove('menu-open');
     hideFloatingDialog();
@@ -1051,12 +1101,14 @@ function createFloatingBall() {
     dragStartY = e.clientY;
     startLeft = posLeft;
     startTop = posTop;
-    wrapper.setPointerCapture(e.pointerId);
+    try {
+      wrapper.setPointerCapture(e.pointerId);
+    } catch {}
     e.preventDefault();
   });
 
   wrapper.addEventListener('pointermove', (e: PointerEvent) => {
-    if (!wrapper.hasPointerCapture(e.pointerId)) return;
+    if (!pointerDownActive) return;
     const dx = e.clientX - dragStartX;
     const dy = e.clientY - dragStartY;
     // Use total displacement (not per-frame accumulation) for reliable threshold.
@@ -1081,8 +1133,13 @@ function createFloatingBall() {
   });
 
   wrapper.addEventListener('pointerup', (e: PointerEvent) => {
-    if (!wrapper.hasPointerCapture(e.pointerId)) return;
-    wrapper.releasePointerCapture(e.pointerId);
+    if (!pointerDownActive) return;
+    pointerDownActive = false;
+    try {
+      if (wrapper.hasPointerCapture(e.pointerId)) {
+        wrapper.releasePointerCapture(e.pointerId);
+      }
+    } catch {}
     if (isDragging) {
       wrapper.classList.remove('is-dragging');
       isDragging = false;
@@ -1090,6 +1147,21 @@ function createFloatingBall() {
       requestAnimationFrame(() => snapToEdge());
     } else {
       handleBallClick();
+    }
+  });
+
+  wrapper.addEventListener('pointercancel', (e: PointerEvent) => {
+    if (!pointerDownActive) return;
+    pointerDownActive = false;
+    try {
+      if (wrapper.hasPointerCapture(e.pointerId)) {
+        wrapper.releasePointerCapture(e.pointerId);
+      }
+    } catch {}
+    if (isDragging) {
+      wrapper.classList.remove('is-dragging');
+      isDragging = false;
+      requestAnimationFrame(() => snapToEdge());
     }
   });
 
@@ -1115,27 +1187,11 @@ function handleBallClick() {
   if (panelState === 'iframe') return;
 
   if (panelState === 'native') {
-    // Switching from Chrome's Side Panel to the page-embedded panel is a
-    // two-step operation: request native close, then wait for its authoritative
-    // close broadcast before showing the iframe. This prevents any overlap.
-    if (openIframeAfterNativeClose) return;
-    openIframeAfterNativeClose = true;
     try {
-      chrome.runtime.sendMessage({ type: 'sidepanel.close' }, (response) => {
-        if (chrome.runtime.lastError || response?.ok === false) {
-          openIframeAfterNativeClose = false;
-        }
-      });
-    } catch {
-      openIframeAfterNativeClose = false;
-    }
-    return;
+      chrome.runtime.sendMessage({ type: 'sidepanel.close' }, () => undefined);
+    } catch {}
   }
 
-  // The floating ball and the toolbar icon are deliberately different entry
-  // points: the ball opens the 380px in-page panel, while Chrome's toolbar
-  // action opens the native Side Panel.  The native panel's state broadcast
-  // below tears this iframe down when the user switches entry points.
   showSidepanelIframe();
 }
 
@@ -1148,7 +1204,18 @@ function handleBallClick() {
  */
 function preloadSidepanelIframe() {
   if (!isExtensionContextValid()) return;
-  if (iframeRoot || document.getElementById(IFRAME_CONTAINER_ID)) return;
+  if (
+    iframeRoot?.isConnected &&
+    iframeRoot.shadowRoot?.getElementById('jobby-iframe-wrapper')
+  ) {
+    return;
+  }
+
+  const existing = document.getElementById(IFRAME_CONTAINER_ID);
+  if (existing) {
+    existing.remove();
+  }
+  iframeRoot = null;
 
   iframeRoot = document.createElement('div');
   iframeRoot.id = IFRAME_CONTAINER_ID;
@@ -1447,9 +1514,9 @@ function restoreBodyRight(immediate = false) {
  * Slide the pre-loaded (or freshly injected) iframe panel into view.
  */
 function showSidepanelIframe() {
-  if (panelState === 'iframe') return;
+  if (panelState === 'iframe' || panelState === 'native') return;
 
-  if (!iframeRoot) {
+  if (!iframeRoot?.isConnected || !iframeRoot.shadowRoot?.getElementById('jobby-iframe-wrapper')) {
     preloadSidepanelIframe();
   }
 
@@ -1500,6 +1567,9 @@ function hideSidepanelIframe() {
  * Fully remove the iframe from the DOM (used when native side panel takes over).
  */
 function removeSidepanelIframe(immediate = false) {
+  if (panelState === 'iframe') {
+    panelState = 'idle';
+  }
   if (!iframeRoot) return;
 
   const wrapper = iframeRoot.shadowRoot?.getElementById('jobby-iframe-wrapper');
@@ -1749,7 +1819,6 @@ export function initializeFloatingBall(): () => void {
       if (!windowCanHostSidepanel) return;
 
       if (message.isOpen) {
-        openIframeAfterNativeClose = false;
         // Native side panel just opened.
         // Tear down the iframe if it was showing.
         if (panelState === 'iframe') {
@@ -1765,12 +1834,7 @@ export function initializeFloatingBall(): () => void {
         // Native side panel just closed.
         panelState = 'idle';
         restoreBodyRight();
-        if (openIframeAfterNativeClose) {
-          openIframeAfterNativeClose = false;
-          showSidepanelIframe();
-        } else {
-          updateBallVisibility();
-        }
+        updateBallVisibility();
       }
     } catch {
       // Ignore
@@ -1799,6 +1863,7 @@ export function initializeFloatingBall(): () => void {
     } catch {
       // Ignore
     }
+    panelState = 'idle';
     removeFloatingBall();
     removeSidepanelIframe(true);
   };

@@ -8,22 +8,22 @@ export function useAuth() {
   const [authStatus, setAuthStatus] = useState<AuthStatus>(DEFAULT_AUTH);
   const [authError, setAuthError] = useState<string>("");
   const [isSigningIn, setIsSigningIn] = useState<boolean>(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState<boolean>(true);
 
   const refreshAuth = useCallback(async () => {
-    const response = await send({ type: "auth.status" });
-    if (!response.ok) {
-      setAuthError(response.error);
-      return;
-    }
-    setAuthError("");
-    const status = response.auth ?? DEFAULT_AUTH;
-    if (status.connected) {
+    setIsCheckingAuth(true);
+    try {
+      const response = await send({ type: "auth.status" });
+      if (!response.ok) {
+        setAuthError(response.error);
+        return;
+      }
+      setAuthError("");
+      const status = response.auth ?? DEFAULT_AUTH;
       setAuthStatus(status);
-      return;
+    } finally {
+      setIsCheckingAuth(false);
     }
-
-    const restored = await send({ type: "auth.restore-web-session" });
-    setAuthStatus(restored.ok ? restored.auth ?? DEFAULT_AUTH : DEFAULT_AUTH);
   }, []);
 
   const signIn = useCallback(async () => {
@@ -57,5 +57,6 @@ export function useAuth() {
     signIn,
     disconnect,
     isSigningIn,
+    isCheckingAuth,
   };
 }

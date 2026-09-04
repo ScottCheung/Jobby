@@ -4,7 +4,7 @@
 import { cn } from '@/lib/utils';
 import React from 'react';
 import { InView } from '../../animation';
-import { BarChart3 } from 'lucide-react';
+import { BarChart3 } from '@jobby/ui/components/icons';
 
 interface ChartWrapperProps extends React.HTMLAttributes<HTMLDivElement> {
   title?: string;

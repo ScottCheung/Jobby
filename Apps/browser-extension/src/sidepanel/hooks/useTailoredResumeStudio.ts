@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { notify } from '@jobby/ui/components/UI/toast/toast-store';
 import { defaultMasterResumeData } from '@jobby/ui/components/UI/Resume/helpers';
 import { ApiClientError, apiClient } from '../../background/api-client';
+import { renderCoverLetterPdfForExtension } from '../services/cover-letter-pdf-renderer';
+import { renderResumePdfOnce } from '@jobby/ui/components/UI/Resume/ResumePdfPreview';
 import type { PageInspection } from '../../shared/contracts/page-inspection';
 import type {
   CareerProfile,
@@ -191,26 +193,27 @@ export function useTailoredResumeStudio(
       const first = normalizedSaved.find(
         (item) => item.status !== 'processing',
       );
-      if (first) {
-        if (!first.isGenerating) {
-          setResult((prev) => {
-            if (prev) return prev;
-            return {
-              resume_data: first.resume_data,
-              core_competencies:
-                first.core_competencies || first.key_qualifications || [],
-              key_qualifications: first.key_qualifications,
-              targeted_projects: first.targeted_projects,
-              raw_ai_response: first.raw_ai_response,
-              cover_letter:
-                first.cover_letter ||
-                (first.raw_ai_response?.cover_letter as string | undefined) ||
-                null,
-              tailored_resume: first,
-            };
-          });
-        }
-      }
+      setResult((prev) => {
+        const selected = prev?.tailored_resume?.id;
+        const current =
+          selected ?
+            normalizedSaved.find((item) => item.id === selected)
+          : first;
+        if (!current || current.isGenerating) return prev;
+        return {
+          resume_data: current.resume_data,
+          core_competencies:
+            current.core_competencies || current.key_qualifications || [],
+          key_qualifications: current.key_qualifications,
+          targeted_projects: current.targeted_projects,
+          raw_ai_response: current.raw_ai_response,
+          cover_letter:
+            current.cover_letter ||
+            (current.raw_ai_response?.cover_letter as string | undefined) ||
+            null,
+          tailored_resume: current,
+        };
+      });
     } catch {
       // Background load failures are quiet
     } finally {
@@ -221,15 +224,6 @@ export function useTailoredResumeStudio(
   useEffect(() => {
     void refreshSavedResumes();
   }, [refreshSavedResumes]);
-
-  useEffect(() => {
-    const hasRestoredGeneration = generationTasks.some(
-      (task) => !generationControllers.current.has(task.id),
-    );
-    if (!hasRestoredGeneration) return;
-    const timer = window.setInterval(() => void refreshSavedResumes(), 5_000);
-    return () => window.clearInterval(timer);
-  }, [generationTasks, refreshSavedResumes]);
 
   const switchProfile = useCallback(
     (profileId: string) => {
@@ -504,6 +498,60 @@ export function useTailoredResumeStudio(
 
       if (controller.signal.aborted) return;
       refreshEpochRef.current += 1;
+
+      // Compute PDF sizes immediately upon generation so they are saved and ready
+      let clSize: number | undefined;
+      let cvSize: number | undefined;
+      const clText =
+        nextResult.cover_letter ||
+        nextResult.tailored_resume?.cover_letter ||
+        (nextResult.raw_ai_response?.cover_letter as string | undefined);
+      if (clText) {
+        try {
+          const { blob } = await renderCoverLetterPdfForExtension(
+            clText,
+            nextResult.resume_data || undefined,
+            targetCompany || undefined,
+            targetTitle || undefined,
+          );
+          clSize = blob.size;
+        } catch {
+          // Non-blocking
+        }
+      }
+      if (nextResult.resume_data && Object.keys(nextResult.resume_data).length > 0) {
+        try {
+          const { blob } = await renderResumePdfOnce(
+            nextResult.resume_data,
+            1,
+            nextResult.core_competencies || [],
+            nextResult.key_qualifications || [],
+          );
+          cvSize = blob.size;
+        } catch {
+          // Non-blocking
+        }
+      }
+
+      const rawAi = {
+        ...((nextResult.tailored_resume?.raw_ai_response || nextResult.raw_ai_response || {}) as Record<string, unknown>),
+        ...(clSize !== undefined ? { cover_letter_file_size: clSize } : {}),
+        ...(cvSize !== undefined ? { resume_file_size: cvSize } : {}),
+      };
+      if (nextResult.tailored_resume) {
+        nextResult.tailored_resume.raw_ai_response = rawAi;
+        if (clSize !== undefined) nextResult.tailored_resume.cover_letter_file_size = clSize;
+        if (cvSize !== undefined) nextResult.tailored_resume.resume_file_size = cvSize;
+      }
+      nextResult.raw_ai_response = rawAi;
+
+      if (nextResult.tailored_resume?.id && (clSize !== undefined || cvSize !== undefined)) {
+        void apiClient
+          .updateTailoredResume(nextResult.tailored_resume.id, {
+            raw_ai_response: rawAi,
+          })
+          .catch(() => undefined);
+      }
 
       // A background completion must never pull someone away from a version
       // they are currently inspecting. With no explicit selection, newest wins.

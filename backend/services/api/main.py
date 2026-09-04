@@ -2150,7 +2150,21 @@ def update_tailored_resume(
     if "company" in payload and payload["company"] is not None:
         tailored.company = str(payload["company"])
     if "cover_letter" in payload:
-        tailored.cover_letter = str(payload["cover_letter"]) if payload["cover_letter"] is not None else None
+        raw_ai_resp = dict(tailored.raw_ai_response or {})
+        if payload["cover_letter"] is not None:
+            cl_text = str(payload["cover_letter"]).strip()
+            raw_ai_resp["cover_letter"] = cl_text if cl_text else None
+            gen_docs = dict(raw_ai_resp.get("generated_documents") or {})
+            if cl_text:
+                gen_docs["cover_letter"] = True
+            raw_ai_resp["generated_documents"] = gen_docs
+        else:
+            raw_ai_resp.pop("cover_letter", None)
+        tailored.raw_ai_response = raw_ai_resp
+    if "raw_ai_response" in payload and isinstance(payload["raw_ai_response"], dict):
+        merged_raw_ai = dict(tailored.raw_ai_response or {})
+        merged_raw_ai.update(payload["raw_ai_response"])
+        tailored.raw_ai_response = merged_raw_ai
     tailored.updated_at = utc_now()
     db.commit()
     db.refresh(tailored)
@@ -2215,21 +2229,32 @@ def review_job_from_jd(
     def _job_key(value: str | None) -> str:
         return " ".join((value or "").casefold().split())
 
-    existing_records = db.scalars(
-        select(TailoredResume)
-        .where(TailoredResume.user_id == current_user.id)
-        .order_by(TailoredResume.updated_at.desc())
-    ).all()
-    tailored_resume = next(
-        (
-            record
-            for record in existing_records
-            if _job_key(record.job_title) == _job_key(job["title"])
-            and _job_key(record.company) == _job_key(job["company"])
-            and _job_key(record.job_description) == _job_key(description)
-        ),
-        None,
-    )
+    tailored_resume = None
+    if payload.get("tailored_resume_id"):
+        try:
+            target_id = UUID(str(payload["tailored_resume_id"]))
+            target = db.get(TailoredResume, target_id)
+            if target and target.user_id == current_user.id:
+                tailored_resume = target
+        except Exception:
+            tailored_resume = None
+
+    if tailored_resume is None:
+        existing_records = db.scalars(
+            select(TailoredResume)
+            .where(TailoredResume.user_id == current_user.id)
+            .order_by(TailoredResume.updated_at.desc())
+        ).all()
+        tailored_resume = next(
+            (
+                record
+                for record in existing_records
+                if _job_key(record.job_title) == _job_key(job["title"])
+                and _job_key(record.company) == _job_key(job["company"])
+                and _job_key(record.job_description) == _job_key(description)
+            ),
+            None,
+        )
 
     if tailored_resume and tailored_resume.status == "processing":
         raise HTTPException(
@@ -3638,6 +3663,9 @@ _ATS_PLATFORMS = {
     "wellfound",
     "dice",
     "simplyhired",
+    "careerone",
+    "micro1",
+    "dayforce",
 }
 
 
@@ -5442,6 +5470,18 @@ def update_application_tailored_resume(
         tailored.core_competencies = payload["core_competencies"]
     if "key_qualifications" in payload and isinstance(payload["key_qualifications"], list):
         tailored.key_qualifications = payload["key_qualifications"]
+    if "cover_letter" in payload:
+        raw_ai_resp = dict(tailored.raw_ai_response or {})
+        if payload["cover_letter"] is not None:
+            cl_text = str(payload["cover_letter"]).strip()
+            raw_ai_resp["cover_letter"] = cl_text if cl_text else None
+            gen_docs = dict(raw_ai_resp.get("generated_documents") or {})
+            if cl_text:
+                gen_docs["cover_letter"] = True
+            raw_ai_resp["generated_documents"] = gen_docs
+        else:
+            raw_ai_resp.pop("cover_letter", None)
+        tailored.raw_ai_response = raw_ai_resp
     tailored.updated_at = utc_now()
     db.commit()
     db.refresh(tailored)

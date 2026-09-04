@@ -3,7 +3,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Check } from 'lucide-react';
+import { Check } from '@jobby/ui/components/icons';
 import { Button } from './Button';
 
 type ImageCropperProps = {

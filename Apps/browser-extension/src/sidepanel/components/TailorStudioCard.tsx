@@ -9,6 +9,7 @@ import {
   ChevronUp,
   Copy,
   Download,
+  ExternalLink,
   Eye,
   FileText,
   History,
@@ -23,6 +24,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { Button } from '@jobby/ui/components/UI/Button';
+import { IPEmotion } from '@jobby/ui/components/UI/IPEmotion';
 import { notify } from '@jobby/ui/components/UI/toast/toast-store';
 import {
   ResumePdfPreview,
@@ -47,10 +49,9 @@ import {
   openStandaloneResumePreview,
 } from '../services/resume-floating-preview';
 import { sendContentCommandToActiveTab } from '../services/messaging';
-import { renderCoverLetterPdfInWorker } from '../services/cover-letter-pdf-renderer';
+import { renderCoverLetterPdfForExtension } from '../services/cover-letter-pdf-renderer';
 import type { useTailoredResumeStudio } from '../hooks/useTailoredResumeStudio';
 import { AiGeneratingCard } from './AiGeneratingCard';
-import { AuthGuardBanner } from './AuthGuardBanner';
 import { cn } from '@jobby/ui/lib/utils';
 import {
   DetectionProviderBadge,
@@ -79,20 +80,22 @@ function savedCoverLetter(item: TailoredResume): string | null {
 interface TailorStudioCardProps {
   studio: ReturnType<typeof useTailoredResumeStudio>;
   latestInspection: PageInspection | null;
-  authConnected?: boolean;
-  onSignIn?: () => void;
   /** The CV & CL tab is intentionally a document manager, not a job reader. */
   managementOnly?: boolean;
+  onNavigateHome?: () => void;
+  onReDetect?: () => void;
+  isInspecting?: boolean;
 }
 
 export function TailorStudioCard({
   studio,
   latestInspection,
-  authConnected = true,
-  onSignIn,
   managementOnly = false,
+  onNavigateHome,
+  onReDetect,
+  isInspecting = false,
 }: TailorStudioCardProps) {
-  const [isDescExpanded, setIsDescExpanded] = useState(false);
+  const [isDescExpanded, setIsDescExpanded] = useState(true);
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(true);
   const [confirmModalType, setConfirmModalType] = useState<DocType | null>(
     null,
@@ -104,12 +107,14 @@ export function TailorStudioCard({
   );
   const [isDeleting, setIsDeleting] = useState(false);
   const historyRailRef = useRef<HTMLDivElement>(null);
-  const [coverLetterFileSize, setCoverLetterFileSize] = useState<number | null>(
-    null,
-  );
+  const [renderedCoverLetterFileSize, setRenderedCoverLetterFileSize] =
+    useState<number | null>(null);
+  const [renderedResumeFileSize, setRenderedResumeFileSize] = useState<
+    number | null
+  >(null);
   const coverLetterPdfCacheRef = useRef<{
     key: string;
-    promise: ReturnType<typeof renderCoverLetterPdfInWorker>;
+    promise: ReturnType<typeof renderCoverLetterPdfForExtension>;
   } | null>(null);
 
   const {
@@ -170,19 +175,58 @@ export function TailorStudioCard({
   // here made it look as if the user had generated a document they did not ask for.
   const effectiveCoverLetter = result?.cover_letter || null;
 
+  const inspectionCompany =
+    latestInspection?.kind === 'job' && latestInspection.snapshot.company ?
+      latestInspection.snapshot.company
+    : '';
+  const inspectionTitle =
+    latestInspection?.kind === 'job' && latestInspection.snapshot.title ?
+      latestInspection.snapshot.title
+    : '';
+
   const activeCompany =
-    result?.tailored_resume?.company || company || detectedJob?.company || '';
+    inspectionCompany ||
+    company ||
+    result?.tailored_resume?.company ||
+    detectedJob?.company ||
+    '';
   const activeJobTitle =
-    result?.tailored_resume?.job_title || jobTitle || detectedJob?.title || '';
+    inspectionTitle ||
+    jobTitle ||
+    result?.tailored_resume?.job_title ||
+    detectedJob?.title ||
+    '';
 
   // Active generating view: only shown if activeOptimisticId is selected/active
   const isViewingGenerating = Boolean(
     activeOptimisticId &&
     (!result || result?.tailored_resume?.id === activeOptimisticId),
   );
+
+  const hasDocuments =
+    savedResumes.length > 0 ||
+    isViewingGenerating ||
+    Boolean(displayResume) ||
+    Boolean(effectiveCoverLetter);
   const activeOptimisticItem = savedResumes.find(
     (s) => s.id === activeOptimisticId,
   );
+  const activeRecord = result?.tailored_resume || activeOptimisticItem;
+  const rawAi = (activeRecord?.raw_ai_response || result?.raw_ai_response) as
+    | Record<string, unknown>
+    | undefined;
+  const storedCoverLetterSize =
+    typeof rawAi?.cover_letter_file_size === 'number' ?
+      rawAi.cover_letter_file_size
+    : (activeRecord?.cover_letter_file_size ?? null);
+  const storedResumeSize =
+    typeof rawAi?.resume_file_size === 'number' ?
+      rawAi.resume_file_size
+    : (activeRecord?.resume_file_size ?? null);
+
+  const coverLetterFileSize =
+    storedCoverLetterSize ?? renderedCoverLetterFileSize;
+  const resumeFileSize = storedResumeSize ?? renderedResumeFileSize;
   const activeGeneratingTask =
     isViewingGenerating ?
       generationTasks.find(
@@ -310,13 +354,14 @@ export function TailorStudioCard({
     if (coverLetterPdfCacheRef.current?.key === key) {
       return coverLetterPdfCacheRef.current.promise;
     }
-    const promise = renderCoverLetterPdfInWorker(
+    const promise = renderCoverLetterPdfForExtension(
       effectiveCoverLetter,
       candidateData,
       resolvedCompany,
       resolvedJobTitle,
     );
     coverLetterPdfCacheRef.current = { key, promise };
+    void promise.then(({ blob }) => setRenderedCoverLetterFileSize(blob.size));
     void promise.catch(() => {
       if (coverLetterPdfCacheRef.current?.promise === promise) {
         coverLetterPdfCacheRef.current = null;
@@ -324,31 +369,6 @@ export function TailorStudioCard({
     });
     return promise;
   };
-
-  useEffect(() => {
-    if (!effectiveCoverLetter) {
-      setCoverLetterFileSize(null);
-      coverLetterPdfCacheRef.current = null;
-      return;
-    }
-    let cancelled = false;
-    setCoverLetterFileSize(null);
-    void renderTailoredCoverLetterPdf()
-      .then(({ blob }) => {
-        if (!cancelled) setCoverLetterFileSize(blob.size);
-      })
-      .catch(() => {
-        if (!cancelled) setCoverLetterFileSize(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    effectiveCoverLetter,
-    effectiveResume,
-    activeCompany,
-    activeJobTitle,
-  ]);
 
   const handleOpenInPageCoverLetterPreview = async () => {
     if (!effectiveCoverLetter) return;
@@ -453,9 +473,11 @@ export function TailorStudioCard({
       activeJobTitle,
     );
 
-  const renderTailoredResumePdf = () => {
+  const renderTailoredResumePdf = async () => {
     if (!resume) throw new Error('No tailored resume is available.');
-    return renderResumePdfOnce(resume, 1, competencies, []);
+    const rendered = await renderResumePdfOnce(resume, 1, competencies, []);
+    setRenderedResumeFileSize(rendered.blob.size);
+    return rendered;
   };
 
   const closeInPageResumePreview = async () => {
@@ -651,7 +673,7 @@ export function TailorStudioCard({
           let pages: number;
           let pdfScale: number | undefined;
           if (isCoverLetter) {
-            const rendered = await renderCoverLetterPdfInWorker(
+            const rendered = await renderCoverLetterPdfForExtension(
               coverLetter!,
               saved.resume_data,
               saved.company || undefined,
@@ -797,14 +819,6 @@ export function TailorStudioCard({
 
   return (
     <div className='w-full min-w-0 max-w-full overflow-x-hidden flex flex-col gap-3 pb-6'>
-      {!authConnected && onSignIn && (
-        <AuthGuardBanner
-          onSignIn={onSignIn}
-          title='Sign In to Tailor Resume & Cover Letter'
-          description='Sign in with your Jobby account to automatically generate customized resumes matched to this job.'
-        />
-      )}
-
       {/* Job context and generation controls belong to Home. Keep this available
           only for the standalone editor flow. */}
       {!managementOnly && (
@@ -1057,6 +1071,71 @@ export function TailorStudioCard({
             </div>
           </div>
         </>
+      )}
+
+      {/* ── Empty State Placeholder (When no tailored documents exist) ── */}
+      {!hasDocuments && (
+        <div className='w-full rounded-2xl bg-primary/10 p-2.5 flex flex-col gap-2.5 border-0 shadow-none'>
+          {/* Re-detect action */}
+          {onReDetect && (
+            <button
+              type='button'
+              onClick={onReDetect}
+              disabled={isInspecting}
+              className={cn(
+                'w-full py-2 px-3 rounded-xl flex items-center justify-center gap-1.5',
+                'text-[11px] font-medium text-muted-foreground hover:text-primary',
+                'bg-background-50/50 hover:bg-background-50 transition-colors',
+                'border-0 shadow-none cursor-pointer disabled:opacity-50',
+              )}
+            >
+              <RefreshCw
+                className={cn('w-3 h-3', isInspecting && 'animate-spin')}
+              />
+              <span>
+                {isInspecting ? 'Re-scanning page...' : 'Re-scan Current Page'}
+              </span>
+            </button>
+          )}
+
+          {/* Banner / Mascot Header */}
+          <div className='rounded-xl bg-background-50/90 backdrop-blur-sm px-4 pt-3 pb-4 flex flex-col items-center text-center border-0 shadow-none'>
+            <div className='relative w-24 h-24 -mt-1 mb-1 flex items-center justify-center'>
+              <IPEmotion emotionId={0} className='w-24 h-24' />
+            </div>
+
+            <h3 className='text-xs font-bold text-primary uppercase tracking-wider'>
+              No Tailored Documents
+            </h3>
+
+            <p className='text-[11px] text-muted-foreground leading-relaxed mt-1 max-w-[260px]'>
+              No tailored resumes or cover letters yet. Start tailoring on the{' '}
+              <strong className='text-primary font-bold'>Home</strong> tab when
+              viewing a job posting.
+            </p>
+
+            <div className='flex items-center justify-center gap-2 mt-3'>
+              {onNavigateHome && (
+                <Button
+                  variant='default'
+                  size='sm'
+                  Icon={Sparkles}
+                  onClick={onNavigateHome}
+                >
+                  Go to Home
+                </Button>
+              )}
+              <Button
+                variant='outline'
+                size='sm'
+                Icon={ExternalLink}
+                onClick={handleOpenWebEditor}
+              >
+                Master Resume
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ── 3. SAVED RESUMES HISTORY CAROUSEL (Horizontal Scrollable Cards) ── */}
@@ -1318,6 +1397,7 @@ export function TailorStudioCard({
               coreCompetencies={competencies}
               company={activeCompany}
               jobTitle={activeJobTitle}
+              fileSize={resumeFileSize}
               onPreview={() => void handleOpenInPageResumePreview()}
               onNewWindow={() => void handleOpenFloatingResumePreview()}
               onEdit={handleOpenWebEditor}

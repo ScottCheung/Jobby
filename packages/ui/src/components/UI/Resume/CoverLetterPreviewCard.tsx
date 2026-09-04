@@ -4,7 +4,7 @@
 
 import { useState } from 'react';
 import type { ReactNode } from 'react';
-import { Check, Copy, Download, Sparkles } from 'lucide-react';
+import { Check, Copy, Download, Sparkles } from '@jobby/ui/components/icons';
 import { Button } from '../Button';
 import { notify } from '../toast/toast-store';
 import {

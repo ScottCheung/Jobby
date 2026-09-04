@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 
 // Define the props for our new component
 interface CardWithNorthProps {
-  title?: string | null;
+  title?: React.ReactNode;
   action?: React.ReactNode;
   children: React.ReactNode;
   size?: 'sm' | 'md' | 'lg';

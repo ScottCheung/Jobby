@@ -111,6 +111,10 @@ describe('PlatformQuickSearchCard', () => {
 
     const ashby = SUPPORTED_PLATFORMS.find((p) => p.id === 'ashby')!;
     expect(ashby.getSearchUrl(title, location)).toContain('jobs.ashbyhq.com');
+
+    const micro1 = SUPPORTED_PLATFORMS.find((p) => p.id === 'micro1')!;
+    expect(micro1.category).toBe('ats');
+    expect(micro1.getSearchUrl(title, location)).toContain('jobs.micro1.ai');
   });
 
   it('handles empty or null profile safely without crashing', () => {

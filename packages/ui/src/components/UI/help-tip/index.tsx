@@ -3,7 +3,7 @@
 'use client';
 
 import React from 'react';
-import { HelpCircle } from 'lucide-react';
+import { HelpCircle } from '@jobby/ui/components/icons';
 import { Button } from '@jobby/ui';
 import { Tooltip } from '../tooltip';
 import { cn } from '@/lib/utils';

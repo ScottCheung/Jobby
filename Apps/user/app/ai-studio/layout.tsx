@@ -39,6 +39,7 @@ export default function AiStudioLayout({
       tabs={studioTabs}
       activeLayoutId='ai-studio-active-tab'
       rightContent={<GamificationStats />}
+      contentClassName='overflow-hidden flex flex-col'
     >
       {children}
     </ModuleTopNav>

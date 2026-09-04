@@ -92,6 +92,17 @@ export function resumeContactItems(
   return items;
 }
 
+export function sanitizeFilenameSegment(segment?: string | null): string {
+  if (!segment) return '';
+  return segment
+    .replace(/[\u2010-\u2015\u2212]/g, '-')
+    .replace(/[^\p{L}\p{N}\s._()-]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/^-+|-+$/g, '')
+    .trim();
+}
+
 export function formatResumeFilename(
   data?: MasterResumeData | null,
   company?: string | null,
@@ -103,23 +114,12 @@ export function formatResumeFilename(
       .filter(Boolean)
       .join(' ') || 'Resume';
 
-  const cleanName = fullName
-    .replace(/[\\/:*?"<>|]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-
-  const cleanCompany = (company || '')
-    .replace(/[\\/:*?"<>|]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-
-  const cleanTitle = (jobTitle || '')
-    .replace(/[\\/:*?"<>|]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
+  const cleanName = sanitizeFilenameSegment(fullName) || 'Resume';
+  const cleanCompany = sanitizeFilenameSegment(company);
+  const cleanTitle = sanitizeFilenameSegment(jobTitle);
 
   const parts = [cleanName, 'CV', cleanCompany, cleanTitle].filter(Boolean);
-  return `${parts.join('_')}.pdf`;
+  return `${parts.join(' - ')}.pdf`;
 }
 
 export function formatCoverLetterFilename(
@@ -131,25 +131,14 @@ export function formatCoverLetterFilename(
   const fullName =
     [basics.first_name, basics.middle_name, basics.last_name]
       .filter(Boolean)
-      .join(' ') || 'Candidate';
+      .join(' ') || 'Cover Letter';
 
-  const cleanName = fullName
-    .replace(/[\\/:*?"<>|]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-
-  const cleanCompany = (company || '')
-    .replace(/[\\/:*?"<>|]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-
-  const cleanTitle = (jobTitle || '')
-    .replace(/[\\/:*?"<>|]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
+  const cleanName = sanitizeFilenameSegment(fullName) || 'Cover Letter';
+  const cleanCompany = sanitizeFilenameSegment(company);
+  const cleanTitle = sanitizeFilenameSegment(jobTitle);
 
   const parts = [cleanName, 'CL', cleanCompany, cleanTitle].filter(Boolean);
-  return `${parts.join('_')}.pdf`;
+  return `${parts.join(' - ')}.pdf`;
 }
 
 export function templateCssVariables(config: ResumeTemplateConfig) {
@@ -432,8 +421,7 @@ export const defaultMasterResumeData: MasterResumeData = {
 };
 
 export const COVER_LETTER_SIGNATURE_STYLE = {
-  fontFamily:
-    "'Sacramento', 'Dancing Script', 'Caveat', 'Brush Script MT', 'Segoe Script', cursive",
+  fontFamily: "'Sacramento', 'Segoe Script', cursive",
   fontStyle: 'normal',
   fontWeight: 400,
 } as const;

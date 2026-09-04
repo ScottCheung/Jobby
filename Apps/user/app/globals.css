@@ -32,6 +32,45 @@
   animation: heart-pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
 }
 
+@keyframes ai-glow-flow {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 300% 50%;
+  }
+}
+
+@keyframes ai-diffuse {
+  0% {
+    opacity: 0.5;
+    filter: blur(12px);
+  }
+  50% {
+    opacity: 0.85;
+    filter: blur(18px);
+  }
+  100% {
+    opacity: 0.5;
+    filter: blur(12px);
+  }
+}
+
+@utility animate-ai-glow-flow {
+  animation: ai-glow-flow 7s linear infinite;
+}
+
+@utility animate-ai-diffuse {
+  animation: ai-glow-flow 7s linear infinite, ai-diffuse 4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-ai-glow-flow,
+  .animate-ai-diffuse {
+    animation: none !important;
+  }
+}
+
 strong {
   @apply bg-clip-text text-transparent bg-primary-gradient from-95% to-100%;
 }

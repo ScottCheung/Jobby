@@ -72,6 +72,22 @@ def test_title_value_is_coerced_to_the_page_option_value() -> None:
     assert reason == "Value is not one of the available options."
 
 
+def test_ashby_multiselect_value_is_coerced_to_all_matching_options() -> None:
+    field = SimpleNamespace(
+        type="multiselect",
+        options=[
+            {"label": "Asian", "value": "asian"},
+            {"label": "White", "value": "white"},
+            {"label": "Mixed or multiple ethnic groups", "value": "mixed"},
+        ],
+    )
+    assert _coerce_form_value("Asian, White", field) == (["asian", "white"], None)
+    assert _coerce_form_value("Prefer not to say", field) == (
+        None,
+        "Value does not match any available options.",
+    )
+
+
 def test_legacy_title_memory_keys_are_canonicalized() -> None:
     assert _canonical_autofill_intent_key("title") == "identity.title"
     assert _canonical_autofill_intent_key("learned.title") == "identity.title"
@@ -89,6 +105,19 @@ def test_application_intents_cover_work_rights_and_experience_variants() -> None
     assert _autofill_intent_key("How many years experience do you have in this space?") == "experience.years"
     assert _autofill_intent_key("Are you willing to relocate?") == "employment.relocation"
     assert _autofill_intent_key("Date Available") == "employment.date_available"
+
+
+def test_employer_specific_experience_questions_are_not_mapped_to_total_experience() -> None:
+    assert _autofill_intent_key(
+        "How many years of hands-on experience do you have designing, building and deploying AI products or solutions in a commercial environment?"
+    ) is None
+    assert _autofill_intent_key(
+        "How many years of experience do you have working within an Australian retail or e-commerce environment?"
+    ) is None
+    assert _autofill_intent_key(
+        "How many years of experience do you have working in technology engineering, software engineering or AI/ML roles?"
+    ) is None
+    assert _autofill_intent_key("How many years of professional experience do you have?") == "experience.years"
 
 
 def test_work_authorization_without_sponsorship_preserves_question_polarity() -> None:

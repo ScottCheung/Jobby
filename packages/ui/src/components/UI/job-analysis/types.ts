@@ -14,6 +14,11 @@ export interface JobAnalysisSnapshot {
   firstPostedAt?: string;
   lastPostedAt?: string;
   isReposted?: boolean;
+  postingDateRaw?: {
+    listedAt?: string | number;
+    originalListedAt?: string | number;
+    label?: string;
+  };
   description?: string;
   technologies: string[];
   easyApply?: boolean;

@@ -74,4 +74,29 @@ describe('LinkedIn Easy Apply form scope', () => {
     expect(inspection.fields.some((field) => field.label === 'Date posted')).toBe(false);
     expect(inspection.fields.some((field) => field.label === 'Easy Apply')).toBe(false);
   });
+
+  it('only reads controls in the Easy Apply form', () => {
+    document.body.innerHTML = `
+      <section role="dialog" aria-modal="true" class="jobs-easy-apply-modal">
+        <h2>Apply to Cloud Raptor</h2>
+        <form class="jobs-easy-apply-form">
+          <label for="email">Email address *</label>
+          <input id="email" type="email" required value="candidate@example.com" />
+          <label for="phone">Mobile phone number *</label>
+          <input id="phone" type="tel" required value="434344292" />
+        </form>
+        <input aria-label="Search" placeholder="Search" />
+        <div role="checkbox" aria-label="Software Engineer, Sydney, New South Wales, Australia" aria-checked="true"></div>
+        <button type="button" aria-label="Next">Next</button>
+      </section>
+    `;
+
+    const inspection = readLinkedInFormPage();
+    expect(inspection.kind).toBe('application_form');
+    if (inspection.kind !== 'application_form') return;
+    expect(inspection.fields.map((field) => field.label)).toEqual([
+      'Email address',
+      'Mobile phone number',
+    ]);
+  });
 });

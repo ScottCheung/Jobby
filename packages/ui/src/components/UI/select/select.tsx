@@ -4,7 +4,7 @@
 
 import * as React from 'react';
 import { createPortal } from 'react-dom';
-import { LucideIcon, ChevronDown, Check, Search } from 'lucide-react';
+import { LucideIcon, ChevronDown, Check, Search } from '@jobby/ui/components/icons';
 import { cn } from '@/lib/utils';
 import { LabelWithHelp } from '../label/with-help';
 import { Error } from '../text/typography';

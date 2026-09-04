@@ -1,5 +1,3 @@
-/** @format */
-
 import { Button } from '@jobby/ui/components/UI/Button';
 
 import type { FormInspection } from '../../shared/contracts/form-inspection';

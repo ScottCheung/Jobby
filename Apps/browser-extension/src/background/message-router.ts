@@ -7,7 +7,6 @@ import {
   disconnect,
   getAuthStatus,
   openLogin,
-  restoreWebSession,
 } from './auth-service';
 import {
   editActiveTabField,
@@ -74,17 +73,6 @@ export async function handleRuntimeMessage(
           snapshot: await getRuntimeSnapshot(),
           auth: await getAuthStatus(),
         };
-      case 'auth.restore-web-session':
-        if (!isExtensionUiSender(sender))
-          return {
-            ok: false,
-            error: 'Only the extension UI can restore a session.',
-          };
-        return {
-          ok: true,
-          snapshot: await getRuntimeSnapshot(),
-          auth: (await restoreWebSession()) ?? { connected: false },
-        };
       case 'auth.disconnect':
         if (!isExtensionUiSender(sender))
           return { ok: false, error: 'Only the extension UI can disconnect.' };
@@ -123,7 +111,7 @@ export async function handleRuntimeMessage(
         return {
           ok: true,
           snapshot: await getRuntimeSnapshot(),
-          inspection: await inspectJobUrl(parsed.data.url),
+          inspection: await inspectJobUrl(parsed.data.url, sender?.tab?.id),
         };
       case 'content.inspect-form-active':
         if (!isExtensionUiSender(sender))

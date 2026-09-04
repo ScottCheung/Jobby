@@ -4,7 +4,7 @@
 /** @format */
 
 import * as React from 'react';
-import { HelpCircle } from 'lucide-react';
+import { HelpCircle } from '@jobby/ui/components/icons';
 import { cn } from '@/lib/utils';
 import {
   TooltipProvider,

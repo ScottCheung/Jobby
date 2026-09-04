@@ -4,7 +4,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { Reorder, useDragControls } from 'framer-motion';
-import { GripVertical, Plus, Trash2 } from 'lucide-react';
+import { GripVertical, Plus, Trash2 } from '@jobby/ui/components/icons';
 import { cn } from '@/lib/utils';
 import { Button } from './Button';
 

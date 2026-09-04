@@ -345,7 +345,7 @@ class ApplicationFieldInstruction(BaseModel):
     commandId: str
     source: Literal["backend"] = "backend"
     target: ApplicationFormFieldInput
-    value: str | bool
+    value: str | bool | list[str]
 
 
 class ApplicationFormUnansweredField(BaseModel):
@@ -375,7 +375,7 @@ class FormAutofillFieldTrace(BaseModel):
     semantic_features: list[str] = Field(default_factory=list)
     source: str
     status: Literal["filled", "unanswered"]
-    value: str | bool | None = None
+    value: str | bool | list[str] | None = None
     reason: str | None = None
 
 
