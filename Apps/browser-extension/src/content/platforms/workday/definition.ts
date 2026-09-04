@@ -50,6 +50,10 @@ export const workdayDefinition = {
     "[data-automation-id='applicationForm']",
   ],
   adaptFormFields: excludeWorkdayManagedFields,
+  structuredAutofill: {
+    enabled: true,
+    summaryFeature: "workday-structured-summary",
+  },
   job: {
     roots: ["[data-automation-id='jobPostingPage']", "[data-automation-id='jobDetails']"],
     title: ["[data-automation-id='jobPostingHeader'] h2", "[data-automation-id='jobPostingHeader']", "h1", "h2"],

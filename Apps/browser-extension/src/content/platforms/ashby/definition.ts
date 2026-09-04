@@ -1,5 +1,6 @@
 import type { AtsProviderDefinition } from "../platform-definition";
 import { ashbyAutofillPolicy } from "./autofill-policy";
+import { ashbyDriverOverride } from "./driver";
 import { adaptAshbyFormFields } from "./form-field-adapter";
 
 function cleanText(value: string | null | undefined): string {
@@ -43,6 +44,7 @@ export const ashbyDefinition = {
   ],
   adaptFormFields: adaptAshbyFormFields,
   autofill: ashbyAutofillPolicy,
+  driver: ashbyDriverOverride,
   job: {
     roots: ["#root", ".ashby-job-posting-left-pane", "[data-testid='job-posting']", "[data-testid='job-posting-page']"],
     title: [".ashby-job-posting-heading", "[data-testid='job-title']", "h1"],

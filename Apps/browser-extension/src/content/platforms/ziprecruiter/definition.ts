@@ -50,7 +50,7 @@ function dateFromPage(externalId: string): string | undefined {
   return cleanText(dateEl?.getAttribute("datetime") || dateEl?.textContent) || undefined;
 }
 
-function companyFromPage(title: string): string {
+function companyFromPage(_title: string): string {
   const pageTitle = cleanText(document.title);
   const match = pageTitle.match(/^(.+?)\s+at\s+(.+?)(?:\s+in\s+.*|\s+-\s+.*|$)/i);
   if (match?.[2]) return cleanText(match[2]);

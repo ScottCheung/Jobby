@@ -84,6 +84,15 @@ export function getProviderDefinition(
   return definition;
 }
 
+export function findProviderDefinition(
+  platform: string | undefined | null,
+): ProviderDefinition | undefined {
+  if (!platform) return undefined;
+  return providerDefinitions.find(
+    (candidate) => candidate.platform === platform,
+  );
+}
+
 export function matchesProviderLocation(
   platform: DedicatedPlatform,
   location: Pick<Location, "hostname" | "pathname">,

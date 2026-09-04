@@ -1,14 +1,10 @@
 import type { PageInspection } from "../shared/contracts/page-inspection";
 import type { FormInspection } from "../shared/contracts/form-inspection";
+import type { DedicatedPlatform, AtsJobPlatform } from "../shared/contracts/platform";
 import type { FormScope } from "./dom/form-inspector";
 
-import { readSeekPage } from "./platforms/seek/job-reader";
-import { getSeekApplicationScope, readSeekFormPage } from "./platforms/seek/form-reader";
-import { readLinkedInPage } from "./platforms/linkedin/job-reader";
-import { readLinkedInFormPage } from "./platforms/linkedin/form-reader";
 import { readGenericFormPage } from "./platforms/generic/form-reader";
 import { readGenericJobPage } from "./platforms/generic/job-reader";
-import { getIndeedTargetJobKey, readIndeedJobPage } from "./platforms/indeed/job-reader";
 import { readAtsJobPage } from "./platforms/ats/job-reader";
 import {
   findDedicatedApplicationScope,
@@ -18,12 +14,10 @@ import {
   detectDedicatedPlatform,
 } from "./platforms/provider-routing";
 import {
-  getAtsProviderDefinition,
-  isAtsJobPlatform,
-  matchesProviderLocation,
+  findProviderDefinition,
 } from "./platforms/registry";
+import { isAtsJobConfig, isDedicatedJobReader } from "./platforms/platform-definition";
 import { findActiveFormScope } from "./dom/form-scope";
-import { linkedinAdapter } from "./platforms/linkedin/adapter";
 import { classifyCurrentPage } from "./page-classifier";
 import type { PageClass } from "./page-classifier";
 
@@ -60,36 +54,40 @@ export function readCurrentPage(apiData?: import('./platforms/linkedin/api-clien
   }
 
   const platform = detectDedicatedPlatform(window.location, document);
-  if (platform === "seek") {
-    const inspection = readSeekPage();
-    return inspection.kind === "job" ? inspection : fallbackToGenericJob(inspection, "seek");
+  const provider = platform ? findProviderDefinition(platform) : undefined;
+
+  if (provider) {
+    if (isDedicatedJobReader(provider.job)) {
+      const inspection = provider.job.read(apiData);
+      const canFallback = provider.job.fallback ?? true;
+      return inspection.kind === "job" || !canFallback
+        ? inspection
+        : fallbackToGenericJob(inspection, provider.platform);
+    }
+    if (isAtsJobConfig(provider.job)) {
+      const inspection = readAtsJobPage(provider.platform as AtsJobPlatform);
+      return inspection.kind === "job"
+        ? inspection
+        : fallbackToGenericJob(inspection, provider.platform);
+    }
   }
-  if (platform === "linkedin") {
-    return readLinkedInPage(apiData);
-  }
-  if (platform === "indeed") {
-    const inspection = readIndeedJobPage();
-    return inspection.kind === "job" ? inspection : fallbackToGenericJob(inspection, "indeed");
-  }
-  if (platform && isAtsJobPlatform(platform)) {
-    const inspection = readAtsJobPage(platform);
-    return inspection.kind === "job" ? inspection : fallbackToGenericJob(inspection, platform);
-  }
+
   return readGenericJobPage();
 }
 
 function postingDateWaitPolicy(
   inspection: PageInspection,
 ): { required: boolean; untilAttempt: number } {
-  if (
-    inspection.kind !== "job" ||
-    !isAtsJobPlatform(inspection.snapshot.platform)
-  ) {
+  if (inspection.kind !== "job") {
     return { required: false, untilAttempt: 0 };
   }
-  const untilAttempt = getAtsProviderDefinition(
-    inspection.snapshot.platform,
-  ).job.postingDateWaitUntilAttempt;
+  const provider = findProviderDefinition(inspection.snapshot.platform);
+  if (!provider) {
+    return { required: false, untilAttempt: 0 };
+  }
+  const untilAttempt = isAtsJobConfig(provider.job)
+    ? provider.job.postingDateWaitUntilAttempt
+    : provider.job?.readiness?.postingDateWaitUntilAttempt;
   return {
     required: untilAttempt !== undefined && !inspection.snapshot.lastPostedAt,
     untilAttempt: untilAttempt || 0,
@@ -98,22 +96,25 @@ function postingDateWaitPolicy(
 
 function providerReadinessWaitUntilAttempt(): number {
   const platform = detectDedicatedPlatform(window.location, document);
-  if (
-    platform === "seek" &&
-    /\/(?:apply|application)(?:\/|$)/i.test(window.location.pathname)
-  ) {
-    // SEEK's application route first renders a loading shell, then mounts the
-    // job header and form client-side. Keep inspecting long enough for that
-    // initial render instead of returning the loading shell as a non-job page.
-    return 60;
+  if (!platform) return 0;
+  const provider = findProviderDefinition(platform);
+  if (!provider) return 0;
+  if (isAtsJobConfig(provider.job)) {
+    return provider.job.readinessWaitUntilAttempt || 0;
   }
-  if (!platform || !isAtsJobPlatform(platform)) return 0;
-  return getAtsProviderDefinition(platform).job.readinessWaitUntilAttempt || 0;
+  const wait = provider.job?.readiness?.readinessWaitUntilAttempt;
+  if (typeof wait === "function") {
+    return wait(window.location);
+  }
+  return wait || 0;
 }
 
 export async function readCurrentPageWhenReady(): Promise<PageInspection> {
-  if (matchesProviderLocation("linkedin", window.location)) return readLinkedInPageWhenReady();
-  if (matchesProviderLocation("indeed", window.location)) return readIndeedPageWhenReady();
+  const platform = detectDedicatedPlatform(window.location, document);
+  const provider = platform ? findProviderDefinition(platform) : undefined;
+  if (provider && isDedicatedJobReader(provider.job) && provider.job.readiness?.readWhenReady) {
+    return provider.job.readiness.readWhenReady();
+  }
 
   let inspection = readCurrentPage();
   if (lastPageClass && !lastPageClass.isJobPage) {
@@ -168,58 +169,6 @@ export async function readCurrentPageWhenReady(): Promise<PageInspection> {
   return inspection;
 }
 
-async function readIndeedPageWhenReady(): Promise<PageInspection> {
-  const currentUrl = window.location.href;
-  lastPageClass = classifyCurrentPage();
-  if (!lastPageClass.isJobPage) {
-    return {
-      kind: "unsupported_page",
-      url: currentUrl,
-      reason: lastPageClass.skipReason,
-    };
-  }
-
-  let observedUrl = currentUrl;
-  let previousSnapshotSignature = "";
-
-  for (let attempt = 0; attempt < 20; attempt += 1) {
-    const activeUrl = window.location.href;
-    if (activeUrl !== observedUrl) {
-      observedUrl = activeUrl;
-      previousSnapshotSignature = "";
-    }
-
-    const inspection = readIndeedJobPage();
-    if (inspection.kind === "job") {
-      const snapshotSignature = [
-        inspection.snapshot.externalId,
-        inspection.snapshot.title,
-        inspection.snapshot.company,
-        Boolean(inspection.snapshot.description),
-      ].join(":");
-
-      const descriptionReady = Boolean(
-        inspection.snapshot.description && inspection.snapshot.description.length >= 20,
-      );
-      const snapshotStable = snapshotSignature === previousSnapshotSignature;
-
-      if (descriptionReady && (snapshotStable || attempt >= 15)) {
-        return inspection;
-      }
-      previousSnapshotSignature = snapshotSignature;
-    } else {
-      previousSnapshotSignature = "";
-      if (attempt >= 1 && !getIndeedTargetJobKey(activeUrl)) {
-        return inspection;
-      }
-    }
-
-    await new Promise<void>((resolve) => window.setTimeout(resolve, 100));
-  }
-
-  return readIndeedJobPage();
-}
-
 function fallbackToGenericJob(
   preferredInspection: PageInspection,
   platform?: DedicatedPlatform | AtsJobPlatform,
@@ -253,114 +202,13 @@ function fallbackToGenericJob(
   return preferredInspection;
 }
 
-async function readLinkedInPageWhenReady(): Promise<PageInspection> {
-  let observedUrl = window.location.href;
-  lastPageClass = classifyCurrentPage();
-  if (!lastPageClass.isJobPage) {
-    return {
-      kind: "unsupported_page",
-      url: observedUrl,
-      reason: lastPageClass.skipReason,
-    };
-  }
-
-  let previousSnapshotSignature = "";
-
-  // ── Fire API fetch in parallel with DOM polling ───────────────────────────
-  // We start the API call immediately (it doesn't wait for the DOM to settle).
-  // Voyager can return an exact posting timestamp. Some responses omit it, so
-  // the DOM remains the fallback while the top-card metadata is still mounting.
-  const jobIdNow = linkedinAdapter.jobIdFromUrl(observedUrl);
-  let cachedApiData: import('./platforms/linkedin/api-client').LinkedInJobApiData | null = null;
-  let apiResolved = false;
-
-  const apiDataPromise: Promise<import('./platforms/linkedin/api-client').LinkedInJobApiData | null> =
-    jobIdNow
-      ? import('./platforms/linkedin/api-client').then(({ fetchLinkedInJobPosting }) =>
-          fetchLinkedInJobPosting(jobIdNow),
-        )
-      : Promise.resolve(null);
-
-  apiDataPromise
-    .then((data) => {
-      cachedApiData = data;
-      apiResolved = true;
-    })
-    .catch(() => {
-      apiResolved = true;
-    });
-
-  let inspection = readCurrentPage();
-
-  // LinkedIn mounts the top-card metadata independently from the title and
-  // description during client-side navigation.
-  for (let attempt = 0; attempt < 20; attempt += 1) {
-    const currentUrl = window.location.href;
-    if (currentUrl !== observedUrl) {
-      observedUrl = currentUrl;
-      previousSnapshotSignature = "";
-    }
-
-    inspection = readCurrentPage(apiResolved ? cachedApiData : undefined);
-    if (inspection.kind === "job") {
-      const snapshotSignature = [
-        inspection.snapshot.externalId,
-        inspection.snapshot.title,
-        inspection.snapshot.company,
-        inspection.snapshot.lastPostedAt || "",
-      ].join(":");
-      const descriptionReady = Boolean(inspection.snapshot.description);
-
-      if (apiResolved && cachedApiData) {
-        // API enrichment may omit timestamps. In that case keep waiting for the
-        // independently-mounted top-card date instead of returning Unknown.
-        const enriched = readLinkedInPage(cachedApiData);
-        if (
-          enriched.kind === "job" &&
-          enriched.snapshot.description &&
-          (enriched.snapshot.lastPostedAt || attempt >= 19)
-        ) {
-          return enriched;
-        }
-      }
-
-      const dateReady = Boolean(inspection.snapshot.lastPostedAt);
-      const metadataReady = dateReady || attempt >= 19;
-      const snapshotStable = snapshotSignature === previousSnapshotSignature;
-      if (descriptionReady && metadataReady && (snapshotStable || attempt >= 19)) {
-        const resolvedApiData = await apiDataPromise.catch(() => null);
-        if (resolvedApiData) {
-          const enriched = readLinkedInPage(resolvedApiData);
-          if (enriched.kind === "job") return enriched;
-        }
-        return inspection;
-      }
-      previousSnapshotSignature = snapshotSignature;
-    } else {
-      previousSnapshotSignature = "";
-      const currentJobId = linkedinAdapter.jobIdFromUrl(currentUrl);
-      if (attempt >= 1 && !currentJobId) {
-        return inspection;
-      }
-    }
-
-    await new Promise<void>((resolve) => window.setTimeout(resolve, 150));
-  }
-
-  // Final attempt — await API one last time
-  const resolvedApiData = await apiDataPromise.catch(() => null);
-  if (resolvedApiData) {
-    const enriched = readLinkedInPage(resolvedApiData);
-    if (enriched.kind === "job") return enriched;
-  }
-  return inspection;
-}
-
 
 export function readCurrentForm(): FormInspection {
   const platform = detectDedicatedPlatform(window.location, document);
-  if (platform === "seek") return readSeekFormPage();
-  if (platform === "linkedin") return readLinkedInFormPage();
+  const provider = platform ? findProviderDefinition(platform) : undefined;
+  if (provider?.form?.read) {
+    return provider.form.read();
+  }
   if (platform) {
     const inspection = readDedicatedFormPage(platform);
     if (inspection) return inspection;
@@ -370,8 +218,10 @@ export function readCurrentForm(): FormInspection {
 
 export function getCurrentFormScope(): FormScope | null {
   const platform = detectDedicatedPlatform(window.location, document);
-  if (platform === "seek") return getSeekApplicationScope();
-  if (platform === "linkedin") return linkedinAdapter.getApplicationRoot() || findActiveFormScope();
+  const provider = platform ? findProviderDefinition(platform) : undefined;
+  if (provider?.form?.scope) {
+    return provider.form.scope();
+  }
   if (platform) {
     const scope = findDedicatedApplicationScope(platform);
     if (scope) return scope;

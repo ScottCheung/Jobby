@@ -30,14 +30,14 @@ function idFromRoot(root: ParentNode): string {
   return "";
 }
 
-function dateFromPage(externalId: string): string | undefined {
+function dateFromPage(_externalId: string): string | undefined {
   const dateEl = document.querySelector<HTMLElement>(
     "time, [class*='styles_posted'], [data-test='JobPostedTime'], [class*='posted']",
   );
   return cleanText(dateEl?.getAttribute("datetime") || dateEl?.textContent) || undefined;
 }
 
-function companyFromPage(title: string): string {
+function companyFromPage(_title: string): string {
   const pageTitle = cleanText(document.title);
   const match = pageTitle.match(/^(.+?)\s+at\s+(.+?)(?:\s+-\s+.*|$)/i);
   if (match?.[2]) return cleanText(match[2]);

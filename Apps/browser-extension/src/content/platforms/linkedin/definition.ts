@@ -1,4 +1,9 @@
 import type { ProviderDefinition } from "../platform-definition";
+import { readLinkedInPage } from "./job-reader";
+import { readLinkedInPageWhenReady } from "./readiness";
+import { readLinkedInFormPage } from "./form-reader";
+import { linkedinAdapter } from "./adapter";
+import { findActiveFormScope } from "../../dom/form-scope";
 
 export const linkedinDefinition = {
   platform: "linkedin",
@@ -51,4 +56,21 @@ export const linkedinDefinition = {
     "button[class*='show_more' i]",
     "button[class*='see-more' i]",
   ],
+  autofill: {
+    treatsAllFileInputsAsResume: true,
+  },
+  job: {
+    read: (apiData) =>
+      readLinkedInPage(
+        apiData as import("./api-client").LinkedInJobApiData | null | undefined,
+      ),
+    fallback: false,
+    readiness: {
+      readWhenReady: readLinkedInPageWhenReady,
+    },
+  },
+  form: {
+    read: () => readLinkedInFormPage(),
+    scope: () => linkedinAdapter.getApplicationRoot() || findActiveFormScope(),
+  },
 } satisfies ProviderDefinition<"linkedin">;

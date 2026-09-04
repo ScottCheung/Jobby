@@ -472,6 +472,9 @@ export async function cancelWorkdayStructuredActiveTab(runId: string): Promise<v
   await sendToActiveTab({ type: "content.cancel-workday-structured", runId });
 }
 
+export const autofillStructuredActiveTab = autofillWorkdayStructuredActiveTab;
+export const cancelStructuredActiveTab = cancelWorkdayStructuredActiveTab;
+
 export async function editActiveTabField(target: FormFieldTarget, value: FieldFillInstruction["value"]): Promise<FieldFillResult> {
   const mainWorldResult = await selectGreenhouseCombobox(target, value, `panel-${Date.now()}-${target.key}`);
   if (mainWorldResult) return mainWorldResult;

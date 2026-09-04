@@ -10,7 +10,7 @@ import {
   jobPostingFromMicrodata,
   jobPostingFromStructuredData,
   stableId,
-} from "../generic/job-reader";
+} from "../shared/job-metadata";
 import { getAtsProviderDefinition } from "../registry";
 import {
   clearJobDescriptionRoot,

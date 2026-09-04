@@ -165,14 +165,31 @@ _ATS_PLATFORMS = {
 
 def _autofill_intent_key_for_field(field: Any, platform: str = "generic") -> str | None:
     """Use ATS identifiers only after the cleaned visible label did not match."""
-    field_type = str(getattr(field, "type", "") or "").lower()
-    intent = _autofill_intent_key(str(getattr(field, "label", "") or ""))
+    if isinstance(field, dict):
+        field_type = str(field.get("type") or "").lower()
+        label = str(field.get("label") or "")
+        hints = (field.get("name"), field.get("id"))
+    else:
+        field_type = str(getattr(field, "type", "") or "").lower()
+        label = str(getattr(field, "label", "") or "")
+        hints = (getattr(field, "name", None), getattr(field, "id", None))
+
+    intent = _autofill_intent_key(label)
     if not intent and platform in _ATS_PLATFORMS:
-        for hint in (getattr(field, "name", None), getattr(field, "id", None)):
+        for hint in hints:
             intent = _autofill_intent_key(str(hint or "").replace("_", " ").replace("-", " "))
             if intent:
                 break
-    if intent in {"identity.email", "identity.first_name", "identity.last_name", "identity.phone", "employment.linkedin_url", "employment.github_url", "employment.portfolio_url", "employment.website"}:
+    if intent in {
+        "identity.email",
+        "identity.first_name",
+        "identity.last_name",
+        "identity.phone",
+        "employment.linkedin_url",
+        "employment.github_url",
+        "employment.portfolio_url",
+        "employment.website",
+    }:
         if field_type in {"radio", "checkbox", "select"}:
             return None
     return intent
@@ -191,3 +208,28 @@ def _inverse_sponsorship_answer(value: str | None) -> str | None:
         if any(term in normalized for term in {"required", "require", "needed", "need"}):
             return "No"
     return None
+
+
+# Public aliases
+normalize_form_label = _normalize_form_label
+autofill_answer_category = _autofill_answer_category
+autofill_intent_key = _autofill_intent_key
+autofill_intent_key_for_field = _autofill_intent_key_for_field
+inverse_sponsorship_answer = _inverse_sponsorship_answer
+ATS_PLATFORMS = frozenset(_ATS_PLATFORMS)
+
+__all__ = [
+    "ATS_PLATFORMS",
+    "autofill_answer_category",
+    "autofill_intent_key",
+    "autofill_intent_key_for_field",
+    "inverse_sponsorship_answer",
+    "normalize_form_label",
+    "_ATS_PLATFORMS",
+    "_autofill_answer_category",
+    "_autofill_intent_key",
+    "_autofill_intent_key_for_field",
+    "_inverse_sponsorship_answer",
+    "_normalize_form_label",
+]
+

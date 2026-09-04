@@ -1,9 +1,16 @@
 import type { FieldFillResult, FormFieldTarget } from "../shared/contracts/form-actions";
 import type { FormInspection } from "../shared/contracts/form-inspection";
 import type { ProviderAutofillPolicy } from "../content/platforms/platform-definition";
-import { ashbyAutofillPolicy } from "../content/platforms/ashby/autofill-policy";
+import { findProviderDefinition } from "../content/platforms/registry";
 
-import { autofillWorkdayStructuredActiveTab, cancelWorkdayStructuredActiveTab, inspectActiveTab, inspectFormActiveTab, fillActiveTabField, uploadActiveTabFile } from "./content-bridge";
+import {
+  autofillStructuredActiveTab,
+  cancelStructuredActiveTab,
+  inspectActiveTab,
+  inspectFormActiveTab,
+  fillActiveTabField,
+  uploadActiveTabFile,
+} from "./content-bridge";
 import { apiClient } from "./api-client";
 import { logDiagnostic } from "./diagnostics";
 import { getAutofillSessionId } from "./session-store";
@@ -19,7 +26,7 @@ export async function cancelActiveAutofill(): Promise<void> {
   const runId = activeAutofillRunId;
   if (!runId) return;
   cancelledAutofillRuns.add(runId);
-  await cancelWorkdayStructuredActiveTab(runId).catch(() => undefined);
+  await cancelStructuredActiveTab(runId).catch(() => undefined);
 }
 
 function inferFormScene(form: FormInspection): string {
@@ -49,7 +56,8 @@ function isResumeField(
   platform?: string,
 ): boolean {
   if (field.type !== "file") return false;
-  if (platform === "linkedin") return true;
+  const provider = findProviderDefinition(platform);
+  if (provider?.autofill?.treatsAllFileInputsAsResume) return true;
   const identity = [
     field.label,
     field.key,
@@ -78,7 +86,8 @@ function autofillPolicyFor(
   ) {
     return undefined;
   }
-  return form.platform === "ashby" ? ashbyAutofillPolicy : undefined;
+  const provider = findProviderDefinition(form.platform);
+  return provider?.autofill;
 }
 
 function isFillComplete(result: FieldFillResult | undefined): boolean {
@@ -314,15 +323,20 @@ export async function autofillDetectedFormForActiveTab(): Promise<{
   try {
     let initialForm = await inspectFormActiveTab();
     let structuredResults: FieldFillResult[] = [];
+    const provider = findProviderDefinition(
+      initialForm.kind === "application_form" || initialForm.kind === "page_input_fields"
+        ? initialForm.platform
+        : undefined,
+    );
     if (
       !shouldCancel() &&
       (initialForm.kind === "application_form" || initialForm.kind === "page_input_fields") &&
-      initialForm.platform === "workday"
+      provider?.structuredAutofill?.enabled
     ) {
       const profiles = await apiClient.getCareerProfiles();
       const profile = profiles.find((candidate) => candidate.is_default) || profiles[0];
       if (!shouldCancel() && profile?.resume_data) {
-        structuredResults = await autofillWorkdayStructuredActiveTab(
+        structuredResults = await autofillStructuredActiveTab(
           profile.resume_data,
           runId,
         );
@@ -346,11 +360,14 @@ export async function autofillDetectedFormForActiveTab(): Promise<{
         const scene = inferFormScene(form);
         const fields = form.kind === "application_form" || form.kind === "page_input_fields" ? form.fields : [];
         const platform = form.kind === "application_form" || form.kind === "page_input_fields" ? form.platform : "generic";
+        const formProvider = findProviderDefinition(platform);
+        const summaryFeature = formProvider?.structuredAutofill?.summaryFeature;
+        const eligibleFields = summaryFeature
+          ? fields.filter((field) => !field.semanticFeatures?.includes(summaryFeature))
+          : fields;
         return apiClient.getFormAutofillInstructions(
           platform,
-          fields
-            .filter((field) => !field.semanticFeatures?.includes("workday-structured-summary"))
-            .map(({ frameId: _frameId, ...field }) => field),
+          eligibleFields.map(({ frameId: _frameId, ...field }) => field),
           company,
           scene,
           sessionId,

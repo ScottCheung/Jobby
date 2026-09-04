@@ -1,4 +1,6 @@
 import type { ProviderDefinition } from "../platform-definition";
+import { readIndeedJobPage } from "./job-reader";
+import { readIndeedPageWhenReady } from "./readiness";
 
 export const indeedDefinition = {
   platform: "indeed",
@@ -34,6 +36,13 @@ export const indeedDefinition = {
     "[data-testid='application-form']",
     "form[action*='indeed']",
   ],
+  job: {
+    read: () => readIndeedJobPage(),
+    fallback: true,
+    readiness: {
+      readWhenReady: readIndeedPageWhenReady,
+    },
+  },
 } satisfies ProviderDefinition<"indeed"> & {
   applicationRoots: readonly string[];
 };
