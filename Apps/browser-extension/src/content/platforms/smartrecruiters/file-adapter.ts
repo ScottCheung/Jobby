@@ -2,6 +2,7 @@ import type {
   FormFieldObservation,
   FormPlatform,
 } from '../../../shared/contracts/form-inspection';
+import type { ProviderFormRoot } from '../platform-definition';
 
 type SearchRoot = Document | HTMLElement | ShadowRoot;
 
@@ -129,7 +130,7 @@ function resumeObservation(
   const container =
     closestComposed(
       input,
-      "[data-test='resume-upload-container'], oc-resume-upload",
+      "[data-test='resume-upload-container']",
     ) || closestComposed(input, RESUME_CONTAINER_SELECTOR);
   const selectedFile = input.files?.[0];
   const required = Boolean(
@@ -182,9 +183,57 @@ export function ensureSmartRecruitersResumeField(
   const applicationFields = fields.filter(
     (field) => !isEasyApplyParserField(field),
   );
-  if (applicationFields.some(isResumeField)) return applicationFields;
   const input = findResumeInput(root);
-  return input
-    ? [...applicationFields, resumeObservation(input)]
-    : applicationFields;
+  if (!input) return applicationFields;
+
+  const resume = resumeObservation(input);
+  const index = applicationFields.findIndex(
+    (field) => field.id === resume.id || isResumeField(field),
+  );
+  if (index < 0) return [...applicationFields, resume];
+  return applicationFields.map((field, fieldIndex) => (
+    fieldIndex === index ? resume : field
+  ));
+}
+
+function autocompleteIsCommitted(element: HTMLElement): boolean | undefined {
+  const host = closestComposed(
+    element,
+    "spl-autocomplete[data-test='location-autocomplete'], spl-autocomplete[data-sr-id*='location-autocomplete' i]",
+  );
+  if (!host) return undefined;
+  const className = host.getAttribute('class') || '';
+  if (/\bng-invalid\b/.test(className)) return false;
+  return Boolean(cleanText(host.getAttribute('value')) || /\bng-valid\b/.test(className));
+}
+
+function controlForField(
+  field: FormFieldObservation,
+  root: ProviderFormRoot,
+): HTMLElement | null {
+  if (field.id) {
+    const control = queryAllDeep<HTMLElement>(root, '[id]').find(
+      (candidate) => candidate.id === field.id,
+    );
+    if (control) return control;
+  }
+  return field.name
+    ? queryAllDeep<HTMLElement>(root, '[name]').find(
+      (candidate) => candidate.getAttribute('name') === field.name,
+    ) || null
+    : null;
+}
+
+export function adaptSmartRecruitersFormFields(
+  fields: FormFieldObservation[],
+  root: ProviderFormRoot,
+): FormFieldObservation[] {
+  return ensureSmartRecruitersResumeField('smartrecruiters', fields, root).map((field) => {
+    const control = controlForField(field, root);
+    if (field.type !== 'select' || !control || autocompleteIsCommitted(control) !== false) {
+      return field;
+    }
+    const { currentValue: _currentValue, ...uncommitted } = field;
+    return { ...uncommitted, filled: false };
+  });
 }

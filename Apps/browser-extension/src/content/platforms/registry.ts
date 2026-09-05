@@ -95,6 +95,21 @@ export function findProviderDefinition(
   );
 }
 
+export function findProviderDefinitionForUrl(
+  rawUrl: string | undefined,
+): ProviderDefinition | undefined {
+  if (!rawUrl) return undefined;
+  try {
+    const url = new URL(rawUrl);
+    return providerDefinitions.find(({ detection }) =>
+      detection.host.test(url.hostname.toLowerCase()) &&
+      (!detection.path || detection.path.test(url.pathname.toLowerCase())),
+    );
+  } catch {
+    return undefined;
+  }
+}
+
 export function matchesProviderLocation(
   platform: DedicatedPlatform,
   location: Pick<Location, "hostname" | "pathname">,
@@ -124,4 +139,3 @@ export function isSharedFormPlatform(
 ): platform is SharedFormPlatform {
   return platform === "indeed" || isAtsJobPlatform(platform);
 }
-

@@ -15,6 +15,7 @@ import {
 } from './page-reader';
 import { startFormDiscovery, watchFormScope } from './form-observer';
 import { classifyCurrentPage } from './page-classifier';
+import { detectDedicatedProvider } from './platforms/provider-routing';
 import {
   fillFormField,
   fillFormFieldValue,
@@ -32,13 +33,6 @@ import {
 } from './dom/job-description-modal-injector';
 import { showInPageToast } from './dom/in-page-toast';
 import { highlightJobRequirement } from './dom/job-requirement-highlight';
-import { autofillWorkdayStructuredSections } from './platforms/workday/structured-autofill';
-import {
-  beginWorkdayAutofill,
-  cancelWorkdayAutofill,
-  finishWorkdayAutofill,
-  isWorkdayAutofillCancelled,
-} from './platforms/workday/autofill-cancellation';
 
 export async function handleContentCommand(message: unknown): Promise<unknown> {
   if (isHighlightJobRequirementCommand(message)) {
@@ -137,27 +131,27 @@ export async function handleContentCommand(message: unknown): Promise<unknown> {
     }
     return { form };
   }
-  if (isAutofillWorkdayStructuredCommand(message)) {
+  if (isAutofillStructuredCommand(message)) {
     const payload = message as {
       runId: string;
       resume: import('../shared/contracts/tailored-resume').MasterResumeData;
       skills?: string[];
     };
-    beginWorkdayAutofill(payload.runId);
-    try {
-      return {
-        fillResults: await autofillWorkdayStructuredSections(
-          payload.resume,
-          payload.skills || [],
-          () => isWorkdayAutofillCancelled(payload.runId),
-        ),
-      };
-    } finally {
-      finishWorkdayAutofill(payload.runId);
+    const structuredAutofill = detectDedicatedProvider()?.structuredAutofill;
+    if (!structuredAutofill?.enabled || !structuredAutofill.fill) {
+      throw new Error('Structured autofill is unavailable on this page.');
     }
+    return {
+      fillResults: await structuredAutofill.fill(
+        payload.resume,
+        payload.runId,
+        payload.skills || [],
+      ),
+    };
   }
-  if (isCancelWorkdayStructuredCommand(message)) {
-    cancelWorkdayAutofill((message as { runId?: string }).runId);
+  if (isCancelStructuredCommand(message)) {
+    const runId = (message as { runId?: string }).runId;
+    if (runId) detectDedicatedProvider()?.structuredAutofill?.cancel?.(runId);
     return { cancelled: true };
   }
   if (isFocusFormFieldCommand(message)) {
@@ -214,19 +208,19 @@ function isInspectFormCommand(message: unknown): boolean {
   );
 }
 
-function isAutofillWorkdayStructuredCommand(message: unknown): boolean {
+function isAutofillStructuredCommand(message: unknown): boolean {
   return (
     typeof message === 'object' &&
     message !== null &&
-    (message as { type?: unknown }).type === 'content.autofill-workday-structured'
+    (message as { type?: unknown }).type === 'content.autofill-structured'
   );
 }
 
-function isCancelWorkdayStructuredCommand(message: unknown): boolean {
+function isCancelStructuredCommand(message: unknown): boolean {
   return (
     typeof message === 'object' &&
     message !== null &&
-    (message as { type?: unknown }).type === 'content.cancel-workday-structured'
+    (message as { type?: unknown }).type === 'content.cancel-structured'
   );
 }
 

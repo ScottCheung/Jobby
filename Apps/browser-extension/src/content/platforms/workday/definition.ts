@@ -1,5 +1,9 @@
 import type { AtsProviderDefinition } from "../platform-definition";
 import { excludeWorkdayManagedFields } from "./managed-fields";
+import {
+  cancelWorkdayStructuredAutofill,
+  runWorkdayStructuredAutofill,
+} from "./structured-autofill";
 
 function cleanText(value: string | null | undefined): string {
   return (value || "").replace(/\s+/g, " ").trim();
@@ -53,6 +57,8 @@ export const workdayDefinition = {
   structuredAutofill: {
     enabled: true,
     summaryFeature: "workday-structured-summary",
+    fill: runWorkdayStructuredAutofill,
+    cancel: cancelWorkdayStructuredAutofill,
   },
   job: {
     roots: ["[data-automation-id='jobPostingPage']", "[data-automation-id='jobDetails']"],

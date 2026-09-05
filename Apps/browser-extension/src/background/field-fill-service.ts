@@ -240,10 +240,8 @@ async function fillFormWithReactiveConvergence<T extends { instructions: Array<{
         if (instruction.target.type === "select" || field?.type === "select") {
           selectOrComboboxFilledInThisPass = true;
         }
-        // TechnologyOne's Country picklist asynchronously rebuilds the
-        // complete address panel. Do not write following fields into the DOM
-        // it is about to replace; wait, inspect the new panel, then continue
-        // on the next convergence pass.
+        // Some controlled forms rebuild dependent address fields after country
+        // selection. Continue from a fresh inspection on the next pass.
         if (isReactiveAddressCountryField(instruction, field)) {
           hitReactiveAddressBarrier = true;
           break;
@@ -272,8 +270,8 @@ async function fillFormWithReactiveConvergence<T extends { instructions: Array<{
       break;
     }
 
-    // Wait 400ms for ATS frameworks (T1Cloud, Workday) to resolve asynchronous
-    // cascade AJAX requests and render newly unlocked child fields into the DOM
+    // Wait for controlled forms to resolve asynchronous cascades and render
+    // newly unlocked child fields into the DOM.
     if (selectOrComboboxFilledInThisPass) {
       await new Promise((resolve) => setTimeout(resolve, hitReactiveAddressBarrier ? 800 : 400));
     } else {

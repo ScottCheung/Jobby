@@ -13,10 +13,9 @@ import {
   findButtonChoiceOption,
   inspectVisibleFormFields,
   isSelectableCombobox,
-  jobAdderPhoneCountryControls,
   type FormScope,
 } from './form-inspector';
-import { providerDefinitions } from '../platforms/registry';
+import { activeProviderDriver } from '../platforms/active-driver';
 import {
   clickControl,
   emitChange,
@@ -28,7 +27,6 @@ import {
 } from './form-driver/events';
 import {
   ariaCheckboxIsChecked,
-  checkboxChoiceGroupFor,
   fieldType,
   findAriaCheckbox,
   findAriaCombobox,
@@ -36,7 +34,6 @@ import {
   matchesTarget,
 } from './form-driver/element-finder';
 import {
-  fillCheckboxChoiceGroup,
   fillRadio,
   updateCheckbox,
 } from './form-driver/choice-driver';
@@ -65,58 +62,6 @@ export {
   type FormFocusResult,
 };
 
-function findJobAdderPhoneCountryControl(
-  target: FormFieldTarget,
-  scope: FormScope,
-) {
-  return jobAdderPhoneCountryControls(scope).find((control) =>
-    target.key === control.countryCode.id ||
-    target.key === control.countryCode.name ||
-    (target.id && target.id === control.countryCode.id) ||
-    (target.name && target.name === control.countryCode.name),
-  ) || null;
-}
-
-function fillJobAdderPhoneCountry(
-  instruction: FieldFillInstruction,
-  scope: FormScope,
-): FieldFillResult | null {
-  if (instruction.target.type !== 'select' || typeof instruction.value !== 'string') return null;
-  const control = findJobAdderPhoneCountryControl(instruction.target, scope);
-  if (!control) return null;
-
-  const requestedValue = instruction.value;
-  const requested = requestedValue.trim().toUpperCase();
-  const option = control.options.find((candidate) =>
-    candidate.value.toUpperCase() === requested ||
-    normalized(candidate.label) === normalized(requestedValue),
-  );
-  if (!option && requestedValue !== '') {
-    return result(instruction, 'rejected', 'The requested phone country is unavailable.');
-  }
-  const nextValue = option?.value || '';
-  if (normalized(control.countryCode.value) === normalized(nextValue)) {
-    return result(instruction, 'already_filled', 'Phone country already has the requested value.');
-  }
-
-  markAutofillWrite(control.countryList, instruction.source);
-  setValue(control.countryList, nextValue);
-  emitChange(control.countryList);
-  // The JobAdder Select2 handler updates this hidden field itself. Set it as
-  // a fallback as well, so a delayed widget initialisation cannot leave the
-  // phone number with an empty country code.
-  if (normalized(control.countryCode.value) !== normalized(nextValue)) {
-    setValue(control.countryCode, nextValue);
-    emitChange(control.countryCode);
-  }
-  return result(
-    instruction,
-    normalized(control.countryCode.value) === normalized(nextValue) ? 'filled' : 'rejected',
-    normalized(control.countryCode.value) === normalized(nextValue)
-      ? 'Phone country updated.'
-      : 'The webpage did not accept the phone country update.',
-  );
-}
 
 export async function fillFormField(
   instruction: FieldFillInstruction,
@@ -129,15 +74,8 @@ export async function fillFormField(
       'No supported application form is open.',
     );
 
-  for (const provider of providerDefinitions) {
-    if (provider.driver?.fillField) {
-      const driverResult = await provider.driver.fillField(instruction, scope);
-      if (driverResult) return driverResult;
-    }
-  }
-
-  const jobAdderCountryResult = fillJobAdderPhoneCountry(instruction, scope);
-  if (jobAdderCountryResult) return jobAdderCountryResult;
+  const driverResult = await activeProviderDriver(scope)?.fillField?.(instruction, scope);
+  if (driverResult) return driverResult;
 
   if (instruction.target.type === 'file') {
     const input = findFileInput(instruction.target, scope);
@@ -247,9 +185,7 @@ export async function fillFormField(
     );
   }
   // Side-panel edits originate from a field just inspected in this exact
-  // form scope. LinkedIn may append required markers or alter the label DOM
-  // between inspection and editing, so label text is not a safe second
-  // identity check here. Backend instructions remain protected by it.
+  // form scope, so label text is not a safe second identity check here.
   if (
     instruction.source !== 'panel' &&
     !matchesTarget(element, instruction, scope)
@@ -263,22 +199,6 @@ export async function fillFormField(
 
   const type = fieldType(element);
   markAutofillWrite(element, instruction.source);
-  if (
-    instruction.target.type === 'radio' &&
-    element instanceof HTMLInputElement &&
-    checkboxChoiceGroupFor(element, scope)
-  ) {
-    if (typeof instruction.value !== 'string')
-      return result(instruction, 'rejected', 'Choice values must be strings.');
-    if (!fillCheckboxChoiceGroup(element, instruction.value, scope)) {
-      return result(
-        instruction,
-        'rejected',
-        'The requested option is unavailable.',
-      );
-    }
-    return result(instruction, 'filled', 'Choice selected.');
-  }
   if (type === 'unknown')
     return result(instruction, 'rejected', 'This field type is not supported.');
 

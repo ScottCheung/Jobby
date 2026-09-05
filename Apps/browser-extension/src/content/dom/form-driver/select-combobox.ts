@@ -10,7 +10,7 @@ import {
   inspectPageCombobox,
   selectPageCombobox,
 } from '../combobox-bridge';
-import { providerDefinitions } from '../../platforms/registry';
+import { activeProviderDriver } from '../../platforms/active-driver';
 import {
   clickControl,
   emitInput,
@@ -151,7 +151,7 @@ export function comboboxListbox(
   if (localMatch) return localMatch;
 
   // The controlled input and its listbox can be siblings in different shadow
-  // roots (SmartRecruiters' location autocomplete is one example). Search
+  // roots. Search
   // the inspected form, then the whole document, without leaving the page.
   return (
     elementsInScope(scope).find((candidate) => candidate.id === id) ||
@@ -237,8 +237,8 @@ export function comboboxHasCommittedSelection(
       (expectedFirstToken.length > 1 && selected.includes(expectedFirstToken)))
   );
 
-  const providerHasCommitted = providerDefinitions.some((provider) =>
-    provider.driver?.isComboboxCommitted?.(element, scope),
+  const providerHasCommitted = Boolean(
+    activeProviderDriver(scope)?.isComboboxCommitted?.(element, scope),
   );
 
   if (!selectionMatches && !providerHasCommitted && (!selected || selected === normalized(typedQuery))) {
@@ -329,8 +329,8 @@ export async function fillCombobox(
 
   const option = await waitForComboboxOption(element, scope, label);
   if (option) {
-    // Custom option hosts (including SmartRecruiters' spl-select-option)
-    // keep the click handler on an interactive node inside their shadow root.
+    // Custom option hosts can keep the click handler on an interactive node
+    // inside their shadow root.
     // Clicking the host programmatically does not activate that inner node.
     clickControl(optionInteractionTarget(option));
     // A successful option click is the commit. Do not immediately send
@@ -394,8 +394,8 @@ export async function fillSelect(
         normValue.includes(normalized(candidate.textContent || ''))),
   );
   if (!option) return { matched: false, changed: false };
-  // SEEK and other React application forms often render a hidden native
-  // select beside a visual combobox. Prefer the same visible option click a
+  // Controlled forms can render a hidden native select beside a visual
+  // combobox. Prefer the same visible option click a
   // user performs so their controlled state updates as well.
   const previousValue = element.value;
   const visualSelected = await clickVisualSelectOption(

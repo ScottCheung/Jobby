@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import { fillFormField } from './form-driver';
 import { inspectVisibleFormFields, labelFor } from './form-inspector';
+import { adaptRegisteredFormFields } from '../platforms/form-field-adapter';
 
 function visibleRect(): DOMRect {
   return { x: 0, y: 0, width: 240, height: 40, top: 0, right: 240, bottom: 40, left: 0, toJSON: () => ({}) } as DOMRect;
@@ -183,7 +184,11 @@ describe('form inspector labels', () => {
       </form>
     `;
 
-    const fields = inspectVisibleFormFields(document);
+    const fields = adaptRegisteredFormFields(
+      'generic',
+      inspectVisibleFormFields(document),
+      document,
+    );
     expect(fields).toEqual(expect.arrayContaining([
       expect.objectContaining({ id: 'CandidatePhone_FormattedNumber', label: 'Phone', type: 'tel' }),
       expect.objectContaining({ id: 'CandidateMobile_FormattedNumber', label: 'Mobile', type: 'tel', required: true }),

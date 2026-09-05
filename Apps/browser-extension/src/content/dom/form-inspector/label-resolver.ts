@@ -52,7 +52,8 @@ export function cleanPlaceholderLabel(placeholder: string): string {
 export function containerLabelFor(element: HTMLElement): string {
   const root = scopeFor(element, document);
 
-  // Check jobwizard_question_title_id attribute matching element's input id or title_id (used in Rippling ATS)
+  // Some generated forms pair question titles with controls through a custom
+  // attribute instead of native label associations.
   const targetId =
     cleanText(element.id) ||
     cleanText(element.getAttribute("jobwizard_question_input_id")) ||
@@ -133,8 +134,8 @@ export function containerLabelFor(element: HTMLElement): string {
 
 /**
  * Web components commonly keep the native input in a shadow root and put its
- * human label on the host element (for example SmartRecruiters'
- * `<spl-input label="City">`). The input cannot see that label through its
+ * human label on the host element (for example, `<x-input label="City">`).
+ * The input cannot see that label through its
  * own root, so walk out through shadow hosts before falling back to an ID or
  * an anonymous field name.
  */
@@ -312,15 +313,6 @@ export function labelFor(element: HTMLElement, scope: QueryScope): string {
   const fieldset = element.closest("fieldset");
   const legend = cleanText(fieldset?.querySelector("legend")?.textContent);
   if (legend) return cleanLabel(legend);
-
-  // JobAdder nests its Phone/Mobile fields without associating a label to the
-  // real input. Use its stable rendered-number identifiers before the broad
-  // container fallback can inherit another question's label.
-  if (element instanceof HTMLInputElement && element.hasAttribute("data-val-phone")) {
-    const identifier = `${element.id} ${element.name}`.toLowerCase();
-    if (/(?:candidate)?mobile(?:[._-]|$)/.test(identifier)) return "Mobile";
-    if (/(?:candidate)?phone(?:[._-]|$)/.test(identifier)) return "Phone";
-  }
 
   const questionLabel = precedingQuestionLabel(element);
   if (questionLabel) return questionLabel;

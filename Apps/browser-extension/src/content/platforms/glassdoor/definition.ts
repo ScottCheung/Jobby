@@ -76,6 +76,16 @@ export const glassdoorDefinition = {
     "[class*='JobDetails_jobDescriptionWrapper' i] button",
     "[class*='JobDetails_jobDetailsContainer' i] button",
   ],
+  background: {
+    jobInspection: {
+      canonicalizeUrl: (url) => {
+        const listingId = url.searchParams.get("jl") || url.searchParams.get("jobListingId");
+        return listingId && /^\d+$/.test(listingId)
+          ? `${url.origin}/Job/index.htm?jl=${listingId}`
+          : null;
+      },
+    },
+  },
   applicationRoots: [
     "[data-test='application-form']",
     "[data-testid='application-form']",

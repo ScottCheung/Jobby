@@ -16,6 +16,12 @@ import {
   type WorkdayStructuredItem,
 } from "./field-mapping";
 import { autofillWorkdaySkills } from "./skill-autofill";
+import {
+  beginWorkdayAutofill,
+  cancelWorkdayAutofill,
+  finishWorkdayAutofill,
+  isWorkdayAutofillCancelled,
+} from "./autofill-cancellation";
 
 export { valueForWorkdayStructuredField } from "./field-mapping";
 
@@ -353,4 +359,25 @@ export async function autofillWorkdayStructuredSections(
     results.push(...await autofillWorkdaySkills(resume, savedSkills, shouldCancel));
   }
   return results;
+}
+
+export async function runWorkdayStructuredAutofill(
+  resume: MasterResumeData,
+  runId: string,
+  skills: string[] = [],
+): Promise<FieldFillResult[]> {
+  beginWorkdayAutofill(runId);
+  try {
+    return await autofillWorkdayStructuredSections(
+      resume,
+      skills,
+      () => isWorkdayAutofillCancelled(runId),
+    );
+  } finally {
+    finishWorkdayAutofill(runId);
+  }
+}
+
+export function cancelWorkdayStructuredAutofill(runId: string): void {
+  cancelWorkdayAutofill(runId);
 }

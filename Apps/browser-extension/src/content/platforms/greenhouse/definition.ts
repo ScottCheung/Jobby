@@ -1,5 +1,6 @@
 import type { AtsProviderDefinition } from "../platform-definition";
 import { greenhouseDriverOverride } from "./driver";
+import { adaptGreenhouseFormFields } from "./form-field-adapter";
 
 function cleanText(value: string | null | undefined): string {
   return (value || "").replace(/\s+/g, " ").trim();
@@ -25,6 +26,7 @@ export const greenhouseDefinition = {
     "form[action*='/applications']",
     "[data-testid='application-form']",
   ],
+  adaptFormFields: adaptGreenhouseFormFields,
   driver: greenhouseDriverOverride,
   job: {
     roots: [".job-post-container", "main.job-post", "#app_body", "[data-qa='job-post']", "main#main"],

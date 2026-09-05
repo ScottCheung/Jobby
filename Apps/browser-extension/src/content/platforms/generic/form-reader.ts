@@ -85,7 +85,7 @@ export function readGenericFormPage(): FormInspection {
     const scopedFields = scope === document && activeScope && activeScope !== document
       ? fields.filter((field) => allowedFieldKeys.has(field.key))
       : fields;
-    return adaptRegisteredFormFields(platform, scopedFields);
+    return adaptRegisteredFormFields(platform, scopedFields, scope || document);
   };
   if (!scope) {
     return {

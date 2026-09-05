@@ -68,14 +68,26 @@ export const linkedinDefinition = {
     treatsAllFileInputsAsResume: true,
   },
   job: {
-    read: (apiData) =>
-      readLinkedInPage(
-        apiData as import("./api-client").LinkedInJobApiData | null | undefined,
-      ),
+    read: () => readLinkedInPage(),
     fallback: false,
     readiness: {
       readWhenReady: readLinkedInPageWhenReady,
     },
+  },
+  background: {
+    jobInspection: {
+      canonicalizeUrl: (url) => {
+        const jobId =
+          url.pathname.match(/\/jobs\/view\/(?:[^/?#]*-)?(\d+)/i)?.[1] ||
+          url.searchParams.get("currentJobId") ||
+          url.searchParams.get("jobId");
+        return jobId && /^\d+$/.test(jobId)
+          ? `https://www.linkedin.com/jobs/view/${jobId}/`
+          : null;
+      },
+      requiresForegroundTab: true,
+    },
+    keepFormInRootFrame: true,
   },
   form: {
     read: () => readLinkedInFormPage(),

@@ -42,6 +42,18 @@ export const seekDefinition = {
         /\/(?:apply|application)(?:\/|$)/i.test(location.pathname) ? 60 : 0,
     },
   },
+  background: {
+    jobInspection: {
+      canonicalizeUrl: (url) => {
+        const jobId = url.pathname.match(/\/job\/(\d+)/i)?.[1] || url.searchParams.get("jobId");
+        return jobId && /^\d+$/.test(jobId) ? `${url.origin}/job/${jobId}` : null;
+      },
+      matchesJobUrl: (url, externalId) =>
+        (url.pathname.match(/\/job\/(\d+)/i)?.[1] || url.searchParams.get("jobId")) === externalId,
+      isApplicationUrl: (url) => /\/(?:apply|application)(?:\/|$)/i.test(url.pathname),
+      inspectDetailsFromApplication: true,
+    },
+  },
   form: {
     read: () => readSeekFormPage(),
     scope: () => getSeekApplicationScope(),
@@ -57,5 +69,3 @@ export const seekDefinition = {
     clickAction: (action) => clickSeekApplicationAction(action),
   },
 } satisfies ProviderDefinition<"seek">;
-
-

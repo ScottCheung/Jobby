@@ -22,7 +22,6 @@ import {
   isPlaceholderOption,
   isSelectableCombobox,
   optionLabelFor,
-  smartRecruitersAutocompleteIsCommitted,
   type FormOption,
 } from "./option-reader";
 import {
@@ -184,9 +183,6 @@ export function fieldType(element: HTMLElement): FormFieldType {
     return "select";
   if (element instanceof HTMLInputElement) {
     const type = element.type.toLowerCase();
-    // JobAdder validates telephone fields with `data-val-phone` while
-    // rendering them as type=text. Keep their actual semantic type.
-    if (type === "text" && element.hasAttribute("data-val-phone")) return "tel";
     if (type === "text" || type === "search") return "text";
     if (type === "checkbox" || type === "radio" || type === "file") return type;
     if (["number", "email", "tel", "url", "date", "password"].includes(type))
@@ -264,8 +260,6 @@ export function isFilled(
   }
   if (element instanceof HTMLInputElement && type === "checkbox")
     return checkboxIsChecked(element, scope);
-  if (type === "select" && smartRecruitersAutocompleteIsCommitted(element) === false)
-    return false;
   return Boolean(currentValue(element, type, scope));
 }
 
@@ -700,21 +694,8 @@ export function isPresentedFileInput(element: HTMLInputElement, scope: FormScope
 }
 
 export function isAutofillResumeInput(element: HTMLInputElement): boolean {
-  if (
-    closestComposed(
-      element,
-      "spl-dropzone[data-test='apply-with-resume-container'], oc-apply-with-resume, .ashby-application-form-autofill-input-root, .ashby-application-form-autofill-pane",
-    )
-  ) {
-    return true;
-  }
-  // Dover keeps both file inputs in one <form>. Looking beyond the input's
-  // own drop zone makes the required Resume field inherit the text from the
-  // separate top-level "Autofill from resume" helper and get filtered out.
-  const dropZone = element.closest<HTMLElement>("[role='button']");
-  return Boolean(
-    dropZone && /autofill from resume/i.test(cleanText(dropZone.textContent)),
-  );
+  const trigger = element.closest<HTMLElement>("[role='button'], button, label");
+  return Boolean(trigger && /autofill from (?:resume|cv)/i.test(cleanText(trigger.textContent)));
 }
 
 export function fieldKeyFor(
@@ -772,7 +753,6 @@ export function checkboxChoiceGroupFor(
     new Set(options.map((option) => cleanText(option.name)).filter(Boolean)),
   );
   const name = names.length === 1 ? names[0] || "" : "";
-  const greenhouseSingleChoice = name.startsWith("question_") && name.endsWith("[]");
   const groupKey =
     cleanText(fieldset.id) ||
     name ||
@@ -783,7 +763,7 @@ export function checkboxChoiceGroupFor(
     groupKey,
     name,
     label,
-    type: greenhouseSingleChoice ? "radio" : "checkbox",
+    type: "checkbox",
     required: requiredFor(fieldset),
     options,
   };

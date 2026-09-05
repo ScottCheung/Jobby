@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import { fillFormField } from "./form-driver";
 import { inspectVisibleFormFields } from "./form-inspector";
+import { adaptRegisteredFormFields } from "../platforms/form-field-adapter";
 
 function visibleRect(): DOMRect {
   return {
@@ -223,7 +224,7 @@ describe("shadow DOM autofill", () => {
     const input = renderSmartRecruitersLocation();
 
     input.value = 'Sydney';
-    expect(inspectVisibleFormFields(document)).toEqual(expect.arrayContaining([
+    expect(adaptRegisteredFormFields("smartrecruiters", inspectVisibleFormFields(document), document)).toEqual(expect.arrayContaining([
       expect.objectContaining({
         label: 'City',
         filled: false,
@@ -331,7 +332,7 @@ describe("shadow DOM autofill", () => {
   it('ignores the resume-autocomplete helper and identifies required Resume', () => {
     renderSmartRecruitersResumeFields();
 
-    const fileFields = inspectVisibleFormFields(document).filter(
+    const fileFields = adaptRegisteredFormFields("smartrecruiters", inspectVisibleFormFields(document), document).filter(
       (field) => field.type === 'file',
     );
 
@@ -387,7 +388,7 @@ describe("shadow DOM autofill", () => {
       document.body.append(menu);
     });
 
-    const fields = inspectVisibleFormFields(document);
+    const fields = adaptRegisteredFormFields("greenhouse", inspectVisibleFormFields(document), document);
     const locationField = fields.find((f) => f.id === 'job_application_location');
     expect(locationField).toBeDefined();
     expect(locationField?.type).toBe('select');
@@ -415,7 +416,8 @@ describe("shadow DOM autofill", () => {
   it('finds Resume through the nested Shadow DOM used by SmartRecruiters one-click forms', () => {
     renderNestedSmartRecruitersResumeFields();
 
-    const fileFields = inspectVisibleFormFields(document).filter((field) => field.type === 'file');
+    const fileFields = adaptRegisteredFormFields("smartrecruiters", inspectVisibleFormFields(document), document)
+      .filter((field) => field.type === 'file');
 
     expect(fileFields).toEqual([
       expect.objectContaining({
@@ -427,4 +429,3 @@ describe("shadow DOM autofill", () => {
     ]);
   });
 });
-

@@ -3,24 +3,12 @@ import {
   BUTTON_CHOICE_VALUE,
   cleanLabel,
   cleanText,
-  closestComposed,
   labelTextWithoutControl,
   queryAllInScope,
-  type FormScope,
   type QueryScope,
 } from "./visibility";
-import { labelFor, requiredFor } from "./label-resolver";
 
 export type FormOption = { label: string; value: string };
-
-export type JobAdderPhoneCountryControl = {
-  countryList: HTMLInputElement;
-  countryCode: HTMLInputElement;
-  numberInput: HTMLInputElement;
-  label: string;
-  required: boolean;
-  options: FormOption[];
-};
 
 export const PLACEHOLDER_OPTION_LABELS = new Set([
   "select",
@@ -80,26 +68,6 @@ export function observedOptionValue(value: string): string {
   return isPlaceholderOption(value, "observed") ? "" : cleanText(value);
 }
 
-export function smartRecruitersAutocompleteHost(
-  element: HTMLElement,
-): HTMLElement | null {
-  return closestComposed(
-    element,
-    "spl-autocomplete[data-test='location-autocomplete'], spl-autocomplete[data-sr-id*='location-autocomplete' i]",
-  );
-}
-
-export function smartRecruitersAutocompleteIsCommitted(
-  element: HTMLElement,
-): boolean | undefined {
-  const host = smartRecruitersAutocompleteHost(element);
-  if (!host) return undefined;
-  const className = host.getAttribute("class") || "";
-  if (/\bng-invalid\b/.test(className)) return false;
-  return Boolean(
-    cleanText(host.getAttribute("value")) || /\bng-valid\b/.test(className),
-  );
-}
 
 export function controlledListboxFor(element: HTMLElement): HTMLElement | null {
   const listboxId = cleanText(element.getAttribute("aria-controls"));
@@ -139,45 +107,9 @@ export function comboboxContainerFor(element: HTMLElement): HTMLElement | null {
   );
 }
 
-export function isGreenhouseLocation(element: HTMLElement): boolean {
-  if (!(element instanceof HTMLInputElement)) return false;
-  const id = cleanText(element.id).toLowerCase();
-  const name = cleanText(element.getAttribute("name")).toLowerCase();
-  const isGreenhousePage = Boolean(
-    element.closest(
-      "#grnhse_app, .job-post-container, form.application--form, form[action*='greenhouse.io']",
-    ) ||
-      document.querySelector(
-        "#grnhse_app, .job-post-container, form.application--form, form[action*='greenhouse.io'], #job_application_location_id, input[name*='location_id']",
-      ) ||
-      (typeof window !== "undefined" &&
-        /(?:^|\.)(?:boards|job-boards)\.greenhouse\.io$/i.test(window.location.hostname)),
-  );
-  if (
-    id === "job_application_location" ||
-    id === "candidate_location" ||
-    name === "job_application[location]" ||
-    name === "candidate[location]" ||
-    id.includes("location_autocomplete") ||
-    element.classList.contains("ui-autocomplete-input")
-  ) {
-    return true;
-  }
-  if (
-    isGreenhousePage &&
-    (id === "location" ||
-      name === "location" ||
-      id.includes("location") ||
-      name.includes("location"))
-  ) {
-    return true;
-  }
-  return false;
-}
 
 export function isSelectableCombobox(element: HTMLElement): boolean {
   if (!(element instanceof HTMLInputElement)) return false;
-  if (isGreenhouseLocation(element)) return true;
   const role = element.getAttribute("role");
   const ariaHasPopup = element.getAttribute("aria-haspopup");
   const ariaAutocomplete = element.getAttribute("aria-autocomplete");
@@ -251,17 +183,11 @@ export function isPhoneCountryElement(element: HTMLElement): boolean {
 }
 
 export function comboboxCurrentValue(element: HTMLElement): string {
-  // SmartRecruiters keeps the committed location object on the outer
-  // spl-autocomplete host. Text in the nested input is only a search query
-  // and must not be reported as a selected City until that host is valid.
-  if (smartRecruitersAutocompleteIsCommitted(element) === false) return "";
-
   const bridgedValue = observedOptionValue(inspectPageCombobox(element)?.currentValue || "");
   if (bridgedValue) return bridgedValue;
 
   // Autocomplete inputs contain the search query while their popup is open.
-  // Ashby, for example, highlights "Sydney, New South Wales, Australia" but
-  // leaves the input as "Sydney" until the option is actually committed.
+  // Report a value only after the selected option has been committed.
   if (element instanceof HTMLInputElement && !openComboboxValueIsCommitted(element)) return "";
 
   const rawValue =
@@ -315,74 +241,6 @@ export function liveComboboxOptions(
     .filter((option) => Boolean(option.label) && !isPlaceholderOption(option.label, option.value));
 }
 
-function record(value: unknown): Record<string, unknown> | null {
-  return typeof value === "object" && value !== null
-    ? (value as Record<string, unknown>)
-    : null;
-}
-
-export function greenhouseJobPost(
-  value: unknown,
-  visited = new Set<object>(),
-  depth = 0,
-): Record<string, unknown> | null {
-  const candidate = record(value);
-  if (!candidate || depth > 6 || visited.has(candidate)) return null;
-  visited.add(candidate);
-  if (Array.isArray(candidate.questions)) return candidate;
-  for (const child of Object.values(candidate)) {
-    const jobPost = greenhouseJobPost(child, visited, depth + 1);
-    if (jobPost) return jobPost;
-  }
-  return null;
-}
-
-export function greenhouseQuestionOptions(element: HTMLInputElement): FormOption[] {
-  const pageContext = (window as Window & { __remixContext?: unknown }).__remixContext;
-  const scriptContext = Array.from(document.scripts)
-    .map((script) => script.textContent || "")
-    .find((text) => /^\s*window\.__remixContext\s*=/.test(text));
-  let parsedContext: unknown;
-  if (scriptContext) {
-    try {
-      parsedContext = JSON.parse(
-        scriptContext
-          .replace(/^window\.__remixContext\s*=\s*/, "")
-          .replace(/;\s*$/, ""),
-      );
-    } catch {
-      parsedContext = undefined;
-    }
-  }
-
-  const jobPost = greenhouseJobPost(pageContext) || greenhouseJobPost(parsedContext);
-  const questions = jobPost?.questions;
-  if (!Array.isArray(questions)) return [];
-
-  for (const question of questions) {
-    const fields = record(question)?.fields;
-    if (!Array.isArray(fields)) continue;
-    for (const field of fields) {
-      const candidate = record(field);
-      if (candidate?.name !== element.id && candidate?.name !== element.name) continue;
-      const values = candidate.values;
-      if (!Array.isArray(values)) return [];
-      return values
-        .map((value) => {
-          const option = record(value);
-          const label = cleanText(typeof option?.label === "string" ? option.label : "");
-          const rawValue = option?.value;
-          return {
-            label,
-            value: rawValue === undefined || rawValue === null ? label : String(rawValue),
-          };
-        })
-        .filter((option) => Boolean(option.label) && !isPlaceholderOption(option.label, option.value));
-    }
-  }
-  return [];
-}
-
 export const COUNTRY_CODES = [
   "AD", "AE", "AF", "AG", "AI", "AL", "AM", "AO", "AR", "AT", "AU", "AW",
   "AZ", "BA", "BB", "BD", "BE", "BF", "BG", "BH", "BI", "BJ", "BN", "BO",
@@ -415,77 +273,6 @@ export function countryOptions(element: HTMLInputElement): FormOption[] {
   })).sort((left, right) => left.label.localeCompare(right.label));
 }
 
-export function jobAdderCountryOptions(
-  numberInput: HTMLInputElement,
-  scope: FormScope,
-): FormOption[] {
-  const localField = numberInput.closest<HTMLElement>(".form-field");
-  const lists = [
-    ...(localField
-      ? Array.from(localField.querySelectorAll<HTMLLIElement>(".phone-number-country-list li"))
-      : []),
-    ...queryAllInScope<HTMLLIElement>(scope, ".phone-number-country-list li"),
-  ];
-  const seen = new Set<string>();
-  const options: FormOption[] = [];
-  for (const item of lists) {
-    try {
-      const parsed = JSON.parse(cleanText(item.textContent)) as {
-        id?: unknown;
-        text?: unknown;
-      };
-      const value = cleanText(typeof parsed.id === "string" ? parsed.id : "");
-      const label = cleanText(typeof parsed.text === "string" ? parsed.text : "");
-      if (!value || !label || seen.has(value)) continue;
-      seen.add(value);
-      options.push({ label, value });
-    } catch {
-      // JobAdder embeds JSON text in each country option. Ignore unrelated
-      // list items rather than turning them into selectable answers.
-    }
-  }
-  return options;
-}
-
-export function jobAdderPhoneCountryControls(
-  scope: FormScope = document,
-): JobAdderPhoneCountryControl[] {
-  const controls: JobAdderPhoneCountryControl[] = [];
-  const numbers = queryAllInScope<HTMLInputElement>(scope, "input[data-val-phone]");
-  for (const numberInput of numbers) {
-    const row = numberInput.closest<HTMLElement>(".flex-row") || numberInput.parentElement;
-    const countryList = row?.querySelector<HTMLInputElement>("input.country-list");
-    const countryCode = row?.querySelector<HTMLInputElement>(
-      "input[name$='CountryCode'], input[id$='_CountryCode']",
-    );
-    if (!countryList || !countryCode) continue;
-
-    const identifier = `${numberInput.id} ${numberInput.name}`.toLowerCase();
-    const label = /(?:candidate)?mobile(?:[._-]|$)/.test(identifier)
-      ? "Mobile country code"
-      : "Phone country code";
-    controls.push({
-      countryList,
-      countryCode,
-      numberInput,
-      label,
-      required: requiredFor(numberInput),
-      options: jobAdderCountryOptions(numberInput, scope),
-    });
-  }
-  return controls;
-}
-
-export function greenhouseChoiceOptions(
-  element: HTMLInputElement,
-  scope: QueryScope,
-): FormOption[] {
-  if (!element.id.startsWith("question_")) return [];
-  const label = cleanLabel(labelFor(element, scope)).toLowerCase();
-  if (!/(citizen|relocat|clearance)/i.test(label)) return [];
-  return ["Yes", "No"].map((value) => ({ label: value, value }));
-}
-
 export function comboboxOptionsFor(
   element: HTMLInputElement,
   scope: QueryScope,
@@ -499,10 +286,6 @@ export function comboboxOptionsFor(
   }
   const liveOptions = liveComboboxOptions(element, scope);
   if (liveOptions.length > 0) return liveOptions;
-  const greenhouseOptions = greenhouseQuestionOptions(element);
-  if (greenhouseOptions.length > 0) return greenhouseOptions;
-  const inferredOptions = greenhouseChoiceOptions(element, scope);
-  if (inferredOptions.length > 0) return inferredOptions;
   return countryOptions(element);
 }
 

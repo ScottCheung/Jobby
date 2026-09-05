@@ -25,7 +25,6 @@ export function fieldType(element: FormControl): FormFieldType {
   if (element instanceof HTMLTextAreaElement) return 'textarea';
   if (isSelectableCombobox(element)) return 'select';
   const type = element.type.toLowerCase();
-  if (type === 'text' && element.hasAttribute('data-val-phone')) return 'tel';
   if (type === 'text' || type === 'search') return 'text';
   if (
     [
@@ -52,59 +51,6 @@ export function labelTextWithoutControl(label: HTMLElement | null | undefined): 
   return cleanText(copy.textContent);
 }
 
-export function checkboxChoiceGroupFor(
-  element: HTMLInputElement,
-  scope: FormScope,
-): {
-  container: HTMLElement;
-  options: HTMLInputElement[];
-  label: string;
-} | null {
-  const name = cleanText(element.name);
-  if (
-    element.type.toLowerCase() !== 'checkbox' ||
-    !name ||
-    !name.startsWith('question_') ||
-    !name.endsWith('[]')
-  ) {
-    return null;
-  }
-  const container = element.closest<HTMLElement>('fieldset');
-  const label = cleanText(container?.querySelector('legend')?.textContent);
-  if (!container || !label) return null;
-  const root = element.getRootNode();
-  const queryScope =
-    root instanceof Document || root instanceof ShadowRoot ? root : scope;
-  const options = Array.from(
-    queryScope.querySelectorAll<HTMLInputElement>(
-      `input[type='checkbox'][name='${CSS.escape(name)}']`,
-    ),
-  ).filter(
-    (candidate) =>
-      isVisible(candidate) && candidate.closest('fieldset') === container,
-  );
-  return options.length >= 2 ? { container, options, label } : null;
-}
-
-export function isCheckboxChoiceGroupForTarget(
-  element: FormControl,
-  target: FormFieldTarget,
-  scope: FormScope,
-): boolean {
-  if (!(element instanceof HTMLInputElement) || target.type !== 'radio')
-    return false;
-  const group = checkboxChoiceGroupFor(element, scope);
-  if (!group) return false;
-  const currentLabel = normalized(group.label);
-  const targetLabel = normalized(target.label);
-  return (
-    currentLabel === targetLabel ||
-    (currentLabel.length > 3 &&
-      targetLabel.length > 3 &&
-      (currentLabel.includes(targetLabel) ||
-        targetLabel.includes(currentLabel)))
-  );
-}
 
 export function ariaCheckboxLabel(element: HTMLElement, scope: FormScope): string {
   const labelledBy = cleanText(element.getAttribute('aria-labelledby'))
@@ -160,14 +106,7 @@ export function labelsMatchTarget(
   target: FormFieldTarget,
   scope: FormScope,
 ): boolean {
-  const checkboxGroup =
-    element instanceof HTMLInputElement ?
-      checkboxChoiceGroupFor(element, scope)
-    : null;
-  const rawCurrent =
-    isCheckboxChoiceGroupForTarget(element, target, scope) ?
-      checkboxGroup?.label || ''
-    : labelFor(element, scope);
+  const rawCurrent = labelFor(element, scope);
   const currentLabel = normalized(rawCurrent)
     .replace(/^\s*(?:\(?(?:required|optional|必填|选填)\)?|\*)+\s*/gi, '')
     .replace(/\s*(?:\(?(?:required|optional|必填|选填)\)?|\*)+\s*$/gi, '')
@@ -177,8 +116,7 @@ export function labelsMatchTarget(
     .replace(/\s*(?:\(?(?:required|optional|必填|选填)\)?|\*)+\s*$/gi, '')
     .trim();
   return (
-    (fieldType(element) === target.type ||
-      isCheckboxChoiceGroupForTarget(element, target, scope)) &&
+    fieldType(element) === target.type &&
     (currentLabel === targetLabel ||
       (currentLabel.length >= 2 &&
         targetLabel.length >= 2 &&

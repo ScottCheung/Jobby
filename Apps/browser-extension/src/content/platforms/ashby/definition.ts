@@ -45,6 +45,19 @@ export const ashbyDefinition = {
   adaptFormFields: adaptAshbyFormFields,
   autofill: ashbyAutofillPolicy,
   driver: ashbyDriverOverride,
+  background: {
+    jobInspection: {
+      canonicalizeUrl: (url) => {
+        if (!/\/(?:apply|application)\/?$/i.test(url.pathname)) return null;
+        const canonical = new URL(url.toString());
+        canonical.pathname = canonical.pathname.replace(/\/(?:apply|application)\/?$/i, "");
+        return canonical.toString();
+      },
+      isApplicationUrl: (url) => /\/(?:apply|application)\/?$/i.test(url.pathname),
+      cacheInspection: true,
+      inspectDetailsFromApplication: true,
+    },
+  },
   job: {
     roots: ["#root", ".ashby-job-posting-left-pane", "[data-testid='job-posting']", "[data-testid='job-posting-page']"],
     title: [".ashby-job-posting-heading", "[data-testid='job-title']", "h1"],

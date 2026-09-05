@@ -3,10 +3,10 @@
 import type { FieldFillInstruction } from '../../../shared/contracts/form-actions';
 import {
   checkboxIsChecked,
+  checkboxChoiceGroupFor,
   checkboxPresentationElements,
   type FormScope,
 } from '../form-inspector';
-import type { AshbyChoiceGroup } from '../../platforms/ashby/choice-groups';
 import {
   clickControl,
   isVisible,
@@ -16,7 +16,6 @@ import {
   normalized,
 } from './events';
 import {
-  checkboxChoiceGroupFor,
   labelTextWithoutControl,
 } from './element-finder';
 
@@ -91,12 +90,6 @@ export function optionLabelFor(element: HTMLElement, scope: FormScope): string {
   if (element instanceof HTMLInputElement && element.value)
     return element.value;
   return '';
-}
-
-export function isSeekHost(): boolean {
-  return /^(?:[a-z0-9-]+\.)*seek\.(?:com(?:\.au)?|co\.nz)$/i.test(
-    window.location.hostname,
-  );
 }
 
 export function setRadioChecked(radio: HTMLInputElement): void {
@@ -228,9 +221,8 @@ export function fillRadio(
   });
   if (!selected) return false;
   const scrollPosition = { left: window.scrollX, top: window.scrollY };
-  // LinkedIn's custom radio UI is often controlled by a handler on the
-  // surrounding label/card rather than the input. Follow the same pointer
-  // and click path a user takes on the whole option.
+  // Custom radio UIs can attach their handler to a surrounding label or card.
+  // Follow the same pointer and click path a user takes on the whole option.
   clickRadioOption(selected, scope);
   if (!selected.checked) {
     try {
@@ -256,7 +248,7 @@ export function fillCheckboxChoiceGroup(
   value: string,
   scope: FormScope,
 ): boolean {
-  const group = checkboxChoiceGroupFor(element, scope);
+  const group = checkboxChoiceGroupFor(element);
   if (!group) return false;
   const targetValue = normalized(value);
   const selected = group.options.find((option) => {
@@ -273,8 +265,7 @@ export function fillCheckboxChoiceGroup(
   if (!selected) return false;
 
   const scrollPosition = { left: window.scrollX, top: window.scrollY };
-  // These Greenhouse questions are visually checkboxes but are phrased as a
-  // single answer. Keep the form state aligned with the panel's one-choice UI.
+  // A single-choice checkbox group must retain only the requested option.
   for (const option of group.options) {
     if (
       option !== selected &&
@@ -305,7 +296,7 @@ export function optionMatchesRequested(
 }
 
 export function fillMultiSelectGroup(
-  group: AshbyChoiceGroup,
+  group: { options: HTMLInputElement[] },
   values: string[],
   scope: FormScope,
   source: FieldFillInstruction['source'],

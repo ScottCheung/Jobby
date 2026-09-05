@@ -54,7 +54,7 @@ export type ProviderJobReadiness = {
 };
 
 export type ProviderJobReader = {
-  read: (apiData?: unknown) => PageInspection;
+  read: () => PageInspection;
   readiness?: ProviderJobReadiness;
   fallback?: boolean;
 };
@@ -100,7 +100,22 @@ export type ProviderDriverOverride = {
     target: FormFieldTarget,
     value: FieldFillInstruction["value"],
     commandId: string,
+    context: { tabId: number },
   ) => Promise<FieldFillResult | null>;
+};
+
+export type ProviderBackgroundJobInspection = {
+  canonicalizeUrl?: (url: URL) => string | null;
+  matchesJobUrl?: (url: URL, externalId: string) => boolean;
+  isApplicationUrl?: (url: URL) => boolean;
+  cacheInspection?: boolean;
+  inspectDetailsFromApplication?: boolean;
+  requiresForegroundTab?: boolean;
+};
+
+export type ProviderBackgroundCapability = {
+  jobInspection?: ProviderBackgroundJobInspection;
+  keepFormInRootFrame?: boolean;
 };
 
 export type ProviderPageObserver = {
@@ -162,6 +177,7 @@ export type ProviderDefinition<
   autofill?: ProviderAutofillPolicy;
   structuredAutofill?: ProviderStructuredFill;
   driver?: ProviderDriverOverride;
+  background?: ProviderBackgroundCapability;
   pageObserver?: ProviderPageObserver;
   jobSelection?: ProviderJobSelection;
   applicationNavigation?: ProviderApplicationNavigation;

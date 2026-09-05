@@ -18,7 +18,6 @@ import {
 } from "./form-inspector/visibility";
 import {
   isPlaceholderOption,
-  jobAdderPhoneCountryControls,
   optionLabelFor,
   type FormOption,
 } from "./form-inspector/option-reader";
@@ -74,29 +73,21 @@ export {
   labelTextWithoutControl,
 } from "./form-inspector/visibility";
 
-export type { FormOption, JobAdderPhoneCountryControl } from "./form-inspector/option-reader";
+export type { FormOption } from "./form-inspector/option-reader";
 export {
   PLACEHOLDER_OPTION_LABELS,
   normalizedOptionLabel,
   isPlaceholderOption,
   observedOptionValue,
-  smartRecruitersAutocompleteHost,
-  smartRecruitersAutocompleteIsCommitted,
   controlledListboxFor,
   openComboboxValueIsCommitted,
   comboboxContainerFor,
-  isGreenhouseLocation,
   isSelectableCombobox,
   isPhoneCountryElement,
   comboboxCurrentValue,
   liveComboboxOptions,
-  greenhouseJobPost,
-  greenhouseQuestionOptions,
   COUNTRY_CODES,
   countryOptions,
-  jobAdderCountryOptions,
-  jobAdderPhoneCountryControls,
-  greenhouseChoiceOptions,
   comboboxOptionsFor,
   optionLabelFor,
   parentTextIsDistinct,
@@ -183,9 +174,6 @@ export function inspectVisibleFormFields(scope: FormScope = document): FormField
           key: checkboxGroup.groupKey,
           id: cleanText(checkboxGroup.container.id) || undefined,
           name: checkboxGroup.name || undefined,
-          // Greenhouse renders these single-answer screening questions as
-          // checkbox controls. Present them as one choice field so the panel
-          // mirrors the question instead of listing every option as a field.
           type: checkboxGroup.type,
           label: checkboxGroup.label,
           required: checkboxGroup.required,
@@ -227,28 +215,6 @@ export function inspectVisibleFormFields(scope: FormScope = document): FormField
     });
   }
 
-  // JobAdder's country selector is not a native visible control. Expose its
-  // backing value as a regular select field so the backend can infer AU/NZ
-  // from the phone number before the number itself is written.
-  for (const control of jobAdderPhoneCountryControls(scope)) {
-    if (result.length >= 200) break;
-    const key = cleanText(control.countryCode.id) || cleanText(control.countryCode.name);
-    if (!key || result.some((field) => field.key === key || field.id === control.countryCode.id))
-      continue;
-    const currentValue = cleanText(control.countryCode.value);
-    result.push({
-      key,
-      id: cleanText(control.countryCode.id) || undefined,
-      name: cleanText(control.countryCode.name) || undefined,
-      type: "select",
-      label: control.label,
-      required: control.required,
-      filled: Boolean(currentValue),
-      sensitive: false,
-      options: control.options,
-      ...(currentValue ? { currentValue } : {}),
-    });
-  }
 
   const keys = new Set(result.map((field) => field.key));
   const fileInputs = queryAllInScope<HTMLInputElement>(scope, "input[type='file']");
@@ -282,9 +248,8 @@ export function inspectVisibleFormFields(scope: FormScope = document): FormField
     });
   }
 
-  // Rippling renders required selects such as work-rights questions as a
-  // focusable div rather than a native select or input. Treat those ARIA
-  // comboboxes as normal select fields so the backend can classify them.
+  // Treat non-input ARIA comboboxes as select fields so they can be classified
+  // and filled through the same contract as native selects.
   const ariaComboboxes = queryAllInScope<HTMLElement>(scope, "[role='combobox']");
   for (const combobox of ariaComboboxes) {
     if (result.length >= 200) break;
@@ -411,9 +376,8 @@ export function inspectVisibleFormFields(scope: FormScope = document): FormField
     });
   }
 
-  // TechnologyOne renders its consent control as an ARIA checkbox rather
-  // than a native input. Keep it in the field model so it can be recognised
-  // and autofilled like a normal required checkbox.
+  // Keep ARIA checkboxes in the field model so they can be recognised and
+  // autofilled like native checkboxes.
   for (const element of ariaCheckboxElementsInScope(scope)) {
     if (result.length >= 200) break;
     const label = ariaCheckboxLabel(element, scope);
@@ -467,7 +431,7 @@ export function readApplicationForm(
       kind: "not_application_form",
       platform,
       url,
-      reason: `No visible ${platform === "linkedin" ? "LinkedIn" : platform === "seek" ? "SEEK" : "application"} form was found.`,
+      reason: "No visible application form was found.",
     };
   }
   return {
@@ -496,15 +460,4 @@ export function readPageInputFields(
     url,
     fields,
   };
-}
-
-export function readSeekForm(
-  url: string,
-  isApplicationPage: boolean,
-  submitLabel?: string,
-  action?: "next" | "submit",
-  canGoBack = false,
-  scope: FormScope = document,
-): FormInspection {
-  return readApplicationForm(url, "seek", isApplicationPage, submitLabel, scope, action, canGoBack);
 }

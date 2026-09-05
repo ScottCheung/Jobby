@@ -17,7 +17,7 @@ export function isAuthUrl(urlStr: string): boolean {
     if (host.includes('accounts.google.com')) return true;
     if (host.includes('login.microsoftonline.com') || host.includes('login.live.com')) return true;
     if (host.includes('appleid.apple.com')) return true;
-    if (host.includes('linkedin.com') && (path.includes('oauth') || path.includes('login') || path.includes('checkpoint'))) return true;
+    if (path.includes('login') || path.includes('checkpoint')) return true;
     if (host.includes('facebook.com') && path.includes('oauth')) return true;
     if (host.includes('github.com') && path.includes('login')) return true;
     if (host.includes('okta.com') || host.includes('auth0.com') || host.includes('supabase.co') || host.includes('supabase.com')) return true;

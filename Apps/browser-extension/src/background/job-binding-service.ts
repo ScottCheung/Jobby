@@ -1,6 +1,7 @@
 /** @format */
 
 import type { PageInspection } from '../shared/contracts/page-inspection';
+import { findProviderDefinition } from '../content/platforms/registry';
 
 interface BoundJobEntry {
   inspection: PageInspection;
@@ -21,12 +22,13 @@ function cleanExpiredEntries(): void {
   }
 }
 
-function isSameSeekJob(currentUrl: string, inspection: PageInspection): boolean {
-  if (inspection.kind !== 'job' || inspection.snapshot.platform !== 'seek') return false;
+function isSameProviderJob(currentUrl: string, inspection: PageInspection): boolean {
+  if (inspection.kind !== 'job') return false;
   try {
-    const current = new URL(currentUrl);
-    const jobId = current.pathname.match(/\/job\/(\d+)/i)?.[1] || current.searchParams.get('jobId');
-    return Boolean(jobId && jobId === inspection.snapshot.externalId);
+    return Boolean(
+      findProviderDefinition(inspection.snapshot.platform)?.background?.jobInspection
+        ?.matchesJobUrl?.(new URL(currentUrl), inspection.snapshot.externalId),
+    );
   } catch {
     return false;
   }
@@ -70,7 +72,7 @@ export function getTabJobInspection(tabId: number, currentUrl?: string): PageIns
           return direct.inspection;
         }
       } catch {}
-      if (isSameSeekJob(currentUrl, direct.inspection)) return direct.inspection;
+      if (isSameProviderJob(currentUrl, direct.inspection)) return direct.inspection;
     }
     // Stale direct binding after navigating away
     tabJobMap.delete(tabId);

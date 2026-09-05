@@ -228,8 +228,7 @@ export function isVisibleElement(element: HTMLElement): boolean {
 export function isDropdownSearchFilter(element: HTMLElement): boolean {
   if (!(element instanceof HTMLInputElement)) return false;
   // Select2 v3 keeps an off-screen focus proxy and a transient search input
-  // next to the real application field. JobAdder uses those proxies for its
-  // phone-country picker; neither control stores a candidate answer.
+  // next to the real application field; neither control stores an answer.
   if (
     element.classList.contains("select2-focusser") ||
     element.classList.contains("select2-input") ||

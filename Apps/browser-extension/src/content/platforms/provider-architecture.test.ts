@@ -217,6 +217,60 @@ describe('Provider Strategy & Plugin Architecture', () => {
     expect(content).not.toMatch(/observeIndeedJobDom/);
   });
 
+  it('keeps background orchestration independent of concrete provider modules', () => {
+    const sources = import.meta.glob('../../background/**/*.ts', {
+      eager: true,
+      query: '?raw',
+      import: 'default',
+    }) as Record<string, string>;
+
+    const providerNames = [...providerDefinitions.map(({ platform }) => platform), 'jobadder'].join('|');
+    const providerImport = new RegExp(
+      `from\\s+['"][^'"]*platforms\\/(?:${providerNames})\\/`,
+    );
+    for (const [path, source] of Object.entries(sources)) {
+      if (path.endsWith('.test.ts')) continue;
+      expect(source, path).not.toMatch(providerImport);
+    }
+  });
+
+  it('keeps shared page and form modules free of concrete provider dependencies', async () => {
+    const pageReader = await import('../page-reader.ts?raw');
+    const formDriver = await import('../dom/form-driver.ts?raw');
+    const formDriverSources = import.meta.glob('../dom/form-driver/**/*.ts', {
+      eager: true,
+      query: '?raw',
+      import: 'default',
+    }) as Record<string, string>;
+    const inspector = await import('../dom/form-inspector.ts?raw');
+    const inspectorSources = import.meta.glob('../dom/form-inspector/**/*.ts', {
+      eager: true,
+      query: '?raw',
+      import: 'default',
+    }) as Record<string, string>;
+    const sources = [
+      pageReader.default,
+      formDriver.default,
+      inspector.default,
+      ...Object.values(formDriverSources),
+      ...Object.values(inspectorSources),
+    ];
+
+    const providerNames = [...providerDefinitions.map(({ platform }) => platform), 'jobadder'].join('|');
+    const providerImport = new RegExp(
+      `from\\s+['"][^'"]*platforms\\/(?:${providerNames})\\/`,
+    );
+    const providerBranch = new RegExp(`\\b(?:${providerNames})\\b`, 'i');
+
+    expect(pageReader.default).not.toMatch(/linkedin\/api-client|LinkedInJobApiData/);
+    expect(formDriver.default).toMatch(/activeProviderDriver/);
+    expect(formDriver.default).not.toMatch(/providerDefinitions/);
+    for (const source of sources) {
+      expect(source).not.toMatch(providerImport);
+      expect(source).not.toMatch(providerBranch);
+    }
+  });
+
   it('job selection is isolated so platform cards are only selected by their own providers', () => {
     const seek = getProviderDefinition('seek');
     const indeed = getProviderDefinition('indeed');

@@ -6,12 +6,9 @@ import {
   checkboxPresentationElements,
   type FormScope,
 } from '../form-inspector';
-import { providerDefinitions } from '../../platforms/registry';
+import { activeProviderDriver } from '../../platforms/active-driver';
 import { isVisible } from './events';
-import {
-  checkboxChoiceGroupFor,
-  findFormElement,
-} from './element-finder';
+import { findFormElement } from './element-finder';
 import {
   findFileInput,
   fileUploadTrigger,
@@ -145,12 +142,8 @@ export function focusFormField(
     };
   }
 
-  for (const provider of providerDefinitions) {
-    if (provider.driver?.focusField) {
-      const providerFocus = provider.driver.focusField(target, scope);
-      if (providerFocus) return providerFocus;
-    }
-  }
+  const providerFocus = activeProviderDriver(scope)?.focusField?.(target, scope);
+  if (providerFocus) return providerFocus;
 
   const element = findFormElement(target, scope);
   if (!element)
@@ -160,14 +153,7 @@ export function focusFormField(
       message: 'The field is no longer visible.',
     };
 
-  const focusTarget =
-    (
-      target.type === 'radio' &&
-      element instanceof HTMLInputElement &&
-      checkboxChoiceGroupFor(element, scope)
-    ) ?
-      checkboxChoiceGroupFor(element, scope)?.container || element
-    : target.type === 'checkbox' && element instanceof HTMLInputElement ?
+  const focusTarget = target.type === 'checkbox' && element instanceof HTMLInputElement ?
       checkboxPresentationElements(element, scope).find(
         (candidate) => candidate !== element && isVisible(candidate),
       ) || element

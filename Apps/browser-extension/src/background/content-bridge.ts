@@ -1,11 +1,13 @@
 import { bindTabJobInspection, getTabJobInspection } from "./job-binding-service";
-import { cacheAshbyJobInspection, getCachedAshbyJobInspection } from "./session-store";
+import { cacheProviderJobInspection, getCachedProviderJobInspection } from "./session-store";
 import { z } from "zod";
 
 import { pageInspectionSchema, type PageInspection } from "../shared/contracts/page-inspection";
 import { formInspectionSchema, type FormInspection } from "../shared/contracts/form-inspection";
 import { fieldFillResultSchema, formFocusResultSchema, type FieldFillInstruction, type FieldFillResult, type FileUploadInstruction, type FormFieldTarget, type FormFocusResult } from "../shared/contracts/form-actions";
 import type { MasterResumeData } from "../shared/contracts/tailored-resume";
+import { isAtsJobConfig } from "../content/platforms/platform-definition";
+import { findProviderDefinitionForUrl } from "../content/platforms/registry";
 
 const contentResponseSchema = z.discriminatedUnion("ok", [
   z.object({ ok: z.literal(true), inspection: pageInspectionSchema }),
@@ -69,9 +71,15 @@ export async function inspectActiveTab(
   }
 
   const activeUrl = activeTab.url || "";
-  const isAshbyApplicationPage = isAshbyApplicationUrl(activeUrl);
-  if (isAshbyApplicationPage) {
-    const cachedInspection = await getCachedAshbyJobInspection(activeUrl);
+  const provider = findProviderDefinitionForUrl(activeUrl);
+  const jobInspection = provider?.background?.jobInspection;
+  const activePageUrl = new URL(activeUrl);
+  const isApplicationPage = Boolean(jobInspection?.isApplicationUrl?.(activePageUrl));
+  const externalId = provider && isAtsJobConfig(provider.job)
+    ? provider.job.idFromUrl(activePageUrl)
+    : "";
+  if (provider && jobInspection?.cacheInspection && externalId) {
+    const cachedInspection = await getCachedProviderJobInspection(provider.platform, externalId);
     if (cachedInspection) {
       const resolvedInspection: PageInspection = {
         kind: "job",
@@ -93,7 +101,12 @@ export async function inspectActiveTab(
   const inspection = parsed.data.inspection;
   const resolvedActiveUrl = activeUrl || (inspection.kind === "job" ? inspection.snapshot.url : inspection.url);
 
-  if (activeTab.id && inspection.kind !== "job" && isAshbyApplicationPage) {
+  if (
+    activeTab.id &&
+    inspection.kind !== "job" &&
+    jobInspection?.inspectDetailsFromApplication &&
+    isApplicationPage
+  ) {
     const boundInspection = getTabJobInspection(activeTab.id, resolvedActiveUrl);
     if (boundInspection) return boundInspection;
 
@@ -106,7 +119,7 @@ export async function inspectActiveTab(
           url: resolvedActiveUrl,
         },
       };
-      await cacheAshbyJobInspection(resolvedInspection);
+      if (jobInspection.cacheInspection) await cacheProviderJobInspection(resolvedInspection);
       bindTabJobInspection(activeTab.id, resolvedInspection);
       return resolvedInspection;
     }
@@ -123,12 +136,10 @@ export async function inspectActiveTab(
     }
 
     let resolvedInspection = inspection;
-    const isSeekApplicationPage =
-      inspection.snapshot.platform === "seek" &&
-      /\/(?:apply|application)(?:\/|$)/i.test(new URL(resolvedActiveUrl).pathname);
     const shouldReadDetailPage =
       !inspection.snapshot.description?.trim() &&
-      (isSeekApplicationPage || isAshbyApplicationPage);
+      jobInspection?.inspectDetailsFromApplication &&
+      isApplicationPage;
 
     if (shouldReadDetailPage) {
       const detailInspection = await inspectJobUrl(resolvedActiveUrl).catch(() => undefined);
@@ -171,7 +182,7 @@ export async function inspectActiveTab(
       }
     }
 
-    await cacheAshbyJobInspection(resolvedInspection);
+    if (jobInspection?.cacheInspection) await cacheProviderJobInspection(resolvedInspection);
     bindTabJobInspection(activeTab.id, resolvedInspection);
     return resolvedInspection;
   }
@@ -188,47 +199,10 @@ export async function inspectActiveTab(
   return inspection;
 }
 
-function isAshbyApplicationUrl(rawUrl: string): boolean {
-  try {
-    const url = new URL(rawUrl);
-    return url.hostname.toLowerCase() === "jobs.ashbyhq.com" &&
-      /\/(?:apply|application)\/?$/i.test(url.pathname);
-  } catch {
-    return false;
-  }
-}
-
 export function jobInspectionUrl(rawUrl: string): string {
   const url = new URL(rawUrl);
-  const host = url.hostname.toLowerCase();
-
-  if (host === "linkedin.com" || host.endsWith(".linkedin.com")) {
-    const jobId = url.pathname.match(/\/jobs\/view\/(?:[^/?#]*-)?(\d+)/i)?.[1] || url.searchParams.get("currentJobId") || url.searchParams.get("jobId");
-    if (jobId && /^\d+$/.test(jobId)) {
-      return `https://www.linkedin.com/jobs/view/${jobId}/`;
-    }
-  }
-
-  if (/(^|\.)seek\.(?:com(?:\.[a-z]{2})?|co\.[a-z]{2})$/i.test(host)) {
-    const jobId = url.pathname.match(/\/job\/(\d+)/i)?.[1] || url.searchParams.get("jobId");
-    if (jobId && /^\d+$/.test(jobId)) {
-      return `${url.origin}/job/${jobId}`;
-    }
-  }
-
-  if (/(^|\.)glassdoor\.(?:com(?:\.[a-z]{2})?|co\.[a-z]{2}|[a-z]{2})$/i.test(host)) {
-    const listingId = url.searchParams.get("jl") || url.searchParams.get("jobListingId");
-    if (listingId && /^\d+$/.test(listingId)) {
-      return `${url.origin}/Job/index.htm?jl=${listingId}`;
-    }
-  }
-
-  if (host === "jobs.ashbyhq.com" && /\/(?:apply|application)\/?$/i.test(url.pathname)) {
-    url.pathname = url.pathname.replace(/\/(?:apply|application)\/?$/i, "");
-    return url.toString();
-  }
-
-  return url.toString();
+  return findProviderDefinitionForUrl(rawUrl)?.background?.jobInspection
+    ?.canonicalizeUrl?.(url) || url.toString();
 }
 
 export async function inspectJobUrl(
@@ -270,13 +244,14 @@ async function inspectJobUrlOnce(
   }
 
   try {
-    // LinkedIn throttles rendering and network work in background tabs. Make
-    // the temporary page visible while it is being read so its normal client
-    // side loading lifecycle can complete.
-    if (chrome.tabs.update) {
+    const requiresForegroundTab = Boolean(
+      findProviderDefinitionForUrl(inspectionUrl)?.background?.jobInspection
+        ?.requiresForegroundTab,
+    );
+    if (requiresForegroundTab && chrome.tabs.update) {
       await chrome.tabs.update(tab.id, { active: true });
     }
-    if (tab.windowId !== undefined && chrome.windows?.update) {
+    if (requiresForegroundTab && tab.windowId !== undefined && chrome.windows?.update) {
       await chrome.windows.update(tab.windowId, { focused: true });
     }
 
@@ -400,10 +375,7 @@ export async function inspectFormActiveTab(): Promise<FormInspection> {
   const rootForm = parseFormResponse(await sendToTab(activeTab.id, { type: "content.inspect-form" }));
   const candidates: Array<{ form: FormInspection; frameId: number }> = [{ form: rootForm, frameId: 0 }];
 
-  // LinkedIn's Easy Apply modal always lives in the top document. Its pages
-  // also embed auxiliary frames, some of which contain unrelated forms; do
-  // not let a field-count comparison replace the real modal with one of them.
-  if (isLinkedInUrl(activeTab.url)) {
+  if (findProviderDefinitionForUrl(activeTab.url)?.background?.keepFormInRootFrame) {
     activeFormFrameByTab.set(activeTab.id, 0);
     return rootForm;
   }
@@ -436,8 +408,6 @@ export async function inspectFormActiveTab(): Promise<FormInspection> {
 
 /**
  * Only the frame selected by the last inspection may update the side panel.
- * LinkedIn commonly contains auxiliary iframes whose unrelated mutations
- * otherwise replace the active Easy Apply form snapshot.
  */
 export function acceptsFormChange(tabId: number, frameId: number): boolean {
   const selectedFrameId = activeFormFrameByTab.get(tabId);
@@ -445,8 +415,12 @@ export function acceptsFormChange(tabId: number, frameId: number): boolean {
 }
 
 export async function fillActiveTabField(instruction: FieldFillInstruction): Promise<FieldFillResult> {
-  const mainWorldResult = await selectGreenhouseCombobox(instruction.target, instruction.value, instruction.commandId);
-  if (mainWorldResult) return mainWorldResult;
+  const providerResult = await selectProviderCombobox(
+    instruction.target,
+    instruction.value,
+    instruction.commandId,
+  );
+  if (providerResult) return providerResult;
 
   const rawResponse = await sendToActiveTab(instruction, instruction.target.frameId);
   const parsed = fillResponseSchema.safeParse(rawResponse);
@@ -455,29 +429,26 @@ export async function fillActiveTabField(instruction: FieldFillInstruction): Pro
   return parsed.data.fillResult;
 }
 
-export async function autofillWorkdayStructuredActiveTab(resume: MasterResumeData, runId: string, skills: string[] = []): Promise<FieldFillResult[]> {
+export async function autofillStructuredActiveTab(resume: MasterResumeData, runId: string, skills: string[] = []): Promise<FieldFillResult[]> {
   const rawResponse = await sendToActiveTab({
-    type: "content.autofill-workday-structured",
+    type: "content.autofill-structured",
     runId,
     resume,
     skills,
   });
   const parsed = fillResultsResponseSchema.safeParse(rawResponse);
-  if (!parsed.success) throw new Error("The page returned invalid Workday autofill results.");
+  if (!parsed.success) throw new Error("The page returned invalid structured autofill results.");
   if (!parsed.data.ok) throw new Error(parsed.data.error);
   return parsed.data.fillResults;
 }
 
-export async function cancelWorkdayStructuredActiveTab(runId: string): Promise<void> {
-  await sendToActiveTab({ type: "content.cancel-workday-structured", runId });
+export async function cancelStructuredActiveTab(runId: string): Promise<void> {
+  await sendToActiveTab({ type: "content.cancel-structured", runId });
 }
 
-export const autofillStructuredActiveTab = autofillWorkdayStructuredActiveTab;
-export const cancelStructuredActiveTab = cancelWorkdayStructuredActiveTab;
-
 export async function editActiveTabField(target: FormFieldTarget, value: FieldFillInstruction["value"]): Promise<FieldFillResult> {
-  const mainWorldResult = await selectGreenhouseCombobox(target, value, `panel-${Date.now()}-${target.key}`);
-  if (mainWorldResult) return mainWorldResult;
+  const providerResult = await selectProviderCombobox(target, value, `panel-${Date.now()}-${target.key}`);
+  if (providerResult) return providerResult;
 
   const rawResponse = await sendToActiveTab({ type: "content.edit-form-field", target, value }, target.frameId);
   const parsed = fillResponseSchema.safeParse(rawResponse);
@@ -486,330 +457,17 @@ export async function editActiveTabField(target: FormFieldTarget, value: FieldFi
   return parsed.data.fillResult;
 }
 
-async function selectGreenhouseCombobox(target: FormFieldTarget, value: FieldFillInstruction["value"], commandId: string): Promise<FieldFillResult | null> {
-  if (target.type !== "select" || typeof value !== "string" || !target.id) return null;
-
+async function selectProviderCombobox(
+  target: FormFieldTarget,
+  value: FieldFillInstruction["value"],
+  commandId: string,
+): Promise<FieldFillResult | null> {
   const activeTab = await findActiveTab();
   if (!activeTab?.id || !isSupportedUrl(activeTab.url)) return null;
-
-  try {
-    const executions = await chrome.scripting.executeScript({
-      target: { tabId: activeTab.id, frameIds: [target.frameId ?? 0] },
-      world: "MAIN",
-      func: selectGreenhouseComboboxInPage,
-      args: [target.id, value],
-    });
-    const selection = executions[0]?.result;
-    if (!selection?.handled) return null;
-
-    if (selection.status === "filled" || selection.status === "already_filled") {
-      return {
-        commandId,
-        key: target.key,
-        status: selection.status,
-        message: selection.status === "filled" ? "Greenhouse dropdown value updated." : "Dropdown already has the requested value.",
-      };
-    }
-    // The page-owned instance may expose an internal country code (AU/+61)
-    // while the profile supplies the visible country name (Australia). Let
-    // the content-world ARIA driver resolve that alias from the rendered
-    // option instead of failing before it gets a chance to run.
-    return null;
-  } catch {
-    // Only Greenhouse-style React Select controls take this path. Keep the
-    // existing content-script driver as the fallback for every other site.
-    return null;
-  }
+  const selectCombobox = findProviderDefinitionForUrl(activeTab.url)?.driver?.selectCombobox;
+  return selectCombobox?.(target, value, commandId, { tabId: activeTab.id }) || null;
 }
 
-function selectGreenhouseComboboxInPage(
-  elementId: string,
-  requestedValue: string,
-): Promise<{
-  handled: boolean;
-  status?: "filled" | "already_filled" | "rejected";
-}> {
-  type Option = { label: string; value: string | number };
-  type SelectInstance = {
-    props?: { options?: unknown; value?: unknown };
-    selectOption?: (option: unknown) => void;
-  };
-  type Fiber = { return?: Fiber | null; stateNode?: unknown };
-
-  const clean = (value: unknown) => (typeof value === "string" ? value.replace(/\s+/g, " ").trim() : "");
-  const normalized = (value: unknown) => clean(value).toLowerCase();
-  const countryDialAliases: Record<string, string> = {
-    australia: "+61",
-    au: "+61",
-    "+61": "+61",
-    "61": "+61",
-    "new zealand": "+64",
-    nz: "+64",
-    "+64": "+64",
-    "64": "+64",
-    "united kingdom": "+44",
-    uk: "+44",
-    gb: "+44",
-    "+44": "+44",
-    "44": "+44",
-    "united states": "+1",
-    usa: "+1",
-    us: "+1",
-    "+1": "+1",
-    "1": "+1",
-    canada: "+1",
-    china: "+86",
-    cn: "+86",
-    "+86": "+86",
-    india: "+91",
-    in: "+91",
-    "+91": "+91",
-    singapore: "+65",
-    sg: "+65",
-    "+65": "+65",
-    "hong kong": "+852",
-    hk: "+852",
-    "+852": "+852",
-  };
-  const countryAlias = (value: unknown): string => {
-    const text = normalized(value)
-      .replace(/[()\-]/g, "")
-      .replace(/\s+/g, " ");
-    return countryDialAliases[text] || text;
-  };
-  const element = document.getElementById(elementId);
-  const isGreenhouseLoc = Boolean(
-    element &&
-    element instanceof HTMLInputElement &&
-    (element.id === "job_application_location" ||
-      element.id === "candidate_location" ||
-      element.id === "location" ||
-      element.id.includes("location_autocomplete") ||
-      element.name === "job_application[location]" ||
-      element.name === "candidate[location]" ||
-      element.classList.contains("ui-autocomplete-input") ||
-      document.getElementById("job_application_location_id") ||
-      document.querySelector("input[name*='location_id']") ||
-      document.querySelector("#grnhse_app, .job-post-container, form.application--form, form[action*='greenhouse.io']")),
-  );
-  if (!(element instanceof HTMLInputElement) || (element.getAttribute("role") !== "combobox" && !isGreenhouseLoc)) {
-    return Promise.resolve({ handled: false });
-  }
-
-  const findInstance = (): SelectInstance | null => {
-    const key = Object.keys(element).find((name) => name.startsWith("__reactFiber$"));
-    let fiber = key ? ((element as unknown as Record<string, unknown>)[key] as Fiber) : null;
-    for (let depth = 0; fiber && depth < 32; depth += 1) {
-      const instance = fiber.stateNode as SelectInstance | undefined;
-      if (instance && typeof instance.selectOption === "function" && Array.isArray(instance.props?.options)) {
-        return instance;
-      }
-      fiber = fiber.return || null;
-    }
-    return null;
-  };
-
-  const optionsFor = (instance: SelectInstance): Option[] => {
-    if (!Array.isArray(instance.props?.options)) return [];
-    return instance.props.options
-      .map((option) => option as Partial<Option>)
-      .filter((option): option is Option => Boolean(clean(option.label)) && option.value !== undefined)
-      .map((option) => ({ label: clean(option.label), value: option.value }));
-  };
-
-  const currentValue = (instance: SelectInstance, options: Option[]): string => {
-    const selected = (Array.isArray(instance.props?.value) ? instance.props.value[0] : instance.props?.value) as Partial<Option> | undefined;
-    if (!selected || selected.value === undefined) return "";
-    return options.find((option) => String(option.value) === String(selected.value))?.label || clean(selected.label);
-  };
-
-  const renderedCurrentValue = (): string => {
-    const container = element.closest<HTMLElement>(".select-shell, [class*='select' i]");
-    if (element.id === "country") {
-      const flag = Array.from(container?.querySelector<HTMLElement>("[class*='iti__flag']")?.classList || []).find((name) => /^iti__[a-z]{2}$/i.test(name));
-      const code = flag?.slice("iti__".length).toUpperCase();
-      if (code && typeof Intl.DisplayNames === "function") {
-        return new Intl.DisplayNames(["en"], { type: "region" }).of(code) || "";
-      }
-    }
-    return clean(container?.querySelector<HTMLElement>(".select__single-value, [class*='single-value' i], [class*='singleValue' i]")?.textContent);
-  };
-
-  const matches = (actual: string, expected: string): boolean => {
-    const left = normalized(actual);
-    const right = normalized(expected);
-    const leftAlias = countryAlias(actual);
-    const rightAlias = countryAlias(expected);
-    return Boolean(left && (left === right || leftAlias === rightAlias || (right.length > 1 && (left.includes(right) || right.includes(left)))));
-  };
-
-  const visible = (candidate: HTMLElement): boolean => {
-    const style = window.getComputedStyle(candidate);
-    const rect = candidate.getBoundingClientRect();
-    return style.display !== "none" && style.visibility !== "hidden" && rect.width > 0 && rect.height > 0;
-  };
-
-  const renderedOption = (expected: string): HTMLElement | null => {
-    const target = normalized(expected);
-    const expectedFirstToken = target.split(/[,，\s]+/)[0] || target;
-    const candidates = Array.from(
-      document.querySelectorAll<HTMLElement>(
-        "[role='option'], [role='listbox'] button, [role='listbox'] li, [data-value], [data-option-value], [class*='option' i], [class*='item' i], [class*='suggestion' i], [class*='result' i], .ui-menu-item, .ui-menu-item-wrapper, .pac-item",
-      ),
-    ).filter(
-      (candidate) =>
-        visible(candidate) && candidate.getAttribute("aria-disabled") !== "true" && !(candidate instanceof HTMLInputElement) && !(candidate instanceof HTMLSelectElement),
-    );
-
-    const matched = candidates.find((candidate) => {
-      const candidateValue = normalized(
-        candidate.getAttribute("data-value") || candidate.getAttribute("data-option-value") || candidate.getAttribute("aria-label") || candidate.textContent,
-      );
-      return (
-        candidateValue === target ||
-        countryAlias(candidateValue) === countryAlias(expected) ||
-        (target.length > 1 && (candidateValue.includes(target) || target.includes(candidateValue))) ||
-        (expectedFirstToken.length > 1 && candidateValue.includes(expectedFirstToken))
-      );
-    });
-    if (matched) return matched;
-    return candidates[0] || null;
-  };
-
-  const waitForRenderedOption = (expected: string): Promise<HTMLElement | null> =>
-    new Promise((resolve) => {
-      const startedAt = Date.now();
-      const find = () => {
-        const option = renderedOption(expected);
-        if (option || Date.now() - startedAt >= 900) {
-          resolve(option);
-          return;
-        }
-        window.setTimeout(find, 40);
-      };
-      find();
-    });
-
-  const selectRenderedCombobox = async (): Promise<{
-    handled: boolean;
-    status?: "filled" | "already_filled" | "rejected";
-  }> => {
-    if (matches(renderedCurrentValue(), requestedValue)) {
-      return { handled: true, status: "already_filled" };
-    }
-    element.focus({ preventScroll: true });
-    element.click();
-    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
-    if (setter) setter.call(element, requestedValue);
-    else element.value = requestedValue;
-    const inputEventOpts = { bubbles: true, composed: true };
-    try {
-      element.dispatchEvent(
-        new InputEvent("input", {
-          ...inputEventOpts,
-          inputType: "insertText",
-          data: requestedValue,
-        }),
-      );
-    } catch {
-      element.dispatchEvent(new Event("input", inputEventOpts));
-    }
-    const char = requestedValue.slice(-1) || "a";
-    element.dispatchEvent(
-      new KeyboardEvent("keydown", {
-        key: char,
-        code: `Key${char.toUpperCase()}`,
-        bubbles: true,
-        cancelable: true,
-      }),
-    );
-    element.dispatchEvent(
-      new KeyboardEvent("keyup", {
-        key: char,
-        code: `Key${char.toUpperCase()}`,
-        bubbles: true,
-        cancelable: true,
-      }),
-    );
-    element.dispatchEvent(new Event("change", inputEventOpts));
-
-    const option = await waitForRenderedOption(requestedValue);
-    if (!option) return { handled: false };
-    const eventOpts = { bubbles: true, cancelable: true, composed: true };
-    option.dispatchEvent(new MouseEvent("mousedown", eventOpts));
-    option.dispatchEvent(new MouseEvent("mouseup", eventOpts));
-    option.click();
-
-    const startedAt = Date.now();
-    let enterSent = false;
-    return new Promise((resolve) => {
-      const verify = () => {
-        const currentVal = renderedCurrentValue() || clean(element.value);
-        const hasHiddenId = Boolean(
-          (document.getElementById("job_application_location_id") as HTMLInputElement)?.value || (document.querySelector("input[name*='location_id']") as HTMLInputElement)?.value,
-        );
-        const expectedFirstToken = normalized(requestedValue).split(/[,，\s]+/)[0] || "";
-        if (matches(currentVal, requestedValue) || hasHiddenId || (expectedFirstToken.length > 1 && currentVal.toLowerCase().includes(expectedFirstToken))) {
-          resolve({ handled: true, status: "filled" });
-          return;
-        }
-        if (!enterSent && Date.now() - startedAt >= 120) {
-          enterSent = true;
-          const keyOptions = {
-            key: "Enter",
-            code: "Enter",
-            bubbles: true,
-            cancelable: true,
-          };
-          element.dispatchEvent(new KeyboardEvent("keydown", keyOptions));
-          element.dispatchEvent(new KeyboardEvent("keyup", keyOptions));
-        }
-        if (Date.now() - startedAt >= 900) {
-          resolve({ handled: hasHiddenId || Boolean(element.value) });
-          return;
-        }
-        window.setTimeout(verify, 40);
-      };
-      verify();
-    });
-  };
-
-  const instance = findInstance();
-  if (!instance) return selectRenderedCombobox();
-  const options = optionsFor(instance);
-  const requested = normalized(requestedValue);
-  const requestedFirstToken = requested.split(/[,，\s]+/)[0] || requested;
-  const option =
-    options.find((candidate) => {
-      const label = normalized(candidate.label);
-      const value = normalized(String(candidate.value));
-      return (
-        label === requested ||
-        countryAlias(label) === countryAlias(requestedValue) ||
-        countryAlias(value) === countryAlias(requestedValue) ||
-        value === requested ||
-        (requested.length > 1 && (label.includes(requested) || requested.includes(label))) ||
-        (requested.length > 1 && (value.includes(requested) || requested.includes(value))) ||
-        (requestedFirstToken.length > 1 && (label.includes(requestedFirstToken) || value.includes(requestedFirstToken)))
-      );
-    }) || (options.length > 0 ? options[0] : undefined);
-  if (!option) return selectRenderedCombobox();
-  if (normalized(currentValue(instance, options)) === normalized(option.label)) {
-    return Promise.resolve({ handled: true, status: "already_filled" });
-  }
-
-  instance.selectOption?.(option);
-  return new Promise((resolve) => {
-    window.setTimeout(() => {
-      const updated = findInstance();
-      const selected = updated ? currentValue(updated, optionsFor(updated)) : "";
-      resolve({
-        handled: normalized(selected) === normalized(option.label),
-        status: normalized(selected) === normalized(option.label) ? "filled" : undefined,
-      });
-    }, 0);
-  });
-}
 
 export async function focusActiveTabField(target: FormFieldTarget): Promise<FormFocusResult> {
   const rawResponse = await sendToActiveTab({ type: "content.focus-form-field", target }, target.frameId);
@@ -847,16 +505,6 @@ function isSupportedUrl(url: string | undefined): boolean {
   try {
     const parsed = new URL(url);
     return parsed.protocol === "http:" || parsed.protocol === "https:";
-  } catch {
-    return false;
-  }
-}
-
-function isLinkedInUrl(url: string | undefined): boolean {
-  if (!url) return false;
-  try {
-    const hostname = new URL(url).hostname.toLowerCase();
-    return hostname === "linkedin.com" || hostname.endsWith(".linkedin.com");
   } catch {
     return false;
   }

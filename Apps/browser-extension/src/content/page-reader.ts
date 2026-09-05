@@ -39,7 +39,7 @@ export function classifyPage(): PageClass {
   return lastPageClass;
 }
 
-export function readCurrentPage(apiData?: import('./platforms/linkedin/api-client').LinkedInJobApiData | null): PageInspection {
+export function readCurrentPage(): PageInspection {
   const url = window.location.href;
 
   // Run the lightweight classifier first. Pages classified as non-job pages
@@ -59,7 +59,7 @@ export function readCurrentPage(apiData?: import('./platforms/linkedin/api-clien
 
   if (provider) {
     if (isDedicatedJobReader(provider.job)) {
-      const inspection = provider.job.read(apiData);
+      const inspection = provider.job.read();
       const canFallback = provider.job.fallback ?? true;
       return inspection.kind === "job" || !canFallback
         ? inspection

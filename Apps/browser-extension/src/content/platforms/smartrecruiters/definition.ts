@@ -1,5 +1,5 @@
 import type { AtsProviderDefinition } from "../platform-definition";
-import { ensureSmartRecruitersResumeField } from "./file-adapter";
+import { adaptSmartRecruitersFormFields } from "./file-adapter";
 
 function lastJobPathSegment(url: URL): string {
   const segments = url.pathname.split("/").filter(Boolean);
@@ -20,8 +20,7 @@ export const smartRecruitersDefinition = {
     "[data-testid='application-form']",
     "form[action*='smartrecruiters']",
   ],
-  adaptFormFields: (fields, root) =>
-    ensureSmartRecruitersResumeField("smartrecruiters", fields, root),
+  adaptFormFields: adaptSmartRecruitersFormFields,
   job: {
     roots: ["[data-test='job-detail']", "main.job-details", "[itemscope][itemtype*='JobPosting' i]"],
     title: ["[itemprop='title']", "[data-test='job-title']", "h1"],

@@ -4,6 +4,7 @@ import { sharedFormPlatforms } from "../../shared/contracts/platform";
 import { adaptAtsFormFields } from "./ats/field-adapter";
 import type { ProviderFormRoot } from "./platform-definition";
 import { getProviderDefinition } from "./registry";
+import { adaptSpecializedFormFields } from "./specialized-form-adapters";
 
 const sharedFormPlatformSet = new Set<FormPlatform>(sharedFormPlatforms);
 
@@ -15,7 +16,7 @@ export function adaptRegisteredFormFields(
   const normalized = sharedFormPlatformSet.has(platform)
     ? adaptAtsFormFields(platform, fields)
     : fields;
-  if (platform === "generic") return normalized;
+  if (platform === "generic") return adaptSpecializedFormFields(normalized, root);
   const adapter = getProviderDefinition(platform).adaptFormFields;
   return adapter ? adapter(normalized, root) : normalized;
 }
