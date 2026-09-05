@@ -3,14 +3,30 @@ import type { FormInspection } from "../../../shared/contracts/form-inspection";
 import { readApplicationForm } from "../../dom/form-inspector";
 import { isVisibleElement } from "../../dom/form-inspector";
 import { findActiveFormScope, hasGenericBackAction, readGenericAction } from "../../dom/form-scope";
+import { adaptRegisteredFormFields } from "../form-field-adapter";
 import { linkedinAdapter } from "./adapter";
 
 function isLikelyLinkedInApplicationScope(scope: HTMLElement): boolean {
-  const action = readGenericAction(scope);
-  if (action.action || hasGenericBackAction(scope)) return true;
-
+  if (scope.matches("nav, header, footer, aside, [role='navigation'], [role='complementary']")) {
+    return false;
+  }
   const text = (scope.textContent || "").replace(/\s+/g, " ").trim();
-  return /easy apply|application questions|additional questions|review your application|contact information|work experience|resume|cover letter/i.test(text);
+  if (/(?:job\s*alert|search\s*alert|create\s*alert|职位提醒|求职提醒)/i.test(text)) {
+    return false;
+  }
+  // Scoped action buttons strictly inside this element
+  const localButtons = Array.from(
+    scope.querySelectorAll<HTMLElement>(
+      "button, [role='button'], input[type='submit'], input[type='button']",
+    ),
+  );
+  const hasLocalAction = localButtons.some((b) => {
+    const btnText = (b.textContent || b.getAttribute("aria-label") || "").trim();
+    return /(?:continue|next|review|submit|继续|下一步|审核|提交)/i.test(btnText);
+  });
+  if (!hasLocalAction) return false;
+
+  return /application questions|additional questions|review your application|contact information|work experience|resume|cover letter|提交申请|审核您的申请/i.test(text);
 }
 
 function linkedInFieldScope(applicationRoot: HTMLElement): HTMLElement {
@@ -51,6 +67,7 @@ export function readLinkedInFormPage(): FormInspection {
     actionKind,
     Boolean(linkedinAdapter.getCurrentApplicationAction("previous")) ||
       Boolean(applicationRoot && hasGenericBackAction(applicationRoot)),
+    (fields) => adaptRegisteredFormFields("linkedin", fields, fieldScope || document),
   );
   if (inspection.kind === "not_application_form" && linkedinAdapter.isJobPageUrl(url)) {
     const diagnostic = linkedinAdapter.applicationFormDiagnostic();

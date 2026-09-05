@@ -1,7 +1,8 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   createPageInspectionQueue,
+  createPageInspectionScheduler,
   pageChangeInspectionRequest,
 } from './page-change-inspection';
 
@@ -39,5 +40,23 @@ describe('same-document job changes', () => {
 
     completions.shift()?.();
     await Promise.resolve();
+  });
+
+  it('does not postpone inspection while page-change messages keep arriving', async () => {
+    vi.useFakeTimers();
+    const requests: Array<{ showLoading: boolean; force: boolean }> = [];
+    const scheduler = createPageInspectionScheduler(
+      (request) => requests.push(request),
+      150,
+    );
+
+    scheduler.schedule({ showLoading: false, force: true });
+    await vi.advanceTimersByTimeAsync(100);
+    scheduler.schedule({ showLoading: true, force: false });
+    await vi.advanceTimersByTimeAsync(50);
+
+    expect(requests).toEqual([{ showLoading: true, force: true }]);
+    scheduler.cancel();
+    vi.useRealTimers();
   });
 });

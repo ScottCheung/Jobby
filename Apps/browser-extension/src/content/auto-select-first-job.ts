@@ -117,7 +117,41 @@ export function isJobAlreadySelected(root: ParentNode = document): boolean {
   const selected = root.querySelector<HTMLElement>(
     "[data-automation='job-card'][data-selected='true'], [data-automation='job-card'][aria-current='true'], [data-testid='job-card'][aria-selected='true'], [data-testid='job-card'][data-selected='true'], [data-selected='true'], [aria-selected='true'], [data-active='true'], .job-card[data-active='true'], .jobs-search-results-list__list-item--active, [data-occludable-job-id].active",
   );
-  return Boolean(selected);
+  if (selected) return true;
+  const seekDetails = root.querySelector<HTMLElement>(
+    "[data-automation='jobAdDetails']",
+  );
+  if (seekDetails && isElementVisible(seekDetails)) return true;
+  return false;
+}
+
+export function extractTargetJobId(url: string): string | null {
+  try {
+    const parsed = new URL(url);
+    return (
+      parsed.searchParams.get('jobId') ||
+      parsed.searchParams.get('currentJobId') ||
+      parsed.searchParams.get('vjk') ||
+      parsed.searchParams.get('jk') ||
+      null
+    );
+  } catch {
+    return null;
+  }
+}
+
+export function findTargetJobCard(
+  root: ParentNode = document,
+  targetJobId: string,
+): HTMLElement | null {
+  const selector = `[data-job-id='${targetJobId}'], article[data-job-id='${targetJobId}'], a[href*='${targetJobId}']`;
+  const candidates = Array.from(root.querySelectorAll<HTMLElement>(selector));
+  for (const element of candidates) {
+    if (isElementVisible(element)) {
+      return element;
+    }
+  }
+  return null;
 }
 
 export function findFirstJobCard(
@@ -186,11 +220,6 @@ export function autoSelectFirstJobCard(
     return () => undefined;
   }
 
-  if (isJobAlreadySelected(root)) {
-    lastAutoSelectedUrl = currentUrl;
-    return () => undefined;
-  }
-
   const maxWaitMs = options.maxWaitMs ?? 4000;
   const intervalMs = options.intervalMs ?? 150;
   const startTime = Date.now();
@@ -212,6 +241,33 @@ export function autoSelectFirstJobCard(
 
   const trySelect = (): boolean => {
     if (hasHandled) return true;
+    const targetJobId = extractTargetJobId(currentUrl);
+    if (targetJobId) {
+      const targetCard = findTargetJobCard(root, targetJobId);
+      if (targetCard) {
+        if (
+          targetCard.matches(
+            "[data-selected='true'], [aria-selected='true'], [aria-current='true'], [data-active='true']",
+          ) ||
+          targetCard.closest(
+            "[data-selected='true'], [aria-selected='true'], [aria-current='true'], [data-active='true']",
+          )
+        ) {
+          lastAutoSelectedUrl = currentUrl;
+          cleanup();
+          return true;
+        }
+        lastAutoSelectedUrl = currentUrl;
+        triggerJobCardClick(targetCard);
+        cleanup();
+        return true;
+      }
+      if (Date.now() - startTime >= maxWaitMs) {
+        cleanup();
+        return true;
+      }
+      return false;
+    }
     if (isJobAlreadySelected(root)) {
       lastAutoSelectedUrl = currentUrl;
       cleanup();

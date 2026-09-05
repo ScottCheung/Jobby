@@ -31,7 +31,7 @@ export const runtimeMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('content.inspect-form-active') }),
   z.object({
     type: z.literal('content.highlight-job-requirement-active'),
-    searchTerms: z.array(z.string().trim().min(1).max(80)).min(1).max(12),
+    searchTerms: z.array(z.string().trim().min(1).max(80)).min(1).max(32),
   }),
   z.object({ type: z.literal('form.autofill-active') }),
   z.object({ type: z.literal('form.autofill-cancel-active') }),

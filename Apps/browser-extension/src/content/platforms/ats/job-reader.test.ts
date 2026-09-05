@@ -274,6 +274,22 @@ describe("ATS-specific job readers", () => {
       company: "micro1",
       pageTitle: "Substance Use - Adolescent Addiction Specialist | Apply on Job",
     },
+    {
+      platform: "avature",
+      url: "https://careers.avature.net/en_US/main/JobDetail?jobId=4848",
+      html: `<article class="article article--job-detail">
+        <header class="article__header">
+          <h1 class="article__header__title">Avature Staff Platform Engineer</h1>
+          <div class="article__header__subtitle">Avature</div>
+          <div class="article__header__location">Melbourne, Australia</div>
+        </header>
+        <div class="article__content">${LONG_DESCRIPTION}</div>
+        <a href="/en_US/careers/ApplicationConfirmation?jobId=4848" class="button">Apply now</a>
+      </article>`,
+      title: "Avature Staff Platform Engineer",
+      company: "Avature",
+      pageTitle: "Avature Staff Platform Engineer - Avature Careers",
+    },
   ] as const)("extracts the current $platform posting from its owned root", ({ platform, url, html, title, company, pageTitle }) => {
     setLocation(url);
     document.title = pageTitle;

@@ -1,16 +1,40 @@
 import type { FormInspection } from "../../../shared/contracts/form-inspection";
 
-import { readPageInputFields, readSeekForm } from "../../dom/form-inspector";
+import { readApplicationForm } from "../../dom/form-inspector";
 import type { FormScope } from "../../dom/form-inspector";
 import { findActiveFormScope } from "../../dom/form-scope";
+import { adaptRegisteredFormFields } from "../form-field-adapter";
 import {
   getSeekApplicationAction,
   getSeekApplicationActionKind,
   getSeekApplicationActionLabel,
 } from "./adapter";
 
-function cleanText(value: string | null | undefined): string {
-  return (value || "").replace(/\s+/g, " ").trim();
+function findVisibleSeekApplicationRoot(): HTMLElement | null {
+  const modalSelectors = [
+    "[data-automation='applicationForm']",
+    "[data-automation='application-form']",
+    "[data-automation='applyForm']",
+    "[data-automation='apply-form']",
+    "[data-automation='apply-container']",
+    "[data-testid='application-form']",
+    "[data-testid='apply-form']",
+    "[data-automation='job-application-modal']",
+    "[data-testid='job-application-modal']",
+    "form[action*='/apply']",
+  ];
+  for (const selector of modalSelectors) {
+    const el = document.querySelector<HTMLElement>(selector);
+    if (el) return el;
+  }
+  const dialogs = Array.from(document.querySelectorAll<HTMLElement>("[role='dialog'], dialog"));
+  for (const dialog of dialogs) {
+    const text = (dialog.textContent || "").replace(/\s+/g, " ").trim();
+    if (/application|personal details|resume|cover letter/i.test(text)) {
+      return dialog;
+    }
+  }
+  return null;
 }
 
 function isApplicationPage(url: string): boolean {
@@ -30,11 +54,7 @@ function isApplicationPage(url: string): boolean {
       return true;
     }
   }
-  const bodyText = cleanText(document.body?.textContent);
-  return (
-    /application|personal details|resume|cover letter/i.test(bodyText) &&
-    Boolean(getSeekApplicationActionLabel())
-  );
+  return Boolean(findVisibleSeekApplicationRoot());
 }
 
 function isSeekJobPage(url: string): boolean {
@@ -63,66 +83,61 @@ function hasQuickApplyLink(): boolean {
   );
 }
 
-export function getSeekApplicationScope(): FormScope {
-  return (
-    document.querySelector<HTMLElement>(
-      [
-        "[data-automation='applicationForm']",
-        "[data-automation='application-form']",
-        "[data-automation='applyForm']",
-        "[data-automation='apply-form']",
-        "[data-automation='apply-container']",
-        "[data-testid='application-form']",
-        "[data-testid='apply-form']",
-        "form[action*='/apply']",
-        "[role='dialog'][aria-modal='true']",
-      ].join(", "),
-    ) ||
-    findActiveFormScope() ||
-    document
-  );
+export function getSeekApplicationScope(): FormScope | null {
+  const modal = findVisibleSeekApplicationRoot();
+  if (modal) return modal;
+  if (isApplicationPage(window.location.href)) {
+    return findActiveFormScope() || document;
+  }
+  return null;
 }
 
 export function readSeekFormPage(): FormInspection {
   const url = window.location.href;
   const isApp = isApplicationPage(url);
-  const scope = getSeekApplicationScope();
-  let inspection = readSeekForm(
+  if (!isApp) {
+    const isJob = isSeekJobPage(url);
+    return {
+      kind: "not_application_form",
+      platform: "seek",
+      url,
+      reason: isJob
+        ? hasQuickApplyLink()
+          ? "Click SEEK Quick apply to open the application form, then inspect the form again."
+          : "Open the SEEK application form, then inspect the form again."
+        : "No visible SEEK form was found.",
+    };
+  }
+
+  const scope = getSeekApplicationScope() || document;
+  let inspection = readApplicationForm(
     url,
+    "seek",
     isApp,
     getSeekApplicationActionLabel(),
+    scope,
     getSeekApplicationActionKind(),
     Boolean(getSeekApplicationAction("previous")),
-    scope,
+    (fields) => adaptRegisteredFormFields("seek", fields, scope),
   );
   if (
     inspection.kind === "application_form" &&
     inspection.fields.length === 0 &&
     scope !== document
   ) {
-    const docInspection = readSeekForm(
+    const docInspection = readApplicationForm(
       url,
+      "seek",
       isApp,
       getSeekApplicationActionLabel(),
+      document,
       getSeekApplicationActionKind(),
       Boolean(getSeekApplicationAction("previous")),
-      document,
+      (fields) => adaptRegisteredFormFields("seek", fields, document),
     );
     if (docInspection.kind === "application_form" && docInspection.fields.length > 0) {
       inspection = docInspection;
     }
-  }
-  if (inspection.kind === "not_application_form") {
-    const pageInputs = readPageInputFields(url, "seek");
-    if (pageInputs) return pageInputs;
-  }
-  if (inspection.kind === "not_application_form" && isSeekJobPage(url)) {
-    return {
-      ...inspection,
-      reason: hasQuickApplyLink()
-        ? "Click SEEK Quick apply to open the application form, then inspect the form again."
-        : "Open the SEEK application form, then inspect the form again.",
-    };
   }
   return inspection;
 }

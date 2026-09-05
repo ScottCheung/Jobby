@@ -72,4 +72,5 @@ def test_ats_platforms_set() -> None:
     assert "ashby" in ATS_PLATFORMS
     assert "workday" in ATS_PLATFORMS
     assert "indeed" in ATS_PLATFORMS
+    assert "avature" in ATS_PLATFORMS
     assert "seek" not in ATS_PLATFORMS

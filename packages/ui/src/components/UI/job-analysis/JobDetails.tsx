@@ -714,7 +714,7 @@ export function JobDetails({
                           className={cn(
                             'inline-flex h-3.5 w-3.5 items-center justify-center rounded-full',
                             isPreferred ?
-                              'bg-warning/10 text-warning group-hover:bg-warning group-hover:text-warning-foreground'
+                              'bg-warning/10 text-warning group-hover:bg-warning group-hover:text-destructive-foreground'
                             : 'bg-destructive/10 text-destructive group-hover:bg-destructive group-hover:text-destructive-foreground',
                           )}
                         >

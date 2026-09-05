@@ -363,6 +363,20 @@ export const SUPPORTED_PLATFORMS: JobPlatform[] = [
       return `https://www.google.com/search?q=${encodeURIComponent(terms)}`;
     },
   },
+  {
+    id: 'avature',
+    name: 'Avature',
+    category: 'ats',
+    domain: 'avature.net',
+    typeLabel: 'Enterprise Portals',
+    brandColor: '#1063BA',
+    getSearchUrl: (title, location) => {
+      const terms = ['site:avature.net/careers', title, location]
+        .filter(Boolean)
+        .join(' ');
+      return `https://www.google.com/search?q=${encodeURIComponent(terms)}`;
+    },
+  },
 ];
 
 export function extractProfileSearchCriteria(

@@ -264,6 +264,15 @@ describe("platform-specific application question detection", () => {
         <button type="submit">Next</button></form>`,
       label: "Dayforce custom question",
     },
+    {
+      platform: "avature",
+      url: "https://recruitment.macquarie.com/en_US/careers/ApplicationConfirmation?jobId=19902&source=LinkedIn.com&record=19902",
+      root: `<div class="wizard" id="wizard-id-96"><form class="form--methods" id="manualRegisterMethodsForm">
+        <label for="platform-question">Avature custom question *</label>
+        <input id="platform-question" name="avature_question" />
+        <button type="submit">Submit</button></form></div>`,
+      label: "Avature custom question",
+    },
   ] as const)("uses the $platform form root instead of unrelated page controls", ({ platform, url, root, label }) => {
     setLocation(url);
     document.body.innerHTML = `
@@ -283,6 +292,51 @@ describe("platform-specific application question detection", () => {
     ]);
     expect(inspection.fields.some((field) => field.label === "Search jobs")).toBe(false);
     expect(inspection.fields.some((field) => field.label === "Job alert email")).toBe(false);
+  });
+
+  it("extracts Avature form fields including MonthAndYearDateField and select controls", () => {
+    setLocation("https://recruitment.macquarie.com/en_US/careers/ApplicationConfirmation?jobId=19902&source=LinkedIn.com&record=19902");
+    document.head.innerHTML = `<meta name="avature.wizard.registrars" content="[{\"wizardId\":96}]">`;
+    document.body.innerHTML = `
+      <div class="wizard" id="wizard-id-96">
+        <form class="form--methods" id="manualRegisterMethodsForm">
+          <div class="fieldSpec StringField fieldSpecPadder" id="fieldSpecContainer5747">
+            <label for="5747" id="5747-label" class="WizardFieldLabel tc_formLabel">First Name <span class="required">*</span></label>
+            <input type="text" id="5747" name="5747" value="" class="field_5747" />
+          </div>
+          <div class="fieldSpec DropdownField fieldSpecPadder" id="fieldSpecContainer5748">
+            <label for="5748" id="5748-label" class="WizardFieldLabel tc_formLabel">Country <span class="required">*</span></label>
+            <select id="5748" name="5748">
+              <option value="">Select country</option>
+              <option value="AU">Australia</option>
+            </select>
+          </div>
+          <div class="fieldSpec MonthAndYearDateField fieldSpecPadder" id="fieldSpecContainer5749">
+            <label id="5749-label" class="WizardFieldLabel tc_formLabel">Availability Date <span class="required">*</span></label>
+            <select id="5749_month" name="5749_month">
+              <option value="">Month</option>
+              <option value="01">January</option>
+            </select>
+            <select id="5749_year" name="5749_year">
+              <option value="">Year</option>
+              <option value="2026">2026</option>
+            </select>
+          </div>
+          <button type="submit">Save and continue</button>
+        </form>
+      </div>
+    `;
+
+    const inspection = readCurrentForm();
+    expect(inspection.kind).toBe("application_form");
+    if (inspection.kind !== "application_form") return;
+    expect(inspection.platform).toBe("avature");
+    expect(inspection.fields).toEqual([
+      expect.objectContaining({ label: "First Name", required: true, type: "text" }),
+      expect.objectContaining({ label: "Country", required: true, type: "select" }),
+      expect.objectContaining({ label: "Availability Date - Month", required: true, type: "select" }),
+      expect.objectContaining({ label: "Availability Date - Year", required: true, type: "select" }),
+    ]);
   });
 
   it("recognises Workday's application sign-in form", () => {

@@ -36,6 +36,7 @@ const EXCLUDED_CONTAINERS_SELECTOR = [
 type HighlightTarget = {
   element: HTMLElement;
   range?: Range;
+  term?: string;
 };
 
 export type HighlightJobRequirementResult = {
@@ -177,44 +178,19 @@ function findScrollableParent(element: HTMLElement | null): HTMLElement | null {
 
 function scrollRangeIntoView(range: Range, fallbackElement: HTMLElement): void {
   try {
-    const rect = range.getBoundingClientRect();
-    if (rect && (rect.width > 0 || rect.height > 0)) {
-      const scrollContainer = findScrollableParent(
-        range.startContainer.parentElement || fallbackElement,
-      );
-      if (
-        scrollContainer &&
-        scrollContainer !== document.documentElement &&
-        scrollContainer !== document.body
-      ) {
-        const containerRect = scrollContainer.getBoundingClientRect();
-        const relativeTop =
-          rect.top - containerRect.top + scrollContainer.scrollTop;
-        const targetScrollTop =
-          relativeTop - scrollContainer.clientHeight / 2 + rect.height / 2;
-        scrollContainer.scrollTo({
-          top: Math.max(0, targetScrollTop),
-          behavior: 'smooth',
-        });
-      }
-
-      const targetY =
-        rect.top + window.scrollY - window.innerHeight / 2 + rect.height / 2;
-      window.scrollTo({
-        top: Math.max(0, targetY),
-        behavior: 'smooth',
-      });
-      return;
-    }
+    const el = range.startContainer.parentElement || fallbackElement;
+    el.scrollIntoView({
+      behavior: 'smooth',
+      block: 'center',
+      inline: 'nearest',
+    });
   } catch {
-    // Fall back if getBoundingClientRect fails
+    fallbackElement.scrollIntoView({
+      behavior: 'smooth',
+      block: 'center',
+      inline: 'nearest',
+    });
   }
-
-  fallbackElement.scrollIntoView({
-    behavior: 'smooth',
-    block: 'center',
-    inline: 'nearest',
-  });
 }
 
 function findAllMatchingTargets(
@@ -256,6 +232,7 @@ function findAllMatchingTargets(
               targets.push({
                 element: highlightTargetFor(parent),
                 range,
+                term: match.term,
               });
             }
           }
@@ -1033,6 +1010,20 @@ export async function highlightJobRequirement(
     }
   }
 
+  if (targets.length === 0 && platform) {
+    const globalRoots = Array.from(
+      document.querySelectorAll<HTMLElement>(
+        'main, article, [role="main"], #main, #content, .main-content',
+      ),
+    ).filter((el) => isVisible(el) && !isExcludedElement(el));
+
+    if (globalRoots.length > 0) {
+      targets = findAllMatchingTargets(globalRoots, terms);
+    } else if (document.body) {
+      targets = findAllMatchingTargets([document.body], terms);
+    }
+  }
+
   if (targets.length === 0) {
     return { highlighted: false, matchCount: 0, currentIndex: 0 };
   }
@@ -1069,7 +1060,27 @@ export async function highlightJobRequirement(
   }
 
   showTextHighlight(allRanges, target.range);
-  showInPageNavFeedback(terms[0] || '', currentMatchIndex + 1, targets.length);
+  try {
+    const el = target.element;
+    const prevTransition = el.style.transition;
+    const prevBoxShadow = el.style.boxShadow;
+    const prevBorderRadius = el.style.borderRadius;
+    el.style.transition = 'box-shadow 0.3s ease-in-out';
+    el.style.boxShadow = '0 0 0 3px rgba(250, 204, 21, 0.7)';
+    if (!el.style.borderRadius) el.style.borderRadius = '4px';
+    window.setTimeout(() => {
+      el.style.boxShadow = prevBoxShadow;
+      el.style.transition = prevTransition;
+      el.style.borderRadius = prevBorderRadius;
+    }, 2500);
+  } catch {
+    // Ignore
+  }
+  showInPageNavFeedback(
+    target.term || terms[0] || '',
+    currentMatchIndex + 1,
+    targets.length,
+  );
 
   return {
     highlighted: true,

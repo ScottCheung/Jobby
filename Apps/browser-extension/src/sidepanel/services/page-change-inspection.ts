@@ -5,16 +5,23 @@ export type PageChangeInspectionRequest = {
 
 type InspectPage = (request: PageChangeInspectionRequest) => Promise<void>;
 
+function mergeRequests(
+  current: PageChangeInspectionRequest | null,
+  next: PageChangeInspectionRequest,
+): PageChangeInspectionRequest {
+  return {
+    showLoading: current?.showLoading || next.showLoading,
+    force: current?.force || next.force,
+  };
+}
+
 export function createPageInspectionQueue(inspectPage: InspectPage) {
   let inFlight = false;
   let pending: PageChangeInspectionRequest | null = null;
 
   const inspect = (request: PageChangeInspectionRequest): void => {
     if (inFlight) {
-      pending = {
-        showLoading: pending?.showLoading || request.showLoading,
-        force: pending?.force || request.force,
-      };
+      pending = mergeRequests(pending, request);
       return;
     }
 
@@ -28,6 +35,34 @@ export function createPageInspectionQueue(inspectPage: InspectPage) {
   };
 
   return inspect;
+}
+
+export function createPageInspectionScheduler(
+  inspectPage: (request: PageChangeInspectionRequest) => void,
+  delayMs: number,
+) {
+  let timer: ReturnType<typeof globalThis.setTimeout> | undefined;
+  let pending: PageChangeInspectionRequest | null = null;
+
+  const schedule = (request: PageChangeInspectionRequest): void => {
+    pending = mergeRequests(pending, request);
+    if (timer !== undefined) return;
+
+    timer = globalThis.setTimeout(() => {
+      timer = undefined;
+      const next = pending;
+      pending = null;
+      if (next) inspectPage(next);
+    }, delayMs);
+  };
+
+  const cancel = (): void => {
+    if (timer !== undefined) globalThis.clearTimeout(timer);
+    timer = undefined;
+    pending = null;
+  };
+
+  return { schedule, cancel };
 }
 
 export function pageChangeInspectionRequest(

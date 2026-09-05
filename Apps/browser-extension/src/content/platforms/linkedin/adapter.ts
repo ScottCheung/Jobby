@@ -1334,6 +1334,10 @@ export class LinkedInAdapter {
     const label = cleanText(
       `${element.getAttribute('aria-label') || ''} ${deepFirst(element, 'h1, h2, [role="heading"]')?.textContent || ''}`,
     );
+    if (/(?:job\s*alert|search\s*alert|create\s*alert|职位提醒|求职提醒|创建求职通知|通知提醒)/i.test(label)) {
+      return false;
+    }
+
     if (/(?:easy\s*apply|简单申请|輕鬆應聘|轻松应聘|一键应聘|一键申请)/i.test(label)) {
       return true;
     }
@@ -1353,7 +1357,7 @@ export class LinkedInAdapter {
     const isModalLike = element.matches(
       '[role="dialog"], .artdeco-modal, [data-test-modal], [data-test-modal-container], .jobs-easy-apply-content, form.jobs-easy-apply-form',
     );
-    return isModalLike && (hasApplicationField || hasApplicationAction);
+    return isModalLike && hasApplicationField && hasApplicationAction;
   }
 
   private applicationRootCandidates(): HTMLElement[] {

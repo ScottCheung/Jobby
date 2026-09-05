@@ -9,6 +9,7 @@ function locationFor(hostname: string, pathname = "/"): Pick<Location, "hostname
 
 describe("platform provider routing", () => {
   beforeEach(() => {
+    document.head.innerHTML = "";
     document.body.innerHTML = "";
   });
 
@@ -45,6 +46,7 @@ describe("platform provider routing", () => {
     ["micro1.ai", "/post/123456", "micro1"],
     ["jobs.dayforcehcm.com", "/en-US/acme/CANDIDATEPORTAL/jobs/12345", "dayforce"],
     ["dfid.dayforcehcm.com", "/globalidentity/account/register", "dayforce"],
+    ["careers.avature.net", "/en_US/main/JobDetail?jobId=4848", "avature"],
   ] as const)("routes %s%s to %s", (hostname, pathname, expected) => {
     expect(detectDedicatedPlatform(locationFor(hostname, pathname))).toBe(expected);
   });
@@ -71,9 +73,25 @@ describe("platform provider routing", () => {
     ["<div data-simplyhired='true'></div>", "simplyhired"],
     ["<div data-careerone='true'></div>", "careerone"],
     ["<div data-micro1='true'></div>", "micro1"],
+    ["<meta name='avature.wizard.registrars' content='[]'>", "avature"],
   ] as const)("routes a current white-label marker to %s", (html, platform) => {
-    document.body.innerHTML = html;
+    document.head.innerHTML = "";
+    document.body.innerHTML = "";
+    if (html.startsWith("<meta")) {
+      document.head.innerHTML = html;
+    } else {
+      document.body.innerHTML = html;
+    }
     expect(detectDedicatedPlatform(locationFor("careers.example.com"))).toBe(platform);
+  });
+
+  it("routes Macquarie Avature recruitment portal to avature", () => {
+    document.head.innerHTML = "<meta name='avature.wizard.registrars' content='[{\"wizardId\":96}]'>";
+    expect(
+      detectDedicatedPlatform(
+        locationFor("recruitment.macquarie.com", "/en_US/careers/ApplicationConfirmation?jobId=19902"),
+      ),
+    ).toBe("avature");
   });
 
   it("leaves unknown job sites for the generic fallback", () => {

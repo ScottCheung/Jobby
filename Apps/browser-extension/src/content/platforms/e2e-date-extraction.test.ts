@@ -700,6 +700,28 @@ describe("E2E Date Extraction Across All Platforms", () => {
       }
     });
 
+    it("extracts the unlabelled posted date from a SEEK standalone job page", () => {
+      document.body.innerHTML = `
+        <main>
+          <h1 data-automation="job-detail-title">Google Cloud Engineer</h1>
+          <span>Posted 4d ago</span>
+          <div data-automation="jobAdDetails">
+            Candidates with NV1 or NV2 are preferred.
+          </div>
+        </main>
+      `;
+      Object.defineProperty(window, "location", {
+        writable: true,
+        value: new URL("https://au.seek.com/job/94321521"),
+      });
+
+      const inspection = readSeekPage();
+      expect(inspection.kind).toBe("job");
+      if (inspection.kind === "job") {
+        expect(inspection.snapshot.postingDateRaw?.label).toBe("Posted 4d ago");
+      }
+    });
+
     it("extracts job on SEEK search split-view correctly when left list has multiple cards", () => {
       document.body.innerHTML = `
         <div class="search-results-list">
@@ -792,7 +814,7 @@ describe("E2E Date Extraction Across All Platforms", () => {
         </article>
         <article data-testid="job-card" data-job-id="30000002" aria-selected="true">
           <a data-automation="jobTitle" href="/job/30000002">Second Engineer</a>
-          <span data-automation="jobListingDate">2d ago</span>
+          <span data-automation="jobListingDate">2d ago•Viewed</span>
         </article>
         <div data-automation="jobDetailsPage">
           <h1 data-automation="job-detail-title">Second Engineer</h1>

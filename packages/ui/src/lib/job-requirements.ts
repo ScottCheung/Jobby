@@ -14,7 +14,7 @@ type ClearanceDefinition = {
 };
 
 const REQUIREMENT_LANGUAGE =
-  /\b(?:require(?:s|d)?|requirement|mandatory|essential|must|only|limited to|restricted to|will only be considered|eligible to apply|need(?:s)? to|has to|have to|prerequisite|criteria|hold|holds|holding|possess|possessing|obtain|maintaining|maintain|cleared|active|current|valid|eligib(?:le|ility)(?:\s+(?:to\s+obtain|for))?|ability\s+to\s+obtain|willing(?:ness)?\s+to\s+obtain|clearance\s*[:=-])\b/i;
+  /\b(?:require(?:s|d)?|requirement|mandatory|essential|must|only|limited to|restricted to|will only be considered|eligible to apply|need(?:s|ed)? to|need(?:ed)?|has to|have to|prerequisite|criteria|hold|holds|holding|possess|possessing|obtain|maintaining|maintain|cleared|active|current|valid|eligib(?:le|ility)(?:\s+(?:to\s+obtain|for))?|ability\s+to\s+obtain|willing(?:ness)?\s+to\s+obtain)\b|\bclearance(?:\s+level)?\s*[:=-]/i;
 
 const REQUIREMENT_SECTION_HEADER =
   /\b(?:mandatory|minimum|essential|required|key|selection|role|job|position|candidate|applicant|prerequisite|core)\s+(?:requirements?|qualifications?|criteria|skills?|experience|capabilities|eligibility|prerequisites?)\b|\b(?:requirements?|qualifications?|eligibility|prerequisites?|selection\s+criteria|essential\s+criteria|key\s+criteria|what\s+you(?:'ll|\s+will)?\s+(?:need|bring)|what\s+we(?:'re|\s+are)?\s+looking\s+for|about\s+you|who\s+you\s+are|must\s+haves?|must-haves?|skills?\s*(?:&|and)\s*experience|role\s+overview|job\s+details)\s*[:：]?$|\b(?:security\s+clearance|clearance\s+level|clearance|work\s+rights|citizenship\s*(?:&|and)\s*clearance)\s*[:：]?$/i;
@@ -219,8 +219,8 @@ function parseLineToClauses(
     const parenMatch = sentence.match(/^(.*?)\((.*?)\)(.*)$/);
     if (parenMatch) {
       const [, before, inside, after] = parenMatch;
-      const beforeText = `${before} ${after}`.trim();
-      const insideText = inside.trim();
+      const beforeText = `${before || ''} ${after || ''}`.trim();
+      const insideText = (inside || '').trim();
 
       const insideHasClearance = SPECIFIC_CLEARANCE_DEFINITIONS.some((def) =>
         def.pattern.test(insideText),
@@ -360,14 +360,22 @@ export function extractJobRequirements(description?: string): JobRequirement[] {
       const isPreferred =
         clause.section === 'preferred' ||
         CLEARANCE_PREFERENCE.test(clause.text);
+      const isExplicit =
+        !isPreferred &&
+        (clause.section === 'required' ||
+          REQUIREMENT_LANGUAGE.test(clause.text));
+
+      if (!isExplicit && !isPreferred) {
+        continue;
+      }
 
       const label = isPreferred ?
         def.label.replace(' Required', ' Preferred')
       : def.label;
 
-      const existing = clearanceMap.get(label);
-      if (!existing || (existing.priority === 'preferred' && !isPreferred)) {
-        clearanceMap.set(label, {
+      const existing = clearanceMap.get(def.id);
+      if (!existing || (existing.priority === 'preferred' && isExplicit)) {
+        clearanceMap.set(def.id, {
           label,
           searchTerms: def.searchTerms,
           priority: isPreferred ? 'preferred' : 'required',
@@ -381,17 +389,18 @@ export function extractJobRequirements(description?: string): JobRequirement[] {
           clause.section === 'preferred' ||
           CLEARANCE_PREFERENCE.test(clause.text);
         const isExplicit =
-          clause.section === 'required' ||
-          REQUIREMENT_LANGUAGE.test(clause.text);
+          !isPreferred &&
+          (clause.section === 'required' ||
+            REQUIREMENT_LANGUAGE.test(clause.text));
 
         if (isExplicit || isPreferred) {
           const label = isPreferred ?
             GENERIC_CLEARANCE_DEFINITION.label.replace(' Required', ' Preferred')
           : GENERIC_CLEARANCE_DEFINITION.label;
 
-          const existing = clearanceMap.get(label);
-          if (!existing || (existing.priority === 'preferred' && !isPreferred)) {
-            clearanceMap.set(label, {
+          const existing = clearanceMap.get(GENERIC_CLEARANCE_DEFINITION.id);
+          if (!existing || (existing.priority === 'preferred' && isExplicit)) {
+            clearanceMap.set(GENERIC_CLEARANCE_DEFINITION.id, {
               label,
               searchTerms: GENERIC_CLEARANCE_DEFINITION.searchTerms,
               priority: isPreferred ? 'preferred' : 'required',

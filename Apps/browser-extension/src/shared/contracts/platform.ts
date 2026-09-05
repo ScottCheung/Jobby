@@ -23,6 +23,7 @@ export const dedicatedPlatforms = [
   "careerone",
   "micro1",
   "dayforce",
+  "avature",
 ] as const;
 
 export type DedicatedPlatform = (typeof dedicatedPlatforms)[number];
@@ -49,6 +50,7 @@ export const atsJobPlatforms = [
   "careerone",
   "micro1",
   "dayforce",
+  "avature",
 ] as const;
 
 export type AtsJobPlatform = (typeof atsJobPlatforms)[number];

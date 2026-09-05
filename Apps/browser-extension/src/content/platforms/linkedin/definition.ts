@@ -3,7 +3,13 @@ import { readLinkedInPage } from "./job-reader";
 import { readLinkedInPageWhenReady } from "./readiness";
 import { readLinkedInFormPage } from "./form-reader";
 import { linkedinAdapter } from "./adapter";
-import { findActiveFormScope } from "../../dom/form-scope";
+
+const LINKEDIN_IGNORED_FIELD_LABELS =
+  /(?:job\s*alert|search\s*alert|create\s*alert|search\s*by\s*title|city,\s*state|search\s*jobs|keywords?|职位提醒|求职提醒|创建求职通知|通知提醒|搜索职位|搜索地点)/i;
+
+export function filterLinkedInFormFields<T extends { label: string }>(fields: T[]): T[] {
+  return fields.filter((field) => !LINKEDIN_IGNORED_FIELD_LABELS.test(field.label));
+}
 
 export const linkedinDefinition = {
   platform: "linkedin",
@@ -56,6 +62,7 @@ export const linkedinDefinition = {
     "button[class*='show_more' i]",
     "button[class*='see-more' i]",
   ],
+  adaptFormFields: (fields) => filterLinkedInFormFields(fields),
   autofill: {
     treatsAllFileInputsAsResume: true,
   },
@@ -71,6 +78,6 @@ export const linkedinDefinition = {
   },
   form: {
     read: () => readLinkedInFormPage(),
-    scope: () => linkedinAdapter.getApplicationRoot() || findActiveFormScope(),
+    scope: () => linkedinAdapter.getApplicationRoot() || null,
   },
 } satisfies ProviderDefinition<"linkedin">;

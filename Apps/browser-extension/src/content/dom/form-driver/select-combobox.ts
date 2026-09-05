@@ -114,10 +114,10 @@ export async function clickVisualSelectOption(
     root instanceof Document || root instanceof ShadowRoot ? root : scope;
   const fieldContainer =
     element.closest<HTMLElement>(
-      "label, [role='combobox'], [data-automation], [data-testid], .field, .input-group",
+      "label, [role='combobox'], [data-automation], [data-testid], .field, .input-group, .fieldSpec, [class*='fieldSpec' i]",
     ) || element.parentElement;
   const trigger = fieldContainer?.querySelector<HTMLElement>(
-    "[role='combobox'], button[aria-haspopup='listbox'], [aria-controls][role='button']",
+    "[role='combobox'], button[aria-haspopup='listbox'], [aria-controls][role='button'], .select2-choice, .select2-choices, .select2-container",
   );
   if (!trigger) return false;
 

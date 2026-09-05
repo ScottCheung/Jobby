@@ -22,6 +22,7 @@ import {
 } from '../services/messaging';
 import {
   createPageInspectionQueue,
+  createPageInspectionScheduler,
   pageChangeInspectionRequest,
 } from '../services/page-change-inspection';
 import { Toaster } from '@jobby/ui/components/UI/toast/toaster';
@@ -280,17 +281,14 @@ export function FloatingJobCardDialog() {
         }
       },
     );
-    let scheduledInspection: number | undefined;
+    const inspectionScheduler = createPageInspectionScheduler(
+      inspectCurrentPage,
+      PAGE_READY_DELAY_MS,
+    );
     const scheduleInspection = (showLoading: boolean, force = false) => {
       // Immediately clear previous result to dismiss stale job card instantly
       setLatestInspection(null);
-      if (scheduledInspection !== undefined) {
-        window.clearTimeout(scheduledInspection);
-      }
-      scheduledInspection = window.setTimeout(() => {
-        scheduledInspection = undefined;
-        inspectCurrentPage({ showLoading, force });
-      }, PAGE_READY_DELAY_MS);
+      inspectionScheduler.schedule({ showLoading, force });
     };
 
     inspectCurrentPage({ showLoading: true, force: false });
@@ -333,8 +331,7 @@ export function FloatingJobCardDialog() {
     }
 
     return () => {
-      if (scheduledInspection !== undefined)
-        window.clearTimeout(scheduledInspection);
+      inspectionScheduler.cancel();
       document.removeEventListener('visibilitychange', onVisibilityChange);
       if (
         typeof chrome !== 'undefined' &&

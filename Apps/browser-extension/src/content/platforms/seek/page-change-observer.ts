@@ -8,7 +8,7 @@ function jobIdFromHref(element: Element | null): string {
 
 export function seekJobDomSignature(root: ParentNode = document): string {
   const detail = root.querySelector<HTMLElement>(
-    "[data-automation='jobDetails'], [data-automation='jobDetailsPage'], [data-automation='job-details'], [data-testid='jobDetails'], #job-details",
+    "[data-automation='splitViewJobDetailsWrapper'], [data-automation='jobDetails'], [data-automation='jobDetailsPage'], [data-automation='split-view'], [data-automation='job-details'], [data-testid='jobDetails'], #job-details",
   );
   const selectedCard = root.querySelector<HTMLElement>(
     "[data-automation='job-card'][data-selected='true'], [data-automation='job-card'][aria-current='true'], [data-testid='job-card'][aria-selected='true'], [data-testid='job-card'][data-selected='true']",
@@ -70,7 +70,7 @@ export function observeSeekJobDom(
     onChange();
   };
   const scheduleCheck = () => {
-    if (checkTimer !== undefined) window.clearTimeout(checkTimer);
+    if (checkTimer !== undefined) return;
     checkTimer = window.setTimeout(check, 75);
   };
   const observer = new MutationObserver(scheduleCheck);

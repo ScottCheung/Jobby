@@ -169,8 +169,9 @@ export function isVisibleElement(element: HTMLElement): boolean {
   if (typeof (element as any).checkVisibility === "function") {
     if ((element as any).checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })) {
       const rect = element.getBoundingClientRect();
-      if (rect.right < -3000 || rect.left < -3000) return false;
-      return true;
+      if (rect.right >= -3000 && rect.left >= -3000) {
+        return true;
+      }
     }
   }
 
@@ -232,7 +233,9 @@ export function isDropdownSearchFilter(element: HTMLElement): boolean {
   if (
     element.classList.contains("select2-focusser") ||
     element.classList.contains("select2-input") ||
-    element.classList.contains("select2-offscreen")
+    (element.classList.contains("select2-offscreen") &&
+      (Boolean(element.closest(".select2-container, .select2-drop")) ||
+        element.id.startsWith("s2id_")))
   ) {
     return true;
   }

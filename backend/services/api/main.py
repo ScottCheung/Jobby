@@ -3666,6 +3666,7 @@ _ATS_PLATFORMS = {
     "careerone",
     "micro1",
     "dayforce",
+    "avature",
 }
 
 

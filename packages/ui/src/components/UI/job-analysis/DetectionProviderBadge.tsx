@@ -43,6 +43,7 @@ const PLATFORM_DOMAIN_MAP: Record<string, string> = {
   careerone: 'careerone.com.au',
   micro1: 'micro1.ai',
   dayforce: 'dayforcehcm.com',
+  avature: 'avature.net',
 };
 
 const PLATFORM_BRAND_STYLES: Record<string, string> = {
@@ -115,6 +116,8 @@ const PLATFORM_BRAND_STYLES: Record<string, string> = {
     'border-[#658800]/25 bg-[#658800]/10 text-[#658800] dark:border-[#A3E635]/35 dark:bg-[#A3E635]/15 dark:text-[#a3e635]',
   dayforce:
     'border-[#1e51be]/25 bg-[#1e51be]/10 text-[#1e51be] dark:border-[#4d82e8]/35 dark:bg-[#4d82e8]/15 dark:text-[#8db3ff]',
+  avature:
+    'border-[#1063BA]/25 bg-[#1063BA]/10 text-[#1063BA] dark:border-[#2884E0]/35 dark:bg-[#2884E0]/15 dark:text-[#60a5fa]',
 };
 
 export function getPlatformDomain(

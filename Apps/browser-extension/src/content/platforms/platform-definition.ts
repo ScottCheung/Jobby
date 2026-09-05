@@ -82,15 +82,15 @@ export type ProviderStructuredFill = {
 export type ProviderDriverOverride = {
   fillField?: (
     instruction: FieldFillInstruction,
-    scope: FormScope,
+    scope: ProviderFormRoot,
   ) => Promise<FieldFillResult | null | undefined>;
   focusField?: (
     target: FormFieldTarget,
-    scope: FormScope,
+    scope: ProviderFormRoot,
   ) => FormFocusResult | null | undefined;
   isComboboxCommitted?: (
     element: HTMLInputElement,
-    scope: FormScope,
+    scope: ProviderFormRoot,
   ) => boolean;
   selectCombobox?: (
     target: FormFieldTarget,

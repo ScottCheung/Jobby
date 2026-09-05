@@ -175,6 +175,24 @@ export function labelledByText(element: HTMLElement, scope: QueryScope): string 
   );
 }
 
+function dateSubfieldSuffix(element: HTMLElement): string {
+  const ariaLabel = cleanText(element.getAttribute("aria-label"));
+  if (/^(?:month|year|day|月|年|日)$/i.test(cleanLabel(ariaLabel))) {
+    return cleanLabel(ariaLabel);
+  }
+  const identifier = `${element.id} ${element.getAttribute("name") || ""}`.toLowerCase();
+  if (/(?:^|[._-])month(?:$|[._-])/.test(identifier)) return "Month";
+  if (/(?:^|[._-])year(?:$|[._-])/.test(identifier)) return "Year";
+  if (/(?:^|[._-])day(?:$|[._-])/.test(identifier)) return "Day";
+  if (element instanceof HTMLSelectElement && element.options.length > 0) {
+    const firstOptionText = cleanText(element.options[0]?.text);
+    if (/^(?:month|year|day)$/i.test(firstOptionText)) {
+      return firstOptionText.charAt(0).toUpperCase() + firstOptionText.slice(1).toLowerCase();
+    }
+  }
+  return "";
+}
+
 export function labelFor(element: HTMLElement, scope: QueryScope): string {
   const isRadio =
     element instanceof HTMLInputElement && element.type.toLowerCase() === "radio";
@@ -215,30 +233,50 @@ export function labelFor(element: HTMLElement, scope: QueryScope): string {
   const isGenericActionLabel = (text: string) =>
     /^(?:search|filter|type|select|choose|enter|type to search)$/i.test(text.trim());
 
+  const subfieldSuffix = dateSubfieldSuffix(element);
+  const withSubfield = (base: string): string => {
+    if (!base) return "";
+    if (subfieldSuffix && !base.toLowerCase().includes(subfieldSuffix.toLowerCase())) {
+      return `${base} - ${subfieldSuffix}`;
+    }
+    return base;
+  };
+
   const labelledBy = cleanText(element.getAttribute("aria-label"));
-  if (labelledBy && !isGenericActionLabel(labelledBy)) return cleanLabel(labelledBy);
+  if (labelledBy && !isGenericActionLabel(labelledBy)) {
+    if (subfieldSuffix) {
+      const parentContainerLabel = containerLabelFor(element);
+      if (
+        parentContainerLabel &&
+        cleanLabel(parentContainerLabel).toLowerCase() !== cleanLabel(labelledBy).toLowerCase()
+      ) {
+        return `${cleanLabel(parentContainerLabel)} - ${cleanLabel(labelledBy)}`;
+      }
+    }
+    return cleanLabel(labelledBy);
+  }
 
   const dataLabel = cleanText(
     element.getAttribute("data-label") ||
       element.getAttribute("data-prompt") ||
       element.getAttribute("title"),
   );
-  if (dataLabel && !isGenericActionLabel(dataLabel)) return cleanLabel(dataLabel);
+  if (dataLabel && !isGenericActionLabel(dataLabel)) return withSubfield(cleanLabel(dataLabel));
 
   const shadowHostLabel = shadowHostLabelFor(element);
-  if (shadowHostLabel && !isGenericActionLabel(shadowHostLabel)) return shadowHostLabel;
+  if (shadowHostLabel && !isGenericActionLabel(shadowHostLabel)) return withSubfield(shadowHostLabel);
 
   if (!isRadio) {
     const id = cleanText(element.id);
     if (id) {
       const label = scope.querySelector<HTMLLabelElement>(`label[for='${CSS.escape(id)}']`);
       const text = labelTextWithoutControl(label);
-      if (text) return cleanLabel(text);
+      if (text) return withSubfield(cleanLabel(text));
     }
 
     const parentLabel = element.closest("label");
     const parentText = labelTextWithoutControl(parentLabel);
-    if (parentText) return cleanLabel(parentText);
+    if (parentText) return withSubfield(cleanLabel(parentText));
 
     // Immediate previous sibling label: e.g. <label>Last name</label><input>
     let prev = element.previousElementSibling as HTMLElement | null;
@@ -246,7 +284,7 @@ export function labelFor(element: HTMLElement, scope: QueryScope): string {
       if (prev.matches("label, [class*='label' i], [class*='prompt' i], [class*='title' i]")) {
         const text = labelTextWithoutControl(prev);
         if (text && !isLikelyHelperText(text) && !isValidationElement(prev)) {
-          return cleanLabel(text);
+          return withSubfield(cleanLabel(text));
         }
       }
       prev = prev.previousElementSibling as HTMLElement | null;
@@ -266,7 +304,7 @@ export function labelFor(element: HTMLElement, scope: QueryScope): string {
       if (localLabels.length === 1 && localLabels[0]) {
         const text = labelTextWithoutControl(localLabels[0]);
         if (text && !isLikelyHelperText(text)) {
-          return cleanLabel(text);
+          return withSubfield(cleanLabel(text));
         }
       }
     }
@@ -289,7 +327,12 @@ export function labelFor(element: HTMLElement, scope: QueryScope): string {
   if (questionLabel) return questionLabel;
 
   const structuralLabel = containerLabelFor(element);
-  if (structuralLabel) return structuralLabel;
+  if (structuralLabel) {
+    if (subfieldSuffix && !cleanLabel(structuralLabel).toLowerCase().includes(subfieldSuffix.toLowerCase())) {
+      return `${cleanLabel(structuralLabel)} - ${subfieldSuffix}`;
+    }
+    return structuralLabel;
+  }
 
   if (isRadio) {
     const id = cleanText(element.id);
@@ -340,7 +383,10 @@ export function requiredFor(element: HTMLElement): boolean {
     .filter(Boolean)
     .join(" ");
   const markerContainer = element.closest<HTMLElement>(
-    "[data-required], [class~='required'], [class*='form-field' i], [class*='question' i], [data-testid*='field' i]",
+    "[data-required], [class~='required'], [class*='form-field' i], [class*='question' i], [data-testid*='field' i], .fieldSpec, [class*='fieldSpec' i]",
+  );
+  const containerLabelText = cleanText(
+    markerContainer?.querySelector<HTMLLabelElement>("label, legend, .tc_formLabel, [class*='label' i]")?.textContent,
   );
   const markerText = cleanText(
     [
@@ -348,6 +394,7 @@ export function requiredFor(element: HTMLElement): boolean {
       parentLabel?.textContent,
       legend?.textContent,
       labelledByMarker,
+      containerLabelText,
     ]
       .filter(Boolean)
       .join(" "),
@@ -359,7 +406,7 @@ export function requiredFor(element: HTMLElement): boolean {
       markerContainer?.classList.contains("required") ||
       Boolean(
         markerContainer?.querySelector(
-          "[data-required='true'], [class~='required-marker'], [data-testid*='required-mark' i]",
+          "[data-required='true'], [class~='required-marker'], [class~='required'], [class*='required' i], [data-testid*='required-mark' i]",
         ),
       )
     ) {

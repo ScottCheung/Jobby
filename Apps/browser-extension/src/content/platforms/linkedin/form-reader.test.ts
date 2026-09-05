@@ -99,4 +99,47 @@ describe('LinkedIn Easy Apply form scope', () => {
       'Mobile phone number',
     ]);
   });
+
+  it('does not misidentify "Set job alert for Full Stack Developer in Sydney" as an application form when Easy Apply is not open', () => {
+    document.body.innerHTML = `
+      <div class="jobs-search-box">
+        <input aria-label="Search by title, skill, or company" value="Full Stack Developer" />
+        <input aria-label="City, state, or zip code" value="Sydney" />
+      </div>
+      <div class="jobs-search-create-alert">
+        <label for="alert-toggle">Set job alert for Full Stack Developer in Sydney</label>
+        <input type="checkbox" id="alert-toggle" role="switch" aria-label="Set job alert for Full Stack Developer in Sydney" />
+      </div>
+      <main class="jobs-search__job-details">
+        <h1>Full Stack Developer</h1>
+        <div class="jobs-apply-button--top-card">
+          <button type="button" class="jobs-apply-button" aria-label="Easy Apply to Full Stack Developer">Easy Apply</button>
+        </div>
+        <div class="jobs-description">
+          <p>We are looking for a Full Stack Developer. Please submit your application with resume and cover letter.</p>
+        </div>
+      </main>
+    `;
+
+    const inspection = readLinkedInFormPage();
+    expect(inspection.kind).toBe('not_application_form');
+    if (inspection.kind !== 'not_application_form') return;
+    expect(inspection.reason).toContain('Click LinkedIn Easy Apply');
+  });
+
+  it('does not treat a job alert modal as an Easy Apply root', () => {
+    document.body.innerHTML = `
+      <div role="dialog" aria-modal="true" class="artdeco-modal" aria-label="Set job alert for Full Stack Developer in Sydney">
+        <h2>Set job alert for Full Stack Developer in Sydney</h2>
+        <label for="alert-email">Email notification</label>
+        <input type="checkbox" id="alert-email" checked />
+        <button type="button">Save</button>
+      </div>
+    `;
+
+    expect(linkedinAdapter.getApplicationRoot()).toBeNull();
+    const inspection = readLinkedInFormPage();
+    expect(inspection.kind).toBe('not_application_form');
+  });
 });
+

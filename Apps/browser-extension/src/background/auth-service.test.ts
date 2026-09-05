@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { extensionRedirectWithState, openLogin } from "./auth-service";
+import {
+  extensionRedirectWithState,
+  getAuthStatus,
+  getValidAuthSession,
+  openLogin,
+} from "./auth-service";
 
 const localStorage = new Map<string, unknown>();
 
@@ -56,5 +61,27 @@ describe("extensionRedirectWithState", () => {
       expiresAt: expect.any(String),
       user: { id: "user-id", email: "user@example.com" },
     });
+  });
+
+  it("does not open an auth flow while checking a missing session", async () => {
+    await expect(getAuthStatus()).resolves.toEqual({ connected: false });
+    expect(chrome.identity.launchWebAuthFlow).not.toHaveBeenCalled();
+  });
+
+  it("clears an expired session without opening a login flow", async () => {
+    localStorage.set("jobby.auth.session", {
+      accessToken: "expired-token",
+      expiresAt: new Date(Date.now() - 60_000).toISOString(),
+      user: { id: "user-id", email: "user@example.com" },
+    });
+
+    await expect(getAuthStatus()).resolves.toEqual({ connected: false });
+    expect(localStorage.has("jobby.auth.session")).toBe(false);
+    expect(chrome.identity.launchWebAuthFlow).not.toHaveBeenCalled();
+  });
+
+  it("does not open an auth flow while resolving a missing API session", async () => {
+    await expect(getValidAuthSession()).resolves.toBeNull();
+    expect(chrome.identity.launchWebAuthFlow).not.toHaveBeenCalled();
   });
 });

@@ -45,6 +45,7 @@ const DEDICATED_ATS_HOSTS: ReadonlyArray<RegExp> = [
   /(?:^|\.)t1cloud\.com$/,
   /(?:^|\.)micro1\.ai$/,
   /(?:^|\.)dayforcehcm\.com$/,
+  /(?:^|\.)avature\.net$/,
 ];
 
 export interface MajorPlatformRule {
@@ -291,6 +292,7 @@ const JOB_DOM_SELECTORS = [
   "[class*='t1-' i]",
   "[class*='application-wizard' i]",
   "[class*='wizard' i]",
+  "meta[name^='avature']",
   "[test-id='job-detail-title']",
   "[test-id='job-detail-body']",
 ] as const;

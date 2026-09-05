@@ -1,9 +1,6 @@
 /** @format */
 
-import {
-  getValidAuthSession,
-  restoreWebSession,
-} from './auth-service';
+import { getValidAuthSession } from './auth-service';
 import {
   formAutofillInstructionsResponseSchema,
   type FormAutofillInstructionsResponse,
@@ -197,20 +194,6 @@ export class ApiClient {
         { ...init, headers },
         timeoutMs,
       );
-      if (authenticated && response.status === 401) {
-        // The web app owns the Supabase session. Recover a fresh short-lived
-        // access token from that session and retry once.
-        await restoreWebSession().catch(() => null);
-        const recovered = await getValidAuthSession().catch(() => null);
-        if (recovered) {
-          headers.set('Authorization', `Bearer ${recovered.accessToken}`);
-          response = await fetchWithTimeout(
-            `${apiBaseUrl()}${path}`,
-            { ...init, headers },
-            timeoutMs,
-          );
-        }
-      }
     } catch (error) {
       if (error instanceof ApiClientError) throw error;
       throw new ApiClientError(

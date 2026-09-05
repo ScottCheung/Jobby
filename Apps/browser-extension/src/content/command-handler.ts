@@ -46,6 +46,7 @@ export async function handleContentCommand(message: unknown): Promise<unknown> {
       (message as { searchTerms: string[] }).searchTerms,
     );
     return {
+      ok: true,
       highlighted: result.highlighted,
       matchCount: result.matchCount,
       currentIndex: result.currentIndex,

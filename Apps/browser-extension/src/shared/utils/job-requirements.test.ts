@@ -157,5 +157,24 @@ describe('extractJobRequirements', () => {
       `),
     ).toEqual([]);
   });
+
+  it('does not produce duplicate clearances when preferred clearance keywords appear incidentally', () => {
+    expect(
+      extractJobRequirements(`
+        Candidates with NV1 or NV2 are preferred.
+        This role is open only to candidates with Australian citizenship and the ability to obtain a security clearance!
+        Tech stack: Google Workspace, Google Cloud Platform, NV1, NV2.
+
+        Key Skills & Experience
+        • Mandatory Requirement: Must be an Australian Citizen.
+        • Existing NV1 or NV2 security clearance is preferred; sponsorship is available for qualified candidates.
+      `),
+    ).toMatchObject([
+      { label: 'Citizen Required' },
+      { label: 'NV1 Clearance Preferred', priority: 'preferred' },
+      { label: 'NV2 Clearance Preferred', priority: 'preferred' },
+      { label: 'Security Clearance Required', priority: 'required' },
+    ]);
+  });
 });
 

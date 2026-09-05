@@ -29,6 +29,15 @@ describe('runtime upload message contract', () => {
     ).toBe(true);
   });
 
+  it('accepts all navigation aliases for a named clearance', () => {
+    expect(
+      runtimeMessageSchema.safeParse({
+        type: 'content.highlight-job-requirement-active',
+        searchTerms: Array.from({ length: 19 }, (_, index) => `nv1-alias-${index}`),
+      }).success,
+    ).toBe(true);
+  });
+
   it('accepts a web-app request to inspect a job URL', () => {
     expect(
       runtimeMessageSchema.safeParse({

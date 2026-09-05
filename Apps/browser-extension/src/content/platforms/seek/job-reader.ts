@@ -15,7 +15,7 @@ function cleanText(value: string | null | undefined): string {
 
 function getSeekDetailRoot(): ParentNode {
   const detailPane = document.querySelector<HTMLElement>(
-    "[data-automation='jobDetails'], [data-automation='jobDetailsPage'], [data-automation='job-details'], [data-testid='jobDetails'], #job-details, main [data-automation='jobDetails']"
+    "[data-automation='splitViewJobDetailsWrapper'], [data-automation='jobDetails'], [data-automation='jobDetailsPage'], [data-automation='split-view'], [data-automation='job-details'], [data-testid='jobDetails'], #job-details, main [data-automation='jobDetails']"
   );
   if (detailPane) return detailPane;
   return document;
@@ -123,6 +123,12 @@ function datePostedFromDom(jobId?: string): string | undefined {
   const root = getSeekDetailRoot();
   const STRICT_DATE_PATTERN = /\b(?:(?:posted|listed|published|reposted)\s*(?::|on)?\s*)?(?:\d+\s*\+?\s*(?:minutes?|mins?|hours?|hrs?|days?|weeks?|wks?|months?|mos?|years?|yrs?|mo)\s+ago|\d+\s*[dhwmy]\s*ago|today|yesterday|just\s+(?:now|posted)|刚刚|今天|昨天)\b/i;
   const RELAXED_DATE_PATTERN = /(?:posted|listed|published|reposted)\s*(?::|on)?\s*(?:\d+\s*\+?\s*(?:minutes?|mins?|hours?|hrs?|days?|weeks?|wks?|months?|mos?|years?|yrs?|[dhwmy]|mo)\s*(?:ago)?|today|yesterday|just\s+(?:now|posted))/i;
+  const dateLabel = (value: string | null | undefined): string | undefined => {
+    const text = cleanText(value);
+    return text.match(STRICT_DATE_PATTERN)?.[0] ||
+      text.match(RELAXED_DATE_PATTERN)?.[0] ||
+      text.match(/^\d+\s*[dhwmy]$/i)?.[0];
+  };
 
   // 1. On split-view/search pages, locate the specific card container matching current jobId FIRST
   if (jobId) {
@@ -144,17 +150,15 @@ function datePostedFromDom(jobId?: string): string | undefined {
       if (cardTime) {
         const dt = cardTime.getAttribute("datetime");
         if (dt) return cleanText(dt);
-        const txt = cleanText(cardTime.textContent);
-        if (txt) return txt;
+        const label = dateLabel(cardTime.textContent);
+        if (label) return label;
       }
 
       const elements = Array.from(cardContainer.querySelectorAll<HTMLElement>("span, div, p, time"));
       for (const el of elements) {
         if (el.children.length > 2) continue;
-        const txt = cleanText(el.textContent);
-        if (txt && txt.length < 40 && (STRICT_DATE_PATTERN.test(txt) || RELAXED_DATE_PATTERN.test(txt) || /^\d+\s*[dhwmy]$/i.test(txt))) {
-          return txt;
-        }
+        const label = dateLabel(el.textContent);
+        if (label) return label;
       }
     }
   }
@@ -165,16 +169,16 @@ function datePostedFromDom(jobId?: string): string | undefined {
     if (detailTimeEl) {
       const dt = detailTimeEl.getAttribute("datetime");
       if (dt) return cleanText(dt);
-      const text = cleanText(detailTimeEl.textContent);
-      if (text && (STRICT_DATE_PATTERN.test(text) || RELAXED_DATE_PATTERN.test(text))) return text;
+      const label = dateLabel(detailTimeEl.textContent);
+      if (label) return label;
     }
 
     const dedicatedDetailDate = root.querySelector<HTMLElement>("[data-automation='job-detail-date'], [data-automation='job-posted-date'], [data-automation='jobListingDate']");
     if (dedicatedDetailDate) {
       const dt = dedicatedDetailDate.getAttribute("datetime");
       if (dt) return cleanText(dt);
-      const txt = cleanText(dedicatedDetailDate.textContent);
-      if (txt) return txt;
+      const label = dateLabel(dedicatedDetailDate.textContent);
+      if (label) return label;
     }
 
     const detailElements = Array.from(root.querySelectorAll<HTMLElement>(
@@ -182,10 +186,8 @@ function datePostedFromDom(jobId?: string): string | undefined {
     ));
     for (const el of detailElements) {
       if (el.children.length > 2) continue;
-      const text = cleanText(el.textContent);
-      if (text && text.length < 40 && (STRICT_DATE_PATTERN.test(text) || RELAXED_DATE_PATTERN.test(text))) {
-        return text;
-      }
+      const label = dateLabel(el.textContent);
+      if (label) return label;
     }
   }
 
@@ -195,15 +197,24 @@ function datePostedFromDom(jobId?: string): string | undefined {
     if (timeEl) {
       const dt = timeEl.getAttribute("datetime");
       if (dt) return cleanText(dt);
-      const text = cleanText(timeEl.textContent);
-      if (text) return text;
+      const label = dateLabel(timeEl.textContent);
+      if (label) return label;
     }
     const dedicatedEl = document.querySelector<HTMLElement>("[data-automation='job-detail-date'], [data-automation='job-posted-date']");
     if (dedicatedEl) {
       const dt = dedicatedEl.getAttribute("datetime");
       if (dt) return cleanText(dt);
-      const txt = cleanText(dedicatedEl.textContent);
-      if (txt) return txt;
+      const label = dateLabel(dedicatedEl.textContent);
+      if (label) return label;
+    }
+
+    const elements = Array.from(
+      document.querySelectorAll<HTMLElement>("main span, main p, body > span"),
+    );
+    for (const el of elements) {
+      if (el.children.length > 2) continue;
+      const label = dateLabel(el.textContent);
+      if (label) return label;
     }
   }
 

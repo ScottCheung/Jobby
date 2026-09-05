@@ -40,10 +40,19 @@ if (window.__jobbyContentMessageListener && isExtensionContextValid() && chrome.
 window.__jobbyFormObserverCleanup?.();
 window.__jobbyFormDiscoveryCleanup?.();
 
+const isTopLevelFrame = typeof window !== 'undefined' ? window.top === window : true;
 const cleanupCallbacks: Array<() => void> = [];
 
 const listener: ContentMessageListener = (message, _sender, sendResponse) => {
   if (!isExtensionContextValid()) return false;
+  if (
+    typeof message === 'object' &&
+    message !== null &&
+    (message as { type?: unknown }).type === 'content.highlight-job-requirement' &&
+    !isTopLevelFrame
+  ) {
+    return false;
+  }
   void handleContentCommand(message)
     .then((response) => {
       sendResponse(response !== undefined ? { ok: true, ...response } : { ok: true });
@@ -231,7 +240,6 @@ if (isExtensionContextValid() && chrome.storage?.onChanged) {
 // Large job boards are observed continuously for client-side job selection
 // and application-step changes. ATS pages still use on-demand inspection so
 // the extension does not attach a whole-document observer to every website.
-const isTopLevelFrame = window.top === window;
 const observedPlatform = detectDedicatedPlatform(window.location, document);
 
 if (isTopLevelFrame && isExtensionContextValid()) {
@@ -260,7 +268,7 @@ if (isTopLevelFrame && isExtensionContextValid()) {
 
     let pageChangeTimer: number | undefined;
     const notifyPageChanged = () => {
-      if (pageChangeTimer !== undefined) window.clearTimeout(pageChangeTimer);
+      if (pageChangeTimer !== undefined) return;
       pageChangeTimer = window.setTimeout(() => {
         pageChangeTimer = undefined;
         try {

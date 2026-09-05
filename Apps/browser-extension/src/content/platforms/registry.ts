@@ -6,6 +6,7 @@ import type {
 } from "../../shared/contracts/platform";
 import { adzunaDefinition } from "./adzuna/definition";
 import { ashbyDefinition } from "./ashby/definition";
+import { avatureDefinition } from "./avature/definition";
 import { bambooHrDefinition } from "./bamboohr/definition";
 import { careeroneDefinition } from "./careerone/definition";
 import { diceDefinition } from "./dice/definition";
@@ -55,6 +56,7 @@ export const atsProviderDefinitions = [
   careeroneDefinition,
   micro1Definition,
   dayforceDefinition,
+  avatureDefinition,
 ] as const satisfies readonly AtsProviderDefinition[];
 
 export const providerDefinitions: readonly ProviderDefinition[] = [

@@ -5,6 +5,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   autoSelectFirstJobCard,
+  extractTargetJobId,
   findFirstJobCard,
   isJobAlreadySelected,
   isSearchOrListingPage,
@@ -68,7 +69,7 @@ describe('auto-select-first-job', () => {
     expect(clickSpy).toHaveBeenCalledTimes(1);
   });
 
-  it('detects when a job is already selected in DOM', () => {
+  it('detects when a job is already selected in DOM or SEEK details pane is rendered', () => {
     const container = document.createElement('div');
     container.innerHTML = `
       <article data-automation="job-card" data-selected="true" id="selected-card">
@@ -77,6 +78,72 @@ describe('auto-select-first-job', () => {
     `;
 
     expect(isJobAlreadySelected(container)).toBe(true);
+
+    const seekContainer = document.createElement('div');
+    seekContainer.innerHTML = `
+      <div data-automation="jobAdDetails">
+        <p>Job Description text</p>
+      </div>
+    `;
+    expect(isJobAlreadySelected(seekContainer)).toBe(true);
+  });
+
+  it('extracts target jobId from query parameters across platforms', () => {
+    expect(extractTargetJobId('https://au.seek.com/jobs?jobId=94321887')).toBe('94321887');
+    expect(extractTargetJobId('https://www.linkedin.com/jobs/search/?currentJobId=388888')).toBe('388888');
+    expect(extractTargetJobId('https://www.indeed.com/jobs?vjk=abc12345')).toBe('abc12345');
+    expect(extractTargetJobId('https://www.indeed.com/jobs?jk=xyz67890')).toBe('xyz67890');
+    expect(extractTargetJobId('https://au.seek.com/jobs')).toBeNull();
+  });
+
+  it('selects targeted card matching requested jobId instead of the first card', () => {
+    const container = document.createElement('div');
+    container.innerHTML = `
+      <article data-automation="normalJob" data-job-id="111" aria-selected="true" id="first-card">
+        <a data-automation="jobTitle" href="/job/111">First Job</a>
+      </article>
+      <article data-automation="normalJob" data-job-id="222" id="target-card">
+        <a data-automation="jobTitle" href="/job/222">Target Job</a>
+      </article>
+      <div data-automation="jobAdDetails">First job description</div>
+    `;
+
+    const firstCard = container.querySelector('#first-card')!;
+    const targetCard = container.querySelector('#target-card')!;
+    const firstSpy = vi.fn();
+    const targetSpy = vi.fn();
+    firstCard.addEventListener('click', firstSpy);
+    targetCard.addEventListener('click', targetSpy);
+
+    const cleanup = autoSelectFirstJobCard(container, {
+      maxWaitMs: 500,
+      url: 'https://au.seek.com/jobs?jobId=222',
+    });
+    cleanup();
+
+    expect(targetSpy).toHaveBeenCalledTimes(1);
+    expect(firstSpy).not.toHaveBeenCalled();
+  });
+
+  it('does not select first card if a specific jobId was requested in the URL but not found', () => {
+    const container = document.createElement('div');
+    container.innerHTML = `
+      <article data-automation="normalJob" data-job-id="111" id="first-card">
+        <a data-automation="jobTitle" href="/job/111">First Job</a>
+      </article>
+    `;
+
+    const firstCard = container.querySelector('#first-card')!;
+    const firstSpy = vi.fn();
+    firstCard.addEventListener('click', firstSpy);
+
+    const cleanup = autoSelectFirstJobCard(container, {
+      maxWaitMs: 10,
+      url: 'https://au.seek.com/jobs?jobId=99999999',
+    });
+    cleanup();
+
+    expect(firstSpy).not.toHaveBeenCalled();
   });
 
   it('autoSelectFirstJobCard selects immediately on SEEK search page and only clicks once', () => {

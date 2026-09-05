@@ -43,6 +43,7 @@ import {
 } from './services/messaging';
 import {
   createPageInspectionQueue,
+  createPageInspectionScheduler,
   pageChangeInspectionRequest,
 } from './services/page-change-inspection';
 import { Toaster } from '@jobby/ui/components/UI/toast/toaster';
@@ -694,15 +695,12 @@ export function App() {
         }
       },
     );
-    let scheduledInspection: number | undefined;
+    const inspectionScheduler = createPageInspectionScheduler(
+      inspectCurrentPage,
+      PAGE_READY_DELAY_MS,
+    );
     const scheduleInspection = (showLoading: boolean, force = false) => {
-      if (scheduledInspection !== undefined) {
-        window.clearTimeout(scheduledInspection);
-      }
-      scheduledInspection = window.setTimeout(() => {
-        scheduledInspection = undefined;
-        inspectCurrentPage({ showLoading, force });
-      }, PAGE_READY_DELAY_MS);
+      inspectionScheduler.schedule({ showLoading, force });
     };
 
     inspectCurrentPage({ showLoading: true, force: false });
@@ -740,8 +738,7 @@ export function App() {
     }
 
     return () => {
-      if (scheduledInspection !== undefined)
-        window.clearTimeout(scheduledInspection);
+      inspectionScheduler.cancel();
       if (
         typeof chrome !== 'undefined' &&
         chrome.tabs?.onActivated &&

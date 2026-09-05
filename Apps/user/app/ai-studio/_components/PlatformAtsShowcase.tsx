@@ -33,6 +33,7 @@ export const SUPPORTED_JOB_PLATFORMS: PlatformItemData[] = [
   { id: 'workable', name: 'Workable', domain: 'workable.com' },
   { id: 'successfactors', name: 'SuccessFactors', domain: 'successfactors.com' },
   { id: 'micro1', name: 'micro1', domain: 'micro1.ai' },
+  { id: 'avature', name: 'Avature', domain: 'avature.net' },
 ];
 
 export function buildPlatformSearchUrl(
@@ -150,6 +151,10 @@ export function buildPlatformSearchUrl(
     }
     case 'micro1': {
       const terms = ['site:jobs.micro1.ai/post', t, l].filter(Boolean).join(' ');
+      return `https://www.google.com/search?q=${encodeURIComponent(terms)}`;
+    }
+    case 'avature': {
+      const terms = ['site:avature.net/careers', t, l].filter(Boolean).join(' ');
       return `https://www.google.com/search?q=${encodeURIComponent(terms)}`;
     }
     default:
