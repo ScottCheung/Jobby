@@ -1,4 +1,5 @@
 import type { AtsProviderDefinition } from "../platform-definition";
+import { glassdoorJobSelection } from "./job-selection";
 
 function cleanText(value: string | null | undefined): string {
   return (value || "").replace(/\s+/g, " ").trim();
@@ -103,4 +104,5 @@ export const glassdoorDefinition = {
     readinessWaitUntilAttempt: 14,
     postingDateWaitUntilAttempt: 14,
   },
+  jobSelection: glassdoorJobSelection,
 } satisfies AtsProviderDefinition<"glassdoor">;

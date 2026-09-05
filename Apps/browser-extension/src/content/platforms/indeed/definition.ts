@@ -1,6 +1,8 @@
 import type { ProviderDefinition } from "../platform-definition";
 import { readIndeedJobPage } from "./job-reader";
 import { readIndeedPageWhenReady } from "./readiness";
+import { observeIndeedJobDom } from "./page-change-observer";
+import { indeedJobSelection } from "./job-selection";
 
 export const indeedDefinition = {
   platform: "indeed",
@@ -43,6 +45,10 @@ export const indeedDefinition = {
       readWhenReady: readIndeedPageWhenReady,
     },
   },
+  pageObserver: {
+    observe: (onChange, root) => observeIndeedJobDom(onChange, root),
+  },
+  jobSelection: indeedJobSelection,
 } satisfies ProviderDefinition<"indeed"> & {
   applicationRoots: readonly string[];
 };

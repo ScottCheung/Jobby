@@ -12,7 +12,12 @@ export function Image({
   width?: number | string;
   height?: number | string;
 }) {
-  const resolvedSrc = typeof src === 'object' && src !== null && 'src' in src ? src.src : src;
+  const resolvedSrc =
+    typeof src === 'string'
+      ? src
+      : src && typeof src === 'object' && 'src' in src
+        ? (src as { src: string }).src
+        : '';
   return (
     <img
       src={resolvedSrc}

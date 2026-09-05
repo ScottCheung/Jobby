@@ -1,59 +1,17 @@
 /** @format */
 
-const PLATFORM_CARD_SELECTORS = [
-  // SEEK card containers
-  "article[data-automation='normalJob']",
-  "article[data-automation='premiumJob']",
-  "article[data-automation='standOutJob']",
-  "article[data-automation='featuredJob']",
-  "article[data-job-id]",
-  "[data-automation='job-card']",
-  "[data-testid='job-card']",
-  "article[data-card-type='JobCard']",
+import { detectDedicatedProvider } from "./platforms/provider-routing";
+import { providerDefinitions } from "./platforms/registry";
+import {
+  extractUrlQueryParam,
+  isElementVisible,
+  runJobSelectionCycle,
+  triggerJobCardClick,
+} from "./platforms/shared/job-selection";
 
-  // LinkedIn card containers
-  ".jobs-search-results-list .job-card-container",
-  "li[data-occludable-job-id] .job-card-container",
-  ".scaffold-layout__list-container .job-card-container",
-  ".job-card-container",
+export { isElementVisible, triggerJobCardClick };
 
-  // Indeed card containers
-  ".job_seen_beacon",
-  "#mosaic-provider-jobcards .cardOutline",
-  "#mosaic-provider-jobcards [data-testid='job-card']",
-
-  // Glassdoor card containers
-  "[data-test='jobListing']",
-  ".JobsList_jobListItem__JBkBU",
-
-  // Jora card containers
-  ".job-card[data-job-card='true']",
-  ".job-card",
-  "#jobresults .job-card",
-  ".job-card a.show-job-description",
-
-  // ZipRecruiter card containers
-  ".job_result",
-  "[data-testid='job-listing']",
-
-  // Adzuna card containers
-  ".results-container article",
-  "[data-aid]",
-
-  // Wellfound card containers
-  "[data-test='JobListing']",
-  "[class*='styles_jobListing']",
-
-  // Dice card containers
-  "dhi-search-card",
-  "[data-cy='card-title-link']",
-
-  // SimplyHired card containers
-  "[data-testid='searchSerpJob']",
-  ".SerpJob-jobCard",
-];
-
-const SEARCH_OR_LIST_PAGE_PATTERNS = [
+const GENERIC_SEARCH_OR_LIST_PAGE_PATTERNS = [
   /\/jobs\/search/i,
   /\/jobs\/collections/i,
   /\/jobs\/?(?:\?.*)?$/i,
@@ -65,253 +23,124 @@ const SEARCH_OR_LIST_PAGE_PATTERNS = [
   /\/j(?:\?|$)/i,
 ];
 
-export function isSearchOrListingPage(url = window.location.href): boolean {
+const GENERIC_CARD_SELECTORS = [
+  "article[data-job-id]",
+  "[data-testid='job-card']",
+  "[data-automation='job-card']",
+  ".job-card",
+  "[data-job-card]",
+  "a[href*='/job/']",
+  "a[href*='/jobs/view/']",
+];
+
+const GENERIC_SELECTED_SELECTORS = [
+  "[data-selected='true']",
+  "[aria-selected='true']",
+  "[data-active='true']",
+];
+
+function resolveProvider(urlStr?: string, root: ParentNode = typeof document !== "undefined" ? document : null as unknown as ParentNode) {
   try {
-    const parsed = new URL(url);
-    const host = parsed.hostname.toLowerCase();
-    const pathname = parsed.pathname;
-    const pathAndSearch = parsed.pathname + parsed.search;
-
-    // Dedicated SEEK platform check
-    if (/^(?:[a-z0-9-]+\.)*seek\.(?:com(?:\.au)?|co\.nz)$/i.test(host)) {
-      if (/^\/job\/\d+/i.test(pathname)) {
-        return false;
-      }
-      if (
-        /^\/(?:profile|career-advice|companies|saved-searches|saved-jobs|applied-jobs|employer|support|help)(?:\/|$)/i.test(
-          pathname,
-        )
-      ) {
-        return false;
-      }
-      return true;
-    }
-
-    // Dedicated Jora platform check
-    if (/(?:^|\.)jora\.(?:com(?:\.[a-z]{2})?|co\.[a-z]{2}|[a-z]{2,3})$/i.test(host)) {
-      if (/^\/job\/(?:[^-/]+-)*[a-f0-9]{24,32}/i.test(pathname)) {
-        return false;
-      }
-      if (/^\/(?:cms|users|login|salary|reviews)(?:\/|$)/i.test(pathname)) {
-        return false;
-      }
-      return true;
-    }
-
-    return SEARCH_OR_LIST_PAGE_PATTERNS.some((pattern) =>
-      pattern.test(pathAndSearch),
-    );
-  } catch {
-    return false;
-  }
-}
-
-function isElementVisible(element: HTMLElement): boolean {
-  if (element.hasAttribute('hidden')) return false;
-  if (element.style.display === 'none' || element.style.visibility === 'hidden')
-    return false;
-  return true;
-}
-
-export function isJobAlreadySelected(root: ParentNode = document): boolean {
-  const selected = root.querySelector<HTMLElement>(
-    "[data-automation='job-card'][data-selected='true'], [data-automation='job-card'][aria-current='true'], [data-testid='job-card'][aria-selected='true'], [data-testid='job-card'][data-selected='true'], [data-selected='true'], [aria-selected='true'], [data-active='true'], .job-card[data-active='true'], .jobs-search-results-list__list-item--active, [data-occludable-job-id].active",
-  );
-  if (selected) return true;
-  const seekDetails = root.querySelector<HTMLElement>(
-    "[data-automation='jobAdDetails']",
-  );
-  if (seekDetails && isElementVisible(seekDetails)) return true;
-  return false;
-}
-
-export function extractTargetJobId(url: string): string | null {
-  try {
-    const parsed = new URL(url);
-    return (
-      parsed.searchParams.get('jobId') ||
-      parsed.searchParams.get('currentJobId') ||
-      parsed.searchParams.get('vjk') ||
-      parsed.searchParams.get('jk') ||
-      null
-    );
+    const parsed = urlStr ? new URL(urlStr) : typeof window !== "undefined" ? window.location : null;
+    if (!parsed) return null;
+    const docRoot = root instanceof Document ? root : typeof document !== "undefined" ? document : null;
+    return detectDedicatedProvider(parsed, docRoot || undefined);
   } catch {
     return null;
   }
+}
+
+export function isSearchOrListingPage(url = typeof window !== "undefined" ? window.location.href : ""): boolean {
+  try {
+    const provider = resolveProvider(url);
+    if (provider?.jobSelection?.isListingPage) {
+      return provider.jobSelection.isListingPage(url, typeof document !== "undefined" ? document : undefined);
+    }
+
+    const parsed = new URL(url);
+    const pathAndSearch = parsed.pathname + parsed.search;
+    return GENERIC_SEARCH_OR_LIST_PAGE_PATTERNS.some((pattern) => pattern.test(pathAndSearch));
+  } catch {
+    return false;
+  }
+}
+
+export function isJobAlreadySelected(root: ParentNode = document): boolean {
+  const provider = resolveProvider(undefined, root);
+  if (provider?.jobSelection?.isJobSelected) {
+    return provider.jobSelection.isJobSelected(root);
+  }
+  for (const def of providerDefinitions) {
+    if (def.jobSelection?.isJobSelected?.(root)) {
+      return true;
+    }
+  }
+  const selected = root.querySelector<HTMLElement>(GENERIC_SELECTED_SELECTORS.join(", "));
+  return Boolean(selected);
+}
+
+export function extractTargetJobId(url: string): string | null {
+  const provider = resolveProvider(url);
+  if (provider?.jobSelection?.extractTargetJobId) {
+    return provider.jobSelection.extractTargetJobId(url);
+  }
+  return extractUrlQueryParam(url, "jobId", "currentJobId", "vjk", "jk");
 }
 
 export function findTargetJobCard(
   root: ParentNode = document,
   targetJobId: string,
 ): HTMLElement | null {
+  const provider = resolveProvider(undefined, root);
+  if (provider?.jobSelection?.findTargetJobCard) {
+    return provider.jobSelection.findTargetJobCard(root, targetJobId);
+  }
+  for (const def of providerDefinitions) {
+    const card = def.jobSelection?.findTargetJobCard?.(root, targetJobId);
+    if (card) return card;
+  }
   const selector = `[data-job-id='${targetJobId}'], article[data-job-id='${targetJobId}'], a[href*='${targetJobId}']`;
   const candidates = Array.from(root.querySelectorAll<HTMLElement>(selector));
-  for (const element of candidates) {
-    if (isElementVisible(element)) {
-      return element;
-    }
-  }
-  return null;
+  return candidates.find(isElementVisible) || null;
 }
 
 export function findFirstJobCard(
   root: ParentNode = document,
 ): HTMLElement | null {
-  const combinedSelector = PLATFORM_CARD_SELECTORS.join(', ');
-  const elements = Array.from(
-    root.querySelectorAll<HTMLElement>(combinedSelector),
-  );
-  for (const element of elements) {
-    if (isElementVisible(element)) {
-      return element;
-    }
+  const provider = resolveProvider(undefined, root);
+  if (provider?.jobSelection?.findFirstJobCard) {
+    return provider.jobSelection.findFirstJobCard(root);
   }
-  return null;
+  for (const def of providerDefinitions) {
+    const card = def.jobSelection?.findFirstJobCard?.(root);
+    if (card) return card;
+  }
+  const combined = GENERIC_CARD_SELECTORS.join(", ");
+  const candidates = Array.from(root.querySelectorAll<HTMLElement>(combined));
+  return candidates.find(isElementVisible) || null;
 }
-
-export function triggerJobCardClick(element: HTMLElement): void {
-  const isLink = element.tagName.toLowerCase() === 'a';
-  const targetAttr = element.getAttribute('target');
-
-  // If element is a link with target="_blank", temporarily remove target to avoid opening a new tab
-  if (isLink && targetAttr === '_blank') {
-    element.removeAttribute('target');
-  }
-
-  if (typeof element.click === 'function') {
-    try {
-      element.click();
-    } catch {
-      element.dispatchEvent(
-        new MouseEvent('click', {
-          bubbles: true,
-          cancelable: true,
-          view: window,
-        }),
-      );
-    }
-  } else {
-    element.dispatchEvent(
-      new MouseEvent('click', {
-        bubbles: true,
-        cancelable: true,
-        view: window,
-      }),
-    );
-  }
-
-  if (isLink && targetAttr === '_blank') {
-    element.setAttribute('target', targetAttr);
-  }
-}
-
-let lastAutoSelectedUrl = '';
 
 export function autoSelectFirstJobCard(
   root: ParentNode = document,
   options: { maxWaitMs?: number; intervalMs?: number; url?: string } = {},
 ): () => void {
-  const currentUrl = options.url || window.location.href;
-  if (!isSearchOrListingPage(currentUrl)) {
-    return () => undefined;
+  const currentUrl = options.url || (typeof window !== "undefined" ? window.location.href : "");
+  const provider = resolveProvider(currentUrl, root);
+  if (provider?.jobSelection?.autoSelectFirstJob) {
+    return provider.jobSelection.autoSelectFirstJob(root, options);
   }
 
-  if (lastAutoSelectedUrl === currentUrl) {
-    return () => undefined;
-  }
-
-  const maxWaitMs = options.maxWaitMs ?? 4000;
-  const intervalMs = options.intervalMs ?? 150;
-  const startTime = Date.now();
-  let timerId: number | undefined;
-  let observer: MutationObserver | undefined;
-  let hasHandled = false;
-
-  const cleanup = () => {
-    hasHandled = true;
-    if (timerId !== undefined) {
-      window.clearTimeout(timerId);
-      timerId = undefined;
-    }
-    if (observer) {
-      observer.disconnect();
-      observer = undefined;
-    }
-  };
-
-  const trySelect = (): boolean => {
-    if (hasHandled) return true;
-    const targetJobId = extractTargetJobId(currentUrl);
-    if (targetJobId) {
-      const targetCard = findTargetJobCard(root, targetJobId);
-      if (targetCard) {
-        if (
-          targetCard.matches(
-            "[data-selected='true'], [aria-selected='true'], [aria-current='true'], [data-active='true']",
-          ) ||
-          targetCard.closest(
-            "[data-selected='true'], [aria-selected='true'], [aria-current='true'], [data-active='true']",
-          )
-        ) {
-          lastAutoSelectedUrl = currentUrl;
-          cleanup();
-          return true;
-        }
-        lastAutoSelectedUrl = currentUrl;
-        triggerJobCardClick(targetCard);
-        cleanup();
-        return true;
-      }
-      if (Date.now() - startTime >= maxWaitMs) {
-        cleanup();
-        return true;
-      }
-      return false;
-    }
-    if (isJobAlreadySelected(root)) {
-      lastAutoSelectedUrl = currentUrl;
-      cleanup();
-      return true;
-    }
-    const firstCard = findFirstJobCard(root);
-    if (firstCard) {
-      lastAutoSelectedUrl = currentUrl;
-      triggerJobCardClick(firstCard);
-      cleanup();
-      return true;
-    }
-    if (Date.now() - startTime >= maxWaitMs) {
-      cleanup();
-      return true;
-    }
-    return false;
-  };
-
-  // Immediate attempt
-  if (trySelect()) {
-    return cleanup;
-  }
-
-  // MutationObserver for dynamic page loads
-  if (typeof MutationObserver !== 'undefined' && document.body) {
-    observer = new MutationObserver(() => {
-      trySelect();
-    });
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true,
-    });
-  }
-
-  // Polling fallback
-  const poll = () => {
-    if (hasHandled) return;
-    const handled = trySelect();
-    if (!handled) {
-      timerId = window.setTimeout(poll, intervalMs);
-    }
-  };
-  timerId = window.setTimeout(poll, intervalMs);
-
-  return cleanup;
+  // Fallback selection engine
+  return runJobSelectionCycle(
+    {
+      isListingPage: (u) => isSearchOrListingPage(typeof u === "string" ? u : u.href),
+      findFirstJobCard: (r) => findFirstJobCard(r),
+      findTargetJobCard: (r, id) => findTargetJobCard(r, id),
+      extractTargetJobId: (u) => extractTargetJobId(typeof u === "string" ? u : u.href),
+      isJobSelected: (r) => isJobAlreadySelected(r),
+      selectJob: triggerJobCardClick,
+    },
+    root,
+    options,
+  );
 }

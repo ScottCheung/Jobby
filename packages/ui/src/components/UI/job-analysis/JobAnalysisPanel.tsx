@@ -2,7 +2,7 @@
 
 'use client';
 
-import { cn } from '@jobby/ui';
+import { cn } from '../../../lib/utils';
 import { JobDetails, type JobDetailsProps } from './JobDetails';
 import { JobScoreCard } from './JobScoreCard';
 import type {

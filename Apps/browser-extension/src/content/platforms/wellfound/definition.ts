@@ -1,4 +1,5 @@
 import type { AtsProviderDefinition } from "../platform-definition";
+import { wellfoundJobSelection } from "./job-selection";
 
 function cleanText(value: string | null | undefined): string {
   return (value || "").replace(/\s+/g, " ").trim();
@@ -134,4 +135,5 @@ export const wellfoundDefinition = {
     dateFromPage,
     companyFromPage,
   },
+  jobSelection: wellfoundJobSelection,
 } satisfies AtsProviderDefinition<"wellfound">;

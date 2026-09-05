@@ -146,6 +146,130 @@ describe('Provider Strategy & Plugin Architecture', () => {
     expect(ashby.autofill?.mode).toBe('sequential');
   });
 
+  it('declares pageObserver, jobSelection, and applicationNavigation capabilities', () => {
+    const seek = getProviderDefinition('seek');
+    expect(seek.pageObserver).toBeDefined();
+    expect(typeof seek.pageObserver?.observe).toBe('function');
+    expect(seek.jobSelection).toBeDefined();
+    expect(typeof seek.jobSelection?.autoSelectFirstJob).toBe('function');
+    expect(seek.applicationNavigation).toBeDefined();
+    expect(typeof seek.applicationNavigation?.clickAction).toBe('function');
+
+    const indeed = getProviderDefinition('indeed');
+    expect(indeed.pageObserver).toBeDefined();
+    expect(typeof indeed.pageObserver?.observe).toBe('function');
+    expect(indeed.jobSelection).toBeDefined();
+    expect(typeof indeed.jobSelection?.autoSelectFirstJob).toBe('function');
+
+    const linkedin = getProviderDefinition('linkedin');
+    expect(linkedin.jobSelection).toBeDefined();
+    expect(typeof linkedin.jobSelection?.autoSelectFirstJob).toBe('function');
+    expect(linkedin.applicationNavigation).toBeDefined();
+    expect(typeof linkedin.applicationNavigation?.clickAction).toBe('function');
+
+    const boards = ['glassdoor', 'jora', 'ziprecruiter', 'adzuna', 'wellfound', 'dice', 'simplyhired'] as const;
+    for (const board of boards) {
+      const def = getProviderDefinition(board);
+      expect(def.jobSelection, `Expected ${board} to have jobSelection`).toBeDefined();
+      expect(typeof def.jobSelection?.findFirstJobCard).toBe('function');
+    }
+  });
+
+  it('SEEK URL classification strictly adheres to positive listing routes and rejects non-listing routes', () => {
+    const seek = getProviderDefinition('seek');
+    const isListing = seek.jobSelection!.isListingPage!;
+
+    // Expected listing pages
+    expect(isListing('https://www.seek.com.au/software-engineer-jobs')).toBe(true);
+    expect(isListing('https://www.seek.com.au/software-engineer-jobs/in-All-Sydney-NSW')).toBe(true);
+    expect(isListing('https://www.seek.com.au/jobs?keywords=Developer')).toBe(true);
+    expect(isListing('https://www.seek.com.au/jobs/in-Melbourne-VIC')).toBe(true);
+    expect(isListing('https://www.seek.com.au/jobs-in-information-communication-technology')).toBe(true);
+
+    // Expected NOT listing pages
+    expect(isListing('https://www.seek.com.au/job/93941097')).toBe(false);
+    expect(isListing('https://www.seek.com.au/job/78912345/apply')).toBe(false);
+    expect(isListing('https://www.seek.com.au/apply/78912345')).toBe(false);
+    expect(isListing('https://www.seek.com.au/profile')).toBe(false);
+    expect(isListing('https://www.seek.com.au/saved-jobs')).toBe(false);
+    expect(isListing('https://www.seek.com.au/applied-jobs')).toBe(false);
+    expect(isListing('https://www.seek.com.au/login')).toBe(false);
+    expect(isListing('https://www.seek.com.au/account')).toBe(false);
+    expect(isListing('https://www.seek.com.au/settings')).toBe(false);
+    expect(isListing('https://www.seek.com.au/')).toBe(false);
+
+    // Unknown routes default to false without DOM evidence
+    expect(isListing('https://www.seek.com.au/unknown-path-123')).toBe(false);
+
+    // Unknown routes return true WITH reliable DOM evidence
+    const docWithCard = document.createElement('div');
+    docWithCard.innerHTML = '<article data-automation="normalJob">Job</article>';
+    expect(isListing('https://www.seek.com.au/unknown-path-123', docWithCard)).toBe(true);
+  });
+
+  it('bootstrap.ts does not directly import concrete platforms', async () => {
+    const { default: content } = await import('../bootstrap.ts?raw');
+
+    expect(content).not.toMatch(/from\s+['"].*\/platforms\/seek\//);
+    expect(content).not.toMatch(/from\s+['"].*\/platforms\/indeed\//);
+    expect(content).not.toMatch(/from\s+['"].*\/platforms\/linkedin\//);
+    expect(content).not.toMatch(/observeSeekJobDom/);
+    expect(content).not.toMatch(/observeIndeedJobDom/);
+  });
+
+  it('job selection is isolated so platform cards are only selected by their own providers', () => {
+    const seek = getProviderDefinition('seek');
+    const indeed = getProviderDefinition('indeed');
+    const linkedin = getProviderDefinition('linkedin');
+
+    const container = document.createElement('div');
+    container.innerHTML = `
+      <article data-automation="normalJob" id="seek-card">SEEK</article>
+      <div class="job_seen_beacon" id="indeed-card">Indeed</div>
+      <div class="job-card-container" id="linkedin-card">LinkedIn</div>
+    `;
+
+    // SEEK card finder only finds SEEK card
+    expect(seek.jobSelection!.findFirstJobCard!(container)?.id).toBe('seek-card');
+
+    // Indeed card finder only finds Indeed card
+    expect(indeed.jobSelection!.findFirstJobCard!(container)?.id).toBe('indeed-card');
+
+    // LinkedIn card finder only finds LinkedIn card
+    expect(linkedin.jobSelection!.findFirstJobCard!(container)?.id).toBe('linkedin-card');
+  });
+
+  it('authentication safety invariant: inspection and status checks never trigger interactive login UI', async () => {
+    let launchWebAuthFlowCalls = 0;
+    const originalChrome = globalThis.chrome;
+    (globalThis as any).chrome = {
+      ...originalChrome,
+      identity: {
+        launchWebAuthFlow: () => {
+          launchWebAuthFlowCalls += 1;
+          return Promise.resolve('');
+        },
+        getRedirectURL: () => 'https://mock.redirect',
+      },
+      storage: {
+        local: {
+          get: () => Promise.resolve({}),
+          set: () => Promise.resolve(),
+          remove: () => Promise.resolve(),
+        },
+      },
+    };
+
+    try {
+      const { getAuthStatus } = await import('../../background/auth-service');
+      const status = await getAuthStatus();
+      expect(status.connected).toBe(false);
+      expect(launchWebAuthFlowCalls).toBe(0);
+    } finally {
+      (globalThis as any).chrome = originalChrome;
+    }
+  });
+
   it('preserves public export contracts for form-inspector and form-driver', () => {
     expect(typeof inspectVisibleFormFields).toBe('function');
     expect(typeof findFormElement).toBe('function');

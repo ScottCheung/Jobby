@@ -1,4 +1,5 @@
 import type { AtsProviderDefinition } from "../platform-definition";
+import { adzunaJobSelection } from "./job-selection";
 
 function cleanText(value: string | null | undefined): string {
   return (value || "").replace(/\s+/g, " ").trim();
@@ -145,4 +146,5 @@ export const adzunaDefinition = {
     dateFromPage,
     companyFromPage,
   },
+  jobSelection: adzunaJobSelection,
 } satisfies AtsProviderDefinition<"adzuna">;

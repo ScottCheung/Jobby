@@ -1,4 +1,5 @@
 import type { AtsProviderDefinition } from "../platform-definition";
+import { joraJobSelection } from "./job-selection";
 
 function cleanText(value: string | null | undefined): string {
   return (value || "").replace(/\s+/g, " ").trim();
@@ -222,4 +223,5 @@ export const joraDefinition = {
     dateFromPage,
     companyFromPage,
   },
+  jobSelection: joraJobSelection,
 } satisfies AtsProviderDefinition<"jora">;

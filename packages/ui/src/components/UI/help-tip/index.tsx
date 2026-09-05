@@ -4,9 +4,9 @@
 
 import React from 'react';
 import { HelpCircle } from '@jobby/ui/components/icons';
-import { Button } from '@jobby/ui';
+import { Button } from '../Button';
 import { Tooltip } from '../tooltip';
-import { cn } from '@/lib/utils';
+import { cn } from '../../../lib/utils';
 
 type HelpTipProps = {
   content: React.ReactNode;

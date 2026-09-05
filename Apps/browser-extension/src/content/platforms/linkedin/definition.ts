@@ -3,6 +3,7 @@ import { readLinkedInPage } from "./job-reader";
 import { readLinkedInPageWhenReady } from "./readiness";
 import { readLinkedInFormPage } from "./form-reader";
 import { linkedinAdapter } from "./adapter";
+import { linkedinJobSelection } from "./job-selection";
 
 const LINKEDIN_IGNORED_FIELD_LABELS =
   /(?:job\s*alert|search\s*alert|create\s*alert|search\s*by\s*title|city,\s*state|search\s*jobs|keywords?|职位提醒|求职提醒|创建求职通知|通知提醒|搜索职位|搜索地点)/i;
@@ -79,5 +80,12 @@ export const linkedinDefinition = {
   form: {
     read: () => readLinkedInFormPage(),
     scope: () => linkedinAdapter.getApplicationRoot() || null,
+  },
+  jobSelection: linkedinJobSelection,
+  applicationNavigation: {
+    getAction: (action) => linkedinAdapter.getCurrentApplicationAction(action),
+    getActionLabel: () => linkedinAdapter.getCurrentApplicationActionLabel(),
+    getActionKind: () => linkedinAdapter.getCurrentApplicationActionKind(),
+    clickAction: (action) => linkedinAdapter.clickApplicationAction(action),
   },
 } satisfies ProviderDefinition<"linkedin">;

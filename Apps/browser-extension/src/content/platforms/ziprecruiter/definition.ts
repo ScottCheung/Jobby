@@ -1,4 +1,5 @@
 import type { AtsProviderDefinition } from "../platform-definition";
+import { ziprecruiterJobSelection } from "./job-selection";
 
 function cleanText(value: string | null | undefined): string {
   return (value || "").replace(/\s+/g, " ").trim();
@@ -160,4 +161,5 @@ export const ziprecruiterDefinition = {
     dateFromPage,
     companyFromPage,
   },
+  jobSelection: ziprecruiterJobSelection,
 } satisfies AtsProviderDefinition<"ziprecruiter">;

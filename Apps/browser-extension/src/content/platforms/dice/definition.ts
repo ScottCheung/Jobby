@@ -1,4 +1,5 @@
 import type { AtsProviderDefinition } from "../platform-definition";
+import { diceJobSelection } from "./job-selection";
 
 function cleanText(value: string | null | undefined): string {
   return (value || "").replace(/\s+/g, " ").trim();
@@ -187,4 +188,5 @@ export const diceDefinition = {
     dateFromPage,
     companyFromPage,
   },
+  jobSelection: diceJobSelection,
 } satisfies AtsProviderDefinition<"dice">;

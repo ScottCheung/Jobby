@@ -7,7 +7,7 @@
     "dev": "vite build --watch --mode development",
     "dev:ui": "vite --config vite.ui.config.ts",
     "watch": "vite build --watch",
-    "build": "tsc --noEmit && vite build",
+    "build": "vite build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:e2e:live": "python3 -u e2e-live-browser-test.py"

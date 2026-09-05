@@ -2,6 +2,14 @@ import type { ProviderDefinition } from "../platform-definition";
 import { SEEK_SELECTORS } from "./selectors";
 import { readSeekPage } from "./job-reader";
 import { getSeekApplicationScope, readSeekFormPage } from "./form-reader";
+import { observeSeekJobDom } from "./page-change-observer";
+import { seekJobSelection } from "./job-selection";
+import {
+  clickSeekApplicationAction,
+  getSeekApplicationAction,
+  getSeekApplicationActionKind,
+  getSeekApplicationActionLabel,
+} from "./adapter";
 
 const SEEK_IGNORED_FIELD_LABELS =
   /(?:refine\s*your\s*search|strong\s*applicant\s*jobs|keywords?|classification|where\b|what\b|distance|work\s*type|pay\s*range|salary|date\s*listed|search\s*jobs)/i;
@@ -38,5 +46,16 @@ export const seekDefinition = {
     read: () => readSeekFormPage(),
     scope: () => getSeekApplicationScope(),
   },
+  pageObserver: {
+    observe: (onChange, root) => observeSeekJobDom(onChange, root),
+  },
+  jobSelection: seekJobSelection,
+  applicationNavigation: {
+    getAction: (action) => getSeekApplicationAction(action),
+    getActionLabel: () => getSeekApplicationActionLabel(),
+    getActionKind: () => getSeekApplicationActionKind(),
+    clickAction: (action) => clickSeekApplicationAction(action),
+  },
 } satisfies ProviderDefinition<"seek">;
+
 

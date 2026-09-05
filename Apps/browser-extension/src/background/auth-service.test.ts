@@ -6,6 +6,7 @@ import {
   getValidAuthSession,
   openLogin,
 } from "./auth-service";
+import { apiClient } from "./api-client";
 
 const localStorage = new Map<string, unknown>();
 
@@ -82,6 +83,11 @@ describe("extensionRedirectWithState", () => {
 
   it("does not open an auth flow while resolving a missing API session", async () => {
     await expect(getValidAuthSession()).resolves.toBeNull();
+    expect(chrome.identity.launchWebAuthFlow).not.toHaveBeenCalled();
+  });
+
+  it("fails unauthenticated API client requests without opening a login flow", async () => {
+    await expect(apiClient.request("/api/test")).rejects.toThrow();
     expect(chrome.identity.launchWebAuthFlow).not.toHaveBeenCalled();
   });
 });

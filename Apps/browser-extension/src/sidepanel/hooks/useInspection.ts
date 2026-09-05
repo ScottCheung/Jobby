@@ -141,7 +141,6 @@ function mergePageInspection(
   const userOverrodeCompany = orig ? previous.snapshot.company !== orig.company : false;
   const userOverrodeLocation = orig ? previous.snapshot.location !== orig.location : false;
   const userOverrodeDescription = orig ? previous.snapshot.description !== orig.description : false;
-  const userOverrodeSalary = orig ? previous.snapshot.salary !== orig.salary : false;
   const userOverrodeTechnologies = orig ? previous.snapshot.technologies !== orig.technologies : false;
 
   // Merge snapshot fields, keeping previous valid values or user edits if next is temporarily partial
@@ -158,7 +157,6 @@ function mergePageInspection(
           : previous.snapshot.company),
       location: userOverrodeLocation ? previous.snapshot.location : (next.snapshot.location || previous.snapshot.location),
       description: userOverrodeDescription ? previous.snapshot.description : (next.snapshot.description || previous.snapshot.description),
-      salary: userOverrodeSalary ? previous.snapshot.salary : (next.snapshot.salary || previous.snapshot.salary),
       technologies: userOverrodeTechnologies ? previous.snapshot.technologies : (next.snapshot.technologies || previous.snapshot.technologies),
       firstPostedAt: next.snapshot.firstPostedAt || previous.snapshot.firstPostedAt,
       lastPostedAt: next.snapshot.lastPostedAt || previous.snapshot.lastPostedAt,

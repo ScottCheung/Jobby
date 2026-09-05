@@ -2,9 +2,7 @@ import { autoSelectFirstJobCard } from "./auto-select-first-job";
 import { handleContentCommand, startContentFormDiscovery } from "./command-handler";
 import { initializeFloatingBall, runJobDetectionForBall } from "./dom/floating-ball";
 import { classifyCurrentPage } from "./page-classifier";
-import { observeIndeedJobDom } from "./platforms/indeed/page-change-observer";
-import { detectDedicatedPlatform } from "./platforms/provider-routing";
-import { observeSeekJobDom } from "./platforms/seek/page-change-observer";
+import { detectDedicatedProvider } from "./platforms/provider-routing";
 
 type ContentMessageListener = Parameters<typeof chrome.runtime.onMessage.addListener>[0];
 
@@ -240,11 +238,11 @@ if (isExtensionContextValid() && chrome.storage?.onChanged) {
 // Large job boards are observed continuously for client-side job selection
 // and application-step changes. ATS pages still use on-demand inspection so
 // the extension does not attach a whole-document observer to every website.
-const observedPlatform = detectDedicatedPlatform(window.location, document);
+const activeProvider = detectDedicatedProvider(window.location, document);
 
 if (isTopLevelFrame && isExtensionContextValid()) {
   cleanupCallbacks.push(initializeFloatingBall());
-  if (observedPlatform) {
+  if (activeProvider) {
     cleanupCallbacks.push(autoSelectFirstJobCard(document));
     const syncDiscoveryState = () => {
       try {
@@ -296,15 +294,11 @@ if (isTopLevelFrame && isExtensionContextValid()) {
       if (pageChangeTimer !== undefined) window.clearTimeout(pageChangeTimer);
     });
 
-    if (observedPlatform === "seek") {
-      cleanupCallbacks.push(observeSeekJobDom(notifyPageChanged));
-    }
-    if (observedPlatform === "indeed") {
-      cleanupCallbacks.push(observeIndeedJobDom(notifyPageChanged));
+    if (activeProvider.pageObserver?.observe) {
+      cleanupCallbacks.push(activeProvider.pageObserver.observe(notifyPageChanged, document));
     }
 
-    // Also observe clicks on job listing cards/links. Glassdoor and some SEEK
-    // layouts replace the detail pane without updating history.
+    // Observe clicks on job listing cards/links.
     const onJobCardClick = (event: MouseEvent) => {
       try {
         if (!isExtensionContextValid()) {
@@ -313,11 +307,14 @@ if (isTopLevelFrame && isExtensionContextValid()) {
         }
         const target = event.target as HTMLElement | null;
         if (!target) return;
-        const isJobClick = Boolean(
-          target.closest(
-            "a[href*='/job/'], a[href*='/jobs/view/'], [data-automation='job-card'], [data-automation='normalJob'], [data-testid='job-card'], .job-card-container, [data-occludable-job-id], a[href*='vjk='], a[href*='jk='], .job_seen_beacon, [data-jk], [data-mobtk], [data-test='jobListing'][data-jobid], [data-selected][data-jobid], [id^='requisitionListInterface.reqTitleLinkAction'], [id*='pagerDiv'][id$='.Next'], [id*='pagerDiv'][id$='.Previous'], .job-card, [data-job-card], .show-job-description, .job-link, [job-id]"
-          )
-        );
+        const isJobClick = activeProvider.jobSelection?.isJobCardElement
+          ? activeProvider.jobSelection.isJobCardElement(target)
+          : Boolean(
+              target.closest(
+                activeProvider.jobSelection?.cardSelector ||
+                  "a[href*='/job/'], a[href*='/jobs/view/'], .job-card, [data-job-id]",
+              ),
+            );
         if (isJobClick) {
           notifyPageChanged();
         }

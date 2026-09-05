@@ -33,10 +33,40 @@ describe('auto-select-first-job', () => {
       isSearchOrListingPage('https://www.seek.com.au/software-engineer-jobs'),
     ).toBe(true);
     expect(
+      isSearchOrListingPage('https://www.seek.com.au/jobs/in-Melbourne-VIC'),
+    ).toBe(true);
+    expect(
+      isSearchOrListingPage('https://www.seek.com.au/jobs-in-information-communication-technology'),
+    ).toBe(true);
+    expect(
+      isSearchOrListingPage('https://www.seek.com.au/software-engineer-jobs/in-All-Melbourne-VIC'),
+    ).toBe(true);
+    expect(
       isSearchOrListingPage('https://www.seek.com.au/job/78912345'),
     ).toBe(false);
     expect(
+      isSearchOrListingPage('https://www.seek.com.au/job/78912345/apply'),
+    ).toBe(false);
+    expect(
+      isSearchOrListingPage('https://www.seek.com.au/apply/78912345'),
+    ).toBe(false);
+    expect(
       isSearchOrListingPage('https://www.seek.com.au/profile'),
+    ).toBe(false);
+    expect(
+      isSearchOrListingPage('https://www.seek.com.au/login'),
+    ).toBe(false);
+    expect(
+      isSearchOrListingPage('https://www.seek.com.au/account'),
+    ).toBe(false);
+    expect(
+      isSearchOrListingPage('https://www.seek.com.au/saved-jobs'),
+    ).toBe(false);
+    expect(
+      isSearchOrListingPage('https://www.seek.com.au/applied-jobs'),
+    ).toBe(false);
+    expect(
+      isSearchOrListingPage('https://www.seek.com.au/'),
     ).toBe(false);
   });
 
