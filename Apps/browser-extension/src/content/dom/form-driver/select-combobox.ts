@@ -13,7 +13,6 @@ import {
 import { providerDefinitions } from '../../platforms/registry';
 import {
   clickControl,
-  emitChange,
   emitInput,
   isVisible,
   setValue,

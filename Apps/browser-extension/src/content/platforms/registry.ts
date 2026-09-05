@@ -118,3 +118,10 @@ export function isAtsJobPlatform(
     (definition) => definition.platform === platform,
   );
 }
+
+export function isSharedFormPlatform(
+  platform: FormPlatform,
+): platform is SharedFormPlatform {
+  return platform === "indeed" || isAtsJobPlatform(platform);
+}
+

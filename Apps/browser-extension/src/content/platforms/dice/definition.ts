@@ -44,14 +44,14 @@ function idFromRoot(root: ParentNode): string {
   return "";
 }
 
-function dateFromPage(externalId: string): string | undefined {
+function dateFromPage(_externalId: string): string | undefined {
   const dateEl = document.querySelector<HTMLElement>(
     "[data-cy='postedDate'], [data-cy='posted-date'], [data-testid='posted-date'], [data-cy='postedOn'], .posted-date, time",
   );
   return cleanText(dateEl?.getAttribute("datetime") || dateEl?.textContent) || undefined;
 }
 
-function companyFromPage(title: string): string {
+function companyFromPage(_title: string): string {
   const pageTitle = cleanText(document.title);
   const match = pageTitle.match(/^(.+?)\s+-\s+(.+?)\s+-\s+.*$/i);
   if (match?.[2]) return cleanText(match[2]);

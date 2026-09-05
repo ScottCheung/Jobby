@@ -156,25 +156,6 @@ function highlightTargetFor(element: HTMLElement): HTMLElement {
   return element;
 }
 
-function findScrollableParent(element: HTMLElement | null): HTMLElement | null {
-  let current = element;
-  while (
-    current &&
-    current !== document.body &&
-    current !== document.documentElement
-  ) {
-    const style = window.getComputedStyle(current);
-    const overflowY = style.overflowY;
-    const isScrollable =
-      (overflowY === 'auto' || overflowY === 'scroll') &&
-      current.scrollHeight > current.clientHeight;
-    if (isScrollable) {
-      return current;
-    }
-    current = current.parentElement;
-  }
-  return null;
-}
 
 function scrollRangeIntoView(range: Range, fallbackElement: HTMLElement): void {
   try {

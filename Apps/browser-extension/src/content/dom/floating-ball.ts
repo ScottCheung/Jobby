@@ -1567,7 +1567,8 @@ function hideSidepanelIframe() {
  * Fully remove the iframe from the DOM (used when native side panel takes over).
  */
 function removeSidepanelIframe(immediate = false) {
-  if (panelState === 'iframe') {
+  const wasIframe = panelState === 'iframe';
+  if (wasIframe) {
     panelState = 'idle';
   }
   if (!iframeRoot) return;
@@ -1589,7 +1590,7 @@ function removeSidepanelIframe(immediate = false) {
     }
   };
 
-  if (wrapper && panelState === 'iframe') {
+  if (wrapper && wasIframe) {
     panelState = 'idle';
     restoreBodyRight();
     requestAnimationFrame(() => {

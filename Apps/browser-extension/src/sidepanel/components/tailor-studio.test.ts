@@ -320,6 +320,16 @@ describe('Document Studio & Resume Tailoring (Zero-Token Mock Mode)', () => {
       'Scott Zhang - CV - Frontend Lead.pdf',
     );
     expect(formatResumeFilename(testResume, '', '')).toBe('Scott Zhang - CV.pdf');
+    expect(formatResumeFilename(testResume, 'Company', 'Front End Developer')).toBe(
+      'Scott Zhang - CV - Front End Developer.pdf',
+    );
+
+    const { formatCoverLetterFilename } = await import(
+      '@jobby/ui/components/UI/Resume/helpers'
+    );
+    expect(formatCoverLetterFilename(testResume, 'Company', 'Front End Developer')).toBe(
+      'Scott Zhang - CL - Front End Developer.pdf',
+    );
 
     // Sanitizes special characters and normalizes Unicode dashes
     expect(

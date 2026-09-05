@@ -1,6 +1,5 @@
 import type {
   FileUploadObservation,
-  FormFieldObservation,
   FormFieldType,
 } from "../../../shared/contracts/form-inspection";
 import {
@@ -9,6 +8,7 @@ import {
   cleanText,
   closestComposed,
   composedParent,
+  isLikelyHelperText,
   isVisibleElement,
   labelTextWithoutControl,
   queryAllInScope,
@@ -26,7 +26,6 @@ import {
   type FormOption,
 } from "./option-reader";
 import {
-  cleanPlaceholderLabel,
   containerLabelFor,
   labelFor,
   labelledByText,

@@ -66,8 +66,13 @@ export async function clearDiagnostics(): Promise<void> {
 
 export async function getAuthSession(): Promise<AuthSession | null> {
   const stored = await chrome.storage.local.get(AUTH_KEY);
+  if (!stored[AUTH_KEY]) return null;
   const parsed = authSessionSchema.safeParse(stored[AUTH_KEY]);
-  return parsed.success ? parsed.data : null;
+  if (!parsed.success) {
+    await clearAuthSession();
+    return null;
+  }
+  return parsed.data;
 }
 
 export async function setAuthSession(session: AuthSession): Promise<void> {

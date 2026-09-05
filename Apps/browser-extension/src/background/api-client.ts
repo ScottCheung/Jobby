@@ -1,6 +1,6 @@
 /** @format */
 
-import { getValidAuthSession } from './auth-service';
+import { getValidAuthSession, refreshAuthSessionOnce } from './auth-service';
 import {
   formAutofillInstructionsResponseSchema,
   type FormAutofillInstructionsResponse,
@@ -200,6 +200,26 @@ export class ApiClient {
         'Could not connect to Jobby backend server.',
         503,
       );
+    }
+
+    if (response.status === 401 && authenticated) {
+      const refreshed = await refreshAuthSessionOnce();
+      if (refreshed) {
+        headers.set('Authorization', `Bearer ${refreshed.accessToken}`);
+        try {
+          response = await fetchWithTimeout(
+            `${apiBaseUrl()}${path}`,
+            { ...init, headers },
+            timeoutMs,
+          );
+        } catch (error) {
+          if (error instanceof ApiClientError) throw error;
+          throw new ApiClientError(
+            'Could not connect to Jobby backend server.',
+            503,
+          );
+        }
+      }
     }
 
     const body = await response.text();

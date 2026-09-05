@@ -29,11 +29,15 @@ export async function GET(request: Request) {
   }
 
   const callback = new URL(redirectUri)
-  callback.hash = new URLSearchParams({
+  const hashParams = new URLSearchParams({
     access_token: session.access_token,
     expires_at: String(session.expires_at || Math.floor(Date.now() / 1000) + (session.expires_in || 3600)),
     user_id: user.id,
     email: user.email,
-  }).toString()
+  })
+  if (session.refresh_token) {
+    hashParams.set('refresh_token', session.refresh_token)
+  }
+  callback.hash = hashParams.toString()
   return NextResponse.redirect(callback)
 }

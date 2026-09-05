@@ -6,7 +6,6 @@ import {
   isValidationElement,
   labelTextWithoutControl,
   scopeFor,
-  type FormScope,
   type QueryScope,
 } from "./visibility";
 import { isOptionLabelElement, isPhoneCountryElement } from "./option-reader";

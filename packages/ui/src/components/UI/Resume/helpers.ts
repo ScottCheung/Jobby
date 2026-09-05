@@ -103,6 +103,11 @@ export function sanitizeFilenameSegment(segment?: string | null): string {
     .trim();
 }
 
+function filenameCompany(company?: string | null): string {
+  const cleanCompany = sanitizeFilenameSegment(company);
+  return cleanCompany.toLocaleLowerCase() === 'company' ? '' : cleanCompany;
+}
+
 export function formatResumeFilename(
   data?: MasterResumeData | null,
   company?: string | null,
@@ -115,7 +120,7 @@ export function formatResumeFilename(
       .join(' ') || 'Resume';
 
   const cleanName = sanitizeFilenameSegment(fullName) || 'Resume';
-  const cleanCompany = sanitizeFilenameSegment(company);
+  const cleanCompany = filenameCompany(company);
   const cleanTitle = sanitizeFilenameSegment(jobTitle);
 
   const parts = [cleanName, 'CV', cleanCompany, cleanTitle].filter(Boolean);
@@ -134,7 +139,7 @@ export function formatCoverLetterFilename(
       .join(' ') || 'Cover Letter';
 
   const cleanName = sanitizeFilenameSegment(fullName) || 'Cover Letter';
-  const cleanCompany = sanitizeFilenameSegment(company);
+  const cleanCompany = filenameCompany(company);
   const cleanTitle = sanitizeFilenameSegment(jobTitle);
 
   const parts = [cleanName, 'CL', cleanCompany, cleanTitle].filter(Boolean);

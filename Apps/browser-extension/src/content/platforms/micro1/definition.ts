@@ -10,9 +10,10 @@ export function adaptMicro1FormFields(
   _root: ProviderFormRoot = document,
 ): FormFieldObservation[] {
   return fields.map((field) => {
+    const extra = field as { placeholder?: string; className?: string };
     const normName = (field.name || "").toLowerCase();
     const normId = (field.id || "").toLowerCase();
-    const normPlaceholder = (field.placeholder || "").toLowerCase();
+    const normPlaceholder = (extra.placeholder || "").toLowerCase();
     const normLabel = (field.label || "").toLowerCase();
 
     // 1. First name
@@ -51,7 +52,7 @@ export function adaptMicro1FormFields(
     // 4. Phone country select
     if (
       field.type === "select" &&
-      (field.className?.includes("PhoneInputCountrySelect") ||
+      (extra.className?.includes("PhoneInputCountrySelect") ||
         normLabel.includes("phone number country") ||
         normLabel.includes("phone country"))
     ) {
@@ -61,7 +62,7 @@ export function adaptMicro1FormFields(
     // 5. Phone number input
     if (
       field.type === "tel" ||
-      field.className?.includes("PhoneInputInput") ||
+      extra.className?.includes("PhoneInputInput") ||
       normName === "phone" ||
       normName === "phone_number" ||
       (normLabel.includes("phone") && !normLabel.includes("country"))

@@ -15,6 +15,7 @@ import {
 } from "./platforms/provider-routing";
 import {
   findProviderDefinition,
+  isSharedFormPlatform,
 } from "./platforms/registry";
 import { isAtsJobConfig, isDedicatedJobReader } from "./platforms/platform-definition";
 import { findActiveFormScope } from "./dom/form-scope";
@@ -178,7 +179,7 @@ function fallbackToGenericJob(
   }
   const genericInspection = readGenericJobPage();
   if (genericInspection.kind === "job") {
-    if (platform && platform !== "generic") {
+    if (platform) {
       return {
         ...genericInspection,
         snapshot: {
@@ -209,7 +210,7 @@ export function readCurrentForm(): FormInspection {
   if (provider?.form?.read) {
     return provider.form.read();
   }
-  if (platform) {
+  if (platform && isSharedFormPlatform(platform)) {
     const inspection = readDedicatedFormPage(platform);
     if (inspection) return inspection;
   }
@@ -222,7 +223,7 @@ export function getCurrentFormScope(): FormScope | null {
   if (provider?.form?.scope) {
     return provider.form.scope();
   }
-  if (platform) {
+  if (platform && isSharedFormPlatform(platform)) {
     const scope = findDedicatedApplicationScope(platform);
     if (scope) return scope;
   }

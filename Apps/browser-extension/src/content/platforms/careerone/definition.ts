@@ -46,7 +46,7 @@ function dateFromPage(externalId: string): string | undefined {
   return cleanText(dateEl?.getAttribute("datetime") || dateEl?.textContent) || undefined;
 }
 
-function companyFromPage(title: string): string {
+function companyFromPage(_title: string): string {
   const pageTitle = cleanText(document.title);
   const pipeMatch = pageTitle.match(/^(.+?)\s*\|\s*(.+?)\s*\|\s*CareerOne/i);
   if (pipeMatch?.[2]) return cleanText(pipeMatch[2]);

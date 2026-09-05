@@ -22,9 +22,9 @@ import {
   emitChange,
   markAutofillWrite,
   normalized,
+  restoreScrollAfterRerender,
   result,
   setValue,
-  type FormControl,
 } from './form-driver/events';
 import {
   ariaCheckboxIsChecked,

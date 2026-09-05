@@ -165,7 +165,7 @@ test('the application does not impose a second local login deadline', async () =
   assert.match(serverSource, /cookieStore\.set\(name, value, options\)/);
 });
 
-test('the extension callback does not expose the web refresh token', async () => {
+test('the extension callback provides the refresh token for extension silent refresh', async () => {
   const callbackSource = await readFile(
     new URL('../app/auth/extension-callback/route.ts', import.meta.url),
     'utf8',
@@ -178,7 +178,7 @@ test('the extension callback does not expose the web refresh token', async () =>
     'utf8',
   );
 
-  assert.doesNotMatch(callbackSource, /refresh_token/);
-  assert.doesNotMatch(extensionAuthSource, /refresh_token|refreshAuthSession/);
+  assert.match(callbackSource, /refresh_token/);
+  assert.match(extensionAuthSource, /refreshAuthSession/);
   assert.match(callbackSource, /supabase\.auth\.getUser\(\)/);
 });
