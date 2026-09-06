@@ -3,7 +3,7 @@ import logging
 import os
 from contextlib import asynccontextmanager
 
-from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
@@ -18,78 +18,20 @@ try:
 except ImportError:
     DefaultResponseClass = JSONResponse
 
-from services.api.routers.applications import (
-    _job_snapshot_from_application_values,
-    _run_tailored_resume_generation,
-    _update_application_job,
-    apply_application_plan_action,
-    create_application,
-    create_application_form_instructions,
-    create_application_plan_endpoint,
-    create_tailored_resume_for_application,
-    find_existing_application,
-    generate_application_plan_tailored_resume,
-    generate_application_tailored_resume,
-    job_application_response,
-    normalize_application_status,
-    normalize_job_id,
-    process_tailored_resume,
-    read_application_plan,
-    router as applications_router,
-    start_tailored_resume_generation,
-)
-from services.api.routers.autofill import (
-    _autofill_answer_category,
-    _autofill_intent_key,
-    _autofill_intent_key_for_field,
-    _build_form_autofill_instructions,
-    _canonical_autofill_intent_key,
-    _coerce_form_value,
-    _compatible_form_field_types,
-    _form_scene,
-    _inverse_sponsorship_answer,
-    _is_phone_country_field,
-    _is_single_consent_checkbox,
-    _phone_country_code,
-    _phone_country_value,
-    router as autofill_router,
-)
+from services.api.routers.applications import router as applications_router
+from services.api.routers.autofill import router as autofill_router
 from services.api.routers.career_profiles import router as career_profiles_router
-from services.api.routers.helpers import apply_updates, refund_resume_coins
 from services.api.routers.interview import router as interview_router
 from services.api.routers.job_hunting_profiles import router as job_hunting_profiles_router
-import services.api.routers.job_review as job_review_module
 from services.api.routers.job_review import router as job_review_router
 from services.api.routers.prospects import router as prospects_router
 from services.api.routers.recommendations import router as recommendations_router
-from services.api.routers.resumes import (
-    _default_career_profile,
-    canonical_resume_storage_key,
-    delete_master_resume,
-    delete_master_resume_version,
-    delete_tailored_resume,
-    master_resume_response,
-    process_master_resume,
-    resume_upload_id,
-    router as resumes_router,
-    tailored_resume_response,
-    update_tailored_resume,
-)
-from services.api.routers.skills import (
-    add_user_skill,
-    delete_user_skill,
-    router as skills_router,
-)
+from services.api.routers.resumes import router as resumes_router
+from services.api.routers.skills import router as skills_router
 from services.api.routers.users import router as users_router
-from services.shared.database import SessionLocal, get_db
-from services.shared.job_review import review_job
-from services.shared.models import JobApplication, MasterResume, TailoredResume
-from services.shared.realtime import broadcast_sync, broadcaster
-from services.shared.resume_evaluator import RUBRIC_VERSION, resume_content_hash
-from services.shared.resume_parser import extract_pdf_text
+from services.shared.database import get_db
+from services.shared.realtime import broadcaster
 from services.shared.settings import get_settings
-from services.shared.storage import get_object_storage
-from services.shared.time_utils import utc_now
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
@@ -101,22 +43,6 @@ tags_metadata = [
     {"name": "prospects", "description": "AI Prospect Discovery & Recruiter Outreach APIs"},
     {"name": "recommendations", "description": "AI job recommendation inbox APIs"},
 ]
-
-
-def review_job_from_jd(*args, **kwargs):
-    """Compatibility delegation to job_review router with patch synchronization."""
-    patches = {}
-    for attr in ("_default_career_profile", "review_job", "tailored_resume_response", "broadcast_sync"):
-        val = globals().get(attr)
-        if val is not getattr(job_review_module, attr, None):
-            patches[attr] = getattr(job_review_module, attr, None)
-            setattr(job_review_module, attr, val)
-    try:
-        return job_review_module.review_job_from_jd(*args, **kwargs)
-    finally:
-        for attr, orig in patches.items():
-            if orig is not None:
-                setattr(job_review_module, attr, orig)
 
 
 @asynccontextmanager

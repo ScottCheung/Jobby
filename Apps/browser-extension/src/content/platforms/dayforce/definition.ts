@@ -1,4 +1,5 @@
 import type { AtsProviderDefinition } from "../platform-definition";
+import { adaptDayforceFormFields } from "./form-field-adapter";
 
 function lastJobPathSegment(url: URL): string {
   const segments = url.pathname.split("/").filter(Boolean);
@@ -13,10 +14,13 @@ export const dayforceDefinition = {
     dom: "[test-id='job-details-dayforce-jobs'], [test-id='job-detail-title'], [test-id='manual-application']",
   },
   applicationRoots: [
+    "[test-id='manual-application-dayforce-jobs']",
     "[test-id='manual-application']",
+    "[test-id^='application-step-']",
     "[test-id*='application' i] form",
     "form:not(#site-navigation):not([role='search']):not([id*='search' i]):not([id*='nav' i])",
   ],
+  adaptFormFields: adaptDayforceFormFields,
   job: {
     roots: [
       "[test-id='job-details-dayforce-jobs']",

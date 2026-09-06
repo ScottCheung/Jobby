@@ -339,6 +339,40 @@ describe("platform-specific application question detection", () => {
     ]);
   });
 
+  it("reads Dayforce's full manual application container and Ant Design dropdowns", () => {
+    setLocation("https://jobs.dayforcehcm.com/en-AU/picagroup/CANDIDATEPORTAL/jobs/3458/apply/manualApplication");
+    document.body.innerHTML = `
+      <main>
+        <div test-id="manual-application-dayforce-jobs">
+          <form id="personalInfo">
+            <label for="email">Email address *</label><input id="email" />
+            <label for="jobPostingApplication_personalInfo_countryCode">Country *</label>
+            <div class="ant-select"><input id="jobPostingApplication_personalInfo_countryCode" role="combobox" aria-controls="country_list" style="opacity: 0" /></div>
+          </form>
+          <section test-id="resume-upload-section">
+            <label for="resume">Resume upload *</label><input id="resume" type="file" style="display: none" />
+            <button type="button">Import resume</button>
+          </section>
+          <form id="workHistory-0">
+            <label for="position">Position title *</label><input id="position" />
+          </form>
+          <button test-id="application-next-step">Next</button>
+        </div>
+      </main>
+    `;
+
+    const inspection = readCurrentForm();
+    expect(inspection.kind).toBe("application_form");
+    if (inspection.kind !== "application_form") return;
+    expect(inspection.platform).toBe("dayforce");
+    expect(inspection.fields).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "email", label: "Email address", type: "text" }),
+      expect.objectContaining({ id: "jobPostingApplication_personalInfo_countryCode", label: "Country", type: "select" }),
+      expect.objectContaining({ id: "resume", label: "Resume", type: "file" }),
+      expect.objectContaining({ id: "position", label: "Position title", type: "text" }),
+    ]));
+  });
+
   it("recognises Workday's application sign-in form", () => {
     setLocation("https://tenant.myworkdayjobs.com/en-US/Careers/login?redirect=%2Fen-US%2FCareers%2Fjob%2FSydney%2FUI-Engineer_JR1043041%2Fapply");
     document.body.innerHTML = `

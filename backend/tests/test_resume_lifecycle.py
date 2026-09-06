@@ -3,8 +3,13 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
-from services.api import main
+from fastapi import HTTPException
+
+from services.api.routers import helpers, resumes
+from services.domain import master_resumes
 from services.shared.models import MasterResume
+from services.shared.resume_evaluator import RUBRIC_VERSION, resume_content_hash
+from services.shared.time_utils import utc_now
 
 
 class ResumeLifecycleTests(unittest.TestCase):
@@ -26,11 +31,11 @@ class ResumeLifecycleTests(unittest.TestCase):
             published_at=None,
             status="draft",
             confirmed_at=None,
-            created_at=main.utc_now(),
-            updated_at=main.utc_now(),
+            created_at=utc_now(),
+            updated_at=utc_now(),
         )
 
-        response = main.master_resume_response(resume)
+        response = resumes.master_resume_response(resume)
 
         self.assertEqual(response["content_version"], 3)
         self.assertEqual(response["published_version"], 3)
@@ -39,8 +44,8 @@ class ResumeLifecycleTests(unittest.TestCase):
     def test_evaluation_is_current_only_for_the_exact_draft_content(self):
         resume_data = {"basics": {"first_name": "A"}}
         evaluation = {
-            "source_hash": main.resume_content_hash(resume_data),
-            "rubric_version": main.RUBRIC_VERSION,
+            "source_hash": resume_content_hash(resume_data),
+            "rubric_version": RUBRIC_VERSION,
         }
         resume = SimpleNamespace(
             id=uuid4(),
@@ -52,19 +57,19 @@ class ResumeLifecycleTests(unittest.TestCase):
             published_data=resume_data,
             evaluation=evaluation,
             published_evaluation=evaluation,
-            evaluation_updated_at=main.utc_now(),
-            published_at=main.utc_now(),
+            evaluation_updated_at=utc_now(),
+            published_at=utc_now(),
             status="confirmed",
-            confirmed_at=main.utc_now(),
-            created_at=main.utc_now(),
-            updated_at=main.utc_now(),
+            confirmed_at=utc_now(),
+            created_at=utc_now(),
+            updated_at=utc_now(),
         )
 
-        response = main.master_resume_response(resume)
+        response = resumes.master_resume_response(resume)
 
         self.assertTrue(response["evaluation_is_current"])
         resume.resume_data = {"basics": {"first_name": "B"}}
-        self.assertFalse(main.master_resume_response(resume)["evaluation_is_current"])
+        self.assertFalse(resumes.master_resume_response(resume)["evaluation_is_current"])
 
     def test_upload_identity_prefers_current_asset_url(self):
         current_upload_id = str(uuid4())
@@ -74,9 +79,9 @@ class ResumeLifecycleTests(unittest.TestCase):
             original_storage_key=f"master-resumes/user/{stale_upload_id}.pdf",
         )
 
-        self.assertEqual(main.resume_upload_id(resume), current_upload_id)
+        self.assertEqual(resumes.resume_upload_id(resume), current_upload_id)
         self.assertEqual(
-            main.canonical_resume_storage_key(resume),
+            resumes.canonical_resume_storage_key(resume),
             f"master-resumes/user/{current_upload_id}.pdf",
         )
 
@@ -93,10 +98,10 @@ class ResumeLifecycleTests(unittest.TestCase):
         db.get.side_effect = lambda model, _id: resume if model is MasterResume else None
 
         with (
-            patch.object(main, "SessionLocal", return_value=db),
-            patch.object(main, "extract_pdf_text") as extract_pdf_text,
+            patch.object(master_resumes, "SessionLocal", return_value=db),
+            patch.object(master_resumes, "extract_pdf_text") as extract_pdf_text,
         ):
-            main.process_master_resume(uuid4(), b"old pdf", stale_upload_id)
+            master_resumes.process_master_resume(uuid4(), b"old pdf", stale_upload_id)
 
         extract_pdf_text.assert_not_called()
         self.assertEqual(resume.status, "processing")
@@ -106,7 +111,7 @@ class ResumeLifecycleTests(unittest.TestCase):
         db.scalar.return_value = uuid4()
         current_user = SimpleNamespace(id=uuid4())
 
-        main.refund_resume_coins(
+        helpers.refund_resume_coins(
             db,
             current_user,
             5,
@@ -128,8 +133,8 @@ class ResumeLifecycleTests(unittest.TestCase):
         db = MagicMock()
         db.scalar.side_effect = [resume, snapshot]
 
-        with self.assertRaises(main.HTTPException) as raised:
-            main.delete_master_resume_version(3, db=db, current_user=SimpleNamespace(id=uuid4()))
+        with self.assertRaises(HTTPException) as raised:
+            resumes.delete_master_resume_version(3, db=db, current_user=SimpleNamespace(id=uuid4()))
 
         self.assertEqual(raised.exception.status_code, 409)
         db.delete.assert_not_called()
@@ -146,7 +151,7 @@ class ResumeLifecycleTests(unittest.TestCase):
         db = MagicMock()
         db.scalar.side_effect = [resume, snapshot]
 
-        main.delete_master_resume_version(
+        resumes.delete_master_resume_version(
             1,
             db=db,
             current_user=SimpleNamespace(id=uuid4()),
@@ -166,8 +171,8 @@ class ResumeLifecycleTests(unittest.TestCase):
         db.scalar.side_effect = [resume, None]
         storage = MagicMock()
 
-        with patch.object(main, "get_object_storage", return_value=storage):
-            main.delete_master_resume(db=db, current_user=SimpleNamespace(id=uuid4()))
+        with patch.object(resumes, "get_object_storage", return_value=storage):
+            resumes.delete_master_resume(db=db, current_user=SimpleNamespace(id=uuid4()))
 
         storage.delete.assert_called_once_with(resume.original_storage_key)
         db.delete.assert_called_once_with(resume)

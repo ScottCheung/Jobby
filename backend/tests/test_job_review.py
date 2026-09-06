@@ -185,7 +185,7 @@ class JobReviewTests(unittest.TestCase):
         from unittest.mock import MagicMock
         if "boto3" not in sys.modules:
             sys.modules["boto3"] = MagicMock()
-        from services.api.main import delete_tailored_resume
+        from services.api.routers.resumes import delete_tailored_resume
         from services.shared.models import TailoredResume, User
 
         user_id = uuid4()
@@ -212,7 +212,7 @@ class JobReviewTests(unittest.TestCase):
         from unittest.mock import MagicMock
         if "boto3" not in sys.modules:
             sys.modules["boto3"] = MagicMock()
-        from services.api.main import update_tailored_resume
+        from services.api.routers.resumes import update_tailored_resume
         from services.shared.models import TailoredResume, User
 
         user_id = uuid4()

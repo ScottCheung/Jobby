@@ -2,7 +2,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 from uuid import uuid4
 
-from services.api import main
+from services.api.routers.skills import add_user_skill, delete_user_skill
 from services.shared.schemas import UserSkillCreate
 
 
@@ -14,7 +14,7 @@ def test_add_user_skill_persists_plugin_skill_without_resume_data() -> None:
     ]
     current_user = SimpleNamespace(id=uuid4())
 
-    skill = main.add_user_skill(
+    skill = add_user_skill(
         UserSkillCreate(skill_name=".GIT"),
         db=db,
         current_user=current_user,
@@ -39,7 +39,7 @@ def test_delete_user_skill_only_targets_plugin_source() -> None:
     db = MagicMock()
     db.scalar.side_effect = [SimpleNamespace(canonical_name="Git"), stored]
 
-    result = main.delete_user_skill(
+    result = delete_user_skill(
         skill_name="Git",
         db=db,
         current_user=SimpleNamespace(id=uuid4()),

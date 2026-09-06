@@ -65,6 +65,7 @@ export {
   elementsInScope,
   controlsInScope,
   hasVisibleChoiceLabel,
+  hasVisibleComboboxProxy,
   visibleControlsInScope,
   CONTROL_SELECTOR,
   BUTTON_CHOICE_VALUE,

@@ -8,6 +8,7 @@ import type { FormFieldType } from '../../../shared/contracts/form-inspection';
 import {
   elementsInScope,
   fieldKeyFor,
+  hasVisibleComboboxProxy,
   isSelectableCombobox,
   labelFor,
   visibleControlsInScope,
@@ -143,7 +144,10 @@ export function findFormElement(
       element instanceof HTMLSelectElement ||
       element instanceof HTMLTextAreaElement
     ) {
-      return isVisible(element) ? element : null;
+      return isVisible(element) ||
+        (element instanceof HTMLInputElement && hasVisibleComboboxProxy(element))
+        ? element
+        : null;
     }
   }
   if (target.name) {

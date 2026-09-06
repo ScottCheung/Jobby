@@ -25,14 +25,7 @@ RESUME_RECOVERY_AFTER = timedelta(minutes=2)
 CAREER_PROFILE_SOURCE = "career_profile"
 
 
-def get_main_override(name: str, default: Any) -> Any:
-    import sys
-    main_mod = sys.modules.get("services.api.main")
-    if main_mod is not None and hasattr(main_mod, name):
-        val = getattr(main_mod, name)
-        if val is not default:
-            return val
-    return default
+
 
 
 def apply_updates(model: object, values: dict) -> None:

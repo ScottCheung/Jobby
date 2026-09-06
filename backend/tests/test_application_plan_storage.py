@@ -31,7 +31,7 @@ from services.shared.schemas import (
     ApplicationPlanCreateRequest,
     JobApplicationBase,
 )
-from services.api import main
+from services.api.routers import applications
 
 
 def make_plan():
@@ -100,20 +100,20 @@ def test_automatic_application_plan_endpoints_are_disabled() -> None:
 
     application_id = uuid4()
     operations = [
-        lambda: main.create_application_plan_endpoint(payload, db=None, current_user=None),
-        lambda: main.read_application_plan(application_id, db=None, current_user=None),
-        lambda: main.create_application_form_instructions(
+        lambda: applications.create_application_plan_endpoint(payload, db=None, current_user=None),
+        lambda: applications.read_application_plan(application_id, db=None, current_user=None),
+        lambda: applications.create_application_form_instructions(
             application_id,
             ApplicationFormInstructionsRequest(fields=[]),
             db=None,
             current_user=None,
         ),
-        lambda: main.generate_application_plan_tailored_resume(
+        lambda: applications.generate_application_plan_tailored_resume(
             application_id,
             db=None,
             current_user=None,
         ),
-        lambda: main.apply_application_plan_action(
+        lambda: applications.apply_application_plan_action(
             application_id,
             ApplicationPlanActionRequest(action="approve"),
             db=None,
@@ -130,7 +130,7 @@ def test_automatic_application_plan_endpoints_are_disabled() -> None:
 @pytest.mark.parametrize("application_status", ["draft", "processing", "interrupted", "skipped", "cancelled"])
 def test_non_submitted_application_states_are_not_recorded(application_status: str) -> None:
     with pytest.raises(HTTPException) as exc_info:
-        main.create_application(
+        applications.create_application(
             JobApplicationBase(
                 platform="linkedin",
                 job_id="job-42",

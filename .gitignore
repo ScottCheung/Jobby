@@ -13,6 +13,7 @@ build/
 dist/
 dist-dev/
 output/
+tmp/
 *.tsbuildinfo
 .eslintcache
 

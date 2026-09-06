@@ -372,13 +372,27 @@ export function hasVisibleChoiceLabel(element: HTMLInputElement): boolean {
   return Array.from(element.labels || []).some((label) => isVisibleElement(label));
 }
 
+/**
+ * Ant Design keeps the actual combobox input transparent while its visible
+ * selector handles the interaction. The input still owns the field id and
+ * listbox relationship, so retain it when that selector is visible.
+ */
+export function hasVisibleComboboxProxy(element: HTMLInputElement): boolean {
+  const container = element.closest<HTMLElement>(".ant-select");
+  return element.getAttribute("role") === "combobox" &&
+    Boolean(element.getAttribute("aria-controls")) &&
+    container !== null &&
+    isVisibleElement(container);
+}
+
 export function visibleControlsInScope(
   scope: FormScope,
 ): Array<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement> {
   return controlsInScope(scope).filter(
     (element) =>
       (isVisibleElement(element) ||
-        (element instanceof HTMLInputElement && hasVisibleChoiceLabel(element))) &&
+        (element instanceof HTMLInputElement &&
+          (hasVisibleChoiceLabel(element) || hasVisibleComboboxProxy(element)))) &&
       isInspectableControl(element),
   );
 }

@@ -1,7 +1,11 @@
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
-from services.api import main
+from fastapi import BackgroundTasks
+
+from services.api.routers import applications, job_review
+from services.domain import tailored_resumes
+from services.shared.models import JobApplication, TailoredResume
 
 
 def test_existing_processing_generation_is_idempotent() -> None:
@@ -9,7 +13,7 @@ def test_existing_processing_generation_is_idempotent() -> None:
     db = MagicMock()
     db.scalar.return_value = existing
 
-    tailored_resume, should_generate = main.start_tailored_resume_generation(
+    tailored_resume, should_generate = tailored_resumes.start_tailored_resume_generation(
         db,
         SimpleNamespace(id="user-1"),
         SimpleNamespace(id="application-1"),
@@ -36,8 +40,8 @@ def test_new_generation_is_persisted_before_ai_work_starts() -> None:
         extra_data={"resume_data": {"summary": "Candidate"}},
     )
 
-    with patch.object(main, "_default_career_profile", return_value=profile):
-        tailored_resume, should_generate = main.start_tailored_resume_generation(
+    with patch.object(tailored_resumes, "_default_career_profile", return_value=profile):
+        tailored_resume, should_generate = tailored_resumes.start_tailored_resume_generation(
             db,
             user,
             application,
@@ -70,7 +74,7 @@ def test_background_generation_uses_mocked_result_and_marks_ready() -> None:
     application = SimpleNamespace(id="application-1", last_posted_at=None)
     db = MagicMock()
     db.get.side_effect = lambda model, _id: (
-        tailored_resume if model is main.TailoredResume else application
+        tailored_resume if model is TailoredResume else application
     )
     result = {
         "resume_data": {"summary": "Tailored"},
@@ -78,11 +82,11 @@ def test_background_generation_uses_mocked_result_and_marks_ready() -> None:
     }
 
     with (
-        patch.object(main, "SessionLocal", return_value=db),
-        patch.object(main, "_run_tailored_resume_generation", return_value=result) as generate,
-        patch.object(main, "broadcast_sync") as broadcast,
+        patch.object(tailored_resumes, "SessionLocal", return_value=db),
+        patch.object(tailored_resumes, "_run_tailored_resume_generation", return_value=result) as generate,
+        patch.object(tailored_resumes, "broadcast_sync") as broadcast,
     ):
-        main.process_tailored_resume("resume-1")
+        tailored_resumes.process_tailored_resume("resume-1")
 
     generate.assert_called_once_with(tailored_resume, application, mock=False)
     assert tailored_resume.status == "ready"
@@ -98,14 +102,14 @@ def test_generate_endpoint_returns_processing_record_and_schedules_background_wo
     tailored_resume = SimpleNamespace(id="resume-1", status="processing")
     db = MagicMock()
     db.get.return_value = application
-    background_tasks = main.BackgroundTasks()
+    background_tasks = BackgroundTasks()
 
     with patch.object(
-        main,
+        applications,
         "start_tailored_resume_generation",
         return_value=(tailored_resume, True),
     ):
-        result = main.generate_application_tailored_resume(
+        result = applications.generate_application_tailored_resume(
             "application-1",
             background_tasks,
             db=db,
@@ -114,7 +118,7 @@ def test_generate_endpoint_returns_processing_record_and_schedules_background_wo
 
     assert result is tailored_resume
     assert len(background_tasks.tasks) == 1
-    assert background_tasks.tasks[0].func is main.process_tailored_resume
+    assert background_tasks.tasks[0].func is applications.process_tailored_resume
     assert background_tasks.tasks[0].args == ("resume-1",)
 
 
@@ -129,16 +133,16 @@ def test_job_review_persists_processing_before_mocked_generation() -> None:
 
     def add(record: object) -> None:
         added.append(record)
-        if isinstance(record, main.JobApplication):
+        if isinstance(record, JobApplication):
             record.id = "application-1"
-        elif isinstance(record, main.TailoredResume):
+        elif isinstance(record, TailoredResume):
             record.id = "resume-1"
 
     db.add.side_effect = add
 
     def mocked_review(*_args, **_kwargs):
         tailored_resume = next(
-            record for record in added if isinstance(record, main.TailoredResume)
+            record for record in added if isinstance(record, TailoredResume)
         )
         assert db.commit.call_count == 1
         assert tailored_resume.status == "processing"
@@ -149,12 +153,12 @@ def test_job_review_persists_processing_before_mocked_generation() -> None:
         }
 
     with (
-        patch.object(main, "_default_career_profile", return_value=profile),
-        patch.object(main, "review_job", side_effect=mocked_review),
-        patch.object(main, "tailored_resume_response", return_value={"id": "resume-1"}),
-        patch.object(main, "broadcast_sync"),
+        patch.object(job_review, "_default_career_profile", return_value=profile),
+        patch.object(job_review, "review_job", side_effect=mocked_review),
+        patch.object(job_review, "tailored_resume_response", return_value={"id": "resume-1"}),
+        patch.object(job_review, "broadcast_sync"),
     ):
-        result = main.review_job_from_jd(
+        result = job_review.review_job_from_jd(
             {
                 "job_description": "Build APIs",
                 "title": "Engineer",
@@ -168,7 +172,7 @@ def test_job_review_persists_processing_before_mocked_generation() -> None:
         )
 
     tailored_resume = next(
-        record for record in added if isinstance(record, main.TailoredResume)
+        record for record in added if isinstance(record, TailoredResume)
     )
     assert db.commit.call_count == 2
     assert tailored_resume.status == "ready"
