@@ -67,10 +67,22 @@ export function createPageInspectionScheduler(
 
 export function pageChangeInspectionRequest(
   message: unknown,
+  activeTabId?: number,
 ): PageChangeInspectionRequest | null {
-  return typeof message === 'object' &&
-    message !== null &&
-    (message as { type?: unknown }).type === 'content.page-changed'
-    ? { showLoading: false, force: true }
-    : null;
+  if (
+    typeof message !== 'object' ||
+    message === null ||
+    (message as { type?: unknown }).type !== 'sidepanel.page-changed'
+  ) {
+    return null;
+  }
+  const sourceTabId = (message as { tabId?: unknown }).tabId;
+  if (
+    typeof sourceTabId === 'number' &&
+    typeof activeTabId === 'number' &&
+    sourceTabId !== activeTabId
+  ) {
+    return null;
+  }
+  return { showLoading: false, force: true };
 }

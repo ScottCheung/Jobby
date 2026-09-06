@@ -717,12 +717,14 @@ export function App() {
     };
 
     const onRuntimeMessage = (message: unknown) => {
-      const request = pageChangeInspectionRequest(message);
-      if (request) {
-        // Job-board split views can select a different card without changing
-        // either the active tab or its URL.
-        scheduleInspection(request.showLoading, request.force);
-      }
+      void getActiveTab().then((tab) => {
+        const request = pageChangeInspectionRequest(message, tab?.id);
+        if (request) {
+          // Job-board split views can select a different card without changing
+          // either the active tab or its URL.
+          inspectCurrentPage(request);
+        }
+      });
     };
 
     if (

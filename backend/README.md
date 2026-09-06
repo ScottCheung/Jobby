@@ -75,15 +75,9 @@ Open:
 http://localhost:8080
 ```
 
-## Local Worker Note
+## Browser Extension & Automation
 
-The user console can show the auto-apply control, but the real browser automation worker is still best run on the host machine for now:
-
-```bash
-python3 ../worker/runAiBot.py
-```
-
-Running the LinkedIn browser automation inside Docker needs a separate browser container strategy for Chrome, login profiles, and anti-bot stability.
+Job detection, extraction, and autofill are handled directly by the Chrome browser extension (`Apps/browser-extension`) communicating with the FastAPI backend. Install the unpacked extension in Chrome from `Apps/browser-extension/dist` (or `dist-dev` in development) to interact with supported job platforms (LinkedIn, SEEK, Ashby, etc.).
 
 ## Object Storage
 

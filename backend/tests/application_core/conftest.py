@@ -4,7 +4,10 @@ import os
 import sys
 
 
-WORKER_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "worker"))
-if WORKER_ROOT not in sys.path:
-    sys.path.insert(0, WORKER_ROOT)
+BACKEND_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+SERVICES_ROOT = os.path.join(BACKEND_ROOT, "services")
+
+for p in (BACKEND_ROOT, SERVICES_ROOT):
+    if p not in sys.path:
+        sys.path.insert(0, p)
 

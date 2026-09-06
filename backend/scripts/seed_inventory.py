@@ -6,8 +6,8 @@ Usage: python seed_inventory.py
 import sys
 import os
 
-# Add backend to path so we can reuse the shared models
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "backend", "services"))
+# Add backend directory to path so we can reuse the shared models
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from sqlalchemy import create_engine, select, text
 from sqlalchemy.orm import Session

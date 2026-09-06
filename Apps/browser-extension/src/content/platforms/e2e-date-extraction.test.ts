@@ -836,6 +836,33 @@ describe("E2E Date Extraction Across All Platforms", () => {
       expect(inspection.snapshot.postingDateRaw?.label).toBe("2d ago");
     });
 
+    it("does not read the first listing card ID from SEEK's split-view wrapper", () => {
+      document.body.innerHTML = `
+        <div data-automation="split-view">
+          <article data-automation="premiumJob" data-job-id="93941097" aria-selected="false">
+            <a data-automation="jobTitle" href="/job/93941097">First Engineer</a>
+          </article>
+          <article data-automation="normalJob" data-job-id="94257878" aria-selected="true">
+            <a data-automation="jobTitle" href="/job/94257878">Full Stack Developer</a>
+          </article>
+          <h1 data-automation="job-detail-title"><a href="/job/94257878">Full Stack Developer</a></h1>
+          <span data-automation="advertiser-name">youX powered</span>
+          <div data-automation="jobAdDetails">Current SEEK description with React, TypeScript, and Node.js responsibilities.</div>
+        </div>
+      `;
+      Object.defineProperty(window, "location", {
+        writable: true,
+        value: new URL("https://au.seek.com/Full-Stack-Developer-jobs/in-All-Sydney-NSW?jobId=94257878"),
+      });
+
+      const inspection = readSeekPage();
+      expect(inspection.kind).toBe("job");
+      if (inspection.kind !== "job") return;
+      expect(inspection.snapshot.externalId).toBe("94257878");
+      expect(inspection.snapshot.title).toBe("Full Stack Developer");
+      expect(inspection.snapshot.company).toBe("youX powered");
+    });
+
     it("extracts distinct dates per card on SEEK search results without falling back to the first card's date", () => {
       document.body.innerHTML = `
         <div class="search-results-list">

@@ -79,8 +79,7 @@ function jobIdFromUrl(url: string): string {
   // Split-view pages can retain the previous URL while mounting a newly
   // selected detail pane. Prefer identity owned by that pane over URL state.
   const rootElement = root instanceof HTMLElement ? root : null;
-  const rootId = rootElement?.getAttribute("data-job-id") ||
-    rootElement?.querySelector<HTMLElement>("[data-job-id]")?.getAttribute("data-job-id") || "";
+  const rootId = rootElement?.getAttribute("data-job-id") || "";
   if (/^\d+$/.test(rootId)) return rootId;
 
   const applyEl = rootElement?.querySelector<HTMLAnchorElement>(
@@ -91,14 +90,6 @@ function jobIdFromUrl(url: string): string {
     if (applyMatch?.[1]) return applyMatch[1];
   }
 
-  const titleLink = rootElement?.querySelector<HTMLAnchorElement>(
-    "a[href*='/job/'], [data-automation='job-detail-title'] a[href*='/job/']"
-  );
-  if (titleLink) {
-    const linkMatch = (titleLink.getAttribute("href") || "").match(/\/job\/(\d+)/i);
-    if (linkMatch?.[1]) return linkMatch[1];
-  }
-
   // Some split views expose the active identity only on the selected card.
   const selectedAnchor = document.querySelector<HTMLAnchorElement>(
     "article[data-automation='normalJob'][aria-selected='true'] a[data-automation='jobTitle'][href*='/job/'], article[data-automation='premiumJob'][aria-selected='true'] a[data-automation='jobTitle'][href*='/job/'], article[data-automation='standOutJob'][aria-selected='true'] a[data-automation='jobTitle'][href*='/job/'], article[data-automation='featuredJob'][aria-selected='true'] a[data-automation='jobTitle'][href*='/job/'], [data-automation='job-card'][data-selected='true'] a[data-automation='jobTitle'][href*='/job/'], [data-automation='job-card'][aria-current='true'] a[data-automation='jobTitle'][href*='/job/'], [data-testid='job-card'][aria-selected='true'] a[data-automation='jobTitle'][href*='/job/'], [data-testid='job-card'][data-selected='true'] a[data-automation='jobTitle'][href*='/job/']"
@@ -106,6 +97,14 @@ function jobIdFromUrl(url: string): string {
   if (selectedAnchor) {
     const cardMatch = (selectedAnchor.getAttribute("href") || "").match(/\/job\/(\d+)/i);
     if (cardMatch?.[1]) return cardMatch[1];
+  }
+
+  const titleLink = rootElement?.querySelector<HTMLAnchorElement>(
+    "[data-automation='job-detail-title'] a[href*='/job/'], a[data-automation='job-detail-title'][href*='/job/'], h1 a[href*='/job/']"
+  );
+  if (titleLink) {
+    const linkMatch = (titleLink.getAttribute("href") || "").match(/\/job\/(\d+)/i);
+    if (linkMatch?.[1]) return linkMatch[1];
   }
 
   const match = url.match(/\/job\/(\d+)/i);

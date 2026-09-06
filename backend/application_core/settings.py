@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field, field_validator
 
 class AutomationSettings(BaseModel):
     max_jobs_per_run: int = Field(default=10, ge=1)
+    max_retries: int = Field(default=1, ge=0)
     require_submit_confirmation: bool = True
     stop_on_unknown_question: bool = True
     execution_mode: str = "human_confirmed"
@@ -28,21 +29,25 @@ class AISettings(BaseModel):
     provider: str = "deepseek"
     model: str = "deepseek-chat"
     min_confidence: float = Field(default=0.7, ge=0.0, le=1.0)
+    max_calls_per_job: int = Field(default=2, ge=1)
     daily_budget: float = Field(default=5.0, ge=0.0)
     allow_tailored_resume: bool = True
 
 
 class ResumeSettings(BaseModel):
+    master_resume_id: str | None = None
     tailored_match_threshold: float = Field(default=0.7, ge=0.0, le=1.0)
+    require_tailored_review: bool = True
 
 
 class PolicySettings(BaseModel):
     minimum_match_threshold: float = Field(default=0.5, ge=0.0, le=1.0)
     blacklisted_companies: tuple[str, ...] = Field(default_factory=tuple)
     blacklisted_job_terms: tuple[str, ...] = Field(default_factory=tuple)
+    whitelisted_companies: tuple[str, ...] = Field(default_factory=tuple)
     only_easy_apply: bool = True
 
-    @field_validator("blacklisted_companies", "blacklisted_job_terms", mode="before")
+    @field_validator("blacklisted_companies", "blacklisted_job_terms", "whitelisted_companies", mode="before")
     @classmethod
     def _coerce_tuple(cls, value: Any) -> tuple[str, ...]:
         if isinstance(value, (list, set, tuple)):
@@ -58,10 +63,10 @@ class ApplicationSettings(BaseModel):
 
     def to_dict(self) -> dict[str, dict[str, Any]]:
         return {
-            "automation": self.automation.model_dump(),
-            "ai": self.ai.model_dump(),
-            "resume": self.resume.model_dump(),
-            "policy": self.policy.model_dump(),
+            "automation": self.automation.model_dump(mode="json"),
+            "ai": self.ai.model_dump(mode="json"),
+            "resume": self.resume.model_dump(mode="json"),
+            "policy": self.policy.model_dump(mode="json"),
         }
 
 
@@ -99,6 +104,7 @@ def from_legacy_runtime_settings(
             minimum_match_threshold=float(pv.get("minimum_match_threshold", 0.5)),
             blacklisted_companies=tuple(pv.get("blacklisted_companies") or ()),
             blacklisted_job_terms=tuple(pv.get("blacklisted_job_terms") or ()),
+            whitelisted_companies=tuple(pv.get("whitelisted_companies") or ()),
             only_easy_apply=bool(pv.get("only_easy_apply", True)),
         ),
     )

@@ -240,6 +240,10 @@ chrome.runtime.onMessage.addListener((message: unknown, sender, sendResponse) =>
     message !== null &&
     (message as { type?: unknown }).type === "content.page-changed"
   ) {
+    void chrome.runtime.sendMessage({
+      type: "sidepanel.page-changed",
+      ...(sender.tab?.id !== undefined ? { tabId: sender.tab.id } : {}),
+    }).catch(() => undefined);
     sendResponse({ ok: true });
     return false;
   }
@@ -248,6 +252,7 @@ chrome.runtime.onMessage.addListener((message: unknown, sender, sendResponse) =>
     message !== null &&
     (
       (message as { type?: unknown }).type === "sidepanel.form-changed" ||
+      (message as { type?: unknown }).type === "sidepanel.page-changed" ||
       (message as { type?: unknown }).type === "sidepanel.state-changed"
     )
   ) {

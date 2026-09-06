@@ -29,7 +29,7 @@ import { Toaster } from '@jobby/ui/components/UI/toast/toaster';
 import { cn } from '@jobby/ui/lib/utils';
 import jobRecognitionDescriptions from '@jobby/ui/constants/job-recognition-descriptions.json';
 
-const { inspectingDescriptions, matchingDescriptions } = jobRecognitionDescriptions;
+const { inspectingDescriptions } = jobRecognitionDescriptions;
 
 const PAGE_READY_DELAY_MS = 150;
 
@@ -96,19 +96,16 @@ export function FloatingJobCardDialog() {
 
   const isInspecting =
     isInspectingPage || (!latestInspection && !inspectionError);
-  const isEvaluatingMatch = isMatchPending;
   const isConfirmedNonJob = Boolean(
     latestInspection && !isJobPage && !isInspectingPage,
   );
   const isLoading =
     !isConfirmedNonJob &&
-    (isInspecting || isEvaluatingMatch || !minLoadingDone);
+    (isInspecting || !minLoadingDone);
   const deferredIsLoading = useDeferredValue(isLoading);
   const isShowingLoading = isLoading || deferredIsLoading;
 
-  const activeDescriptions = isEvaluatingMatch
-    ? matchingDescriptions
-    : inspectingDescriptions;
+  const activeDescriptions = inspectingDescriptions;
   const [messageIndex, setMessageIndex] = useState(() =>
     Math.floor(Math.random() * inspectingDescriptions.length),
   );
@@ -139,7 +136,7 @@ export function FloatingJobCardDialog() {
     }, 600);
 
     return () => clearInterval(interval);
-  }, [isShowingLoading, isEvaluatingMatch, activeDescriptions]);
+  }, [isShowingLoading, activeDescriptions]);
 
   const currentLoadingMessage =
     activeDescriptions[messageIndex % activeDescriptions.length] ||
@@ -312,10 +309,10 @@ export function FloatingJobCardDialog() {
     };
 
     const onRuntimeMessage = (message: unknown) => {
-      const request = pageChangeInspectionRequest(message);
-      if (request) {
-        scheduleInspection(request.showLoading, request.force);
-      }
+      void getActiveTab().then((tab) => {
+        const request = pageChangeInspectionRequest(message, tab?.id);
+        if (request) inspectCurrentPage(request);
+      });
     };
 
     if(

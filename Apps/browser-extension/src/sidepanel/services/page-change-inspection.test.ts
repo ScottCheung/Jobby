@@ -8,10 +8,23 @@ import {
 
 describe('same-document job changes', () => {
   it('forces a new inspection even when the active tab URL did not change', () => {
-    expect(pageChangeInspectionRequest({ type: 'content.page-changed' })).toEqual({
+    expect(pageChangeInspectionRequest({ type: 'sidepanel.page-changed' })).toEqual({
       showLoading: false,
       force: true,
     });
+  });
+
+  it('ignores the content-side event before the background forwards it', () => {
+    expect(pageChangeInspectionRequest({ type: 'content.page-changed' })).toBeNull();
+  });
+
+  it('ignores events from a different active tab', () => {
+    expect(
+      pageChangeInspectionRequest(
+        { type: 'sidepanel.page-changed', tabId: 41 },
+        42,
+      ),
+    ).toBeNull();
   });
 
   it('ignores unrelated runtime messages', () => {
