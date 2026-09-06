@@ -101,7 +101,7 @@ function jobIdFromUrl(url: string): string {
 
   // Some split views expose the active identity only on the selected card.
   const selectedAnchor = document.querySelector<HTMLAnchorElement>(
-    "[data-automation='job-card'][data-selected='true'] a[data-automation='jobTitle'][href*='/job/'], [data-automation='job-card'][aria-current='true'] a[data-automation='jobTitle'][href*='/job/'], [data-testid='job-card'][aria-selected='true'] a[data-automation='jobTitle'][href*='/job/'], [data-testid='job-card'][data-selected='true'] a[data-automation='jobTitle'][href*='/job/']"
+    "article[data-automation='normalJob'][aria-selected='true'] a[data-automation='jobTitle'][href*='/job/'], article[data-automation='premiumJob'][aria-selected='true'] a[data-automation='jobTitle'][href*='/job/'], article[data-automation='standOutJob'][aria-selected='true'] a[data-automation='jobTitle'][href*='/job/'], article[data-automation='featuredJob'][aria-selected='true'] a[data-automation='jobTitle'][href*='/job/'], [data-automation='job-card'][data-selected='true'] a[data-automation='jobTitle'][href*='/job/'], [data-automation='job-card'][aria-current='true'] a[data-automation='jobTitle'][href*='/job/'], [data-testid='job-card'][aria-selected='true'] a[data-automation='jobTitle'][href*='/job/'], [data-testid='job-card'][data-selected='true'] a[data-automation='jobTitle'][href*='/job/']"
   );
   if (selectedAnchor) {
     const cardMatch = (selectedAnchor.getAttribute("href") || "").match(/\/job\/(\d+)/i);

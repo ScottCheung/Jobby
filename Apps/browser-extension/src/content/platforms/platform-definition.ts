@@ -110,6 +110,7 @@ export type ProviderBackgroundJobInspection = {
   isApplicationUrl?: (url: URL) => boolean;
   cacheInspection?: boolean;
   inspectDetailsFromApplication?: boolean;
+  recoverJobFromApplication?: boolean;
   requiresForegroundTab?: boolean;
 };
 

@@ -57,10 +57,10 @@ describe("SEEK late job detail rendering", () => {
 
   it("notifies when SEEK changes the selected card without changing the URL", async () => {
     document.body.innerHTML = `
-      <article data-testid="job-card" data-job-id="40000001" aria-selected="true">
+      <article data-automation="premiumJob" data-job-id="40000001" aria-selected="true">
         <a data-automation="jobTitle" href="/job/40000001">First Engineer</a>
       </article>
-      <article data-testid="job-card" data-job-id="40000002" aria-selected="false">
+      <article data-automation="normalJob" data-job-id="40000002" aria-selected="false">
         <a data-automation="jobTitle" href="/job/40000002">Second Engineer</a>
       </article>
       <div data-automation="jobDetailsPage"><h1 data-automation="job-detail-title">First Engineer</h1></div>
@@ -70,7 +70,7 @@ describe("SEEK late job detail rendering", () => {
     await vi.advanceTimersByTimeAsync(100);
     expect(onChange).toHaveBeenCalledTimes(1);
 
-    const cards = document.querySelectorAll<HTMLElement>("[data-testid='job-card']");
+    const cards = document.querySelectorAll<HTMLElement>("article[data-automation]");
     cards.item(0).setAttribute("aria-selected", "false");
     cards.item(1).setAttribute("aria-selected", "true");
     document.querySelector("[data-automation='job-detail-title']")!.textContent = "Second Engineer";

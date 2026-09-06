@@ -233,6 +233,35 @@ describe("inspectActiveTab", () => {
     expect(remove).toHaveBeenCalledWith(82);
   });
 
+  it("does not open a SEEK detail tab when an application page is not yet readable", async () => {
+    const applicationUrl = "https://au.seek.com/job/94120998/apply/personal-details";
+    const applicationInspection = {
+      kind: "not_job_page" as const,
+      platform: "seek" as const,
+      url: applicationUrl,
+      reason: "The application page is still loading.",
+    };
+    const create = vi.fn();
+
+    vi.stubGlobal("chrome", {
+      tabs: {
+        create,
+        get: vi.fn().mockResolvedValue({
+          id: 98,
+          status: "complete",
+          url: applicationUrl,
+        }),
+        sendMessage: vi.fn().mockResolvedValue({
+          ok: true,
+          inspection: applicationInspection,
+        }),
+      },
+    });
+
+    await expect(inspectActiveTab(98)).resolves.toEqual(applicationInspection);
+    expect(create).not.toHaveBeenCalled();
+  });
+
   it("reuses the detail inspection while the SEEK application tab remains open", async () => {
     const applicationUrl = "https://au.seek.com/job/94120996/apply";
     const detailInspection = {

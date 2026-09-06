@@ -104,7 +104,7 @@ export async function inspectActiveTab(
   if (
     activeTab.id &&
     inspection.kind !== "job" &&
-    jobInspection?.inspectDetailsFromApplication &&
+    jobInspection?.recoverJobFromApplication &&
     isApplicationPage
   ) {
     const boundInspection = getTabJobInspection(activeTab.id, resolvedActiveUrl);

@@ -16,6 +16,10 @@ export const SEEK_CARD_SELECTORS = [
 ] as const;
 
 export const SEEK_SELECTED_CARD_SELECTORS = [
+  "article[data-automation='normalJob'][aria-selected='true']",
+  "article[data-automation='premiumJob'][aria-selected='true']",
+  "article[data-automation='standOutJob'][aria-selected='true']",
+  "article[data-automation='featuredJob'][aria-selected='true']",
   "[data-automation='job-card'][data-selected='true']",
   "[data-automation='job-card'][aria-current='true']",
   "[data-testid='job-card'][aria-selected='true']",
@@ -25,6 +29,7 @@ export const SEEK_SELECTED_CARD_SELECTORS = [
 ] as const;
 
 const SEEK_NON_LISTING_PATHS = [
+  /^\/oauth(?:\/|$)/i,
   /^\/job\/\d+/i,
   /^\/apply(?:\/|$)/i,
   /^\/application(?:\/|$)/i,
@@ -81,6 +86,30 @@ export function isSeekListingPage(
   }
 }
 
+function findSeekTargetJobCard(
+  root: ParentNode,
+  targetJobId: string,
+): HTMLElement | null {
+  const cards = Array.from(
+    root.querySelectorAll<HTMLElement>(SEEK_CARD_SELECTORS.join(", ")),
+  );
+  return cards.find((card) => {
+    if (!isElementVisible(card)) return false;
+    if (card.getAttribute("data-job-id") === targetJobId) return true;
+    return Array.from(card.querySelectorAll<HTMLAnchorElement>("a[href]")).some((link) => {
+      try {
+        const target = new URL(link.getAttribute("href") || "", window.location.href);
+        return (
+          target.pathname.match(/^\/job\/([^/]+)/i)?.[1] === targetJobId ||
+          target.searchParams.get("jobId") === targetJobId
+        );
+      } catch {
+        return false;
+      }
+    });
+  }) || null;
+}
+
 export const seekJobSelection: ProviderJobSelection = createStandardJobSelection({
   isListingPage: isSeekListingPage,
   cardSelectors: SEEK_CARD_SELECTORS,
@@ -90,6 +119,5 @@ export const seekJobSelection: ProviderJobSelection = createStandardJobSelection
     return Boolean(details && isElementVisible(details));
   },
   targetIdParams: ["jobId"],
-  cardClickSelector:
-    "a[href*='/job/'], [data-automation='job-card'], [data-automation='normalJob'], [data-testid='job-card'], article[data-card-type='JobCard']",
+  findTargetJobCard: findSeekTargetJobCard,
 });

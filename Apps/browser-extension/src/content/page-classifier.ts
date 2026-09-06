@@ -102,6 +102,7 @@ export const MAJOR_PLATFORM_RULES: ReadonlyArray<MajorPlatformRule> = [
     name: "SEEK",
     hostRegex: /^(?:[a-z0-9-]+\.)*seek\.(?:com(?:\.au)?|co\.nz)$/i,
     nonJobPatterns: [
+      /^\/oauth(?:\/|$)/i,
       /^\/login(?:\/|$)/i,
       /^\/account(?:\/|$)/i,
       /^\/sign-in(?:\/|$)/i,

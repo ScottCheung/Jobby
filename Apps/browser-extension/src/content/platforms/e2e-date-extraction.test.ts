@@ -809,10 +809,10 @@ describe("E2E Date Extraction Across All Platforms", () => {
 
     it("reads the active identity from SEEK's current aria-selected card", () => {
       document.body.innerHTML = `
-        <article data-testid="job-card" data-job-id="30000001" aria-selected="false">
+        <article data-automation="premiumJob" data-job-id="30000001" aria-selected="false">
           <a data-automation="jobTitle" href="/job/30000001">First Engineer</a>
         </article>
-        <article data-testid="job-card" data-job-id="30000002" aria-selected="true">
+        <article data-automation="normalJob" data-job-id="30000002" aria-selected="true">
           <a data-automation="jobTitle" href="/job/30000002">Second Engineer</a>
           <span data-automation="jobListingDate">2d ago•Viewed</span>
         </article>

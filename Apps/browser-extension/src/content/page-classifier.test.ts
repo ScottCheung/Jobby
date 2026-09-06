@@ -16,6 +16,7 @@ function setLocation(url: string): void {
 describe('page-classifier', () => {
   it('identifies SEEK explicit non-job pages as non-job', () => {
     const nonJobPaths = [
+      '/oauth/callback',
       '/login',
       '/account',
       '/sign-in',

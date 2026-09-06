@@ -239,9 +239,12 @@ if (isExtensionContextValid() && chrome.storage?.onChanged) {
 // and application-step changes. ATS pages still use on-demand inspection so
 // the extension does not attach a whole-document observer to every website.
 const activeProvider = detectDedicatedProvider(window.location, document);
+const isAuthenticationPage = /^\/(?:oauth|login|sign-in|account)(?:\/|$)/i.test(
+  window.location.pathname,
+);
 
 if (isTopLevelFrame && isExtensionContextValid()) {
-  cleanupCallbacks.push(initializeFloatingBall());
+  if (!isAuthenticationPage) cleanupCallbacks.push(initializeFloatingBall());
   if (activeProvider) {
     cleanupCallbacks.push(autoSelectFirstJobCard(document));
     const syncDiscoveryState = () => {

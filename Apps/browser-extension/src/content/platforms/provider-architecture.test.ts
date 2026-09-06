@@ -146,6 +146,11 @@ describe('Provider Strategy & Plugin Architecture', () => {
     expect(ashby.autofill?.mode).toBe('sequential');
   });
 
+  it('limits non-job application recovery to providers that explicitly own it', () => {
+    expect(getProviderDefinition('ashby').background?.jobInspection?.recoverJobFromApplication).toBe(true);
+    expect(getProviderDefinition('seek').background?.jobInspection?.recoverJobFromApplication).not.toBe(true);
+  });
+
   it('declares pageObserver, jobSelection, and applicationNavigation capabilities', () => {
     const seek = getProviderDefinition('seek');
     expect(seek.pageObserver).toBeDefined();

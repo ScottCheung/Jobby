@@ -56,6 +56,7 @@ export const ashbyDefinition = {
       isApplicationUrl: (url) => /\/(?:apply|application)\/?$/i.test(url.pathname),
       cacheInspection: true,
       inspectDetailsFromApplication: true,
+      recoverJobFromApplication: true,
     },
   },
   job: {

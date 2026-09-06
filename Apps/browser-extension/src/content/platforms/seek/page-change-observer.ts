@@ -11,7 +11,7 @@ export function seekJobDomSignature(root: ParentNode = document): string {
     "[data-automation='splitViewJobDetailsWrapper'], [data-automation='jobDetails'], [data-automation='jobDetailsPage'], [data-automation='split-view'], [data-automation='job-details'], [data-testid='jobDetails'], #job-details",
   );
   const selectedCard = root.querySelector<HTMLElement>(
-    "[data-automation='job-card'][data-selected='true'], [data-automation='job-card'][aria-current='true'], [data-testid='job-card'][aria-selected='true'], [data-testid='job-card'][data-selected='true']",
+    "article[data-automation='normalJob'][aria-selected='true'], article[data-automation='premiumJob'][aria-selected='true'], article[data-automation='standOutJob'][aria-selected='true'], article[data-automation='featuredJob'][aria-selected='true'], [data-automation='job-card'][data-selected='true'], [data-automation='job-card'][aria-current='true'], [data-testid='job-card'][aria-selected='true'], [data-testid='job-card'][data-selected='true']",
   );
   if (!detail && !selectedCard) return "";
 

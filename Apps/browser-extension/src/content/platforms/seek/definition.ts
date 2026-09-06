@@ -22,6 +22,7 @@ export const seekDefinition = {
   platform: "seek",
   detection: {
     host: /(?:^|\.)seek\.(?:com(?:\.au)?|co\.nz)$/i,
+    path: /^(?!\/(?:oauth|login|sign-in|account)(?:\/|$))/i,
   },
   jobDescriptionRootSelectors: [
     "[data-automation='jobDetails']",

@@ -98,4 +98,14 @@ describe("platform provider routing", () => {
     document.body.innerHTML = "<main><h1>Software Engineer</h1></main>";
     expect(detectDedicatedPlatform(locationFor("careers.example.com"))).toBeNull();
   });
+
+  it.each([
+    "/oauth/login",
+    "/oauth/callback",
+    "/login",
+    "/sign-in",
+    "/account",
+  ])("does not activate SEEK automation on authentication route %s", (pathname) => {
+    expect(detectDedicatedPlatform(locationFor("au.seek.com", pathname))).toBeNull();
+  });
 });

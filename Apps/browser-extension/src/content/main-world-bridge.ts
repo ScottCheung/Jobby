@@ -181,7 +181,10 @@ const onBridgeRequest = (event: Event) => {
 document.addEventListener(REQUEST_EVENT, onBridgeRequest);
 
 const hostname = window.location.hostname.toLowerCase();
-const shouldTrackSpaNavigation = window.top === window && (
+const isAuthenticationPage = /^\/(?:oauth|login|sign-in|account)(?:\/|$)/i.test(
+  window.location.pathname,
+);
+const shouldTrackSpaNavigation = window.top === window && !isAuthenticationPage && (
   hostname === "linkedin.com" || hostname.endsWith(".linkedin.com") ||
   hostname === "seek.com" || hostname.endsWith(".seek.com") ||
   hostname === "seek.com.au" || hostname.endsWith(".seek.com.au") ||

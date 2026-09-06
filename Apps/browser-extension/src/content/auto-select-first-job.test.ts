@@ -11,6 +11,7 @@ import {
   isSearchOrListingPage,
   triggerJobCardClick,
 } from './auto-select-first-job';
+import { seekJobSelection } from './platforms/seek/job-selection';
 
 describe('auto-select-first-job', () => {
   it('identifies search and listing URLs correctly for split-view platforms including SEEK', () => {
@@ -99,6 +100,16 @@ describe('auto-select-first-job', () => {
     expect(clickSpy).toHaveBeenCalledTimes(1);
   });
 
+  it('recognizes clicks anywhere inside every current SEEK card variant', () => {
+    for (const automation of ['normalJob', 'premiumJob', 'standOutJob', 'featuredJob']) {
+      const card = document.createElement('article');
+      card.setAttribute('data-automation', automation);
+      const content = document.createElement('span');
+      card.append(content);
+      expect(seekJobSelection.isJobCardElement?.(content)).toBe(true);
+    }
+  });
+
   it('detects when a job is already selected in DOM or SEEK details pane is rendered', () => {
     const container = document.createElement('div');
     container.innerHTML = `
@@ -174,6 +185,28 @@ describe('auto-select-first-job', () => {
     cleanup();
 
     expect(firstSpy).not.toHaveBeenCalled();
+  });
+
+  it('does not treat a SEEK logout return URL as the requested job card', () => {
+    const container = document.createElement('div');
+    container.innerHTML = `
+      <a
+        id="logout-link"
+        href="/oauth/redirect?returnPath=%2Foauth-ssr%2Flogout%3FreturnUrl%3D%252FFull-Stack-Developer-jobs%252Fin-All-Sydney-NSW%253FjobId%253D93941097%2526type%253Dpromoted"
+      >Sign out</a>
+    `;
+
+    const logoutLink = container.querySelector('#logout-link')!;
+    const logoutSpy = vi.fn((event: Event) => event.preventDefault());
+    logoutLink.addEventListener('click', logoutSpy);
+
+    const cleanup = autoSelectFirstJobCard(container, {
+      maxWaitMs: 10,
+      url: 'https://au.seek.com/Full-Stack-Developer-jobs/in-All-Sydney-NSW?jobId=93941097&type=promoted',
+    });
+    cleanup();
+
+    expect(logoutSpy).not.toHaveBeenCalled();
   });
 
   it('autoSelectFirstJobCard selects immediately on SEEK search page and only clicks once', () => {
