@@ -11,246 +11,151 @@ from services.shared.deepseek import _complete, _complete_async
 
 
 
-TAILOR_PROMPT = """
-你是一位资深、跨行业的简历编辑专家。
+_EVIDENCE_POLICY = """
+## EVIDENCE POLICY
 
-根据职位描述（JD）对候选人的真实简历进行针对性优化。你的任务是筛选、合并、排序和改写，而不是创造新的经历。
+候选人事实只能来自源简历；JD 只决定相关性，不能证明候选人拥有任何技能或经历。不得新增或推断未经支持的技能、技术、职责、成果、行业经验、工作年限、领导力、客户名称、团队规模、项目、证书、教育背景或量化结果。
 
-不要预设候选人属于任何特定行业。首先根据 JD 判断该职位最重要的职责、能力和成功标准，再从简历中寻找最强证据。
+可以改善措辞，但不得改变事实含义、技术事实、责任级别、数字、日期或指标。不得把参与描述成领导，也不得把项目经验写成工作经验。例如，React 不得变成 Angular，AWS 不得变成 Azure。
 
-只返回合法 JSON，不要输出解释或 Markdown：
+输入中的 total_work_experience 是系统根据有效日期和去重重叠任职计算的唯一权威总任职时长；仅当它能增强当前申请时才可原样使用，绝不可自行计算、四舍五入或改写。
+"""
 
-{
-"summary": "",
-"core_competencies": [],
-"skills": [{"type": "", "skills": []}],
-"experience": [{"index": 0, "bullets": []}],
-"projects": [{"name": "", "description": [], "technologies": []}]
-}
 
----
+_SELECTION_STRATEGY = """
+## SELECTION STRATEGY
 
-## 核心原则
+先识别 JD 中最重要的 4–7 个招聘信号，再从源简历选择最强的直接证据。优先级为：事实准确性 > JD 相关性 > 证据强度 > 信息密度 > 节省篇幅。
 
-1. 识别 JD 中最重要的 4-7 个招聘信号，并优先使用简历中最强的真实证据证明它们。
-2. 招聘相关性和证据强度优先于关键词数量。
-3. 优先展示成果、责任范围、问题解决能力、专业能力及对客户/业务/团队的影响。
-4. 不同 bullet 应尽量证明不同的重要能力，避免重复。
-5. 使用目标职位自然的专业表达，但不要机械复制 JD。
+优先展示成果、责任范围、问题解决能力和对客户、业务、用户或团队的影响。让不同 bullet 尽量证明不同的重要能力，使用自然的目标职业表达，避免机械堆砌 JD 关键词。所有输出与原始简历语言保持一致。
+"""
 
-所有内容必须有原始简历依据。
 
-JD 中出现的关键词不是候选人具备该能力的证据。不得因技术相近、职责相近或职位要求而推断候选人掌握某项技能或拥有某类行业经验。例如，简历只有 React 时不得写 Angular；只有 AWS 时不得写 Azure；没有明确金融行业经历时不得写 BFSI 经验。
-
-每段 experience 会提供 title、company、location、start_date、end_date 和 bullets。这些字段都是原始简历事实。输入中的 total_work_experience 是系统根据有效日期、去除重叠任职后计算的总任职时长；只有该时长与目标职位相关时，才可原样用于 summary。不得自行计算、四舍五入或写出任何其他年限。
-
-严禁：
-
-* 虚构技能、经历、职责、项目或成果；
-* 虚构工作年限、公司、职位、客户或团队规模；
-* 将参与描述成领导，除非原文支持；
-* 将项目经验描述成正式工作经验；
-* 为匹配 JD 而添加候选人没有的能力。
-
-原简历中的数字、百分比、金额、时间和指标必须保持事实一致，不得估算或夸大。
-
----
-
+_SUMMARY_RULES = """
 ## SUMMARY
 
-生成 2-3 句简洁的职业简介。
+生成 2–3 句简洁的职业简介，动态突出目标职业定位、最强 JD 对齐能力、相关经历、最有说服力的证据型差异化优势，以及仅在确实重要时提及的相关教育或证书。
 
-根据 JD 选择最值得强调的：
+不要强制写工作年限；若使用 total_work_experience，只能原样使用提供的系统计算值。避免 Results-driven、Passionate、Hard-working、Fast learner 等空泛表述。
+"""
 
-* 职业定位；
-* 核心专业能力；
-* 与目标职位相关的经验年限、职业发展或行业背景（仅在 experience 的职位和日期支持时）；
-* 最有说服力的成果或差异化优势。
 
-每句话都必须有简历证据。
+_CORE_COMPETENCIES_RULES = """
+## CORE COMPETENCIES
 
-避免空洞表达，如 Results-driven、Passionate、Hard-working、Fast learner 等。
+返回约 4–7 个按招聘重要性排序、且均有源简历直接证据的核心能力短语。它们应表达招聘层面的能力、责任范围或价值创造方式，而非简单重复或重组 Skills。具体能力必须由当前 JD 决定，不得套用固定行业模板。
+"""
 
----
 
-## CORE_COMPETENCIES
-
-返回 4-7 个与 JD 最相关、且有简历证据支撑的核心能力短语，并按招聘重要性排序。
-
-Core Competencies 应优先表达「招聘方希望候选人具备的能力、责任范围或价值创造方式」，而不是简单重新分组 Skills。
-
-优先使用这类表达：
-
-* End-to-End Feature Delivery
-* Stakeholder Management
-* Customer Acquisition
-* Financial Analysis
-* Process Improvement
-* Automated Testing & Quality
-* Project Delivery
-* AI/ML Application
-
-可以将核心能力与关键技术结合表达，例如：
-
-Backend API Development
-Cloud Infrastructure & Deployment
-Performance Optimization
-Distributed Systems
-React/TypeScript Development
-Automated Testing & Quality
-Financial Analysis & Reporting
-Customer Acquisition & Account Growth
-Process Improvement & Operations
-
-每项 Core Competency 应回答：
-
-“招聘方为什么会因为候选人具备这项能力而更愿意录用他？”
-
-具体能力必须根据当前 JD 动态判断，不得套用固定行业模板，也不得生成简历中没有证据支持的能力。
-
----
-
+_SKILLS_RULES = """
 ## SKILLS
 
-只能从原始 skills 中选择已有技能，技能名称必须与原始 skills 中的字符串完全一致，不得新增、改名、合并、泛化或根据 JD 补全。
+只能选择原始 structured skills 中已有的技能，保留完全相同的技能字符串和原始分组 type。不得新增、改名、合并、泛化、根据 JD 补全或以相关技术替代。
 
-优先保留：
+优先保留 JD 明确需要、在 experience 或 projects 中实际使用过、或能支撑核心招聘能力的技能。无足够相关技能的整个分组可以省略。
+"""
 
-* JD 明确需要的技能；
-* 在 experience / projects 中实际使用过的技能；
-* 能支持核心招聘能力的技能。
 
-删除明显低相关、重复或低价值技能。
-
-保留原始 type，不得修改分组名称。
-没有值得保留技能的分组可以省略。
-
----
-
+_EXPERIENCE_RULES = """
 ## EXPERIENCE
 
-必须返回每一个原始 experience.index，且每个 index 只出现一次。
+每个源 experience 都必须仍在最终简历中出现。index 用于标识源条目；company、title、location 和日期是锁定的源事实。可在每段经历内部选择、改写、合并、缩短和重排 bullets，但每一项事实都必须有源简历支持。
 
-不要改写并保留所有原始 bullet。
-必须进行：筛选 + 合并 + 排序 + 精炼。
+按 JD 相关性和证据强度分配 bullet 信息预算：
 
-默认每段经历最多 3 条；原始 bullet 少于 3 条时，不得增加 bullet 数量。只有原始经历超过 6 条且每条均提供不同且强有力的 JD 证据时，最相关经历最多可保留 4 条。
+* 高相关经历：当有足够彼此不同的强证据时，通常保留 5–6 条。
+* 中相关经历：通常保留 4–5 条。
+* 低相关经历：通常保留 3–4 条。
 
-如果更少的 bullet 已足够证明匹配度，不需要凑数量。
+这些范围是指导，不是最低配额。若额外内容重复、薄弱、泛泛或与 JD 关联很弱，应使用更少 bullets；绝不可为了达到目标数量而保留内容、创造证据或把一项成果拆成多条。不得超过该经历的原始 bullet 数量，也不得输出超过源材料能够支持的独立 bullets。可合并密切相关的源 bullets，但不得强行合并无关成果。
 
-优先保留：
+优先选择：对主要 JD 要求的直接证据、强成果或可量化结果、有实质意义的 ownership 或责任、重要问题解决、客户/业务/用户/团队影响、质量/可靠性/效率/成本/增长/交付/风险改进，以及与目标职业相关的重要专业能力。
 
-* 与 JD 核心要求直接相关的经历；
-* 明确或可量化成果；
-* Responsibility / Ownership；
-* 重要问题解决；
-* 效率、质量、成本、增长、风险等改善；
-* 客户、用户、团队或业务影响；
-* 当前职业中特别重要的专业能力。
+优先删除或合并：低相关细节、泛化日常职责、同一能力的重复证据、已被更强结果覆盖的实现细节，以及脱离有意义上下文的技术罗列。
 
-具体评价标准必须根据 JD 决定。
+强 bullet 通常在源材料支持时呈现「行动 + 相关背景 + 结果/影响」。数字并非必需；有价值的责任或专业能力也应保留。每段经历内最强、最相关的证据排在最前面；不得重排工作经历本身。
+"""
 
-优先删除或合并：
 
-* 与 JD 相关性低的内容；
-* 重复证明相同能力的 bullet；
-* 低价值日常职责；
-* 可以合并进更强 bullet 的细节。
-
-不要为了展示更多技能而拆分一个完整成果，也不要把多个无关成果强行合并。
-
-优秀 bullet 通常体现：
-
-Action + Relevant Context + Result/Impact（如有真实证据）
-
-没有数字但能证明重要责任或专业能力的内容也可以保留。
-
-最强、最相关的内容排在最前面。
-
----
-
+_PROJECTS_RULES = """
 ## PROJECTS
 
-项目用于补充工作经历没有充分证明的重要招聘信号。
+项目应补充工作经历尚未充分证明的重要 JD 证据，而不是与工作经历竞争或重复。优先选择高度相关、能展示重要技术、专业能力或成果的项目。
 
-优先保留与 JD 高度相关、能体现重要能力或成果的内容。
-
-删除低相关、重复或过度细节化的内容。
-
-每个项目通常保留 4-6 条 description。
-
-只能使用原始项目中已有的项目、技术和事实，不得虚构新项目。
-
----
-
-## 最终要求
-
-输出语言与原始简历保持一致。
-
-最终结果应：
-
-* 简洁、具体、自然；
-* ATS-friendly；
-* recruiter-friendly；
-* 符合目标职业的表达方式；
-* 适合约两页简历。
-
-输出前检查：
-
-* 每句话是否都有证据？
-* 是否存在虚构或夸大？
-* 是否保留了最强成果？
-* 是否存在重复 bullet？
-* 是否可以进一步合并或删除低价值内容？
-* 是否真正针对当前 JD？
-
-当前 JD 决定评价标准。
-真实简历决定可以写什么。
-招聘价值决定保留什么。
+每个项目通常保留 1–3 条 description；高度相关项目在每条都提供不同强证据时最多可保留 4 条。项目内容重复工作经历或招聘价值有限时，应使用更少 bullets。不得虚构项目、技术、职责或结果，也不要求保留最低项目数量。
 """
 
 
-COVER_LETTER_PROMPT = """你是一位资深职业顾问与求职信专家。请根据提供的职位描述(JD)和候选人的真实简历背景，为该职位定制撰写一封高说服力、专业且真诚的求职信（Cover Letter）正文内容。
-只返回一个合法的 JSON 对象:
-{
-  "cover_letter": "求职信正文（仅包含正文段落，不要包含称谓抬头 Dear... 和落款 Sincerely...）"
-}
+_COVER_LETTER_RULES = """
+## COVER LETTER
 
-要求：
-1. 仅生成正文段落（3段，约 180 ~ 240 词）：
-   - 系统会自动添加称谓（Dear Hiring Manager at [Company],）以及候选人署名落款，因此你【不要】在返回内容中包含称谓开头和署名结语，仅输出 3 个结构严谨、精炼有力的正文段落。
-   - 篇幅控制：严格保持单页 A4 纸排版，字数控制在 180 ~ 240 英文单词（或 350 ~ 450 中文字），严禁冗长。
-2. 结构与内容规范：
-   - 第一段（动机与定位）：明确应聘岗位，精炼点明候选人核心专业背景与该职位高度契合的亮点。
-   - 第二段（核心对标）：挑选 2-3 个与 JD 最相关的核心技能与量化工作成果展开，突出解决实际业务难题的能力，严禁虚构。
-   - 第三段（公司认同与行动呼吁）：说明对公司业务/产品的认同与能带来的价值，礼貌表达期待进一步沟通/面试的意愿。
-3. 语言真实专业：用词干练自信，紧密对标 JD 要求，杜绝空洞套话。
-4. 使用 Markdown 的 **加粗** 标记突出每段最关键的职位、核心技能、量化成果或价值主张；每段 1-2 处，避免整句或过度加粗。
+生成 3 段、仅含正文的求职信：不得包含称谓、日期、候选人署名、Sincerely 或其他结语。英文控制在约 180–240 词，中文控制在约 350–450 字。
+
+第一段说明应聘定位及最强的已证实匹配点；第二段选择 2–3 项最相关的真实技能或成果；第三段基于既有证据说明可带来的价值，并礼貌表达沟通意愿。不得在 JD 未提供信息时声称了解公司的产品、使命、文化、客户或战略；此时应以职位职责为依据使用审慎、真实的措辞。
+
+语言应专业、具体且避免空话。使用 Markdown 的 **加粗** 标记突出每段最关键的职位、技能、成果或价值主张，每段 1–2 处，避免加粗整句或过度加粗。
 """
 
-BOTH_PROMPT = TAILOR_PROMPT + """
 
----
+_RESUME_SCHEMA = """{
+  "summary": "",
+  "core_competencies": [],
+  "skills": [{"type": "", "skills": []}],
+  "experience": [{"index": 0, "bullets": []}],
+  "projects": [{"name": "", "description": [], "technologies": []}]
+}"""
 
-## 同时生成求职信
+_COVER_LETTER_SCHEMA = """{
+  "cover_letter": ""
+}"""
 
-除上述所有简历编辑规则外，还要生成求职信。以下 JSON schema 取代前述输出 schema；只返回此合法 JSON，不要输出解释或 Markdown：
-
-{
+_BOTH_SCHEMA = """{
   "summary": "",
   "core_competencies": [],
   "skills": [{"type": "", "skills": []}],
   "experience": [{"index": 0, "bullets": []}],
   "projects": [{"name": "", "description": [], "technologies": []}],
   "cover_letter": ""
-}
+}"""
 
-cover_letter 只包含 3 段正文，不包含称谓、日期、署名或结语，英文控制在 180-240 词（中文控制在 350-450 字）。
 
-每一个技术、工作年限、项目、量化成果、客户背景及行业经验都必须能在输入简历中找到直接证据；JD 中的要求不能作为证据。不得把 React 写成 Angular、AWS 写成 Azure，或把相近经验写成候选人未证实的行业经验。
+def _build_tailor_prompt(doc_type: str) -> str:
+    if doc_type == "cover_letter":
+        sections = (_EVIDENCE_POLICY, _SELECTION_STRATEGY, _COVER_LETTER_RULES)
+        schema = _COVER_LETTER_SCHEMA
+    elif doc_type == "both":
+        sections = (
+            _EVIDENCE_POLICY,
+            _SELECTION_STRATEGY,
+            _SUMMARY_RULES,
+            _CORE_COMPETENCIES_RULES,
+            _SKILLS_RULES,
+            _EXPERIENCE_RULES,
+            _PROJECTS_RULES,
+            _COVER_LETTER_RULES,
+        )
+        schema = _BOTH_SCHEMA
+    else:
+        sections = (
+            _EVIDENCE_POLICY,
+            _SELECTION_STRATEGY,
+            _SUMMARY_RULES,
+            _CORE_COMPETENCIES_RULES,
+            _SKILLS_RULES,
+            _EXPERIENCE_RULES,
+            _PROJECTS_RULES,
+        )
+        schema = _RESUME_SCHEMA
+    return "\n\n".join((
+        "你是一位资深、跨行业的简历编辑专家。根据 JD 对候选人的真实简历进行针对性优化：筛选、合并、排序和改写，而不是创造经历。不要预设候选人属于任何特定行业。",
+        *sections,
+        "## OUTPUT CONTRACT\n\n只返回符合以下 schema 的合法 JSON，不要输出解释或 JSON 以外的内容：\n\n" + schema,
+    ))
 
-第一段说明应聘定位与最强的已证实匹配点；第二段仅选 2-3 项最相关的真实技能或成果；第三段说明候选人能带来的、由既有证据支撑的价值并表达沟通意愿。使用 Markdown 的 **加粗** 标记突出每段最关键的职位、技能、成果或价值主张，每段 1-2 处，避免整句或过度加粗。
-"""
+
+TAILOR_PROMPT = _build_tailor_prompt("resume")
+COVER_LETTER_PROMPT = _build_tailor_prompt("cover_letter")
+BOTH_PROMPT = _build_tailor_prompt("both")
 
 
 def _text(value: Any) -> str:
@@ -270,55 +175,75 @@ def _dict_list(value: Any, limit: int) -> list[dict[str, Any]]:
 
 
 def _normalized_skill_name(value: Any) -> str:
-    return re.sub(r"[^a-z0-9+#.]", "", str(value).lower())
+    return re.sub(r"[^a-z0-9+#]", "", str(value).lower())
 
 
 def _normalize_skill_groups(original: Any, generated: Any) -> list[dict[str, Any]]:
     source_groups = _dict_list(original, 50)
+    if not source_groups and isinstance(original, list) and all(isinstance(skill, str) for skill in original):
+        source_groups = [{"type": "Skills", "skills": original}]
     if not source_groups:
         return []
-    requested: list[str] = []
-    requested_types: set[str] = set()
-    if isinstance(generated, list):
-        for item in generated:
-            if isinstance(item, str):
-                requested.append(item)
-            elif isinstance(item, dict) and isinstance(item.get("skills"), list):
-                group_type = _text(item.get("type")).lower()
-                if group_type:
-                    requested_types.add(group_type)
-                requested.extend(skill for skill in item["skills"] if isinstance(skill, str))
-    requested_names = [_normalized_skill_name(item) for item in requested]
-    groups: list[dict[str, Any]] = []
-    for group in source_groups:
-        skills = [skill.strip() for skill in group.get("skills", []) if isinstance(skill, str) and skill.strip()]
-        selected = [
-            skill for skill in skills
-            if any(
-                _normalized_skill_name(skill) == item
-                or (len(_normalized_skill_name(skill)) > 2 and (_normalized_skill_name(skill) in item or item in _normalized_skill_name(skill)))
-                for item in requested_names
-            )
-        ]
-        if selected:
-            groups.append({"type": _text(group.get("type")) or "Skills", "skills": list(dict.fromkeys(selected))})
-
-    # Keep one or two representative items from omitted source groups. This
-    # preserves professional breadth without restoring the entire source list.
-    represented_types = {_text(group.get("type")).lower() for group in groups}
-    for source_group in source_groups:
-        group_type = _text(source_group.get("type")) or "Skills"
-        if group_type.lower() in represented_types:
-            continue
-        source_skills = [skill.strip() for skill in source_group.get("skills", []) if isinstance(skill, str) and skill.strip()]
-        if source_skills:
-            groups.append({"type": group_type, "skills": source_skills[:2]})
-    if groups or requested:
-        return groups
-    return [
-        {"type": _text(group.get("type")) or "Skills", "skills": [skill.strip() for skill in group.get("skills", []) if isinstance(skill, str) and skill.strip()]}
-        for group in source_groups if isinstance(group.get("skills"), list)
+    fallback = [
+        {
+            "type": _text(group.get("type")) or "Skills",
+            "skills": [
+                skill.strip()
+                for skill in group.get("skills", [])
+                if isinstance(skill, str) and skill.strip()
+            ][:2],
+        }
+        for group in source_groups
+        if isinstance(group.get("skills"), list)
     ]
+    if not isinstance(generated, list):
+        return fallback
+    if not generated:
+        return []
+
+    source_by_name: dict[str, tuple[str, str]] = {}
+    for group in source_groups:
+        group_type = _text(group.get("type")) or "Skills"
+        for skill in group.get("skills", []) if isinstance(group.get("skills"), list) else []:
+            if isinstance(skill, str) and skill.strip():
+                source_by_name.setdefault(_normalized_skill_name(skill), (group_type, skill.strip()))
+
+    requested: list[str] = []
+    has_valid_shape = False
+    has_explicit_empty_selection = False
+    for item in generated:
+        if isinstance(item, str) and item.strip():
+            has_valid_shape = True
+            requested.append(item)
+        elif isinstance(item, dict) and isinstance(item.get("skills"), list):
+            has_valid_shape = True
+            if not item["skills"]:
+                has_explicit_empty_selection = True
+            requested.extend(skill for skill in item["skills"] if isinstance(skill, str) and skill.strip())
+
+    if not has_valid_shape:
+        return fallback
+
+    groups: list[dict[str, Any]] = []
+    group_positions: dict[str, int] = {}
+    for requested_skill in requested:
+        source = source_by_name.get(_normalized_skill_name(requested_skill))
+        if not source:
+            continue
+        group_type, source_spelling = source
+        position = group_positions.get(group_type)
+        if position is None:
+            position = len(groups)
+            group_positions[group_type] = position
+            groups.append({"type": group_type, "skills": []})
+        if source_spelling not in groups[position]["skills"]:
+            groups[position]["skills"].append(source_spelling)
+
+    if groups:
+        return groups
+    if has_explicit_empty_selection and not requested:
+        return []
+    return fallback
 
 
 def _experience_bullet_context(value: Any) -> list[dict[str, Any]]:
@@ -398,6 +323,7 @@ def _merge_experience_bullets(original: Any, generated: Any) -> list[dict[str, A
     merged = [dict(item) for item in original if isinstance(item, dict)]
     if not isinstance(generated, list):
         return merged
+    seen_indexes: set[int] = set()
     for entry in generated:
         if not isinstance(entry, dict):
             continue
@@ -405,8 +331,9 @@ def _merge_experience_bullets(original: Any, generated: Any) -> list[dict[str, A
             index = int(entry.get("index"))
         except (TypeError, ValueError):
             continue
-        if index < 0 or index >= len(merged):
+        if index < 0 or index >= len(merged) or index in seen_indexes:
             continue
+        seen_indexes.add(index)
         bullets = entry.get("bullets", entry.get("description"))
         if isinstance(bullets, str):
             bullets = [bullets]
@@ -444,23 +371,34 @@ def _freshness(posted_at: str | None) -> tuple[float, str]:
 
 def build_tailor_messages(job: dict, resume: dict, doc_type: str = "resume") -> list[dict[str, str]]:
     description = _text(job.get("job_description"))
-    context = {
+    resume_context: dict[str, Any] = {
         "skills": resume.get("skills") if isinstance(resume.get("skills"), list) else [],
         "experience": _experience_bullet_context(resume.get("experience")),
         "projects": resume.get("projects") if isinstance(resume.get("projects"), list) else [],
+        "education": resume.get("education") if isinstance(resume.get("education"), list) else [],
+        "certifications": resume.get("certifications") if isinstance(resume.get("certifications"), list) else [],
     }
     total_work_experience = _total_work_experience(resume.get("experience"))
     if total_work_experience:
-        context["total_work_experience"] = total_work_experience
-    prompt = TAILOR_PROMPT
-    if doc_type == "cover_letter":
-        prompt = COVER_LETTER_PROMPT
-    elif doc_type == "both":
-        prompt = BOTH_PROMPT
+        resume_context["total_work_experience"] = total_work_experience
+    prompt = _build_tailor_prompt(doc_type)
 
     return [
         {"role": "system", "content": prompt},
-        {"role": "user", "content": json.dumps({"job_description": description[:18000], "resume": context}, ensure_ascii=False)},
+        {
+            "role": "user",
+            "content": json.dumps(
+                {
+                    "job": {
+                        "title": _text(job.get("title")),
+                        "company": _text(job.get("company")),
+                        "job_description": description[:18000],
+                    },
+                    "resume": resume_context,
+                },
+                ensure_ascii=False,
+            ),
+        },
     ]
 
 
@@ -483,18 +421,15 @@ def review_job(job: dict, resume: dict, *, doc_type: str = "resume", tailor: boo
                 tailored["summary"] = f"Experienced candidate tailored for {job.get('title') or 'this position'}."
             key_qualifications = mock_competencies
             if doc_type in ("cover_letter", "both"):
-                candidate_name = f"{_text(resume.get('basics', {}).get('first_name'))} {_text(resume.get('basics', {}).get('last_name'))}".strip() or "Candidate"
                 target_role = job.get("title") or "Open Position"
                 target_company = job.get("company") or "your team"
                 cover_letter_text = (
-                    f"Dear Hiring Team at {target_company},\n\n"
                     f"I am writing to express my strong interest in the {target_role} position. "
                     f"With my extensive experience in delivering impactful engineering solutions and solving complex technical challenges, "
                     f"I am excited about the opportunity to contribute to {target_company}.\n\n"
                     f"Throughout my career, I have consistently focused on building scalable systems, optimizing performance, and collaborating effectively with cross-functional teams. "
                     f"My technical background and proven track record make me a strong match for your key requirements.\n\n"
-                    f"Thank you for considering my application. I look forward to discussing how my skills and experiences can benefit your upcoming initiatives.\n\n"
-                    f"Sincerely,\n{candidate_name}"
+                    f"I welcome the opportunity to discuss how my skills and experiences can benefit your upcoming initiatives."
                 )
             tailor_result = {
                 "mock": True,

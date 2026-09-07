@@ -1,6 +1,6 @@
 /** @format */
 
-import { useDeferredValue, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type {
   JobSnapshot,
   PageInspection,
@@ -118,8 +118,7 @@ export function FloatingJobCardDialog() {
     !hasOpenedCard && (isInspecting || !minLoadingDone || isMatchPending);
   const isLoading =
     !isConfirmedNonJob && (hasOpenedCard ? isInspectingPage : isInitialPending);
-  const deferredIsLoading = useDeferredValue(isLoading);
-  const isShowingLoading = isLoading || deferredIsLoading;
+  const isShowingLoading = isLoading;
 
   useEffect(() => {
     if (!isShowingLoading && isJobPage && currentJobId) {
@@ -373,17 +372,28 @@ export function FloatingJobCardDialog() {
   const isAlignTop = ballPosition.pos === 'top';
 
   return (
-    <div className='relative h-full w-full bg-transparent text-foreground overflow-hidden font-sans select-text box-border pointer-events-none'>
+    <div
+      className={cn(
+        'relative h-full w-full bg-transparent text-foreground font-sans select-text box-border pointer-events-none',
+        isShowingLoading ? 'overflow-visible' : 'overflow-hidden',
+      )}
+    >
       <div
         className={cn(
           'flex h-full w-full box-border',
-          isShowingLoading ? 'p-2.5' : 'p-1',
-          isAlignRight ? 'justify-end' : 'justify-start',
-          isAlignTop ? 'items-start' : 'items-end',
+          isShowingLoading ?
+            cn(
+              isAlignRight ? 'justify-end pr-8' : 'justify-start pl-8',
+              isAlignTop ? 'items-start pt-10' : 'items-end pb-10',
+            )
+          : cn(
+              isAlignRight ? 'justify-end pr-6 pl-4' : 'justify-start pl-6 pr-4',
+              isAlignTop ? 'items-start pt-5 pb-5' : 'items-end pb-5 pt-5',
+            ),
         )}
       >
         {isShowingLoading ? (
-          <div className='jobby-ai-glow-container pointer-events-auto'>
+          <div className='jobby-ai-glow-container pointer-events-auto transition-opacity duration-150'>
             <div className='jobby-ai-glow-halo' />
             <div className='jobby-ai-glow-border' />
             <div className='relative z-10 flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-background-primary border border-primary/20 text-foreground shadow-md'>
@@ -397,15 +407,12 @@ export function FloatingJobCardDialog() {
           </div>
         ) : isJobPage ? (
           <div
-            className='pointer-events-auto flex flex-col w-full h-full max-h-screen bg-background-primary p-2 border border-primary/20 overflow-hidden box-border shadow-xl'
+            className='pointer-events-auto flex flex-col w-[376px] h-full max-h-screen bg-background-primary p-2 border border-primary/20 overflow-hidden box-border shadow-xl transition-opacity duration-200 ease-out'
             style={{
               contain: 'layout paint',
+              willChange: 'opacity, transform',
               borderRadius:
                 'var(--score-card-radius-shell-accent) var(--score-card-radius-shell-base) var(--score-card-radius-shell-base) var(--score-card-radius-shell-base)',
-              clipPath:
-                'inset(0 round var(--score-card-radius-shell-accent) var(--score-card-radius-shell-base) var(--score-card-radius-shell-base) var(--score-card-radius-shell-base))',
-              WebkitClipPath:
-                'inset(0 round var(--score-card-radius-shell-accent) var(--score-card-radius-shell-base) var(--score-card-radius-shell-base) var(--score-card-radius-shell-base))',
             }}
           >
             <div
@@ -413,10 +420,6 @@ export function FloatingJobCardDialog() {
               style={{
                 borderRadius:
                   'var(--score-card-radius-accent) var(--score-card-radius-base) var(--score-card-radius-base) var(--score-card-radius-base)',
-                clipPath:
-                  'inset(0 round var(--score-card-radius-accent) var(--score-card-radius-base) var(--score-card-radius-base) var(--score-card-radius-base))',
-                WebkitClipPath:
-                  'inset(0 round var(--score-card-radius-accent) var(--score-card-radius-base) var(--score-card-radius-base) var(--score-card-radius-base))',
               }}
             >
               <JobAnalysisPanel

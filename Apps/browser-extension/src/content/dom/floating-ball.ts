@@ -442,7 +442,7 @@ function createFloatingBall() {
         rgba(245, 158, 11, 0.88),
         rgba(16, 185, 129, 0.88)
       );
-      animation: aiRotate 1.8s linear infinite;
+      animation: aiRotate 1.1s linear infinite;
       filter: blur(12px);
       z-index: 0;
       pointer-events: none;
@@ -662,10 +662,10 @@ function createFloatingBall() {
     /* ─── Floating Dialog Iframe Container ───────────────────────── */
     #jobby-dialog-iframe-wrapper {
       position: absolute !important;
-      width: 376px !important;
-      height: ${DIALOG_HEIGHT}px !important;
-      max-height: calc(100vh - 40px) !important;
-      max-width: calc(100vw - 80px) !important;
+      width: 416px !important;
+      height: calc(${DIALOG_HEIGHT}px + 40px) !important;
+      max-height: calc(100vh - 20px) !important;
+      max-width: calc(100vw - 40px) !important;
       z-index: 2147483646 !important;
       overflow: visible !important;
       background: transparent !important;
@@ -674,34 +674,31 @@ function createFloatingBall() {
       opacity: 0 !important;
       visibility: hidden !important;
       pointer-events: none !important;
-      top: var(--jobby-dialog-offset-y, 0px) !important;
+      top: calc(var(--jobby-dialog-offset-y, 0px) - 20px) !important;
       bottom: auto !important;
-      transform: scale(0.96) !important;
+      transform: scale(0.98) !important;
       transform-origin: center right !important;
-      transition: opacity 0.18s cubic-bezier(0.16, 1, 0.3, 1),
-                  transform 0.18s cubic-bezier(0.16, 1, 0.3, 1),
-                  visibility 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
+      transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+                  transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+                  visibility 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
     }
 
-    #jobby-dialog-iframe-wrapper.is-compact {
-      width: 376px !important;
-      height: ${DIALOG_HEIGHT}px !important;
-    }
-
+    #jobby-dialog-iframe-wrapper.is-compact,
     #jobby-dialog-iframe-wrapper.is-expanded {
-      width: 376px !important;
-      height: ${DIALOG_HEIGHT}px !important;
-      max-height: calc(100vh - 40px) !important;
-      max-width: calc(100vw - 80px) !important;
+      width: 416px !important;
+      height: calc(${DIALOG_HEIGHT}px + 40px) !important;
+      max-height: calc(100vh - 20px) !important;
+      max-width: calc(100vw - 40px) !important;
+      top: calc(var(--jobby-dialog-offset-y, 0px) - 20px) !important;
     }
 
     /* Horizontal: Right edge vs Left edge */
     #jobby-ball-wrapper.edge-right #jobby-dialog-iframe-wrapper {
-      right: calc(100% + 10px) !important;
+      right: calc(100% - 14px) !important;
       left: auto !important;
     }
     #jobby-ball-wrapper.edge-left #jobby-dialog-iframe-wrapper {
-      left: calc(100% + 10px) !important;
+      left: calc(100% - 14px) !important;
       right: auto !important;
       transform-origin: center left !important;
     }
