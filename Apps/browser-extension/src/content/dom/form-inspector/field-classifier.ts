@@ -141,12 +141,22 @@ export function isDocumentSelectionRadio(element: HTMLInputElement): boolean {
   const heading = cleanText(
     container?.querySelector("legend, h1, h2, h3, h4, [role='heading']")?.textContent,
   );
-  if (/^(?:resume|curriculum vitae|cv|简历|履历)$/i.test(heading)) {
+  if (/(?:^|\b)(?:resume|curriculum vitae|\bcv\b|cover[\s_-]*letter|简历|履历)(?:\*|\b)/i.test(heading)) {
     const hasUploadOption = Boolean(
       container?.querySelector("input[type='file']") ||
-        /(?:upload|stored|profile|上传)/i.test(cleanText(container?.textContent)),
+        /(?:upload|stored|profile|上传|\.pdf|\.docx|\.doc)/i.test(cleanText(container?.textContent)),
     );
     if (hasUploadOption) return true;
+  }
+
+  const cardText = cleanText(element.closest("label, [role='radio'], div")?.textContent);
+  if (
+    /\.(?:pdf|docx?)\b/i.test(cardText) &&
+    /(?:resume|cv|\bdoc\b)/i.test(
+      `${name} ${id} ${heading} ${container?.getAttribute("aria-label") || ""}`,
+    )
+  ) {
+    return true;
   }
 
   return false;
@@ -388,6 +398,25 @@ export function fileUploadLabelFor(element: HTMLInputElement, scope: FormScope):
   ) {
     return "Cover Letter";
   }
+
+  let ancestor = element.parentElement;
+  for (let depth = 0; depth < 8 && ancestor && !ancestor.matches("body, html"); depth += 1) {
+    const heading = ancestor.querySelector<HTMLElement>(
+      "h1, h2, h3, h4, h5, [role='heading'], legend, [data-test='section-title']",
+    );
+    if (heading && /resume|curriculum vitae|\bcv\b|简历|履历/i.test(cleanText(heading.textContent))) {
+      return "Resume";
+    }
+    if (
+      heading &&
+      /cover[\s_-]*(?:letter|note)|motivation[\s_-]*letter|求职信|自荐信/i.test(
+        cleanText(heading.textContent),
+      )
+    ) {
+      return "Cover Letter";
+    }
+    ancestor = ancestor.parentElement;
+  }
   const groupLabel = uploadGroup ? labelledByText(uploadGroup, root) : "";
   const explicitLabel = element.id
     ? root.querySelector<HTMLLabelElement>(`label[for='${CSS.escape(element.id)}']`)
@@ -461,7 +490,7 @@ export function fileUploadLabelFor(element: HTMLInputElement, scope: FormScope):
 
   const text = candidates[0] || "";
 
-  if (/resume|curriculum vitae|\bcv\b|履历|简历/i.test(text)) return "Resume";
+  if (/resume|curriculum vitae|\bcv\b|履历|简历/i.test(text) || /^upload\s*(?:pdf|doc|docx|resume|cv)/i.test(text)) return "Resume";
   if (/cover[\s_-]*(?:letter|note)|motivation[\s_-]*letter|求职信|自荐信|附言/i.test(text))
     return "Cover Letter";
   if (text) return cleanLabel(text);
@@ -476,6 +505,15 @@ export function fileUploadLabelFor(element: HTMLInputElement, scope: FormScope):
   return "Resume";
 }
 
+function cleanDocumentTitle(text: string): string {
+  return cleanText(text)
+    .replace(/^PDF\s*/i, "")
+    .replace(/\s*\b(?:deselect|select)\s+(?:resume|cv|cover\s+letter)\s*/i, "")
+    .replace(/\s*\d{1,2}\/\d{1,2}\/\d{2,4}.*$/, "")
+    .replace(/\s*[\(\[]\s*(?:doc|docx|pdf)\s*[\)\]]$/i, "")
+    .trim();
+}
+
 export function selectedDocumentFor(
   element: HTMLInputElement,
   scope: FormScope,
@@ -488,15 +526,46 @@ export function selectedDocumentFor(
   ).find((label) =>
     /^deselect\s+(?:resume|cv|cover\s+letter)\s+/i.test(cleanText(label.textContent)),
   );
-  if (!selectedLabel) return undefined;
-  const name = cleanText(selectedLabel.textContent)
-    .replace(/^deselect\s+(?:resume|cv|cover\s+letter)\s+/i, "")
-    .trim();
-  if (!name) return undefined;
-  const cardText = cleanText(
-    selectedLabel.closest(".jobs-document-upload-redesign-card")?.textContent,
-  );
-  return { name, accepted: !/\b0\s*B\b/i.test(cardText) };
+  if (selectedLabel) {
+    const name = cleanText(selectedLabel.textContent)
+      .replace(/^deselect\s+(?:resume|cv|cover\s+letter)\s+/i, "")
+      .trim();
+    if (name) {
+      const cardText = cleanText(
+        selectedLabel.closest(".jobs-document-upload-redesign-card")?.textContent,
+      );
+      return { name, accepted: !/\b0\s*B\b/i.test(cardText) };
+    }
+  }
+
+  const container =
+    element.closest<HTMLElement>("fieldset, [role='radiogroup'], section, div") ||
+    root.querySelector<HTMLElement>("[role='radiogroup']");
+  if (container) {
+    const radios = Array.from(
+      container.querySelectorAll<HTMLElement>("[role='radio'], input[type='radio']"),
+    );
+    const selected = radios.find(
+      (opt) =>
+        (opt instanceof HTMLInputElement && opt.checked) ||
+        opt.getAttribute("aria-checked") === "true" ||
+        opt.classList.contains("selected") ||
+        opt.getAttribute("data-state") === "checked",
+    );
+    if (selected) {
+      const cardText = cleanText(
+        selected.closest("label, [role='radio'], div")?.textContent ||
+          selected.getAttribute("aria-label") ||
+          selected.textContent,
+      );
+      const name = cleanDocumentTitle(cardText);
+      if (name) {
+        return { name, accepted: !/\b0\s*B\b/i.test(cardText) };
+      }
+    }
+  }
+
+  return undefined;
 }
 
 export function uploadErrorFor(element: HTMLInputElement, scope: FormScope): string {
@@ -550,7 +619,7 @@ export function documentOptionsFor(
   scope: FormScope,
 ): Array<{ label: string; value: string }> {
   const root = scopeFor(element, scope);
-  return Array.from(
+  const legacy = Array.from(
     root.querySelectorAll<HTMLLabelElement>(
       ".jobs-document-upload-redesign-card__toggle-label",
     ),
@@ -564,6 +633,36 @@ export function documentOptionsFor(
       return match?.[1] && value ? { label: match[1].trim(), value } : null;
     })
     .filter((option): option is { label: string; value: string } => Boolean(option));
+  if (legacy.length > 0) return legacy;
+
+  const container =
+    element.closest<HTMLElement>("fieldset, [role='radiogroup'], section, div") ||
+    root.querySelector<HTMLElement>("[role='radiogroup']");
+  if (container) {
+    const radios = Array.from(
+      container.querySelectorAll<HTMLElement>("[role='radio'], input[type='radio']"),
+    );
+    const options = radios
+      .map((opt) => {
+        const text = cleanText(
+          opt.closest("label, [role='radio'], div")?.textContent ||
+            opt.getAttribute("aria-label") ||
+            opt.textContent,
+        );
+        const label = cleanDocumentTitle(text);
+        const value = cleanText(
+          opt.id ||
+            opt.getAttribute("data-value") ||
+            opt.getAttribute("value") ||
+            label,
+        );
+        return label && value ? { label, value } : null;
+      })
+      .filter((option): option is { label: string; value: string } => Boolean(option));
+    if (options.length > 0) return options;
+  }
+
+  return [];
 }
 
 export function fileRequiredFor(element: HTMLInputElement, scope: FormScope): boolean {

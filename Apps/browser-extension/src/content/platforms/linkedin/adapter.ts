@@ -156,7 +156,7 @@ const SELECTORS = {
 } as const;
 
 const APPLICATION_FIELD_SELECTOR =
-  "input:not([type='hidden']), select, textarea";
+  "input:not([type='hidden']), select, textarea, [role='radio'], [role='radiogroup'], [role='combobox'], [role='checkbox'], input[type='file']";
 
 const APPLICATION_ROOT_SELECTOR = [
   ...SELECTORS.applicationRoot,
@@ -1332,7 +1332,7 @@ export class LinkedInAdapter {
     if (/jobs-easy-apply-(?:modal|content|form)/i.test(className)) return true;
 
     const label = cleanText(
-      `${element.getAttribute('aria-label') || ''} ${deepFirst(element, 'h1, h2, [role="heading"]')?.textContent || ''}`,
+      `${element.getAttribute('aria-label') || ''} ${deepFirst(element, 'h1, h2, h3, [role="heading"], [class*="header" i], [class*="title" i]')?.textContent || ''}`,
     );
     if (/(?:job\s*alert|search\s*alert|create\s*alert|职位提醒|求职提醒|创建求职通知|通知提醒)/i.test(label)) {
       return false;
@@ -1352,12 +1352,15 @@ export class LinkedInAdapter {
 
     const hasApplicationAction = Boolean(deepFirst(
       element,
-      'form.jobs-easy-apply-form, [data-live-test-easy-apply-submit-button], [data-live-test-easy-apply-next-button], button[aria-label*="Continue"], button[aria-label*="Next"], button[aria-label*="Review"], button[aria-label*="Submit"]',
-    ));
+      'form.jobs-easy-apply-form, [data-live-test-easy-apply-submit-button], [data-live-test-easy-apply-next-button], button.artdeco-button--primary, button[aria-label*="Continue"], button[aria-label*="Next"], button[aria-label*="Review"], button[aria-label*="Submit"]',
+    )) || deepQueryAll(element, 'button, [role="button"]').some((button) => {
+      const btnText = cleanText(button.textContent || button.getAttribute('aria-label'));
+      return /(?:continue|next|review|submit|申请|提交|继续|下一步|审核|检查)/i.test(btnText);
+    });
     const isModalLike = element.matches(
       '[role="dialog"], .artdeco-modal, [data-test-modal], [data-test-modal-container], .jobs-easy-apply-content, form.jobs-easy-apply-form',
     );
-    return isModalLike && hasApplicationField && hasApplicationAction;
+    return isModalLike && hasApplicationField && (hasApplicationAction || /(?:apply\s+to|申请(?:职位|工作)?|应聘)/i.test(label));
   }
 
   private applicationRootCandidates(): HTMLElement[] {
@@ -1420,8 +1423,8 @@ export class LinkedInAdapter {
       semanticModal &&
       isVisible(semanticModal) &&
       !this.hasHiddenModalAncestor(semanticModal) &&
-      this.hasVisibleApplicationField(semanticModal) &&
-      this.hasApplicationAction(semanticModal)
+      (this.hasVisibleApplicationField(semanticModal) ||
+        this.hasApplicationAction(semanticModal))
     ) {
       return semanticModal;
     }
@@ -1430,8 +1433,8 @@ export class LinkedInAdapter {
     for (let depth = 0; candidate && depth < 9; depth += 1) {
       if (
         isVisible(candidate) &&
-        this.hasVisibleApplicationField(candidate) &&
-        this.hasApplicationAction(candidate)
+        (this.hasVisibleApplicationField(candidate) ||
+          this.hasApplicationAction(candidate))
       ) {
         return candidate;
       }
@@ -1446,7 +1449,15 @@ export class LinkedInAdapter {
   }
 
   private hasVisibleApplicationField(root: ParentNode): boolean {
-    return deepQueryAll(root, APPLICATION_FIELD_SELECTOR).some((field) => isVisible(field));
+    return deepQueryAll(root, APPLICATION_FIELD_SELECTOR).some((field) => {
+      if (field instanceof HTMLInputElement && field.type.toLowerCase() === 'file') {
+        const uploader = field.closest(
+          'label, [class*="upload" i], [class*="file" i], [class*="drop" i], div, section',
+        );
+        return isVisible(field) || (uploader instanceof HTMLElement && isVisible(uploader));
+      }
+      return isVisible(field);
+    });
   }
 
   private hasApplicationAction(root: ParentNode): boolean {
@@ -1454,9 +1465,10 @@ export class LinkedInAdapter {
       const label = cleanText(
         button.textContent || button.getAttribute('aria-label'),
       );
+      const isPrimary = button.classList.contains('artdeco-button--primary');
       return (
         isVisible(button) &&
-        /(?:continue|next|review|submit|申请|提交|继续|下一步|审核|检查)/i.test(label)
+        (/(?:continue|next|review|submit|申请|提交|继续|下一步|审核|检查)/i.test(label) || isPrimary)
       );
     });
   }

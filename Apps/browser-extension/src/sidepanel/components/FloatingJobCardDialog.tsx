@@ -94,16 +94,38 @@ export function FloatingJobCardDialog() {
         (jobMatch.isEvaluating || (!jobMatch.evaluation && !jobMatch.error)))),
   );
 
+  const currentJobId =
+    latestInspection?.kind === 'job' ?
+      `${latestInspection.snapshot.platform}_${latestInspection.snapshot.externalId || latestInspection.snapshot.url || latestInspection.snapshot.title}`
+    : null;
+
+  const [openedJobId, setOpenedJobId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!currentJobId) {
+      setOpenedJobId(null);
+    }
+  }, [currentJobId]);
+
+  const hasOpenedCard = Boolean(currentJobId && openedJobId === currentJobId);
+
   const isInspecting =
     isInspectingPage || (!latestInspection && !inspectionError);
   const isConfirmedNonJob = Boolean(
     latestInspection && !isJobPage && !isInspectingPage,
   );
+  const isInitialPending =
+    !hasOpenedCard && (isInspecting || !minLoadingDone || isMatchPending);
   const isLoading =
-    !isConfirmedNonJob &&
-    (isInspecting || !minLoadingDone);
+    !isConfirmedNonJob && (hasOpenedCard ? isInspectingPage : isInitialPending);
   const deferredIsLoading = useDeferredValue(isLoading);
   const isShowingLoading = isLoading || deferredIsLoading;
+
+  useEffect(() => {
+    if (!isShowingLoading && isJobPage && currentJobId) {
+      setOpenedJobId(currentJobId);
+    }
+  }, [isShowingLoading, isJobPage, currentJobId]);
 
   const activeDescriptions = inspectingDescriptions;
   const [messageIndex, setMessageIndex] = useState(() =>
@@ -143,6 +165,7 @@ export function FloatingJobCardDialog() {
     'Analyzing...';
 
   const handleReDetectPage = async () => {
+    setOpenedJobId(null);
     await inspectPage();
     void inspectForm(true);
   };
@@ -244,6 +267,7 @@ export function FloatingJobCardDialog() {
             source: 'jobby-dialog',
             type: 'jobby.dialog-resize',
             mode: 'compact',
+            isLoading: true,
           },
           '*',
         );
@@ -253,6 +277,7 @@ export function FloatingJobCardDialog() {
             source: 'jobby-dialog',
             type: 'jobby.dialog-resize',
             mode: 'expanded',
+            isLoading: false,
           },
           '*',
         );
@@ -351,19 +376,24 @@ export function FloatingJobCardDialog() {
     <div className='relative h-full w-full bg-transparent text-foreground overflow-hidden font-sans select-text box-border pointer-events-none'>
       <div
         className={cn(
-          'flex h-full w-full p-1 box-border',
+          'flex h-full w-full box-border',
+          isShowingLoading ? 'p-2.5' : 'p-1',
           isAlignRight ? 'justify-end' : 'justify-start',
           isAlignTop ? 'items-start' : 'items-end',
         )}
       >
         {isShowingLoading ? (
-          <div className='pointer-events-auto flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-background-primary border border-primary/40 text-foreground shadow-md'>
-            <span
-              key={currentLoadingMessage}
-              className='text-[11.5px] font-bold tracking-tight animate-text-shimmer animate-text-shimmer-primary whitespace-nowrap'
-            >
-              {currentLoadingMessage}
-            </span>
+          <div className='jobby-ai-glow-container pointer-events-auto'>
+            <div className='jobby-ai-glow-halo' />
+            <div className='jobby-ai-glow-border' />
+            <div className='relative z-10 flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-background-primary border border-primary/20 text-foreground shadow-md'>
+              <span
+                key={currentLoadingMessage}
+                className='text-[11.5px] font-bold tracking-tight animate-text-shimmer animate-text-shimmer-primary whitespace-nowrap'
+              >
+                {currentLoadingMessage}
+              </span>
+            </div>
           </div>
         ) : isJobPage ? (
           <div

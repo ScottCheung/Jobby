@@ -186,4 +186,44 @@ describe('FloatingJobCardDialog', () => {
     );
     expect(container!.querySelector('[data-testid="job-score-card"]')).not.toBeNull();
   });
+
+  it('keeps compact loading state and does not open card while score is still evaluating on a job page', async () => {
+    mockLatestInspection = {
+      kind: 'job',
+      snapshot: {
+        platform: 'linkedin',
+        externalId: '4463198532',
+        url: 'https://www.linkedin.com/jobs/view/4463198532',
+        title: 'Software Engineer',
+        company: 'TheDriveGroup',
+      },
+    };
+    mockIsInspectingPage = false;
+    // Score has not finished loading
+    mockEvaluation = null;
+
+    const root = createRoot(container!);
+    flushSync(() => {
+      root.render(createElement(FloatingJobCardDialog));
+    });
+
+    // Wait past the min loading delay
+    await new Promise((r) => setTimeout(r, 500));
+
+    // Must NOT have sent expanded resize
+    expect(postedMessages).not.toContainEqual(
+      expect.objectContaining({
+        type: 'jobby.dialog-resize',
+        mode: 'expanded',
+      }),
+    );
+    // Card should NOT be rendered
+    expect(container!.querySelector('[data-testid="job-score-card"]')).toBeNull();
+
+    // Loading bubble with colorful AI glow should be rendered
+    expect(container!.querySelector('.jobby-ai-glow-container')).not.toBeNull();
+    expect(container!.querySelector('.jobby-ai-glow-halo')).not.toBeNull();
+    expect(container!.querySelector('.jobby-ai-glow-border')).not.toBeNull();
+  });
 });
+

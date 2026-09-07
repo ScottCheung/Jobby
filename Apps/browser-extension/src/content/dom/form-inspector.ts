@@ -302,6 +302,17 @@ export function inspectVisibleFormFields(scope: FormScope = document): FormField
 
   for (const group of ariaRadioGroups(scope)) {
     if (result.length >= 200) break;
+    const isDocGroup =
+      /(?:resume|curriculum vitae|\bcv\b|cover[\s_-]*letter|简历|履历)/i.test(group.label) &&
+      (Boolean(
+        group.container.querySelector("input[type='file']") ||
+          group.container.parentElement?.querySelector("input[type='file']") ||
+          (group.container.getRootNode() as ParentNode)?.querySelector?.("input[type='file']"),
+      ) ||
+        group.options.some((opt) =>
+          /\.(?:pdf|docx?)\b/i.test(cleanText(opt.textContent || opt.getAttribute("aria-label"))),
+        ));
+    if (isDocGroup) continue;
     if (
       result.some(
         (field) =>

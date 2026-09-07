@@ -6,7 +6,7 @@ import { linkedinAdapter } from "./adapter";
 import { linkedinJobSelection } from "./job-selection";
 
 const LINKEDIN_IGNORED_FIELD_LABELS =
-  /(?:job\s*alert|search\s*alert|create\s*alert|search\s*by\s*title|city,\s*state|search\s*jobs|keywords?|职位提醒|求职提醒|创建求职通知|通知提醒|搜索职位|搜索地点)/i;
+  /(?:^search$|^select\s+language$|^language$|job\s*alert|search\s*alert|create\s*alert|search\s*by|city,\s*state|search\s*jobs|keywords?|职位提醒|求职提醒|创建求职通知|通知提醒|搜索职位|搜索地点|选择语言)/i;
 
 export function filterLinkedInFormFields<T extends { label: string }>(fields: T[]): T[] {
   return fields.filter((field) => !LINKEDIN_IGNORED_FIELD_LABELS.test(field.label));

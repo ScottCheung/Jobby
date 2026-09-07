@@ -141,5 +141,73 @@ describe('LinkedIn Easy Apply form scope', () => {
     const inspection = readLinkedInFormPage();
     expect(inspection.kind).toBe('not_application_form');
   });
+
+  it('correctly scopes modern LinkedIn Easy Apply A/B test resume modal with radiogroup and excludes global page controls', () => {
+    document.body.innerHTML = `
+      <header>
+        <input aria-label="Search" placeholder="Search" />
+      </header>
+      <main class="scaffold-layout__main">
+        <input type="checkbox" aria-label="Software Engineer, Sydney, New South Wales, Australia" checked />
+      </main>
+      <footer>
+        <select aria-label="Select language"><option>English (English)</option></select>
+      </footer>
+      <div id="artdeco-modal-outlet">
+        <div role="dialog" aria-modal="true" class="artdeco-modal">
+          <div class="artdeco-modal__header">
+            <h2>Apply to TheDriveGroup</h2>
+          </div>
+          <div class="artdeco-modal__content">
+            <h3>Resume*</h3>
+            <p>Select or upload a resume in DOC, DOCX, or PDF format that is less than 2MB</p>
+            <div role="radiogroup" aria-label="Resume">
+              <div role="radio" aria-checked="true">
+                <span>Scott Zhang - CV - IVEGA GROUP PTY LTD - Full Stack Engineer (AI).pdf</span>
+                <span>9/2/2026</span>
+              </div>
+              <div role="radio" aria-checked="false">
+                <span>Scott Zhang - CV - Ashford.pdf</span>
+                <span>9/2/2026</span>
+              </div>
+            </div>
+            <button type="button">Upload resume</button>
+            <input type="file" id="resume-file" accept=".doc,.docx,.pdf" style="display: none;" />
+          </div>
+          <div class="artdeco-modal__action-bar">
+            <button type="button" class="artdeco-button artdeco-button--primary">
+              <span>Next</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const inspection = readLinkedInFormPage();
+    expect(inspection.kind).toBe('application_form');
+    if (inspection.kind !== 'application_form') return;
+
+    expect(inspection.fields).toHaveLength(1);
+    expect(inspection.fields[0]?.label).toBe('Resume');
+    expect(inspection.fields[0]?.type).toBe('file');
+    expect(inspection.fields[0]?.filled).toBe(true);
+    expect(inspection.fields[0]?.currentValue).toBe(
+      'Scott Zhang - CV - IVEGA GROUP PTY LTD - Full Stack Engineer (AI).pdf',
+    );
+    expect(inspection.fields[0]?.options).toHaveLength(2);
+    expect(inspection.fields[0]?.options?.[0]?.label).toBe(
+      'Scott Zhang - CV - IVEGA GROUP PTY LTD - Full Stack Engineer (AI).pdf',
+    );
+    expect(inspection.fields[0]?.options?.[1]?.label).toBe(
+      'Scott Zhang - CV - Ashford.pdf',
+    );
+    expect(inspection.fields.some((field) => field.label === 'Search')).toBe(false);
+    expect(
+      inspection.fields.some((field) => field.label.includes('Software Engineer')),
+    ).toBe(false);
+    expect(
+      inspection.fields.some((field) => field.label.includes('Select language')),
+    ).toBe(false);
+  });
 });
 

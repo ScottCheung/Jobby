@@ -82,6 +82,10 @@ function hasFormAction(scope: FormScope): boolean {
 }
 
 function scoreCandidate(candidate: HTMLElement): number {
+  if (candidate.matches("body, html")) {
+    return -1;
+  }
+
   // Fast check: avoid expensive inspectVisibleFormFields if candidate has no inputs/controls
   const hasControls = Boolean(candidate.querySelector(CONTROL_SIGNAL_SELECTOR));
   if (!hasControls && !candidate.matches("form, dialog, [role='dialog'], [aria-modal='true']")) {
@@ -91,7 +95,7 @@ function scoreCandidate(candidate: HTMLElement): number {
   const fields = inspectVisibleFormFields(candidate);
   if (fields.length === 0) return -1;
 
-  let score = fields.length * 25;
+  let score = Math.min(fields.length, 6) * 25;
   if (candidate.matches("form")) score += 70;
   if (isModalLike(candidate)) score += 90;
   if (isFormContainerLike(candidate)) score += 40;
@@ -99,6 +103,9 @@ function scoreCandidate(candidate: HTMLElement): number {
   const candidateText = cleanText(candidate.textContent);
   if (APPLICATION_INTENT_REGEX.test(candidateText)) score += 60;
   if (candidate.closest("nav, header, footer, aside, [role='navigation'], [role='complementary']")) score -= 80;
+  if (candidate.querySelector("dialog, [role='dialog'], [aria-modal='true'], [data-modal], .artdeco-modal")) {
+    score -= 100;
+  }
   if (isVisibleElement(candidate)) score += 10;
   return score;
 }

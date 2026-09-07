@@ -589,21 +589,53 @@ let navFeedbackTimer: number | undefined;
 function showTextHighlight(allRanges: Range[], activeRange?: Range): void {
   if (allRanges.length === 0) return;
 
-  if (!document.getElementById(SKILL_HIGHLIGHT_STYLE_ID)) {
-    const style = document.createElement('style');
+  let style = document.getElementById(
+    SKILL_HIGHLIGHT_STYLE_ID,
+  ) as HTMLStyleElement | null;
+  if (!style) {
+    style = document.createElement('style');
     style.id = SKILL_HIGHLIGHT_STYLE_ID;
-    style.textContent = `
-      ::highlight(${SKILL_HIGHLIGHT_NAME}) {
-        background-color: rgba(250, 204, 21, 0.45);
-        color: #000000;
-      }
-      ::highlight(${SKILL_HIGHLIGHT_ACTIVE_NAME}) {
-        background-color: #facc15;
-        color: #000000;
-      }
-    `;
     document.head.appendChild(style);
   }
+  style.textContent = `
+    ::highlight(${SKILL_HIGHLIGHT_NAME}) {
+      background-color: rgba(66, 133, 244, 0.20);
+      color: inherit;
+    }
+    ::highlight(${SKILL_HIGHLIGHT_ACTIVE_NAME}) {
+      background-color: rgba(66, 133, 244, 0.38);
+      color: inherit;
+    }
+    @keyframes jobbySweepAndSettle {
+      0% {
+        background-position: -200% 0;
+        background-color: transparent;
+      }
+      45% {
+        background-position: 0% 0;
+      }
+      100% {
+        background-position: 150% 0;
+        background-color: rgba(66, 133, 244, 0.08);
+      }
+    }
+    .jobby-sweep-settle {
+      background-image: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(66, 133, 244, 0.12) 30%,
+        rgba(155, 114, 207, 0.22) 50%,
+        rgba(217, 101, 112, 0.14) 70%,
+        transparent 100%
+      ) !important;
+      background-size: 200% 100% !important;
+      border: none !important;
+      outline: none !important;
+      box-shadow: none !important;
+      border-radius: 8px !important;
+      animation: jobbySweepAndSettle 1.4s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+    }
+  `;
 
   const cssHighlights =
     (window as any).CSS?.highlights ||
@@ -635,13 +667,14 @@ function showTextHighlight(allRanges: Range[], activeRange?: Range): void {
       cssHighlights.delete(SKILL_HIGHLIGHT_NAME);
       cssHighlights.delete(SKILL_HIGHLIGHT_ACTIVE_NAME);
     }
-  }, 4000);
+  }, 4500);
 }
 
 function showInPageNavFeedback(
   term: string,
   currentIndex: number,
   totalMatches: number,
+  _activeRange?: Range,
 ): void {
   if (navFeedbackTimer !== undefined) {
     window.clearTimeout(navFeedbackTimer);
@@ -883,7 +916,53 @@ function showInPageNavFeedback(
     window.setTimeout(() => {
       host?.remove();
     }, 360);
-  }, 4000);
+  }, 4500);
+}
+
+let activeSweepElement: HTMLElement | null = null;
+let activeSweepTimer: number | undefined;
+
+function applyElementSweepSettle(element: HTMLElement): void {
+  try {
+    if (activeSweepElement) {
+      activeSweepElement.style.boxShadow = '';
+      activeSweepElement.style.border = '';
+      activeSweepElement.style.outline = '';
+      activeSweepElement.classList.remove('jobby-sweep-settle');
+      if (activeSweepTimer !== undefined) {
+        window.clearTimeout(activeSweepTimer);
+        activeSweepTimer = undefined;
+      }
+    }
+
+    // Explicitly clean up any elements on the page that might have lingering box-shadow or classes
+    document.querySelectorAll<HTMLElement>('.jobby-sweep-settle').forEach((el) => {
+      el.style.boxShadow = '';
+      el.style.border = '';
+      el.style.outline = '';
+      el.classList.remove('jobby-sweep-settle');
+    });
+
+    activeSweepElement = element;
+    element.style.boxShadow = 'none';
+    element.style.border = 'none';
+    element.style.outline = 'none';
+    element.classList.remove('jobby-sweep-settle');
+    void element.offsetWidth;
+    element.classList.add('jobby-sweep-settle');
+
+    activeSweepTimer = window.setTimeout(() => {
+      if (activeSweepElement === element) {
+        element.style.boxShadow = '';
+        element.style.border = '';
+        element.style.outline = '';
+        element.classList.remove('jobby-sweep-settle');
+        activeSweepElement = null;
+      }
+    }, 4500);
+  } catch {
+    // Ignore
+  }
 }
 
 let lastSearchKey = '';
@@ -1040,27 +1119,14 @@ export async function highlightJobRequirement(
     });
   }
 
+
   showTextHighlight(allRanges, target.range);
-  try {
-    const el = target.element;
-    const prevTransition = el.style.transition;
-    const prevBoxShadow = el.style.boxShadow;
-    const prevBorderRadius = el.style.borderRadius;
-    el.style.transition = 'box-shadow 0.3s ease-in-out';
-    el.style.boxShadow = '0 0 0 3px rgba(250, 204, 21, 0.7)';
-    if (!el.style.borderRadius) el.style.borderRadius = '4px';
-    window.setTimeout(() => {
-      el.style.boxShadow = prevBoxShadow;
-      el.style.transition = prevTransition;
-      el.style.borderRadius = prevBorderRadius;
-    }, 2500);
-  } catch {
-    // Ignore
-  }
+  applyElementSweepSettle(target.element);
   showInPageNavFeedback(
     target.term || terms[0] || '',
     currentMatchIndex + 1,
     targets.length,
+    target.range,
   );
 
   return {

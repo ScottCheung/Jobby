@@ -217,7 +217,7 @@ describe('highlightJobRequirement', () => {
     expect(call5.currentIndex).toBe(1);
   });
 
-  it('uses fluorescent styling in the injected highlight style tag', async () => {
+  it('uses Gemini sweep and settle styling in the injected highlight style tag', async () => {
     document.body.innerHTML = `
       <main class="jobs-details__main-content">
         <div id="job-details">
@@ -229,7 +229,8 @@ describe('highlightJobRequirement', () => {
     await highlightJobRequirement(['Python']);
     const style = document.getElementById('jobby-skill-highlight-style');
     expect(style).not.toBeNull();
-    expect(style?.textContent).toContain('#facc15');
+    expect(style?.textContent).toContain('rgba(66, 133, 244');
+    expect(style?.textContent).toContain('jobbySweepAndSettle');
   });
 
   it('uses the detected provider JD selector instead of a generic matching card', async () => {

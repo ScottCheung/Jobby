@@ -7,7 +7,12 @@ import { adaptRegisteredFormFields } from "../form-field-adapter";
 import { linkedinAdapter } from "./adapter";
 
 function isLikelyLinkedInApplicationScope(scope: HTMLElement): boolean {
-  if (scope.matches("nav, header, footer, aside, [role='navigation'], [role='complementary']")) {
+  if (
+    scope.matches(
+      "body, html, #app, .application-outlet, .scaffold-layout, nav, header, footer, aside, [role='navigation'], [role='complementary']",
+    ) ||
+    Boolean(scope.querySelector("dialog, [role='dialog'], [aria-modal='true'], .artdeco-modal"))
+  ) {
     return false;
   }
   const text = (scope.textContent || "").replace(/\s+/g, " ").trim();
