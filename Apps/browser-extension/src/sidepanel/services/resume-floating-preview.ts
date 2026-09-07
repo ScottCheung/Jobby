@@ -96,12 +96,13 @@ export async function openFloatingResumePreview(): Promise<FloatingResumePreview
     setPdf(blob, filename) {
       if (previewWindow.closed) return;
       pdfUrl = URL.createObjectURL(blob);
+      previewDocument.title = filename;
       heading.textContent = filename;
       download.href = pdfUrl;
       download.download = filename;
       download.hidden = false;
       const frame = previewDocument.createElement('iframe');
-      frame.title = 'Resume PDF preview';
+      frame.title = filename;
       frame.src = pdfUrl;
       body.replaceChildren(frame);
     },

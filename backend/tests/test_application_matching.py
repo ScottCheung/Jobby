@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from unittest.mock import patch
+
 from services.shared.application_matching import parse_recency_score, score_job_match
 
 
@@ -147,6 +149,128 @@ def test_tiered_skill_weighting_gives_high_score_when_all_technologies_match() -
     assert res.match_score >= 0.85
     assert res.recency_factor == 0.8800  # 3 days ago recency factor (0.88)
     assert res.priority_score == round(res.match_score * res.recency_factor, 4)
+
+
+def test_required_skills_outweigh_preferred_skills() -> None:
+    description = """
+    Required:
+    - React
+    - TypeScript
+    Nice to have:
+    - Kafka
+    """
+    resume_without_preferred = {"skills": ["React", "TypeScript"]}
+    resume_without_required = {"skills": ["TypeScript", "Kafka"]}
+    technologies = ["React", "TypeScript", "Kafka"]
+
+    preferred_missing = score_job_match(
+        description,
+        resume_without_preferred,
+        job_title="Frontend Developer",
+        technologies=technologies,
+    )
+    required_missing = score_job_match(
+        description,
+        resume_without_required,
+        job_title="Frontend Developer",
+        technologies=technologies,
+    )
+
+    assert preferred_missing.skill_score > 0.80
+    assert required_missing.skill_score < 0.65
+    assert preferred_missing.skill_score > required_missing.skill_score
+
+
+def test_browser_technologies_skip_catalog_rescan() -> None:
+    with patch("services.shared.application_matching.extract_jd_skills") as extract_catalog:
+        score_job_match(
+            "React is required for this role.",
+            {"skills": ["React"]},
+            job_title="Frontend Developer",
+            technologies=["React"],
+        )
+
+    extract_catalog.assert_not_called()
+
+
+def test_strong_match_keeps_freshness_out_of_match_score() -> None:
+    result = score_job_match(
+        """
+        Required:
+        - React
+        - TypeScript
+        - REST APIs
+        5+ years of experience required.
+        """,
+        {
+            "target_title": "Frontend Developer",
+            "skills": ["React", "TypeScript", "REST APIs"],
+            "years_of_experience": 5,
+        },
+        job_title="Frontend Developer",
+        technologies=["React", "TypeScript", "REST APIs"],
+        date_posted="30+ days ago",
+    )
+
+    assert result.match_score >= 0.85
+    assert result.recency_factor < 0.10
+    assert result.priority_score < result.match_score * 0.10
+
+
+def test_experience_uses_dated_intervals_and_merges_overlap() -> None:
+    four_year_role = {
+        "experience": [{"start_date": "2020-01", "end_date": "2023-12"}],
+        "skills": ["Python"],
+    }
+    internships = {
+        "experience": [
+            {"start_date": "2022-01", "end_date": "2022-03"},
+            {"start_date": "2022-06", "end_date": "2022-08"},
+            {"start_date": "2023-01", "end_date": "2023-03"},
+        ],
+        "skills": ["Python"],
+    }
+    overlapping_roles = {
+        "experience": [
+            {"start_date": "2020-01", "end_date": "2022-12"},
+            {"start_date": "2021-01", "end_date": "2023-12"},
+        ],
+        "skills": ["Python"],
+    }
+
+    four_year_result = score_job_match(
+        "Python role requiring 4 years of experience.",
+        four_year_role,
+        job_title="Software Engineer",
+    )
+    internship_result = score_job_match(
+        "Python role requiring 1 year of experience.",
+        internships,
+        job_title="Software Engineer",
+    )
+    overlap_result = score_job_match(
+        "Python role requiring 5 years of experience.",
+        overlapping_roles,
+        job_title="Software Engineer",
+    )
+
+    assert four_year_result.exp_score == 1.0
+    assert 0.80 < internship_result.exp_score < 0.90
+    assert overlap_result.exp_score < 0.80
+
+
+def test_explicit_total_work_experience_takes_precedence() -> None:
+    result = score_job_match(
+        "Python role requiring 4 years of experience.",
+        {
+            "total_work_experience": "4 years 9 months",
+            "experience": [{"start_date": "2023-01", "end_date": "2023-06"}],
+            "skills": ["Python"],
+        },
+        job_title="Software Engineer",
+    )
+
+    assert result.exp_score == 0.9775
 
 
 def test_title_differentiation_across_domains() -> None:

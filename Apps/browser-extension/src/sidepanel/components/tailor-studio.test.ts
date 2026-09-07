@@ -394,7 +394,7 @@ describe('Document Studio & Resume Tailoring (Zero-Token Mock Mode)', () => {
     expect(clFilename).toBe('Scott Zhang - CL - Google - Staff Engineer.pdf');
   });
 
-  it('prioritizes user-modified job details from inspection snapshot over previous document metadata', async () => {
+  it('prioritizes previewed document metadata over current opened job snapshot', async () => {
     const { formatResumeFilename, formatCoverLetterFilename } = await import(
       '@jobby/ui/components/UI/Resume/helpers'
     );
@@ -405,17 +405,19 @@ describe('Document Studio & Resume Tailoring (Zero-Token Mock Mode)', () => {
       },
     };
 
-    const savedDoc = {
-      company: 'Old Recognized Company',
-      job_title: 'Old Recognized Title',
+    const previewedDoc = {
+      company: 'Tailored Target Corp',
+      job_title: 'Staff Software Engineer',
     };
-    const userModifiedSnapshot = {
-      company: 'User Overridden Corp',
-      title: 'Senior Principal Engineer',
+    const currentOpenedJobSnapshot = {
+      company: 'Currently Browsed Company',
+      title: 'Browsed Role Title',
     };
 
-    const effectiveCompany = userModifiedSnapshot.company || savedDoc.company;
-    const effectiveJobTitle = userModifiedSnapshot.title || savedDoc.job_title;
+    const effectiveCompany =
+      previewedDoc.company || currentOpenedJobSnapshot.company;
+    const effectiveJobTitle =
+      previewedDoc.job_title || currentOpenedJobSnapshot.title;
 
     const resumeFilename = formatResumeFilename(
       testResume,
@@ -429,10 +431,10 @@ describe('Document Studio & Resume Tailoring (Zero-Token Mock Mode)', () => {
     );
 
     expect(resumeFilename).toBe(
-      'Scott Zhang - CV - User Overridden Corp - Senior Principal Engineer.pdf',
+      'Scott Zhang - CV - Tailored Target Corp - Staff Software Engineer.pdf',
     );
     expect(clFilename).toBe(
-      'Scott Zhang - CL - User Overridden Corp - Senior Principal Engineer.pdf',
+      'Scott Zhang - CL - Tailored Target Corp - Staff Software Engineer.pdf',
     );
   });
 
@@ -688,5 +690,87 @@ describe('Document Studio & Resume Tailoring (Zero-Token Mock Mode)', () => {
     );
 
     expect(html).toContain('Re-scanning page...');
+  });
+
+  it('renders preview title and filename from previewed tailored document rather than opened job page', () => {
+    const mockStudio: any = {
+      jobTitle: 'Preview Corp Role',
+      company: 'Preview Corp',
+      datePosted: '',
+      jobDescription: '',
+      mockMode: false,
+      setMockMode: vi.fn(),
+      isPreviewLoading: false,
+      generationTasks: [],
+      isGeneratingType: vi.fn().mockReturnValue(false),
+      activeOptimisticId: null,
+      preview: null,
+      showPreviewModal: false,
+      setShowPreviewModal: vi.fn(),
+      result: {
+        resume_data: {
+          basics: { first_name: 'Scott', last_name: 'Zhang' },
+        },
+        core_competencies: ['TypeScript', 'React'],
+        key_qualifications: [],
+        targeted_projects: [],
+        cover_letter: 'Dear Hiring Manager at Preview Corp...',
+        tailored_resume: {
+          id: 'tailored-123',
+          job_application_id: 'job-123',
+          company: 'Preview Corp',
+          job_title: 'Staff Engineer',
+          job_description: 'Preview Corp description',
+          resume_data: {
+            basics: { first_name: 'Scott', last_name: 'Zhang' },
+          },
+          cover_letter: 'Dear Hiring Manager at Preview Corp...',
+          created_at: new Date().toISOString(),
+        },
+      },
+      savedResumes: [],
+      careerProfiles: [],
+      selectedProfileId: '',
+      switchProfile: vi.fn(),
+      makeDefaultProfile: vi.fn(),
+      originalResume: null,
+      detectedJob: null,
+      populateFromDetected: vi.fn(),
+      loadSavedResume: vi.fn(),
+      previewPrompt: vi.fn(),
+      generateTailoredResume: vi.fn(),
+      cancelGeneration: vi.fn(),
+      deleteSavedResume: vi.fn(),
+      simulateDevGeneration: vi.fn(),
+      clearDevGeneration: vi.fn(),
+    };
+
+    const openedJobInspection: any = {
+      kind: 'job',
+      snapshot: {
+        company: 'Opened Company On Current Tab',
+        title: 'Opened Role On Current Tab',
+        platform: 'linkedin',
+        url: 'https://linkedin.com/jobs/view/123',
+      },
+    };
+
+    const html = renderToStaticMarkup(
+      createElement(TailorStudioCard, {
+        studio: mockStudio,
+        latestInspection: openedJobInspection,
+        managementOnly: false,
+        onNavigateHome: vi.fn(),
+        onReDetect: vi.fn(),
+        isInspecting: false,
+      }),
+    );
+
+    // Title and download names must reflect the previewed document, not the opened page
+    expect(html).toContain('Preview Corp');
+    expect(html).toContain('Staff Engineer');
+    expect(html).toContain('Scott Zhang - CV - Preview Corp - Staff Engineer.pdf');
+    expect(html).toContain('Scott Zhang - CL - Preview Corp - Staff Engineer.pdf');
+    expect(html).not.toContain('Opened Company On Current Tab');
   });
 });

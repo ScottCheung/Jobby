@@ -137,16 +137,19 @@ export function JobScoreCard({
     <div className={cn('flex flex-col gap-3', className)}>
       <JobMatchSummary
         score={hasScore ? percentage : null}
-        label={matchLabel}
+        label={hasScore ? `Apply Score: ${percentage}` : matchLabel}
         breakdown={[
+          {
+            label: 'Match',
+            value:
+              hasScore ? toPercent(candidate?.match_score, 0) : null,
+            colorClassName: 'bg-violet-500',
+          },
           {
             label: 'Skill',
             value:
               hasScore ?
-                toPercent(
-                  candidate?.skill_score ?? candidate?.match_score,
-                  overallScore || 0,
-                )
+                toPercent(candidate?.skill_score, 0)
               : null,
             colorClassName: 'bg-emerald-500',
           },
@@ -154,21 +157,15 @@ export function JobScoreCard({
             label: 'Title',
             value:
               hasScore ?
-                toPercent(
-                  candidate?.title_score ?? candidate?.match_score,
-                  overallScore || 0,
-                )
+                toPercent(candidate?.title_score, 0)
               : null,
             colorClassName: 'bg-sky-500',
           },
           {
-            label: 'Exp',
+            label: 'Experience',
             value:
               hasScore ?
-                toPercent(
-                  candidate?.exp_score ?? candidate?.match_score,
-                  0.85,
-                )
+                toPercent(candidate?.exp_score, 0)
               : null,
             colorClassName: 'bg-indigo-500',
           },

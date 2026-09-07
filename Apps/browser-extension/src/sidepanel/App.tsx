@@ -437,13 +437,17 @@ export function App() {
       if (!matchingTailoredDoc) return;
       const docResume = matchingTailoredDoc.resume_data;
       const docCompany =
-        (latestInspection?.kind === 'job' && latestInspection.snapshot.company ?
+        matchingTailoredDoc.company ||
+        (latestInspection?.kind === 'job' ?
           latestInspection.snapshot.company
-        : matchingTailoredDoc.company) || '';
+        : undefined) ||
+        '';
       const docTitle =
-        (latestInspection?.kind === 'job' && latestInspection.snapshot.title ?
+        matchingTailoredDoc.job_title ||
+        (latestInspection?.kind === 'job' ?
           latestInspection.snapshot.title
-        : matchingTailoredDoc.job_title) || '';
+        : undefined) ||
+        '';
       const docCoverLetter =
         matchingTailoredDoc.cover_letter ||
         (matchingTailoredDoc.raw_ai_response?.cover_letter as

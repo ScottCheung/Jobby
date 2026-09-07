@@ -184,19 +184,6 @@ export function TailorStudioCard({
       latestInspection.snapshot.title
     : '';
 
-  const activeCompany =
-    inspectionCompany ||
-    company ||
-    result?.tailored_resume?.company ||
-    detectedJob?.company ||
-    '';
-  const activeJobTitle =
-    inspectionTitle ||
-    jobTitle ||
-    result?.tailored_resume?.job_title ||
-    detectedJob?.title ||
-    '';
-
   // Active generating view: only shown if activeOptimisticId is selected/active
   const isViewingGenerating = Boolean(
     activeOptimisticId &&
@@ -212,6 +199,19 @@ export function TailorStudioCard({
     (s) => s.id === activeOptimisticId,
   );
   const activeRecord = result?.tailored_resume || activeOptimisticItem;
+
+  const activeCompany =
+    activeRecord?.company ||
+    company ||
+    inspectionCompany ||
+    detectedJob?.company ||
+    '';
+  const activeJobTitle =
+    activeRecord?.job_title ||
+    jobTitle ||
+    inspectionTitle ||
+    detectedJob?.title ||
+    '';
   const rawAi = (activeRecord?.raw_ai_response || result?.raw_ai_response) as
     | Record<string, unknown>
     | undefined;

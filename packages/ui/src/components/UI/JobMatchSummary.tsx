@@ -92,7 +92,7 @@ export function JobMatchSummary({
               : null;
             return (
               <div key={item.label} className='flex min-w-0 items-center gap-1.5'>
-                <span className='w-7 shrink-0 truncate font-medium text-muted-foreground'>
+                <span className='w-14 shrink-0 truncate font-medium text-muted-foreground'>
                   {item.label}
                 </span>
                 <div className='h-1.5 flex-1 overflow-hidden rounded-full bg-background-secondary'>

@@ -53,7 +53,10 @@ export function StandaloneResumePreview() {
         const stored = await chrome.storage.session.get(key);
         const value = stored[key] as StoredPreview | undefined;
         if (value?.pdfDataUrl && value.filename) {
-          if (!cancelled) setPreview(value);
+          if (!cancelled) {
+            setPreview(value);
+            document.title = value.filename;
+          }
           return;
         }
         await new Promise((resolve) => window.setTimeout(resolve, 100));
