@@ -3,11 +3,11 @@ from typing import Any
 from urllib.parse import unquote, urlsplit
 from uuid import UUID
 
-from fastapi import HTTPException, status
 from sqlalchemy import delete, or_, select, text
 from sqlalchemy.orm import Session
 
-from services.api.routers.helpers import (
+from services.domain.errors import CareerProfileNotReady, ResumeAssetDataUnavailable
+from services.domain.resume_profiles import (
     CAREER_PROFILE_SOURCE,
     RESUME_UPLOAD_COST,
     dedupe_strings,
@@ -49,7 +49,7 @@ def _default_career_profile(db: Session, current_user: User) -> JobHuntingProfil
     )
     resume = (profile.extra_data or {}).get("resume_data") if profile else None
     if not isinstance(resume, dict) or not resume:
-        raise HTTPException(status_code=400, detail="Select a ready Resume Profile first")
+        raise CareerProfileNotReady("Select a ready Resume Profile first")
     return profile
 
 
@@ -142,9 +142,8 @@ def resume_asset_master_response(profile: JobHuntingProfile) -> dict:
     extra = profile.extra_data or {}
     resume_data = extra.get("resume_data")
     if not isinstance(resume_data, dict) or not resume_data:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="This older resume version has no saved parsed data. Re-upload it to restore an editable version.",
+        raise ResumeAssetDataUnavailable(
+            "This older resume version has no saved parsed data. Re-upload it to restore an editable version."
         )
     asset = resume_asset_response(profile)
     return {
@@ -540,5 +539,4 @@ def recover_master_resume(resume_id: UUID) -> None:
             db.close()
         return
     process_master_resume(resume_id, content, upload_id)
-
 

@@ -3,10 +3,10 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from fastapi import HTTPException, status
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session, selectinload
 
+from services.domain.errors import ApplicationStatusNotRecordable
 from services.shared.job_link_repair import (
     JobLinkRepairError,
     is_linkedin_public_summary,
@@ -162,10 +162,7 @@ NON_RECORDED_APPLICATION_STATUSES = (
 
 def ensure_recordable_application_status(status_value: str) -> None:
     if status_value in NON_RECORDED_APPLICATION_STATUSES:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Only submitted applications can be recorded.",
-        )
+        raise ApplicationStatusNotRecordable("Only submitted applications can be recorded.")
 
 
 def default_pipeline_stage_for_status(status_value: str | None) -> str:
@@ -549,5 +546,4 @@ def sync_worker_application_from_link(application: JobApplication, values: dict)
         return
     if not (application.job_link or application.external_job_link):
         return
-
 

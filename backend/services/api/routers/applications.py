@@ -18,7 +18,8 @@ from services.api.routers.job_hunting_profiles import (
     _legacy_policy_values,
     _legacy_runtime_values,
 )
-from services.api.routers.resumes import _default_career_profile, tailored_resume_response
+from services.api.routers.resumes import tailored_resume_response
+from services.domain.errors import ApplicationStatusNotRecordable, CareerProfileNotReady
 from services.api.routers.skills import _get_user_profile_skills
 from services.shared.application_decisions import evaluate_candidate, evaluation_to_dict
 from services.shared.application_settings import (
@@ -87,9 +88,7 @@ from services.domain.application_lifecycle import (
     sync_worker_application_from_link,
 )
 from services.domain.tailored_resumes import (
-    _apply_tailored_resume_result,
     _get_user_active_resume_data,
-    _run_tailored_resume_generation,
     create_tailored_resume_for_application,
     process_tailored_resume,
     start_tailored_resume_generation,
@@ -392,7 +391,10 @@ def create_application(
     values["job_id"] = normalize_job_id(values.get("job_id"))
     values["status"] = normalize_application_status(values.get("status"))
     sync_application_status_from_timeline(values)
-    ensure_recordable_application_status(values["status"])
+    try:
+        ensure_recordable_application_status(values["status"])
+    except ApplicationStatusNotRecordable as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
     ensure_pipeline_stage(values)
     values["work_style"] = None
     ensure_application_date_applied(values)
@@ -508,7 +510,10 @@ def update_application(
         values["status"] = normalize_application_status(values.get("status"))
     sync_application_status_from_timeline(values, application)
     if "status" in values:
-        ensure_recordable_application_status(values["status"])
+        try:
+            ensure_recordable_application_status(values["status"])
+        except ApplicationStatusNotRecordable as exc:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
     ensure_pipeline_stage(values, application)
     ensure_application_date_applied(values, application)
     ensure_status_updated_at(values, application)
@@ -690,7 +695,10 @@ def generate_application_tailored_resume(
     application = db.get(JobApplication, application_id)
     if not application or application.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Application not found")
-    tailored, should_generate = start_tailored_resume_generation(db, current_user, application)
+    try:
+        tailored, should_generate = start_tailored_resume_generation(db, current_user, application)
+    except CareerProfileNotReady as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     if should_generate:
         background_tasks.add_task(process_tailored_resume, tailored.id)
     return tailored

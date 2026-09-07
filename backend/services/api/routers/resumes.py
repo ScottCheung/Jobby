@@ -17,6 +17,7 @@ from sqlalchemy import delete, or_, select, text
 from sqlalchemy.orm import Session
 
 from services.api.dependencies import get_or_create_current_user
+from services.domain.errors import ResumeAssetDataUnavailable
 from services.api.routers.helpers import (
     CAREER_PROFILE_SOURCE,
     RESUME_EVALUATION_COST,
@@ -683,7 +684,10 @@ def select_resume_asset(
     ):
         extra["resume_data"] = resume.resume_data
         profile.extra_data = extra
-    snapshot = resume_asset_master_response(profile)
+    try:
+        snapshot = resume_asset_master_response(profile)
+    except ResumeAssetDataUnavailable as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     if not resume:
         resume = MasterResume(
             user_id=current_user.id,
