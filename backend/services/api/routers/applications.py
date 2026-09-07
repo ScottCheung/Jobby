@@ -18,7 +18,7 @@ from services.api.routers.job_hunting_profiles import (
     _legacy_policy_values,
     _legacy_runtime_values,
 )
-from services.api.routers.resumes import _default_career_profile
+from services.api.routers.resumes import _default_career_profile, tailored_resume_response
 from services.api.routers.skills import _get_user_profile_skills
 from services.shared.application_decisions import evaluate_candidate, evaluation_to_dict
 from services.shared.application_settings import (
@@ -673,7 +673,7 @@ def get_application_tailored_resume(
     tailored = db.scalar(select(TailoredResume).where(TailoredResume.job_application_id == application.id))
     if not tailored:
         raise HTTPException(status_code=404, detail="No tailored resume found")
-    return tailored
+    return tailored_resume_response(tailored, db)
 
 
 @router.post(
@@ -731,4 +731,3 @@ def update_application_tailored_resume(
     db.commit()
     db.refresh(tailored)
     return tailored
-

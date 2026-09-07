@@ -208,6 +208,7 @@ def review_job_from_jd(
     if doc_type in {"cover_letter", "both"}:
         generated_documents["cover_letter"] = True
     raw_ai_resp["generated_documents"] = generated_documents
+    raw_ai_resp["generation_id"] = generation_id
     tailored_resume.raw_ai_response = raw_ai_resp
     tailored_resume.status = "ready"
     tailored_resume.error_message = None
@@ -221,7 +222,7 @@ def review_job_from_jd(
             "status": "ready",
         },
     )
-    tailored_dict = tailored_resume_response(tailored_resume)
+    tailored_dict = tailored_resume_response(tailored_resume, db)
     combined_cover_letter = raw_ai_resp.get("cover_letter")
     if combined_cover_letter:
         tailored_dict["cover_letter"] = combined_cover_letter

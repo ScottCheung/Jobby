@@ -214,6 +214,16 @@ class CareerProfileScoreHistoryRead(OrmModel):
     created_at: datetime
 
 
+class LLMUsageSummaryRead(BaseModel):
+    calls: int
+    input_tokens: int
+    output_tokens: int
+    total_tokens: int
+    cached_input_tokens: int
+    estimated_cost_usd: Decimal | None = None
+    duration_ms: int
+
+
 class TailoredResumeRead(OrmModel):
     id: UUID
     user_id: UUID
@@ -232,6 +242,7 @@ class TailoredResumeRead(OrmModel):
     status: str = "ready"
     error_message: str | None = None
     cover_letter: str | None = None
+    usage: LLMUsageSummaryRead | None = None
     created_at: datetime
     updated_at: datetime
 

@@ -267,6 +267,14 @@ export function TailoredResumeModal({
                     · {new Date(tailoredResume.created_at).toLocaleDateString()}
                   </span>
                 )}
+                {tailoredResume?.usage && (
+                  <span>
+                    · ⚡ {(tailoredResume.usage.duration_ms / 1000).toFixed(1)}s ·{' '}
+                    {(tailoredResume.usage.total_tokens / 1000).toFixed(1)}K tokens
+                    {tailoredResume.usage.estimated_cost_usd != null &&
+                      ` · ~$${Number(tailoredResume.usage.estimated_cost_usd).toFixed(3)}`}
+                  </span>
+                )}
               </p>
             </div>
           </div>

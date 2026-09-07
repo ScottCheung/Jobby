@@ -32,6 +32,7 @@ from services.api.routers.helpers import (
 )
 from services.shared.autofill_profile import core_profile_values, upsert_core_profile_value
 from services.shared.database import SessionLocal, get_db
+from services.shared.llm_usage import get_llm_usage_summary
 from services.shared.models import (
     JobHuntingProfile,
     MasterResume,
@@ -105,12 +106,15 @@ def master_resume_response(resume: MasterResume) -> dict:
     }
 
 
-def tailored_resume_response(resume: TailoredResume) -> dict:
+def tailored_resume_response(resume: TailoredResume, db: Session | None = None) -> dict:
     result = TailoredResumeRead.model_validate(resume).model_dump(mode="json")
     if not result.get("core_competencies"):
         result["core_competencies"] = result.get("key_qualifications") or []
     if (resume.raw_ai_response or {}).get("cover_letter"):
         result["cover_letter"] = resume.raw_ai_response["cover_letter"]
+    correlation_id = (resume.raw_ai_response or {}).get("generation_id") or str(resume.id)
+    usage = get_llm_usage_summary(str(correlation_id), db=db)
+    result["usage"] = usage.to_dict() if usage else None
     return result
 
 
@@ -754,8 +758,8 @@ def list_tailored_resumes(
     limit: int = Query(default=20, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_or_create_current_user),
-) -> list[TailoredResume]:
-    return list(
+) -> list[dict]:
+    resumes = list(
         db.scalars(
             select(TailoredResume)
             .where(TailoredResume.user_id == current_user.id)
@@ -763,6 +767,7 @@ def list_tailored_resumes(
             .limit(limit)
         )
     )
+    return [tailored_resume_response(resume, db) for resume in resumes]
 
 
 @router.get("/tailored-resumes/{tailored_resume_id}", response_model=TailoredResumeRead)
@@ -770,11 +775,11 @@ def read_tailored_resume(
     tailored_resume_id: UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_or_create_current_user),
-) -> TailoredResume:
+) -> dict:
     tailored_resume = db.get(TailoredResume, tailored_resume_id)
     if not tailored_resume or tailored_resume.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Tailored resume not found")
-    return tailored_resume
+    return tailored_resume_response(tailored_resume, db)
 
 
 @router.put("/tailored-resumes/{tailored_resume_id}", response_model=TailoredResumeRead)

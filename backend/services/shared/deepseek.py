@@ -62,15 +62,16 @@ def _record_provider_usage(
     *,
     operation: str,
     correlation_id: str,
-    model: str,
+    requested_model: str,
     duration_ms: int,
 ) -> None:
     raw_usage = payload.get("usage")
     if not isinstance(raw_usage, dict):
         logger.warning("AI response omitted usage operation=%s correlation_id=%s", operation, correlation_id)
         return
+    actual_model = str(payload.get("model") or requested_model)
     try:
-        usage = normalize_usage("deepseek", model, raw_usage)
+        usage = normalize_usage("deepseek", actual_model, raw_usage)
         record_llm_usage(
             operation=operation,
             correlation_id=correlation_id,
@@ -89,7 +90,7 @@ def _record_provider_usage(
         "AI token usage operation=%s correlation_id=%s model=%s input=%s output=%s total=%s cached_input=%s duration_ms=%s",
         operation,
         correlation_id,
-        model,
+        actual_model,
         usage.input_tokens,
         usage.output_tokens,
         usage.total_tokens,
@@ -100,8 +101,9 @@ def _record_provider_usage(
 
 def _complete(
     messages: list[dict[str, str]],
+    *,
+    operation: str,
     temperature: float = 0.35,
-    operation: str = "generic",
     timeout: float = 45.0,
     correlation_id: str | None = None,
 ) -> dict:
@@ -131,7 +133,7 @@ def _complete(
             payload,
             operation=operation,
             correlation_id=correlation_id,
-            model=settings.deepseek_model,
+            requested_model=settings.deepseek_model,
             duration_ms=duration_ms,
         )
         content = payload["choices"][0]["message"]["content"]
@@ -142,8 +144,9 @@ def _complete(
 
 async def _complete_async(
     messages: list[dict[str, str]],
+    *,
+    operation: str,
     temperature: float = 0.35,
-    operation: str = "generic",
     timeout: float = 45.0,
     correlation_id: str | None = None,
 ) -> dict:
@@ -170,11 +173,12 @@ async def _complete_async(
         payload = response.json()
         if not isinstance(payload, dict):
             raise ValueError("AI returned a non-object response")
-        _record_provider_usage(
+        await asyncio.to_thread(
+            _record_provider_usage,
             payload,
             operation=operation,
             correlation_id=correlation_id,
-            model=settings.deepseek_model,
+            requested_model=settings.deepseek_model,
             duration_ms=duration_ms,
         )
         content = payload["choices"][0]["message"]["content"]

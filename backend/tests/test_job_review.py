@@ -143,6 +143,12 @@ class JobReviewTests(unittest.TestCase):
         self.assertIsNotNone(mock_res.get("resume_data"))
         self.assertIn("Full-Stack Engineering", mock_res["core_competencies"])
 
+    def test_both_generation_has_combined_usage_operation(self):
+        with patch.object(job_review, "_complete", return_value={"summary": "Tailored"}) as complete:
+            job_review.review_job(self.job, self.resume, doc_type="both")
+
+        self.assertEqual(complete.call_args.kwargs["operation"], "resume_and_cover_letter")
+
     def test_accepts_new_qualifications_and_normalizes_flat_skills(self):
         ai_result = {
             "summary": "C# developer with API experience.",

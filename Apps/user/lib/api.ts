@@ -123,11 +123,22 @@ export type TailoredResume = {
   core_competencies: string[];
   targeted_projects: Array<Record<string, unknown>>;
   cover_letter?: string | null;
+  usage?: LLMUsageSummary | null;
   prompt_version?: string;
   status: 'processing' | 'ready' | 'failed';
   error_message?: string | null;
   created_at: string;
   updated_at: string;
+};
+
+export type LLMUsageSummary = {
+  calls: number;
+  input_tokens: number;
+  output_tokens: number;
+  total_tokens: number;
+  cached_input_tokens: number;
+  estimated_cost_usd?: number | string | null;
+  duration_ms: number;
 };
 
 function responseErrorMessage(body: string, fallback: string): string {

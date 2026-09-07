@@ -16,6 +16,8 @@ logger = logging.getLogger(__name__)
 
 
 def _tailor_operation(doc_type: str) -> str:
+    if doc_type == "both":
+        return "resume_and_cover_letter"
     return "cover_letter" if doc_type == "cover_letter" else "resume_tailor"
 
 

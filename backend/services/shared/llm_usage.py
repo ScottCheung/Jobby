@@ -7,6 +7,9 @@ import logging
 from typing import Any, Mapping
 from uuid import uuid4
 
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session
+
 from services.shared.database import SessionLocal
 from services.shared.models import LLMUsageRecord
 
@@ -28,6 +31,28 @@ class LLMUsage:
 
 
 @dataclass(frozen=True)
+class LLMUsageSummary:
+    calls: int
+    input_tokens: int
+    output_tokens: int
+    total_tokens: int
+    cached_input_tokens: int
+    estimated_cost_usd: Decimal | None
+    duration_ms: int
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "calls": self.calls,
+            "input_tokens": self.input_tokens,
+            "output_tokens": self.output_tokens,
+            "total_tokens": self.total_tokens,
+            "cached_input_tokens": self.cached_input_tokens,
+            "estimated_cost_usd": self.estimated_cost_usd,
+            "duration_ms": self.duration_ms,
+        }
+
+
+@dataclass(frozen=True)
 class ModelPricing:
     cached_input_per_million: Decimal
     input_per_million: Decimal
@@ -42,14 +67,6 @@ _DEEPSEEK_PRICING = {
     "deepseek-v4-pro": (
         ModelPricing(Decimal("0.022"), Decimal("0.66"), Decimal("1.98")),
         ModelPricing(Decimal("0.044"), Decimal("1.32"), Decimal("3.96")),
-    ),
-    "deepseek-chat": (
-        ModelPricing(Decimal("0.007"), Decimal("0.22"), Decimal("0.66")),
-        ModelPricing(Decimal("0.014"), Decimal("0.44"), Decimal("1.32")),
-    ),
-    "deepseek-reasoner": (
-        ModelPricing(Decimal("0.007"), Decimal("0.22"), Decimal("0.66")),
-        ModelPricing(Decimal("0.014"), Decimal("0.44"), Decimal("1.32")),
     ),
 }
 
@@ -115,6 +132,46 @@ def calculate_llm_cost(
         + Decimal(usage.output_tokens) * pricing.output_per_million
     ) / _MILLION
     return cost.quantize(_COST_QUANTUM, rounding=ROUND_HALF_UP)
+
+
+def get_llm_usage_summary(
+    correlation_id: str,
+    *,
+    db: Session | None = None,
+) -> LLMUsageSummary | None:
+    owns_session = db is None
+    session = db or SessionLocal()
+    try:
+        row = session.execute(
+            select(
+                func.count(LLMUsageRecord.id),
+                func.coalesce(func.sum(LLMUsageRecord.input_tokens), 0),
+                func.coalesce(func.sum(LLMUsageRecord.output_tokens), 0),
+                func.coalesce(func.sum(LLMUsageRecord.total_tokens), 0),
+                func.coalesce(func.sum(LLMUsageRecord.cached_input_tokens), 0),
+                func.count(LLMUsageRecord.estimated_cost_usd),
+                func.sum(LLMUsageRecord.estimated_cost_usd),
+                func.coalesce(func.sum(LLMUsageRecord.duration_ms), 0),
+            ).where(LLMUsageRecord.correlation_id == correlation_id)
+        ).one()
+        calls = int(row[0] or 0)
+        if not calls:
+            return None
+        return LLMUsageSummary(
+            calls=calls,
+            input_tokens=int(row[1] or 0),
+            output_tokens=int(row[2] or 0),
+            total_tokens=int(row[3] or 0),
+            cached_input_tokens=int(row[4] or 0),
+            estimated_cost_usd=row[6] if int(row[5] or 0) == calls else None,
+            duration_ms=int(row[7] or 0),
+        )
+    except Exception:
+        logger.warning("Could not read LLM usage correlation_id=%s", correlation_id, exc_info=True)
+        return None
+    finally:
+        if owns_session:
+            session.close()
 
 
 def record_llm_usage(

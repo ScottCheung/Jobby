@@ -492,6 +492,7 @@ export async function uploadFormFile(
       (value) =>
         value === instruction.mimeType.toLowerCase() ||
         value === extension ||
+        (value.startsWith('.') ? value : `.${value}`) === extension ||
         (value.endsWith('/*') &&
           instruction.mimeType.toLowerCase().startsWith(value.slice(0, -1))),
     );

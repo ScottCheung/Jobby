@@ -364,6 +364,13 @@ export function TailoredResumeStudio({
   const resumeData = (currentResume?.resume_data || {}) as MasterResumeData;
   const roleTitle = currentResume?.job_title || 'Tailored Role';
   const companyName = currentResume?.company || 'Target Company';
+  const usage = currentResume?.usage;
+  const usageCost = usage?.estimated_cost_usd == null ? null : Number(usage.estimated_cost_usd);
+  const usageLabel = usage ? [
+    `${(usage.duration_ms / 1000).toFixed(1)}s`,
+    `${(usage.total_tokens / 1000).toFixed(1)}K tokens`,
+    usageCost != null && Number.isFinite(usageCost) ? `~$${usageCost.toFixed(3)}` : null,
+  ].filter(Boolean).join(' · ') : null;
 
   const coreCompetencies = useMemo(() => {
     if (!currentResume) return [];
@@ -644,6 +651,11 @@ export function TailoredResumeStudio({
                   <div className='text-[11px] text-ink-secondary'>
                     {formatRelativeTime(currentResume.created_at)}
                   </div>
+                  {usageLabel && (
+                    <div className='text-[10px] text-ink-secondary'>
+                      ⚡ {usageLabel}
+                    </div>
+                  )}
                 </div>
 
                 {currentResume.job_description && (

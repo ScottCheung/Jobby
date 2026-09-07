@@ -51,6 +51,33 @@ def test_calculates_cached_and_uncached_cost_with_decimal() -> None:
     assert cost == Decimal("0.08374000")
 
 
+def test_unknown_retired_model_price_is_not_estimated() -> None:
+    assert llm_usage.calculate_llm_cost(
+        "deepseek",
+        "deepseek-chat",
+        _usage(),
+        at=datetime(2026, 9, 8, 12, tzinfo=timezone.utc),
+    ) is None
+
+
+def test_usage_summary_aggregates_database_values() -> None:
+    class Result:
+        def one(self):
+            return (2, 300, 50, 350, 40, 2, Decimal("0.01230000"), 3000)
+
+    class FakeSession:
+        def execute(self, _statement):
+            return Result()
+
+    summary = llm_usage.get_llm_usage_summary("generation-1", db=FakeSession())
+
+    assert summary is not None
+    assert summary.calls == 2
+    assert summary.total_tokens == 350
+    assert summary.estimated_cost_usd == Decimal("0.01230000")
+    assert summary.duration_ms == 3000
+
+
 def test_completed_provider_response_records_once() -> None:
     response = MagicMock()
     response.json.return_value = {
@@ -66,7 +93,7 @@ def test_completed_provider_response_records_once() -> None:
     settings = SimpleNamespace(
         deepseek_api_key="test-key",
         deepseek_base_url="https://ai.example.test",
-        deepseek_model="deepseek-v4-flash",
+        deepseek_model="deepseek-chat",
     )
 
     with (
@@ -80,6 +107,7 @@ def test_completed_provider_response_records_once() -> None:
     assert record.call_args.kwargs["operation"] == "resume_tailor"
     assert record.call_args.kwargs["correlation_id"] == "generation-1"
     assert record.call_args.kwargs["usage"].total_tokens == 20
+    assert record.call_args.kwargs["usage"].model == "deepseek-v4-flash"
 
 
 def test_same_correlation_id_can_be_aggregated_from_multiple_calls() -> None:
