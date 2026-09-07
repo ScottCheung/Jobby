@@ -150,7 +150,7 @@ def test_freshness_never_changes_compatibility():
 def test_component_increase_cannot_reduce_match(component):
     scores = []
     for value in (0, 0.25, 0.5, 0.75, 1):
-        with patch('services.shared.application_matching.calculate_title_score', return_value=value if component == 'title' else 0.5), patch(
+        with patch('services.shared.application_matching.calculate_title_result', return_value=TitleResult(value if component == 'title' else 0.5, 1.0)), patch(
             'services.shared.application_matching.calculate_experience_score',
             return_value=ExperienceResult(value if component == 'experience' else 0.5, 0.65, 3),
         ):

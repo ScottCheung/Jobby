@@ -217,7 +217,7 @@ describe('highlightJobRequirement', () => {
     expect(call5.currentIndex).toBe(1);
   });
 
-  it('uses Gemini sweep and settle styling in the injected highlight style tag', async () => {
+  it('uses amber marker styling without a full-container sweep', async () => {
     document.body.innerHTML = `
       <main class="jobs-details__main-content">
         <div id="job-details">
@@ -229,8 +229,29 @@ describe('highlightJobRequirement', () => {
     await highlightJobRequirement(['Python']);
     const style = document.getElementById('jobby-skill-highlight-style');
     expect(style).not.toBeNull();
-    expect(style?.textContent).toContain('rgba(66, 133, 244');
-    expect(style?.textContent).toContain('jobbySweepAndSettle');
+    expect(style?.textContent).toContain('rgba(250, 204, 21, 0.42)');
+    expect(style?.textContent).toContain('rgba(245, 158, 11, 0.45)');
+    expect(style?.textContent).not.toContain('jobbySweepAndSettle');
+    expect(style?.textContent).not.toContain('jobby-sweep-settle');
+  });
+
+  it('does not modify the matching host element styles', async () => {
+    document.body.innerHTML = `
+      <main class="jobs-details__main-content">
+        <div id="job-details">
+          <p id="target" style="border: 1px solid red; outline: 2px solid blue; box-shadow: 0 0 4px green;">
+            We use Python for data processing.
+          </p>
+        </div>
+      </main>
+    `;
+    const target = document.querySelector<HTMLElement>('#target')!;
+    const originalStyle = target.getAttribute('style');
+
+    await highlightJobRequirement(['Python']);
+
+    expect(target.getAttribute('style')).toBe(originalStyle);
+    expect(target.classList.contains('jobby-sweep-settle')).toBe(false);
   });
 
   it('uses the detected provider JD selector instead of a generic matching card', async () => {

@@ -599,41 +599,22 @@ function showTextHighlight(allRanges: Range[], activeRange?: Range): void {
   }
   style.textContent = `
     ::highlight(${SKILL_HIGHLIGHT_NAME}) {
-      background-color: rgba(66, 133, 244, 0.20);
+      background-color: transparent;
       color: inherit;
+      text-decoration: underline;
+      text-decoration-color: rgba(245, 158, 11, 0.45);
+      text-decoration-style: solid;
+      text-decoration-thickness: 0.12em;
+      text-underline-offset: 0.12em;
     }
     ::highlight(${SKILL_HIGHLIGHT_ACTIVE_NAME}) {
-      background-color: rgba(66, 133, 244, 0.38);
+      background-color: rgba(250, 204, 21, 0.42);
       color: inherit;
-    }
-    @keyframes jobbySweepAndSettle {
-      0% {
-        background-position: -200% 0;
-        background-color: transparent;
-      }
-      45% {
-        background-position: 0% 0;
-      }
-      100% {
-        background-position: 150% 0;
-        background-color: rgba(66, 133, 244, 0.08);
-      }
-    }
-    .jobby-sweep-settle {
-      background-image: linear-gradient(
-        90deg,
-        transparent 0%,
-        rgba(66, 133, 244, 0.12) 30%,
-        rgba(155, 114, 207, 0.22) 50%,
-        rgba(217, 101, 112, 0.14) 70%,
-        transparent 100%
-      ) !important;
-      background-size: 200% 100% !important;
-      border: none !important;
-      outline: none !important;
-      box-shadow: none !important;
-      border-radius: 8px !important;
-      animation: jobbySweepAndSettle 1.4s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+      text-decoration: underline;
+      text-decoration-color: rgba(217, 119, 6, 0.85);
+      text-decoration-style: solid;
+      text-decoration-thickness: 0.16em;
+      text-underline-offset: 0.12em;
     }
   `;
 
@@ -660,6 +641,8 @@ function showTextHighlight(allRanges: Range[], activeRange?: Range): void {
       SKILL_HIGHLIGHT_ACTIVE_NAME,
       new HighlightClass(activeRange),
     );
+  } else {
+    cssHighlights.delete(SKILL_HIGHLIGHT_ACTIVE_NAME);
   }
 
   window.setTimeout(() => {
@@ -667,7 +650,7 @@ function showTextHighlight(allRanges: Range[], activeRange?: Range): void {
       cssHighlights.delete(SKILL_HIGHLIGHT_NAME);
       cssHighlights.delete(SKILL_HIGHLIGHT_ACTIVE_NAME);
     }
-  }, 4500);
+  }, 3000);
 }
 
 function showInPageNavFeedback(
@@ -916,53 +899,7 @@ function showInPageNavFeedback(
     window.setTimeout(() => {
       host?.remove();
     }, 360);
-  }, 4500);
-}
-
-let activeSweepElement: HTMLElement | null = null;
-let activeSweepTimer: number | undefined;
-
-function applyElementSweepSettle(element: HTMLElement): void {
-  try {
-    if (activeSweepElement) {
-      activeSweepElement.style.boxShadow = '';
-      activeSweepElement.style.border = '';
-      activeSweepElement.style.outline = '';
-      activeSweepElement.classList.remove('jobby-sweep-settle');
-      if (activeSweepTimer !== undefined) {
-        window.clearTimeout(activeSweepTimer);
-        activeSweepTimer = undefined;
-      }
-    }
-
-    // Explicitly clean up any elements on the page that might have lingering box-shadow or classes
-    document.querySelectorAll<HTMLElement>('.jobby-sweep-settle').forEach((el) => {
-      el.style.boxShadow = '';
-      el.style.border = '';
-      el.style.outline = '';
-      el.classList.remove('jobby-sweep-settle');
-    });
-
-    activeSweepElement = element;
-    element.style.boxShadow = 'none';
-    element.style.border = 'none';
-    element.style.outline = 'none';
-    element.classList.remove('jobby-sweep-settle');
-    void element.offsetWidth;
-    element.classList.add('jobby-sweep-settle');
-
-    activeSweepTimer = window.setTimeout(() => {
-      if (activeSweepElement === element) {
-        element.style.boxShadow = '';
-        element.style.border = '';
-        element.style.outline = '';
-        element.classList.remove('jobby-sweep-settle');
-        activeSweepElement = null;
-      }
-    }, 4500);
-  } catch {
-    // Ignore
-  }
+  }, 3000);
 }
 
 let lastSearchKey = '';
@@ -1121,7 +1058,6 @@ export async function highlightJobRequirement(
 
 
   showTextHighlight(allRanges, target.range);
-  applyElementSweepSettle(target.element);
   showInPageNavFeedback(
     target.term || terms[0] || '',
     currentMatchIndex + 1,
