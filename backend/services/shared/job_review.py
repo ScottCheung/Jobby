@@ -102,7 +102,7 @@ _RESUME_SCHEMA = """{
   "core_competencies": [],
   "skills": [{"type": "", "skills": []}],
   "experience": [{"index": 0, "bullets": []}],
-  "projects": [{"name": "", "description": [], "technologies": []}]
+  "projects": [{"index": 0, "description": [], "technologies": []}]
 }"""
 
 _COVER_LETTER_SCHEMA = """{
@@ -114,7 +114,7 @@ _BOTH_SCHEMA = """{
   "core_competencies": [],
   "skills": [{"type": "", "skills": []}],
   "experience": [{"index": 0, "bullets": []}],
-  "projects": [{"name": "", "description": [], "technologies": []}],
+  "projects": [{"index": 0, "description": [], "technologies": []}],
   "cover_letter": ""
 }"""
 
@@ -191,7 +191,7 @@ def _normalize_skill_groups(original: Any, generated: Any) -> list[dict[str, Any
                 skill.strip()
                 for skill in group.get("skills", [])
                 if isinstance(skill, str) and skill.strip()
-            ][:2],
+            ],
         }
         for group in source_groups
         if isinstance(group.get("skills"), list)
@@ -241,7 +241,7 @@ def _normalize_skill_groups(original: Any, generated: Any) -> list[dict[str, Any
 
     if groups:
         return groups
-    if has_explicit_empty_selection and not requested:
+    if requested or has_explicit_empty_selection:
         return []
     return fallback
 
@@ -267,6 +267,108 @@ def _experience_bullet_context(value: Any) -> list[dict[str, Any]]:
             "bullets": [b.strip() for b in bullets if isinstance(b, str) and b.strip()],
         })
     return result
+
+
+def _project_context(value: Any) -> list[dict[str, Any]]:
+    """Expose complete project facts while retaining an internal source index."""
+    if not isinstance(value, list):
+        return []
+    result: list[dict[str, Any]] = []
+    for index, item in enumerate(value):
+        if not isinstance(item, dict):
+            continue
+        description = item.get("description")
+        if isinstance(description, str):
+            description = [description]
+        elif not isinstance(description, list):
+            description = []
+        technologies = item.get("technologies")
+        if not isinstance(technologies, list):
+            technologies = []
+        result.append({
+            "index": index,
+            "name": _text(item.get("name")),
+            "url": _text(item.get("url")),
+            "start_date": _text(item.get("start_date")),
+            "end_date": _text(item.get("end_date")),
+            "description": [text.strip() for text in description if isinstance(text, str) and text.strip()],
+            "technologies": [technology.strip() for technology in technologies if isinstance(technology, str) and technology.strip()],
+        })
+    return result
+
+
+def _source_description(value: Any) -> list[str]:
+    if isinstance(value, str):
+        return [value.strip()] if value.strip() else []
+    if isinstance(value, list):
+        return [item.strip() for item in value if isinstance(item, str) and item.strip()]
+    return []
+
+
+def _tailored_summary(original: Any, generated: Any) -> str:
+    if isinstance(generated, str) and generated.strip():
+        return generated.strip()
+    return _text(original)
+
+
+def _tailored_core_competencies(original: dict[str, Any], generated: dict[str, Any]) -> list[str]:
+    for key in ("core_competencies", "key_qualifications", "match_skills"):
+        value = generated.get(key)
+        if isinstance(value, list):
+            selected = _string_list(value, 7)
+            if selected:
+                return selected
+    source = original.get("core_competencies") or original.get("key_qualifications") or []
+    return _string_list(source, 7)
+
+
+def _normalize_projects(original: Any, generated: Any) -> list[dict[str, Any]]:
+    """Apply indexed project edits while preserving source metadata and facts."""
+    source_projects = [dict(item) for item in original if isinstance(item, dict)] if isinstance(original, list) else []
+    if not isinstance(generated, list):
+        return source_projects
+    if not generated:
+        return []
+    if not all(isinstance(item, dict) for item in generated):
+        return source_projects
+    if any("index" not in item for item in generated):
+        return source_projects
+
+    normalized: list[dict[str, Any]] = []
+    seen_indexes: set[int] = set()
+    for entry in generated:
+        try:
+            index = int(entry.get("index"))
+        except (TypeError, ValueError):
+            return source_projects
+        if index < 0 or index >= len(source_projects) or index in seen_indexes:
+            continue
+        seen_indexes.add(index)
+        source = source_projects[index]
+        project = {key: value for key, value in source.items() if key != "index"}
+
+        if isinstance(entry.get("description"), list):
+            project["description"] = [
+                item.strip()
+                for item in entry["description"]
+                if isinstance(item, str) and item.strip()
+            ][:4]
+
+        if isinstance(entry.get("technologies"), list):
+            source_technologies = _source_description(source.get("technologies"))
+            source_by_name = {
+                _normalized_skill_name(technology): technology
+                for technology in source_technologies
+            }
+            project["technologies"] = list(dict.fromkeys(
+                source_by_name[_normalized_skill_name(technology)]
+                for technology in entry["technologies"]
+                if isinstance(technology, str)
+                and _normalized_skill_name(technology) in source_by_name
+            ))
+
+        normalized.append(project)
+    return normalized
 
 
 def _month_index(value: Any, *, end_date: bool = False) -> int | None:
@@ -333,13 +435,15 @@ def _merge_experience_bullets(original: Any, generated: Any) -> list[dict[str, A
             continue
         if index < 0 or index >= len(merged) or index in seen_indexes:
             continue
-        seen_indexes.add(index)
         bullets = entry.get("bullets", entry.get("description"))
         if isinstance(bullets, str):
             bullets = [bullets]
         if isinstance(bullets, list):
-            cleaned = [item.strip() for item in bullets if isinstance(item, str) and item.strip()]
+            source_bullets = _source_description(merged[index].get("description"))
+            max_bullets = min(len(source_bullets), 6)
+            cleaned = [item.strip() for item in bullets if isinstance(item, str) and item.strip()][:max_bullets]
             if cleaned:
+                seen_indexes.add(index)
                 merged[index]["description"] = cleaned
     return merged
 
@@ -374,7 +478,7 @@ def build_tailor_messages(job: dict, resume: dict, doc_type: str = "resume") -> 
     resume_context: dict[str, Any] = {
         "skills": resume.get("skills") if isinstance(resume.get("skills"), list) else [],
         "experience": _experience_bullet_context(resume.get("experience")),
-        "projects": resume.get("projects") if isinstance(resume.get("projects"), list) else [],
+        "projects": _project_context(resume.get("projects")),
         "education": resume.get("education") if isinstance(resume.get("education"), list) else [],
         "certifications": resume.get("certifications") if isinstance(resume.get("certifications"), list) else [],
     }
@@ -452,13 +556,13 @@ def review_job(job: dict, resume: dict, *, doc_type: str = "resume", tailor: boo
             else:
                 tailored = {
                     **{key: value for key, value in resume.items() if key not in {"summary", "skills", "experience", "projects"}},
-                    "summary": _text(tailor_result.get("summary")),
-                    "core_competencies": _string_list(tailor_result.get("core_competencies") or tailor_result.get("key_qualifications") or tailor_result.get("match_skills"), 20),
+                    "summary": _tailored_summary(resume.get("summary"), tailor_result.get("summary")),
+                    "core_competencies": _tailored_core_competencies(resume, tailor_result),
                     "skills": _normalize_skill_groups(resume.get("skills"), tailor_result.get("skills")),
                     "experience": _merge_experience_bullets(resume.get("experience"), tailor_result.get("experience")),
-                    "projects": tailor_result.get("projects") if isinstance(tailor_result.get("projects"), list) else [],
+                    "projects": _normalize_projects(resume.get("projects"), tailor_result.get("projects")),
                 }
-                key_qualifications = _string_list(tailor_result.get("core_competencies") or tailor_result.get("key_qualifications") or tailor_result.get("match_skills"), 20)
+                key_qualifications = _tailored_core_competencies(resume, tailor_result)
                 targeted_projects = _dict_list(tailor_result.get("targeted_projects"), 8)
 
     return {
@@ -502,13 +606,13 @@ async def review_job_async(
     else:
         tailored = {
             **{key: value for key, value in resume.items() if key not in {"summary", "skills", "experience", "projects"}},
-            "summary": _text(tailor_result.get("summary")),
-            "core_competencies": _string_list(tailor_result.get("core_competencies") or tailor_result.get("key_qualifications") or tailor_result.get("match_skills"), 20),
+            "summary": _tailored_summary(resume.get("summary"), tailor_result.get("summary")),
+            "core_competencies": _tailored_core_competencies(resume, tailor_result),
             "skills": _normalize_skill_groups(resume.get("skills"), tailor_result.get("skills")),
             "experience": _merge_experience_bullets(resume.get("experience"), tailor_result.get("experience")),
-            "projects": tailor_result.get("projects") if isinstance(tailor_result.get("projects"), list) else [],
+            "projects": _normalize_projects(resume.get("projects"), tailor_result.get("projects")),
         }
-        key_qualifications = _string_list(tailor_result.get("core_competencies") or tailor_result.get("key_qualifications") or tailor_result.get("match_skills"), 20)
+        key_qualifications = _tailored_core_competencies(resume, tailor_result)
         targeted_projects = _dict_list(tailor_result.get("targeted_projects"), 8)
 
     return {

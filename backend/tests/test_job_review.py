@@ -187,6 +187,8 @@ class JobReviewTests(unittest.TestCase):
             {"type": "Frontend", "skills": ["React"]},
         ])
 
+        self.assertEqual(job_review._normalize_skill_groups(source, [{"type": "Frontend", "skills": ["Angular"]}]), [])
+
     def test_skill_normalization_preserves_source_spelling(self):
         source = [{"type": "Frontend", "skills": ["Next.js"]}]
         generated = [{"type": "Frontend", "skills": ["nextjs"]}]
@@ -195,14 +197,115 @@ class JobReviewTests(unittest.TestCase):
             {"type": "Frontend", "skills": ["Next.js"]},
         ])
 
-    def test_keeps_skill_groups_when_ai_omits_skills(self):
+    def test_preserves_complete_skill_groups_when_ai_omits_skills(self):
         with patch.object(job_review, "_complete", return_value={"summary": "", "key_qualifications": []}):
             result = job_review.review_job(self.job, self.resume)
 
         self.assertEqual(result["resume_data"]["skills"], [
-            {"type": "Backend", "skills": ["C#", ".NET"]},
+            {"type": "Backend", "skills": ["C#", ".NET", "PostgreSQL"]},
             {"type": "Cloud", "skills": ["AWS", "GitHub Actions"]},
         ])
+
+    def test_explicit_empty_skills_remain_empty(self):
+        self.assertEqual(job_review._normalize_skill_groups(self.resume["skills"], []), [])
+
+    def test_experience_bullets_are_capped_by_source_count_and_six(self):
+        original = [{
+            "company": "Acme",
+            "description": [f"Source bullet {index}" for index in range(8)],
+        }, {
+            "company": "Beta",
+            "description": ["Source bullet 1", "Source bullet 2"],
+        }]
+        generated = [
+            {"index": 0, "bullets": [f"Generated bullet {index}" for index in range(10)]},
+            {"index": 1, "bullets": [f"Generated bullet {index}" for index in range(4)]},
+        ]
+
+        merged = job_review._merge_experience_bullets(original, generated)
+
+        self.assertEqual(len(merged[0]["description"]), 6)
+        self.assertEqual(len(merged[1]["description"]), 2)
+
+    def test_project_context_includes_source_index(self):
+        projects = [{"name": "Jobby", "url": "https://example.test", "description": ["Built it."], "technologies": ["React"]}]
+
+        self.assertEqual(job_review._project_context(projects), [{
+            "index": 0,
+            "name": "Jobby",
+            "url": "https://example.test",
+            "start_date": "",
+            "end_date": "",
+            "description": ["Built it."],
+            "technologies": ["React"],
+        }])
+
+    def test_project_metadata_and_technologies_are_source_locked(self):
+        source = [{
+            "name": "Jobby",
+            "url": "https://source.test",
+            "start_date": "2023",
+            "end_date": "2024",
+            "description": ["Original"],
+            "technologies": ["Next.js", "FastAPI"],
+        }]
+        generated = [{
+            "index": 0,
+            "name": "Invented Project",
+            "url": "https://invented.test",
+            "start_date": "1900",
+            "end_date": "1901",
+            "description": ["One", "Two", "Three", "Four", "Five"],
+            "technologies": ["nextjs", "Angular", "FastAPI"],
+        }]
+
+        result = job_review._normalize_projects(source, generated)
+
+        self.assertEqual(result, [{
+            "name": "Jobby",
+            "url": "https://source.test",
+            "start_date": "2023",
+            "end_date": "2024",
+            "description": ["One", "Two", "Three", "Four"],
+            "technologies": ["Next.js", "FastAPI"],
+        }])
+
+    def test_invalid_or_omitted_project_indexes_are_not_added(self):
+        source = [{"name": "Jobby"}, {"name": "Other"}]
+
+        self.assertEqual(job_review._normalize_projects(source, [{"index": 99}]), [])
+        self.assertEqual(job_review._normalize_projects(source, [{"index": 1}]), [{"name": "Other"}])
+
+    def test_empty_projects_remove_projects_and_malformed_projects_fallback(self):
+        source = [{"name": "Jobby"}]
+
+        self.assertEqual(job_review._normalize_projects(source, []), [])
+        self.assertEqual(job_review._normalize_projects(source, None), source)
+        self.assertEqual(job_review._normalize_projects(source, {"index": 0}), source)
+        self.assertEqual(job_review._normalize_projects(source, [{"name": "Missing index"}]), source)
+
+    def test_missing_or_empty_summary_preserves_source_summary(self):
+        for generated_summary in (None, "", "   ", ["not a summary"]):
+            ai_result = {"summary": generated_summary, "skills": [], "experience": [], "projects": []}
+            with patch.object(job_review, "_complete", return_value=ai_result):
+                result = job_review.review_job(self.job, self.resume)
+            self.assertEqual(result["resume_data"]["summary"], self.resume["summary"])
+
+    def test_core_competencies_are_capped_at_seven(self):
+        ai_result = {"core_competencies": [f"Competency {index}" for index in range(10)], "skills": [], "experience": [], "projects": []}
+        with patch.object(job_review, "_complete", return_value=ai_result):
+            result = job_review.review_job(self.job, self.resume)
+
+        self.assertEqual(len(result["core_competencies"]), 7)
+        self.assertEqual(len(result["key_qualifications"]), 7)
+
+    def test_missing_core_competencies_preserve_source_values(self):
+        resume = {**self.resume, "core_competencies": ["Source competency"]}
+        with patch.object(job_review, "_complete", return_value={"summary": "Updated summary", "skills": [], "experience": [], "projects": []}):
+            result = job_review.review_job(self.job, resume)
+
+        self.assertEqual(result["core_competencies"], ["Source competency"])
+        self.assertEqual(result["key_qualifications"], ["Source competency"])
 
     def test_experience_metadata_remains_locked(self):
         generated = [{
