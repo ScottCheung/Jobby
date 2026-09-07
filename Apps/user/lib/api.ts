@@ -140,6 +140,10 @@ export type LLMUsageSummary = {
   estimated_cost_usd?: number | string | null;
   duration_ms: number;
   model?: string | null;
+  operation?: string | null;
+  reasoning_tokens?: number | null;
+  answer_tokens?: number | null;
+  reasoning_effort?: string | null;
 };
 
 export type AdminAiUsageSummary = {
@@ -147,6 +151,7 @@ export type AdminAiUsageSummary = {
   calls: number;
   total_tokens: number;
   avg_duration_ms: number;
+  reasoning_output_ratio?: number | null;
   daily: Array<{ date: string; calls: number; total_tokens: number; cost_usd: number | null }>;
   by_feature: Array<{ feature: string; calls: number; total_tokens: number; cost_usd: number | null }>;
 };
@@ -161,7 +166,10 @@ export type AdminAiUsageCall = {
   input_tokens: number;
   output_tokens: number;
   cached_input_tokens: number;
+  reasoning_tokens: number | null;
+  answer_tokens: number | null;
   total_tokens: number;
+  reasoning_effort: string | null;
   cost_usd: number | null;
   duration_ms: number;
   slow: boolean;

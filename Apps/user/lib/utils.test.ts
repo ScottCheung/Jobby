@@ -100,4 +100,19 @@ describe('parseDescriptionBlocks', () => {
       },
     ]);
   });
+
+  it('does not promote a split .NET token to a section header', () => {
+    const text = `• Developing and maintaining full stack applications using C# and .\nNET\n• Building solutions using ASP.NET MVC`;
+    const blocks = parseDescriptionBlocks(text);
+
+    expect(blocks).toEqual([
+      {
+        type: 'list',
+        items: [
+          'Developing and maintaining full stack applications using C# and .NET',
+          'Building solutions using ASP.NET MVC',
+        ],
+      },
+    ]);
+  });
 });

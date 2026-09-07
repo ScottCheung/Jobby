@@ -197,6 +197,31 @@ def test_required_privacy_consent_checkbox_is_safe_to_accept() -> None:
         type="checkbox", required=True, label="Would you like to receive marketing emails?",
         name="marketing", id="marketing",
     ))
+    # Lone "I agree" checkbox with required=False
+    assert _is_single_consent_checkbox(SimpleNamespace(
+        type="checkbox", required=False, label="I agree",
+        name="agree", id="agree",
+    ))
+    # Chinese consent checkbox
+    assert _is_single_consent_checkbox(SimpleNamespace(
+        type="checkbox", required=False, label="我已阅读并同意相关条款",
+        name="", id="",
+    ))
+    # Lone standalone submission/confirmation checkbox
+    assert _is_single_consent_checkbox(SimpleNamespace(
+        type="checkbox", required=False, label="Confirm submission",
+        name="", id="", options=[],
+    ))
+    # Multi-option checkbox group must not be auto-checked as single consent
+    assert not _is_single_consent_checkbox(SimpleNamespace(
+        type="checkbox", required=False, label="Select skills",
+        options=[{"label": "Python", "value": "python"}, {"label": "React", "value": "react"}],
+    ))
+    # Visa sponsorship checkbox should not be auto-checked as consent
+    assert not _is_single_consent_checkbox(SimpleNamespace(
+        type="checkbox", required=False, label="Do you require visa sponsorship?",
+        name="visa_sponsorship", id="sponsorship",
+    ))
 
 
 def test_salary_and_day_rate_expectations_and_notice_period_units() -> None:

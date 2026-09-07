@@ -5,6 +5,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useConsole } from '@/components/ConsoleContext';
 import { api, type AdminAiUsageCall, type AdminAiUsageSummary } from '@/lib/api';
+import { formatTokenCount } from '@/lib/format-token-count';
 
 type Metric = 'cost_usd' | 'total_tokens' | 'calls';
 
@@ -12,12 +13,21 @@ function formatCost(value: number | null | undefined) {
   return value == null ? '—' : `$${value.toFixed(2)}`;
 }
 
-function formatTokens(value: number) {
-  return `${(value / 1000).toFixed(value >= 1000000 ? 0 : 1)}K`;
-}
-
 function formatDuration(value: number) {
   return value >= 1000 ? `${(value / 1000).toFixed(1)}s` : `${value}ms`;
+}
+
+function thinkingLabel(reasoningEffort: string | null | undefined) {
+  if (!reasoningEffort) return '—';
+  if (reasoningEffort === 'none') return 'Off';
+  return reasoningEffort[0].toUpperCase() + reasoningEffort.slice(1);
+}
+
+function operationLabel(operation: string) {
+  if (operation === 'resume_tailor') return 'Resume Tailor';
+  if (operation === 'resume_and_cover_letter') return 'Resume + Cover Letter';
+  if (operation === 'cover_letter') return 'Cover Letter';
+  return operation.replaceAll('_', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 export default function AiUsageAdminPage() {
@@ -26,8 +36,10 @@ export default function AiUsageAdminPage() {
   const [metric, setMetric] = useState<Metric>('cost_usd');
   const [summary, setSummary] = useState<AdminAiUsageSummary | null>(null);
   const [calls, setCalls] = useState<AdminAiUsageCall[]>([]);
+  const [totalCalls, setTotalCalls] = useState(0);
   const [selectedCall, setSelectedCall] = useState<AdminAiUsageCall | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -40,6 +52,7 @@ export default function AiUsageAdminPage() {
         if (cancelled) return;
         setSummary(nextSummary);
         setCalls(nextCalls.items);
+        setTotalCalls(nextCalls.total);
       })
       .catch((loadError) => {
         if (!cancelled) setError(loadError instanceof Error ? loadError.message : 'Could not load AI usage.');
@@ -56,6 +69,40 @@ export default function AiUsageAdminPage() {
     () => ({ cost_usd: 'Cost', total_tokens: 'Tokens', calls: 'Calls' })[metric],
     [metric],
   );
+  const trend = useMemo(() => {
+    const values = summary?.daily.map((item) => Number(item[metric] ?? 0)) ?? [];
+    const maxValue = values.length ? Math.max(...values) : null;
+    const max = Math.max(maxValue ?? 0, 1);
+    return {
+      max,
+      maxValue,
+      points: values.map((value, index) => ({
+        date: summary?.daily[index]?.date ?? '',
+        value,
+        x: values.length <= 1 ? 50 : (index / (values.length - 1)) * 100,
+        y: 94 - (value / max) * 82,
+      })),
+    };
+  }, [metric, summary]);
+
+  const formatTrendValue = (value: number) => {
+    if (metric === 'cost_usd') return formatCost(value);
+    if (metric === 'total_tokens') return formatTokenCount(value);
+    return value.toLocaleString();
+  };
+
+  const loadMore = async () => {
+    setLoadingMore(true);
+    try {
+      const nextCalls = await api.adminAiUsageCalls({ range, offset: calls.length });
+      setCalls((current) => [...current, ...nextCalls.items]);
+      setTotalCalls(nextCalls.total);
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : 'Could not load AI usage.');
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   if (!user || user.role !== 'admin') {
     return <div className='p-8 text-center text-ink-secondary'>Admin access required</div>;
@@ -79,12 +126,13 @@ export default function AiUsageAdminPage() {
         {[
           ['Estimated cost', formatCost(summary.cost_usd)],
           ['AI calls', summary.calls.toLocaleString()],
-          ['Tokens', formatTokens(summary.total_tokens)],
+          ['Tokens', formatTokenCount(summary.total_tokens), summary.reasoning_output_ratio == null ? null : `${Math.round(summary.reasoning_output_ratio * 100)}% reasoning output`],
           ['Avg latency', formatDuration(summary.avg_duration_ms)],
-        ].map(([label, value]) => (
+        ].map(([label, value, secondary]) => (
           <div key={label} className='rounded-2xl border border-primary/50 bg-panel/50 p-4'>
             <div className='text-xs text-ink-secondary'>{label}</div>
             <div className='mt-2 text-2xl font-semibold text-ink-primary'>{value}</div>
+            {secondary && <div className='mt-1 text-xs text-ink-secondary'>{secondary}</div>}
           </div>
         ))}
       </div>
@@ -105,15 +153,18 @@ export default function AiUsageAdminPage() {
               ))}
             </div>
           </div>
-          <div className='mb-2 text-xs text-ink-secondary'>{selectedMetricLabel}</div>
+          <div className='mb-2 flex justify-between text-xs text-ink-secondary'>
+            <span>{selectedMetricLabel}</span>
+            <span>{trend.maxValue == null ? '—' : `Max ${formatTrendValue(trend.maxValue)}`}</span>
+          </div>
           <svg viewBox='0 0 100 100' className='h-48 w-full overflow-visible' preserveAspectRatio='none'>
             <line x1='0' y1='94' x2='100' y2='94' stroke='currentColor' className='text-primary/30' />
-            {(() => {
-              const values = summary.daily.map((item) => Number(item[metric] ?? 0));
-              const max = Math.max(...values, 1);
-              const points = values.map((value, index) => `${values.length <= 1 ? 50 : (index / (values.length - 1)) * 100},${94 - (value / max) * 82}`).join(' ');
-              return <polyline fill='none' stroke='currentColor' strokeWidth='1.5' points={points || '0,94 100,94'} className='text-primary' vectorEffect='non-scaling-stroke' />;
-            })()}
+            <polyline fill='none' stroke='currentColor' strokeWidth='1.5' points={trend.points.map((point) => `${point.x},${point.y}`).join(' ') || '0,94 100,94'} className='text-primary' vectorEffect='non-scaling-stroke' />
+            {trend.points.map((point) => (
+              <circle key={point.date} cx={point.x} cy={point.y} r='1.5' className='fill-primary'>
+                <title>{`${point.date} · ${formatTrendValue(point.value)}`}</title>
+              </circle>
+            ))}
           </svg>
           <div className='flex justify-between text-[10px] text-ink-secondary'>
             <span>{summary.daily[0]?.date ?? '—'}</span>
@@ -138,19 +189,20 @@ export default function AiUsageAdminPage() {
       <div className='rounded-2xl border border-primary/50 bg-panel/50 p-4'>
         <div className='mb-3 flex items-center justify-between'>
           <h2 className='title-card'>Recent AI calls</h2>
-          <span className='text-xs text-ink-secondary'>{calls.length} shown</span>
+          <span className='text-xs text-ink-secondary'>Showing {calls.length} of {totalCalls}</span>
         </div>
         <div className='overflow-x-auto'>
-          <table className='w-full min-w-[760px] text-left text-sm'>
+          <table className='w-full min-w-[840px] text-left text-sm'>
             <thead className='border-b border-primary/40 text-xs text-ink-secondary'>
-              <tr>{['Feature', 'User', 'Tokens', 'Cost', 'Duration', 'Model', 'Time'].map((label) => <th key={label} className='px-3 py-2 font-medium'>{label}</th>)}</tr>
+              <tr>{['Feature', 'User', 'Tokens', 'Thinking', 'Cost', 'Duration', 'Model', 'Time'].map((label) => <th key={label} className='px-3 py-2 font-medium'>{label}</th>)}</tr>
             </thead>
             <tbody>
               {calls.map((call) => (
                 <tr key={call.id} onClick={() => setSelectedCall(call)} className='cursor-pointer border-b border-primary/20 transition-colors hover:bg-primary/5'>
-                  <td className='px-3 py-3'>{call.feature}</td>
+                  <td className='px-3 py-3'>{operationLabel(call.feature)}</td>
                   <td className='px-3 py-3 text-ink-secondary'>{call.user || '—'}</td>
-                  <td className='px-3 py-3'>{formatTokens(call.total_tokens)}</td>
+                  <td className='px-3 py-3'>{formatTokenCount(call.total_tokens)}</td>
+                  <td className='px-3 py-3 text-ink-secondary'>{thinkingLabel(call.reasoning_effort)}</td>
                   <td className='px-3 py-3'>{formatCost(call.cost_usd)}</td>
                   <td className='px-3 py-3'>{formatDuration(call.duration_ms)}{call.slow && <span className='ml-1 text-amber-600'>· Slow</span>}</td>
                   <td className='px-3 py-3 text-ink-secondary'>{call.model}</td>
@@ -161,6 +213,13 @@ export default function AiUsageAdminPage() {
           </table>
           {!calls.length && <div className='p-6 text-center text-sm text-ink-secondary'>No AI calls in this range.</div>}
         </div>
+        {calls.length < totalCalls && (
+          <div className='mt-4 flex justify-center'>
+            <button type='button' onClick={() => void loadMore()} disabled={loadingMore} className='rounded-full border border-primary/50 px-4 py-2 text-sm text-primary'>
+              {loadingMore ? 'Loading...' : 'Load more'}
+            </button>
+          </div>
+        )}
       </div>
 
       {selectedCall && (
@@ -176,9 +235,13 @@ export default function AiUsageAdminPage() {
                 ['User', selectedCall.user || selectedCall.user_email || '—'],
                 ['Status', selectedCall.status],
                 ['Model', selectedCall.model],
-                ['Input', formatTokens(selectedCall.input_tokens)],
-                ['Output', formatTokens(selectedCall.output_tokens)],
-                ['Cached', formatTokens(selectedCall.cached_input_tokens)],
+                ['Input', formatTokenCount(selectedCall.input_tokens)],
+                ['Cached', formatTokenCount(selectedCall.cached_input_tokens)],
+                ['Output', formatTokenCount(selectedCall.output_tokens)],
+                ['Reasoning', selectedCall.reasoning_tokens == null ? '—' : formatTokenCount(selectedCall.reasoning_tokens)],
+                ['Answer', selectedCall.answer_tokens == null ? '—' : formatTokenCount(selectedCall.answer_tokens)],
+                ['Total', formatTokenCount(selectedCall.total_tokens)],
+                ['Thinking', thinkingLabel(selectedCall.reasoning_effort)],
                 ['Cost', formatCost(selectedCall.cost_usd)],
                 ['Duration', formatDuration(selectedCall.duration_ms)],
                 ['Time', new Date(selectedCall.created_at).toLocaleString()],

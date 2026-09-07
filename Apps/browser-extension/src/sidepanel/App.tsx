@@ -845,7 +845,17 @@ export function App() {
           )
         }`}
       >
-        <div className='sidepanel-brand'>
+        <a
+          href={webAppBaseUrl}
+          target='_blank'
+          rel='noreferrer'
+          className='sidepanel-brand cursor-pointer no-underline transition-opacity hover:opacity-80 active:scale-95'
+          onClick={(e) => {
+            e.preventDefault();
+            window.open(webAppBaseUrl, '_blank');
+          }}
+          title='Open Jobby app'
+        >
           <img
             src={
               typeof chrome !== 'undefined' && chrome.runtime?.getURL ?
@@ -856,7 +866,7 @@ export function App() {
             alt='Jobby logo'
           />
           <span className='sidepanel-title'>Jobby</span>
-        </div>
+        </a>
         <div className='flex items-center gap-1.5'>
           <HeaderQuickActions
             themeColor={themeColor}

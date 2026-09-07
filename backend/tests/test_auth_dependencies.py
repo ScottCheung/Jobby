@@ -46,10 +46,25 @@ def test_current_user_requires_an_authenticated_identity(monkeypatch) -> None:
     monkeypatch.setattr(
         dependencies,
         "get_settings",
-        lambda: SimpleNamespace(supabase_url=None, admin_email_list=[]),
+        lambda: SimpleNamespace(supabase_url=None, admin_email_list=[], allow_dev_auth_header=False),
     )
 
     with pytest.raises(dependencies.HTTPException) as exc_info:
         dependencies.get_or_create_current_user(SimpleNamespace(headers={}), None)
+
+    assert exc_info.value.status_code == 401
+
+
+def test_current_user_rejects_dev_email_header_when_disabled(monkeypatch) -> None:
+    monkeypatch.setattr(
+        dependencies,
+        "get_settings",
+        lambda: SimpleNamespace(supabase_url=None, admin_email_list=[], allow_dev_auth_header=False),
+    )
+
+    with pytest.raises(dependencies.HTTPException) as exc_info:
+        dependencies.get_or_create_current_user(
+            SimpleNamespace(headers={"X-User-Email": "admin@example.com"}), None
+        )
 
     assert exc_info.value.status_code == 401

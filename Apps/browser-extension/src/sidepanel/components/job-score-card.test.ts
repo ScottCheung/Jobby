@@ -10,7 +10,7 @@ import type { PageInspection } from '../../shared/contracts/page-inspection';
 import { JobMatchSummary } from '@jobby/ui/components/UI/JobMatchSummary';
 
 describe('job match score card', () => {
-  it.each([[91, 'text-primary'], [65, 'text-red-600'], [25, 'text-red-600']])(
+  it.each([[91, 'text-primary'], [73, 'text-primary'], [65, 'text-warning'], [25, 'text-red-600']])(
     'colors recommendations for score %s and leaves unknown experience blank',
     (score, color) => {
       const html = renderToStaticMarkup(createElement(JobMatchSummary, {
@@ -25,9 +25,13 @@ describe('job match score card', () => {
   it('keeps the loading and final score labels separate', () => {
     expect(jobMatchLabel(false, false, null)).toBe('Sign In for Recommendation');
     expect(jobMatchLabel(true, true, null)).toBe('Calculating Recommendation...');
+    expect(jobMatchLabel(true, false, 91)).toBe('Strong Recommendation');
+    expect(jobMatchLabel(true, false, 85)).toBe('Strong Recommendation');
     expect(jobMatchLabel(true, false, 82)).toBe('Recommended');
-    expect(jobMatchLabel(true, false, 91)).toBe('🔥 Strong Recommendation');
-    expect(jobMatchLabel(true, false, 65)).toBe('Low Priority');
+    expect(jobMatchLabel(true, false, 73)).toBe('Recommended');
+    expect(jobMatchLabel(true, false, 70)).toBe('Recommended');
+    expect(jobMatchLabel(true, false, 65)).toBe('Moderate Priority');
+    expect(jobMatchLabel(true, false, 55)).toBe('Moderate Priority');
     expect(jobMatchLabel(true, false, 45)).toBe('Low Priority');
     expect(jobMatchLabel(true, false, 20)).toBe('Low Priority');
     expect(jobMatchLabel(true, false, null)).toBe('Recommendation unavailable');
@@ -78,7 +82,7 @@ describe('job match score card', () => {
 
     expect(html).not.toContain('Apply Score');
     expect(html).toContain('aria-label="Recommendation: 63"');
-    expect(html).toContain('Low Priority');
+    expect(html).toContain('Moderate Priority');
     expect(html).not.toContain('Apply Priority');
     expect(html).toContain('>Fresh</span>');
     expect(html).toContain('>69</span>');

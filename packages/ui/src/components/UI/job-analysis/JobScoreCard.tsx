@@ -40,8 +40,9 @@ export function jobMatchLabel(
   if (!authConnected) return 'Sign In for Recommendation';
   if (isMatchLoading) return 'Calculating Recommendation...';
   if (percentage === null) return 'Recommendation unavailable';
-  if (percentage >= 90) return '🔥 Strong Recommendation';
-  if (percentage >= 75) return 'Recommended';
+  if (percentage >= 85) return 'Strong Recommendation';
+  if (percentage >= 70) return 'Recommended';
+  if (percentage >= 55) return 'Moderate Priority';
   return 'Low Priority';
 }
 

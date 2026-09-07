@@ -331,4 +331,46 @@ describe('ResultsDisplay file upload actions', () => {
     expect(html).toContain('Backend Engineer');
     expect(html).toContain('Your source cover letter as above remains unchanged.');
   });
+
+  it('renders collapsed action menu trigger on Recent Tailor card', async () => {
+    const { createElement } = await import('react');
+    const { renderToStaticMarkup } = await import('react-dom/server');
+    const { ResultsDisplay } = await import('./ResultsDisplay');
+
+    const html = renderToStaticMarkup(
+      createElement(ResultsDisplay, {
+        latestForm: {
+          kind: 'application_form',
+          platform: 'seek',
+          url: 'https://seek.com.au',
+          fields: [fileField({ key: 'resume_upload', label: 'Resume' })],
+        },
+        isInspectingForm: false,
+        onFocusField: async () => {},
+        onFillSingleField: async () => {},
+        onUploadTailoredResume: async () => {},
+        onEditField: async () => {},
+        uploadStates: {},
+        tailoredResumes: [
+          {
+            id: 'res-menu-test',
+            job_title: 'Full Stack Engineer',
+            company: 'NinjaTech AI',
+            created_at: new Date().toISOString(),
+            resume_data: {} as any,
+          } as any,
+        ],
+        isAutofilling: false,
+        onTailor: () => {},
+        existingDocuments: {
+          resume: false,
+          cover_letter: false,
+        },
+      }),
+    );
+
+    expect(html).toContain('aria-label="More actions"');
+    expect(html).toContain('title="More actions"');
+  });
 });
+

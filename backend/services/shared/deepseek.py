@@ -3,6 +3,7 @@ import json
 import logging
 import re
 from time import perf_counter
+from typing import Literal
 from uuid import UUID, uuid4
 
 import httpx
@@ -12,6 +13,7 @@ from services.shared.llm_usage import normalize_usage, record_llm_usage
 
 
 logger = logging.getLogger(__name__)
+ReasoningEffort = Literal["none", "low", "high", "max"]
 
 
 class DeepSeekError(Exception):
@@ -57,6 +59,35 @@ def _extract_json_payload(content: object) -> dict:
     raise ValueError("AI response did not contain valid JSON")
 
 
+def _thinking_payload(reasoning_effort: ReasoningEffort | None) -> dict:
+    if reasoning_effort is None:
+        return {}
+    if reasoning_effort == "none":
+        return {"thinking": {"type": "disabled"}}
+    return {
+        "thinking": {"type": "enabled"},
+        "reasoning_effort": reasoning_effort,
+    }
+
+
+def _completion_payload(
+    *,
+    model: str,
+    messages: list[dict[str, str]],
+    temperature: float,
+    reasoning_effort: ReasoningEffort | None,
+) -> dict:
+    payload = {
+        "model": model,
+        "messages": messages,
+        "response_format": {"type": "json_object"},
+    }
+    payload.update(_thinking_payload(reasoning_effort))
+    if reasoning_effort not in {"low", "high", "max"}:
+        payload["temperature"] = temperature
+    return payload
+
+
 def _record_provider_usage(
     payload: dict,
     *,
@@ -65,6 +96,7 @@ def _record_provider_usage(
     requested_model: str,
     duration_ms: int,
     user_id: UUID | None,
+    reasoning_effort: ReasoningEffort | None,
 ) -> None:
     raw_usage = payload.get("usage")
     if not isinstance(raw_usage, dict):
@@ -79,6 +111,7 @@ def _record_provider_usage(
             usage=usage,
             duration_ms=duration_ms,
             user_id=user_id,
+            reasoning_effort=reasoning_effort,
         )
     except Exception:
         logger.warning(
@@ -89,12 +122,13 @@ def _record_provider_usage(
         )
         return
     logger.info(
-        "AI token usage operation=%s correlation_id=%s model=%s input=%s output=%s total=%s cached_input=%s duration_ms=%s",
+        "AI token usage operation=%s correlation_id=%s model=%s input=%s output=%s reasoning=%s total=%s cached_input=%s duration_ms=%s",
         operation,
         correlation_id,
         actual_model,
         usage.input_tokens,
         usage.output_tokens,
+        usage.reasoning_tokens,
         usage.total_tokens,
         usage.cached_input_tokens,
         duration_ms,
@@ -109,6 +143,7 @@ def _complete(
     timeout: float = 45.0,
     correlation_id: str | None = None,
     user_id: UUID | None = None,
+    reasoning_effort: ReasoningEffort | None = None,
 ) -> dict:
     settings = get_settings()
     if not settings.deepseek_api_key:
@@ -119,12 +154,12 @@ def _complete(
         response = httpx.post(
             f"{settings.deepseek_base_url.rstrip('/')}/chat/completions",
             headers={"Authorization": f"Bearer {settings.deepseek_api_key}"},
-            json={
-                "model": settings.deepseek_model,
-                "messages": messages,
-                "response_format": {"type": "json_object"},
-                "temperature": temperature,
-            },
+            json=_completion_payload(
+                model=settings.deepseek_model,
+                messages=messages,
+                temperature=temperature,
+                reasoning_effort=reasoning_effort,
+            ),
             timeout=timeout,
         )
         duration_ms = round((perf_counter() - started_at) * 1000)
@@ -139,6 +174,7 @@ def _complete(
             requested_model=settings.deepseek_model,
             duration_ms=duration_ms,
             user_id=user_id,
+            reasoning_effort=reasoning_effort,
         )
         content = payload["choices"][0]["message"]["content"]
         return _extract_json_payload(content)
@@ -154,6 +190,7 @@ async def _complete_async(
     timeout: float = 45.0,
     correlation_id: str | None = None,
     user_id: UUID | None = None,
+    reasoning_effort: ReasoningEffort | None = None,
 ) -> dict:
     """Async completion whose provider connection closes on task cancellation."""
     settings = get_settings()
@@ -166,12 +203,12 @@ async def _complete_async(
             response = await client.post(
                 f"{settings.deepseek_base_url.rstrip('/')}/chat/completions",
                 headers={"Authorization": f"Bearer {settings.deepseek_api_key}"},
-                json={
-                    "model": settings.deepseek_model,
-                    "messages": messages,
-                    "response_format": {"type": "json_object"},
-                    "temperature": temperature,
-                },
+                json=_completion_payload(
+                    model=settings.deepseek_model,
+                    messages=messages,
+                    temperature=temperature,
+                    reasoning_effort=reasoning_effort,
+                ),
             )
             duration_ms = round((perf_counter() - started_at) * 1000)
         response.raise_for_status()
@@ -186,6 +223,7 @@ async def _complete_async(
             requested_model=settings.deepseek_model,
             duration_ms=duration_ms,
             user_id=user_id,
+            reasoning_effort=reasoning_effort,
         )
         content = payload["choices"][0]["message"]["content"]
         return _extract_json_payload(content)

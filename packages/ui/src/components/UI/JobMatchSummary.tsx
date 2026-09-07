@@ -52,8 +52,8 @@ export function JobMatchSummary({
           variant='gradient'
           color={
             safeScore === null ? 'primary'
-            : safeScore >= 75 ? 'primary'
-            : safeScore >= 60 ? 'warning'
+            : safeScore >= 70 ? 'primary'
+            : safeScore >= 55 ? 'warning'
             : 'danger'
           }
           showValue={false}
@@ -75,7 +75,8 @@ export function JobMatchSummary({
             className={cn(
               'truncate text-xs font-bold',
               isLoading || isUnavailable ? 'text-muted-foreground'
-              : (safeScore ?? 0) >= 75 ? 'text-primary'
+              : (safeScore ?? 0) >= 70 ? 'text-primary'
+              : (safeScore ?? 0) >= 55 ? 'text-warning'
               : 'text-red-600 dark:text-red-400',
               isLoading && 'animate-text-shimmer animate-text-shimmer-primary',
             )}

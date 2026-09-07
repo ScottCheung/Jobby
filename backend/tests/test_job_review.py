@@ -148,6 +148,15 @@ class JobReviewTests(unittest.TestCase):
             job_review.review_job(self.job, self.resume, doc_type="both")
 
         self.assertEqual(complete.call_args.kwargs["operation"], "resume_and_cover_letter")
+        self.assertEqual(complete.call_args.kwargs["reasoning_effort"], "low")
+
+    def test_tailor_operations_use_low_thinking(self):
+        for doc_type, operation in (("resume", "resume_tailor"), ("cover_letter", "cover_letter"), ("both", "resume_and_cover_letter")):
+            with self.subTest(doc_type=doc_type), patch.object(job_review, "_complete", return_value={"summary": "Tailored"}) as complete:
+                job_review.review_job(self.job, self.resume, doc_type=doc_type)
+
+            self.assertEqual(complete.call_args.kwargs["operation"], operation)
+            self.assertEqual(complete.call_args.kwargs["reasoning_effort"], "low")
 
     def test_accepts_new_qualifications_and_normalizes_flat_skills(self):
         ai_result = {
@@ -380,6 +389,7 @@ class JobReviewTests(unittest.TestCase):
             result = asyncio.run(job_review.review_job_async(self.job, self.resume))
 
         mock_complete.assert_awaited_once()
+        self.assertEqual(mock_complete.call_args.kwargs["reasoning_effort"], "low")
         self.assertEqual(result["resume_data"]["summary"], "Async tailored summary.")
         self.assertEqual(result["core_competencies"], ["C#", "AWS"])
 

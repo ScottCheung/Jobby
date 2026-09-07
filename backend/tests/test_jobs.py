@@ -284,3 +284,75 @@ def test_application_read_keeps_legacy_flattened_job_fields() -> None:
     assert payload["title"] == "Software Enginer"
     assert payload["company"] == "Example Pty Ltd"
     assert payload["job_link"] == "https://www.seek.com.au/job/42"
+
+
+def test_job_application_response_returns_valid_serialized_dict() -> None:
+    from services.api.routers.applications import job_application_response
+
+    now = datetime.now(timezone.utc)
+    job = make_job()
+    application = JobApplication(
+        id=uuid4(),
+        user_id=uuid4(),
+        job_id=job.id,
+        job=job,
+        status="submitted",
+        raw_data={},
+        created_at=now,
+        updated_at=now,
+    )
+    tailored_id = uuid4()
+    resp = job_application_response(application, tailored_id)
+
+    assert isinstance(resp, dict)
+    assert resp["id"] == str(application.id)
+    assert resp["has_tailored_resume"] is True
+    assert resp["tailored_resume_id"] == str(tailored_id)
+    assert resp["job_id"] == "job-42"
+    # Verify it validates against JobApplicationRead without ResponseValidationError
+    validated = JobApplicationRead.model_validate(resp)
+    assert validated.id == application.id
+
+
+def test_create_application_endpoint_returns_valid_job_application_read(monkeypatch) -> None:
+    from unittest.mock import MagicMock
+    from services.api.routers.applications import create_application
+    from services.shared.schemas import JobApplicationBase
+    from services.shared.models import User
+
+    now = datetime.now(timezone.utc)
+    user_id = uuid4()
+    mock_user = User(id=user_id, email="test@example.com")
+    job = make_job()
+    app_id = uuid4()
+
+    mock_db = MagicMock()
+    monkeypatch.setattr("services.api.routers.applications.find_existing_application", lambda *args, **kwargs: None)
+    monkeypatch.setattr("services.api.routers.applications.upsert_job", lambda *args, **kwargs: MagicMock(job=job))
+    monkeypatch.setattr("services.api.routers.applications.apply_application_gamification_events", lambda *args, **kwargs: None)
+    monkeypatch.setattr("services.api.routers.applications.broadcast_sync", lambda *args, **kwargs: None)
+
+    def fake_refresh(obj):
+        obj.id = app_id
+        obj.created_at = now
+        obj.updated_at = now
+        obj.job = job
+    mock_db.refresh = fake_refresh
+    mock_db.scalar.return_value = None
+
+    payload = JobApplicationBase(
+        platform="linkedin",
+        job_id="job-42",
+        title="Software Engineer",
+        company="Example Pty Ltd",
+        status="submitted",
+        job_link="https://www.seek.com.au/job/42",
+    )
+
+    result = create_application(payload, db=mock_db, current_user=mock_user)
+    assert isinstance(result, dict)
+    assert result["id"] == str(app_id)
+    validated = JobApplicationRead.model_validate(result)
+    assert validated.id == app_id
+
+

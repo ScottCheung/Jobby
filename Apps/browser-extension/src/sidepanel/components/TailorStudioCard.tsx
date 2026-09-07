@@ -77,6 +77,30 @@ function savedCoverLetter(item: TailoredResume): string | null {
     : null;
 }
 
+function formatTokenCount(value: number): string {
+  const count = Number.isFinite(value) ? Math.max(value, 0) : 0;
+  const format = (amount: number, suffix: string) => `${Number(amount.toFixed(1))}${suffix}`;
+  if (count < 1_000) return Math.round(count).toLocaleString();
+  if (count < 1_000_000) return format(count / 1_000, 'K');
+  return format(count / 1_000_000, 'M');
+}
+
+function operationLabel(operation?: string | null): string | null {
+  if (!operation) return null;
+  if (operation === 'resume_tailor') return 'Resume Tailor';
+  if (operation === 'resume_and_cover_letter') return 'Resume + Cover Letter';
+  if (operation === 'cover_letter') return 'Cover Letter';
+  if (operation === 'multiple') return 'Multiple features';
+  return operation.replaceAll('_', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function thinkingLabel(reasoningEffort?: string | null): string {
+  if (!reasoningEffort) return 'Default';
+  if (reasoningEffort === 'none') return 'Off';
+  if (reasoningEffort === 'multiple') return 'Multiple';
+  return reasoningEffort.charAt(0).toUpperCase() + reasoningEffort.slice(1);
+}
+
 interface TailorStudioCardProps {
   studio: ReturnType<typeof useTailoredResumeStudio>;
   latestInspection: PageInspection | null;
@@ -1345,6 +1369,23 @@ export function TailorStudioCard({
             if (taskId) void cancelGeneration(taskId);
           }}
         />
+      )}
+
+      {!isViewingGenerating && activeRecord?.usage && (
+        <details className='px-1 text-[10px] text-muted-foreground'>
+          <summary className='cursor-pointer list-none [&::-webkit-details-marker]:hidden'>
+            ⚡ {(activeRecord.usage.duration_ms / 1000).toFixed(1)}s · {formatTokenCount(activeRecord.usage.total_tokens)} tokens · Latest AI generation
+          </summary>
+          <div className='mt-1 grid grid-cols-2 gap-x-3 gap-y-0.5'>
+            <span>Input {formatTokenCount(activeRecord.usage.input_tokens)}</span>
+            <span>Cached {formatTokenCount(activeRecord.usage.cached_input_tokens)}</span>
+            <span>Reasoning {activeRecord.usage.reasoning_tokens == null ? '—' : formatTokenCount(activeRecord.usage.reasoning_tokens)}</span>
+            <span>Answer {activeRecord.usage.answer_tokens == null ? '—' : formatTokenCount(activeRecord.usage.answer_tokens)}</span>
+            <span>Total {formatTokenCount(activeRecord.usage.total_tokens)}</span>
+            <span>Thinking {thinkingLabel(activeRecord.usage.reasoning_effort)}</span>
+            <span>{operationLabel(activeRecord.usage.operation) || activeRecord.usage.model || '—'}</span>
+          </div>
+        </details>
       )}
 
       {/* ── 4. RESUME PREVIEW SHOWCASE (Tailored or Default Base Resume) ── */}

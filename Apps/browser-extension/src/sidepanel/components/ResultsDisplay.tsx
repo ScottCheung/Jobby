@@ -8,7 +8,13 @@ import {
   Sparkles,
   Trash2,
   Star,
+  MoreHorizontal,
+  Eye,
+  ExternalLink,
+  Download,
+  Edit3,
 } from 'lucide-react';
+import * as PopoverPrimitive from '@radix-ui/react-popover';
 import { IPEmotion } from '@jobby/ui/components/UI/IPEmotion';
 import { Tooltip } from '@jobby/ui/components/UI/tooltip';
 import { cn } from '@jobby/ui/lib/utils';
@@ -25,6 +31,19 @@ export { fileFieldPurpose };
 export type { FileFieldPurpose } from '../../shared/utils/form-field-resolution';
 import { formatRelativeTime } from '@jobby/ui/lib/date-formatter';
 import type { UploadSyncState } from '../hooks/useInspection';
+import { renderResumePdfOnce } from '@jobby/ui/components/UI/Resume/ResumePdfPreview';
+import {
+  formatResumeFilename,
+  formatCoverLetterFilename,
+  defaultMasterResumeData,
+} from '@jobby/ui/components/UI/Resume/helpers';
+import { renderCoverLetterPdfForExtension } from '../services/cover-letter-pdf-renderer';
+import {
+  closeFloatingResumePreview,
+  openStandaloneResumePreview,
+} from '../services/resume-floating-preview';
+import { sendContentCommandToActiveTab } from '../services/messaging';
+import { notify } from '@jobby/ui/components/UI/toast/toast-store';
 
 type CurrentJob = {
   title?: string;
@@ -421,10 +440,71 @@ export function ExpandableAnswer({
           {displayText}
         </span>
       </div>
-
-
     </div>
   );
+}
+
+async function getRenderedDocument(
+  resume: TailoredResume,
+  isCoverLetterField: boolean,
+) {
+  const docResume = resume.resume_data || defaultMasterResumeData;
+  const competencies =
+    resume.core_competencies ||
+    resume.key_qualifications ||
+    [];
+
+  const isCoverLetter = Boolean(
+    isCoverLetterField &&
+      (resume.cover_letter ||
+        (resume.raw_ai_response as any)?.cover_letter),
+  );
+
+  if (isCoverLetter) {
+    const coverLetterText =
+      resume.cover_letter ||
+      (resume.raw_ai_response as any)?.cover_letter ||
+      '';
+    const rendered = await renderCoverLetterPdfForExtension(
+      coverLetterText,
+      docResume,
+      resume.company || undefined,
+      resume.job_title || undefined,
+    );
+    const filename = formatCoverLetterFilename(
+      docResume,
+      resume.company || undefined,
+      resume.job_title || undefined,
+    );
+    return {
+      blob: rendered.blob,
+      pages: rendered.pages || 1,
+      scale: undefined as number | undefined,
+      filename,
+      isCoverLetter: true,
+      competencies,
+    };
+  }
+
+  const rendered = await renderResumePdfOnce(
+    docResume,
+    1,
+    competencies,
+    [],
+  );
+  const filename = formatResumeFilename(
+    docResume,
+    resume.company || '',
+    resume.job_title || '',
+  );
+  return {
+    blob: rendered.blob,
+    pages: rendered.pages,
+    scale: rendered.scale,
+    filename,
+    isCoverLetter: false,
+    competencies,
+  };
 }
 
 function FormFieldRow({
@@ -483,6 +563,106 @@ function FormFieldRow({
     useState<TailoredResume | null>(null);
   const [confirmDefaultTarget, setConfirmDefaultTarget] =
     useState<TailoredResume | null>(null);
+  const [openMenuResumeId, setOpenMenuResumeId] = useState<string | null>(null);
+
+  const handleInPagePreview = async (resume: TailoredResume) => {
+    closeFloatingResumePreview();
+    try {
+      const doc = await getRenderedDocument(resume, isCoverLetterUpload);
+      const pdfDataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(doc.blob);
+      });
+
+      const webAppBaseUrl = (
+        import.meta.env.VITE_WEB_APP_URL || 'http://localhost:3000'
+      ).replace(/\/$/, '');
+
+      await sendContentCommandToActiveTab({
+        type: 'content.show-resume-preview',
+        data: resume.resume_data || defaultMasterResumeData,
+        ...(doc.isCoverLetter ? {} : { coreCompetencies: doc.competencies }),
+        company: resume.company || undefined,
+        jobTitle: resume.job_title || undefined,
+        filename: doc.filename,
+        pdfDataUrl,
+        pages: doc.pages,
+        fileSize: doc.blob.size,
+        ...(doc.scale === undefined ? {} : { pdfScale: doc.scale }),
+        generatedAt: resume.created_at || new Date().toISOString(),
+        editUrl: `${webAppBaseUrl}/ai-studio/tailor/${resume.id}`,
+      });
+    } catch (error) {
+      notify.error(
+        error instanceof Error ? error.message : 'Could not open in-page preview.',
+      );
+    }
+  };
+
+  const handleExternalPreview = async (resume: TailoredResume) => {
+    const webAppBaseUrl = (
+      import.meta.env.VITE_WEB_APP_URL || 'http://localhost:3000'
+    ).replace(/\/$/, '');
+    const editUrl = `${webAppBaseUrl}/ai-studio/tailor/${resume.id}`;
+
+    let standalonePreview;
+    try {
+      standalonePreview = openStandaloneResumePreview(editUrl);
+    } catch {
+      notify.error('Your browser blocked the standalone preview window.');
+      return;
+    }
+
+    try {
+      const doc = await getRenderedDocument(resume, isCoverLetterUpload);
+      await standalonePreview.setPdf(doc.blob, doc.filename);
+    } catch (error) {
+      standalonePreview.showError(
+        error instanceof Error ? error.message : 'Could not generate preview PDF.',
+      );
+    }
+  };
+
+  const handleDownload = async (resume: TailoredResume) => {
+    try {
+      const doc = await getRenderedDocument(resume, isCoverLetterUpload);
+      const url = URL.createObjectURL(doc.blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = doc.filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      notify.success('Download started');
+    } catch (error) {
+      notify.error(
+        error instanceof Error ? error.message : 'Failed to download PDF.',
+      );
+    }
+  };
+
+  const handleEdit = (resume: TailoredResume) => {
+    const webAppBaseUrl = (
+      import.meta.env.VITE_WEB_APP_URL || 'http://localhost:3000'
+    ).replace(/\/$/, '');
+    window.open(`${webAppBaseUrl}/ai-studio/tailor/${resume.id}`, '_blank');
+  };
+
+  const handleToggleDefault = (resume: TailoredResume) => {
+    if (resume.id === defaultResumeId) {
+      handleSetDefaultResume('');
+      notify.success('Removed from default resume');
+    } else {
+      setConfirmDefaultTarget(resume);
+    }
+  };
+
+  const handleDelete = (resume: TailoredResume) => {
+    setConfirmDeleteTarget(resume);
+  };
 
   const handleSetDefaultResume = (id: string) => {
     setDefaultResumeId(id);
@@ -931,55 +1111,142 @@ function FormFieldRow({
                             >
                               {resume.job_title || 'Tailored Resume'}
                             </span>
-                            <div className='flex items-center gap-0.5 shrink-0'>
-                              <span
-                                role='button'
-                                tabIndex={0}
-                                className={`p-0.5 transition-opacity cursor-pointer ${
-                                  isDefault ? 'opacity-100 text-amber-400'
-                                  : 'opacity-0 group-hover/card:opacity-100 hover:text-amber-400 text-muted-foreground/60'
-                                }`}
-                                title={
-                                  isDefault ? 'Default resume'
-                                  : 'Set as default resume'
-                                }
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (!isDefault)
-                                    setConfirmDefaultTarget(resume);
-                                }}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter' || e.key === ' ') {
-                                    e.stopPropagation();
-                                    if (!isDefault)
-                                      setConfirmDefaultTarget(resume);
-                                  }
+                            <div
+                              className='flex items-center shrink-0'
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <PopoverPrimitive.Root
+                                open={openMenuResumeId === resume.id}
+                                onOpenChange={(open) => {
+                                  setOpenMenuResumeId(open ? resume.id : null);
                                 }}
                               >
-                                <Star
-                                  className={`w-2.5 h-2.5 ${isDefault ? 'fill-amber-400 text-amber-400' : ''}`}
-                                />
-                              </span>
-                              {onDeleteTailoredResume && (
-                                <span
-                                  role='button'
-                                  tabIndex={0}
-                                  className='opacity-0 group-hover/card:opacity-100 hover:text-destructive p-0.5 text-muted-foreground/60 transition-opacity cursor-pointer'
-                                  title='Delete tailored record'
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setConfirmDeleteTarget(resume);
-                                  }}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter' || e.key === ' ') {
+                                <PopoverPrimitive.Trigger asChild>
+                                  <span
+                                    role='button'
+                                    tabIndex={0}
+                                    className={cn(
+                                      'p-0.5 rounded transition-all cursor-pointer text-muted-foreground/70 hover:text-foreground hover:bg-muted/80',
+                                      openMenuResumeId === resume.id ?
+                                        'opacity-100 text-foreground bg-muted/80'
+                                      : isSelected ?
+                                        'opacity-60 group-hover/card:opacity-100'
+                                      : 'opacity-0 group-hover/card:opacity-100',
+                                    )}
+                                    title='More actions'
+                                    aria-label='More actions'
+                                    onClick={(e) => {
                                       e.stopPropagation();
-                                      setConfirmDeleteTarget(resume);
-                                    }
-                                  }}
-                                >
-                                  <Trash2 className='w-2.5 h-2.5' />
-                                </span>
-                              )}
+                                    }}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter' || e.key === ' ') {
+                                        e.stopPropagation();
+                                      }
+                                    }}
+                                  >
+                                    <MoreHorizontal className='w-3 h-3' />
+                                  </span>
+                                </PopoverPrimitive.Trigger>
+                                <PopoverPrimitive.Portal>
+                                  <PopoverPrimitive.Content
+                                    align='end'
+                                    sideOffset={4}
+                                    className='z-50 min-w-[144px] rounded-lg border border-border bg-panel p-1 shadow-lg backdrop-blur-xs outline-none animate-in fade-in-50 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95'
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <div className='flex flex-col gap-0.5 text-xs text-foreground'>
+                                      <button
+                                        type='button'
+                                        className='flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-left text-[11px] font-medium transition-colors hover:bg-muted cursor-pointer'
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setOpenMenuResumeId(null);
+                                          void handleInPagePreview(resume);
+                                        }}
+                                      >
+                                        <Eye className='w-3.5 h-3.5 text-primary shrink-0' />
+                                        <span>In-Page Preview</span>
+                                      </button>
+
+                                      <button
+                                        type='button'
+                                        className='flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-left text-[11px] font-medium transition-colors hover:bg-muted cursor-pointer'
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setOpenMenuResumeId(null);
+                                          void handleExternalPreview(resume);
+                                        }}
+                                      >
+                                        <ExternalLink className='w-3.5 h-3.5 text-primary shrink-0' />
+                                        <span>External Preview</span>
+                                      </button>
+
+                                      <button
+                                        type='button'
+                                        className='flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-left text-[11px] font-medium transition-colors hover:bg-muted cursor-pointer'
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setOpenMenuResumeId(null);
+                                          void handleDownload(resume);
+                                        }}
+                                      >
+                                        <Download className='w-3.5 h-3.5 text-primary shrink-0' />
+                                        <span>Download PDF</span>
+                                      </button>
+
+                                      <button
+                                        type='button'
+                                        className='flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-left text-[11px] font-medium transition-colors hover:bg-muted cursor-pointer'
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setOpenMenuResumeId(null);
+                                          handleEdit(resume);
+                                        }}
+                                      >
+                                        <Edit3 className='w-3.5 h-3.5 text-primary shrink-0' />
+                                        <span>Edit on Web</span>
+                                      </button>
+
+                                      <div className='my-0.5 h-px bg-border/60' />
+
+                                      <button
+                                        type='button'
+                                        className='flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-left text-[11px] font-medium transition-colors hover:bg-muted cursor-pointer'
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setOpenMenuResumeId(null);
+                                          handleToggleDefault(resume);
+                                        }}
+                                      >
+                                        <Star
+                                          className={cn(
+                                            'w-3.5 h-3.5 shrink-0',
+                                            isDefault ?
+                                              'fill-amber-400 text-amber-400'
+                                            : 'text-muted-foreground',
+                                          )}
+                                        />
+                                        <span>{isDefault ? 'Remove Default' : 'Set as Default'}</span>
+                                      </button>
+
+                                      {onDeleteTailoredResume && (
+                                        <button
+                                          type='button'
+                                          className='flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-left text-[11px] font-medium text-destructive transition-colors hover:bg-destructive/10 cursor-pointer'
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setOpenMenuResumeId(null);
+                                            handleDelete(resume);
+                                          }}
+                                        >
+                                          <Trash2 className='w-3.5 h-3.5 shrink-0' />
+                                          <span>Delete</span>
+                                        </button>
+                                      )}
+                                    </div>
+                                  </PopoverPrimitive.Content>
+                                </PopoverPrimitive.Portal>
+                              </PopoverPrimitive.Root>
                             </div>
                           </span>
                           <span className='form-resume-card-company'>

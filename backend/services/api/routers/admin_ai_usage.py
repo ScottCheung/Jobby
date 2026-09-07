@@ -50,6 +50,9 @@ def ai_usage_summary(
             func.avg(LLMUsageRecord.duration_ms),
             func.count(LLMUsageRecord.estimated_cost_usd),
             func.coalesce(func.sum(LLMUsageRecord.estimated_cost_usd), 0),
+            func.count(LLMUsageRecord.reasoning_tokens),
+            func.coalesce(func.sum(LLMUsageRecord.reasoning_tokens), 0),
+            func.coalesce(func.sum(LLMUsageRecord.output_tokens), 0),
         ).where(*filters)
     ).one()
     calls = int(totals[0] or 0)
@@ -83,6 +86,11 @@ def ai_usage_summary(
         "calls": calls,
         "total_tokens": int(totals[1] or 0),
         "avg_duration_ms": round(float(totals[3] or 0)),
+        "reasoning_output_ratio": (
+            float(totals[7]) / int(totals[8])
+            if calls and int(totals[6] or 0) == calls and int(totals[8] or 0)
+            else None
+        ),
         "daily": [
             {
                 "date": row[0].isoformat(),
@@ -142,7 +150,14 @@ def ai_usage_calls(
                 "input_tokens": record.input_tokens,
                 "output_tokens": record.output_tokens,
                 "cached_input_tokens": record.cached_input_tokens or 0,
+                "reasoning_tokens": record.reasoning_tokens,
+                "answer_tokens": (
+                    max(record.output_tokens - record.reasoning_tokens, 0)
+                    if record.reasoning_tokens is not None
+                    else None
+                ),
                 "total_tokens": record.total_tokens,
+                "reasoning_effort": record.reasoning_effort,
                 "cost_usd": _number(record.estimated_cost_usd),
                 "duration_ms": record.duration_ms,
                 "slow": record.duration_ms >= 90_000,

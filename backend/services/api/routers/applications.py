@@ -100,8 +100,7 @@ def job_application_response(application: JobApplication, tailored_resume_id: UU
     data = JobApplicationRead.model_validate(application).model_dump(mode="json")
     data["has_tailored_resume"] = tailored_resume_id is not None
     data["tailored_resume_id"] = str(tailored_resume_id) if tailored_resume_id else None
-
-    return None
+    return data
 
 @router.post("/application-decisions")
 def evaluate_application_decision(

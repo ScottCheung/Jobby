@@ -67,6 +67,9 @@ export function cleanDescriptionText(rawText: string): string {
     .replace(/PostgreSQL/gi, '___POSTGRESQL___')
     .replace(/MongoDB/gi, '___MONGODB___');
 
+  // Keep the .NET technology token intact when source markup splits it across lines.
+  text = text.replace(/\.[ \t]*\r?\n[ \t]*(NET)\b/g, '.$1');
+
   // Fix lowercase followed by multi-letter uppercase acronyms (e.g. "ofATI" -> "of ATI")
   text = text.replace(/([a-z])([A-Z]{2,})/g, '$1 $2');
 
@@ -97,7 +100,7 @@ export function cleanDescriptionText(rawText: string): string {
   text = text.replace(/\)\s*([A-Z])/g, ')\n$1');
 
   // Fix abnormal spaces before punctuation (e.g. "Have fun with us . Celebrations." -> "Have fun with us. Celebrations.")
-  text = text.replace(/\s+([.,!?;:])/g, '$1');
+  text = text.replace(/\s+([.,!?;:])(?!NET\b)/g, '$1');
 
   text = text
     .replace(/___TYPESCRIPT___/g, 'TypeScript')

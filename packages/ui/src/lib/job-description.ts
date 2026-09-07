@@ -20,6 +20,9 @@ export function cleanDescription(rawText: string | null | undefined): string {
     .replace(/PostgreSQL/gi, '___POSTGRESQL___')
     .replace(/MongoDB/gi, '___MONGODB___');
 
+  // Keep the .NET technology token intact when source markup splits it across lines.
+  text = text.replace(/\.[ \t]*\r?\n[ \t]*(NET)\b/g, '.$1');
+
   // Fix isolated bullets where bullet is on its own line before text (e.g. "•\nDesign, build", ".\nCompetitive salary")
   text = text.replace(/^[•*\-▪►▸–—·.]\s*\r?\n\s*([^\r\n])/gm, '• $1');
 
@@ -50,7 +53,7 @@ export function cleanDescription(rawText: string | null | undefined): string {
   text = text.replace(/\)\s*([A-Z])/g, ')\n$1');
 
   // Fix abnormal spaces before punctuation (e.g. "Have fun with us . Celebrations." -> "Have fun with us. Celebrations.")
-  text = text.replace(/\s+([.,!?;:])/g, '$1');
+  text = text.replace(/\s+([.,!?;:])(?!NET\b)/g, '$1');
 
   text = text
     .replace(/___TYPESCRIPT___/g, 'TypeScript')

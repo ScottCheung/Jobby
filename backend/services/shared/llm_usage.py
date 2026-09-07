@@ -28,6 +28,7 @@ class LLMUsage:
     output_tokens: int
     total_tokens: int
     cached_input_tokens: int | None = None
+    reasoning_tokens: int | None = None
 
 
 @dataclass(frozen=True)
@@ -40,6 +41,10 @@ class LLMUsageSummary:
     estimated_cost_usd: Decimal | None
     duration_ms: int
     model: str | None = None
+    operation: str | None = None
+    reasoning_tokens: int | None = None
+    answer_tokens: int | None = None
+    reasoning_effort: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -51,6 +56,10 @@ class LLMUsageSummary:
             "estimated_cost_usd": self.estimated_cost_usd,
             "duration_ms": self.duration_ms,
             "model": self.model,
+            "operation": self.operation,
+            "reasoning_tokens": self.reasoning_tokens,
+            "answer_tokens": self.answer_tokens,
+            "reasoning_effort": self.reasoning_effort,
         }
 
 
@@ -91,6 +100,8 @@ def normalize_usage(provider: str, model: str, raw_usage: Mapping[str, Any]) -> 
             raw_usage.get("prompt_cache_hit_tokens", raw_usage.get("cache_read_input_tokens")),
         )
     )
+    completion_details = raw_usage.get("completion_tokens_details")
+    reasoning_tokens = _token_count(completion_details.get("reasoning_tokens")) if isinstance(completion_details, Mapping) else None
 
     if input_tokens is None or output_tokens is None:
         raise ValueError("LLM usage did not include input and output token counts")
@@ -104,6 +115,7 @@ def normalize_usage(provider: str, model: str, raw_usage: Mapping[str, Any]) -> 
         output_tokens=output_tokens,
         total_tokens=total_tokens,
         cached_input_tokens=cached_input_tokens,
+        reasoning_tokens=reasoning_tokens,
     )
 
 
@@ -156,6 +168,13 @@ def get_llm_usage_summary(
                 func.coalesce(func.sum(LLMUsageRecord.duration_ms), 0),
                 func.min(LLMUsageRecord.model),
                 func.max(LLMUsageRecord.model),
+                func.min(LLMUsageRecord.operation),
+                func.max(LLMUsageRecord.operation),
+                func.count(LLMUsageRecord.reasoning_tokens),
+                func.coalesce(func.sum(LLMUsageRecord.reasoning_tokens), 0),
+                func.count(LLMUsageRecord.reasoning_effort),
+                func.min(LLMUsageRecord.reasoning_effort),
+                func.max(LLMUsageRecord.reasoning_effort),
             ).where(LLMUsageRecord.correlation_id == correlation_id)
         ).one()
         calls = int(row[0] or 0)
@@ -164,6 +183,14 @@ def get_llm_usage_summary(
         model = row[8] if len(row) > 9 and row[8] == row[9] else None
         if len(row) > 9 and row[8] != row[9]:
             model = "multiple"
+        operation = row[10] if len(row) > 11 and row[10] == row[11] else None
+        if len(row) > 11 and row[10] != row[11]:
+            operation = "multiple"
+        reasoning_tokens = int(row[13] or 0) if len(row) > 13 and int(row[12] or 0) == calls else None
+        answer_tokens = max(int(row[2] or 0) - reasoning_tokens, 0) if reasoning_tokens is not None else None
+        reasoning_effort = None
+        if len(row) > 16 and int(row[14] or 0):
+            reasoning_effort = row[15] if int(row[14] or 0) == calls and row[15] == row[16] else "multiple"
         return LLMUsageSummary(
             calls=calls,
             input_tokens=int(row[1] or 0),
@@ -173,6 +200,10 @@ def get_llm_usage_summary(
             estimated_cost_usd=row[6] if int(row[5] or 0) == calls else None,
             duration_ms=int(row[7] or 0),
             model=model,
+            operation=operation,
+            reasoning_tokens=reasoning_tokens,
+            answer_tokens=answer_tokens,
+            reasoning_effort=reasoning_effort,
         )
     except Exception:
         logger.warning("Could not read LLM usage correlation_id=%s", correlation_id, exc_info=True)
@@ -189,6 +220,7 @@ def record_llm_usage(
     usage: LLMUsage,
     duration_ms: int,
     user_id: UUID | None = None,
+    reasoning_effort: str | None = None,
 ) -> bool:
     db = None
     try:
@@ -204,6 +236,8 @@ def record_llm_usage(
                 output_tokens=usage.output_tokens,
                 total_tokens=usage.total_tokens,
                 cached_input_tokens=usage.cached_input_tokens,
+                reasoning_tokens=usage.reasoning_tokens,
+                reasoning_effort=reasoning_effort,
                 estimated_cost_usd=calculate_llm_cost(usage.provider, usage.model, usage),
                 duration_ms=max(0, int(duration_ms)),
             )

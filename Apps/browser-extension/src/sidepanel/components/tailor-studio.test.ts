@@ -725,6 +725,17 @@ describe('Document Studio & Resume Tailoring (Zero-Token Mock Mode)', () => {
             basics: { first_name: 'Scott', last_name: 'Zhang' },
           },
           cover_letter: 'Dear Hiring Manager at Preview Corp...',
+          usage: {
+            calls: 1,
+            input_tokens: 3700,
+            output_tokens: 16700,
+            total_tokens: 20400,
+            cached_input_tokens: 1200,
+            reasoning_tokens: 13700,
+            answer_tokens: 3000,
+            duration_ms: 117800,
+            reasoning_effort: 'low',
+          },
           created_at: new Date().toISOString(),
         },
       },
@@ -771,6 +782,10 @@ describe('Document Studio & Resume Tailoring (Zero-Token Mock Mode)', () => {
     expect(html).toContain('Staff Engineer');
     expect(html).toContain('Scott Zhang - CV - Preview Corp - Staff Engineer.pdf');
     expect(html).toContain('Scott Zhang - CL - Preview Corp - Staff Engineer.pdf');
+    expect(html).toContain('⚡ 117.8s · 20.4K tokens · Latest AI generation');
+    expect(html).toContain('Reasoning 13.7K');
+    expect(html).toContain('Answer 3K');
+    expect(html).toContain('Thinking Low');
     expect(html).not.toContain('Opened Company On Current Tab');
   });
 });

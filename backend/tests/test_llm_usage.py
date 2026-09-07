@@ -29,6 +29,7 @@ def test_normalizes_deepseek_usage_fields() -> None:
             "total_tokens": 150,
             "prompt_cache_hit_tokens": 40,
             "prompt_cache_miss_tokens": 80,
+            "completion_tokens_details": {"reasoning_tokens": 20},
         },
     )
 
@@ -36,6 +37,17 @@ def test_normalizes_deepseek_usage_fields() -> None:
     assert usage.output_tokens == 30
     assert usage.total_tokens == 150
     assert usage.cached_input_tokens == 40
+    assert usage.reasoning_tokens == 20
+
+
+def test_usage_without_reasoning_breakdown_remains_unknown() -> None:
+    usage = llm_usage.normalize_usage(
+        "deepseek",
+        "deepseek-v4-flash",
+        {"prompt_tokens": 120, "completion_tokens": 30, "total_tokens": 150},
+    )
+
+    assert usage.reasoning_tokens is None
 
 
 def test_calculates_cached_and_uncached_cost_with_decimal() -> None:
@@ -51,6 +63,15 @@ def test_calculates_cached_and_uncached_cost_with_decimal() -> None:
     assert cost == Decimal("0.08374000")
 
 
+def test_reasoning_breakdown_does_not_change_cost() -> None:
+    usage = _usage(output_tokens=16_700, total_tokens=20_400)
+    with_reasoning = _usage(output_tokens=16_700, total_tokens=20_400, reasoning_tokens=13_700)
+
+    assert llm_usage.calculate_llm_cost("deepseek", usage.model, usage) == llm_usage.calculate_llm_cost(
+        "deepseek", with_reasoning.model, with_reasoning
+    )
+
+
 def test_unknown_retired_model_price_is_not_estimated() -> None:
     assert llm_usage.calculate_llm_cost(
         "deepseek",
@@ -63,7 +84,7 @@ def test_unknown_retired_model_price_is_not_estimated() -> None:
 def test_usage_summary_aggregates_database_values() -> None:
     class Result:
         def one(self):
-            return (2, 300, 50, 350, 40, 2, Decimal("0.01230000"), 3000)
+            return (2, 300, 50, 350, 40, 2, Decimal("0.01230000"), 3000, "deepseek-v4-flash", "deepseek-v4-flash", "resume_tailor", "resume_tailor", 2, 30, 2, "low", "low")
 
     class FakeSession:
         def execute(self, _statement):
@@ -76,6 +97,27 @@ def test_usage_summary_aggregates_database_values() -> None:
     assert summary.total_tokens == 350
     assert summary.estimated_cost_usd == Decimal("0.01230000")
     assert summary.duration_ms == 3000
+    assert summary.operation == "resume_tailor"
+    assert summary.reasoning_tokens == 30
+    assert summary.answer_tokens == 20
+    assert summary.reasoning_effort == "low"
+
+
+def test_usage_summary_marks_mixed_reasoning_effort() -> None:
+    class Result:
+        def one(self):
+            return (2, 3700, 16700, 20400, 1200, 2, Decimal("0.01230000"), 3000, "deepseek-v4-flash", "deepseek-v4-flash", "resume_tailor", "resume_tailor", 2, 13700, 2, "high", "low")
+
+    class FakeSession:
+        def execute(self, _statement):
+            return Result()
+
+    summary = llm_usage.get_llm_usage_summary("generation-1", db=FakeSession())
+
+    assert summary is not None
+    assert summary.reasoning_tokens == 13_700
+    assert summary.answer_tokens == 3_000
+    assert summary.reasoning_effort == "multiple"
 
 
 def test_completed_provider_response_records_once() -> None:
@@ -108,6 +150,39 @@ def test_completed_provider_response_records_once() -> None:
     assert record.call_args.kwargs["correlation_id"] == "generation-1"
     assert record.call_args.kwargs["usage"].total_tokens == 20
     assert record.call_args.kwargs["usage"].model == "deepseek-v4-flash"
+
+
+def test_thinking_request_uses_low_effort_without_temperature() -> None:
+    response = MagicMock()
+    response.json.return_value = {
+        "usage": {"prompt_tokens": 12, "completion_tokens": 8, "total_tokens": 20},
+        "choices": [{"message": {"content": '{"ok": true}'}}],
+    }
+    settings = SimpleNamespace(deepseek_api_key="test-key", deepseek_base_url="https://ai.example.test", deepseek_model="deepseek-v4-flash")
+
+    with patch.object(deepseek, "get_settings", return_value=settings), patch.object(deepseek.httpx, "post", return_value=response) as post:
+        deepseek._complete([], operation="resume_tailor", reasoning_effort="low")
+
+    payload = post.call_args.kwargs["json"]
+    assert payload["thinking"] == {"type": "enabled"}
+    assert payload["reasoning_effort"] == "low"
+    assert "temperature" not in payload
+
+
+def test_disabled_thinking_keeps_temperature() -> None:
+    response = MagicMock()
+    response.json.return_value = {
+        "usage": {"prompt_tokens": 12, "completion_tokens": 8, "total_tokens": 20},
+        "choices": [{"message": {"content": '{"ok": true}'}}],
+    }
+    settings = SimpleNamespace(deepseek_api_key="test-key", deepseek_base_url="https://ai.example.test", deepseek_model="deepseek-v4-flash")
+
+    with patch.object(deepseek, "get_settings", return_value=settings), patch.object(deepseek.httpx, "post", return_value=response) as post:
+        deepseek._complete([], operation="resume_tailor", temperature=0.3, reasoning_effort="none")
+
+    payload = post.call_args.kwargs["json"]
+    assert payload["thinking"] == {"type": "disabled"}
+    assert payload["temperature"] == 0.3
 
 
 def test_same_correlation_id_can_be_aggregated_from_multiple_calls() -> None:

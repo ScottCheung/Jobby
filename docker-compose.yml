@@ -41,6 +41,7 @@ services:
       API_CORS_ORIGINS: ${API_CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001}
       DEFAULT_ADMIN_EMAIL: ${DEFAULT_ADMIN_EMAIL:-admin@example.local}
       DEFAULT_ADMIN_NAME: ${DEFAULT_ADMIN_NAME:-Local Admin}
+      ALLOW_DEV_AUTH_HEADER: ${ALLOW_DEV_AUTH_HEADER:-true}
       ENABLE_API_LOCAL_WORKER: ${ENABLE_API_LOCAL_WORKER:-false}
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
       DEEPSEEK_BASE_URL: ${DEEPSEEK_BASE_URL:-https://api.deepseek.com}

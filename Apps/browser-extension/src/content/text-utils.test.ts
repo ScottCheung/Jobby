@@ -90,6 +90,15 @@ describe('cleanDescription', () => {
     );
   });
 
+  it('keeps .NET together when source text splits the token across lines', () => {
+    const text = `• Developing and maintaining full stack applications using C# and .\nNET\n• Building solutions using ASP.NET MVC`;
+    const result = cleanDescription(text);
+
+    expect(result).toBe(
+      `• Developing and maintaining full stack applications using C# and .NET\n• Building solutions using ASP.NET MVC`,
+    );
+  });
+
   it('formats squished text with missing spaces/newlines between sentences and sections', () => {
     const squished = `Who is Shift? At Shift, we're business specialists dedicated to helping Australian SMEs take control of their cashflow, streamline trade terms and choose the right financial products.We believe Australian businesses are the driving force behind our economy and are core to our communities. That's why our business expertise, focus on relationships, and market-leading technology is at the core of everything we do. We've helped solve the credit and payment pain points for more than 30,000 businesses, providing over $6 billion in aggregate funding.Our unique approach to product innovation combined with our collaborative culture means you can build your career in a supportive environment. You'll be joining a diverse team of over 300 people who are always looking to deliver better outcomes for Australian businesses.About the role:We're looking for a Full Stack Software Engineer who enjoys building things end to end, from polished interfaces to the backend services that power them. This role can flex to suit you: whether you're a true 50/50 full stack engineer or someone who leans more front-end, we're interested in strong engineers who care about the whole picture.What you'll do:
 - Design, build, and maintain modern web applications across JavaScript/TypeScript (React) and C# (.NET)

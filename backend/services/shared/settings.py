@@ -36,6 +36,7 @@ class AppSettings(BaseSettings):
     default_admin_email: str = Field(default="scott5443003@gmail.com", alias="DEFAULT_ADMIN_EMAIL")
     default_admin_name: str = Field(default="Scott Admin", alias="DEFAULT_ADMIN_NAME")
     admin_emails: str = Field(default="scott5443003@gmail.com", alias="ADMIN_EMAILS")
+    allow_dev_auth_header: bool = Field(default=False, alias="ALLOW_DEV_AUTH_HEADER")
     enable_api_local_worker: bool = Field(default=False, alias="ENABLE_API_LOCAL_WORKER")
     storage_provider: str = Field(default="s3", alias="STORAGE_PROVIDER")
     storage_bucket: str = Field(default="jobby-assets", alias="STORAGE_BUCKET")

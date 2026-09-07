@@ -571,6 +571,7 @@ def review_job(
                 timeout=90.0,
                 correlation_id=correlation_id,
                 user_id=user_id,
+                reasoning_effort="low",
             )
             cover_letter_text = _text(tailor_result.get("cover_letter")) or None
             # The model only edits the targeted sections. Preserve the candidate's
@@ -642,6 +643,7 @@ async def review_job_async(
         timeout=90.0,
         correlation_id=correlation_id,
         user_id=user_id,
+        reasoning_effort="low",
     )
     cover_letter_text = _text(tailor_result.get("cover_letter")) or None
     if doc_type == "cover_letter":

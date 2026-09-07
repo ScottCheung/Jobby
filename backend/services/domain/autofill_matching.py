@@ -266,39 +266,47 @@ def _match_form_mapping_rule(
 
 
 def _is_single_consent_checkbox(field: Any) -> bool:
-    """A required, single checkbox that records acceptance of site terms."""
+    """Identify single checkboxes (agreements, terms, consent, declarations, or lone confirmation checkboxes) that should default to checked."""
     if str(getattr(field, "type", "")).casefold() != "checkbox":
         return False
-    label = normalize_alias(
-        " ".join(
-            str(value or "")
-            for value in (
-                getattr(field, "label", ""),
-                getattr(field, "name", ""),
-                getattr(field, "id", ""),
-            )
+
+    options = getattr(field, "options", None) or []
+    if len(options) > 1:
+        return False
+
+    raw_text = " ".join(
+        str(value or "")
+        for value in (
+            getattr(field, "label", ""),
+            getattr(field, "name", ""),
+            getattr(field, "id", ""),
         )
     )
-    return bool(
-        getattr(field, "required", False)
-        and re.search(r"(?:privacy|consent|terms|conditions|have read|agree|acknowledge|accept)", label)
-    )
+    label = normalize_alias(raw_text)
+
+    # Do not auto-check marketing, newsletter, or commercial promotion opt-ins
+    if re.search(r"(?:marketing|promot|newsletter|advertising|commercial)", label) and not re.search(
+        r"(?:privacy|consent|terms|conditions|agree|acknowledge|accept|同意|协议)", label
+    ):
+        return False
+
+    # Do not auto-check checkboxes that explicitly ask for visa sponsorship requirement
+    if any(k in label for k in ("visa sponsorship", "require sponsorship", "need sponsorship", "require visa", "签证赞助", "需要赞助")):
+        return False
+
+    # Explicit consent, terms, agreements, acknowledgment, certifications, policies (regardless of required attribute)
+    if re.search(
+        r"(?:privacy|consent|terms|conditions|have read|agree|acknowledg|accept|certif|confirm|declar|authoriz|understand|statement|policy|guideline|legal|notice|attest|compliance|compliant|同意|接受|知悉|阅读|声明|确认|遵守|承诺|授权|协议|政策)",
+        label,
+    ):
+        return True
+
+    # Any single/standalone checkbox (e.g. lone confirmation or submission check) on an application form
+    return True
 
 
 def _is_privacy_or_terms_checkbox(field: Any) -> bool:
-    label = normalize_alias(
-        " ".join(
-            str(val) for val in (
-                getattr(field, "label", ""),
-                getattr(field, "name", ""),
-                getattr(field, "id", ""),
-            ) if val
-        )
-    )
-    return bool(
-        str(getattr(field, "type", "")).casefold() == "checkbox"
-        and re.search(r"(?:privacy|consent|terms|conditions|have read|agree|acknowledge|accept)", label)
-    )
+    return _is_single_consent_checkbox(field)
 
 
 def _is_phone_country_field(field: Any) -> bool:

@@ -50,7 +50,7 @@ def get_or_create_current_user(request: Request, db: Session = Depends(get_db)) 
     settings = get_settings()
     token = _bearer_token(request)
     email = _supabase_email(token) if token else None
-    if not email:
+    if not email and settings.allow_dev_auth_header:
         email = request.headers.get("X-User-Email")
     admin_emails = set(settings.admin_email_list)
 

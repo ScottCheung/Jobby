@@ -77,6 +77,28 @@ function isReactiveAddressCountryField(
   return /(?:^|\s)country(?:\s|$)/i.test(identity);
 }
 
+export function isConsentOrSingleCheckbox(field: {
+  type: string;
+  label?: string;
+  name?: string;
+  id?: string;
+  options?: unknown[];
+}): boolean {
+  if (field.type !== "checkbox") return false;
+  if (Array.isArray(field.options) && field.options.length > 1) return false;
+  const identity = `${field.label || ""} ${field.name || ""} ${field.id || ""}`.toLowerCase();
+  if (
+    /(?:marketing|newsletter|promot|advertising|commercial)/.test(identity) &&
+    !/(?:privacy|consent|terms|conditions|agree|acknowledge|accept|同意|协议)/.test(identity)
+  ) {
+    return false;
+  }
+  if (/(?:visa sponsorship|require sponsorship|need sponsorship|require visa|签证赞助|需要赞助)/.test(identity)) {
+    return false;
+  }
+  return true;
+}
+
 function autofillPolicyFor(
   form: FormInspection,
 ): ProviderAutofillPolicy | undefined {
@@ -199,6 +221,37 @@ async function fillFormWithReactiveConvergence<T extends { instructions: Array<{
     throw new Error("Inspect a supported application form before autofilling.");
   }
   let instructions = await getInstructions(form);
+  const appendMissingSingleCheckboxes = (
+    currentForm: FormInspection,
+    instList: typeof instructions,
+  ) => {
+    if (currentForm.kind !== "application_form" && currentForm.kind !== "page_input_fields") return;
+    const knownKeys = new Set(instList.instructions.map((inst) => inst.target.key));
+    for (const field of currentForm.fields) {
+      if (
+        field.type === "checkbox" &&
+        !field.filled &&
+        !knownKeys.has(field.key) &&
+        isConsentOrSingleCheckbox(field)
+      ) {
+        instList.instructions.push({
+          type: "content.fill-field",
+          commandId: makeCommandId("consent-checkbox", field.key),
+          source: "backend",
+          target: {
+            key: field.key,
+            id: field.id,
+            name: field.name,
+            label: field.label,
+            type: "checkbox",
+          },
+          value: true,
+        });
+        knownKeys.add(field.key);
+      }
+    }
+  };
+  appendMissingSingleCheckboxes(form, instructions);
   const resultsMap = new Map<string, FieldFillResult>();
   const attemptsCount = new Map<string, number>();
 
@@ -502,6 +555,19 @@ export async function autofillSingleFieldForActiveTab(
     ) || instructions.instructions[0];
 
   if (!instruction) {
+    if (field.type === "checkbox" && isConsentOrSingleCheckbox(field)) {
+      return fillActiveTabField({
+        type: "content.fill-field",
+        commandId: makeCommandId("consent-checkbox", target.key),
+        source: "backend",
+        target: {
+          ...target,
+          type: "checkbox",
+          ...(field.frameId !== undefined ? { frameId: field.frameId } : {}),
+        },
+        value: true,
+      });
+    }
     const unanswered = instructions.unanswered_fields.find(
       (item) => item.key === target.key || item.key === field.key,
     );

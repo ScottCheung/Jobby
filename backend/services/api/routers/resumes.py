@@ -213,7 +213,6 @@ def debug_master_resume_ai(
     file: UploadFile = File(...),
     current_user: User = Depends(get_or_create_current_user),
 ) -> dict:
-    del current_user
     if not settings.resume_debug_enabled:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
     _, content = read_resume_upload(file)

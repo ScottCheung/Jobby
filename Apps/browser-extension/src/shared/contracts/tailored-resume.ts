@@ -41,6 +41,21 @@ export type MasterResumeData = UiMasterResumeData;
 
 export type DocType = 'resume' | 'cover_letter' | 'both';
 
+export type LLMUsageSummary = {
+  calls: number;
+  input_tokens: number;
+  output_tokens: number;
+  total_tokens: number;
+  cached_input_tokens: number;
+  estimated_cost_usd?: number | string | null;
+  duration_ms: number;
+  model?: string | null;
+  operation?: string | null;
+  reasoning_tokens?: number | null;
+  answer_tokens?: number | null;
+  reasoning_effort?: string | null;
+};
+
 export type TailoredResume = {
   id: string;
   job_application_id: string;
@@ -55,6 +70,7 @@ export type TailoredResume = {
   core_competencies?: string[];
   targeted_projects?: Array<Record<string, unknown>>;
   cover_letter?: string | null;
+  usage?: LLMUsageSummary | null;
   cover_letter_file_size?: number | null;
   resume_file_size?: number | null;
   prompt_version?: string;
