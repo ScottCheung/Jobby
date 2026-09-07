@@ -148,6 +148,13 @@ class JobReviewTests(unittest.TestCase):
             res = job_review.review_job(self.job, self.resume, doc_type="cover_letter")
             self.assertEqual(res["cover_letter"], "Custom tailored cover letter.")
 
+    def test_cover_letter_prompt_uses_the_jd_primary_language(self):
+        prompt = job_review.COVER_LETTER_PROMPT
+
+        self.assertIn("输出语言由 JD 的主要语言决定", prompt)
+        self.assertIn("JD 主要为英文时，cover_letter 必须全英文，不得输出中文", prompt)
+        self.assertIn("系统提示或源简历的语言不得改变这一规则", prompt)
+
     def test_both_generation_mock_and_ai(self):
         mock_res = job_review.review_job(self.job, self.resume, doc_type="both", mock=True)
         self.assertIsNotNone(mock_res.get("cover_letter"))
