@@ -276,6 +276,7 @@ class ApplicationCandidateInput(BaseModel):
     recency_factor: float | None = None
     skill_score: float | None = None
     title_score: float | None = None
+    title_confidence: float | None = None
     exp_score: float | None = None
     easy_apply: bool = False
     already_applied: bool = False

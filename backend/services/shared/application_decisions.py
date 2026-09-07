@@ -34,6 +34,7 @@ def candidate_from_payload(payload: Mapping[str, Any]) -> JobCandidate:
         recency_factor=payload.get("recency_factor"),
         skill_score=payload.get("skill_score"),
         title_score=payload.get("title_score"),
+        title_confidence=payload.get("title_confidence"),
         exp_score=payload.get("exp_score"),
         easy_apply=bool(payload.get("easy_apply", False)),
         already_applied=bool(payload.get("already_applied", False)),
@@ -71,6 +72,7 @@ def evaluate_candidate(
         candidate_payload["recency_factor"] = match_result.recency_factor
         candidate_payload["skill_score"] = match_result.skill_score
         candidate_payload["title_score"] = match_result.title_score
+        candidate_payload["title_confidence"] = match_result.title_confidence
         candidate_payload["exp_score"] = match_result.exp_score
     candidate = candidate_from_payload(candidate_payload)
     decision = evaluate_policy(candidate, policy_from_settings(settings))
@@ -118,6 +120,7 @@ def evaluation_to_dict(result: CandidateEvaluation) -> dict[str, Any]:
             "recency_factor": candidate.recency_factor,
             "skill_score": candidate.skill_score,
             "title_score": candidate.title_score,
+            "title_confidence": candidate.title_confidence,
             "exp_score": candidate.exp_score,
             "easy_apply": candidate.easy_apply,
             "already_applied": candidate.already_applied,

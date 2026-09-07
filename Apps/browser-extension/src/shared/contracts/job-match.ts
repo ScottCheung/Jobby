@@ -13,6 +13,7 @@ export const jobMatchEvaluationSchema = z.object({
     recency_factor: nullableScore,
     skill_score: nullableScore,
     title_score: nullableScore,
+    title_confidence: nullableScore.optional(),
     exp_score: nullableScore,
     easy_apply: z.boolean(),
     already_applied: z.boolean(),

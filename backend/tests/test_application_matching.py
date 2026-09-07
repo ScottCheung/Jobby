@@ -5,7 +5,8 @@ import pytest
 
 from services.shared.application_matching import (
     ExperienceResult, _extract_user_years, calculate_experience_score,
-    calculate_title_score, parse_recency_score, score_job_match,
+    TitleResult, calculate_title_result, calculate_title_score, parse_recency_score,
+    score_job_match,
 )
 from services.shared.skill_catalog import extract_jd_skills, _MULTI_WORD_INDEX
 
@@ -34,6 +35,44 @@ def test_generic_engineer_and_history_cannot_override_target():
     assert calculate_title_score('Data Engineer', resume, '', 1) < 0.35
     assert calculate_title_score('Engineer', resume, '', 1) < 0.40
     assert calculate_title_score('HR Manager', {'target_title': 'Software Engineer'}, '', 1) < 0.25
+
+
+def test_title_evidence_has_explicit_and_historical_confidence():
+    assert calculate_title_result('Frontend Developer', {'target_title': 'Frontend Developer'}, '', 1) == TitleResult(1, 1)
+    historical = calculate_title_result(
+        'Frontend Developer', {'experience': [{'title': 'Frontend Developer'}]}, '', 1
+    )
+    assert historical.score == 1
+    assert historical.confidence == 0.75
+    assert calculate_title_result('Frontend Developer', {'skills': ['React']}, '', 1) == TitleResult(0, 0)
+
+
+def test_missing_title_evidence_does_not_dilute_skill_match():
+    result = score_job_match(
+        'React required.',
+        {'skills': ['React']},
+        job_title='Frontend Developer',
+        technologies=['React'],
+    )
+    assert result.title_score == 0
+    assert result.title_confidence == 0
+    assert result.exp_score is None
+    assert result.match_score == 1
+
+
+def test_match_score_has_no_ambiguous_score_alias():
+    result = score_job_match('React required.', {'skills': ['React']}, technologies=['React'])
+    assert not hasattr(result, 'score')
+
+
+def test_seniority_ignores_incidental_stakeholders_and_engineers():
+    result = calculate_experience_score(
+        'You will collaborate with senior stakeholders.',
+        'Frontend Developer',
+        {'years_of_experience': 3},
+        'Worked closely with senior engineers',
+    )
+    assert result == ExperienceResult(0.85, 1, 3)
 
 
 def test_unknown_experience_is_excluded_not_zero():
@@ -148,7 +187,7 @@ def test_alias_normalization_matches_synonyms() -> None:
     assert "react" in result.matched_terms
     assert "go" in result.matched_terms
     assert "kubernetes" in result.matched_terms
-    assert result.score > 0.45
+    assert result.match_score > 0.45
 
 
 def test_unrelated_job_gets_a_low_score() -> None:
@@ -157,7 +196,7 @@ def test_unrelated_job_gets_a_low_score() -> None:
         {"skills": [{"type": "Backend", "skills": ["Python", "FastAPI"]}]},
     )
 
-    assert result.score < 0.25
+    assert result.match_score < 0.25
     assert result.matched_terms == ()
 
 
@@ -174,7 +213,7 @@ def test_title_alignment_keeps_verbose_relevant_job_above_application_threshold(
         job_title="Frontend Engineer - JavaScript (Remote)",
     )
 
-    assert result.score >= 0.45
+    assert result.match_score >= 0.45
 
 
 def test_unrelated_title_cannot_pass_on_generic_description_overlap_alone() -> None:
@@ -188,13 +227,13 @@ def test_unrelated_title_cannot_pass_on_generic_description_overlap_alone() -> N
         job_title="Salesforce Administrator",
     )
 
-    assert result.score < 0.55
+    assert result.match_score < 0.55
 
 
 def test_empty_inputs_are_safe_and_explainable() -> None:
     result = score_job_match("", {})
 
-    assert result.score == 0.0
+    assert result.match_score == 0.0
     assert result.matched_terms == ()
 
 
@@ -208,7 +247,7 @@ def test_recency_decay_boosts_fresh_and_penalises_old_jobs() -> None:
     fresh = score_job_match(desc, resume, date_posted="2 hours ago")
     older = score_job_match(desc, resume, date_posted="30+ days ago")
 
-    assert fresh.score > older.score
+    assert fresh.priority_score > older.priority_score
 
 
 def test_smooth_plateau_recency_decay_schedule() -> None:
@@ -241,7 +280,7 @@ def test_seniority_mismatch_penalty() -> None:
     desc = "Looking for a Staff Principal Architect to design distributed systems using Python and JavaScript."
 
     res = score_job_match(desc, junior_resume, job_title="Staff Principal Architect")
-    assert res.score < 0.50
+    assert res.match_score < 0.50
 
 
 def test_tiered_skill_weighting_gives_high_score_when_all_technologies_match() -> None:

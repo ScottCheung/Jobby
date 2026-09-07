@@ -91,6 +91,7 @@ export type JobMatchEvaluation = {
     recency_factor: number | null;
     skill_score: number | null;
     title_score: number | null;
+    title_confidence?: number | null;
     exp_score: number | null;
     easy_apply: boolean;
     already_applied: boolean;

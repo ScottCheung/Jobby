@@ -37,14 +37,12 @@ export function jobMatchLabel(
   isMatchLoading: boolean,
   percentage: number | null,
 ): string {
-  if (!authConnected) return 'Sign In for Match Score';
+  if (!authConnected) return 'Sign In for Total Score';
   if (isMatchLoading) return 'Calculating Score...';
   if (percentage === null) return 'Score unavailable';
-  if (percentage >= 90) return 'Strong Fit';
-  if (percentage >= 75) return 'Recommended';
-  if (percentage >= 60) return 'Consider';
-  if (percentage >= 40) return 'Weak Fit';
-  return 'Poor Fit';
+  if (percentage >= 90) return '🔥 Highly Recommend';
+  if (percentage >= 75) return 'Recommend';
+  return 'Not Recommend';
 }
 
 export function JobScoreCard({
@@ -129,6 +127,9 @@ export function JobScoreCard({
   );
   const toPercent = (value: number | null | undefined, fallback: number) =>
     Math.min(100, Math.max(0, Math.round((value ?? fallback) * 100)));
+  const hasTitleEvidence =
+    hasScore &&
+    (candidate?.title_confidence != null ? candidate.title_confidence > 0 : (candidate?.title_score ?? 0) > 0);
 
   const hasResume = Boolean(existingDocuments?.resume);
   const hasCoverLetter = Boolean(existingDocuments?.cover_letter);
@@ -150,7 +151,7 @@ export function JobScoreCard({
           {
             label: 'Title',
             value:
-              hasScore ?
+              hasTitleEvidence ?
                 toPercent(candidate?.title_score, 0)
               : null,
             colorClassName: 'bg-sky-500',
@@ -169,7 +170,6 @@ export function JobScoreCard({
             colorClassName: 'bg-amber-500',
           },
         ]}
-        priority={hasScore && !isMatchLoading && candidate?.priority_score != null ? toPercent(candidate.priority_score, 0) : null}
         isLoading={authConnected && isMatchLoading}
         isUnavailable={!authConnected || (!hasScore && !isMatchLoading)}
         explanation={decision?.explanation}

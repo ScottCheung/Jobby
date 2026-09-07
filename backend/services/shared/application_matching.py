@@ -68,12 +68,14 @@ class MatchScore:
     matched_terms: tuple[str, ...]
     skill_score: float = 0.0
     title_score: float = 0.0
+    title_confidence: float = 0.0
     exp_score: float | None = None
 
-    @property
-    def score(self) -> float:
-        """Backwards compatibility alias for priority_score."""
-        return self.priority_score
+
+@dataclass(frozen=True, slots=True)
+class TitleResult:
+    score: float
+    confidence: float
 
 
 def _tokens(value: object) -> set[str]:
@@ -196,6 +198,82 @@ def _detect_seniority_level(text: str) -> int:
     if any(k in lower for k in ("junior", "entry", "intern", "associate")):
         return 1
     return 2
+
+
+_ROLE_SENIORITY_RE = re.compile(
+    r"\b(?:senior|sr\.?|lead|staff|principal|junior|entry(?:[- ]level)?|intern|associate|"
+    r"director|vp|head|chief|executive|cto)\s+"
+    r"(?:(?:software|frontend|backend|full[- ]?stack|data|mobile|devops|qa|platform|"
+    r"cloud|machine[- ]?learning|ml|ios|android|product|engineering|technical)\s+)?"
+    r"(?:engineer|developer|architect|scientist|analyst|manager|designer|consultant|"
+    r"programmer|administrator|specialist|officer)\b",
+    re.IGNORECASE,
+)
+
+
+def _explicit_seniority_level(text: str) -> int | None:
+    """Return a seniority level only when a role-qualified marker is present."""
+    match = _ROLE_SENIORITY_RE.search(text or "")
+    if not match:
+        return None
+    return _detect_seniority_level(match.group(0))
+
+
+def _years_seniority_level(years: float | None) -> int | None:
+    if years is None:
+        return None
+    if years <= 0:
+        return None
+    if years >= 10:
+        return 5
+    if years >= 7:
+        return 4
+    if years >= 5:
+        return 3
+    if years <= 1:
+        return 1
+    return 2
+
+
+def _detect_job_seniority(job_title: str, job_description: str, req_years: float | None) -> int:
+    """Prefer title, requirement evidence, and years over incidental JD wording."""
+    title_level = _explicit_seniority_level(job_title)
+    if title_level is not None:
+        return title_level
+
+    for line in job_description.splitlines():
+        heading = line.strip()
+        if len(heading) <= 80 and (_REQUIRED_SECTION_HEADER.fullmatch(heading) or _PREFERRED_SECTION_HEADER.fullmatch(heading)):
+            heading_level = _explicit_seniority_level(heading)
+            if heading_level is not None:
+                return heading_level
+
+    years_level = _years_seniority_level(req_years)
+    if years_level is not None:
+        return years_level
+
+    body_level = _explicit_seniority_level(job_description)
+    return body_level if body_level is not None else 2
+
+
+def _detect_candidate_seniority(
+    resume_data: dict[str, Any] | None,
+    resume_raw_text: str,
+    user_years: float | None,
+) -> int:
+    """Prefer target/current/history titles, then explicit years, then role text."""
+    explicit_titles, historical_titles = _extract_resume_title_evidence(resume_data)
+    for title in (*explicit_titles, *historical_titles):
+        level = _explicit_seniority_level(title)
+        if level is not None:
+            return level
+
+    years_level = _years_seniority_level(user_years)
+    if years_level is not None:
+        return years_level
+
+    body_level = _explicit_seniority_level(resume_raw_text)
+    return body_level if body_level is not None else 2
 
 
 def extract_required_years(job_description: str, job_title: str = "") -> float | None:
@@ -344,15 +422,29 @@ def calculate_title_score(
     resume_raw_text: str,
     skill_ratio: float,
 ) -> float:
-    """Calculate rich differentiated title score based on domain affinity and target role tokens."""
+    """Return the title score (legacy scalar API)."""
+    return calculate_title_result(job_title, resume_data, resume_raw_text, skill_ratio).score
+
+
+def calculate_title_result(
+    job_title: str,
+    resume_data: dict[str, Any] | None,
+    resume_raw_text: str,
+    skill_ratio: float,
+) -> TitleResult:
+    """Calculate title alignment and the confidence of its title evidence."""
     if not job_title or not job_title.strip():
-        return skill_ratio
+        return TitleResult(0.0, 0.0)
 
     title_terms = _normalize_title_tokens(job_title)
     if not title_terms:
-        return 0.80 if len(resume_raw_text) > 30 else 0.50
+        return TitleResult(0.0, 0.0)
 
-    targets = _extract_resume_target_titles(resume_data)
+    explicit_titles, historical_titles = _extract_resume_title_evidence(resume_data)
+    targets = explicit_titles or historical_titles
+    confidence = 1.0 if explicit_titles else 0.75 if historical_titles else 0.0
+    if not targets:
+        return TitleResult(0.0, 0.0)
     generic = {"engineer", "software", "application", "web"}
     job_domains = _detect_domains_from_text(job_title)
 
@@ -382,10 +474,10 @@ def calculate_title_score(
         elif not job_domains or not domains:
             affinity = 0.15
         score = 0.6 * affinity + 0.4 * similarity
-        gap = abs(_detect_seniority_level(job_title) - _detect_seniority_level(target))
+        gap = abs((_explicit_seniority_level(job_title) or 2) - (_explicit_seniority_level(target) or 2))
         return score * (1.0 - 0.08 * gap)
 
-    return round(max((compare(target) for target in targets), default=0.0), 4)
+    return TitleResult(round(max((compare(target) for target in targets), default=0.0), 4), confidence)
 
 def _parse_experience_years(value: object) -> float | None:
     if value is None:
@@ -568,12 +660,11 @@ def calculate_experience_score(
     """Calculate experience score and seniority penalty."""
     req_years = extract_required_years(job_description, job_title)
 
-    job_seniority = _detect_seniority_level(f"{job_title} {job_description}")
-    user_seniority = _detect_seniority_level(resume_raw_text)
+    job_seniority = _detect_job_seniority(job_title, job_description, req_years)
+    user_years, confidence = _extract_user_years(resume_data, user_years_experience)
+    user_seniority = _detect_candidate_seniority(resume_data, resume_raw_text, user_years)
     gap = max(0, job_seniority - user_seniority)
     seniority_penalty = 1.00 if gap == 0 else 0.85 if gap == 1 else 0.65 if gap == 2 else 0.50
-
-    user_years, confidence = _extract_user_years(resume_data, user_years_experience)
     if user_years is None:
         return ExperienceResult(0.0, 0.0, None)
 
@@ -621,7 +712,7 @@ def score_job_match(
     user_years_experience: float | int | None = None,
     profile_skills: list[str] | tuple[str, ...] | None = None,
 ) -> MatchScore:
-    """Score role match (Match Score) and submission priority (Priority Score)."""
+    """Score role compatibility and submission priority separately."""
     job_terms = _tokens(job_description)
     if technologies:
         for tech in technologies:
@@ -685,7 +776,8 @@ def score_job_match(
     matched = tuple(sorted(job_terms & resume_terms))
 
     # 3. Differentiated Title Matching
-    title_score = calculate_title_score(job_title, resume_data, resume_raw_text, skill_ratio)
+    title_result = calculate_title_result(job_title, resume_data, resume_raw_text, skill_ratio)
+    title_score = title_result.score
 
     # Domain damping: only needed in fallback mode (no catalog skills found)
     # When requirement_weights exist, skill_ratio is already well-calibrated
@@ -704,10 +796,13 @@ def score_job_match(
     recency_factor = parse_recency_score(date_posted)
 
     # Match is compatibility only. Freshness is applied separately below.
+    title_weight = 0.22 * title_result.confidence
+    experience_weight = 0.18 * experience.confidence
+    evidence_weight = 0.60 + title_weight + experience_weight
     base_score = (
-        0.60 * skill_ratio + 0.22 * title_score
-        + 0.18 * experience.confidence * experience.score
-    ) / (0.82 + 0.18 * experience.confidence)
+        0.60 * skill_ratio + title_weight * title_score
+        + experience_weight * experience.score
+    ) / evidence_weight
 
     match_score = round(min(1.0, max(0.0, base_score)), 4)
     priority_score = round(min(1.0, max(0.0, match_score * recency_factor)), 4)
@@ -719,5 +814,6 @@ def score_job_match(
         matched_terms=matched,
         skill_score=round(skill_ratio, 4),
         title_score=round(title_score, 4),
+        title_confidence=round(title_result.confidence, 4),
         exp_score=experience.score if experience.confidence else None,
     )
