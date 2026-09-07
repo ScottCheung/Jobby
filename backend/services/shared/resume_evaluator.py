@@ -260,6 +260,7 @@ def evaluate_resume_data(resume_data: dict, *, user_id: UUID | None = None) -> d
             temperature=0,
             operation="resume_evaluation",
             user_id=user_id,
+            reasoning_effort="low",
         )
     except DeepSeekError as exc:
         raise ResumeEvaluationError(str(exc)) from exc

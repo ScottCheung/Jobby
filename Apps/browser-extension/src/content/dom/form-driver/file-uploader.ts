@@ -10,6 +10,7 @@ import {
   elementsInScope,
   fieldKeyFor,
   isAutofillResumeInput,
+  selectedDocumentFor,
   visibleControlsInScope,
   type FormScope,
 } from '../form-inspector';
@@ -187,10 +188,54 @@ export function selectExistingDocument(
   const option = queryScope.querySelector<HTMLInputElement>(
     `input[type='radio'][id='${CSS.escape(optionId)}']`,
   );
-  if (!option) return 'not_found';
-  if (option.checked) return 'already_selected';
-  clickRadioOption(option, scope);
-  return option.checked ? 'selected' : 'not_found';
+  if (option) {
+    if (option.checked) return 'already_selected';
+    clickRadioOption(option, scope);
+    return option.checked ? 'selected' : 'not_found';
+  }
+
+  const ariaOption = Array.from(
+    queryScope.querySelectorAll<HTMLElement>("[role='radio']"),
+  ).find((candidate) => {
+    const value =
+      candidate.id ||
+      candidate.getAttribute('data-value') ||
+      candidate.getAttribute('value') ||
+      cleanText(candidate.textContent);
+    return value === optionId;
+  });
+  if (!ariaOption) return 'not_found';
+  if (ariaOption.getAttribute('aria-checked') === 'true') {
+    return 'already_selected';
+  }
+  clickControl(ariaOption);
+  return ariaOption.getAttribute('aria-checked') === 'true'
+    ? 'selected'
+    : 'not_found';
+}
+
+function isLinkedIn(): boolean {
+  const hostname = window.location.hostname.toLowerCase();
+  return hostname === 'linkedin.com' || hostname.endsWith('.linkedin.com');
+}
+
+async function activateLinkedInUpload(
+  target: FormFieldTarget,
+  input: HTMLInputElement,
+  scope: FormScope,
+): Promise<HTMLInputElement> {
+  if (!isLinkedIn() || !selectedDocumentFor(input, scope)) return input;
+
+  const trigger = fileUploadTrigger(input, scope);
+  if (trigger === input || !/upload|browse|choose|attach/i.test(
+    normalized(trigger.textContent || trigger.getAttribute('aria-label') || ''),
+  )) {
+    return input;
+  }
+
+  clickControl(trigger);
+  await new Promise((resolve) => window.setTimeout(resolve, 150));
+  return findFileInput(target, scope) || input;
 }
 
 export function isUploadChoiceOption(
@@ -468,6 +513,7 @@ export async function uploadFormFile(
       status: 'not_found',
       message: 'The upload control is no longer available.',
     };
+  input = await activateLinkedInUpload(instruction.target, input, scope);
   const bytes = decodeBase64(instruction.contentBase64);
   if (!bytes)
     return {
@@ -543,6 +589,19 @@ export async function uploadFormFile(
       key: instruction.target.key,
       status: 'rejected',
       message: 'The webpage did not accept the resume file.',
+    };
+  }
+  const selectedDocument = selectedDocumentFor(input, scope);
+  if (
+    isLinkedIn() &&
+    selectedDocument &&
+    selectedDocument.name !== instruction.filename
+  ) {
+    return {
+      commandId: instruction.commandId,
+      key: instruction.target.key,
+      status: 'rejected',
+      message: 'LinkedIn kept the previously selected resume. Please try uploading again.',
     };
   }
   return {

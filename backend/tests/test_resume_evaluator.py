@@ -83,6 +83,7 @@ class ResumeEvaluatorTests(unittest.TestCase):
 
         self.assertEqual(result["overall_score"], 64)
         self.assertEqual(complete.call_args.kwargs["operation"], "resume_evaluation")
+        self.assertEqual(complete.call_args.kwargs["reasoning_effort"], "low")
         messages = complete.call_args.args[0]
         self.assertEqual(messages[0]["content"], resume_evaluator.RESUME_EVALUATION_PROMPT)
         self.assertNotIn("Required JSON schema", messages[0]["content"])

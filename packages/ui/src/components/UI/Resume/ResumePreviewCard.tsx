@@ -9,7 +9,7 @@ import { Button } from '../Button';
 import { notify } from '../toast/toast-store';
 import { ResumePdfPreview, renderResumePdfOnce } from './ResumePdfPreview';
 import { formatResumeAsPlainText, formatResumeFilename } from './helpers';
-import { copyToClipboard } from '../../lib/utils';
+import { copyToClipboard } from '../../../lib/utils';
 import type { MasterResumeData } from './types';
 
 export type ResumePreviewCardProps = {

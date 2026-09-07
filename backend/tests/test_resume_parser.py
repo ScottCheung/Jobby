@@ -194,6 +194,15 @@ class ResumeParserOptimizationTests(unittest.TestCase):
         messages = complete.call_args.args[0]
         self.assertIn("Required JSON schema", messages[1]["content"])
 
+    def test_resume_parser_operations_use_low_thinking(self):
+        with patch.object(resume_parser, "_complete", return_value={}) as complete:
+            resume_parser._parse_resume_legacy("Resume text")
+            self.assertEqual(complete.call_args.kwargs["reasoning_effort"], "low")
+
+        with patch.object(resume_parser, "_complete", return_value={}), patch.object(resume_parser, "_validate_optimized_resume"), patch.object(resume_parser, "_resolve_line_references"):
+            resume_parser._parse_resume_optimized("Resume text")
+            self.assertEqual(complete.call_args.kwargs["reasoning_effort"], "low")
+
 
 if __name__ == "__main__":
     unittest.main()

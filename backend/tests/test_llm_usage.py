@@ -185,6 +185,30 @@ def test_disabled_thinking_keeps_temperature() -> None:
     assert payload["temperature"] == 0.3
 
 
+def test_interview_operations_thinking_configuration() -> None:
+    with patch.object(deepseek, "_complete", return_value={"tags": [], "importance_score": 3, "difficulty": "easy", "frequency": "low", "estimated_duration": 60}) as complete:
+        deepseek.generate_question_metadata("Tell me about yourself")
+        assert complete.call_args.kwargs["operation"] == "interview_question_metadata"
+        assert complete.call_args.kwargs["reasoning_effort"] == "none"
+
+    ref_payload = {
+        "title": "Ans",
+        "template_type": "professional_solution",
+        "length": "short",
+        "sections": [{"heading": "H", "content": ["C"]}],
+    }
+    with patch.object(deepseek, "_complete", return_value=ref_payload) as complete:
+        deepseek.generate_reference_answer("Tell me about yourself")
+        assert complete.call_args.kwargs["operation"] == "interview_reference_answer"
+        assert complete.call_args.kwargs["reasoning_effort"] == "low"
+
+    eval_payload = {"overall_score": 80}
+    with patch.object(deepseek, "_complete", return_value=eval_payload) as complete:
+        deepseek.evaluate_practice_answer("Question", "Answer")
+        assert complete.call_args.kwargs["operation"] == "interview_practice_evaluation"
+        assert complete.call_args.kwargs["reasoning_effort"] == "low"
+
+
 def test_same_correlation_id_can_be_aggregated_from_multiple_calls() -> None:
     records = []
 

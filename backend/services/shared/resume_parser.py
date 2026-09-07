@@ -1132,6 +1132,7 @@ def _parse_resume_legacy(text: str, *, correlation_id: str | None = None, user_i
         operation="resume_legacy",
         correlation_id=correlation_id,
         user_id=user_id,
+        reasoning_effort="low",
     )
 
 
@@ -1143,6 +1144,7 @@ def _parse_resume_optimized(text: str, *, correlation_id: str | None = None, use
         operation="resume_optimized",
         correlation_id=correlation_id,
         user_id=user_id,
+        reasoning_effort="low",
     )
     _validate_optimized_resume(raw, lines)
     result = _resolve_line_references(raw, lines)

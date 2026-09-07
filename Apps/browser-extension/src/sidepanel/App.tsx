@@ -384,8 +384,8 @@ export function App() {
       const fileFields = form.fields.filter(
         (field) =>
           field.type === 'file' &&
-          !field.filled &&
-          field.upload?.state !== 'ready',
+          (form.platform === 'linkedin' ||
+            (!field.filled && field.upload?.state !== 'ready')),
       );
       for (const field of fileFields) {
         const purpose = fileFieldPurpose(field);

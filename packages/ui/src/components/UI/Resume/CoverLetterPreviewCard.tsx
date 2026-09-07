@@ -12,7 +12,7 @@ import {
   renderCoverLetterPdfOnce,
 } from './CoverLetterPdfPreview';
 import { formatCoverLetterFilename } from './helpers';
-import { copyToClipboard } from '../../lib/utils';
+import { copyToClipboard } from '../../../lib/utils';
 import type { MasterResumeData } from './types';
 
 export type CoverLetterPreviewCardProps = {

@@ -293,7 +293,7 @@ def generate_question_metadata(
                 f"Interview question: {question}"
             ),
         },
-    ], operation="interview_question_metadata", user_id=user_id)
+    ], operation="interview_question_metadata", user_id=user_id, reasoning_effort="none")
     return _normalize_question_metadata(result)
 
 
@@ -373,7 +373,7 @@ def generate_reference_answer(
                 f"Interview question: {question}"
             ),
         },
-    ], operation="interview_reference_answer", user_id=user_id)
+    ], operation="interview_reference_answer", user_id=user_id, reasoning_effort="low")
 
     title = str(result.get("title", "AI Reference Answer")).strip()[:255]
 
@@ -485,7 +485,7 @@ def evaluate_practice_answer(question: str, answer: str, *, user_id: UUID | None
             "role": "user",
             "content": f"Interview Question: {question}\nCandidate Answer: {answer}",
         },
-    ], operation="interview_practice_evaluation", user_id=user_id)
+    ], operation="interview_practice_evaluation", user_id=user_id, reasoning_effort="low")
     try:
         score = int(result["overall_score"])
     except (KeyError, TypeError, ValueError) as exc:
