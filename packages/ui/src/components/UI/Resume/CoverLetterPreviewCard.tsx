@@ -12,6 +12,7 @@ import {
   renderCoverLetterPdfOnce,
 } from './CoverLetterPdfPreview';
 import { formatCoverLetterFilename } from './helpers';
+import { copyToClipboard } from '../../lib/utils';
 import type { MasterResumeData } from './types';
 
 export type CoverLetterPreviewCardProps = {
@@ -59,12 +60,12 @@ export function CoverLetterPreviewCard({
       onCopy();
       return;
     }
-    try {
-      await navigator.clipboard.writeText(coverLetter);
+    const success = await copyToClipboard(coverLetter);
+    if (success) {
       setCopied(true);
       notify.success('Cover letter copied to clipboard');
       setTimeout(() => setCopied(false), 2000);
-    } catch {
+    } else {
       notify.error('Failed to copy cover letter to clipboard');
     }
   };

@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { useWatch } from 'react-hook-form';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Eye, X, Copy, Check, Bug } from '@jobby/ui/components/icons';
-import { cn } from '@/lib/utils';
+import { cn, copyToClipboard } from '@/lib/utils';
 
 interface FormDebugPanelProps {
   control: any;
@@ -22,12 +22,10 @@ export const FormDebugPanel: React.FC<FormDebugPanelProps> = ({
   const watchedData = useWatch({ control });
 
   const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(JSON.stringify(watchedData, null, 2));
+    const success = await copyToClipboard(JSON.stringify(watchedData, null, 2));
+    if (success) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch (error) {
-      console.error('Failed to copy:', error);
     }
   };
 

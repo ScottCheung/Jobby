@@ -47,6 +47,33 @@ function isExtensionContextValid(): boolean {
   }
 }
 
+async function copyTextToClipboard(text: string): Promise<void> {
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return;
+    } catch {
+      // Fall through to execCommand
+    }
+  }
+
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.setAttribute('readonly', '');
+  textarea.style.cssText =
+    'position: fixed; left: -9999px; top: 0; opacity: 0; pointer-events: none; z-index: -1;';
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+  textarea.setSelectionRange(0, textarea.value.length);
+
+  try {
+    document.execCommand('copy');
+  } finally {
+    textarea.remove();
+  }
+}
+
 export function resolveOverlayMountTarget(): HTMLElement | null {
   if (isLinkedInPage()) {
     const topLayerTarget = resolveLinkedInOverlayMountTarget();
@@ -967,6 +994,7 @@ function createFloatingBall() {
   const dialogIframe = document.createElement('iframe');
   dialogIframe.src = dialogIframeSrc;
   dialogIframe.className = 'jobby-dialog-iframe';
+  dialogIframe.allow = 'clipboard-read; clipboard-write';
   dialogIframeWrapper.appendChild(dialogIframe);
 
   currentDocumentClickHandler = (e: MouseEvent) => {
@@ -1035,6 +1063,11 @@ function createFloatingBall() {
             }
           } catch {}
         }, 200);
+      } else if (event.data?.type === 'jobby.copy-text') {
+        const text = event.data?.text;
+        if (typeof text === 'string') {
+          void copyTextToClipboard(text);
+        }
       }
     }
   };
@@ -1499,6 +1532,7 @@ function preloadSidepanelIframe() {
 
   const iframe = document.createElement('iframe');
   iframe.src = iframeSrc;
+  iframe.allow = 'clipboard-read; clipboard-write';
 
   wrapper.appendChild(closeTab);
   wrapper.appendChild(iframe);

@@ -122,6 +122,14 @@ class JobReviewTests(unittest.TestCase):
         self.assertIn("最多可保留 4 条", prompt)
         self.assertNotIn("通常保留 4-6 条", prompt)
 
+    def test_prompt_keeps_project_evidence_and_blocks_semantic_stretching(self):
+        prompt = job_review.TAILOR_PROMPT
+
+        self.assertIn("JD Evidence Coverage Check", prompt)
+        self.assertIn("最强或唯一证据", prompt)
+        self.assertIn("customer discovery", prompt)
+        self.assertIn("JD 只能决定什么重要，不能决定候选人做过什么", prompt)
+
     def test_combined_prompt_has_one_output_schema(self):
         self.assertEqual(job_review.BOTH_PROMPT.count('"summary": ""'), 1)
         self.assertEqual(job_review.BOTH_PROMPT.count('"cover_letter": ""'), 1)

@@ -40,7 +40,7 @@ import type {
 } from './types';
 import { parseAndFormatJobDate } from '../../../lib/date-formatter';
 import { extractJobRequirements } from '../../../lib/job-requirements';
-import { cn } from '../../../lib/utils';
+import { cn, copyToClipboard } from '../../../lib/utils';
 import { StructuredJobDescription } from '../StructuredJobDescription';
 import { DetectionProviderBadge } from './DetectionProviderBadge';
 import { EditJobModal } from './EditJobModal';
@@ -297,8 +297,12 @@ function GoogleIcon({
 function CopyFieldButton({ label, value }: { label: string; value: string }) {
   const copyValue = async () => {
     try {
-      await navigator.clipboard.writeText(value);
-      notify.success(`${label} copied`);
+      const success = await copyToClipboard(value);
+      if (success) {
+        notify.success(`${label} copied`);
+      } else {
+        notify.error(`Failed to copy ${label.toLowerCase()}`);
+      }
     } catch {
       notify.error(`Failed to copy ${label.toLowerCase()}`);
     }

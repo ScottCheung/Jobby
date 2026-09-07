@@ -9,6 +9,7 @@ import { Button } from '../Button';
 import { notify } from '../toast/toast-store';
 import { ResumePdfPreview, renderResumePdfOnce } from './ResumePdfPreview';
 import { formatResumeAsPlainText, formatResumeFilename } from './helpers';
+import { copyToClipboard } from '../../lib/utils';
 import type { MasterResumeData } from './types';
 
 export type ResumePreviewCardProps = {
@@ -64,10 +65,14 @@ export function ResumePreviewCard({
     }
     try {
       const text = formatResumeAsPlainText(data, competencies);
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      notify.success('Resume copied to clipboard');
-      setTimeout(() => setCopied(false), 2000);
+      const success = await copyToClipboard(text);
+      if (success) {
+        setCopied(true);
+        notify.success('Resume copied to clipboard');
+        setTimeout(() => setCopied(false), 2000);
+      } else {
+        notify.error('Failed to copy resume to clipboard');
+      }
     } catch {
       notify.error('Failed to copy resume to clipboard');
     }

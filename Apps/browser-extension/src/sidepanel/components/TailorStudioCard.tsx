@@ -52,7 +52,7 @@ import { sendContentCommandToActiveTab } from '../services/messaging';
 import { renderCoverLetterPdfForExtension } from '../services/cover-letter-pdf-renderer';
 import type { useTailoredResumeStudio } from '../hooks/useTailoredResumeStudio';
 import { AiGeneratingCard } from './AiGeneratingCard';
-import { cn } from '@jobby/ui/lib/utils';
+import { cn, copyToClipboard } from '@jobby/ui/lib/utils';
 import {
   DetectionProviderBadge,
   isGenericDetection,
@@ -314,10 +314,14 @@ export function TailorStudioCard({
     if (!resume) return;
     try {
       const text = formatResumeAsPlainText(resume, competencies);
-      await navigator.clipboard.writeText(text);
-      setCopiedResume(true);
-      notify.success('Resume copied to clipboard');
-      setTimeout(() => setCopiedResume(false), 2000);
+      const success = await copyToClipboard(text);
+      if (success) {
+        setCopiedResume(true);
+        notify.success('Resume copied to clipboard');
+        setTimeout(() => setCopiedResume(false), 2000);
+      } else {
+        notify.error('Failed to copy resume to clipboard');
+      }
     } catch {
       notify.error('Failed to copy resume to clipboard');
     }
@@ -326,10 +330,14 @@ export function TailorStudioCard({
   const handleCopyCoverLetter = async () => {
     if (!effectiveCoverLetter) return;
     try {
-      await navigator.clipboard.writeText(effectiveCoverLetter);
-      setCopiedCoverLetter(true);
-      notify.success('Cover letter copied to clipboard');
-      setTimeout(() => setCopiedCoverLetter(false), 2000);
+      const success = await copyToClipboard(effectiveCoverLetter);
+      if (success) {
+        setCopiedCoverLetter(true);
+        notify.success('Cover letter copied to clipboard');
+        setTimeout(() => setCopiedCoverLetter(false), 2000);
+      } else {
+        notify.error('Failed to copy to clipboard');
+      }
     } catch {
       notify.error('Failed to copy to clipboard');
     }
@@ -650,8 +658,12 @@ export function TailorStudioCard({
   const handleCopyJobDescription = async () => {
     if (!jobDescription?.trim()) return;
     try {
-      await navigator.clipboard.writeText(jobDescription);
-      notify.success('Job Description copied');
+      const success = await copyToClipboard(jobDescription);
+      if (success) {
+        notify.success('Job Description copied');
+      } else {
+        notify.error('Failed to copy job description');
+      }
     } catch {
       notify.error('Failed to copy job description');
     }
