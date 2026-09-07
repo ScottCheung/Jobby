@@ -15,6 +15,7 @@ export interface JobMatchSummaryProps {
   score: number | null;
   label: string;
   breakdown: JobMatchBreakdownItem[];
+  priority?: number | null;
   isLoading?: boolean;
   isUnavailable?: boolean;
   action?: ReactNode;
@@ -27,6 +28,7 @@ export function JobMatchSummary({
   score,
   label,
   breakdown,
+  priority,
   isLoading = false,
   isUnavailable = false,
   action,
@@ -40,6 +42,7 @@ export function JobMatchSummary({
   return (
     <div className={cn('flex items-start gap-3', className)}>
       <div
+        aria-label={isLoading ? 'Calculating match' : `Match: ${safeScore ?? 'unavailable'}`}
         className={cn(
           'relative flex shrink-0 items-start justify-center rounded-full bg-primary/10 shadow-xs',
           compact ? 'size-14' : 'size-18',
@@ -51,8 +54,8 @@ export function JobMatchSummary({
           variant='gradient'
           color={
             safeScore === null ? 'primary'
-            : safeScore >= 70 ? 'primary'
-            : safeScore >= 45 ? 'warning'
+            : safeScore >= 75 ? 'primary'
+            : safeScore >= 60 ? 'warning'
             : 'danger'
           }
           showValue={false}
@@ -72,7 +75,11 @@ export function JobMatchSummary({
         <div className='mb-1.5 flex items-center justify-between gap-2'>
           <p
             className={cn(
-              'truncate text-xs font-bold text-foreground',
+              'truncate text-xs font-bold',
+              isLoading || isUnavailable ? 'text-muted-foreground'
+              : (safeScore ?? 0) >= 75 ? 'text-emerald-600 dark:text-emerald-400'
+              : (safeScore ?? 0) >= 60 ? 'text-amber-600 dark:text-amber-400'
+              : 'text-red-600 dark:text-red-400',
               isLoading && 'animate-text-shimmer animate-text-shimmer-primary',
             )}
           >
@@ -113,6 +120,9 @@ export function JobMatchSummary({
             );
           })}
         </div>
+        {priority != null && (
+          <p className='mt-1.5 text-[10px] text-muted-foreground'>Apply Priority {priority}</p>
+        )}
       </div>
     </div>
   );

@@ -7,15 +7,32 @@ import {
   jobMatchLabel,
 } from '@jobby/ui/components/UI/job-analysis/JobScoreCard';
 import type { PageInspection } from '../../shared/contracts/page-inspection';
+import { JobMatchSummary } from '@jobby/ui/components/UI/JobMatchSummary';
 
 describe('job match score card', () => {
+  it.each([[91, 'text-emerald-600'], [65, 'text-amber-600'], [25, 'text-red-600']])(
+    'colors recommendations for score %s and leaves unknown experience blank',
+    (score, color) => {
+      const html = renderToStaticMarkup(createElement(JobMatchSummary, {
+        score: Number(score), label: jobMatchLabel(true, false, Number(score)),
+        breakdown: [{ label: 'Experience', value: null, colorClassName: 'bg-indigo-500' }],
+      }));
+      expect(html).toContain(color);
+      expect(html).toContain('>--</span>');
+      expect(html).not.toContain('>0</span>');
+    },
+  );
   it('keeps the loading and final score labels separate', () => {
     expect(jobMatchLabel(true, true, null)).toBe('Calculating Score...');
-    expect(jobMatchLabel(true, false, 82)).toBe('Highly Recommended');
+    expect(jobMatchLabel(true, false, 82)).toBe('Recommended');
+    expect(jobMatchLabel(true, false, 91)).toBe('Strong Fit');
+    expect(jobMatchLabel(true, false, 65)).toBe('Consider');
+    expect(jobMatchLabel(true, false, 45)).toBe('Weak Fit');
+    expect(jobMatchLabel(true, false, 20)).toBe('Poor Fit');
     expect(jobMatchLabel(true, false, null)).toBe('Score unavailable');
   });
 
-  it('labels the primary score as Apply Score and keeps Match and Fresh separate', () => {
+  it('uses compatibility as the only main score with a colored recommendation', () => {
     const html = renderToStaticMarkup(
       createElement(JobScoreCard, {
         latestInspection: {
@@ -58,12 +75,14 @@ describe('job match score card', () => {
       }),
     );
 
-    expect(html).toContain('Apply Score');
-    expect(html).toContain('Match');
-    expect(html).toContain('Fresh');
-    expect(html).toContain('63');
-    expect(html).toContain('91');
-    expect(html).toContain('69');
+    expect(html).not.toContain('Apply Score');
+    expect(html).not.toContain('>Match</span>');
+    expect(html).toContain('aria-label="Match: 91"');
+    expect(html).toContain('Strong Fit');
+    expect(html).toContain('text-emerald-600');
+    expect(html).toContain('Apply Priority 63');
+    expect(html).toContain('>Fresh</span>');
+    expect(html).toContain('>69</span>');
   });
 
   it('hides tailor actions while the job match is being calculated', () => {

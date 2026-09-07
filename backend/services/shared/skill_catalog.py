@@ -15,14 +15,14 @@ _CATALOG_DIR = Path(__file__).parent / "skill_catalogs"
 _WORD_RE = re.compile(r"[a-zA-Z][a-zA-Z0-9+#.-]{1,}")
 
 
-def _load_catalogs() -> tuple[dict[str, str], list[tuple[str, re.Pattern[str]]]]:
-    """Load all industry catalogs. Returns (single_word_map, multi_word_patterns).
+def _load_catalogs() -> tuple[dict[str, str], dict[str, list[tuple[str, re.Pattern[str]]]]]:
+    """Load single terms and multi-word patterns indexed by their first token.
 
     single_word_map: lowercased term -> canonical label
-    multi_word_patterns: list of (label, compiled_regex) for multi-word terms
+    multi_word_index: first token -> (label, compiled_regex) entries
     """
     single: dict[str, str] = {}
-    multi: list[tuple[str, re.Pattern[str]]] = []
+    multi: dict[str, list[tuple[str, re.Pattern[str]]]] = {}
     seen_labels: set[str] = set()
 
     for json_file in sorted(_CATALOG_DIR.glob("*.json")):
@@ -48,7 +48,9 @@ def _load_catalogs() -> tuple[dict[str, str], list[tuple[str, re.Pattern[str]]]]
                         rf"(?:^|[^a-zA-Z0-9])({escaped})(?=$|[^a-zA-Z0-9])",
                         re.IGNORECASE,
                     )
-                    multi.append((label, pattern))
+                    first_word = _WORD_RE.search(key)
+                    if first_word:
+                        multi.setdefault(first_word.group().rstrip('.'), []).append((label, pattern))
                 else:
                     if key not in single:
                         single[key] = label
@@ -56,7 +58,7 @@ def _load_catalogs() -> tuple[dict[str, str], list[tuple[str, re.Pattern[str]]]]
     return single, multi
 
 
-_SINGLE_WORD_MAP, _MULTI_WORD_PATTERNS = _load_catalogs()
+_SINGLE_WORD_MAP, _MULTI_WORD_INDEX = _load_catalogs()
 
 
 def extract_jd_skills(text: str) -> list[str]:
@@ -72,17 +74,19 @@ def extract_jd_skills(text: str) -> list[str]:
     text_lower = text.lower()
 
     # Single-word matching via tokenization + set lookup
+    tokens = set()
     for match in _WORD_RE.finditer(text_lower):
-        token = match.group()
+        token = match.group().rstrip('.')
+        tokens.add(token)
         label = _SINGLE_WORD_MAP.get(token)
         if label and label not in found:
             found[label] = match.start()
 
     # Multi-word matching via pre-compiled regex
-    for label, pattern in _MULTI_WORD_PATTERNS:
-        if label not in found:
+    for token in sorted(tokens):
+        for label, pattern in _MULTI_WORD_INDEX.get(token, ()):
             m = pattern.search(text)
-            if m:
+            if m and (label not in found or m.start() < found[label]):
                 found[label] = m.start()
 
     return [label for label, _ in sorted(found.items(), key=lambda x: x[1])]

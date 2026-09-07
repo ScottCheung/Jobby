@@ -40,9 +40,11 @@ export function jobMatchLabel(
   if (!authConnected) return 'Sign In for Match Score';
   if (isMatchLoading) return 'Calculating Score...';
   if (percentage === null) return 'Score unavailable';
-  if (percentage >= 70) return 'Highly Recommended';
-  if (percentage >= 45) return 'Recommended';
-  return 'Not Recommended';
+  if (percentage >= 90) return 'Strong Fit';
+  if (percentage >= 75) return 'Recommended';
+  if (percentage >= 60) return 'Consider';
+  if (percentage >= 40) return 'Weak Fit';
+  return 'Poor Fit';
 }
 
 export function JobScoreCard({
@@ -108,12 +110,10 @@ export function JobScoreCard({
         );
       }
     }
-    return 0.5;
+    return 0.75;
   })();
 
   const overallScore =
-    candidate?.priority_score ??
-    decision?.score ??
     candidate?.match_score ??
     null;
   const hasScore =
@@ -137,14 +137,8 @@ export function JobScoreCard({
     <div className={cn('flex flex-col gap-3', className)}>
       <JobMatchSummary
         score={hasScore ? percentage : null}
-        label={hasScore ? `Apply Score: ${percentage}` : matchLabel}
+        label={matchLabel}
         breakdown={[
-          {
-            label: 'Match',
-            value:
-              hasScore ? toPercent(candidate?.match_score, 0) : null,
-            colorClassName: 'bg-violet-500',
-          },
           {
             label: 'Skill',
             value:
@@ -164,7 +158,7 @@ export function JobScoreCard({
           {
             label: 'Experience',
             value:
-              hasScore ?
+              hasScore && candidate?.exp_score != null ?
                 toPercent(candidate?.exp_score, 0)
               : null,
             colorClassName: 'bg-indigo-500',
@@ -175,6 +169,7 @@ export function JobScoreCard({
             colorClassName: 'bg-amber-500',
           },
         ]}
+        priority={hasScore && !isMatchLoading && candidate?.priority_score != null ? toPercent(candidate.priority_score, 0) : null}
         isLoading={authConnected && isMatchLoading}
         isUnavailable={!authConnected || (!hasScore && !isMatchLoading)}
         explanation={decision?.explanation}

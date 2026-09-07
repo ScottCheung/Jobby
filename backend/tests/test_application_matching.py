@@ -1,8 +1,125 @@
 from __future__ import annotations
 
 from unittest.mock import patch
+import pytest
 
-from services.shared.application_matching import parse_recency_score, score_job_match
+from services.shared.application_matching import (
+    ExperienceResult, _extract_user_years, calculate_experience_score,
+    calculate_title_score, parse_recency_score, score_job_match,
+)
+from services.shared.skill_catalog import extract_jd_skills, _MULTI_WORD_INDEX
+
+
+@pytest.mark.parametrize('title,low,high', [
+    ('Front End Engineer', 0.95, 1), ('React Developer', 0.90, 1),
+    ('Full Stack Engineer', 0.75, 0.90), ('Software Engineer', 0.60, 0.79),
+    ('Data Engineer', 0, 0.35), ('DevOps Engineer', 0, 0.35),
+    ('Salesforce Administrator', 0, 0.25), ('HR Manager', 0, 0.25),
+])
+def test_title_calibration(title, low, high):
+    score = calculate_title_score(title, {'target_title': 'Frontend Developer'}, '', 1)
+    assert low <= score <= high
+
+
+@pytest.mark.parametrize('target,title', [
+    ('Software Engineer', 'Software Developer'),
+    ('Full Stack Developer', 'Fullstack Engineer'),
+])
+def test_normalized_title_equivalence(target, title):
+    assert calculate_title_score(title, {'target_title': target}, '', 1) == 1
+
+
+def test_generic_engineer_and_history_cannot_override_target():
+    resume = {'target_title': 'Frontend Developer', 'experience': [{'title': 'Data Engineer'}]}
+    assert calculate_title_score('Data Engineer', resume, '', 1) < 0.35
+    assert calculate_title_score('Engineer', resume, '', 1) < 0.40
+    assert calculate_title_score('HR Manager', {'target_title': 'Software Engineer'}, '', 1) < 0.25
+
+
+def test_unknown_experience_is_excluded_not_zero():
+    resume = {'target_title': 'Frontend Developer', 'skills': ['React']}
+    unknown = score_job_match('React required. 3 years experience.', resume, job_title='Frontend Developer', technologies=['React'])
+    zero = score_job_match('React required. 3 years experience.', resume, job_title='Frontend Developer', technologies=['React'], user_years_experience=0)
+    assert _extract_user_years(resume, None) == (None, 0)
+    assert unknown.exp_score is None
+    assert unknown.match_score == 1
+    assert zero.exp_score is not None
+    assert zero.match_score < unknown.match_score
+    exact = calculate_experience_score('3 years experience', 'Frontend Developer', resume, '', 3)
+    assert exact == ExperienceResult(1, 1, 3)
+
+
+@pytest.mark.parametrize('resume,years,confidence', [
+    ({'experience': [{'start_date': '2020-01', 'end_date': '2023-12'}]}, 4, 0.95),
+    ({'experience': [{'start_date': '2020-01', 'end_date': '2022-12'}, {'start_date': '2021-01', 'end_date': '2023-12'}]}, 4, 0.95),
+    ({'experience': [{'start_date': f'{year}-01', 'end_date': f'{year}-03'} for year in (2021, 2022, 2023)]}, 0.75, 0.95),
+    ({'summary': '3 years of experience'}, 3, 0.65),
+    ({'total_work_experience': '4 years 9 months'}, 4.75, 1),
+    ({'experience': [{'start_date': '2023-99', 'end_date': '2024-01'}]}, None, 0),
+    ({'years_of_experience': float('nan')}, None, 0),
+])
+def test_experience_evidence(resume, years, confidence):
+    assert _extract_user_years(resume, None) == (years, confidence)
+
+
+def test_primary_coverage_and_required_skill_monotonicity():
+    description = 'Required:\nReact\nTypeScript\nKafka\nKubernetes'
+    scores = [score_job_match(description, {'skills': skills}, technologies=['React', 'TypeScript'])
+              for skills in ([], ['React'], ['React', 'TypeScript'], ['React', 'TypeScript', 'Kafka'])]
+    assert scores[2].skill_score == 0.90
+    assert all(a.skill_score <= b.skill_score for a, b in zip(scores, scores[1:]))
+    assert all(a.match_score <= b.match_score for a, b in zip(scores, scores[1:]))
+
+
+def test_skill_context_aliases_and_inline_preference():
+    result = score_job_match('Required: ReactJS; Kafka preferred.', {'skills': ['React']}, technologies=['React', 'Kafka'])
+    assert result.skill_score == round(1 / 1.35, 4)
+    result = score_job_match('Next.js required.', {'skills': ['Next.js']}, technologies=['Next.js', 'NextJS'])
+    assert result.skill_score == 1
+    for description in ('React required. Kafka preferred.', 'React required but Kafka preferred.'):
+        result = score_job_match(description, {'skills': ['React']}, technologies=['React', 'Kafka'])
+        assert result.skill_score == round(1 / 1.35, 4)
+
+
+@pytest.mark.parametrize('text', [
+    'React, REST APIs, GitHub Actions and Amazon Web Services',
+    'Project Management, Supply Chain Management and Financial Reporting',
+    'C++ programming, CI/CD pipelines and .NET Core',
+])
+def test_indexed_catalog_retains_multiword_matches(text):
+    reference = {label for entries in _MULTI_WORD_INDEX.values() for label, pattern in entries if pattern.search(text)}
+    assert reference <= set(extract_jd_skills(text))
+
+
+def test_current_experience_uses_resume_schema_flag():
+    from datetime import datetime, timezone
+    now = datetime.now(timezone.utc)
+    years, confidence = _extract_user_years({'experience': [{'start_date': f'{now.year}-01', 'is_current': True}]}, None)
+    assert years == now.month / 12
+    assert confidence == 0.95
+
+
+def test_freshness_never_changes_compatibility():
+    resume = {'target_title': 'Frontend Developer', 'skills': ['React'], 'years_of_experience': 3}
+    scores = [score_job_match('React required. 3 years experience.', resume, job_title='Frontend Developer', technologies=['React'], date_posted=age)
+              for age in ('30 days ago', '7 days ago', '1 day ago')]
+    assert all(s.match_score == 1 for s in scores)
+    assert scores[0].priority_score < scores[1].priority_score < scores[2].priority_score
+
+
+@pytest.mark.parametrize('component', ['skill', 'title', 'experience'])
+def test_component_increase_cannot_reduce_match(component):
+    scores = []
+    for value in (0, 0.25, 0.5, 0.75, 1):
+        with patch('services.shared.application_matching.calculate_title_score', return_value=value if component == 'title' else 0.5), patch(
+            'services.shared.application_matching.calculate_experience_score',
+            return_value=ExperienceResult(value if component == 'experience' else 0.5, 0.65, 3),
+        ):
+            skills = ['React', 'TypeScript', 'Kafka', 'Kubernetes']
+            result = score_job_match('', {'skills': skills[:int(value * 4)] if component == 'skill' else skills[:2]}, job_title='Frontend Developer', technologies=skills)
+            scores.append(result.match_score)
+            assert all(0 <= score <= 1 for score in (result.match_score, result.priority_score, result.skill_score, result.title_score, result.exp_score))
+    assert scores == sorted(scores)
 
 
 def test_match_score_uses_resume_terms_and_returns_explanation() -> None:
@@ -181,7 +298,7 @@ def test_required_skills_outweigh_preferred_skills() -> None:
     assert preferred_missing.skill_score > required_missing.skill_score
 
 
-def test_browser_technologies_skip_catalog_rescan() -> None:
+def test_browser_technologies_use_one_supporting_catalog_scan() -> None:
     with patch("services.shared.application_matching.extract_jd_skills") as extract_catalog:
         score_job_match(
             "React is required for this role.",
@@ -190,7 +307,7 @@ def test_browser_technologies_skip_catalog_rescan() -> None:
             technologies=["React"],
         )
 
-    extract_catalog.assert_not_called()
+    extract_catalog.assert_called_once()
 
 
 def test_strong_match_keeps_freshness_out_of_match_score() -> None:

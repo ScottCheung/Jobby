@@ -42,7 +42,7 @@ CANONICAL_ALIAS_MAP: dict[str, str] = {
     "mongo": "mongodb",
     "nextjs": "next",
     "next.js": "next",
-    "next": "next.js",
+    "next": "next",
     "expressjs": "express",
     "rest": "rest",
     "restful": "rest",
@@ -133,4 +133,3 @@ DOMAIN_AFFINITY: dict[tuple[str, str], float] = {
     ("devops", "security"): 0.75,
     ("security", "devops"): 0.75,
 }
-

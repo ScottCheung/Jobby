@@ -56,13 +56,10 @@ def evaluate_candidate(
     if (resume_data or profile_skills) and (
         candidate_payload.get("description") or candidate_payload.get("technologies")
     ):
-        user_years = (
-            candidate_payload.get("user_years_experience")
-            or (resume_data.get("years_of_experience") if isinstance(resume_data, dict) else None)
-        )
+        user_years = candidate_payload.get("user_years_experience")
         match_result = score_job_match(
             str(candidate_payload.get("description") or ""),
-            dict(resume_data),
+            dict(resume_data or {}),
             job_title=str(candidate_payload.get("title") or ""),
             date_posted=candidate_payload.get("last_posted_at"),
             technologies=candidate_payload.get("technologies"),

@@ -166,3 +166,29 @@ def test_decision_request_keeps_candidate_as_a_nested_contract() -> None:
 
     assert request.candidate.external_id == "job-123"
     assert request.candidate.platform == "linkedin"
+
+
+def test_profile_only_scoring_preserves_unknown_experience() -> None:
+    result = evaluate_candidate(candidate_payload(technologies=['React']), settings=settings(), profile_skills=['React'])
+    assert result.candidate.exp_score is None
+    assert result.candidate.skill_score == 1
+    assert evaluation_to_dict(result)['candidate']['exp_score'] is None
+
+
+def test_explicit_zero_experience_is_not_replaced_by_resume_years() -> None:
+    result = evaluate_candidate(
+        candidate_payload(description='React required. 3 years experience.', technologies=['React'], user_years_experience=0),
+        settings=settings(), resume_data={'skills': ['React'], 'years_of_experience': 3},
+    )
+    assert result.candidate.exp_score == 0.45
+
+
+def test_policy_uses_match_for_old_jobs() -> None:
+    result = evaluate_candidate(
+        candidate_payload(description='React required.', title='Frontend Developer', technologies=['React'], last_posted_at='30 days ago'),
+        settings=settings(), resume_data={'skills': ['React'], 'target_title': 'Frontend Developer'},
+    )
+    assert result.candidate.match_score == 1
+    assert result.candidate.priority_score < 0.1
+    assert result.decision.action is ApplicationAction.APPLY
+    assert result.decision.score == result.candidate.match_score

@@ -68,7 +68,7 @@ class MatchScore:
     matched_terms: tuple[str, ...]
     skill_score: float = 0.0
     title_score: float = 0.0
-    exp_score: float = 0.0
+    exp_score: float | None = None
 
     @property
     def score(self) -> float:
@@ -82,7 +82,7 @@ def _tokens(value: object) -> set[str]:
     value = re.sub(r"(?<=[A-Za-z])[-\u2010-\u2015](?=[A-Za-z])", " ", value)
     tokens: set[str] = set()
     for raw in _WORD_RE.findall(value):
-        token = raw.casefold()
+        token = raw.casefold().rstrip('.')
         if token in _STOPWORDS:
             continue
         token = CANONICAL_ALIAS_MAP.get(token, token)
@@ -103,7 +103,7 @@ def _resume_text(values: Any) -> Iterable[str]:
 
 
 def parse_recency_score(date_posted: str | datetime | float | None) -> float:
-    """Calculate recency decay multiplier D(t) with a 24h grace window and steep 2.0-day half-life."""
+    """Decay 4% per day for four days, then use a five-day half-life."""
     DEFAULT_UNKNOWN_RECENCY = 0.75
 
     if date_posted is None:
@@ -283,7 +283,7 @@ def _extract_resume_title_evidence(
 
     summary = resume_data.get("summary") or resume_data.get("headline")
     if isinstance(summary, str) and summary.strip():
-        first_line = summary.split("\n")[0].split(".")[0]
+        first_line = re.split(r"\b(?:specializing|with|using|building)\b", summary.split("\n")[0], maxsplit=1)[0]
         if len(first_line) < 120:
             historical_titles.append(first_line.strip())
 
@@ -352,64 +352,52 @@ def calculate_title_score(
     if not title_terms:
         return 0.80 if len(resume_raw_text) > 30 else 0.50
 
+    targets = _extract_resume_target_titles(resume_data)
+    generic = {"engineer", "software", "application", "web"}
     job_domains = _detect_domains_from_text(job_title)
-    explicit_titles, historical_titles = _extract_resume_title_evidence(resume_data)
-    resume_target_titles = explicit_titles or historical_titles
-    target_titles_text = " ".join(resume_target_titles)
 
-    user_domains = _detect_domains_from_text(target_titles_text)
-    if not user_domains:
-        summary = str((resume_data or {}).get("summary") or "")
-        skills_text = " ".join(
-            str(s) for s in _resume_text((resume_data or {}).get("skills"))
-        )
-        user_domains = _detect_domains_from_text(f"{summary} {skills_text}")
+    def compare(target: str) -> float:
+        terms = _normalize_title_tokens(target)
+        domains = _detect_domains_from_text(target)
+        def weight(term: str) -> float:
+            return 0.1 if term in generic else 1.0
+        denominator = sum(weight(t) for t in title_terms | terms)
+        similarity = sum(weight(t) for t in title_terms & terms) / max(0.1, denominator)
+        affinity = _calculate_domain_affinity(job_domains, domains)
+        if title_terms == terms:
+            affinity = 1.0
+        elif job_domains & domains:
+            # Explicit frontend role synonyms, not a floor for every shared domain.
+            frontend = {"frontend", "react", "angular", "vue"}
+            if title_terms & frontend and terms & frontend:
+                similarity = max(similarity, 0.8)
+        elif affinity >= 0.85:
+            similarity = max(similarity, 0.6)
+        elif (("software" in title_terms and not job_domains)
+              or ("software" in terms and not domains)):
+            if (job_domains | domains) & {"frontend", "backend", "fullstack", "qa", "mobile"}:
+                affinity, similarity = 0.8, max(similarity, 0.5)
+            else:
+                affinity = 0.15
+        elif not job_domains or not domains:
+            affinity = 0.15
+        score = 0.6 * affinity + 0.4 * similarity
+        gap = abs(_detect_seniority_level(job_title) - _detect_seniority_level(target))
+        return score * (1.0 - 0.08 * gap)
 
-    def title_similarity(candidate_title: str) -> float:
-        candidate_terms = _normalize_title_tokens(candidate_title)
-        if not candidate_terms:
-            return 0.0
-        overlap = len(title_terms & candidate_terms) / max(1, min(len(title_terms), len(candidate_terms)))
-        candidate_domains = _detect_domains_from_text(candidate_title)
-        if job_domains & candidate_domains:
-            return max(overlap, 0.75)
-        if _calculate_domain_affinity(job_domains, candidate_domains) >= 0.75:
-            return max(overlap, 0.65)
-        return overlap
-
-    if resume_target_titles:
-        title_matches = [title_similarity(title) for title in resume_target_titles]
-        normalized_title_similarity = max(title_matches, default=0.0)
-    else:
-        resume_terms = _tokens(resume_raw_text)
-        normalized_title_similarity = len(title_terms & resume_terms) / len(title_terms)
-
-    if job_domains:
-        domain_affinity = _calculate_domain_affinity(job_domains, user_domains)
-    elif title_terms & {"engineer", "developer", "programmer"} and user_domains:
-        # A generic software title is adjacent to the candidate's target domain,
-        # but it is not an exact domain match.
-        domain_affinity = 0.75
-    else:
-        domain_affinity = 0.50 if normalized_title_similarity > 0.3 else 0.15
-
-    raw_title_score = (0.60 * domain_affinity) + (0.40 * normalized_title_similarity)
-    if domain_affinity <= 0.35 and normalized_title_similarity <= 0.1:
-        raw_title_score = min(0.30, raw_title_score)
-
-    return round(min(1.0, max(0.0, raw_title_score)), 4)
-
+    return round(max((compare(target) for target in targets), default=0.0), 4)
 
 def _parse_experience_years(value: object) -> float | None:
     if value is None:
         return None
     if isinstance(value, (int, float)):
-        return float(value)
+        return float(value) if math.isfinite(value) and value >= 0 else None
     text = str(value).strip().lower()
     if not text:
         return None
     try:
-        return float(text)
+        parsed = float(text)
+        return parsed if math.isfinite(parsed) and parsed >= 0 else None
     except ValueError:
         pass
 
@@ -435,7 +423,7 @@ def _parse_experience_month(value: object, *, end: bool = False) -> int | None:
     iso_match = re.search(r"\b(\d{4})[-/](\d{1,2})(?:[-/]\d{1,2})?\b", text)
     if iso_match:
         year, month = int(iso_match.group(1)), int(iso_match.group(2))
-        return year * 12 + month - 1
+        return year * 12 + month - 1 if 1 <= month <= 12 else None
 
     year_month_match = re.search(
         r"\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|"
@@ -472,7 +460,7 @@ def _dated_work_experience_years(resume_data: dict[str, Any] | None) -> float | 
         start = _parse_experience_month(
             item.get("start_date") or item.get("start") or item.get("from")
         )
-        end_value = item.get("end_date") or item.get("end") or item.get("to")
+        end_value = "present" if item.get("is_current") else item.get("end_date") or item.get("end") or item.get("to")
         end = _parse_experience_month(end_value, end=True)
         if start is not None and end is not None and end >= start:
             intervals.append((start, end))
@@ -494,13 +482,12 @@ def _dated_work_experience_years(resume_data: dict[str, Any] | None) -> float | 
 def _extract_user_years(
     resume_data: dict[str, Any] | None,
     user_years_experience: float | int | None,
-    user_seniority: int,
-) -> float:
-    """Extract candidate years of experience from explicit args, fields, or seniority defaults."""
+) -> tuple[float | None, float]:
+    """Return years and confidence without equating unknown with zero."""
     if user_years_experience is not None:
         parsed = _parse_experience_years(user_years_experience)
         if parsed is not None:
-            return parsed
+            return parsed, 1.0
 
     if resume_data:
         for field in (
@@ -514,66 +501,61 @@ def _extract_user_years(
             if val is not None:
                 parsed = _parse_experience_years(val)
                 if parsed is not None:
-                    return parsed
+                    return parsed, 1.0
 
         dated_years = _dated_work_experience_years(resume_data)
         if dated_years is not None:
-            return dated_years
+            return dated_years, 0.95
 
         summary_text = f"{resume_data.get('summary', '')} {resume_data.get('headline', '')}".lower()
         match = re.search(r"(\d+)\s*\+?\s*(?:-\s*\d+\s*)?(?:years?|yrs?)(?:\s+of)?\s+(?:experience|exp|working)?", summary_text)
         if match:
             try:
-                return float(match.group(1))
+                return float(match.group(1)), 0.65
             except ValueError:
                 pass
 
-    return 0.0
+    return None, 0.0
 
 
-def _skill_context_weight(description: str, skill: str) -> float:
-    """Classify one extracted skill using nearby JD section/language cues."""
-    if not description:
-        return 0.70
-
-    skill_pattern = re.compile(
-        rf"(?<![a-zA-Z0-9]){re.escape(skill.strip())}(?![a-zA-Z0-9])",
-        re.IGNORECASE,
-    )
-    section = "none"
-    observed_weights: list[float] = []
-    for raw_line in description.replace("\r", "\n").split("\n"):
-        line = raw_line.strip()
+def _skill_contexts(description: str) -> list[tuple[set[str], float]]:
+    section = 0.70
+    contexts = []
+    for raw_line in description.splitlines():
+        line = re.sub(r"^[•*–—\s-]+", "", raw_line).strip()
         if not line:
             continue
-        clean_line = re.sub(r"^[•\-*–—\d+.)\s]+", "", line).strip()
-        is_bullet = bool(re.match(r"^[•\-*–—\d+.)]", line))
-        if not is_bullet and len(clean_line) <= 80:
-            if _PREFERRED_SECTION_HEADER.search(clean_line):
-                section = "preferred"
-                continue
-            if _REQUIRED_SECTION_HEADER.search(clean_line):
-                section = "required"
-                continue
-            if _OTHER_SECTION_HEADER.search(clean_line):
-                section = "other"
-                continue
-        if not skill_pattern.search(clean_line):
-            continue
+        header, separator, body = line.partition(":")
+        heading = header.strip() if separator else line
+        if len(heading) <= 80:
+            if _PREFERRED_SECTION_HEADER.fullmatch(heading):
+                section = 0.35
+            elif _REQUIRED_SECTION_HEADER.fullmatch(heading):
+                section = 1.0
+            elif _OTHER_SECTION_HEADER.fullmatch(heading):
+                section = 0.15
+            else:
+                heading = ""
+            if heading:
+                if not body.strip():
+                    continue
+                line = body
+        for clause in re.split(r";|(?<=[.!?])\s+|\bbut\b", line):
+            weight = section
+            if _PREFERRED_SKILL_LANGUAGE.search(clause) or re.search(r"\bnot (?:required|essential|mandatory)\b", clause):
+                weight = 0.35
+            elif _REQUIRED_SKILL_LANGUAGE.search(clause):
+                weight = 1.0
+            elif _INCIDENTAL_SKILL_LANGUAGE.search(clause):
+                weight = 0.15
+            contexts.append((_tokens(clause), weight))
+    return contexts
 
-        is_preferred = section == "preferred" or _PREFERRED_SKILL_LANGUAGE.search(clean_line)
-        is_explicitly_not_required = bool(
-            re.search(r"\b(?:not|without)\s+(?:required|mandatory|essential)\b", clean_line, re.IGNORECASE)
-        )
-        if is_preferred or is_explicitly_not_required:
-            observed_weights.append(0.35)
-        elif section == "required" or _REQUIRED_SKILL_LANGUAGE.search(clean_line):
-            observed_weights.append(1.00)
-        elif section == "other" or _INCIDENTAL_SKILL_LANGUAGE.search(clean_line):
-            observed_weights.append(0.15)
-        else:
-            observed_weights.append(0.70)
-    return max(observed_weights, default=0.70)
+@dataclass(frozen=True, slots=True)
+class ExperienceResult:
+    score: float
+    confidence: float
+    years: float | None
 
 
 def calculate_experience_score(
@@ -582,7 +564,7 @@ def calculate_experience_score(
     resume_data: dict[str, Any] | None,
     resume_raw_text: str,
     user_years_experience: float | int | None = None,
-) -> tuple[float, float]:
+) -> ExperienceResult:
     """Calculate experience score and seniority penalty."""
     req_years = extract_required_years(job_description, job_title)
 
@@ -591,7 +573,9 @@ def calculate_experience_score(
     gap = max(0, job_seniority - user_seniority)
     seniority_penalty = 1.00 if gap == 0 else 0.85 if gap == 1 else 0.65 if gap == 2 else 0.50
 
-    user_years = _extract_user_years(resume_data, user_years_experience, user_seniority)
+    user_years, confidence = _extract_user_years(resume_data, user_years_experience)
+    if user_years is None:
+        return ExperienceResult(0.0, 0.0, None)
 
     if req_years is not None:
         diff = user_years - req_years
@@ -624,7 +608,7 @@ def calculate_experience_score(
             score = 0.65 if g == 1 else 0.45 if g == 2 else 0.25
 
     final_exp = round(min(1.0, max(0.0, score * seniority_penalty)), 4)
-    return final_exp, seniority_penalty
+    return ExperienceResult(final_exp, confidence, user_years)
 
 
 def score_job_match(
@@ -644,10 +628,11 @@ def score_job_match(
             job_terms.update(_tokens(tech))
 
     resume_terms: set[str] = set()
-    resume_raw_text = ""
+    resume_values = []
     for value in _resume_text(resume_data or {}):
         resume_terms.update(_tokens(value))
-        resume_raw_text += f" {value}"
+        resume_values.append(value)
+    resume_raw_text = " ".join(resume_values)
     # Skills claimed from the browser extension are scoring-only evidence.
     # Keep them out of resume_data so they can never alter the saved resume.
     for skill in profile_skills or ():
@@ -656,19 +641,19 @@ def score_job_match(
     if not job_terms and not technologies and not job_title:
         return MatchScore(match_score=0.0, recency_factor=parse_recency_score(date_posted), priority_score=0.0, matched_terms=())
 
-    # 1. Build requirements from browser extraction when available. The catalog
-    # is only needed when the browser did not provide any technologies.
+    # Browser requirements are primary; the catalog contributes at most 10%.
     extracted_skills = list(technologies) if technologies else extract_jd_skills(job_description)
 
     # Weight each requirement according to its JD context instead of treating
     # every browser-extracted technology as equally mandatory.
+    contexts = _skill_contexts(job_description)
     requirement_weights: dict[frozenset[str], float] = {}
     for skill in extracted_skills:
         label_tokens = _tokens(skill)
         if not label_tokens:
             continue
         key = frozenset(label_tokens)
-        weight = _skill_context_weight(job_description, skill)
+        weight = max((w for terms, w in contexts if key <= terms), default=0.70)
         requirement_weights[key] = max(weight, requirement_weights.get(key, 0.0))
 
     # 2. Compute skill ratio from requirement coverage
@@ -686,6 +671,16 @@ def score_job_match(
         description_denominator = min(effective_len, max(6, int(effective_len * 0.25)))
         skill_ratio = min(1.0, len(job_terms & resume_terms) / max(1, description_denominator))
 
+    if technologies and requirement_weights:
+        secondary = {}
+        for label in extract_jd_skills(job_description):
+            key = frozenset(_tokens(label))
+            if key and key not in requirement_weights:
+                secondary[key] = max((w for terms, w in contexts if key <= terms), default=0.70)
+        if secondary:
+            coverage = sum(w for key, w in secondary.items() if key <= resume_terms) / sum(secondary.values())
+            skill_ratio = 0.90 * skill_ratio + 0.10 * coverage
+
     # General context matched terms (backward compat for matched_terms response field)
     matched = tuple(sorted(job_terms & resume_terms))
 
@@ -702,14 +697,17 @@ def score_job_match(
             skill_ratio = min(skill_ratio, max(0.25, title_score * 0.8 + 0.15))
 
     # 4. Experience & Seniority Matching
-    exp_score, _ = calculate_experience_score(
+    experience = calculate_experience_score(
         job_description, job_title, resume_data, resume_raw_text, user_years_experience
     )
 
     recency_factor = parse_recency_score(date_posted)
 
     # Match is compatibility only. Freshness is applied separately below.
-    base_score = (0.60 * skill_ratio) + (0.22 * title_score) + (0.18 * exp_score)
+    base_score = (
+        0.60 * skill_ratio + 0.22 * title_score
+        + 0.18 * experience.confidence * experience.score
+    ) / (0.82 + 0.18 * experience.confidence)
 
     match_score = round(min(1.0, max(0.0, base_score)), 4)
     priority_score = round(min(1.0, max(0.0, match_score * recency_factor)), 4)
@@ -721,5 +719,5 @@ def score_job_match(
         matched_terms=matched,
         skill_score=round(skill_ratio, 4),
         title_score=round(title_score, 4),
-        exp_score=round(exp_score, 4),
+        exp_score=experience.score if experience.confidence else None,
     )
