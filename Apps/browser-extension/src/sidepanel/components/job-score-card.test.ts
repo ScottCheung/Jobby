@@ -23,17 +23,17 @@ describe('job match score card', () => {
     },
   );
   it('keeps the loading and final score labels separate', () => {
-    expect(jobMatchLabel(false, false, null)).toBe('Sign In for Total Score');
-    expect(jobMatchLabel(true, true, null)).toBe('Calculating Score...');
-    expect(jobMatchLabel(true, false, 82)).toBe('Recommend');
-    expect(jobMatchLabel(true, false, 91)).toBe('🔥 Highly Recommend');
-    expect(jobMatchLabel(true, false, 65)).toBe('Not Recommend');
-    expect(jobMatchLabel(true, false, 45)).toBe('Not Recommend');
-    expect(jobMatchLabel(true, false, 20)).toBe('Not Recommend');
-    expect(jobMatchLabel(true, false, null)).toBe('Score unavailable');
+    expect(jobMatchLabel(false, false, null)).toBe('Sign In for Recommendation');
+    expect(jobMatchLabel(true, true, null)).toBe('Calculating Recommendation...');
+    expect(jobMatchLabel(true, false, 82)).toBe('Recommended');
+    expect(jobMatchLabel(true, false, 91)).toBe('🔥 Strong Recommendation');
+    expect(jobMatchLabel(true, false, 65)).toBe('Low Priority');
+    expect(jobMatchLabel(true, false, 45)).toBe('Low Priority');
+    expect(jobMatchLabel(true, false, 20)).toBe('Low Priority');
+    expect(jobMatchLabel(true, false, null)).toBe('Recommendation unavailable');
   });
 
-  it('uses compatibility as the only main score with a colored recommendation', () => {
+  it('uses recommendation priority as the main score and exposes compatibility separately', () => {
     const html = renderToStaticMarkup(
       createElement(JobScoreCard, {
         latestInspection: {
@@ -77,13 +77,12 @@ describe('job match score card', () => {
     );
 
     expect(html).not.toContain('Apply Score');
-    expect(html).not.toContain('>Match</span>');
-    expect(html).toContain('aria-label="Total: 91"');
-    expect(html).toContain('🔥 Highly Recommend');
-    expect(html).toContain('text-primary');
+    expect(html).toContain('aria-label="Recommendation: 63"');
+    expect(html).toContain('Low Priority');
     expect(html).not.toContain('Apply Priority');
     expect(html).toContain('>Fresh</span>');
     expect(html).toContain('>69</span>');
+    expect(html).not.toContain('>Match</span>');
   });
 
   it('hides tailor actions while the job match is being calculated', () => {
@@ -106,7 +105,7 @@ describe('job match score card', () => {
       }),
     );
 
-    expect(html).toContain('Calculating Score...');
+    expect(html).toContain('Calculating Recommendation...');
     expect(html).not.toContain('Tailor CV');
     expect(html).not.toContain('Generate CL');
     expect(html).not.toContain('Get Both');

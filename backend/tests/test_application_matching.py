@@ -250,22 +250,34 @@ def test_recency_decay_boosts_fresh_and_penalises_old_jobs() -> None:
     assert fresh.priority_score > older.priority_score
 
 
-def test_smooth_plateau_recency_decay_schedule() -> None:
-    assert parse_recency_score("today") > 0.95
-    assert parse_recency_score("1 day ago") == 0.9600
-    assert parse_recency_score("2 days ago") == 0.9200
-    assert parse_recency_score("3 days ago") == 0.8800
-    assert parse_recency_score("4 days ago") == 0.8400
-    assert parse_recency_score("5 days ago") == 0.7313
-    assert parse_recency_score("7 days ago") == 0.5542
-    assert parse_recency_score("8 days ago") == 0.4825
-    assert parse_recency_score("9 days ago") == 0.4200
-    assert parse_recency_score("9d ago") == 0.4200
-    assert parse_recency_score("2 weeks ago") == 0.2100
-    assert parse_recency_score("14d ago") == 0.2100
-    assert parse_recency_score("19 days ago") == 0.1050
-    assert parse_recency_score("26d ago") == 0.0398
-    assert parse_recency_score("30+ days ago") < 0.05
+@pytest.mark.parametrize("age, expected", [
+    ("today", 1.00),
+    ("1 day ago", 0.96),
+    ("2 days ago", 0.91),
+    ("3 days ago", 0.86),
+    ("4 days ago", 0.81),
+    ("5 days ago", 0.76),
+    ("6 days ago", 0.72),
+    ("7 days ago", 0.68),
+    ("10 days ago", 0.60),
+    ("14 days ago", 0.52),
+    ("21 days ago", 0.42),
+    ("30+ days ago", 0.32),
+    ("45 days ago", 0.25),
+    ("90 days ago", 0.25),
+])
+def test_recency_score_matches_recommendation_calibration(age: str, expected: float) -> None:
+    assert parse_recency_score(age) == expected
+
+
+def test_recency_score_interpolates_between_anchors_and_is_monotonic() -> None:
+    assert parse_recency_score("8 days ago") == 0.6533
+    scores = [parse_recency_score(f"{days} days ago") for days in range(0, 61)]
+    assert all(left >= right for left, right in zip(scores, scores[1:]))
+    assert scores[-1] == 0.25
+
+
+def test_recency_score_keeps_unknown_date_neutral() -> None:
     assert parse_recency_score(None) == 0.75
     assert parse_recency_score("Unknown") == 0.75
     assert parse_recency_score("未知") == 0.75
@@ -303,7 +315,7 @@ def test_tiered_skill_weighting_gives_high_score_when_all_technologies_match() -
     assert res.skill_score >= 0.85
     assert res.title_score == 1.0  # Front End Developer vs Frontend Engineer synonym match
     assert res.match_score >= 0.85
-    assert res.recency_factor == 0.8800  # 3 days ago recency factor (0.88)
+    assert res.recency_factor == 0.8600  # 3 days ago recency factor (0.86)
     assert res.priority_score == round(res.match_score * res.recency_factor, 4)
 
 
@@ -369,8 +381,38 @@ def test_strong_match_keeps_freshness_out_of_match_score() -> None:
     )
 
     assert result.match_score >= 0.85
-    assert result.recency_factor < 0.10
-    assert result.priority_score < result.match_score * 0.10
+    assert result.recency_factor == 0.32
+    assert result.priority_score == round(result.match_score * result.recency_factor, 4)
+
+
+def test_match_components_are_independent_of_posting_age() -> None:
+    resume = {
+        "target_title": "Frontend Developer",
+        "skills": ["React", "TypeScript"],
+        "years_of_experience": 5,
+    }
+    description = "React and TypeScript required. 5+ years of experience required."
+    fresh = score_job_match(
+        description,
+        resume,
+        job_title="Frontend Developer",
+        technologies=["React", "TypeScript"],
+        date_posted="today",
+    )
+    old = score_job_match(
+        description,
+        resume,
+        job_title="Frontend Developer",
+        technologies=["React", "TypeScript"],
+        date_posted="30 days ago",
+    )
+
+    assert (fresh.match_score, fresh.skill_score, fresh.title_score, fresh.exp_score) == (
+        old.match_score, old.skill_score, old.title_score, old.exp_score
+    )
+    assert fresh.recency_factor > old.recency_factor
+    assert fresh.priority_score == fresh.match_score
+    assert old.priority_score == round(old.match_score * old.recency_factor, 4)
 
 
 def test_experience_uses_dated_intervals_and_merges_overlap() -> None:

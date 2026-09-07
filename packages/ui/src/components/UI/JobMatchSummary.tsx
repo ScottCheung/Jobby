@@ -40,7 +40,7 @@ export function JobMatchSummary({
   return (
     <div className={cn('flex items-start gap-3', className)}>
       <div
-        aria-label={isLoading ? 'Calculating total score' : `Total: ${safeScore ?? 'unavailable'}`}
+        aria-label={isLoading ? 'Calculating recommendation' : `Recommendation: ${safeScore ?? 'unavailable'}`}
         className={cn(
           'relative flex shrink-0 items-start justify-center rounded-full bg-primary/10 shadow-xs',
           compact ? 'size-14' : 'size-18',
@@ -86,7 +86,7 @@ export function JobMatchSummary({
         </div>
 
         <div
-          className='grid grid-cols-2 gap-x-3 gap-y-1 text-[10px] select-none'
+          className='grid grid-cols-2 gap-x-3 gap-y-2 select-none'
           title={explanation || 'Score breakdown'}
         >
           {breakdown.map((item) => {
@@ -95,23 +95,25 @@ export function JobMatchSummary({
                 Math.min(100, Math.max(0, item.value))
               : null;
             return (
-              <div key={item.label} className='flex min-w-0 items-center gap-1.5'>
-                <span className='w-14 shrink-0 truncate font-medium text-muted-foreground'>
-                  {item.label}
-                </span>
-                <div className='h-1.5 flex-1 overflow-hidden rounded-full bg-background-secondary'>
-                  <div
-                    className={cn(
-                      'h-full rounded-full transition-all duration-500',
-                      isLoading ? 'animate-skeleton-shimmer'
-                      : isUnavailable || value === null ? 'bg-transparent'
-                      : item.colorClassName,
-                    )}
-                    style={{ width: `${isLoading ? 100 : value || 0}%` }}
-                  />
+              <div key={item.label} className='flex items-end gap-1.5'>
+                <div className='flex flex-1 min-w-0 flex-col gap-1'>
+                  <span className='truncate text-[9px] font-medium leading-none text-muted-foreground'>
+                    {item.label}
+                  </span>
+                  <div className='h-1.5 w-full overflow-hidden rounded-full bg-background-secondary'>
+                    <div
+                      className={cn(
+                        'h-full rounded-full transition-all duration-500',
+                        isLoading ? 'animate-skeleton-shimmer'
+                        : isUnavailable || value === null ? 'bg-transparent'
+                        : item.colorClassName,
+                      )}
+                      style={{ width: `${isLoading ? 100 : value || 0}%` }}
+                    />
+                  </div>
                 </div>
-                <span className='w-5 shrink-0 text-right font-mono text-foreground/80'>
-                  {isLoading ? '' : value ?? '--'}
+                <span className='w-6 shrink-0 text-right font-mono text-[11px] font-semibold leading-none text-foreground/80 tabular-nums'>
+                  {isLoading ? '--' : value ?? '--'}
                 </span>
               </div>
             );

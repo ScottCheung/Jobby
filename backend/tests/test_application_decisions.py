@@ -189,6 +189,6 @@ def test_policy_uses_match_for_old_jobs() -> None:
         settings=settings(), resume_data={'skills': ['React'], 'target_title': 'Frontend Developer'},
     )
     assert result.candidate.match_score == 1
-    assert result.candidate.priority_score < 0.1
+    assert result.candidate.priority_score == 0.32
     assert result.decision.action is ApplicationAction.APPLY
     assert result.decision.score == result.candidate.match_score

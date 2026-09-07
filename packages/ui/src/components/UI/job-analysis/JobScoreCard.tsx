@@ -37,12 +37,12 @@ export function jobMatchLabel(
   isMatchLoading: boolean,
   percentage: number | null,
 ): string {
-  if (!authConnected) return 'Sign In for Total Score';
-  if (isMatchLoading) return 'Calculating Score...';
-  if (percentage === null) return 'Score unavailable';
-  if (percentage >= 90) return '🔥 Highly Recommend';
-  if (percentage >= 75) return 'Recommend';
-  return 'Not Recommend';
+  if (!authConnected) return 'Sign In for Recommendation';
+  if (isMatchLoading) return 'Calculating Recommendation...';
+  if (percentage === null) return 'Recommendation unavailable';
+  if (percentage >= 90) return '🔥 Strong Recommendation';
+  if (percentage >= 75) return 'Recommended';
+  return 'Low Priority';
 }
 
 export function JobScoreCard({
@@ -100,27 +100,35 @@ export function JobScoreCard({
       const info = parseAndFormatJobDate(snapshot.lastPostedAt);
       if (info.ageInDays != null) {
         const days = Math.max(0, info.ageInDays);
-        if (days <= 4) {
-          return Math.round((1 - 0.04 * days) * 10000) / 10000;
+        const anchors = [
+          [0, 1], [1, 0.96], [2, 0.91], [3, 0.86], [4, 0.81],
+          [5, 0.76], [6, 0.72], [7, 0.68], [10, 0.60], [14, 0.52],
+          [21, 0.42], [30, 0.32], [45, 0.25],
+        ] as const;
+        if (days >= 45) return 0.25;
+        for (let index = 1; index < anchors.length; index += 1) {
+          const [rightDays, rightFactor] = anchors[index]!;
+          const [leftDays, leftFactor] = anchors[index - 1]!;
+          if (days <= rightDays) {
+            const progress = (days - leftDays) / (rightDays - leftDays);
+            return Math.round((leftFactor + progress * (rightFactor - leftFactor)) * 10000) / 10000;
+          }
         }
-        return (
-          Math.round(0.84 * Math.pow(2, -(days - 4) / 5) * 10000) / 10000
-        );
       }
     }
     return 0.75;
   })();
 
   const overallScore =
-    candidate?.match_score ??
-    null;
+    candidate?.priority_score ??
+    (candidate?.match_score != null ? candidate.match_score * derivedRecency : null);
   const hasScore =
     authConnected &&
     isJob &&
     typeof overallScore === 'number' &&
     !Number.isNaN(overallScore);
   const percentage = hasScore ? Math.round(overallScore * 100) : 0;
-  const matchLabel = jobMatchLabel(
+  const recommendationLabel = jobMatchLabel(
     authConnected,
     isMatchLoading,
     hasScore ? percentage : null,
@@ -138,7 +146,7 @@ export function JobScoreCard({
     <div className={cn('flex flex-col gap-3', className)}>
       <JobMatchSummary
         score={hasScore ? percentage : null}
-        label={matchLabel}
+        label={recommendationLabel}
         breakdown={[
           {
             label: 'Skill',

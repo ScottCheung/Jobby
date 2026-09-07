@@ -105,8 +105,23 @@ def _resume_text(values: Any) -> Iterable[str]:
 
 
 def parse_recency_score(date_posted: str | datetime | float | None) -> float:
-    """Decay 4% per day for four days, then use a five-day half-life."""
+    """Return the freshness factor used by the user-facing recommendation score."""
     DEFAULT_UNKNOWN_RECENCY = 0.75
+    RECENCY_ANCHORS = (
+        (0.0, 1.00),
+        (1.0, 0.96),
+        (2.0, 0.91),
+        (3.0, 0.86),
+        (4.0, 0.81),
+        (5.0, 0.76),
+        (6.0, 0.72),
+        (7.0, 0.68),
+        (10.0, 0.60),
+        (14.0, 0.52),
+        (21.0, 0.42),
+        (30.0, 0.32),
+        (45.0, 0.25),
+    )
 
     if date_posted is None:
         return DEFAULT_UNKNOWN_RECENCY
@@ -132,7 +147,7 @@ def parse_recency_score(date_posted: str | datetime | float | None) -> float:
 
         # 1. Hour / minute / just now / today
         if any(k in text for k in ("just", "today", "刚刚", "今天")):
-            diff_days = 0.2
+            diff_days = 0.0
         elif any(k in text for k in ("yesterday", "昨天")):
             diff_days = 1.0
         else:
@@ -145,7 +160,7 @@ def parse_recency_score(date_posted: str | datetime | float | None) -> float:
                 # Minutes
                 min_match = re.search(r"(\d+)\s*(?:minutes?|mins?|分钟前)", text)
                 if min_match:
-                    diff_days = 0.1
+                    diff_days = 0.0
                 else:
                     # Days (e.g. 19d, 19 days ago, 26d, 3 days ago)
                     day_match = re.search(r"(\d+)\s*(?:days?|d\b|天前|日前的?)", text)
@@ -178,12 +193,18 @@ def parse_recency_score(date_posted: str | datetime | float | None) -> float:
                                     except Exception:
                                         return DEFAULT_UNKNOWN_RECENCY
 
-    if diff_days <= 4.0:
-        factor = 1.00 - 0.04 * diff_days
+    if diff_days >= RECENCY_ANCHORS[-1][0]:
+        factor = RECENCY_ANCHORS[-1][1]
     else:
-        factor = 0.84 * math.pow(2.0, -(diff_days - 4.0) / 5.0)
+        for (left_days, left_factor), (right_days, right_factor) in zip(
+            RECENCY_ANCHORS, RECENCY_ANCHORS[1:]
+        ):
+            if diff_days <= right_days:
+                progress = (diff_days - left_days) / (right_days - left_days)
+                factor = left_factor + progress * (right_factor - left_factor)
+                break
 
-    return round(max(0.001, min(1.0, factor)), 4)
+    return round(max(RECENCY_ANCHORS[-1][1], min(1.0, factor)), 4)
 
 
 def _detect_seniority_level(text: str) -> int:

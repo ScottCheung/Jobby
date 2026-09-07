@@ -443,6 +443,7 @@ function isLikelyTitle(value: string, company?: string): boolean {
   const text = cleanText(value);
   if (!text || text.length < 2 || text.length > 180) return false;
   if (TITLE_METADATA.has(text.toLowerCase())) return false;
+  if (/^(?:(?:[A-Z]{1,3}\s*)?[$£€¥￥]\s*\d|(?:USD|AUD|CAD|NZD|GBP|EUR|CNY|RMB)\s*\d|\d[\d,.]*\s*(?:k\b|万|元)|(?:年薪|月薪|时薪|薪资|薪酬)(?:\s|[:：]|$))/i.test(text)) return false;
   if (INVALID_TITLE_PATTERNS.some((pattern) => pattern.test(text))) return false;
   if (isPureLocation(text)) return false;
   if (/[·•]/.test(text) || /\b(?:ago|applicants?)\b/i.test(text)) return false;

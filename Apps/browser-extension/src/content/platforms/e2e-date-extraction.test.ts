@@ -284,6 +284,33 @@ describe("E2E Date Extraction Across All Platforms", () => {
       }
     });
 
+    it.each([
+      "A$120K/yr - A$150K/yr", "$100,000 - $150,000 a year",
+      "AUD 120,000/yr", "£60K/yr", "€80,000/yr", "120K/yr - 150K/yr",
+      "年薪", "年薪：30万", "30万/年",
+    ])("does not use salary links as the title: %s", (salary) => {
+      for (const path of ["view/4456324563/", "search-results/?currentJobId=4456324563"]) {
+        document.title = "Jobs | LinkedIn";
+        document.body.innerHTML = `
+          <main class="jobs-details">
+            <a href="/jobs/view/4456324563/">${salary}</a>
+            <h1>C# Developer</h1>
+            <a href="/company/technology-one/">TechnologyOne</a>
+            <div id="job-details">Build scalable C# applications.</div>
+          </main>
+        `;
+        Object.defineProperty(window, "location", {
+          writable: true,
+          value: new URL(`https://www.linkedin.com/jobs/${path}`),
+        });
+        const inspection = readLinkedInPage();
+        expect(inspection.kind).toBe("job");
+        if (inspection.kind === "job") {
+          expect(inspection.snapshot.title).toBe("C# Developer");
+        }
+      }
+    });
+
     it("prefers the direct LinkedIn page title over a stale DOM heading", () => {
       document.title = "C# Developer | TechnologyOne | LinkedIn";
       document.body.innerHTML = `
