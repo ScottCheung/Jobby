@@ -119,18 +119,18 @@ class JobReviewTests(unittest.TestCase):
         prompt = job_review.TAILOR_PROMPT
 
         self.assertIn("通常保留 1–3 条", prompt)
-        self.assertIn("最多可保留 4 条", prompt)
+        self.assertIn("最多 4 条", prompt)
         self.assertNotIn("通常保留 4-6 条", prompt)
 
     def test_prompt_keeps_project_evidence_and_blocks_semantic_stretching(self):
         prompt = job_review.TAILOR_PROMPT
 
-        self.assertIn("JD Evidence Coverage Check", prompt)
-        self.assertIn("最强或唯一证据", prompt)
+        self.assertNotIn("JD Evidence Coverage Check", prompt)
+        self.assertIn("最强或唯一", prompt)
         self.assertIn("customer discovery", prompt)
         self.assertIn("JD 只能决定什么重要，不能决定候选人做过什么", prompt)
         self.assertIn("不得因为证据来自 Project 就自动降权", prompt)
-        self.assertIn("特定产品、领域或技术能力", prompt)
+        self.assertIn("特定产品/领域能力", prompt)
         self.assertNotIn("map-based software", prompt)
 
     def test_combined_prompt_has_one_output_schema(self):
