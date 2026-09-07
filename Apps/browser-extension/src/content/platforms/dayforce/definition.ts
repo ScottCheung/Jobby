@@ -1,5 +1,6 @@
 import type { AtsProviderDefinition } from "../platform-definition";
 import { adaptDayforceFormFields } from "./form-field-adapter";
+import { dayforceDriverOverride } from "./driver";
 
 function cleanText(value: string | null | undefined): string {
   return (value || "").replace(/\s+/g, " ").trim();
@@ -100,6 +101,12 @@ export const dayforceDefinition = {
     "form:not(#site-navigation):not([role='search']):not([id*='search' i]):not([id*='nav' i])",
   ],
   adaptFormFields: adaptDayforceFormFields,
+  driver: dayforceDriverOverride,
+  autofill: {
+    mode: "sequential",
+    refreshAfterFieldMs: 150,
+    settleBetweenFieldsMs: 100,
+  },
   job: {
     roots: [
       "[test-id='job-details-dayforce-jobs']",

@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from decimal import Decimal, ROUND_HALF_UP
 import logging
 from typing import Any, Mapping
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -39,6 +39,7 @@ class LLMUsageSummary:
     cached_input_tokens: int
     estimated_cost_usd: Decimal | None
     duration_ms: int
+    model: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -49,6 +50,7 @@ class LLMUsageSummary:
             "cached_input_tokens": self.cached_input_tokens,
             "estimated_cost_usd": self.estimated_cost_usd,
             "duration_ms": self.duration_ms,
+            "model": self.model,
         }
 
 
@@ -152,11 +154,16 @@ def get_llm_usage_summary(
                 func.count(LLMUsageRecord.estimated_cost_usd),
                 func.sum(LLMUsageRecord.estimated_cost_usd),
                 func.coalesce(func.sum(LLMUsageRecord.duration_ms), 0),
+                func.min(LLMUsageRecord.model),
+                func.max(LLMUsageRecord.model),
             ).where(LLMUsageRecord.correlation_id == correlation_id)
         ).one()
         calls = int(row[0] or 0)
         if not calls:
             return None
+        model = row[8] if len(row) > 9 and row[8] == row[9] else None
+        if len(row) > 9 and row[8] != row[9]:
+            model = "multiple"
         return LLMUsageSummary(
             calls=calls,
             input_tokens=int(row[1] or 0),
@@ -165,6 +172,7 @@ def get_llm_usage_summary(
             cached_input_tokens=int(row[4] or 0),
             estimated_cost_usd=row[6] if int(row[5] or 0) == calls else None,
             duration_ms=int(row[7] or 0),
+            model=model,
         )
     except Exception:
         logger.warning("Could not read LLM usage correlation_id=%s", correlation_id, exc_info=True)
@@ -180,12 +188,14 @@ def record_llm_usage(
     correlation_id: str | None,
     usage: LLMUsage,
     duration_ms: int,
+    user_id: UUID | None = None,
 ) -> bool:
     db = None
     try:
         db = SessionLocal()
         db.add(
             LLMUsageRecord(
+                user_id=user_id,
                 operation=operation,
                 correlation_id=correlation_id or str(uuid4()),
                 provider=usage.provider,

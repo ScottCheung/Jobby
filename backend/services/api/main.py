@@ -19,6 +19,7 @@ except ImportError:
     DefaultResponseClass = JSONResponse
 
 from services.api.routers.applications import router as applications_router
+from services.api.routers.admin_ai_usage import router as admin_ai_usage_router
 from services.api.routers.autofill import router as autofill_router
 from services.api.routers.career_profiles import router as career_profiles_router
 from services.api.routers.interview import router as interview_router
@@ -89,6 +90,7 @@ app.include_router(job_hunting_profiles_router)
 app.include_router(skills_router)
 app.include_router(autofill_router)
 app.include_router(applications_router)
+app.include_router(admin_ai_usage_router)
 
 
 @app.get("/health")

@@ -139,6 +139,42 @@ export type LLMUsageSummary = {
   cached_input_tokens: number;
   estimated_cost_usd?: number | string | null;
   duration_ms: number;
+  model?: string | null;
+};
+
+export type AdminAiUsageSummary = {
+  cost_usd: number | null;
+  calls: number;
+  total_tokens: number;
+  avg_duration_ms: number;
+  daily: Array<{ date: string; calls: number; total_tokens: number; cost_usd: number | null }>;
+  by_feature: Array<{ feature: string; calls: number; total_tokens: number; cost_usd: number | null }>;
+};
+
+export type AdminAiUsageCall = {
+  id: string;
+  feature: string;
+  user: string | null;
+  user_email: string | null;
+  provider: string;
+  model: string;
+  input_tokens: number;
+  output_tokens: number;
+  cached_input_tokens: number;
+  total_tokens: number;
+  cost_usd: number | null;
+  duration_ms: number;
+  slow: boolean;
+  generation_id: string;
+  status: string;
+  created_at: string;
+};
+
+export type AdminAiUsageCallsResponse = {
+  items: AdminAiUsageCall[];
+  total: number;
+  limit: number;
+  offset: number;
 };
 
 function responseErrorMessage(body: string, fallback: string): string {
@@ -1311,6 +1347,21 @@ export const api = {
       method: "PUT",
       body: JSON.stringify({ config }),
     }),
+  adminAiUsageSummary: (range = '7d') =>
+    apiRequest<AdminAiUsageSummary>(
+      `/api/admin/ai-usage/summary?range=${encodeURIComponent(range)}`,
+    ),
+  adminAiUsageCalls: (options?: { range?: string; feature?: string; limit?: number; offset?: number }) => {
+    const params = new URLSearchParams({
+      range: options?.range ?? '7d',
+      limit: String(options?.limit ?? 50),
+      offset: String(options?.offset ?? 0),
+    });
+    if (options?.feature) params.set('feature', options.feature);
+    return apiRequest<AdminAiUsageCallsResponse>(
+      `/api/admin/ai-usage/calls?${params.toString()}`,
+    );
+  },
   resetGamification: () =>
     apiRequest<{ message: string }>("/api/interview/gamification/reset", {
       method: "POST",

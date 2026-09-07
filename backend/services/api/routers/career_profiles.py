@@ -140,7 +140,7 @@ def process_career_profile(profile_id: UUID, content: bytes) -> None:
         if extra.get("resume_status") != "processing":
             return
         source_text = extract_pdf_text(content)
-        parsed = parse_resume_text_raw(source_text)
+        parsed = parse_resume_text_raw(source_text, user_id=profile.user_id)
         resume_data = enrich_resume_data_from_source(source_text, normalize_resume_data(parsed))
         profile.name = resume_profile_name(str(extra.get("resume_filename") or "Resume.pdf"), resume_data)
         profile.search_terms = dedupe_strings(recommended_job_search_terms(parsed, resume_data))[:10]
@@ -152,7 +152,7 @@ def process_career_profile(profile_id: UUID, content: bytes) -> None:
         evaluation: dict[str, Any] = {}
         scored_at = utc_now()
         try:
-            evaluation = evaluate_resume_data(resume_data)
+            evaluation = evaluate_resume_data(resume_data, user_id=profile.user_id)
             evaluation["coins_spent"] = RESUME_EVALUATION_COST
             if career_profile_score_table_exists(db):
                 db.add(CareerProfileScoreSnapshot(career_profile_id=profile.id, evaluation=evaluation, resume_data=resume_data))
@@ -333,7 +333,7 @@ def evaluate_career_profile(profile_id: UUID, db: Session = Depends(get_db), cur
     if not wallet or wallet.coins < RESUME_EVALUATION_COST:
         raise HTTPException(status_code=402, detail="Not enough coins")
     try:
-        evaluation = evaluate_resume_data(resume_data)
+        evaluation = evaluate_resume_data(resume_data, user_id=current_user.id)
     except ResumeEvaluationError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     spend_resume_coins(db, current_user, RESUME_EVALUATION_COST, "Resume Profile score", f"{profile.id}:{RUBRIC_VERSION}:{source_hash[:24]}")

@@ -218,7 +218,7 @@ def debug_master_resume_ai(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
     _, content = read_resume_upload(file)
     try:
-        return parse_resume_text_raw(extract_pdf_text(content))
+        return parse_resume_text_raw(extract_pdf_text(content), user_id=current_user.id)
     except ResumeParseError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
@@ -374,7 +374,7 @@ def evaluate_master_resume(
         raise HTTPException(status_code=status.HTTP_402_PAYMENT_REQUIRED, detail="Not enough coins")
 
     try:
-        evaluation = evaluate_resume_data(resume.resume_data)
+        evaluation = evaluate_resume_data(resume.resume_data, user_id=current_user.id)
     except ResumeEvaluationError as exc:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
 

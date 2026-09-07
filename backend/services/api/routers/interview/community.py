@@ -530,6 +530,7 @@ def generate_ai_question_metadata(
             metadata = generate_question_metadata(
                 question.title,
                 question.category.name if question.category else None,
+                user_id=current_user.id,
             )
         except DeepSeekError as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
@@ -625,6 +626,7 @@ def create_ai_reference_answer(
             question.title,
             question.category.name if question.category else None,
             include_question_metadata=True,
+            user_id=current_user.id,
         )
     except DeepSeekError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
@@ -2250,4 +2252,3 @@ def get_user_saved_collections(
         "has_more": has_more,
         "next_offset": offset + limit if has_more else None,
     }
-

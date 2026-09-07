@@ -4,6 +4,8 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { readCurrentForm, readCurrentPage } from '../../page-reader';
 import { uploadFormFile } from '../../dom/form-driver';
 import { fileFieldPurpose } from '../../../shared/utils/form-field-resolution';
+import { dayforceDefinition } from './definition';
+import { dayforceDriverOverride } from './driver';
 
 function base64Encode(text: string): string {
   return btoa(text);
@@ -271,4 +273,285 @@ describe('Dayforce platform', () => {
     );
     expect(clRes.status).toBe('filled');
   });
+
+  it('accurately detects filled state and uploaded filenames for Resume and Cover Letter when Ant Design upload list items are present', () => {
+    Object.defineProperty(window, 'location', {
+      writable: true,
+      value: new URL(
+        'https://jobs.dayforcehcm.com/en-AU/picagroup/CANDIDATEPORTAL/jobs/3458/apply/manualApplication',
+      ),
+    });
+
+    document.body.innerHTML = `
+      <div test-id="manual-application-dayforce-jobs">
+        <section test-id="resume-upload-section">
+          <h2 test-id="resume-upload-title">Resume</h2>
+          <div class="ant-form-item">
+            <span class="ant-upload">
+              <input type="file" accept="doc,docx,pdf,rtf" style="display: none;" />
+              <button type="button" test-id="resume-upload-button">Upload</button>
+            </span>
+            <div class="ant-upload-list">
+              <div test-id="upload-file-item-test" class="w-44">
+                <div class="ant-upload-list-item">
+                  <span class="ant-upload-list-item-name" title="Alex_Candidate_Resume.pdf">Alex_Candidate_Resume.pdf</span>
+                  <button type="button" test-id="resume-upload-delete-icon-button" aria-label="Delete">Delete</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section test-id="cover-letter-upload-section">
+          <h2 test-id="cover-letter-upload-title">Cover letter</h2>
+          <div class="ant-form-item">
+            <span class="ant-upload">
+              <input type="file" accept="doc,docx,pdf,rtf" style="display: none;" />
+              <button type="button" test-id="cover-letter-upload-button">Upload</button>
+            </span>
+            <!-- No file uploaded for cover letter yet -->
+          </div>
+        </section>
+      </div>
+    `;
+
+    const form = readCurrentForm();
+    expect(form.kind).toBe('application_form');
+    if (form.kind !== 'application_form') return;
+
+    const resumeField = form.fields.find((f) => fileFieldPurpose(f) === 'resume');
+    expect(resumeField).toBeDefined();
+    expect(resumeField?.filled).toBe(true);
+    expect(resumeField?.upload?.state).toBe('ready');
+    expect(resumeField?.upload?.filename).toBe('Alex_Candidate_Resume.pdf');
+    expect(resumeField?.currentValue).toBe('Alex_Candidate_Resume.pdf');
+
+    const clField = form.fields.find((f) => fileFieldPurpose(f) === 'cover_letter');
+    expect(clField).toBeDefined();
+    expect(clField?.filled).toBe(false);
+    expect(clField?.upload?.state).toBe('empty');
+    expect(clField?.currentValue).toBeUndefined();
+  });
+
+  it('accurately detects filled state and values for Ant Design Select fields and distinguishes from placeholders', () => {
+    Object.defineProperty(window, 'location', {
+      writable: true,
+      value: new URL(
+        'https://jobs.dayforcehcm.com/en-AU/picagroup/CANDIDATEPORTAL/jobs/3458/apply/manualApplication',
+      ),
+    });
+
+    document.body.innerHTML = `
+      <div test-id="manual-application-dayforce-jobs">
+        <!-- Selected country: Australia -->
+        <div test-id="country-selector">
+          <label for="personalInfo_countryCode">Country</label>
+          <div class="ant-select ant-select-single ant-select-show-arrow">
+            <div class="ant-select-selector">
+              <span class="ant-select-selection-search">
+                <input id="personalInfo_countryCode" role="combobox" class="ant-select-selection-search-input" value="" />
+              </span>
+              <span class="ant-select-selection-item" title="Australia">Australia</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Unselected state/province with placeholder -->
+        <div test-id="state-province-selector">
+          <label for="personalInfo_stateCode">State/Province</label>
+          <div class="ant-select ant-select-single ant-select-show-arrow">
+            <div class="ant-select-selector">
+              <span class="ant-select-selection-search">
+                <input id="personalInfo_stateCode" role="combobox" class="ant-select-selection-search-input" value="" />
+              </span>
+              <span class="ant-select-selection-placeholder">Select a state or province</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Selected preferred contact method -->
+        <div>
+          <label for="personalInfo_preferredContactMethod">Preferred contact method</label>
+          <div class="ant-select ant-select-single ant-select-show-arrow">
+            <div class="ant-select-selector">
+              <span class="ant-select-selection-search">
+                <input id="personalInfo_preferredContactMethod" role="combobox" class="ant-select-selection-search-input" value="" />
+              </span>
+              <span class="ant-select-selection-item" title="Mobile">Mobile</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const form = readCurrentForm();
+    expect(form.kind).toBe('application_form');
+    if (form.kind !== 'application_form') return;
+
+    const countryField = form.fields.find((f) => f.id === 'personalInfo_countryCode');
+    expect(countryField).toBeDefined();
+    expect(countryField?.label).toBe('Country');
+    expect(countryField?.filled).toBe(true);
+    expect(countryField?.currentValue).toBe('Australia');
+
+    const stateField = form.fields.find((f) => f.id === 'personalInfo_stateCode');
+    expect(stateField).toBeDefined();
+    expect(stateField?.label).toBe('State/Province');
+    expect(stateField?.filled).toBe(false);
+    expect(stateField?.currentValue).toBeUndefined();
+
+    const contactField = form.fields.find((f) => f.id === 'personalInfo_preferredContactMethod');
+    expect(contactField).toBeDefined();
+    expect(contactField?.label).toBe('Preferred contact method');
+    expect(contactField?.filled).toBe(true);
+    expect(contactField?.currentValue).toBe('Mobile');
+  });
+
+  it('accurately detects filled state for text, confirm fields, checkbox, and radio groups', () => {
+    Object.defineProperty(window, 'location', {
+      writable: true,
+      value: new URL(
+        'https://jobs.dayforcehcm.com/en-AU/picagroup/CANDIDATEPORTAL/jobs/3458/apply/manualApplication',
+      ),
+    });
+
+    document.body.innerHTML = `
+      <div test-id="manual-application-dayforce-jobs">
+        <label for="jobPostingApplication_personalInfo_firstName">First name</label>
+        <input id="jobPostingApplication_personalInfo_firstName" value="Jane" />
+
+        <label for="jobPostingApplication_personalInfo_email">Email address</label>
+        <input id="jobPostingApplication_personalInfo_email" value="jane@example.com" />
+
+        <label for="jobPostingApplication_personalInfo_confirmEmail">Confirm email address</label>
+        <input id="jobPostingApplication_personalInfo_confirmEmail" value="jane@example.com" />
+
+        <label for="jobPostingApplication_personalInfo_mobilePhone">Mobile phone</label>
+        <input id="jobPostingApplication_personalInfo_mobilePhone" value="" />
+
+        <label for="jobPostingApplication_personalInfo_isApplyingWithPhoneNumber">Apply with phone number</label>
+        <input id="jobPostingApplication_personalInfo_isApplyingWithPhoneNumber" type="checkbox" checked />
+
+        <fieldset>
+          <legend>Hide profile</legend>
+          <label><input type="radio" name="hideExternalCandidateProfile" value="false" checked /> No</label>
+          <label><input type="radio" name="hideExternalCandidateProfile" value="true" /> Yes</label>
+        </fieldset>
+      </div>
+    `;
+
+    const form = readCurrentForm();
+    expect(form.kind).toBe('application_form');
+    if (form.kind !== 'application_form') return;
+
+    const firstName = form.fields.find((f) => f.id === 'jobPostingApplication_personalInfo_firstName');
+    expect(firstName?.label).toBe('First name');
+    expect(firstName?.filled).toBe(true);
+    expect(firstName?.currentValue).toBe('Jane');
+
+    const email = form.fields.find((f) => f.id === 'jobPostingApplication_personalInfo_email');
+    expect(email?.label).toBe('Email address');
+    expect(email?.filled).toBe(true);
+    expect(email?.currentValue).toBe('jane@example.com');
+    expect(email?.semanticFeatures).toContain('email');
+
+    const confirmEmail = form.fields.find((f) => f.id === 'jobPostingApplication_personalInfo_confirmEmail');
+    expect(confirmEmail?.label).toBe('Confirm email address');
+    expect(confirmEmail?.filled).toBe(true);
+    expect(confirmEmail?.currentValue).toBe('jane@example.com');
+    expect(confirmEmail?.semanticFeatures).toContain('confirm_email');
+
+    const mobile = form.fields.find((f) => f.id === 'jobPostingApplication_personalInfo_mobilePhone');
+    expect(mobile?.filled).toBe(false);
+    expect(mobile?.currentValue).toBeUndefined();
+
+    const phoneCheckbox = form.fields.find((f) => f.id === 'jobPostingApplication_personalInfo_isApplyingWithPhoneNumber');
+    expect(phoneCheckbox?.filled).toBe(true);
+    expect(phoneCheckbox?.currentValue).toBe('true');
+
+    const hideProfile = form.fields.find((f) => f.name === 'hideExternalCandidateProfile');
+    expect(hideProfile?.filled).toBe(true);
+  });
+
+  it('dayforceDriverOverride commits and fills Ant Design Select fields', async () => {
+    document.body.innerHTML = `
+      <div class="ant-form" name="jobPostingApplication">
+        <div class="ant-select ant-select-single ant-select-show-arrow" id="select-wrap">
+          <div class="ant-select-selector">
+            <span class="ant-select-selection-search">
+              <input id="personalInfo_countryCode" role="combobox" class="ant-select-selection-search-input" aria-controls="country_list" value="" />
+            </span>
+            <span class="ant-select-selection-placeholder">Select a country</span>
+          </div>
+        </div>
+      </div>
+      <div id="country_list" role="listbox">
+        <div role="option" class="ant-select-item ant-select-item-option" data-value="AU" title="Australia">
+          <div class="ant-select-item-option-content">Australia</div>
+        </div>
+        <div role="option" class="ant-select-item ant-select-item-option" data-value="US" title="United States">
+          <div class="ant-select-item-option-content">United States</div>
+        </div>
+      </div>
+    `;
+
+    const input = document.getElementById('personalInfo_countryCode') as HTMLInputElement;
+
+    // Check isComboboxCommitted before selection
+    expect(dayforceDriverOverride.isComboboxCommitted?.(input, document)).toBe(false);
+
+    // Fill field
+    const fillResult = await dayforceDriverOverride.fillField?.(
+      {
+        commandId: 'cmd-select-country',
+        target: {
+          key: 'personalInfo_countryCode',
+          id: 'personalInfo_countryCode',
+          label: 'Country',
+          type: 'select',
+        },
+        value: 'Australia',
+      },
+      document,
+    );
+
+    expect(fillResult?.status).toBe('filled');
+
+    // Simulate Ant Design updating selection item
+    const selector = document.querySelector('.ant-select-selector');
+    const placeholder = document.querySelector('.ant-select-selection-placeholder');
+    placeholder?.remove();
+    const selectionItem = document.createElement('span');
+    selectionItem.className = 'ant-select-selection-item';
+    selectionItem.title = 'Australia';
+    selectionItem.textContent = 'Australia';
+    selector?.appendChild(selectionItem);
+
+    // Verify committed
+    expect(dayforceDriverOverride.isComboboxCommitted?.(input, document)).toBe(true);
+
+    // Fill again with same value -> already_filled
+    const alreadyResult = await dayforceDriverOverride.fillField?.(
+      {
+        commandId: 'cmd-select-country-again',
+        target: {
+          key: 'personalInfo_countryCode',
+          id: 'personalInfo_countryCode',
+          label: 'Country',
+          type: 'select',
+        },
+        value: 'Australia',
+      },
+      document,
+    );
+    expect(alreadyResult?.status).toBe('already_filled');
+  });
+
+  it('declares sequential autofill policy with settle delay', () => {
+    expect(dayforceDefinition.autofill).toBeDefined();
+    expect(dayforceDefinition.autofill?.mode).toBe('sequential');
+    expect(dayforceDefinition.autofill?.refreshAfterFieldMs).toBe(150);
+    expect(dayforceDefinition.autofill?.settleBetweenFieldsMs).toBe(100);
+  });
 });
+

@@ -3,7 +3,7 @@ import json
 import logging
 import re
 from time import perf_counter
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import httpx
 
@@ -64,6 +64,7 @@ def _record_provider_usage(
     correlation_id: str,
     requested_model: str,
     duration_ms: int,
+    user_id: UUID | None,
 ) -> None:
     raw_usage = payload.get("usage")
     if not isinstance(raw_usage, dict):
@@ -77,6 +78,7 @@ def _record_provider_usage(
             correlation_id=correlation_id,
             usage=usage,
             duration_ms=duration_ms,
+            user_id=user_id,
         )
     except Exception:
         logger.warning(
@@ -106,6 +108,7 @@ def _complete(
     temperature: float = 0.35,
     timeout: float = 45.0,
     correlation_id: str | None = None,
+    user_id: UUID | None = None,
 ) -> dict:
     settings = get_settings()
     if not settings.deepseek_api_key:
@@ -135,6 +138,7 @@ def _complete(
             correlation_id=correlation_id,
             requested_model=settings.deepseek_model,
             duration_ms=duration_ms,
+            user_id=user_id,
         )
         content = payload["choices"][0]["message"]["content"]
         return _extract_json_payload(content)
@@ -149,6 +153,7 @@ async def _complete_async(
     temperature: float = 0.35,
     timeout: float = 45.0,
     correlation_id: str | None = None,
+    user_id: UUID | None = None,
 ) -> dict:
     """Async completion whose provider connection closes on task cancellation."""
     settings = get_settings()
@@ -180,6 +185,7 @@ async def _complete_async(
             correlation_id=correlation_id,
             requested_model=settings.deepseek_model,
             duration_ms=duration_ms,
+            user_id=user_id,
         )
         content = payload["choices"][0]["message"]["content"]
         return _extract_json_payload(content)
@@ -224,7 +230,12 @@ def _normalize_question_metadata(raw_metadata) -> dict:
     }
 
 
-def generate_question_metadata(question: str, question_type: str | None = None) -> dict:
+def generate_question_metadata(
+    question: str,
+    question_type: str | None = None,
+    *,
+    user_id: UUID | None = None,
+) -> dict:
     result = _complete([
         {
             "role": "system",
@@ -244,7 +255,7 @@ def generate_question_metadata(question: str, question_type: str | None = None) 
                 f"Interview question: {question}"
             ),
         },
-    ], operation="interview_question_metadata")
+    ], operation="interview_question_metadata", user_id=user_id)
     return _normalize_question_metadata(result)
 
 
@@ -252,6 +263,8 @@ def generate_reference_answer(
     question: str,
     question_type: str | None = None,
     include_question_metadata: bool = False,
+    *,
+    user_id: UUID | None = None,
 ) -> dict:
     question_metadata_schema = ""
     question_metadata_rules = ""
@@ -322,7 +335,7 @@ def generate_reference_answer(
                 f"Interview question: {question}"
             ),
         },
-    ], operation="interview_reference_answer")
+    ], operation="interview_reference_answer", user_id=user_id)
 
     title = str(result.get("title", "AI Reference Answer")).strip()[:255]
 
@@ -404,7 +417,7 @@ def generate_reference_answer(
     return response
 
 
-def evaluate_practice_answer(question: str, answer: str) -> dict:
+def evaluate_practice_answer(question: str, answer: str, *, user_id: UUID | None = None) -> dict:
     result = _complete([
         {
             "role": "system",
@@ -434,7 +447,7 @@ def evaluate_practice_answer(question: str, answer: str) -> dict:
             "role": "user",
             "content": f"Interview Question: {question}\nCandidate Answer: {answer}",
         },
-    ], operation="interview_practice_evaluation")
+    ], operation="interview_practice_evaluation", user_id=user_id)
     try:
         score = int(result["overall_score"])
     except (KeyError, TypeError, ValueError) as exc:

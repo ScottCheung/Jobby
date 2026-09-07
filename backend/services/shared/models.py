@@ -42,6 +42,9 @@ class LLMUsageRecord(Base):
     __tablename__ = "llm_usage"
 
     id: Mapped[PyUUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid4)
+    user_id: Mapped[PyUUID | None] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     operation: Mapped[str] = mapped_column(String(80), nullable=False, index=True)
     correlation_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     provider: Mapped[str] = mapped_column(String(50), nullable=False)

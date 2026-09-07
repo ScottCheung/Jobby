@@ -222,6 +222,7 @@ class LLMUsageSummaryRead(BaseModel):
     cached_input_tokens: int
     estimated_cost_usd: Decimal | None = None
     duration_ms: int
+    model: str | None = None
 
 
 class TailoredResumeRead(OrmModel):

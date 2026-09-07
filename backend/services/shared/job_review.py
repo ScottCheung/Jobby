@@ -8,6 +8,7 @@ import logging
 import re
 from time import perf_counter
 from typing import Any
+from uuid import UUID
 
 from services.shared.deepseek import _complete, _complete_async
 
@@ -525,6 +526,7 @@ def review_job(
     tailor: bool = True,
     mock: bool = False,
     correlation_id: str | None = None,
+    user_id: UUID | None = None,
 ) -> dict:
     description = _text(job.get("job_description"))
     if not description:
@@ -568,6 +570,7 @@ def review_job(
                 operation=_tailor_operation(doc_type),
                 timeout=90.0,
                 correlation_id=correlation_id,
+                user_id=user_id,
             )
             cover_letter_text = _text(tailor_result.get("cover_letter")) or None
             # The model only edits the targeted sections. Preserve the candidate's
@@ -613,6 +616,7 @@ async def review_job_async(
     tailor: bool = True,
     mock: bool = False,
     correlation_id: str | None = None,
+    user_id: UUID | None = None,
 ) -> dict:
     """Cancellable async variant used by interactive resume generation."""
     if mock or not tailor:
@@ -623,6 +627,7 @@ async def review_job_async(
             tailor=tailor,
             mock=mock,
             correlation_id=correlation_id,
+            user_id=user_id,
         )
 
     description = _text(job.get("job_description"))
@@ -636,6 +641,7 @@ async def review_job_async(
         operation=_tailor_operation(doc_type),
         timeout=90.0,
         correlation_id=correlation_id,
+        user_id=user_id,
     )
     cover_letter_text = _text(tailor_result.get("cover_letter")) or None
     if doc_type == "cover_letter":

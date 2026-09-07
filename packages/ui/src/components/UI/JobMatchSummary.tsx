@@ -40,7 +40,7 @@ export function JobMatchSummary({
   return (
     <div className={cn('flex items-start gap-3', className)}>
       <div
-        aria-label={isLoading ? 'Calculating recommendation' : `Recommendation: ${safeScore ?? 'unavailable'}`}
+        aria-label={isLoading ? 'Calculating' : `Recommendation: ${safeScore ?? 'unavailable'}`}
         className={cn(
           'relative flex shrink-0 items-start justify-center rounded-full bg-primary/10 shadow-xs',
           compact ? 'size-14' : 'size-18',

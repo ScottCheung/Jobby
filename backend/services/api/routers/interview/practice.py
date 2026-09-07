@@ -381,7 +381,7 @@ def create_practice_evaluation(
     if not question:
         raise HTTPException(status_code=404, detail="Question not found")
     try:
-        result = evaluate_practice_answer(question.title, answer_text)
+        result = evaluate_practice_answer(question.title, answer_text, user_id=current_user.id)
     except DeepSeekError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     ai_config = get_gamification_config(db).config.get("ai", {})
@@ -595,4 +595,3 @@ def update_plan_task(
     db.commit()
     db.refresh(task)
     return task
-

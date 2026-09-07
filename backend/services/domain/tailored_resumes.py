@@ -52,6 +52,7 @@ def _run_tailored_resume_generation(
         doc_type=doc_type,
         mock=mock,
         correlation_id=correlation_id or str(tailored_resume.id),
+        user_id=tailored_resume.user_id,
     )
 
 
@@ -191,13 +192,12 @@ def generate_tailored_document(
     generation_id: str | None = None,
     tailored_resume_id: UUID | str | None = None,
     mock: bool = False,
-    career_profile: JobHuntingProfile | None = None,
     career_profile_provider: Callable[[Session, User], JobHuntingProfile] | None = None,
     reviewer: Callable[..., dict] | None = None,
     broadcaster: Callable[..., Any] | None = None,
 ) -> tuple[dict, TailoredResume]:
     """Create or reuse a tailored document and run its complete generation lifecycle."""
-    career_profile = career_profile or (career_profile_provider or _default_career_profile)(db, current_user)
+    career_profile = (career_profile_provider or _default_career_profile)(db, current_user)
     profile_resume = dict((career_profile.extra_data or {}).get("resume_data") or {})
     generation_id = generation_id or str(uuid4())
     broadcaster = broadcaster or broadcast_sync

@@ -413,7 +413,7 @@ def process_master_resume(resume_id: UUID, content: bytes, upload_id: str) -> No
             return
         extractor = extract_pdf_text
         source_text = extractor(content)
-        parsed_resume = parse_resume_text_raw(source_text)
+        parsed_resume = parse_resume_text_raw(source_text, user_id=resume.user_id)
         resume_data = enrich_resume_data_from_source(source_text, normalize_resume_data(parsed_resume))
         db.refresh(resume)
         if resume.status != "processing" or not resume_matches_upload(resume, upload_id):
@@ -539,4 +539,3 @@ def recover_master_resume(resume_id: UUID) -> None:
             db.close()
         return
     process_master_resume(resume_id, content, upload_id)
-

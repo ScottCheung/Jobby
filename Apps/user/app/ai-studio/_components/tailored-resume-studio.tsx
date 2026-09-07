@@ -16,6 +16,8 @@ import {
 import { renderResumePdfOnce } from '@jobby/ui/components/UI/Resume/ResumePdfPreview';
 import { renderCoverLetterPdfOnce } from '@jobby/ui/components/UI/Resume/CoverLetterPdfPreview';
 import { api, type TailoredResume } from '@/lib/api';
+import { AiUsageMeta } from '@/components/AiUsageMeta';
+import { useConsole } from '@/components/ConsoleContext';
 import type { MasterResumeData } from '@/lib/types';
 import { showGlobalToast } from '@/lib/toast';
 import { formatRelativeTime } from '@/lib/use-relative-time';
@@ -66,6 +68,7 @@ export function TailoredResumeStudio({
 }: TailoredResumeStudioProps) {
   const router = useRouter();
   const confirm = useConfirmStore((state) => state.confirm);
+  const { user } = useConsole();
 
   const [tailoredResumes, setTailoredResumes] = useState<TailoredResume[]>([]);
   const [currentResume, setCurrentResume] = useState<TailoredResume | null>(null);
@@ -284,10 +287,10 @@ export function TailoredResumeStudio({
         resume_data: nextResumeData,
         core_competencies: updatedCompetencies,
       });
-
-      setCurrentResume(updated);
+      const updatedWithUsage = { ...updated, usage: updated.usage ?? currentResume.usage };
+      setCurrentResume(updatedWithUsage);
       setTailoredResumes((prev) =>
-        prev.map((item) => (item.id === updated.id ? updated : item)),
+        prev.map((item) => (item.id === updated.id ? updatedWithUsage : item)),
       );
       window.postMessage(
         { source: 'jobby-web-app', type: 'JOBBY_TAILORED_RESUME_UPDATED' },
@@ -313,9 +316,10 @@ export function TailoredResumeStudio({
       const updated = await api.updateTailoredResume(currentResume.id, {
         cover_letter: nextCoverLetter,
       });
-      setCurrentResume(updated);
+      const updatedWithUsage = { ...updated, usage: updated.usage ?? currentResume.usage };
+      setCurrentResume(updatedWithUsage);
       setTailoredResumes((prev) =>
-        prev.map((item) => (item.id === updated.id ? updated : item)),
+        prev.map((item) => (item.id === updated.id ? updatedWithUsage : item)),
       );
       window.postMessage(
         { source: 'jobby-web-app', type: 'JOBBY_TAILORED_RESUME_UPDATED' },
@@ -364,13 +368,6 @@ export function TailoredResumeStudio({
   const resumeData = (currentResume?.resume_data || {}) as MasterResumeData;
   const roleTitle = currentResume?.job_title || 'Tailored Role';
   const companyName = currentResume?.company || 'Target Company';
-  const usage = currentResume?.usage;
-  const usageCost = usage?.estimated_cost_usd == null ? null : Number(usage.estimated_cost_usd);
-  const usageLabel = usage ? [
-    `${(usage.duration_ms / 1000).toFixed(1)}s`,
-    `${(usage.total_tokens / 1000).toFixed(1)}K tokens`,
-    usageCost != null && Number.isFinite(usageCost) ? `~$${usageCost.toFixed(3)}` : null,
-  ].filter(Boolean).join(' · ') : null;
 
   const coreCompetencies = useMemo(() => {
     if (!currentResume) return [];
@@ -651,11 +648,7 @@ export function TailoredResumeStudio({
                   <div className='text-[11px] text-ink-secondary'>
                     {formatRelativeTime(currentResume.created_at)}
                   </div>
-                  {usageLabel && (
-                    <div className='text-[10px] text-ink-secondary'>
-                      ⚡ {usageLabel}
-                    </div>
-                  )}
+                  <AiUsageMeta usage={currentResume.usage} showCost={user?.role === 'admin'} />
                 </div>
 
                 {currentResume.job_description && (

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from uuid import UUID
 from typing import Any
 
 from services.shared.deepseek import DeepSeekError, _complete
@@ -246,7 +247,7 @@ def normalize_resume_evaluation(raw: Any, resume_data: dict | None = None) -> di
     }
 
 
-def evaluate_resume_data(resume_data: dict) -> dict:
+def evaluate_resume_data(resume_data: dict, *, user_id: UUID | None = None) -> dict:
     if not isinstance(resume_data, dict) or not resume_data:
         raise ResumeEvaluationError("Resume data is required for evaluation")
     compact_input = json.dumps(_evaluation_input(resume_data), ensure_ascii=False, separators=(",", ":"))
@@ -258,6 +259,7 @@ def evaluate_resume_data(resume_data: dict) -> dict:
             ],
             temperature=0,
             operation="resume_evaluation",
+            user_id=user_id,
         )
     except DeepSeekError as exc:
         raise ResumeEvaluationError(str(exc)) from exc

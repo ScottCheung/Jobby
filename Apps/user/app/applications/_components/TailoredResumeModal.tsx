@@ -16,6 +16,8 @@ import {
   Trash2,
 } from 'lucide-react';
 import { api, type TailoredResume } from '@/lib/api';
+import { AiUsageMeta } from '@/components/AiUsageMeta';
+import { useConsole } from '@/components/ConsoleContext';
 import type { MasterResumeData } from '@/lib/types';
 import { ResumePdfPreview } from '@/app/settings/resume/_component/resume-pdf-preview';
 import { formatResumeFilename } from '@jobby/ui/components/UI/Resume';
@@ -33,6 +35,7 @@ export function TailoredResumeModal({
   company,
   onClose,
 }: TailoredResumeModalProps) {
+  const { user } = useConsole();
   const [tailoredResume, setTailoredResume] = useState<TailoredResume | null>(
     null,
   );
@@ -267,15 +270,8 @@ export function TailoredResumeModal({
                     · {new Date(tailoredResume.created_at).toLocaleDateString()}
                   </span>
                 )}
-                {tailoredResume?.usage && (
-                  <span>
-                    · ⚡ {(tailoredResume.usage.duration_ms / 1000).toFixed(1)}s ·{' '}
-                    {(tailoredResume.usage.total_tokens / 1000).toFixed(1)}K tokens
-                    {tailoredResume.usage.estimated_cost_usd != null &&
-                      ` · ~$${Number(tailoredResume.usage.estimated_cost_usd).toFixed(3)}`}
-                  </span>
-                )}
               </p>
+              <AiUsageMeta usage={tailoredResume?.usage} showCost={user?.role === 'admin'} />
             </div>
           </div>
 
