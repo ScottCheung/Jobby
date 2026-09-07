@@ -13,6 +13,14 @@ import {
   clearJobDescriptionRoot,
   rememberJobDescriptionRoot,
 } from '../../dom/job-description-root';
+import {
+  describeLinkedInElement,
+  isLinkedInFullPageApplicationFlow,
+  linkedInApplySurfaceCandidates,
+  linkedInFieldDiagnostics,
+  resolveLinkedInApplySurface,
+  type LinkedInApplySurface,
+} from './application-surface';
 
 type LinkedInJobData = Omit<
   LinkedInJobSnapshot,
@@ -111,21 +119,6 @@ const SELECTORS = {
     '[data-live-test-job-apply]',
     "a[href*='/jobs/view/'][href*='/apply']",
   ],
-  applicationRoot: [
-    ".jobs-easy-apply-modal",
-    ".jobs-easy-apply-content",
-    "#artdeco-modal-outlet .artdeco-modal",
-    "#artdeco-modal-outlet [role='dialog']",
-    ".artdeco-modal[role='dialog']",
-    "[role='dialog'][aria-label*='Apply']",
-    "[role='dialog'][aria-label*='申请']",
-    "[role='dialog'][aria-label*='应聘']",
-    "div[role='dialog']",
-    "form.jobs-easy-apply-form",
-    "#artdeco-modal-outlet [data-test-modal]",
-    "#artdeco-modal-outlet [data-test-modal-container]",
-    "[data-test-modal]",
-  ],
   nextAction: [
     "button[aria-label*='Continue']",
     "button[aria-label*='Next']",
@@ -154,19 +147,6 @@ const SELECTORS = {
     "button[aria-label*='提交']",
   ],
 } as const;
-
-const APPLICATION_FIELD_SELECTOR =
-  "input:not([type='hidden']), select, textarea, [role='radio'], [role='radiogroup'], [role='combobox'], [role='checkbox'], input[type='file']";
-
-const APPLICATION_ROOT_SELECTOR = [
-  ...SELECTORS.applicationRoot,
-  "#artdeco-modal-outlet .artdeco-modal",
-  "#artdeco-modal-outlet [role='dialog']",
-  "#artdeco-modal-outlet [data-test-modal]",
-  "#artdeco-modal-outlet [data-test-modal-container]",
-  "[role='dialog']",
-  "[data-test-modal]",
-].filter((selector, index, selectors) => selectors.indexOf(selector) === index);
 
 const TITLE_METADATA = new Set([
   'easy apply',
@@ -836,7 +816,7 @@ function datePostedFromPage(externalId: string): string | undefined {
 
 export class LinkedInAdapter {
   readonly platformName = 'linkedin' as const;
-  private applicationRootCache: HTMLElement | null | undefined;
+  private applicationSurfaceCache: LinkedInApplySurface | null | undefined;
   private applicationActionCache = new Map<ApplicationAction, HTMLElement | null>();
 
   jobIdFromUrl(url: string): string {
@@ -946,63 +926,28 @@ export class LinkedInAdapter {
     };
   }
 
+  getApplicationSurface(): LinkedInApplySurface | null {
+    // Resolve on every read. LinkedIn can leave the previous step connected
+    // while replacing only its active subtree, so connection alone is not a
+    // safe cache-validity signal.
+    const surface = resolveLinkedInApplySurface();
+    if (surface?.root !== this.applicationSurfaceCache?.root) {
+      this.applicationActionCache.clear();
+    }
+    this.applicationSurfaceCache = surface;
+    return surface;
+  }
+
   getApplicationRoot(): HTMLElement | null {
-    // A jobs search page can expose form-like filters before Easy Apply opens.
-    // If that broad container was cached, it remains connected and visible
-    // underneath the modal. Prefer the current "Apply to …" heading's narrow
-    // container on every read so background search controls never leak into
-    // the application field list.
-    const headingRoot = this.findApplicationRootFromHeading();
-    if (headingRoot) {
-      if (this.applicationRootCache !== headingRoot) {
-        this.applicationActionCache.clear();
-      }
-      this.applicationRootCache = headingRoot;
-      return headingRoot;
-    }
-    if (
-      this.applicationRootCache &&
-      this.applicationRootCache.isConnected &&
-      isVisible(this.applicationRootCache)
-    ) {
-      return this.applicationRootCache;
-    }
-    // Do not hold on to a negative result: LinkedIn often creates the modal
-    // after the initial inspection request has already run.
-    this.applicationRootCache = undefined;
-    const candidates = this.applicationRootCandidates();
+    return this.getApplicationSurface()?.root || null;
+  }
 
-    // LinkedIn can finish inserting the modal before its first paint. An
-    // explicitly active data-test container is a stronger signal than a zero
-    // bounding rect during that transition.
-    const activeRoot = candidates.find(
-      (candidate) =>
-        this.isEasyApplyRoot(candidate) && this.isExplicitlyActiveModal(candidate),
-    );
-    if (activeRoot) {
-      this.applicationRootCache = activeRoot;
-      return activeRoot;
-    }
-
-    const modalRoot =
-      candidates.find(
-        (candidate) =>
-          this.isEasyApplyRoot(candidate) &&
-          isVisible(candidate) &&
-          isEnabled(candidate) &&
-          !this.hasHiddenModalAncestor(candidate),
-      ) || null;
-    if (modalRoot) {
-      this.applicationRootCache = modalRoot;
-      return modalRoot;
-    }
-
-    this.applicationRootCache = this.findFullPageApplicationRoot();
-    return this.applicationRootCache;
+  getApplicationFieldRoot(): HTMLElement | null {
+    return this.getApplicationSurface()?.fieldRoot || null;
   }
 
   invalidateApplicationRootCache(): void {
-    this.applicationRootCache = undefined;
+    this.applicationSurfaceCache = undefined;
     this.applicationActionCache.clear();
   }
 
@@ -1011,7 +956,7 @@ export class LinkedInAdapter {
   }
 
   getCachedApplicationRoot(): HTMLElement | null | undefined {
-    return this.applicationRootCache;
+    return this.applicationSurfaceCache?.root;
   }
 
   hasEasyApplyAction(): boolean {
@@ -1019,50 +964,18 @@ export class LinkedInAdapter {
   }
 
   isFullPageApplicationFlow(): boolean {
-    try {
-      const value = new URL(window.location.href).searchParams.get('openSDUIApplyFlow');
-      return value === 'true' || value === '1';
-    } catch {
-      return false;
-    }
+    return isLinkedInFullPageApplicationFlow();
   }
 
   applicationFormDiagnostic(): string {
-    const containers = Array.from(
-      document.querySelectorAll<HTMLElement>(
-        '#artdeco-modal-outlet [data-test-modal-container]',
-      ),
-    );
-    const candidates = this.applicationRootCandidates();
-    const visibleCandidates = candidates.filter(
-      (candidate) =>
-        isVisible(candidate) && !this.hasHiddenModalAncestor(candidate),
-    );
-    const easyApplyModals = document.querySelectorAll(
-      '.jobs-easy-apply-modal',
-    ).length;
-    const activeContainers = containers.filter(
-      (container) => container.getAttribute('aria-hidden') !== 'true',
-    ).length;
-    const root = this.getApplicationRoot();
-    const modalOutlet = document.querySelector<HTMLElement>('#artdeco-modal-outlet');
-    const fieldScope = root || modalOutlet || document;
-    const allFields = Array.from(
-      fieldScope.querySelectorAll<HTMLElement>(APPLICATION_FIELD_SELECTOR),
-    );
-    const visibleFields = allFields.filter((field) => isVisible(field));
-    const rootClasses = root && typeof root.className === 'string'
-      ? root.className.trim().split(/\s+/).filter(Boolean).slice(0, 3).join('.')
-      : '';
-    const rootDescription = root
-      ? `${root.tagName.toLowerCase()}${rootClasses ? `.${rootClasses}` : ''}`
-      : 'none';
-    const fieldScopeDescription = root
-      ? 'application root'
-      : modalOutlet
-        ? 'modal outlet fallback'
-        : 'document fallback';
-    return `诊断：modal outlet ${modalOutlet ? 1 : 0}；SDUI 全页流 ${this.isFullPageApplicationFlow() ? 1 : 0}；候选 dialog ${visibleCandidates.length}/${candidates.length}；活动 modal 容器 ${activeContainers}/${containers.length}；Easy Apply class ${easyApplyModals}；application root ${rootDescription}；表单字段 ${visibleFields.length}/${allFields.length}（scope: ${fieldScopeDescription}）。`;
+    if (!import.meta.env.DEV) return '';
+    const candidates = linkedInApplySurfaceCandidates();
+    const surface = this.getApplicationSurface();
+    const fieldRoot = surface?.fieldRoot || null;
+    const fields = linkedInFieldDiagnostics(fieldRoot);
+    const action = this.getCurrentApplicationActionLabel() || 'none';
+    const visibleCandidates = candidates.filter((candidate) => isVisible(candidate));
+    return `诊断：application-root candidates ${visibleCandidates.length}/${candidates.length}；selected root ${describeLinkedInElement(surface?.root)}；fieldRoot ${describeLinkedInElement(fieldRoot)}；state ${surface?.state || 'none'}；top-layer ${surface?.topLayer ? 1 : 0}；raw fields ${fields.raw}；accepted ${fields.accepted}；rejected ${fields.rejected}；reasons ${fields.reasons}；action ${action}。`;
   }
 
   getEasyApplyUrl(): string | undefined {
@@ -1074,12 +987,19 @@ export class LinkedInAdapter {
   getCurrentApplicationAction(
     action: ApplicationAction,
   ): HTMLElement | null {
+    const surface = this.getApplicationSurface();
     const cached = this.applicationActionCache.get(action);
-    if (cached && cached.isConnected && isVisible(cached) && isEnabled(cached)) {
+    if (
+      cached &&
+      surface?.root.contains(cached) &&
+      cached.isConnected &&
+      isVisible(cached) &&
+      isEnabled(cached)
+    ) {
       return cached;
     }
     this.applicationActionCache.delete(action);
-    const root = this.getApplicationRoot();
+    const root = surface?.root || null;
     if (!root) {
       return null;
     }
@@ -1326,171 +1246,6 @@ export class LinkedInAdapter {
       const hasEasyApplyTestHook = element.hasAttribute('data-live-test-job-apply');
       return isEasyApplyText || isEasyApplyUrl || (isApplyButtonClass && hasEasyApplyTestHook);
     });
-  }
-
-  private isEasyApplyRoot(element: HTMLElement): boolean {
-    const className = typeof element.className === 'string' ? element.className : '';
-    if (/jobs-easy-apply-(?:modal|content|form)/i.test(className)) return true;
-
-    const label = cleanText(
-      `${element.getAttribute('aria-label') || ''} ${deepFirst(element, 'h1, h2, h3, [role="heading"], [class*="header" i], [class*="title" i]')?.textContent || ''}`,
-    );
-    if (/(?:job\s*alert|search\s*alert|create\s*alert|职位提醒|求职提醒|创建求职通知|通知提醒)/i.test(label)) {
-      return false;
-    }
-
-    if (/(?:easy\s*apply|简单申请|輕鬆應聘|轻松应聘|一键应聘|一键申请)/i.test(label)) {
-      return true;
-    }
-
-    // Current LinkedIn variants title the application modal "Apply to <company>"
-    // instead of "Easy Apply". Require a real form control to avoid treating a
-    // generic confirmation dialog as an application form.
-    const hasApplicationField = Boolean(deepFirst(element, APPLICATION_FIELD_SELECTOR));
-    if (/(?:apply\s+to|申请(?:职位|工作)?|应聘)/i.test(label) && hasApplicationField) {
-      return true;
-    }
-
-    const hasApplicationAction = Boolean(deepFirst(
-      element,
-      'form.jobs-easy-apply-form, [data-live-test-easy-apply-submit-button], [data-live-test-easy-apply-next-button], button.artdeco-button--primary, button[aria-label*="Continue"], button[aria-label*="Next"], button[aria-label*="Review"], button[aria-label*="Submit"]',
-    )) || deepQueryAll(element, 'button, [role="button"]').some((button) => {
-      const btnText = cleanText(button.textContent || button.getAttribute('aria-label'));
-      return /(?:continue|next|review|submit|申请|提交|继续|下一步|审核|检查)/i.test(btnText);
-    });
-    const isModalLike = element.matches(
-      '[role="dialog"], .artdeco-modal, [data-test-modal], [data-test-modal-container], .jobs-easy-apply-content, form.jobs-easy-apply-form',
-    );
-    return isModalLike && hasApplicationField && (hasApplicationAction || /(?:apply\s+to|申请(?:职位|工作)?|应聘)/i.test(label));
-  }
-
-  private applicationRootCandidates(): HTMLElement[] {
-    const seen = new Set<HTMLElement>();
-    const candidates: HTMLElement[] = [];
-    const elements = deepElements(document);
-    for (const selector of APPLICATION_ROOT_SELECTOR) {
-      elements.filter((element) => element.matches(selector)).forEach((candidate) => {
-        if (seen.has(candidate)) return;
-        seen.add(candidate);
-        candidates.push(candidate);
-      });
-    }
-    return candidates;
-  }
-
-  private findFullPageApplicationRoot(): HTMLElement | null {
-    if (!this.isFullPageApplicationFlow()) return null;
-
-    const seen = new Set<HTMLElement>();
-    const candidates: HTMLElement[] = [];
-    const elements = deepElements(document);
-    const addCandidates = (selector: string) => {
-      elements.filter((element) => element.matches(selector)).forEach((candidate) => {
-        if (seen.has(candidate)) return;
-        seen.add(candidate);
-        candidates.push(candidate);
-      });
-    };
-
-    // SDUI may render a normal form, an application-labelled container, or a
-    // main content region without the legacy modal outlet.
-    addCandidates('form');
-    addCandidates("[data-testid*='application'], [data-test*='application']");
-    addCandidates('main');
-
-    return (
-      candidates.find(
-        (candidate) =>
-          isVisible(candidate) &&
-          !this.hasHiddenModalAncestor(candidate) &&
-          (this.hasVisibleApplicationField(candidate) ||
-            this.hasApplicationAction(candidate)),
-      ) || null
-    );
-  }
-
-  private findApplicationRootFromHeading(): HTMLElement | null {
-    const heading = deepElements(document).find((element) => {
-      if (!isVisible(element)) return false;
-      const text = cleanText(element.textContent);
-      return /^apply\s+to\s+.+/i.test(text) || /^申请(?:职位|工作)?\s*.+/.test(text);
-    });
-    if (!heading) return null;
-
-    const semanticModal = heading.closest<HTMLElement>(
-      '[role="dialog"], [aria-modal="true"], .jobs-easy-apply-modal, .artdeco-modal, [data-test-modal], [data-test-modal-container]',
-    );
-    if (
-      semanticModal &&
-      isVisible(semanticModal) &&
-      !this.hasHiddenModalAncestor(semanticModal) &&
-      (this.hasVisibleApplicationField(semanticModal) ||
-        this.hasApplicationAction(semanticModal))
-    ) {
-      return semanticModal;
-    }
-
-    let candidate: HTMLElement | null = heading;
-    for (let depth = 0; candidate && depth < 9; depth += 1) {
-      if (
-        isVisible(candidate) &&
-        (this.hasVisibleApplicationField(candidate) ||
-          this.hasApplicationAction(candidate))
-      ) {
-        return candidate;
-      }
-      const currentRoot: Node = candidate.getRootNode();
-      const shadowHost: HTMLElement | null =
-        currentRoot instanceof ShadowRoot && currentRoot.host instanceof HTMLElement
-          ? currentRoot.host
-          : null;
-      candidate = candidate.parentElement || shadowHost;
-    }
-    return null;
-  }
-
-  private hasVisibleApplicationField(root: ParentNode): boolean {
-    return deepQueryAll(root, APPLICATION_FIELD_SELECTOR).some((field) => {
-      if (field instanceof HTMLInputElement && field.type.toLowerCase() === 'file') {
-        const uploader = field.closest(
-          'label, [class*="upload" i], [class*="file" i], [class*="drop" i], div, section',
-        );
-        return isVisible(field) || (uploader instanceof HTMLElement && isVisible(uploader));
-      }
-      return isVisible(field);
-    });
-  }
-
-  private hasApplicationAction(root: ParentNode): boolean {
-    return deepQueryAll(root, 'button, [role="button"]').some((button) => {
-      const label = cleanText(
-        button.textContent || button.getAttribute('aria-label'),
-      );
-      const isPrimary = button.classList.contains('artdeco-button--primary');
-      return (
-        isVisible(button) &&
-        (/(?:continue|next|review|submit|申请|提交|继续|下一步|审核|检查)/i.test(label) || isPrimary)
-      );
-    });
-  }
-
-  private hasHiddenModalAncestor(element: HTMLElement): boolean {
-    let current: HTMLElement | null = element;
-    while (current) {
-      if (current.getAttribute('aria-hidden') === 'true') return true;
-      current = current.parentElement;
-    }
-    return false;
-  }
-
-  private isExplicitlyActiveModal(element: HTMLElement): boolean {
-    if (this.hasHiddenModalAncestor(element)) return false;
-    const container = element.closest<HTMLElement>(
-      '[data-test-modal-container], [data-test-modal]',
-    );
-    if (!container) return false;
-    const ariaHidden = container.getAttribute('aria-hidden');
-    return ariaHidden === 'false' || (ariaHidden === null && isVisible(container));
   }
 
   private async waitForApplicationRoot(): Promise<HTMLElement | null> {

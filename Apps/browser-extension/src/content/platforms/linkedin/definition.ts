@@ -91,7 +91,7 @@ export const linkedinDefinition = {
   },
   form: {
     read: () => readLinkedInFormPage(),
-    scope: () => linkedinAdapter.getApplicationRoot() || null,
+    scope: () => linkedinAdapter.getApplicationFieldRoot() || null,
   },
   jobSelection: linkedinJobSelection,
   applicationNavigation: {

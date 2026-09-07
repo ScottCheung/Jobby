@@ -43,7 +43,12 @@ def _run_tailored_resume_generation(
         "company": tailored_resume.company,
         "date_posted": application.last_posted_at,
     }
-    return review_job(job, dict(tailored_resume.source_resume_data or {}), mock=mock)
+    return review_job(
+        job,
+        dict(tailored_resume.source_resume_data or {}),
+        mock=mock,
+        correlation_id=str(tailored_resume.id),
+    )
 
 
 def start_tailored_resume_generation(
@@ -208,4 +213,3 @@ def _get_user_active_resume_data(db: Session, current_user: User) -> dict[str, A
         return master_resume.resume_data
 
     return None
-

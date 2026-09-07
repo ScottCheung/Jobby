@@ -2,7 +2,7 @@
 /** @format */
 
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
-import { initializeFloatingBall } from './floating-ball';
+import { initializeFloatingBall, resolveOverlayMountTarget } from './floating-ball';
 
 describe('Floating Ball & Auto-Show Card', () => {
   let cleanup: (() => void) | null = null;
@@ -307,5 +307,27 @@ describe('Floating Ball & Auto-Show Card', () => {
     );
 
     expect(wrapper.classList.contains('is-loading')).toBe(false);
+  });
+
+  it('mounts LinkedIn overlays inside an active native application dialog', () => {
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      writable: true,
+      value: new URL('https://www.linkedin.com/jobs/view/123'),
+    });
+    document.body.innerHTML = `
+      <dialog open aria-modal="true">
+        <h2>Apply to Northstar</h2>
+        <label for="native-question">Native dialog question</label>
+        <input id="native-question" name="native_question" />
+        <button type="button">Next</button>
+      </dialog>
+    `;
+    const dialog = document.querySelector('dialog');
+
+    expect(resolveOverlayMountTarget()).toBe(dialog);
+
+    dialog?.removeAttribute('open');
+    expect(resolveOverlayMountTarget()).toBe(document.body);
   });
 });

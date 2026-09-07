@@ -4,10 +4,19 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 import json
+import logging
 import re
+from time import perf_counter
 from typing import Any
 
 from services.shared.deepseek import _complete, _complete_async
+
+
+logger = logging.getLogger(__name__)
+
+
+def _tailor_operation(doc_type: str) -> str:
+    return "cover_letter" if doc_type == "cover_letter" else "resume_tailor"
 
 
 
@@ -506,7 +515,15 @@ def build_tailor_messages(job: dict, resume: dict, doc_type: str = "resume") -> 
     ]
 
 
-def review_job(job: dict, resume: dict, *, doc_type: str = "resume", tailor: bool = True, mock: bool = False) -> dict:
+def review_job(
+    job: dict,
+    resume: dict,
+    *,
+    doc_type: str = "resume",
+    tailor: bool = True,
+    mock: bool = False,
+    correlation_id: str | None = None,
+) -> dict:
     description = _text(job.get("job_description"))
     if not description:
         raise ValueError("A job description is required")
@@ -515,6 +532,7 @@ def review_job(job: dict, resume: dict, *, doc_type: str = "resume", tailor: boo
     targeted_projects: list[dict[str, Any]] = []
     tailor_result: dict[str, Any] = {}
     cover_letter_text: str | None = None
+    tailor_started_at: float | None = None
 
     if tailor:
         if mock:
@@ -541,11 +559,13 @@ def review_job(job: dict, resume: dict, *, doc_type: str = "resume", tailor: boo
                 "cover_letter": cover_letter_text,
             }
         else:
+            tailor_started_at = perf_counter()
             tailor_result = _complete(
                 build_tailor_messages(job, resume, doc_type=doc_type),
                 temperature=0.3,
-                operation="job_review_tailor",
+                operation=_tailor_operation(doc_type),
                 timeout=90.0,
+                correlation_id=correlation_id,
             )
             cover_letter_text = _text(tailor_result.get("cover_letter")) or None
             # The model only edits the targeted sections. Preserve the candidate's
@@ -565,6 +585,13 @@ def review_job(job: dict, resume: dict, *, doc_type: str = "resume", tailor: boo
                 key_qualifications = _tailored_core_competencies(resume, tailor_result)
                 targeted_projects = _dict_list(tailor_result.get("targeted_projects"), 8)
 
+    if tailor_started_at is not None:
+        logger.info(
+            "tailor.timing correlation_id=%s tailor_total_duration_ms=%s",
+            correlation_id,
+            round((perf_counter() - tailor_started_at) * 1000),
+        )
+
     return {
         "resume_data": tailored,
         "core_competencies": key_qualifications,
@@ -583,20 +610,30 @@ async def review_job_async(
     doc_type: str = "resume",
     tailor: bool = True,
     mock: bool = False,
+    correlation_id: str | None = None,
 ) -> dict:
     """Cancellable async variant used by interactive resume generation."""
     if mock or not tailor:
-        return review_job(job, resume, doc_type=doc_type, tailor=tailor, mock=mock)
+        return review_job(
+            job,
+            resume,
+            doc_type=doc_type,
+            tailor=tailor,
+            mock=mock,
+            correlation_id=correlation_id,
+        )
 
     description = _text(job.get("job_description"))
     if not description:
         raise ValueError("A job description is required")
 
+    tailor_started_at = perf_counter()
     tailor_result = await _complete_async(
         build_tailor_messages(job, resume, doc_type=doc_type),
         temperature=0.3,
-        operation="job_review_tailor",
+        operation=_tailor_operation(doc_type),
         timeout=90.0,
+        correlation_id=correlation_id,
     )
     cover_letter_text = _text(tailor_result.get("cover_letter")) or None
     if doc_type == "cover_letter":
@@ -614,6 +651,12 @@ async def review_job_async(
         }
         key_qualifications = _tailored_core_competencies(resume, tailor_result)
         targeted_projects = _dict_list(tailor_result.get("targeted_projects"), 8)
+
+    logger.info(
+        "tailor.timing correlation_id=%s tailor_total_duration_ms=%s",
+        correlation_id,
+        round((perf_counter() - tailor_started_at) * 1000),
+    )
 
     return {
         "resume_data": tailored,

@@ -27,6 +27,7 @@ from services.shared.models import (
     AudioRecord,
     PracticePlan,
     PlanTask,
+    LLMUsageRecord,
 )
 from services.shared.settings import get_settings
 

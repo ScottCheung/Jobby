@@ -8,6 +8,7 @@ import re
 from copy import deepcopy
 from io import BytesIO
 from typing import Any
+from uuid import uuid4
 
 from pypdf import PdfReader
 
@@ -1121,7 +1122,7 @@ def _build_prompt(text: str) -> str:
     )
 
 
-def _parse_resume_legacy(text: str) -> dict:
+def _parse_resume_legacy(text: str, *, correlation_id: str | None = None) -> dict:
     return _complete(
         [
             {"role": "system", "content": "You are a precise resume parser. Return valid JSON only."},
@@ -1129,12 +1130,18 @@ def _parse_resume_legacy(text: str) -> dict:
         ],
         temperature=0,
         operation="resume_legacy",
+        correlation_id=correlation_id,
     )
 
 
-def _parse_resume_optimized(text: str) -> dict:
+def _parse_resume_optimized(text: str, *, correlation_id: str | None = None) -> dict:
     messages, lines = _build_optimized_messages(text)
-    raw = _complete(messages, temperature=0, operation="resume_optimized")
+    raw = _complete(
+        messages,
+        temperature=0,
+        operation="resume_optimized",
+        correlation_id=correlation_id,
+    )
     _validate_optimized_resume(raw, lines)
     result = _resolve_line_references(raw, lines)
     logger.info(
@@ -1146,26 +1153,28 @@ def _parse_resume_optimized(text: str) -> dict:
     return result
 
 
-def _parse_resume_with_fallback(text: str) -> dict:
+def _parse_resume_with_fallback(text: str, *, correlation_id: str | None = None) -> dict:
     try:
-        return _parse_resume_optimized(text)
+        return _parse_resume_optimized(text, correlation_id=correlation_id)
     except (_OptimizedParseRejected, DeepSeekError) as exc:
         logger.info("Optimized resume parsing rejected; using legacy parser: %s", exc)
-        return _parse_resume_legacy(text)
+        return _parse_resume_legacy(text, correlation_id=correlation_id)
 
 
 def parse_resume_text(text: str) -> dict:
+    correlation_id = str(uuid4())
     try:
         return enrich_resume_data_from_source(
             text,
-            normalize_resume_data(_parse_resume_with_fallback(text)),
+            normalize_resume_data(_parse_resume_with_fallback(text, correlation_id=correlation_id)),
         )
     except DeepSeekError as exc:
         raise ResumeParseError(str(exc)) from exc
 
 
 def parse_resume_text_raw(text: str) -> dict:
+    correlation_id = str(uuid4())
     try:
-        return _parse_resume_with_fallback(text)
+        return _parse_resume_with_fallback(text, correlation_id=correlation_id)
     except DeepSeekError as exc:
         raise ResumeParseError(str(exc)) from exc

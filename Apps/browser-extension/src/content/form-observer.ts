@@ -409,16 +409,28 @@ export function watchFormScope(
   // the whole modal from its outlet when it closes, so watch its immediate
   // parent as well and clear the stale form state without a manual Inspect.
   const parentObserver = scopeParent
-    ? new MutationObserver(() => {
+    ? new MutationObserver((records) => {
         if (!isExtensionContextValid()) {
           parentObserver?.disconnect();
           return;
         }
-        if (!scope.isConnected) schedule();
+        if (!scope.isConnected || hasRelevantFormMutation(records)) schedule(true);
       })
     : null;
   if (parentObserver && scopeParent instanceof Node) {
-    parentObserver.observe(scopeParent, { childList: true });
+    const isDocumentContainer =
+      scopeParent === document.body || scopeParent === document.documentElement;
+    parentObserver.observe(scopeParent, isDocumentContainer
+      ? { childList: true }
+      : {
+          childList: true,
+          subtree: true,
+          characterData: true,
+          attributes: true,
+          attributeFilter: [
+            "aria-hidden", "aria-selected", "data-state", "disabled", "hidden", "inert", "class"
+          ],
+        });
   }
   listenForValueChanges(scope);
   observeShadowRootsIn(scope, observeRoot);

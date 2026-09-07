@@ -1,6 +1,7 @@
 /** @format */
 
 import { classifyCurrentPage } from '../page-classifier';
+import { resolveLinkedInOverlayMountTarget } from '../platforms/linkedin/application-surface';
 
 const BALL_CONTAINER_ID = 'jobby-floating-ball-root';
 const IFRAME_CONTAINER_ID = 'jobby-in-page-sidepanel-root';
@@ -35,6 +36,8 @@ let autoShowJobDialog = true;
 let disabledDomains: string[] = [];
 let disableAllPages: boolean = false;
 let currentDocumentClickHandler: ((e: MouseEvent) => void) | null = null;
+let overlayMountObserver: MutationObserver | null = null;
+let overlayMountTimer: number | undefined;
 
 function isExtensionContextValid(): boolean {
   try {
@@ -44,16 +47,92 @@ function isExtensionContextValid(): boolean {
   }
 }
 
-// Keep extension UI in body. Adding arbitrary elements to <html> is invalid
-// document structure and can interfere with sites that manage their own root.
+export function resolveOverlayMountTarget(): HTMLElement | null {
+  if (isLinkedInPage()) {
+    const topLayerTarget = resolveLinkedInOverlayMountTarget();
+    if (topLayerTarget) return topLayerTarget;
+  }
+  return document.body;
+}
+
 function mountOverlay(element: HTMLElement): void {
-  const parent = document.body;
+  const parent = resolveOverlayMountTarget();
   if (!parent) return;
-  // Only append if not already in the correct parent.
-  // Do NOT re-append just because it's not the last child — that would pull
-  // ballRoot on top of iframeRoot whenever the iframe is mounted after the ball.
   if (element.parentElement !== parent) {
     parent.appendChild(element);
+  }
+}
+
+function isOwnOverlayNode(node: Node): boolean {
+  return node instanceof HTMLElement &&
+    (node.id === BALL_CONTAINER_ID || node.id === IFRAME_CONTAINER_ID);
+}
+
+function isOverlayRelevantNode(node: Node): boolean {
+  if (!(node instanceof Element) || isOwnOverlayNode(node)) return false;
+  return Boolean(
+    node.matches(
+      'dialog, [role="dialog"], [aria-modal="true"], .artdeco-modal, .jobs-easy-apply-modal, .jobs-easy-apply-content, [data-test-modal], [data-test-modal-container], #artdeco-modal-outlet, [data-testid*="apply" i], [data-testid*="application" i]',
+    ) ||
+      node.closest(
+        'dialog, [role="dialog"], [aria-modal="true"], .artdeco-modal, .jobs-easy-apply-modal, .jobs-easy-apply-content, [data-test-modal], [data-test-modal-container], #artdeco-modal-outlet',
+      ),
+  );
+}
+
+function hasOverlayRelevantMutation(record: MutationRecord): boolean {
+  if (record.type === 'attributes') {
+    return isOverlayRelevantNode(record.target);
+  }
+  if (isOverlayRelevantNode(record.target)) return true;
+  return Array.from(record.addedNodes).some(isOverlayRelevantNode) ||
+    Array.from(record.removedNodes).some(isOverlayRelevantNode);
+}
+
+function reconcileOverlayMounts(): void {
+  if (!isLinkedInPage()) return;
+  if (ballRoot) mountOverlay(ballRoot);
+  if (iframeRoot) mountOverlay(iframeRoot);
+}
+
+function scheduleOverlayMountReconciliation(): void {
+  if (overlayMountTimer !== undefined) {
+    window.clearTimeout(overlayMountTimer);
+  }
+  overlayMountTimer = window.setTimeout(() => {
+    overlayMountTimer = undefined;
+    reconcileOverlayMounts();
+  }, 60);
+}
+
+function startOverlayMountObserver(): void {
+  if (!isLinkedInPage() || overlayMountObserver || !document.body) return;
+  overlayMountObserver = new MutationObserver((records) => {
+    if (records.some(hasOverlayRelevantMutation)) {
+      scheduleOverlayMountReconciliation();
+    }
+  });
+  overlayMountObserver.observe(document.body, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: [
+      'aria-hidden',
+      'aria-modal',
+      'data-state',
+      'hidden',
+      'inert',
+      'open',
+    ],
+  });
+}
+
+function stopOverlayMountObserver(): void {
+  overlayMountObserver?.disconnect();
+  overlayMountObserver = null;
+  if (overlayMountTimer !== undefined) {
+    window.clearTimeout(overlayMountTimer);
+    overlayMountTimer = undefined;
   }
 }
 
@@ -1746,6 +1825,8 @@ export function initializeFloatingBall(): () => void {
   const darkModeMedia = window.matchMedia('(prefers-color-scheme: dark)');
   darkModeMedia.addEventListener('change', onMediaChange);
 
+  startOverlayMountObserver();
+
   // Show the ball immediately based on initial state.
   updateBallVisibility();
 
@@ -1847,6 +1928,7 @@ export function initializeFloatingBall(): () => void {
 
   return () => {
     window.clearInterval(recoveryTimer);
+    stopOverlayMountObserver();
     darkModeMedia.removeEventListener('change', onMediaChange);
     document.removeEventListener('visibilitychange', onVisibilityChange);
     try {

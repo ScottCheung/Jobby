@@ -2,10 +2,13 @@ import asyncio
 import json
 import logging
 import re
+from time import perf_counter
+from uuid import uuid4
 
 import httpx
 
 from services.shared.settings import get_settings
+from services.shared.llm_usage import normalize_usage, record_llm_usage
 
 
 logger = logging.getLogger(__name__)
@@ -54,15 +57,59 @@ def _extract_json_payload(content: object) -> dict:
     raise ValueError("AI response did not contain valid JSON")
 
 
+def _record_provider_usage(
+    payload: dict,
+    *,
+    operation: str,
+    correlation_id: str,
+    model: str,
+    duration_ms: int,
+) -> None:
+    raw_usage = payload.get("usage")
+    if not isinstance(raw_usage, dict):
+        logger.warning("AI response omitted usage operation=%s correlation_id=%s", operation, correlation_id)
+        return
+    try:
+        usage = normalize_usage("deepseek", model, raw_usage)
+        record_llm_usage(
+            operation=operation,
+            correlation_id=correlation_id,
+            usage=usage,
+            duration_ms=duration_ms,
+        )
+    except Exception:
+        logger.warning(
+            "Could not normalize AI usage operation=%s correlation_id=%s",
+            operation,
+            correlation_id,
+            exc_info=True,
+        )
+        return
+    logger.info(
+        "AI token usage operation=%s correlation_id=%s model=%s input=%s output=%s total=%s cached_input=%s duration_ms=%s",
+        operation,
+        correlation_id,
+        model,
+        usage.input_tokens,
+        usage.output_tokens,
+        usage.total_tokens,
+        usage.cached_input_tokens,
+        duration_ms,
+    )
+
+
 def _complete(
     messages: list[dict[str, str]],
     temperature: float = 0.35,
     operation: str = "generic",
     timeout: float = 45.0,
+    correlation_id: str | None = None,
 ) -> dict:
     settings = get_settings()
     if not settings.deepseek_api_key:
         raise DeepSeekError("AI is not configured")
+    correlation_id = correlation_id or str(uuid4())
+    started_at = perf_counter()
     try:
         response = httpx.post(
             f"{settings.deepseek_base_url.rstrip('/')}/chat/completions",
@@ -75,22 +122,18 @@ def _complete(
             },
             timeout=timeout,
         )
+        duration_ms = round((perf_counter() - started_at) * 1000)
         response.raise_for_status()
         payload = response.json()
         if not isinstance(payload, dict):
             raise ValueError("AI returned a non-object response")
-        usage = payload.get("usage")
-        if isinstance(usage, dict):
-            logger.info(
-                "AI token usage operation=%s model=%s prompt=%s completion=%s total=%s cache_hit=%s cache_miss=%s",
-                operation,
-                settings.deepseek_model,
-                usage.get("prompt_tokens"),
-                usage.get("completion_tokens"),
-                usage.get("total_tokens"),
-                usage.get("prompt_cache_hit_tokens"),
-                usage.get("prompt_cache_miss_tokens"),
-            )
+        _record_provider_usage(
+            payload,
+            operation=operation,
+            correlation_id=correlation_id,
+            model=settings.deepseek_model,
+            duration_ms=duration_ms,
+        )
         content = payload["choices"][0]["message"]["content"]
         return _extract_json_payload(content)
     except (httpx.HTTPError, KeyError, IndexError, ValueError, TypeError) as exc:
@@ -102,11 +145,14 @@ async def _complete_async(
     temperature: float = 0.35,
     operation: str = "generic",
     timeout: float = 45.0,
+    correlation_id: str | None = None,
 ) -> dict:
     """Async completion whose provider connection closes on task cancellation."""
     settings = get_settings()
     if not settings.deepseek_api_key:
         raise DeepSeekError("AI is not configured")
+    correlation_id = correlation_id or str(uuid4())
+    started_at = perf_counter()
     try:
         async with httpx.AsyncClient(timeout=timeout) as client:
             response = await client.post(
@@ -119,22 +165,18 @@ async def _complete_async(
                     "temperature": temperature,
                 },
             )
+            duration_ms = round((perf_counter() - started_at) * 1000)
         response.raise_for_status()
         payload = response.json()
         if not isinstance(payload, dict):
             raise ValueError("AI returned a non-object response")
-        usage = payload.get("usage")
-        if isinstance(usage, dict):
-            logger.info(
-                "AI token usage operation=%s model=%s prompt=%s completion=%s total=%s cache_hit=%s cache_miss=%s",
-                operation,
-                settings.deepseek_model,
-                usage.get("prompt_tokens"),
-                usage.get("completion_tokens"),
-                usage.get("total_tokens"),
-                usage.get("prompt_cache_hit_tokens"),
-                usage.get("prompt_cache_miss_tokens"),
-            )
+        _record_provider_usage(
+            payload,
+            operation=operation,
+            correlation_id=correlation_id,
+            model=settings.deepseek_model,
+            duration_ms=duration_ms,
+        )
         content = payload["choices"][0]["message"]["content"]
         return _extract_json_payload(content)
     except asyncio.CancelledError:
@@ -198,7 +240,7 @@ def generate_question_metadata(question: str, question_type: str | None = None) 
                 f"Interview question: {question}"
             ),
         },
-    ])
+    ], operation="interview_question_metadata")
     return _normalize_question_metadata(result)
 
 
@@ -276,7 +318,7 @@ def generate_reference_answer(
                 f"Interview question: {question}"
             ),
         },
-    ])
+    ], operation="interview_reference_answer")
 
     title = str(result.get("title", "AI Reference Answer")).strip()[:255]
 
@@ -388,7 +430,7 @@ def evaluate_practice_answer(question: str, answer: str) -> dict:
             "role": "user",
             "content": f"Interview Question: {question}\nCandidate Answer: {answer}",
         },
-    ])
+    ], operation="interview_practice_evaluation")
     try:
         score = int(result["overall_score"])
     except (KeyError, TypeError, ValueError) as exc:

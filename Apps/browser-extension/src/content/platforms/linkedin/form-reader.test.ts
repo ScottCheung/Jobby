@@ -2,6 +2,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { linkedinAdapter } from './adapter';
+import { resolveLinkedInApplySurface } from './application-surface';
 import { readLinkedInFormPage } from './form-reader';
 
 function visibleRect(): DOMRect {
@@ -209,5 +210,120 @@ describe('LinkedIn Easy Apply form scope', () => {
       inspection.fields.some((field) => field.label.includes('Select language')),
     ).toBe(false);
   });
-});
 
+  it('scopes a form-less modern modal to the current step instead of its wider shell', () => {
+    document.body.innerHTML = `
+      <div role="dialog" aria-modal="true" aria-label="Apply to Northstar">
+        <div class="application-shell">
+          <div class="application-step step-2" aria-current="step">
+            <h3>Additional questions</h3>
+            <label for="work-rights">Are you legally authorised to work here? *</label>
+            <input id="work-rights" name="work_rights" />
+            <label for="notice-period">Notice period *</label>
+            <input id="notice-period" name="notice_period" />
+          </div>
+          <div class="search-filters">
+            <input aria-label="Search jobs" />
+            <div role="checkbox" aria-label="Date posted" aria-checked="false"></div>
+          </div>
+        </div>
+        <button type="button" aria-label="Next">Next</button>
+      </div>
+    `;
+
+    const inspection = readLinkedInFormPage();
+    expect(inspection.kind).toBe('application_form');
+    if (inspection.kind !== 'application_form') return;
+    expect(inspection.fields.map((field) => field.label)).toEqual([
+      'Are you legally authorised to work here?',
+      'Notice period',
+    ]);
+  });
+
+  it('ignores a hidden previous step when LinkedIn remounts the active step', () => {
+    document.body.innerHTML = `
+      <div class="jobs-easy-apply-modal" role="dialog" aria-modal="true">
+        <h2>Apply to Northstar</h2>
+        <div class="application-step step-1" aria-hidden="true" hidden>
+          <label for="old-question">Old question</label>
+          <input id="old-question" name="old_question" />
+        </div>
+        <div class="application-step step-2" aria-current="step">
+          <label for="new-question">New question</label>
+          <input id="new-question" name="new_question" />
+          <button type="button">Next</button>
+        </div>
+      </div>
+    `;
+
+    const inspection = readLinkedInFormPage();
+    expect(inspection.kind).toBe('application_form');
+    if (inspection.kind !== 'application_form') return;
+    expect(inspection.fields.map((field) => field.label)).toEqual(['New question']);
+  });
+
+  it('prefers Easy Apply when a job-alert modal is also mounted', () => {
+    document.body.innerHTML = `
+      <div role="dialog" aria-modal="true" aria-label="Set job alert for Northstar">
+        <h2>Set job alert for Northstar</h2>
+        <input type="checkbox" aria-label="Email notification" />
+        <button type="button">Save</button>
+      </div>
+      <div class="artdeco-modal" role="dialog" aria-modal="true">
+        <h2>Apply to Northstar</h2>
+        <label for="application-question">Application question</label>
+        <input id="application-question" name="application_question" />
+        <button type="button">Next</button>
+      </div>
+    `;
+
+    const surface = resolveLinkedInApplySurface();
+    expect(surface?.state).toBe('artdeco-modal');
+    const inspection = readLinkedInFormPage();
+    expect(inspection.kind).toBe('application_form');
+    if (inspection.kind !== 'application_form') return;
+    expect(inspection.fields.map((field) => field.label)).toEqual([
+      'Application question',
+    ]);
+  });
+
+  it('identifies an open native dialog as a top-layer application surface', () => {
+    document.body.innerHTML = `
+      <dialog open aria-modal="true">
+        <h2>Apply to Northstar</h2>
+        <label for="native-question">Native dialog question</label>
+        <input id="native-question" name="native_question" />
+        <button type="button">Submit application</button>
+      </dialog>
+    `;
+
+    const surface = resolveLinkedInApplySurface();
+    expect(surface?.state).toBe('native-dialog');
+    expect(surface?.topLayer).toBe(true);
+    expect(surface?.fieldRoot).toBeInstanceOf(HTMLElement);
+  });
+
+  it('supports a full-page Easy Apply flow without falling back to the whole document', () => {
+    window.history.replaceState({}, '', '/jobs/view/123/apply');
+    document.body.innerHTML = `
+      <main data-testid="application-page">
+        <header><input aria-label="Search jobs" /></header>
+        <section class="application-step" aria-current="step">
+          <h1>Application questions</h1>
+          <label for="full-page-question">Full-page question</label>
+          <input id="full-page-question" name="full_page_question" />
+        </section>
+        <button type="button">Continue</button>
+      </main>
+    `;
+
+    const surface = resolveLinkedInApplySurface();
+    expect(surface?.state).toBe('full-page');
+    const inspection = readLinkedInFormPage();
+    expect(inspection.kind).toBe('application_form');
+    if (inspection.kind !== 'application_form') return;
+    expect(inspection.fields.map((field) => field.label)).toEqual([
+      'Full-page question',
+    ]);
+  });
+});

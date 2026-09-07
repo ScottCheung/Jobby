@@ -141,7 +141,13 @@ def review_job_from_jd(
     db.refresh(tailored_resume)
 
     try:
-        result = review_job(job, profile_resume, doc_type=doc_type, mock=mock)
+        result = review_job(
+            job,
+            profile_resume,
+            doc_type=doc_type,
+            mock=mock,
+            correlation_id=generation_id,
+        )
     except DeepSeekError as exc:
         logger.exception("Job review failed for pasted JD")
         db.rollback()
