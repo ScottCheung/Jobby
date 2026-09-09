@@ -89,5 +89,15 @@ def review_job_from_jd(
     if combined_cover_letter:
         tailored_dict["cover_letter"] = combined_cover_letter
         result["cover_letter"] = combined_cover_letter
+    if tailored_dict.get("resume_data"):
+        result["resume_data"] = tailored_dict["resume_data"]
+    if tailored_dict.get("core_competencies"):
+        result["core_competencies"] = tailored_dict["core_competencies"]
+    if tailored_dict.get("key_qualifications"):
+        result["key_qualifications"] = tailored_dict["key_qualifications"]
+    if tailored_dict.get("targeted_projects"):
+        result["targeted_projects"] = tailored_dict["targeted_projects"]
+    if tailored_dict.get("raw_ai_response"):
+        result["raw_ai_response"] = tailored_dict["raw_ai_response"]
     result["tailored_resume"] = tailored_dict
     return result

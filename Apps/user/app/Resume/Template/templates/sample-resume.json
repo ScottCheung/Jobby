@@ -30,6 +30,7 @@
       "location": "Brisbane, Australia",
       "start_date": "2022",
       "end_date": "Present",
+      "summary": "Architected and delivered cloud-native web platforms, owned full SDLC and supported junior developers through reviews and guidance.",
       "description": [
         "Led the redesign of a multi-tenant workflow platform used by 40,000 monthly active users, reducing median task completion time by 31%.",
         "Introduced contract testing and progressive delivery across six services, cutting production regressions by 45%.",

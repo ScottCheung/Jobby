@@ -121,6 +121,7 @@ export interface ResumeExperienceItem {
   start_date?: string | null;
   end_date?: string | null;
   is_current?: boolean | null;
+  summary?: string | null;
   description?: string[] | null;
   technologies?: string[] | null;
 }

@@ -982,12 +982,9 @@ describe('Document Studio & Resume Tailoring (Zero-Token Mock Mode)', () => {
     // Title and download names must reflect the previewed document, not the opened page
     expect(html).toContain('Preview Corp');
     expect(html).toContain('Staff Engineer');
-    expect(html).toContain('Scott Zhang - CV - Preview Corp - Staff Engineer.pdf');
-    expect(html).toContain('Scott Zhang - CL - Preview Corp - Staff Engineer.pdf');
-    expect(html).toContain('⚡ 117.8s · 20.4K tokens · Latest AI generation');
-    expect(html).toContain('Reasoning 13.7K');
-    expect(html).toContain('Answer 3K');
-    expect(html).toContain('Thinking Low');
+    expect(html).toContain('117.8s · 20.4K tokens');
+    expect(html).not.toContain('⚡');
+    expect(html).not.toContain('Latest AI generation');
     expect(html).not.toContain('Opened Company On Current Tab');
   });
 });

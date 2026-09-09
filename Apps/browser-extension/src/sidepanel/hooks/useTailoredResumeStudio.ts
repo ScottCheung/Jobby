@@ -4,6 +4,7 @@ import { defaultMasterResumeData } from '@jobby/ui/components/UI/Resume/helpers'
 import { ApiClientError, apiClient } from '../../background/api-client';
 import { renderCoverLetterPdfForExtension } from '../services/cover-letter-pdf-renderer';
 import { renderResumePdfOnce } from '@jobby/ui/components/UI/Resume/ResumePdfPreview';
+import { findTailoredDocumentForJob } from '../services/tailored-document-state';
 import type { PageInspection } from '../../shared/contracts/page-inspection';
 import type {
   CareerProfile,
@@ -417,6 +418,10 @@ export function useTailoredResumeStudio(
     const targetTitle = draft?.jobTitle?.trim() || jobTitle.trim() || detectedJob?.title || 'Target Role';
     const targetCompany = draft?.company?.trim() || company.trim() || detectedJob?.company || 'Target Company';
     const targetDescription = draftDescription.trim();
+    const existingTailoredDoc =
+      result?.tailored_resume ||
+      findTailoredDocumentForJob(savedResumes, targetTitle, targetCompany);
+    const existingTailoredId = existingTailoredDoc?.id;
     const fingerprint = tailorGenerationFingerprint(
       chosenType,
       targetTitle,
@@ -453,11 +458,11 @@ export function useTailoredResumeStudio(
       job_title: targetTitle,
       company: targetCompany,
       job_description: targetDescription,
-      resume_data: {} as MasterResumeData,
-      core_competencies: [],
-      key_qualifications: [],
-      targeted_projects: [],
-      cover_letter: null,
+      resume_data: (chosenType === 'cover_letter' ? (existingTailoredDoc?.resume_data || result?.resume_data || {}) : {}) as MasterResumeData,
+      core_competencies: chosenType === 'cover_letter' ? (existingTailoredDoc?.core_competencies || result?.core_competencies || []) : [],
+      key_qualifications: chosenType === 'cover_letter' ? (existingTailoredDoc?.key_qualifications || result?.key_qualifications || []) : [],
+      targeted_projects: chosenType === 'cover_letter' ? (existingTailoredDoc?.targeted_projects || result?.targeted_projects || []) : [],
+      cover_letter: chosenType === 'resume' ? (existingTailoredDoc?.cover_letter || result?.cover_letter || null) : null,
       raw_ai_response: undefined,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -494,6 +499,7 @@ export function useTailoredResumeStudio(
         doc_type: chosenType,
         mock: mockMode,
         generation_id: generationId,
+        tailored_resume_id: existingTailoredId,
       }, controller.signal);
 
       if (controller.signal.aborted) return;
@@ -553,25 +559,78 @@ export function useTailoredResumeStudio(
           .catch(() => undefined);
       }
 
+      const resolvedResumeData =
+        nextResult.resume_data && Object.keys(nextResult.resume_data).length > 0 ?
+          nextResult.resume_data
+        : (existingTailoredDoc?.resume_data || result?.resume_data || null);
+      const resolvedCoverLetter =
+        nextResult.cover_letter ||
+        existingTailoredDoc?.cover_letter ||
+        result?.cover_letter ||
+        null;
+      const resolvedCoreCompetencies =
+        nextResult.core_competencies && nextResult.core_competencies.length > 0 ?
+          nextResult.core_competencies
+        : (existingTailoredDoc?.core_competencies || result?.core_competencies || []);
+      const resolvedKeyQualifications =
+        nextResult.key_qualifications && nextResult.key_qualifications.length > 0 ?
+          nextResult.key_qualifications
+        : (existingTailoredDoc?.key_qualifications || result?.key_qualifications);
+      const resolvedTargetedProjects =
+        nextResult.targeted_projects && nextResult.targeted_projects.length > 0 ?
+          nextResult.targeted_projects
+        : (existingTailoredDoc?.targeted_projects || result?.targeted_projects);
+
+      const mergedNextResult: JobReviewResult = {
+        ...nextResult,
+        resume_data: resolvedResumeData,
+        cover_letter: resolvedCoverLetter,
+        core_competencies: resolvedCoreCompetencies,
+        key_qualifications: resolvedKeyQualifications,
+        targeted_projects: resolvedTargetedProjects,
+        tailored_resume: nextResult.tailored_resume ? {
+          ...nextResult.tailored_resume,
+          resume_data:
+            nextResult.tailored_resume.resume_data && Object.keys(nextResult.tailored_resume.resume_data).length > 0 ?
+              nextResult.tailored_resume.resume_data
+            : (resolvedResumeData || ({} as MasterResumeData)),
+          cover_letter:
+            nextResult.tailored_resume.cover_letter || resolvedCoverLetter,
+          core_competencies:
+            nextResult.tailored_resume.core_competencies && nextResult.tailored_resume.core_competencies.length > 0 ?
+              nextResult.tailored_resume.core_competencies
+            : resolvedCoreCompetencies,
+          key_qualifications:
+            nextResult.tailored_resume.key_qualifications && nextResult.tailored_resume.key_qualifications.length > 0 ?
+              nextResult.tailored_resume.key_qualifications
+            : resolvedKeyQualifications,
+          targeted_projects:
+            nextResult.tailored_resume.targeted_projects && nextResult.tailored_resume.targeted_projects.length > 0 ?
+              nextResult.tailored_resume.targeted_projects
+            : resolvedTargetedProjects,
+        } : undefined,
+      };
+
       // A background completion must never pull someone away from a version
       // they are currently inspecting. With no explicit selection, newest wins.
-      if (!userSelectedVersionRef.current) setResult(nextResult);
+      if (!userSelectedVersionRef.current) setResult(mergedNextResult);
       setDocType(chosenType);
       setActiveOptimisticId((current) =>
         current === optimisticId ||
-        current === nextResult.tailored_resume?.id ?
+        current === mergedNextResult.tailored_resume?.id ?
           null
         : current,
       );
 
       // 2. Replace optimistic record with the real server response
-      if (nextResult.tailored_resume) {
+      if (mergedNextResult.tailored_resume) {
         setSavedResumes((current) => [
-          nextResult.tailored_resume!,
+          mergedNextResult.tailored_resume!,
           ...current.filter(
             (item) =>
               item.id !== optimisticId &&
-              item.id !== nextResult.tailored_resume!.id,
+              item.id !== mergedNextResult.tailored_resume!.id &&
+              (existingTailoredId ? item.id !== existingTailoredId : true),
           ),
         ]);
       } else {

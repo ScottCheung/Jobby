@@ -300,14 +300,14 @@ export function ResumeHtmlDocument({
                       {item.company}
                     </span>
                   )}
-                  {item.company && item.title && (
+                  {item.company && item.location && (
                     <span className='mx-1.5 text-[var(--resume-muted)] font-normal'>
                       {inline}
                     </span>
                   )}
-                  {item.title && (
-                    <span className='font-normal text-[var(--resume-primary)]'>
-                      {item.title}
+                  {item.location && (
+                    <span className='font-normal text-[var(--resume-muted)]'>
+                      {item.location}
                     </span>
                   )}
                 </h3>
@@ -315,9 +315,14 @@ export function ResumeHtmlDocument({
                   {resumeDateRange(item.start_date, item.end_date)}
                 </span>
               </div>
-              {item.location && (
-                <p className='mt-[var(--resume-detail-gap)] text-[length:var(--resume-date-size)] text-[var(--resume-muted)]'>
-                  {item.location}
+              {item.title && (
+                <p className='mt-[var(--resume-detail-gap)] text-[length:var(--resume-body-size)] font-normal text-[var(--resume-primary)]'>
+                  {item.title}
+                </p>
+              )}
+              {item.summary && (
+                <p className='mt-[var(--resume-detail-gap)] text-[length:var(--resume-body-size)] italic text-[var(--resume-muted)]'>
+                  {item.summary}
                 </p>
               )}
             </div>

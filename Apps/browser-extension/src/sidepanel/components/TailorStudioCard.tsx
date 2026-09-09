@@ -42,6 +42,7 @@ import { StructuredJobDescription } from '@jobby/ui/components/UI/StructuredJobD
 import type { PageInspection } from '../../shared/contracts/page-inspection';
 import type {
   DocType,
+  LLMUsageSummary,
   TailoredResume,
 } from '../../shared/contracts/tailored-resume';
 import { formatRelativeTime } from '@jobby/ui/lib/date-formatter';
@@ -58,6 +59,12 @@ import {
   DetectionProviderBadge,
   isGenericDetection,
 } from '@jobby/ui/components/UI/job-analysis/DetectionProviderBadge';
+import {
+  TooltipProvider,
+  TooltipRoot,
+  TooltipTrigger,
+  TooltipContent,
+} from '@jobby/ui/components/UI/tooltip';
 
 export const formatResumeAsPlainText = formatResumeAsPlainTextImpl;
 
@@ -100,6 +107,269 @@ function thinkingLabel(reasoningEffort?: string | null): string {
   if (reasoningEffort === 'none') return 'Off';
   if (reasoningEffort === 'multiple') return 'Multiple';
   return reasoningEffort.charAt(0).toUpperCase() + reasoningEffort.slice(1);
+}
+
+interface TokenBreakdownItemProps {
+  label?: string;
+  usage: LLMUsageSummary;
+  maxTokens?: number;
+}
+
+function TokenBreakdownRow({ label, usage, maxTokens }: TokenBreakdownItemProps) {
+  const cached = Math.max(0, usage.cached_input_tokens || 0);
+  const uncachedInput = Math.max(0, (usage.input_tokens || 0) - cached);
+  const reasoning = Math.max(0, usage.reasoning_tokens || 0);
+  const answer = Math.max(
+    0,
+    usage.answer_tokens != null ?
+      usage.answer_tokens
+    : Math.max(0, (usage.output_tokens || 0) - reasoning),
+  );
+  const total = usage.total_tokens || (cached + uncachedInput + reasoning + answer) || 1;
+  const safeTotal = Math.max(total, 1);
+  const barWidth =
+    maxTokens && maxTokens > 0 ?
+      Math.max(15, Math.min(100, Math.round((total / maxTokens) * 100)))
+    : 100;
+
+  return (
+    <div className='flex flex-col gap-1 w-full min-w-0'>
+      {label && (
+        <div className='flex items-center justify-between text-[9px] font-medium text-foreground'>
+          <span>{label}</span>
+          <span className='font-mono text-muted-foreground'>
+            {(usage.duration_ms / 1000).toFixed(1)}s · {formatTokenCount(total)}
+          </span>
+        </div>
+      )}
+      <div
+        className='h-1.5 rounded-full overflow-hidden flex bg-muted/40'
+        style={{ width: `${barWidth}%` }}
+      >
+        {cached > 0 && <div className='bg-sky-400 dark:bg-sky-500 h-full' style={{ width: `${(cached / safeTotal) * 100}%` }} />}
+        {uncachedInput > 0 && <div className='bg-indigo-400 dark:bg-indigo-500 h-full' style={{ width: `${(uncachedInput / safeTotal) * 100}%` }} />}
+        {reasoning > 0 && <div className='bg-amber-400 dark:bg-amber-500 h-full' style={{ width: `${(reasoning / safeTotal) * 100}%` }} />}
+        {answer > 0 && <div className='bg-emerald-400 dark:bg-emerald-500 h-full' style={{ width: `${(answer / safeTotal) * 100}%` }} />}
+      </div>
+      <div className='flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[8.5px] text-muted-foreground'>
+        <span className='flex items-center gap-1'>
+          <span className='w-1.5 h-1.5 rounded-full bg-indigo-400 shrink-0' />
+          Input {formatTokenCount(usage.input_tokens || (cached + uncachedInput))}
+        </span>
+        <span className='flex items-center gap-1'>
+          <span className='w-1.5 h-1.5 rounded-full bg-sky-400 shrink-0' />
+          Cached {formatTokenCount(cached)}
+        </span>
+        <span className='flex items-center gap-1'>
+          <span className='w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0' />
+          Reasoning {reasoning ? formatTokenCount(reasoning) : '—'}
+        </span>
+        <span className='flex items-center gap-1'>
+          <span className='w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0' />
+          Answer {answer ? formatTokenCount(answer) : '—'}
+        </span>
+        <span className='font-semibold text-foreground ml-auto'>
+          Total {formatTokenCount(total)}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function calcTokenParts(u: LLMUsageSummary) {
+  const cached = Math.max(0, u.cached_input_tokens || 0);
+  const uncached = Math.max(0, (u.input_tokens || 0) - cached);
+  const reasoning = Math.max(0, u.reasoning_tokens || 0);
+  const answer = Math.max(
+    0,
+    u.answer_tokens != null ? u.answer_tokens : Math.max(0, (u.output_tokens || 0) - reasoning),
+  );
+  const total = u.total_tokens || cached + uncached + reasoning + answer || 1;
+  return { cached, uncached, reasoning, answer, total };
+}
+
+function TokenBar({
+  u,
+  max,
+  height = 'h-1',
+}: {
+  u: LLMUsageSummary;
+  max?: number;
+  height?: string;
+}) {
+  const { cached, uncached, reasoning, answer, total } = calcTokenParts(u);
+  const safe = Math.max(total, 1);
+  const w = max && max > 0 ? Math.max(15, Math.min(100, Math.round((total / max) * 100))) : 100;
+  return (
+    <div className={cn('rounded-full overflow-hidden flex bg-muted/40 w-full', height)} style={{ width: `${w}%` }}>
+      {cached > 0 && <div className='bg-sky-400 dark:bg-sky-500 h-full' style={{ width: `${(cached / safe) * 100}%` }} />}
+      {uncached > 0 && <div className='bg-indigo-400 dark:bg-indigo-500 h-full' style={{ width: `${(uncached / safe) * 100}%` }} />}
+      {reasoning > 0 && <div className='bg-amber-400 dark:bg-amber-500 h-full' style={{ width: `${(reasoning / safe) * 100}%` }} />}
+      {answer > 0 && <div className='bg-emerald-400 dark:bg-emerald-500 h-full' style={{ width: `${(answer / safe) * 100}%` }} />}
+    </div>
+  );
+}
+
+/** Portal tooltip wrapper — bypasses overflow clipping. */
+function UsageTooltip({
+  children,
+  content,
+  side = 'bottom',
+}: {
+  children: React.ReactNode;
+  content: React.ReactNode;
+  side?: 'top' | 'bottom' | 'left' | 'right';
+}) {
+  return (
+    <TooltipProvider delayDuration={100}>
+      <TooltipRoot>
+        <TooltipTrigger asChild>{children}</TooltipTrigger>
+        <TooltipContent
+          side={side}
+          align='start'
+          sideOffset={6}
+          collisionPadding={8}
+          className='z-[9999] rounded-lg bg-popover/95 p-2.5 shadow-xl backdrop-blur-md text-popover-foreground flex flex-col gap-2 w-[240px] border-none! outline-none pointer-events-auto max-w-none!'
+        >
+          {content}
+        </TooltipContent>
+      </TooltipRoot>
+    </TooltipProvider>
+  );
+}
+
+/** Two stacked mini bars for history cards. Tooltip shows full breakdown. */
+function TokenMiniBar({
+  usage,
+  breakdown,
+  className,
+}: {
+  usage: LLMUsageSummary;
+  breakdown?: { resume?: LLMUsageSummary | null; cover_letter?: LLMUsageSummary | null } | null;
+  className?: string;
+}) {
+  const hasBoth = Boolean(breakdown?.resume && breakdown?.cover_letter);
+  const resumeUsage = breakdown?.resume;
+  const clUsage = breakdown?.cover_letter;
+  const maxTokens =
+    hasBoth ?
+      Math.max(resumeUsage?.total_tokens || 0, clUsage?.total_tokens || 0, 1)
+    : undefined;
+
+  const tooltipContent = hasBoth && resumeUsage && clUsage ? (
+    <>
+      <TokenBreakdownRow label='Resume' usage={resumeUsage} maxTokens={maxTokens} />
+      <div className='pt-1'>
+        <TokenBreakdownRow label='Cover Letter' usage={clUsage} maxTokens={maxTokens} />
+      </div>
+    </>
+  ) : (
+    <TokenBreakdownRow usage={usage} />
+  );
+
+  const bars = (
+    <div className={cn('flex flex-col gap-0.5 w-full cursor-default', className)}>
+      {hasBoth && resumeUsage ? (
+        <>
+          <TokenBar u={resumeUsage} max={maxTokens} />
+          {clUsage && <TokenBar u={clUsage} max={maxTokens} />}
+        </>
+      ) : (
+        <TokenBar u={usage} />
+      )}
+    </div>
+  );
+
+  return (
+    <UsageTooltip content={tooltipContent} side='bottom'>
+      {bars}
+    </UsageTooltip>
+  );
+}
+
+/** Text badge with time + tokens. Tooltip shows breakdown via portal. */
+function TokenUsageBadge({
+  usage,
+  breakdown,
+  mode = 'single',
+  label,
+  className,
+}: {
+  usage?: LLMUsageSummary | null;
+  breakdown?: {
+    resume?: LLMUsageSummary | null;
+    cover_letter?: LLMUsageSummary | null;
+  } | null;
+  mode?: 'total' | 'single';
+  label?: string;
+  className?: string;
+}) {
+  if (!usage) return null;
+
+  const hasBothBreakdown = mode === 'total' && Boolean(breakdown?.resume && breakdown?.cover_letter);
+  const resumeUsage = breakdown?.resume;
+  const clUsage = breakdown?.cover_letter;
+  const maxTokens =
+    hasBothBreakdown ?
+      Math.max(resumeUsage?.total_tokens || 0, clUsage?.total_tokens || 0, 1)
+    : undefined;
+
+  const tooltipContent = hasBothBreakdown ? (
+    <>
+      {resumeUsage && <TokenBreakdownRow label='Resume' usage={resumeUsage} maxTokens={maxTokens} />}
+      {clUsage && (
+        <div className='pt-1'>
+          <TokenBreakdownRow label='Cover Letter' usage={clUsage} maxTokens={maxTokens} />
+        </div>
+      )}
+    </>
+  ) : (
+    <TokenBreakdownRow label={label} usage={usage} />
+  );
+
+  return (
+    <UsageTooltip content={tooltipContent} side='top'>
+      <span className={cn('text-[9.5px] font-mono text-muted-foreground hover:text-foreground cursor-default transition-colors select-none inline-flex items-center', className)}>
+        {(usage.duration_ms / 1000).toFixed(1)}s · {formatTokenCount(usage.total_tokens)} tokens
+      </span>
+    </UsageTooltip>
+  );
+}
+
+/** Inline always-visible bar + meta for preview card headers. */
+function TokenInlineBar({
+  usage,
+  company,
+  jobTitle,
+  className,
+}: {
+  usage: LLMUsageSummary;
+  company?: string;
+  jobTitle?: string;
+  className?: string;
+}) {
+  const { total } = calcTokenParts(usage);
+  return (
+    <div className={cn('flex flex-col gap-1 w-full min-w-0', className)}>
+      <div className='flex items-center justify-between gap-2'>
+        <span className='text-[9px] font-mono text-muted-foreground'>
+          {(company || jobTitle) && (
+            <span>
+              {[company, jobTitle].filter(Boolean).join(' - ')}
+            </span>
+          )}
+        </span>
+        <span className='text-[9px] font-mono text-muted-foreground'>
+           {(usage.duration_ms / 1000).toFixed(1)}s {formatTokenCount(total)} tokens
+        </span>
+      </div>
+      <UsageTooltip content={<TokenBreakdownRow usage={usage} />} side='bottom'>
+        <div className='w-full h-1.5 cursor-default'>
+          <TokenBar u={usage} height='h-1.5' />
+        </div>
+      </UsageTooltip>
+    </div>
+  );
 }
 
 interface TailorStudioCardProps {
@@ -919,9 +1189,19 @@ export function TailorStudioCard({
                 <span className='text-muted-foreground text-[10px] font-medium'>
                   Job Title:
                 </span>
-                <span className='font-semibold text-foreground break-words'>
-                  {jobTitle || detectedJob?.title || 'Not specified'}
-                </span>
+                <div className='min-w-0 flex-1 flex flex-col gap-0.5'>
+                  <span className='font-semibold text-foreground break-words'>
+                    {activeJobTitle || 'Not specified'}
+                  </span>
+                  {!isViewingGenerating && activeRecord?.usage && (
+                    <TokenUsageBadge
+                      usage={activeRecord.usage}
+                      breakdown={activeRecord.usage_breakdown}
+                      mode='total'
+                      className='mt-0.5'
+                    />
+                  )}
+                </div>
               </div>
 
               <div className='grid grid-cols-[75px_minmax(0,1fr)] gap-1 items-baseline'>
@@ -929,7 +1209,7 @@ export function TailorStudioCard({
                   Company:
                 </span>
                 <span className='font-semibold text-foreground break-words'>
-                  {company || detectedJob?.company || 'Not specified'}
+                  {activeCompany || 'Not specified'}
                 </span>
               </div>
             </div>
@@ -1222,7 +1502,7 @@ export function TailorStudioCard({
             </div>
           </div>
 
-          <div className='relative'>
+          <div className='relative overflow-visible'>
             <div
               ref={historyRailRef}
               className='w-full min-w-0 max-w-full flex items-stretch gap-2 overflow-x-auto pb-1 pt-0.5 no-scrollbar scroll-smooth box-border'
@@ -1294,26 +1574,25 @@ export function TailorStudioCard({
                       : 'page-class-banner--job border-primary/0 hover:-translate-y-0.5 hover:bg-muted/40 hover:border-primary text-foreground'
                     }`}
                   >
-                    {/* Floating absolute delete button on top-right */}
-                    <button
-                      type='button'
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setDeleteCandidate(item);
-                      }}
-                      className='absolute top-1.5 right-1.5 z-10 opacity-0 group-hover/history:opacity-100  p-1 rounded-md text-muted-foreground group-hover/history:text-red-500 group-hover/history:bg-red-500/10 backdrop-blur-xl transition-all duration-150 cursor-pointer'
-                      title='Delete tailored record'
-                      aria-label={`Delete record for ${item.job_title || item.company || 'Tailored application'}`}
-                    >
-                      <Trash2 className='w-4 h-4' />
-                    </button>
-                    <div className='flex items-center justify-between gap-1 w-full min-w-0  transition-all'>
+                    {/* Delete button on hover, usage summary when selected */}
+
+                      <button
+                        type='button'
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeleteCandidate(item);
+                        }}
+                        className='absolute top-1.5 right-1.5 z-10 opacity-0 group-hover/history:opacity-100 p-1 rounded-md text-muted-foreground group-hover/history:text-red-500 group-hover/history:bg-red-500/10 backdrop-blur-xl transition-all duration-150 cursor-pointer'
+                        title='Delete tailored record'
+                        aria-label={`Delete record for ${item.job_title || item.company || 'Tailored application'}`}
+                      >
+                        <Trash2 className='w-4 h-4' />
+                      </button>
+
+                    <div className='flex items-center justify-between gap-1 w-full min-w-0 transition-all'>
                       <span
                         className={cn(
-                          'text-[8px] font-bold leading-tight line-clamp-1 flex-1 min-w-0',
-                          // isSelected ?
-                          //   'text-primary-foreground'
-                          // : 'text-primary',
+                          'text-[8px] font-bold leading-tight line-clamp-1 flex-1 min-w-0 pr-10',
                         )}
                       >
                         {item.job_title || 'Tailored Resume'}
@@ -1331,7 +1610,9 @@ export function TailorStudioCard({
                         {item.company || 'Job Application'}{' '}
                       </p>
                     </div>
-                    <div className='flex items-center gap-1 mt-2 w-full'>
+                    <div className='flex  items-end justify-between gap-1 w-full min-w-0'>
+
+                    <div className='flex items-end gap-1 mt-2 w-full'>
                       {documentTypeLabel(item).map((type, typeIdx) => (
                         <Fragment key={`${type}-${typeIdx}`}>
                           <span className='text-[7px] bg-primary-gradient rounded px-2 py-0.5 font-bold uppercase tracking-wide text-primary-foreground'>
@@ -1345,14 +1626,26 @@ export function TailorStudioCard({
                         </Fragment>
                       ))}
                     </div>
-                    <div className='mt-auto flex w-full items-center justify-between border-t border-primary/15 pt-1'>
-                      {timeAgo && (
-                        <span className='text-[8px] text-muted-foreground'>
-                          {timeAgo}
-                        </span>
-                      )}
+                     {item.usage ? (
+                      <span className='flex text-[7.5px] font-mono text-primary/70 leading-none select-none pointer-events-none'>
+                        {(item.usage.duration_ms / 1000).toFixed(1)}s·{formatTokenCount(item.usage.total_tokens)}
+                      </span>
+                    ) : null}
+                    </div>
+                    {/* Token mini bar replaces the divider */}
+                    {item.usage && (
+                      <TokenMiniBar
+                        usage={item.usage}
+                        breakdown={item.usage_breakdown}
+                        className='mt-auto pt-1'
+                      />
+                    )}
+                    <div className='flex w-full items-center justify-between pt-0.5'>
+                      <span className='text-[8px] text-muted-foreground'>
+                        {timeAgo}
+                      </span>
                       {isSelected && (
-                        <span className='rounded-full bg-primary/15 px-1 py-0.5 text-[6.5px] font-bold uppercase tracking-wide text-primary'>
+                        <span className='rounded-full bg-primary/15 px-1 py-0.5 text-[6.5px] font-bold uppercase tracking-wide text-primary shrink-0 ml-1'>
                           Selected
                         </span>
                       )}
@@ -1396,44 +1689,29 @@ export function TailorStudioCard({
         />
       )}
 
-      {!isViewingGenerating && activeRecord?.usage && (
-        <details className='px-1 text-[10px] text-muted-foreground'>
-          <summary className='cursor-pointer list-none [&::-webkit-details-marker]:hidden'>
-            {(activeRecord.usage.duration_ms / 1000).toFixed(1)}s · {formatTokenCount(activeRecord.usage.total_tokens)} tokens
-          </summary>
-          <div className='mt-1 grid grid-cols-2 gap-x-3 gap-y-0.5'>
-            <span>Input {formatTokenCount(activeRecord.usage.input_tokens)}</span>
-            <span>Cached {formatTokenCount(activeRecord.usage.cached_input_tokens)}</span>
-            <span>Reasoning {activeRecord.usage.reasoning_tokens == null ? '—' : formatTokenCount(activeRecord.usage.reasoning_tokens)}</span>
-            <span>Answer {activeRecord.usage.answer_tokens == null ? '—' : formatTokenCount(activeRecord.usage.answer_tokens)}</span>
-            <span>Total {formatTokenCount(activeRecord.usage.total_tokens)}</span>
-            <span>Thinking {thinkingLabel(activeRecord.usage.reasoning_effort)}</span>
-            <span>{operationLabel(activeRecord.usage.operation) || activeRecord.usage.model || '—'}</span>
-          </div>
-        </details>
-      )}
-
       {/* ── 4. RESUME PREVIEW SHOWCASE (Tailored or Default Base Resume) ── */}
       {!isViewingGenerating && displayResume && (
-        <div className='page-class-banner page-class-banner--job flex-col !items-stretch gap-2 !p-3.5 w-full min-w-0 max-w-full box-border'>
-          {/* Header */}
-          <div className='flex items-center justify-between gap-2 pb-0.5 w-full min-w-0'>
-            <div className='min-w-0 flex-1 flex flex-col gap-0.5'>
-              <div className='flex items-center gap-1.5 min-w-0'>
-                <Sparkles className='w-3.5 h-3.5 text-primary shrink-0' />
-                <strong className='text-xs font-bold text-foreground truncate'>
-                  Resume
-                </strong>
-              </div>
-              <span
-                className='text-[9.5px] text-muted-foreground truncate font-mono select-all'
-                title={getResumeDownloadName()}
+        <div className='page-class-banner page-class-banner--job flex-col !items-stretch gap-3 !rounded-2xl !p-3 w-full min-w-0 max-w-full box-border'>
+          {/* Header row: title + actions */}
+          <div className='flex items-center justify-between gap-3 w-full min-w-0'>
+            <div className='flex items-center gap-1.5 min-w-0 flex-1'>
+              <Sparkles className='w-3.5 h-3.5 text-primary shrink-0' />
+              <strong
+                className='text-xs font-bold text-foreground truncate'
+                title={[
+                  'Resume',
+                  activeCompany && activeJobTitle ?
+                    `${activeCompany} - ${activeJobTitle}`
+                  : (activeCompany || activeJobTitle),
+                ]
+                  .filter(Boolean)
+                  .join(' | ')}
               >
-                {getResumeDownloadName()}
-              </span>
-            </div>
+                Resume
 
-            <div className='flex items-center gap-1.5 shrink-0'>
+              </strong>
+            </div>
+            <div className='flex items-center gap-2 shrink-0'>
               <Button
                 size='sm'
                 variant='outline'
@@ -1443,7 +1721,6 @@ export function TailorStudioCard({
               >
                 {copiedResume ? 'Copied' : 'Copy'}
               </Button>
-
               <Button
                 size='sm'
                 variant='default'
@@ -1455,6 +1732,16 @@ export function TailorStudioCard({
               </Button>
             </div>
           </div>
+
+          {/* Inline token bar below header */}
+          {!isViewingGenerating &&
+            (activeRecord?.usage_breakdown?.resume || activeRecord?.usage) && (
+              <TokenInlineBar
+                usage={activeRecord!.usage_breakdown?.resume ?? activeRecord!.usage!}
+                company={activeCompany}
+                jobTitle={activeJobTitle}
+              />
+            )}
 
           {/* Preview card with hover actions: page modal, floating window, web edit, or download */}
           <div className='flex flex-col gap-2 w-full min-w-0'>
@@ -1475,34 +1762,20 @@ export function TailorStudioCard({
 
       {/* ── 5. COVER LETTER SHOWCASE (Tailored or Default Template) ── */}
       {!isViewingGenerating && effectiveCoverLetter && (
-        <div className='page-class-banner page-class-banner--job flex-col !items-stretch gap-2 !p-3.5 w-full min-w-0 max-w-full box-border'>
-          <div className='flex items-center justify-between gap-2 pb-0.5 w-full min-w-0'>
-            <div className='min-w-0 flex-1 flex flex-col gap-0.5'>
-              <div className='flex items-center gap-1.5 min-w-0'>
-                <Sparkles className='w-3.5 h-3.5 text-primary shrink-0' />
-                <strong
-                  className='text-xs font-bold text-foreground truncate'
-                  title={
-                    activeJobTitle ?
-                      `Cover Letter (${activeJobTitle})`
-                    : 'Cover Letter'
-                  }
-                >
-                  Cover Letter
-                  {activeJobTitle ?
-                    ` (${activeJobTitle})`
-                  : ''}
-                </strong>
-              </div>
-              <span
-                className='text-[9.5px] text-muted-foreground truncate font-mono select-all'
-                title={getCoverLetterDownloadName()}
+        <div className='page-class-banner page-class-banner--job flex-col !items-stretch gap-3 !rounded-2xl !p-3 w-full min-w-0 max-w-full box-border'>
+          <div className='flex items-center justify-between gap-3 w-full min-w-0'>
+            <div className='flex items-center gap-1.5 min-w-0 flex-1'>
+              <Sparkles className='w-3.5 h-3.5 text-primary shrink-0' />
+              <strong
+                className='text-xs font-bold text-foreground truncate'
+                title={
+                  'Cover Letter'}
               >
-                {getCoverLetterDownloadName()}
-              </span>
+                Cover Letter
+                
+              </strong>
             </div>
-
-            <div className='flex items-center gap-1.5 shrink-0'>
+            <div className='flex items-center gap-2 shrink-0'>
               <Button
                 size='sm'
                 variant='outline'
@@ -1512,7 +1785,6 @@ export function TailorStudioCard({
               >
                 {copiedCoverLetter ? 'Copied' : 'Copy'}
               </Button>
-
               <Button
                 size='sm'
                 variant='default'
@@ -1524,6 +1796,15 @@ export function TailorStudioCard({
               </Button>
             </div>
           </div>
+
+          {!isViewingGenerating &&
+            (activeRecord?.usage_breakdown?.cover_letter || activeRecord?.usage) && (
+              <TokenInlineBar
+                usage={activeRecord!.usage_breakdown?.cover_letter ?? activeRecord!.usage!}
+                company={activeCompany}
+                jobTitle={activeJobTitle}
+              />
+            )}
 
           <div className='flex flex-col gap-2 w-full min-w-0'>
             <CoverLetterPdfPreview

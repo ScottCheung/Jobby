@@ -3,6 +3,8 @@ from decimal import Decimal
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
+from sqlalchemy.orm import Session
+
 from services.shared import deepseek, llm_usage
 
 
@@ -259,3 +261,48 @@ def test_usage_recording_failure_does_not_raise() -> None:
 
     db.rollback.assert_called_once()
     db.close.assert_called_once()
+
+
+def test_get_llm_usage_breakdown() -> None:
+    db = MagicMock()
+    r1 = SimpleNamespace(
+        correlation_id="gen-cv",
+        operation="resume_tailor",
+        model="deepseek-chat",
+        input_tokens=1000,
+        output_tokens=500,
+        total_tokens=1500,
+        cached_input_tokens=800,
+        reasoning_tokens=200,
+        reasoning_effort="low",
+        estimated_cost_usd=None,
+        duration_ms=12000,
+    )
+    r2 = SimpleNamespace(
+        correlation_id="gen-cl",
+        operation="cover_letter",
+        model="deepseek-chat",
+        input_tokens=800,
+        output_tokens=400,
+        total_tokens=1200,
+        cached_input_tokens=600,
+        reasoning_tokens=150,
+        reasoning_effort="low",
+        estimated_cost_usd=None,
+        duration_ms=8000,
+    )
+    db.scalars.return_value.all.return_value = [r1, r2]
+
+    breakdown = llm_usage.get_llm_usage_breakdown(["gen-cv", "gen-cl"], db=db)
+    assert breakdown is not None
+    assert breakdown["total"] is not None
+    assert breakdown["total"].total_tokens == 2700
+    assert breakdown["total"].duration_ms == 20000
+    assert breakdown["resume"] is not None
+    assert breakdown["resume"].total_tokens == 1500
+    assert breakdown["resume"].reasoning_tokens == 200
+    assert breakdown["resume"].answer_tokens == 300
+    assert breakdown["cover_letter"] is not None
+    assert breakdown["cover_letter"].total_tokens == 1200
+    assert breakdown["cover_letter"].reasoning_tokens == 150
+    assert breakdown["cover_letter"].answer_tokens == 250

@@ -82,6 +82,8 @@ _EXPERIENCE_RULES = """
 
 每个源 experience 都必须仍在最终简历中出现。index 用于标识源条目；company、title、location 和日期是锁定的源事实。可在每段经历内部选择、改写、合并、缩短和重排 bullets，但每一项事实都必须有源简历支持。
 
+为每个工作经历输出一条精炼的 summary（概括该角色在组织中的定位、交付的核心领域或主要成果，通常为 1 句话，如 "Architected and delivered cloud-native web platforms, owned full SDLC and supported junior developers through reviews and guidance."；若源经历已有 summary 则基于原事实与目标职位要求进行优化）；输出到 experience 对象的 summary 字段中。
+
 按 JD 相关性和证据强度分配 bullet 信息预算：
 
 * 高相关经历：当有足够彼此不同的强证据时，通常保留 5–6 条。
@@ -122,7 +124,7 @@ _RESUME_SCHEMA = """{
   "summary": "",
   "core_competencies": [],
   "skills": [{"type": "", "skills": []}],
-  "experience": [{"index": 0, "bullets": []}],
+  "experience": [{"index": 0, "summary": "<one sentence role summary>", "bullets": []}],
   "projects": [{"index": 0, "description": [], "technologies": []}]
 }"""
 
@@ -134,7 +136,7 @@ _BOTH_SCHEMA = """{
   "summary": "",
   "core_competencies": [],
   "skills": [{"type": "", "skills": []}],
-  "experience": [{"index": 0, "bullets": []}],
+  "experience": [{"index": 0, "summary": "<one sentence role summary>", "bullets": []}],
   "projects": [{"index": 0, "description": [], "technologies": []}],
   "cover_letter": ""
 }"""
@@ -278,7 +280,7 @@ def _experience_bullet_context(value: Any) -> list[dict[str, Any]]:
         bullets = item.get("description")
         if not isinstance(bullets, list):
             bullets = [bullets] if isinstance(bullets, str) else []
-        result.append({
+        entry_ctx: dict[str, Any] = {
             "index": index,
             "title": _text(item.get("title")),
             "company": _text(item.get("company")),
@@ -286,7 +288,10 @@ def _experience_bullet_context(value: Any) -> list[dict[str, Any]]:
             "start_date": _text(item.get("start_date")),
             "end_date": _text(item.get("end_date")),
             "bullets": [b.strip() for b in bullets if isinstance(b, str) and b.strip()],
-        })
+        }
+        if _text(item.get("summary")):
+            entry_ctx["summary"] = _text(item.get("summary"))
+        result.append(entry_ctx)
     return result
 
 
@@ -456,6 +461,9 @@ def _merge_experience_bullets(original: Any, generated: Any) -> list[dict[str, A
             continue
         if index < 0 or index >= len(merged) or index in seen_indexes:
             continue
+        summary = _text(entry.get("summary") or entry.get("role_summary"))
+        if summary and not summary.startswith("<"):
+            merged[index]["summary"] = summary
         bullets = entry.get("bullets", entry.get("description"))
         if isinstance(bullets, str):
             bullets = [bullets]
@@ -464,8 +472,8 @@ def _merge_experience_bullets(original: Any, generated: Any) -> list[dict[str, A
             max_bullets = min(len(source_bullets), 6)
             cleaned = [item.strip() for item in bullets if isinstance(item, str) and item.strip()][:max_bullets]
             if cleaned:
-                seen_indexes.add(index)
                 merged[index]["description"] = cleaned
+        seen_indexes.add(index)
     return merged
 
 
@@ -554,6 +562,15 @@ def review_job(
             tailored = dict(resume)
             if not _text(tailored.get("summary")):
                 tailored["summary"] = f"Experienced candidate tailored for {job.get('title') or 'this position'}."
+            if doc_type in ("resume", "both") and isinstance(tailored.get("experience"), list):
+                mock_exp = []
+                for exp in tailored["experience"]:
+                    if isinstance(exp, dict):
+                        e = dict(exp)
+                        if not e.get("summary"):
+                            e["summary"] = f"Delivered impactful solutions as {e.get('title') or 'Engineer'} at {e.get('company') or 'the company'}."
+                        mock_exp.append(e)
+                tailored["experience"] = mock_exp
             key_qualifications = mock_competencies
             if doc_type in ("cover_letter", "both"):
                 target_role = job.get("title") or "Open Position"

@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from decimal import Decimal, ROUND_HALF_UP
 import logging
-from typing import Any, Mapping
+from typing import Any, Mapping, Sequence
 from uuid import UUID, uuid4
 
 from sqlalchemy import func, select
@@ -149,13 +149,23 @@ def calculate_llm_cost(
 
 
 def get_llm_usage_summary(
-    correlation_id: str,
+    correlation_id: str | Sequence[str],
     *,
     db: Session | None = None,
 ) -> LLMUsageSummary | None:
     owns_session = db is None
     session = db or SessionLocal()
     try:
+        if isinstance(correlation_id, (list, tuple, set)):
+            ids = [str(cid) for cid in correlation_id if cid]
+            if not ids:
+                return None
+            condition = LLMUsageRecord.correlation_id.in_(ids) if len(ids) > 1 else (LLMUsageRecord.correlation_id == ids[0])
+        else:
+            if not correlation_id:
+                return None
+            condition = (LLMUsageRecord.correlation_id == str(correlation_id))
+
         row = session.execute(
             select(
                 func.count(LLMUsageRecord.id),
@@ -175,7 +185,7 @@ def get_llm_usage_summary(
                 func.count(LLMUsageRecord.reasoning_effort),
                 func.min(LLMUsageRecord.reasoning_effort),
                 func.max(LLMUsageRecord.reasoning_effort),
-            ).where(LLMUsageRecord.correlation_id == correlation_id)
+            ).where(condition)
         ).one()
         calls = int(row[0] or 0)
         if not calls:
@@ -207,6 +217,98 @@ def get_llm_usage_summary(
         )
     except Exception:
         logger.warning("Could not read LLM usage correlation_id=%s", correlation_id, exc_info=True)
+        return None
+    finally:
+        if owns_session:
+            session.close()
+
+
+def _summarize_records(records: Sequence[LLMUsageRecord]) -> LLMUsageSummary | None:
+    if not records:
+        return None
+    calls = len(records)
+    input_tokens = sum(r.input_tokens for r in records)
+    output_tokens = sum(r.output_tokens for r in records)
+    total_tokens = sum(r.total_tokens for r in records)
+    cached_input_tokens = sum(r.cached_input_tokens or 0 for r in records)
+    duration_ms = sum(r.duration_ms for r in records)
+
+    models = {r.model for r in records if r.model}
+    model = next(iter(models)) if len(models) == 1 else ("multiple" if len(models) > 1 else None)
+
+    operations = {r.operation for r in records if r.operation}
+    operation = next(iter(operations)) if len(operations) == 1 else ("multiple" if len(operations) > 1 else None)
+
+    reasoning_records = [r for r in records if r.reasoning_tokens is not None]
+    reasoning_tokens = sum(r.reasoning_tokens for r in reasoning_records) if len(reasoning_records) == calls else None
+    answer_tokens = max(output_tokens - reasoning_tokens, 0) if reasoning_tokens is not None else None
+
+    efforts = {r.reasoning_effort for r in records if r.reasoning_effort}
+    reasoning_effort = next(iter(efforts)) if len(efforts) == 1 and len(efforts) == calls else ("multiple" if len(efforts) > 1 else None)
+
+    costs = [r.estimated_cost_usd for r in records if r.estimated_cost_usd is not None]
+    estimated_cost_usd = sum(costs) if len(costs) == calls else None
+
+    return LLMUsageSummary(
+        calls=calls,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        total_tokens=total_tokens,
+        cached_input_tokens=cached_input_tokens,
+        estimated_cost_usd=estimated_cost_usd,
+        duration_ms=duration_ms,
+        model=model,
+        operation=operation,
+        reasoning_tokens=reasoning_tokens,
+        answer_tokens=answer_tokens,
+        reasoning_effort=reasoning_effort,
+    )
+
+
+def get_llm_usage_breakdown(
+    correlation_id: str | Sequence[str],
+    *,
+    db: Session | None = None,
+) -> dict[str, LLMUsageSummary | None] | None:
+    owns_session = db is None
+    session = db or SessionLocal()
+    try:
+        if isinstance(correlation_id, (list, tuple, set)):
+            ids = [str(cid) for cid in correlation_id if cid]
+            if not ids:
+                return None
+            condition = LLMUsageRecord.correlation_id.in_(ids) if len(ids) > 1 else (LLMUsageRecord.correlation_id == ids[0])
+        else:
+            if not correlation_id:
+                return None
+            condition = (LLMUsageRecord.correlation_id == str(correlation_id))
+
+        records = list(session.scalars(select(LLMUsageRecord).where(condition)).all())
+        if not records:
+            return None
+
+        total = _summarize_records(records)
+        if not total:
+            return None
+
+        resume_records = [r for r in records if r.operation in ("resume_tailor", "resume")]
+        cl_records = [r for r in records if r.operation in ("cover_letter",)]
+        both_records = [r for r in records if r.operation in ("resume_and_cover_letter", "both")]
+
+        resume_summary = _summarize_records(resume_records) or (
+            _summarize_records(both_records) if both_records and not cl_records else None
+        )
+        cl_summary = _summarize_records(cl_records) or (
+            _summarize_records(both_records) if both_records and not resume_records else None
+        )
+
+        return {
+            "total": total,
+            "resume": resume_summary,
+            "cover_letter": cl_summary,
+        }
+    except Exception:
+        logger.warning("Could not read LLM usage breakdown correlation_id=%s", correlation_id, exc_info=True)
         return None
     finally:
         if owns_session:

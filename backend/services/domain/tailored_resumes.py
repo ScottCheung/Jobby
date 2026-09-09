@@ -94,6 +94,17 @@ def _persist_tailored_resume_result(
     if doc_type in {"cover_letter", "both"}:
         generated_documents["cover_letter"] = True
     raw_ai_response["generated_documents"] = generated_documents
+
+    generation_ids = [
+        str(gid) for gid in (previous_raw_ai_response.get("generation_ids") or []) if gid
+    ]
+    prev_gen_id = previous_raw_ai_response.get("generation_id")
+    if prev_gen_id and str(prev_gen_id) not in generation_ids:
+        generation_ids.append(str(prev_gen_id))
+    if generation_id and str(generation_id) not in generation_ids:
+        generation_ids.append(str(generation_id))
+    raw_ai_response["generation_ids"] = generation_ids
+
     if generation_id:
         raw_ai_response["generation_id"] = generation_id
         raw_ai_response["generation_doc_type"] = doc_type

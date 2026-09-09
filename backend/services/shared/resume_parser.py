@@ -44,6 +44,7 @@ RESUME_SCHEMA = {
             "location": None,
             "start_date": None,
             "end_date": None,
+            "summary": None,
             "description": [],
             "technologies": [],
         }
@@ -734,8 +735,8 @@ def normalize_resume_data(raw: Any) -> dict:
         if not isinstance(item, dict):
             continue
         entry: dict[str, Any] = {}
-        for field in ("company", "title", "location", "start_date", "end_date"):
-            value = _text(item.get(field), 255)
+        for field in ("company", "title", "location", "start_date", "end_date", "summary"):
+            value = _text(item.get(field), 255 if field != "summary" else 2000)
             if value:
                 entry[field] = value
         description = _bullet_values(item.get("description") or item.get("items"))

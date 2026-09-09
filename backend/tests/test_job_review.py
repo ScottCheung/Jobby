@@ -360,6 +360,15 @@ class JobReviewTests(unittest.TestCase):
         self.assertEqual(merged[0]["end_date"], "Present")
         self.assertEqual(merged[0]["description"], ["Rewritten source-supported bullet."])
 
+    def test_experience_summary_merged_from_tailor_result(self):
+        generated = [{
+            "index": 0,
+            "summary": "Architected and delivered scalable platforms.",
+            "bullets": ["Rewritten bullet."],
+        }]
+        merged = job_review._merge_experience_bullets(self.resume["experience"], generated)
+        self.assertEqual(merged[0]["summary"], "Architected and delivered scalable platforms.")
+
     def test_invalid_experience_index_preserves_every_source_experience(self):
         original = [
             self.resume["experience"][0],

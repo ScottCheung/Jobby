@@ -961,7 +961,7 @@ export function TailoredResumeStudio({
                           setActiveSection(item.key);
                           setActiveItemIndex(0);
                         }}
-                        className='w-full text-left rounded-lg border border-border/60 bg-background-secondary/30 px-3 py-2 text-xs font-medium text-ink-primary hover:border-primary/40 hover:bg-primary/5 hover:text-primary transition-colors cursor-pointer'
+                        className='w-full text-left rounded-lg border border-border/60 bg-background-secondary/30 px-3 py-3 text-xs font-medium text-ink-primary hover:border-primary/40 hover:bg-primary/5 hover:text-primary transition-colors cursor-pointer'
                       >
                         {item.label}
                       </button>

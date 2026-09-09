@@ -656,7 +656,7 @@ export function PdfCanvasPreview({
 
   return (
     <div
-      className='h-full w-full overflow-y-auto overflow-x-hidden bg-background-secondary/40 p-4'
+      className='h-full w-full overflow-y-auto overflow-x-hidden '
       data-testid='pdf-pages-scroll'
     >
       <div className='flex min-h-full flex-col items-center gap-4'>

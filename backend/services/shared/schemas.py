@@ -248,6 +248,7 @@ class TailoredResumeRead(OrmModel):
     error_message: str | None = None
     cover_letter: str | None = None
     usage: LLMUsageSummaryRead | None = None
+    usage_breakdown: dict[str, LLMUsageSummaryRead] | None = None
     created_at: datetime
     updated_at: datetime
 

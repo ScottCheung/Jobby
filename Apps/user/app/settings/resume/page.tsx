@@ -1607,6 +1607,11 @@ export default function ResumePage() {
                                 .filter(Boolean)
                                 .join(' · ')}
                             </p>
+                            {item.summary && (
+                              <p className='body-sm mt-1 italic text-ink-secondary'>
+                                {item.summary}
+                              </p>
+                            )}
                             {(item.technologies ?? []).length > 0 && (
                               <div className='mt-3'>
                                 <TagList values={item.technologies ?? []} />

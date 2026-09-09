@@ -453,6 +453,7 @@ export function ExperienceEditor({
         location: "",
         start_date: "",
         end_date: "",
+        summary: "",
         description: [],
         technologies: [],
       },
@@ -600,6 +601,20 @@ export function ExperienceEditor({
                   />
                 </div>
               </div>
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-ink-secondary mb-1 block">
+                Summary
+              </label>
+              <Textarea
+                value={asValue(item.summary)}
+                placeholder="Brief role summary, e.g. Architected and delivered cloud-native web platforms..."
+                rows={2}
+                onChange={(e) =>
+                  updateItem(index, { summary: e.target.value || null })
+                }
+              />
             </div>
 
             <div>

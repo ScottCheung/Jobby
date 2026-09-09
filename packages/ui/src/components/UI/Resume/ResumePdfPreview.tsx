@@ -183,6 +183,23 @@ function createPdfStyles(template: ResumeTemplateConfig) {
       fontFamily: 'Helvetica',
       color: template.colors.muted,
     },
+    locationTitle: {
+      fontFamily: 'Helvetica',
+      color: template.colors.muted,
+    },
+    experienceTitle: {
+      fontFamily: 'Helvetica',
+      color: template.colors.primary || '#8A6220',
+      fontSize: template.typography.bodySize,
+      marginTop: template.spacing.detailGap,
+    },
+    experienceSummary: {
+      fontFamily: 'Helvetica',
+      fontStyle: 'italic',
+      color: template.colors.muted,
+      fontSize: template.typography.bodySize,
+      marginTop: template.spacing.detailGap,
+    },
     jobTitle: {
       fontFamily: 'Helvetica',
       color: template.colors.primary || '#8A6220',
@@ -479,25 +496,28 @@ function PdfResumeSection({
                 <View wrap={false} minPresenceAhead={32}>
                   <View style={styles.row}>
                     <Text style={styles.entryTitle}>
-                      {item.company ?
+                      {item.company ? (
                         <Text style={styles.companyTitle}>{item.company}</Text>
-                      : null}
-                      {item.company && item.title ?
+                      ) : null}
+                      {item.company && item.location ? (
                         <Text style={styles.titleSeparator}>
                           {template.separators.inline}
                         </Text>
-                      : null}
-                      {item.title ?
-                        <Text style={styles.jobTitle}>{item.title}</Text>
-                      : null}
+                      ) : null}
+                      {item.location ? (
+                        <Text style={styles.locationTitle}>{item.location}</Text>
+                      ) : null}
                     </Text>
                     <Text style={styles.date}>
                       {dateRange(item.start_date, item.end_date)}
                     </Text>
                   </View>
-                  {item.location && (
-                    <Text style={styles.detail}>{item.location}</Text>
-                  )}
+                  {item.title ? (
+                    <Text style={styles.experienceTitle}>{item.title}</Text>
+                  ) : null}
+                  {item.summary ? (
+                    <Text style={styles.experienceSummary}>{item.summary}</Text>
+                  ) : null}
                 </View>
                 <PdfBullets
                   items={item.description}
@@ -1184,7 +1204,7 @@ export function ResumePdfPreview({
       <div
         ref={containerRef}
         onClick={openPreview}
-        className={`group relative h-44 sm:h-48 w-full max-w-[280px] mx-auto cursor-zoom-in bg-background-secondary/50 overflow-hidden rounded-xl p-2 flex items-center justify-center ${thumbnailClassName}`}
+        className={`group relative h-56 sm:h-64 w-full cursor-zoom-in bg-background-secondary/60 overflow-hidden rounded-xl p-3 flex items-center justify-center border border-border/60 ${thumbnailClassName}`}
       >
         <div className='pointer-events-none flex items-center justify-center'>
           <div
@@ -1201,7 +1221,7 @@ export function ResumePdfPreview({
                 transform: `scale(${thumbnailScale})`,
                 transformOrigin: 'top left',
               }}
-              className='absolute left-0 top-0 overflow-hidden rounded-xs bg-white '
+              className='absolute left-0 top-0 overflow-hidden rounded-sm bg-white shadow-sm'
             >
               <ResumeHtmlDocument
                 config={smartPage.config}
@@ -1235,7 +1255,7 @@ export function ResumePdfPreview({
               event.stopPropagation();
               openPreview();
             }}
-            className='flex h-8 w-8 items-center justify-center rounded-lg bg-white/95 dark:bg-slate-900/95 text-slate-800 dark:text-slate-100 hover:scale-110 hover:text-primary hover:border-primary/40 border border-black/[0.06] dark:border-white/[0.1] cursor-pointer shadow-md transition-all'
+            className='flex h-9 w-9 items-center justify-center rounded-xl bg-white/95 dark:bg-slate-900/95 text-slate-800 dark:text-slate-100 hover:scale-105 hover:text-primary hover:border-primary/40 border border-black/[0.06] dark:border-white/[0.1] cursor-pointer shadow-md transition-all'
           >
             <Maximize2 className='h-3.5 w-3.5' />
           </button>
@@ -1253,7 +1273,7 @@ export function ResumePdfPreview({
                 openPreview();
               }
             }}
-            className='flex h-8 w-8 items-center justify-center rounded-lg bg-white/95 dark:bg-slate-900/95 text-slate-800 dark:text-slate-100 hover:scale-110 hover:text-primary hover:border-primary/40 border border-black/[0.06] dark:border-white/[0.1] cursor-pointer shadow-md transition-all'
+            className='flex h-9 w-9 items-center justify-center rounded-xl bg-white/95 dark:bg-slate-900/95 text-slate-800 dark:text-slate-100 hover:scale-105 hover:text-primary hover:border-primary/40 border border-black/[0.06] dark:border-white/[0.1] cursor-pointer shadow-md transition-all'
           >
             <ExternalLink className='h-3.5 w-3.5' />
           </button>
@@ -1266,7 +1286,7 @@ export function ResumePdfPreview({
                 event.stopPropagation();
                 onEdit();
               }}
-              className='flex h-8 w-8 items-center justify-center rounded-lg bg-white/95 dark:bg-slate-900/95 text-slate-800 dark:text-slate-100 hover:scale-110 hover:text-primary hover:border-primary/40 border border-black/[0.06] dark:border-white/[0.1] cursor-pointer shadow-md transition-all'
+            className='flex h-9 w-9 items-center justify-center rounded-xl bg-white/95 dark:bg-slate-900/95 text-slate-800 dark:text-slate-100 hover:scale-105 hover:text-primary hover:border-primary/40 border border-black/[0.06] dark:border-white/[0.1] cursor-pointer shadow-md transition-all'
             >
               <Edit3 className='h-3.5 w-3.5' />
             </button>
@@ -1283,7 +1303,7 @@ export function ResumePdfPreview({
                 download();
               }
             }}
-            className='flex h-8 w-8 items-center justify-center rounded-lg bg-white/95 dark:bg-slate-900/95 text-slate-800 dark:text-slate-100 hover:scale-110 hover:text-primary hover:border-primary/40 border border-black/[0.06] dark:border-white/[0.1] cursor-pointer shadow-md disabled:opacity-50 transition-all'
+            className='flex h-9 w-9 items-center justify-center rounded-xl bg-white/95 dark:bg-slate-900/95 text-slate-800 dark:text-slate-100 hover:scale-105 hover:text-primary hover:border-primary/40 border border-black/[0.06] dark:border-white/[0.1] cursor-pointer shadow-md disabled:opacity-50 transition-all'
             disabled={!onDownload && (!pdfUrl || isGenerating)}
           >
             <Download className='h-3.5 w-3.5' />
@@ -1291,7 +1311,7 @@ export function ResumePdfPreview({
         </div>
 
         {/* Bottom-left pill badge */}
-        <div className='absolute bottom-1.5 left-1.5 z-10 flex items-center gap-1 rounded-md bg-panel/60 backdrop-blur-xs px-1.5 py-0.5 text-[9.5px] font-medium text-ink-primary'>
+        <div className='absolute bottom-2 left-2 z-10 flex items-center gap-1.5 rounded-lg bg-panel/80 backdrop-blur-xs px-2 py-1 text-[10px] font-medium text-ink-primary shadow-xs'>
           <FileText className='h-3 w-3 text-primary shrink-0' />
           <span>
             {pages ?? 1} page{pages === 1 ? '' : 's'}

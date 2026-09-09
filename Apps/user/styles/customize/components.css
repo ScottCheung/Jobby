@@ -159,7 +159,7 @@
 
 /** Multi-line textarea — aligned to token system */
 .textarea {
-  @apply flex min-h-[300px] w-full  rounded-xl rounded-br-3xl! border border-primary
+  @apply flex min-h-[100px] w-full  rounded-xl rounded-br-3xl! border border-primary
     bg-background-secondary/50 p-6 text-sm text-ink-primary
     placeholder:text-ink-secondary/60
     focus:bg-panel focus:border-primary/50

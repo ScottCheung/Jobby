@@ -170,6 +170,7 @@ export type MasterResumeData = {
     location?: string | null;
     start_date?: string | null;
     end_date?: string | null;
+    summary?: string | null;
     description: string[];
     technologies: string[];
   }>;

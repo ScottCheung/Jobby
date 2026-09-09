@@ -71,6 +71,10 @@ export type TailoredResume = {
   targeted_projects?: Array<Record<string, unknown>>;
   cover_letter?: string | null;
   usage?: LLMUsageSummary | null;
+  usage_breakdown?: {
+    resume?: LLMUsageSummary | null;
+    cover_letter?: LLMUsageSummary | null;
+  } | null;
   cover_letter_file_size?: number | null;
   resume_file_size?: number | null;
   prompt_version?: string;
@@ -105,6 +109,7 @@ export type JobReviewPayload = {
   doc_type?: DocType;
   mock?: boolean;
   generation_id?: string;
+  tailored_resume_id?: string;
 };
 
 export type CareerProfile = {

@@ -33,7 +33,7 @@ from services.api.routers.helpers import (
 )
 from services.shared.autofill_profile import core_profile_values, upsert_core_profile_value
 from services.shared.database import SessionLocal, get_db
-from services.shared.llm_usage import get_llm_usage_summary
+from services.shared.llm_usage import get_llm_usage_breakdown, get_llm_usage_summary
 from services.shared.models import (
     JobHuntingProfile,
     MasterResume,
@@ -113,9 +113,24 @@ def tailored_resume_response(resume: TailoredResume, db: Session | None = None) 
         result["core_competencies"] = result.get("key_qualifications") or []
     if (resume.raw_ai_response or {}).get("cover_letter"):
         result["cover_letter"] = resume.raw_ai_response["cover_letter"]
-    correlation_id = (resume.raw_ai_response or {}).get("generation_id") or str(resume.id)
-    usage = get_llm_usage_summary(str(correlation_id), db=db)
-    result["usage"] = usage.to_dict() if usage else None
+    generation_ids = [
+        str(gid) for gid in (resume.raw_ai_response or {}).get("generation_ids") or [] if gid
+    ]
+    current_gen_id = (resume.raw_ai_response or {}).get("generation_id")
+    if current_gen_id and str(current_gen_id) not in generation_ids:
+        generation_ids.append(str(current_gen_id))
+    if not generation_ids:
+        generation_ids = [str(resume.id)]
+    breakdown = get_llm_usage_breakdown(generation_ids, db=db)
+    if breakdown and breakdown.get("total"):
+        result["usage"] = breakdown["total"].to_dict()
+        result["usage_breakdown"] = {
+            k: v.to_dict() for k, v in breakdown.items() if k != "total" and v
+        }
+    else:
+        usage = get_llm_usage_summary(generation_ids, db=db)
+        result["usage"] = usage.to_dict() if usage else None
+        result["usage_breakdown"] = None
     return result
 
 
