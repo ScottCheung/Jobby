@@ -583,8 +583,103 @@ const SKILL_HIGHLIGHT_NAME = 'jobby-skill-navigation';
 const SKILL_HIGHLIGHT_ACTIVE_NAME = 'jobby-skill-navigation-active';
 const SKILL_HIGHLIGHT_STYLE_ID = 'jobby-skill-highlight-style';
 const NAV_FEEDBACK_ID = 'jobby-skill-nav-feedback-root';
+const ACTIVE_RANGE_PULSE_ID = 'jobby-skill-active-range-pulse';
 let activeHighlightId = 0;
 let navFeedbackTimer: number | undefined;
+let activeRangePulseTimer: number | undefined;
+
+function showActiveRangePulse(range?: Range): void {
+  if (activeRangePulseTimer !== undefined) {
+    window.clearTimeout(activeRangePulseTimer);
+  }
+
+  document.getElementById(ACTIVE_RANGE_PULSE_ID)?.remove();
+  if (!range) return;
+
+  const root = document.createElement('div');
+  root.id = ACTIVE_RANGE_PULSE_ID;
+  root.setAttribute('aria-hidden', 'true');
+  root.style.cssText =
+    'position: fixed !important; inset: 0 !important; z-index: 2147483646 !important; pointer-events: none !important;';
+
+  for (const rect of Array.from(range.getClientRects())) {
+    if (rect.width <= 0 || rect.height <= 0) continue;
+    const pulse = document.createElement('span');
+    pulse.style.cssText = `
+      position: fixed;
+      left: ${rect.left - 4}px;
+      top: ${rect.top - 3}px;
+      width: ${rect.width + 8}px;
+      height: ${rect.height + 6}px;
+      border-radius: 5px;
+      border: 1px solid rgba(245, 158, 11, 0.52);
+      box-shadow: 0 0 0 0 rgba(250, 204, 21, 0.55), 0 0 18px 2px rgba(245, 158, 11, 0.45);
+      animation: jobbySkillPulse 1100ms cubic-bezier(0.22, 1, 0.36, 1) 3;
+    `;
+    root.appendChild(pulse);
+  }
+
+  if (!root.childElementCount) return;
+  let style = document.getElementById(`${ACTIVE_RANGE_PULSE_ID}-style`);
+  if (!style) {
+    style = document.createElement('style');
+    style.id = `${ACTIVE_RANGE_PULSE_ID}-style`;
+    style.textContent = `
+      @keyframes jobbySkillPulse {
+        0% { opacity: 0; transform: scale(0.985); box-shadow: 0 0 0 0 rgba(250, 204, 21, 0), 0 0 6px 0 rgba(245, 158, 11, 0); }
+        38% { opacity: 0.72; transform: scale(1.01); box-shadow: 0 0 0 3px rgba(250, 204, 21, 0.06), 0 0 10px 1px rgba(245, 158, 11, 0.18); }
+        100% { opacity: 0; transform: scale(1); box-shadow: 0 0 0 7px rgba(250, 204, 21, 0), 0 0 4px 0 rgba(245, 158, 11, 0); }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #${ACTIVE_RANGE_PULSE_ID} span { animation: none !important; opacity: 0.85; }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+  document.documentElement.appendChild(root);
+
+  const firstRect = range.getBoundingClientRect();
+  if (firstRect.width > 0 && firstRect.height > 0) {
+    const focus = document.createElement('span');
+    focus.style.cssText = `
+      position: fixed;
+      left: 0;
+      top: 0;
+      width: 100vw;
+      height: 100vh;
+      border: 1px solid rgba(250, 204, 21, 0.2);
+      border-radius: 0;
+      box-shadow: inset 0 0 70px 4px rgba(245, 158, 11, 0.07);
+      pointer-events: none;
+      animation: jobbySkillFocus 1250ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    `;
+    root.appendChild(focus);
+    if (typeof focus.animate === 'function' && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      focus.getAnimations().forEach((animation) => animation.cancel());
+      focus.animate(
+        [
+          { left: '0px', top: '0px', width: '100vw', height: '100vh', borderRadius: '0px', opacity: 0.42 },
+          { left: `${firstRect.left - 7}px`, top: `${firstRect.top - 6}px`, width: `${firstRect.width + 14}px`, height: `${firstRect.height + 12}px`, borderRadius: '7px', opacity: 0 },
+        ],
+        { duration: 1250, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'both' },
+      );
+    }
+  }
+
+  const focusStyle = document.getElementById(`${ACTIVE_RANGE_PULSE_ID}-focus-style`);
+  if (!focusStyle) {
+    const style = document.createElement('style');
+    style.id = `${ACTIVE_RANGE_PULSE_ID}-focus-style`;
+    style.textContent = `
+      @keyframes jobbySkillFocus {
+        from { opacity: 0.82; }
+        to { opacity: 0; }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+  activeRangePulseTimer = window.setTimeout(() => root.remove(), 3600);
+}
 
 function showTextHighlight(allRanges: Range[], activeRange?: Range): void {
   if (allRanges.length === 0) return;
@@ -1058,6 +1153,8 @@ export async function highlightJobRequirement(
 
 
   showTextHighlight(allRanges, target.range);
+  await new Promise((resolve) => window.setTimeout(resolve, 720));
+  showActiveRangePulse(target.range);
   showInPageNavFeedback(
     target.term || terms[0] || '',
     currentMatchIndex + 1,

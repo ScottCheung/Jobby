@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 import json
 import logging
 import re
 from time import perf_counter
 from typing import Any
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from services.shared.deepseek import _complete, _complete_async
 
@@ -590,15 +592,46 @@ def review_job(
             }
         else:
             tailor_started_at = perf_counter()
-            tailor_result = _complete(
-                build_tailor_messages(job, resume, doc_type=doc_type),
-                temperature=0.3,
-                operation=_tailor_operation(doc_type),
-                timeout=90.0,
-                correlation_id=correlation_id,
-                user_id=user_id,
-                reasoning_effort="low",
-            )
+            if doc_type == "both":
+                both_correlation_id = correlation_id or str(uuid4())
+                with ThreadPoolExecutor(max_workers=2) as executor:
+                    resume_future = executor.submit(
+                        _complete,
+                        build_tailor_messages(job, resume, doc_type="resume"),
+                        temperature=0.3,
+                        operation="resume_tailor",
+                        timeout=90.0,
+                        correlation_id=both_correlation_id,
+                        user_id=user_id,
+                        reasoning_effort="low",
+                    )
+                    cover_letter_future = executor.submit(
+                        _complete,
+                        build_tailor_messages(job, resume, doc_type="cover_letter"),
+                        temperature=0.3,
+                        operation="cover_letter",
+                        timeout=90.0,
+                        correlation_id=both_correlation_id,
+                        user_id=user_id,
+                        reasoning_effort="low",
+                    )
+                    resume_result = resume_future.result()
+                    cover_letter_result = cover_letter_future.result()
+                cover_letter_text = _text(cover_letter_result.get("cover_letter")) or None
+                tailor_result = {
+                    **resume_result,
+                    "cover_letter": cover_letter_text,
+                }
+            else:
+                tailor_result = _complete(
+                    build_tailor_messages(job, resume, doc_type=doc_type),
+                    temperature=0.3,
+                    operation=_tailor_operation(doc_type),
+                    timeout=90.0,
+                    correlation_id=correlation_id,
+                    user_id=user_id,
+                    reasoning_effort="low",
+                )
             cover_letter_text = _text(tailor_result.get("cover_letter")) or None
             # The model only edits the targeted sections. Preserve the candidate's
             # identity and record sections so the preview remains a complete resume.
@@ -662,15 +695,43 @@ async def review_job_async(
         raise ValueError("A job description is required")
 
     tailor_started_at = perf_counter()
-    tailor_result = await _complete_async(
-        build_tailor_messages(job, resume, doc_type=doc_type),
-        temperature=0.3,
-        operation=_tailor_operation(doc_type),
-        timeout=90.0,
-        correlation_id=correlation_id,
-        user_id=user_id,
-        reasoning_effort="low",
-    )
+    if doc_type == "both":
+        both_correlation_id = correlation_id or str(uuid4())
+        resume_result, cover_letter_result = await asyncio.gather(
+            _complete_async(
+                build_tailor_messages(job, resume, doc_type="resume"),
+                temperature=0.3,
+                operation="resume_tailor",
+                timeout=90.0,
+                correlation_id=both_correlation_id,
+                user_id=user_id,
+                reasoning_effort="low",
+            ),
+            _complete_async(
+                build_tailor_messages(job, resume, doc_type="cover_letter"),
+                temperature=0.3,
+                operation="cover_letter",
+                timeout=90.0,
+                correlation_id=both_correlation_id,
+                user_id=user_id,
+                reasoning_effort="low",
+            ),
+        )
+        cover_letter_text = _text(cover_letter_result.get("cover_letter")) or None
+        tailor_result = {
+            **resume_result,
+            "cover_letter": cover_letter_text,
+        }
+    else:
+        tailor_result = await _complete_async(
+            build_tailor_messages(job, resume, doc_type=doc_type),
+            temperature=0.3,
+            operation=_tailor_operation(doc_type),
+            timeout=90.0,
+            correlation_id=correlation_id,
+            user_id=user_id,
+            reasoning_effort="low",
+        )
     cover_letter_text = _text(tailor_result.get("cover_letter")) or None
     if doc_type == "cover_letter":
         tailored = dict(resume)

@@ -161,20 +161,37 @@ class JobReviewTests(unittest.TestCase):
         self.assertIsNotNone(mock_res.get("resume_data"))
         self.assertIn("Full-Stack Engineering", mock_res["core_competencies"])
 
-    def test_both_generation_has_combined_usage_operation(self):
-        with patch.object(job_review, "_complete", return_value={"summary": "Tailored"}) as complete:
-            job_review.review_job(self.job, self.resume, doc_type="both")
+    def test_both_generation_uses_separate_usage_operations(self):
+        def complete(_messages, **kwargs):
+            if kwargs["operation"] == "cover_letter":
+                return {"cover_letter": "Tailored cover letter."}
+            return {"summary": "Tailored"}
 
-        self.assertEqual(complete.call_args.kwargs["operation"], "resume_and_cover_letter")
-        self.assertEqual(complete.call_args.kwargs["reasoning_effort"], "low")
+        with patch.object(job_review, "_complete", side_effect=complete) as complete_mock:
+            result = job_review.review_job(
+                self.job,
+                self.resume,
+                doc_type="both",
+                correlation_id="generation-1",
+            )
+
+        self.assertEqual(complete_mock.call_count, 2)
+        calls = complete_mock.call_args_list
+        self.assertEqual(
+            {call.kwargs["operation"] for call in calls},
+            {"resume_tailor", "cover_letter"},
+        )
+        self.assertEqual({call.kwargs["correlation_id"] for call in calls}, {"generation-1"})
+        self.assertTrue(all(call.kwargs["reasoning_effort"] == "low" for call in calls))
+        self.assertEqual(result["cover_letter"], "Tailored cover letter.")
 
     def test_tailor_operations_use_low_thinking(self):
-        for doc_type, operation in (("resume", "resume_tailor"), ("cover_letter", "cover_letter"), ("both", "resume_and_cover_letter")):
+        for doc_type, operations in (("resume", {"resume_tailor"}), ("cover_letter", {"cover_letter"}), ("both", {"resume_tailor", "cover_letter"})):
             with self.subTest(doc_type=doc_type), patch.object(job_review, "_complete", return_value={"summary": "Tailored"}) as complete:
                 job_review.review_job(self.job, self.resume, doc_type=doc_type)
 
-            self.assertEqual(complete.call_args.kwargs["operation"], operation)
-            self.assertEqual(complete.call_args.kwargs["reasoning_effort"], "low")
+            self.assertEqual({call.kwargs["operation"] for call in complete.call_args_list}, operations)
+            self.assertTrue(all(call.kwargs["reasoning_effort"] == "low" for call in complete.call_args_list))
 
     def test_accepts_new_qualifications_and_normalizes_flat_skills(self):
         ai_result = {
@@ -419,6 +436,41 @@ class JobReviewTests(unittest.TestCase):
         self.assertEqual(mock_complete.call_args.kwargs["reasoning_effort"], "low")
         self.assertEqual(result["resume_data"]["summary"], "Async tailored summary.")
         self.assertEqual(result["core_competencies"], ["C#", "AWS"])
+
+    def test_async_both_review_uses_separate_usage_operations(self):
+        async def complete(_messages, **kwargs):
+            if kwargs["operation"] == "cover_letter":
+                return {"cover_letter": "Async tailored cover letter."}
+            return {
+                "summary": "Async tailored summary.",
+                "core_competencies": ["C#", "AWS"],
+                "skills": [],
+                "experience": [],
+                "projects": [],
+            }
+
+        with patch.object(
+            job_review,
+            "_complete_async",
+            new=AsyncMock(side_effect=complete),
+        ) as complete_mock:
+            result = asyncio.run(
+                job_review.review_job_async(
+                    self.job,
+                    self.resume,
+                    doc_type="both",
+                    correlation_id="generation-1",
+                )
+            )
+
+        self.assertEqual(complete_mock.await_count, 2)
+        calls = complete_mock.await_args_list
+        self.assertEqual(
+            {call.kwargs["operation"] for call in calls},
+            {"resume_tailor", "cover_letter"},
+        )
+        self.assertEqual({call.kwargs["correlation_id"] for call in calls}, {"generation-1"})
+        self.assertEqual(result["cover_letter"], "Async tailored cover letter.")
 
     def test_delete_tailored_resume_endpoint(self):
         import sys
