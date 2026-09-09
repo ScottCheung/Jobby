@@ -10,6 +10,7 @@ import type { PageInspection } from "../../shared/contracts/page-inspection";
 import type {
   FieldFillInstruction,
   FieldFillResult,
+  FileUploadInstruction,
   FormFieldTarget,
   FormFocusResult,
 } from "../../shared/contracts/form-actions";
@@ -84,6 +85,10 @@ export type ProviderStructuredFill = {
 };
 
 export type ProviderDriverOverride = {
+  uploadFile?: (
+    instruction: FileUploadInstruction,
+    context: { tabId: number },
+  ) => Promise<FieldFillResult | null>;
   fillField?: (
     instruction: FieldFillInstruction,
     scope: ProviderFormRoot,

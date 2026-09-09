@@ -4,6 +4,8 @@ import { readLinkedInPageWhenReady } from "./readiness";
 import { readLinkedInFormPage } from "./form-reader";
 import { linkedinAdapter } from "./adapter";
 import { linkedinJobSelection } from "./job-selection";
+import { adaptLinkedInResumeUpload, focusLinkedInResumeUpload } from "./resume-upload";
+import { uploadLinkedInResume } from "./main-world-upload";
 
 const LINKEDIN_IGNORED_FIELD_LABELS =
   /(?:^search$|^select\s+language$|^language$|job\s*alert|search\s*alert|create\s*alert|search\s*by|city,\s*state|search\s*jobs|keywords?|职位提醒|求职提醒|创建求职通知|通知提醒|搜索职位|搜索地点|选择语言)/i;
@@ -63,7 +65,8 @@ export const linkedinDefinition = {
     "button[class*='show_more' i]",
     "button[class*='see-more' i]",
   ],
-  adaptFormFields: (fields) => filterLinkedInFormFields(fields),
+  adaptFormFields: (fields, root) => adaptLinkedInResumeUpload(filterLinkedInFormFields(fields), root),
+  driver: { uploadFile: uploadLinkedInResume, focusField: focusLinkedInResumeUpload },
   autofill: {
     treatsAllFileInputsAsResume: true,
   },

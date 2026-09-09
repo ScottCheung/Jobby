@@ -120,6 +120,9 @@ export function focusFormField(
       status: 'not_found',
       message: 'No active form scope.',
     };
+  const providerFocus = activeProviderDriver(scope)?.focusField?.(target, scope);
+  if (providerFocus) return providerFocus;
+
   if (target.type === 'file') {
     const input = findFileInput(target, scope);
     if (!input)
@@ -141,9 +144,6 @@ export function focusFormField(
         'Upload control highlighted. Click the upload button on the webpage to choose a local file.',
     };
   }
-
-  const providerFocus = activeProviderDriver(scope)?.focusField?.(target, scope);
-  if (providerFocus) return providerFocus;
 
   const element = findFormElement(target, scope);
   if (!element)

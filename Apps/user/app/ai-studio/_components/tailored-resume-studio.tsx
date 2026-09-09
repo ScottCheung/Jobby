@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
+import { X } from 'lucide-react';
 import {
   Button,
   EmptyPlaceHolder,
@@ -76,6 +77,10 @@ export function TailoredResumeStudio({
   const [error, setError] = useState('');
   const [selectedDoc, setSelectedDoc] = useState<'resume' | 'cover_letter'>('resume');
   const [activeSection, setActiveSection] = useState<EditableSectionKey | null>(null);
+  const [activeItemIndex, setActiveItemIndex] = useState<number | null>(null);
+  const [draftResumeData, setDraftResumeData] = useState<MasterResumeData | null>(null);
+  const [isDirty, setIsDirty] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [isSwitcherOpen, setIsSwitcherOpen] = useState(false);
   const [isClGenerating, setIsClGenerating] = useState(false);
 
@@ -83,6 +88,16 @@ export function TailoredResumeStudio({
   const [isCompilingPdf, setIsCompilingPdf] = useState(false);
   const [pdfError, setPdfError] = useState('');
   const activeUrlRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (currentResume?.resume_data) {
+      setDraftResumeData(currentResume.resume_data as MasterResumeData);
+      setIsDirty(false);
+    } else {
+      setDraftResumeData(null);
+      setIsDirty(false);
+    }
+  }, [currentResume?.id, currentResume?.resume_data]);
 
   const updateUrl = (resumeId?: string, docType?: 'resume' | 'cover_letter') => {
     if (typeof window === 'undefined') return;
@@ -104,6 +119,7 @@ export function TailoredResumeStudio({
     }
     setSelectedDoc(doc);
     setActiveSection(null);
+    setActiveItemIndex(null);
     if (currentResume) {
       updateUrl(currentResume.id, doc);
     }
@@ -225,6 +241,7 @@ export function TailoredResumeStudio({
     setCurrentResume(resume);
     setIsSwitcherOpen(false);
     setActiveSection(null);
+    setActiveItemIndex(null);
     setPdfUrl(null);
     setIsCompilingPdf(true);
     setPdfError('');
@@ -366,20 +383,22 @@ export function TailoredResumeStudio({
   };
 
   const resumeData = (currentResume?.resume_data || {}) as MasterResumeData;
+  const effectiveResumeData = draftResumeData || resumeData;
   const roleTitle = currentResume?.job_title || 'Tailored Role';
   const companyName = currentResume?.company || 'Target Company';
 
   const coreCompetencies = useMemo(() => {
     if (!currentResume) return [];
     return (
+      effectiveResumeData.core_competencies ||
       currentResume.core_competencies ||
       currentResume.key_qualifications ||
-      (Array.isArray(resumeData.core_competencies) ?
-        (resumeData.core_competencies as string[])
+      (Array.isArray(effectiveResumeData.core_competencies) ?
+        (effectiveResumeData.core_competencies as string[])
       : []) ||
       []
     );
-  }, [currentResume, resumeData]);
+  }, [currentResume, effectiveResumeData]);
 
   const coverLetter = useMemo(() => {
     if (!currentResume) return null;
@@ -391,11 +410,38 @@ export function TailoredResumeStudio({
   }, [currentResume]);
 
   const activeSectionLabel =
-    activeSection === 'basics' ? 'Personal Info'
+    activeSection === 'skills' ? 'Skill Categories'
+    : activeSection === 'basics' ? 'Personal Info'
     : activeSection === 'core_competencies' ? 'Core Competencies'
     : activeSection === 'cover_letter' ? 'Cover Letter'
     : activeSection ? activeSection[0].toUpperCase() + activeSection.slice(1)
     : '';
+
+  const handleDraftChange = (nextData: MasterResumeData) => {
+    setDraftResumeData(nextData);
+    setIsDirty(true);
+  };
+
+  const handleSaveCurrentSection = async () => {
+    if (!currentResume) return;
+    const dataToSave = draftResumeData || resumeData;
+    setIsSaving(true);
+    try {
+      await handleSaveSectionEdits(dataToSave);
+      setIsDirty(false);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCloseSection = () => {
+    if (isDirty && currentResume?.resume_data) {
+      setDraftResumeData(currentResume.resume_data as MasterResumeData);
+      setIsDirty(false);
+    }
+    setActiveSection(null);
+    setActiveItemIndex(null);
+  };
 
   useEffect(() => {
     if (!currentResume) return;
@@ -405,14 +451,17 @@ export function TailoredResumeStudio({
 
     const timer = setTimeout(() => {
       if (selectedDoc === 'resume') {
-        renderResumePdfOnce(resumeData, 1, coreCompetencies)
+        renderResumePdfOnce(effectiveResumeData, 1, coreCompetencies)
           .then(({ blob }) => {
             if (isCancelled) return;
             const nextUrl = URL.createObjectURL(blob);
-            if (activeUrlRef.current) URL.revokeObjectURL(activeUrlRef.current);
+            const prevUrl = activeUrlRef.current;
             activeUrlRef.current = nextUrl;
             setPdfUrl(nextUrl);
             setIsCompilingPdf(false);
+            if (prevUrl) {
+              setTimeout(() => URL.revokeObjectURL(prevUrl), 1500);
+            }
           })
           .catch((err) => {
             if (isCancelled) return;
@@ -422,17 +471,20 @@ export function TailoredResumeStudio({
       } else if (coverLetter) {
         renderCoverLetterPdfOnce(
           coverLetter,
-          resumeData,
+          effectiveResumeData,
           companyName,
           roleTitle,
         )
           .then(({ blob }) => {
             if (isCancelled) return;
             const nextUrl = URL.createObjectURL(blob);
-            if (activeUrlRef.current) URL.revokeObjectURL(activeUrlRef.current);
+            const prevUrl = activeUrlRef.current;
             activeUrlRef.current = nextUrl;
             setPdfUrl(nextUrl);
             setIsCompilingPdf(false);
+            if (prevUrl) {
+              setTimeout(() => URL.revokeObjectURL(prevUrl), 1500);
+            }
           })
           .catch((err) => {
             if (isCancelled) return;
@@ -443,13 +495,13 @@ export function TailoredResumeStudio({
         setPdfUrl(null);
         setIsCompilingPdf(false);
       }
-    }, 200);
+    }, 300);
 
     return () => {
       isCancelled = true;
       clearTimeout(timer);
     };
-  }, [currentResume, resumeData, coreCompetencies, selectedDoc, coverLetter, companyName, roleTitle]);
+  }, [currentResume, effectiveResumeData, coreCompetencies, selectedDoc, coverLetter, companyName, roleTitle]);
 
   useEffect(
     () => () => {
@@ -700,7 +752,12 @@ export function TailoredResumeStudio({
                 url={pdfUrl}
                 documentType={selectedDoc}
                 activeSection={activeSection}
-                onSectionSelect={setActiveSection}
+                activeItemIndex={activeItemIndex}
+                resumeData={effectiveResumeData}
+                onSectionSelect={(section, itemIndex) => {
+                  setActiveSection(section);
+                  setActiveItemIndex(itemIndex ?? null);
+                }}
               />
             ) : selectedDoc === 'cover_letter' && !coverLetter ? (
               <div className='flex h-full flex-col items-center justify-center p-6 text-center space-y-3'>
@@ -744,83 +801,128 @@ export function TailoredResumeStudio({
                 transition={{ duration: 0.18, ease: 'easeOut' }}
                 className='flex flex-col h-full min-h-0 space-y-3'
               >
-                <div className='shrink-0 flex items-center justify-between border-b border-border/50 pb-2'>
-                  <h3 className='text-xs font-bold text-ink-primary'>
-                    Edit {activeSectionLabel}
+                <div className='shrink-0 flex items-center justify-between border-b border-border/50 pb-2 px-1 gap-2'>
+                  <h3 className='text-sm font-bold text-ink-primary truncate'>
+                    {activeSectionLabel}
                   </h3>
-                  <Button
-                    size='sm'
-                    variant='ghost'
-                    onClick={() => setActiveSection(null)}
-                    className='!h-6 !px-2 text-xs text-ink-secondary hover:text-ink-primary'
-                  >
-                    Close
-                  </Button>
+                  <div className='flex items-center gap-1.5 shrink-0'>
+                    {isDirty && (
+                      <Button
+                        size='sm'
+                        variant='default'
+                        isLoading={isSaving}
+                        onClick={handleSaveCurrentSection}
+                        className='!h-7 !px-3 text-xs font-semibold !rounded-lg'
+                      >
+                        Save
+                      </Button>
+                    )}
+                    <button
+                      type='button'
+                      onClick={handleCloseSection}
+                      aria-label='Close editor'
+                      className='flex h-7 w-7 items-center justify-center rounded-md text-ink-secondary hover:bg-background-secondary hover:text-ink-primary transition-colors cursor-pointer'
+                    >
+                      <X className='w-4 h-4' />
+                    </button>
+                  </div>
                 </div>
 
                 <div className='flex-1 min-h-0 overflow-y-auto space-y-3'>
                   {activeSection === 'basics' && (
                     <BasicsEditor
-                      data={resumeData}
+                      data={effectiveResumeData}
+                      hideHeader
+                      hideFooter
+                      onChange={handleDraftChange}
                       onSave={handleSaveSectionEdits}
-                      onClose={() => setActiveSection(null)}
+                      onClose={handleCloseSection}
                     />
                   )}
 
                   {activeSection === 'summary' && (
                     <SummaryEditor
-                      data={resumeData}
+                      data={effectiveResumeData}
+                      hideHeader
+                      hideFooter
+                      onChange={handleDraftChange}
                       onSave={handleSaveSectionEdits}
-                      onClose={() => setActiveSection(null)}
+                      onClose={handleCloseSection}
                     />
                   )}
 
                   {activeSection === 'core_competencies' && (
                     <CoreCompetenciesEditor
-                      data={resumeData}
+                      data={effectiveResumeData}
                       initialCoreCompetencies={coreCompetencies}
+                      hideHeader
+                      hideFooter
+                      onChange={(nextData) => handleDraftChange(nextData)}
                       onSave={handleSaveSectionEdits}
-                      onClose={() => setActiveSection(null)}
+                      onClose={handleCloseSection}
                     />
                   )}
 
                   {activeSection === 'experience' && (
                     <ExperienceEditor
-                      data={resumeData}
+                      data={effectiveResumeData}
+                      initialIndex={activeItemIndex}
+                      onItemFocus={setActiveItemIndex}
+                      hideHeader
+                      hideFooter
+                      onChange={handleDraftChange}
                       onSave={handleSaveSectionEdits}
-                      onClose={() => setActiveSection(null)}
+                      onClose={handleCloseSection}
                     />
                   )}
 
                   {activeSection === 'skills' && (
                     <SkillsEditor
-                      data={resumeData}
+                      data={effectiveResumeData}
+                      initialIndex={activeItemIndex}
+                      onItemFocus={setActiveItemIndex}
+                      hideHeader
+                      hideFooter
+                      onChange={handleDraftChange}
                       onSave={handleSaveSectionEdits}
-                      onClose={() => setActiveSection(null)}
+                      onClose={handleCloseSection}
                     />
                   )}
 
                   {activeSection === 'education' && (
                     <EducationEditor
-                      data={resumeData}
+                      data={effectiveResumeData}
+                      initialIndex={activeItemIndex}
+                      onItemFocus={setActiveItemIndex}
+                      hideHeader
+                      hideFooter
+                      onChange={handleDraftChange}
                       onSave={handleSaveSectionEdits}
-                      onClose={() => setActiveSection(null)}
+                      onClose={handleCloseSection}
                     />
                   )}
 
                   {activeSection === 'projects' && (
                     <ProjectsEditor
-                      data={resumeData}
+                      data={effectiveResumeData}
+                      initialIndex={activeItemIndex}
+                      onItemFocus={setActiveItemIndex}
+                      hideHeader
+                      hideFooter
+                      onChange={handleDraftChange}
                       onSave={handleSaveSectionEdits}
-                      onClose={() => setActiveSection(null)}
+                      onClose={handleCloseSection}
                     />
                   )}
 
                   {activeSection === 'certifications' && (
                     <CertificationsEditor
-                      data={resumeData}
+                      data={effectiveResumeData}
+                      hideHeader
+                      hideFooter
+                      onChange={handleDraftChange}
                       onSave={handleSaveSectionEdits}
-                      onClose={() => setActiveSection(null)}
+                      onClose={handleCloseSection}
                     />
                   )}
 
@@ -855,7 +957,10 @@ export function TailoredResumeStudio({
                       <button
                         key={item.key}
                         type='button'
-                        onClick={() => setActiveSection(item.key)}
+                        onClick={() => {
+                          setActiveSection(item.key);
+                          setActiveItemIndex(0);
+                        }}
                         className='w-full text-left rounded-lg border border-border/60 bg-background-secondary/30 px-3 py-2 text-xs font-medium text-ink-primary hover:border-primary/40 hover:bg-primary/5 hover:text-primary transition-colors cursor-pointer'
                       >
                         {item.label}
@@ -865,7 +970,10 @@ export function TailoredResumeStudio({
                     <div className='space-y-2'>
                       <button
                         type='button'
-                        onClick={() => setActiveSection('cover_letter')}
+                        onClick={() => {
+                          setActiveSection('cover_letter');
+                          setActiveItemIndex(null);
+                        }}
                         className='w-full text-left rounded-lg border border-border/60 bg-background-secondary/30 px-3 py-2 text-xs font-medium text-ink-primary hover:border-primary/40 hover:bg-primary/5 hover:text-primary transition-colors cursor-pointer'
                       >
                         Edit Cover Letter

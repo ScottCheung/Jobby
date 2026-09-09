@@ -110,6 +110,7 @@ export function renderPagination(
   totalItems: number,
   itemsPerPage: number,
   onPageChange: (page: number) => void,
+  disabled = false,
 ) {
   const totalPages = Math.ceil(totalItems / itemsPerPage);
   if (totalPages <= 1) return null;
@@ -119,26 +120,28 @@ export function renderPagination(
 
   return (
     <div className='flex items-center justify-between border-t border-primary/50 pt-4 mt-4'>
-      <span className='text-meta text-ink-primary0'>
-        Showing <span className='font-semibold'>{startIdx}</span> to{' '}
-        <span className='font-semibold'>{endIdx}</span> of{' '}
-        <span className='font-semibold'>{totalItems}</span> entries
+      <span className='text-xs text-ink-secondary'>
+        Showing <span className='font-semibold text-ink-primary'>{startIdx}</span> to{' '}
+        <span className='font-semibold text-ink-primary'>{endIdx}</span> of{' '}
+        <span className='font-semibold text-ink-primary'>{totalItems}</span> entries
       </span>
       <div className='flex items-center gap-2'>
         <button
+          type='button'
           onClick={() => onPageChange(currentPage - 1)}
-          disabled={currentPage === 1}
-          className='p-1.5 rounded-lg border border-primary hover:bg-background-secondary text-ink-primary0 disabled:opacity-40 disabled:hover:bg-transparent cursor-pointer'
+          disabled={disabled || currentPage === 1}
+          className='p-1.5 rounded-lg border border-primary/50 hover:bg-background-secondary text-ink-primary disabled:opacity-40 disabled:hover:bg-transparent cursor-pointer'
         >
           <ChevronLeft className='w-4 h-4' />
         </button>
-        <span className='label-sm px-2'>
+        <span className='text-xs text-ink-secondary px-2'>
           Page {currentPage} of {totalPages}
         </span>
         <button
+          type='button'
           onClick={() => onPageChange(currentPage + 1)}
-          disabled={currentPage === totalPages}
-          className='p-1.5 rounded-lg border border-primary hover:bg-background-secondary text-ink-primary0 disabled:opacity-40 disabled:hover:bg-transparent cursor-pointer'
+          disabled={disabled || currentPage === totalPages}
+          className='p-1.5 rounded-lg border border-primary/50 hover:bg-background-secondary text-ink-primary disabled:opacity-40 disabled:hover:bg-transparent cursor-pointer'
         >
           <ChevronRight className='w-4 h-4' />
         </button>

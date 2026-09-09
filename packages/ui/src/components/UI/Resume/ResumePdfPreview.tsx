@@ -324,9 +324,15 @@ function PdfBullets({
   styles: PdfStyles;
   rules: ResumeHighlightRules;
 }) {
+  const normalizedItems = Array.isArray(items)
+    ? items
+    : typeof items === 'string' && (items as string).trim()
+      ? [(items as string).trim()]
+      : [];
+
   return (
     <>
-      {(items ?? []).filter(Boolean).map((item, index) => (
+      {normalizedItems.filter(Boolean).map((item, index) => (
         <View key={`${item}-${index}`} style={styles.bullet} wrap={false}>
           <Text style={styles.bulletMark}>•</Text>
           <PdfHighlightedText
@@ -350,11 +356,17 @@ function PdfTechnologies({
   styles: PdfStyles;
   template: ResumeTemplateConfig;
 }) {
-  if (!technologies?.length) return null;
+  const list = Array.isArray(technologies)
+    ? technologies
+    : typeof technologies === 'string' && (technologies as string).trim()
+      ? [(technologies as string).trim()]
+      : [];
+
+  if (!list.length) return null;
   return (
     <Text style={styles.technologies} wrap={false}>
       <Text style={styles.technologiesLabel}>Technologies: </Text>
-      {technologies.join(template.separators.technologies)}
+      {list.join(template.separators.technologies)}
     </Text>
   );
 }

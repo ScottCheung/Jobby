@@ -503,6 +503,208 @@ describe('Document Studio & Resume Tailoring (Zero-Token Mock Mode)', () => {
     expect(plainText).toContain('Frontend: React, TypeScript, HTML/CSS');
   });
 
+  it('formats all resume sections and contact information without omissions', async () => {
+    const { formatResumeAsPlainText } = await import('@jobby/ui/components/UI/Resume/helpers');
+
+    const fullResume: MasterResumeData = {
+      basics: {
+        first_name: 'Scott',
+        last_name: 'Zhang',
+        email: 'scott@example.com',
+        phone: '+61 400 123 456',
+        location: {
+          city: 'Brisbane',
+          state: 'QLD',
+          country: 'Australia',
+          postal_code: '4000',
+        },
+        linkedin_id: 'linkedin.com/in/scottzhang',
+        portfolio_url: 'github.com/scottzhang',
+        website: 'scottzhang.dev',
+        headline: 'Staff Software Engineer',
+      },
+      summary: 'Passionate full-stack systems engineer.',
+      key_qualifications: ['System Architecture', 'Cloud Services'],
+      experience: [
+        {
+          company: 'Northstar Labs',
+          title: 'Senior Software Engineer',
+          location: 'Brisbane, Australia',
+          start_date: '2022',
+          is_current: true,
+          description: ['Scaled distributed streaming platform.'],
+          technologies: ['TypeScript', 'AWS'],
+        },
+      ],
+      education: [
+        {
+          institution: 'Queensland University of Technology',
+          degree: 'Bachelor of IT',
+          field_of_study: 'Computer Science',
+          location: 'Brisbane, Australia',
+          start_date: '2014',
+          end_date: '2017',
+          highlights: ['Dean Honors List'],
+        },
+      ],
+      projects: [
+        {
+          name: 'Release Lens',
+          url: 'https://github.com/example/release-lens',
+          start_date: '2023',
+          end_date: 'Present',
+          description: ['Open-source health monitor.'],
+          technologies: ['TypeScript', 'ClickHouse'],
+        },
+      ],
+      skills: [
+        {
+          type: 'Languages',
+          skills: ['TypeScript', 'Python', 'Go'],
+        },
+      ],
+      certifications: [
+        {
+          type: 'Cloud',
+          certifications: [
+            {
+              name: 'AWS Solutions Architect',
+              issuer: 'Amazon Web Services',
+              issue_date: '2024',
+              expiry_date: '2027',
+              credential_url: 'https://aws.amazon.com/verify/123',
+            },
+          ],
+        },
+      ],
+      languages: [
+        { name: 'English', proficiency: 'Native' },
+        { name: 'Mandarin', proficiency: 'Professional' },
+      ],
+      other: [
+        {
+          title: 'Open Source Contributor of the Year',
+          organization: 'Tech Foundation',
+          date: '2023',
+          location: 'Global',
+          description: ['Awarded for contributions to dev tools.'],
+        },
+      ],
+    };
+
+    const text = formatResumeAsPlainText(fullResume);
+
+    // Verify all contact information is present (none dropped by ||)
+    expect(text).toContain('Scott Zhang');
+    expect(text).toContain('Staff Software Engineer');
+    expect(text).toContain('scott@example.com');
+    expect(text).toContain('+61 400 123 456');
+    expect(text).toContain('Brisbane, QLD, 4000, Australia');
+    expect(text).toContain('linkedin.com/in/scottzhang');
+    expect(text).toContain('github.com/scottzhang');
+    expect(text).toContain('scottzhang.dev');
+
+    // Verify summary and qualifications
+    expect(text).toContain('SUMMARY');
+    expect(text).toContain('Passionate full-stack systems engineer.');
+    expect(text).toContain('CORE COMPETENCIES');
+    expect(text).toContain('System Architecture • Cloud Services');
+
+    // Verify work experience with current job date formatting
+    expect(text).toContain('Senior Software Engineer at Northstar Labs | 2022 - Present (Brisbane, Australia)');
+    expect(text).toContain('Scaled distributed streaming platform.');
+    expect(text).toContain('Technologies: TypeScript, AWS');
+
+    // Verify education with location
+    expect(text).toContain('Bachelor of IT in Computer Science - Queensland University of Technology | 2014 - 2017 (Brisbane, Australia)');
+    expect(text).toContain('Dean Honors List');
+
+    // Verify projects with URL
+    expect(text).toContain('PROJECTS');
+    expect(text).toContain('Release Lens | 2023 - Present | https://github.com/example/release-lens');
+    expect(text).toContain('Open-source health monitor.');
+    expect(text).toContain('Technologies: TypeScript, ClickHouse');
+
+    // Verify skills
+    expect(text).toContain('SKILLS');
+    expect(text).toContain('Languages: TypeScript, Python, Go');
+
+    // Verify certifications with expiry date and credential URL
+    expect(text).toContain('CERTIFICATIONS');
+    expect(text).toContain('AWS Solutions Architect - Amazon Web Services - 2024 - 2027 - https://aws.amazon.com/verify/123');
+
+    // Verify languages
+    expect(text).toContain('LANGUAGES');
+    expect(text).toContain('English - Native, Mandarin - Professional');
+
+    // Verify other section
+    expect(text).toContain('OTHER');
+    expect(text).toContain('Open Source Contributor of the Year - Tech Foundation | Global | 2023');
+    expect(text).toContain('Awarded for contributions to dev tools.');
+  });
+
+  it('merges partial tailored resume with base profile resume data correctly', async () => {
+    const { mergeResumeData, formatResumeAsPlainText } = await import(
+      '@jobby/ui/components/UI/Resume/helpers'
+    );
+
+    const baseResume: MasterResumeData = {
+      basics: {
+        first_name: 'Jane',
+        last_name: 'Doe',
+        email: 'jane@example.com',
+        phone: '555-0100',
+      },
+      education: [
+        {
+          institution: 'Stanford University',
+          degree: 'B.S.',
+          field_of_study: 'Computer Science',
+        },
+      ],
+      skills: [{ type: 'Core', skills: ['React', 'Node.js'] }],
+      certifications: [
+        {
+          type: 'Cert',
+          certifications: [{ name: 'Certified Scrum Master', issuer: 'Scrum Alliance' }],
+        },
+      ],
+    };
+
+    const partialTailoredResume: MasterResumeData = {
+      summary: 'Tailored summary for Staff Engineer role.',
+      experience: [
+        {
+          company: 'Awesome Tech',
+          title: 'Staff Engineer',
+          start_date: '2021',
+          end_date: 'Present',
+          description: ['Tailored bullet for target job requirements.'],
+        },
+      ],
+    };
+
+    const merged = mergeResumeData(partialTailoredResume, baseResume);
+
+    // Merged resume retains base education, basics, and certifications
+    expect(merged.basics?.first_name).toBe('Jane');
+    expect(merged.education?.[0].institution).toBe('Stanford University');
+    expect(merged.certifications?.[0].certifications?.[0].name).toBe('Certified Scrum Master');
+
+    // Merged resume has tailored summary and experience
+    expect(merged.summary).toBe('Tailored summary for Staff Engineer role.');
+    expect(merged.experience?.[0].title).toBe('Staff Engineer');
+
+    // Format plain text includes everything
+    const plainText = formatResumeAsPlainText(merged);
+    expect(plainText).toContain('Jane Doe');
+    expect(plainText).toContain('jane@example.com');
+    expect(plainText).toContain('Tailored summary for Staff Engineer role.');
+    expect(plainText).toContain('Staff Engineer at Awesome Tech');
+    expect(plainText).toContain('Stanford University');
+    expect(plainText).toContain('Certified Scrum Master');
+  });
+
   it('supports permanently deleting a tailored resume via apiClient', async () => {
     const deleteSpy = vi
       .spyOn(apiClient, 'deleteTailoredResume')

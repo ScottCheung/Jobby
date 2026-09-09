@@ -4,8 +4,11 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useConsole } from '@/components/ConsoleContext';
+import { renderPagination } from '@/components/ConsoleUtils';
 import { api, type AdminAiUsageCall, type AdminAiUsageSummary } from '@/lib/api';
 import { formatTokenCount } from '@/lib/format-token-count';
+
+const PAGE_SIZE = 20;
 
 type Metric = 'cost_usd' | 'total_tokens' | 'calls';
 
@@ -37,9 +40,10 @@ export default function AiUsageAdminPage() {
   const [summary, setSummary] = useState<AdminAiUsageSummary | null>(null);
   const [calls, setCalls] = useState<AdminAiUsageCall[]>([]);
   const [totalCalls, setTotalCalls] = useState(0);
+  const [page, setPage] = useState(1);
   const [selectedCall, setSelectedCall] = useState<AdminAiUsageCall | null>(null);
   const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
+  const [loadingCalls, setLoadingCalls] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -47,12 +51,10 @@ export default function AiUsageAdminPage() {
     let cancelled = false;
     setLoading(true);
     setError('');
-    void Promise.all([api.adminAiUsageSummary(range), api.adminAiUsageCalls({ range })])
-      .then(([nextSummary, nextCalls]) => {
+    api.adminAiUsageSummary(range)
+      .then((nextSummary) => {
         if (cancelled) return;
         setSummary(nextSummary);
-        setCalls(nextCalls.items);
-        setTotalCalls(nextCalls.total);
       })
       .catch((loadError) => {
         if (!cancelled) setError(loadError instanceof Error ? loadError.message : 'Could not load AI usage.');
@@ -64,6 +66,31 @@ export default function AiUsageAdminPage() {
       cancelled = true;
     };
   }, [range, user?.role]);
+
+  useEffect(() => {
+    if (user?.role !== 'admin') return;
+    let cancelled = false;
+    setLoadingCalls(true);
+    api.adminAiUsageCalls({
+      range,
+      limit: PAGE_SIZE,
+      offset: (page - 1) * PAGE_SIZE,
+    })
+      .then((nextCalls) => {
+        if (cancelled) return;
+        setCalls(nextCalls.items);
+        setTotalCalls(nextCalls.total);
+      })
+      .catch((loadError) => {
+        if (!cancelled) setError(loadError instanceof Error ? loadError.message : 'Could not load AI usage calls.');
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingCalls(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [range, page, user?.role]);
 
   const selectedMetricLabel = useMemo(
     () => ({ cost_usd: 'Cost', total_tokens: 'Tokens', calls: 'Calls' })[metric],
@@ -91,19 +118,6 @@ export default function AiUsageAdminPage() {
     return value.toLocaleString();
   };
 
-  const loadMore = async () => {
-    setLoadingMore(true);
-    try {
-      const nextCalls = await api.adminAiUsageCalls({ range, offset: calls.length });
-      setCalls((current) => [...current, ...nextCalls.items]);
-      setTotalCalls(nextCalls.total);
-    } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Could not load AI usage.');
-    } finally {
-      setLoadingMore(false);
-    }
-  };
-
   if (!user || user.role !== 'admin') {
     return <div className='p-8 text-center text-ink-secondary'>Admin access required</div>;
   }
@@ -115,7 +129,14 @@ export default function AiUsageAdminPage() {
     <div className='mx-auto flex max-w-6xl flex-col gap-5 pb-10'>
       <header className='flex items-center justify-between gap-4 border-b border-primary/60 pb-5'>
         <h1 className='title-section'>AI Usage</h1>
-        <select value={range} onChange={(event) => setRange(event.target.value)} className='input h-9 w-auto'>
+        <select
+          value={range}
+          onChange={(event) => {
+            setRange(event.target.value);
+            setPage(1);
+          }}
+          className='input h-9 w-auto'
+        >
           <option value='1d'>24 hours</option>
           <option value='7d'>7 days</option>
           <option value='30d'>30 days</option>
@@ -189,14 +210,14 @@ export default function AiUsageAdminPage() {
       <div className='rounded-2xl border border-primary/50 bg-panel/50 p-4'>
         <div className='mb-3 flex items-center justify-between'>
           <h2 className='title-card'>Recent AI calls</h2>
-          <span className='text-xs text-ink-secondary'>Showing {calls.length} of {totalCalls}</span>
+          <span className='text-xs text-ink-secondary'>{totalCalls.toLocaleString()} total</span>
         </div>
         <div className='overflow-x-auto'>
           <table className='w-full min-w-[840px] text-left text-sm'>
             <thead className='border-b border-primary/40 text-xs text-ink-secondary'>
               <tr>{['Feature', 'User', 'Tokens', 'Thinking', 'Cost', 'Duration', 'Model', 'Time'].map((label) => <th key={label} className='px-3 py-2 font-medium'>{label}</th>)}</tr>
             </thead>
-            <tbody>
+            <tbody className={loadingCalls ? 'opacity-50 transition-opacity' : 'transition-opacity'}>
               {calls.map((call) => (
                 <tr key={call.id} onClick={() => setSelectedCall(call)} className='cursor-pointer border-b border-primary/20 transition-colors hover:bg-primary/5'>
                   <td className='px-3 py-3'>{operationLabel(call.feature)}</td>
@@ -211,15 +232,9 @@ export default function AiUsageAdminPage() {
               ))}
             </tbody>
           </table>
-          {!calls.length && <div className='p-6 text-center text-sm text-ink-secondary'>No AI calls in this range.</div>}
+          {!calls.length && !loadingCalls && <div className='p-6 text-center text-sm text-ink-secondary'>No AI calls in this range.</div>}
         </div>
-        {calls.length < totalCalls && (
-          <div className='mt-4 flex justify-center'>
-            <button type='button' onClick={() => void loadMore()} disabled={loadingMore} className='rounded-full border border-primary/50 px-4 py-2 text-sm text-primary'>
-              {loadingMore ? 'Loading...' : 'Load more'}
-            </button>
-          </div>
-        )}
+        {renderPagination(page, totalCalls, PAGE_SIZE, setPage, loadingCalls)}
       </div>
 
       {selectedCall && (

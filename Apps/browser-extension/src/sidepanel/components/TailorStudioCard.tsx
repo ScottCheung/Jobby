@@ -36,6 +36,7 @@ import {
   formatResumeAsPlainText as formatResumeAsPlainTextImpl,
   formatCoverLetterFilename,
   defaultMasterResumeData,
+  mergeResumeData,
 } from '@jobby/ui/components/UI/Resume/helpers';
 import { StructuredJobDescription } from '@jobby/ui/components/UI/StructuredJobDescription';
 import type { PageInspection } from '../../shared/contracts/page-inspection';
@@ -191,9 +192,13 @@ export function TailorStudioCard({
     ) ?
       generatedDocuments.resume === true
     : Boolean(resume);
-  const effectiveResume = resume || originalResume || defaultMasterResumeData;
+  const baseResume = originalResume || defaultMasterResumeData;
+  const effectiveResume = mergeResumeData(resume, baseResume);
   const displayResume = hasGeneratedResume ? effectiveResume : null;
-  const competencies = result?.core_competencies || [];
+  const competencies =
+    result?.core_competencies?.length ?
+      result.core_competencies
+    : effectiveResume.core_competencies || [];
 
   // A resume-only version must never invent a default cover letter. Showing one
   // here made it look as if the user had generated a document they did not ask for.
@@ -311,9 +316,10 @@ export function TailorStudioCard({
   };
 
   const handleCopyResume = async () => {
-    if (!resume) return;
+    const targetResume = displayResume || effectiveResume;
+    if (!targetResume) return;
     try {
-      const text = formatResumeAsPlainText(resume, competencies);
+      const text = formatResumeAsPlainText(targetResume, competencies);
       const success = await copyToClipboard(text);
       if (success) {
         setCopiedResume(true);
@@ -506,8 +512,14 @@ export function TailorStudioCard({
     );
 
   const renderTailoredResumePdf = async () => {
-    if (!resume) throw new Error('No tailored resume is available.');
-    const rendered = await renderResumePdfOnce(resume, 1, competencies, []);
+    const targetResume = displayResume || effectiveResume;
+    if (!targetResume) throw new Error('No tailored resume is available.');
+    const rendered = await renderResumePdfOnce(
+      targetResume,
+      1,
+      competencies,
+      [],
+    );
     setRenderedResumeFileSize(rendered.blob.size);
     return rendered;
   };
@@ -833,7 +845,8 @@ export function TailorStudioCard({
   };
 
   const handleDownloadResume = async () => {
-    if (!resume) return;
+    const targetResume = displayResume || effectiveResume;
+    if (!targetResume) return;
     try {
       const { blob } = await renderTailoredResumePdf();
       const url = URL.createObjectURL(blob);
@@ -1386,7 +1399,7 @@ export function TailorStudioCard({
       {!isViewingGenerating && activeRecord?.usage && (
         <details className='px-1 text-[10px] text-muted-foreground'>
           <summary className='cursor-pointer list-none [&::-webkit-details-marker]:hidden'>
-            ⚡ {(activeRecord.usage.duration_ms / 1000).toFixed(1)}s · {formatTokenCount(activeRecord.usage.total_tokens)} tokens · Latest AI generation
+            {(activeRecord.usage.duration_ms / 1000).toFixed(1)}s · {formatTokenCount(activeRecord.usage.total_tokens)} tokens
           </summary>
           <div className='mt-1 grid grid-cols-2 gap-x-3 gap-y-0.5'>
             <span>Input {formatTokenCount(activeRecord.usage.input_tokens)}</span>

@@ -3,7 +3,8 @@
 "use client";
 import { BulletListInput, Button, Input, TagInput, Textarea } from "@jobby/ui";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
+import { cn } from "@/lib/utils";
 import {
   Check,
   Plus,
@@ -84,10 +85,16 @@ export function BasicsEditor({
   data,
   onSave,
   onClose,
+  hideHeader = false,
+  hideFooter = false,
+  onChange,
 }: {
   data: MasterResumeData;
   onSave: (next: MasterResumeData) => Promise<void>;
   onClose: () => void;
+  hideHeader?: boolean;
+  hideFooter?: boolean;
+  onChange?: (next: MasterResumeData) => void;
 }) {
   const basics = data.basics ?? {};
   const location = (basics.location ?? {}) as Partial<ResumeLocation>;
@@ -117,6 +124,33 @@ export function BasicsEditor({
     country: asValue(location.country),
   });
   const [saving, setSaving] = useState(false);
+  const dataRef = useRef(data);
+  dataRef.current = data;
+
+  const updateDraft = (patch: Partial<typeof draft>) => {
+    const next = { ...draft, ...patch };
+    setDraft(next);
+    if (onChange) {
+      const nextBasics: ResumeBasics = {
+        ...basics,
+        first_name: next.first_name || null,
+        last_name: next.last_name || null,
+        email: next.email || null,
+        phone: next.phone || null,
+        headline: next.headline || null,
+        linkedin_id: next.linkedin_id || null,
+        website: next.website || null,
+        portfolio_url: next.portfolio_url || null,
+        location: {
+          ...location,
+          city: next.city || null,
+          state: next.state || null,
+          country: next.country || null,
+        } as ResumeLocation,
+      };
+      onChange({ ...dataRef.current, basics: nextBasics });
+    }
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -138,7 +172,7 @@ export function BasicsEditor({
           country: draft.country || null,
         } as ResumeLocation,
       };
-      await onSave({ ...data, basics: nextBasics });
+      await onSave({ ...dataRef.current, basics: nextBasics });
     } finally {
       setSaving(false);
     }
@@ -146,7 +180,7 @@ export function BasicsEditor({
 
   return (
     <div className="flex max-h-[88vh] min-h-[360px] flex-col">
-      <ModalHeader title="Personal Info" onClose={onClose} />
+      {!hideHeader && <ModalHeader title="Personal Info" onClose={onClose} />}
       <div className="flex-1 overflow-y-auto custom-scrollbar py-3 pr-1">
         <div className="grid gap-x-3 gap-y-2.5 md:grid-cols-2">
           <div>
@@ -158,7 +192,7 @@ export function BasicsEditor({
               value={draft.first_name}
               placeholder="First name"
               onChange={(e) =>
-                setDraft({ ...draft, first_name: e.target.value })
+                updateDraft({ first_name: e.target.value })
               }
             />
           </div>
@@ -171,7 +205,7 @@ export function BasicsEditor({
               value={draft.last_name}
               placeholder="Last name"
               onChange={(e) =>
-                setDraft({ ...draft, last_name: e.target.value })
+                updateDraft({ last_name: e.target.value })
               }
             />
           </div>
@@ -183,7 +217,7 @@ export function BasicsEditor({
               className="font-semibold text-ink-primary"
               value={draft.email}
               placeholder="email@example.com"
-              onChange={(e) => setDraft({ ...draft, email: e.target.value })}
+              onChange={(e) => updateDraft({ email: e.target.value })}
             />
           </div>
           <div>
@@ -194,7 +228,7 @@ export function BasicsEditor({
               className="font-semibold text-ink-primary"
               value={draft.phone}
               placeholder="+1 (555) 000-0000"
-              onChange={(e) => setDraft({ ...draft, phone: e.target.value })}
+              onChange={(e) => updateDraft({ phone: e.target.value })}
             />
           </div>
           <div>
@@ -205,7 +239,7 @@ export function BasicsEditor({
               className="font-semibold text-ink-primary"
               value={draft.city}
               placeholder="City"
-              onChange={(e) => setDraft({ ...draft, city: e.target.value })}
+              onChange={(e) => updateDraft({ city: e.target.value })}
             />
           </div>
           <div>
@@ -216,7 +250,7 @@ export function BasicsEditor({
               className="font-semibold text-ink-primary"
               value={draft.country}
               placeholder="Country"
-              onChange={(e) => setDraft({ ...draft, country: e.target.value })}
+              onChange={(e) => updateDraft({ country: e.target.value })}
             />
           </div>
           <div>
@@ -228,7 +262,7 @@ export function BasicsEditor({
               value={draft.linkedin_id}
               placeholder="e.g. scottzhang1110"
               onChange={(e) =>
-                setDraft({ ...draft, linkedin_id: e.target.value })
+                updateDraft({ linkedin_id: e.target.value })
               }
             />
           </div>
@@ -241,7 +275,7 @@ export function BasicsEditor({
               value={draft.portfolio_url}
               placeholder="https://..."
               onChange={(e) =>
-                setDraft({ ...draft, portfolio_url: e.target.value })
+                updateDraft({ portfolio_url: e.target.value })
               }
             />
           </div>
@@ -253,7 +287,7 @@ export function BasicsEditor({
               className="font-semibold text-ink-primary"
               value={draft.website}
               placeholder="https://..."
-              onChange={(e) => setDraft({ ...draft, website: e.target.value })}
+              onChange={(e) => updateDraft({ website: e.target.value })}
             />
           </div>
           <div className="md:col-span-2">
@@ -264,12 +298,12 @@ export function BasicsEditor({
               className="font-semibold text-ink-primary"
               value={draft.headline}
               placeholder="e.g. Senior Software Engineer"
-              onChange={(e) => setDraft({ ...draft, headline: e.target.value })}
+              onChange={(e) => updateDraft({ headline: e.target.value })}
             />
           </div>
         </div>
       </div>
-      <ModalFooter onClose={onClose} onSave={handleSave} saving={saving} />
+      {!hideFooter && <ModalFooter onClose={onClose} onSave={handleSave} saving={saving} />}
     </div>
   );
 }
@@ -281,18 +315,35 @@ export function SummaryEditor({
   data,
   onSave,
   onClose,
+  hideHeader = false,
+  hideFooter = false,
+  onChange,
 }: {
   data: MasterResumeData;
   onSave: (next: MasterResumeData) => Promise<void>;
   onClose: () => void;
+  hideHeader?: boolean;
+  hideFooter?: boolean;
+  onChange?: (next: MasterResumeData) => void;
 }) {
   const [summary, setSummary] = useState(asValue(data.summary));
   const [saving, setSaving] = useState(false);
+  const dataRef = useRef(data);
+  dataRef.current = data;
+
+  useEffect(() => {
+    setSummary(asValue(data.summary));
+  }, [data.summary]);
+
+  const handleChange = (val: string) => {
+    setSummary(val);
+    onChange?.({ ...dataRef.current, summary: val.trim() || null });
+  };
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      await onSave({ ...data, summary: summary.trim() || null });
+      await onSave({ ...dataRef.current, summary: summary.trim() || null });
     } finally {
       setSaving(false);
     }
@@ -300,17 +351,17 @@ export function SummaryEditor({
 
   return (
     <div className="flex max-h-[88vh] min-h-[320px] flex-col">
-      <ModalHeader title="Summary" onClose={onClose} />
+      {!hideHeader && <ModalHeader title="Summary" onClose={onClose} />}
       <div className="flex-1 overflow-y-auto custom-scrollbar py-3 pr-1">
         <Textarea
-          label="Professional Summary"
+          label={hideHeader ? undefined : "Professional Summary"}
           value={summary}
           placeholder="Brief professional summary..."
-          onChange={(e) => setSummary(e.target.value)}
+          onChange={(e) => handleChange(e.target.value)}
           minHeight={160}
         />
       </div>
-      <ModalFooter onClose={onClose} onSave={handleSave} saving={saving} />
+      {!hideFooter && <ModalFooter onClose={onClose} onSave={handleSave} saving={saving} />}
     </div>
   );
 }
@@ -322,24 +373,64 @@ export function ExperienceEditor({
   data,
   onSave,
   onClose,
+  initialIndex,
+  onItemFocus,
+  onChange,
+  hideHeader = false,
+  hideFooter = false,
 }: {
   data: MasterResumeData;
   onSave: (next: MasterResumeData) => Promise<void>;
   onClose: () => void;
+  initialIndex?: number | null;
+  onItemFocus?: (index: number) => void;
+  onChange?: (next: MasterResumeData) => void;
+  hideHeader?: boolean;
+  hideFooter?: boolean;
 }) {
   const [items, setItems] = useState<ResumeExperience[]>(
     Array.isArray(data.experience) ? data.experience : [],
   );
   const [saving, setSaving] = useState(false);
+  const [focusedIndex, setFocusedIndex] = useState<number>(initialIndex ?? 0);
+  const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const dataRef = useRef(data);
+  dataRef.current = data;
+
+  const handleFocusIndex = (index: number) => {
+    setFocusedIndex(index);
+    onItemFocus?.(index);
+  };
+
+  useEffect(() => {
+    if (initialIndex != null && initialIndex >= 0 && initialIndex < items.length) {
+      setFocusedIndex(initialIndex);
+    }
+  }, [initialIndex, items.length]);
+
+  useEffect(() => {
+    if (focusedIndex != null && itemRefs.current[focusedIndex]) {
+      itemRefs.current[focusedIndex]?.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+      });
+    }
+  }, [focusedIndex]);
 
   const updateItem = (index: number, patch: Partial<ResumeExperience>) => {
     const list = [...items];
     list[index] = { ...list[index], ...patch };
     setItems(list);
+    onChange?.({ ...dataRef.current, experience: list });
   };
 
   const removeItem = (index: number) => {
-    setItems(items.filter((_, i) => i !== index));
+    const list = items.filter((_, i) => i !== index);
+    setItems(list);
+    if (focusedIndex >= items.length - 1) {
+      handleFocusIndex(Math.max(0, items.length - 2));
+    }
+    onChange?.({ ...dataRef.current, experience: list });
   };
 
   const moveItem = (index: number, direction: "up" | "down") => {
@@ -349,10 +440,12 @@ export function ExperienceEditor({
     const [moved] = next.splice(index, 1);
     next.splice(targetIndex, 0, moved);
     setItems(next);
+    handleFocusIndex(targetIndex);
+    onChange?.({ ...dataRef.current, experience: next });
   };
 
   const addItem = () => {
-    setItems([
+    const next = [
       ...items,
       {
         title: "",
@@ -363,13 +456,16 @@ export function ExperienceEditor({
         description: [],
         technologies: [],
       },
-    ]);
+    ];
+    setItems(next);
+    handleFocusIndex(items.length);
+    onChange?.({ ...dataRef.current, experience: next });
   };
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      await onSave({ ...data, experience: items });
+      await onSave({ ...dataRef.current, experience: items });
     } finally {
       setSaving(false);
     }
@@ -377,12 +473,24 @@ export function ExperienceEditor({
 
   return (
     <div className="flex max-h-[88vh] min-h-[420px] flex-col">
-      <ModalHeader title="Experience" onClose={onClose} />
+      {!hideHeader && <ModalHeader title="Experience" onClose={onClose} />}
+
       <div className="flex-1 space-y-3 overflow-y-auto custom-scrollbar py-3 pr-1">
         {items.map((item, index) => (
           <div
             key={`exp-${index}`}
-            className="space-y-3 rounded-lg bg-panel p-3 shadow-xs"
+            ref={(el) => {
+              itemRefs.current[index] = el;
+            }}
+            id={`exp-card-${index}`}
+            onClick={() => handleFocusIndex(index)}
+            onFocusCapture={() => handleFocusIndex(index)}
+            className={cn(
+              "space-y-3 rounded-lg bg-panel p-3 shadow-xs transition-all duration-200 border",
+              focusedIndex === index
+                ? "border-primary/60 ring-2 ring-primary/20 shadow-sm"
+                : "border-transparent"
+            )}
           >
             <div className="flex items-center justify-between gap-3 pb-3">
               <div className="flex items-center gap-2 min-w-0">
@@ -502,8 +610,14 @@ export function ExperienceEditor({
                 </span>
               </label>
               <BulletListInput
-                values={item.description ?? []}
-                placeholder="Add an achievement point..."
+                values={
+                  Array.isArray(item.description)
+                    ? item.description
+                    : typeof item.description === 'string' && (item.description as string).trim()
+                    ? [(item.description as string).trim()]
+                    : []
+                }
+                placeholder="Add an achievement point... (paste multi-line text to auto-split)"
                 onChange={(desc) => updateItem(index, { description: desc })}
               />
             </div>
@@ -513,11 +627,17 @@ export function ExperienceEditor({
                 Technologies Used
               </label>
               <TagInput
-                values={item.technologies ?? []}
+                values={
+                  Array.isArray(item.technologies)
+                    ? item.technologies
+                    : typeof item.technologies === 'string' && (item.technologies as string).trim()
+                    ? [(item.technologies as string).trim()]
+                    : []
+                }
                 placeholder={[
                   "Add technologies (e.g. Next.js, GraphQL, Redis)",
-                  "Tip: Type multiple items separated by commas (,)",
-                  "Press Enter or comma to add tags",
+                  "Tip: Type multiple items separated by commas, | or •",
+                  "Press Enter, comma, | or • to add tags",
                 ]}
                 onChange={(techs) => updateItem(index, { technologies: techs })}
               />
@@ -535,7 +655,7 @@ export function ExperienceEditor({
           Add Experience Entry
         </Button>
       </div>
-      <ModalFooter onClose={onClose} onSave={handleSave} saving={saving} />
+      {!hideFooter && <ModalFooter onClose={onClose} onSave={handleSave} saving={saving} />}
     </div>
   );
 }
@@ -547,28 +667,79 @@ export function ProjectsEditor({
   data,
   onSave,
   onClose,
+  initialIndex,
+  onItemFocus,
+  onChange,
+  hideHeader = false,
+  hideFooter = false,
 }: {
   data: MasterResumeData;
   onSave: (next: MasterResumeData) => Promise<void>;
   onClose: () => void;
+  initialIndex?: number | null;
+  onItemFocus?: (index: number) => void;
+  onChange?: (next: MasterResumeData) => void;
+  hideHeader?: boolean;
+  hideFooter?: boolean;
 }) {
   const [items, setItems] = useState<ResumeProject[]>(
     Array.isArray(data.projects) ? data.projects : [],
   );
   const [saving, setSaving] = useState(false);
+  const [focusedIndex, setFocusedIndex] = useState<number>(initialIndex ?? 0);
+  const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const dataRef = useRef(data);
+  dataRef.current = data;
+
+  const handleFocusIndex = (index: number) => {
+    setFocusedIndex(index);
+    onItemFocus?.(index);
+  };
+
+  useEffect(() => {
+    if (initialIndex != null && initialIndex >= 0 && initialIndex < items.length) {
+      setFocusedIndex(initialIndex);
+    }
+  }, [initialIndex, items.length]);
+
+  useEffect(() => {
+    if (focusedIndex != null && itemRefs.current[focusedIndex]) {
+      itemRefs.current[focusedIndex]?.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+      });
+    }
+  }, [focusedIndex]);
 
   const updateItem = (index: number, patch: Partial<ResumeProject>) => {
     const list = [...items];
     list[index] = { ...list[index], ...patch };
     setItems(list);
+    onChange?.({ ...dataRef.current, projects: list });
   };
 
   const removeItem = (index: number) => {
-    setItems(items.filter((_, i) => i !== index));
+    const list = items.filter((_, i) => i !== index);
+    setItems(list);
+    if (focusedIndex >= items.length - 1) {
+      handleFocusIndex(Math.max(0, items.length - 2));
+    }
+    onChange?.({ ...dataRef.current, projects: list });
+  };
+
+  const moveItem = (index: number, direction: "up" | "down") => {
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= items.length) return;
+    const next = [...items];
+    const [moved] = next.splice(index, 1);
+    next.splice(targetIndex, 0, moved);
+    setItems(next);
+    handleFocusIndex(targetIndex);
+    onChange?.({ ...dataRef.current, projects: next });
   };
 
   const addItem = () => {
-    setItems([
+    const next = [
       ...items,
       {
         name: "",
@@ -578,13 +749,16 @@ export function ProjectsEditor({
         description: [],
         technologies: [],
       },
-    ]);
+    ];
+    setItems(next);
+    handleFocusIndex(items.length);
+    onChange?.({ ...dataRef.current, projects: next });
   };
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      await onSave({ ...data, projects: items });
+      await onSave({ ...dataRef.current, projects: items });
     } finally {
       setSaving(false);
     }
@@ -592,27 +766,66 @@ export function ProjectsEditor({
 
   return (
     <div className="flex max-h-[88vh] min-h-[420px] flex-col">
-      <ModalHeader title="Projects" onClose={onClose} />
-      <div className="flex-1 overflow-y-auto custom-scrollbar py-3 pr-1">
+      {!hideHeader && <ModalHeader title="Projects" onClose={onClose} />}
+
+      <div className="flex-1 space-y-3 overflow-y-auto custom-scrollbar py-3 pr-1">
         {items.map((item, index) => (
           <div
             key={`project-item-${index}`}
-            className="space-y-3 rounded-lg bg-panel p-3"
+            ref={(el) => {
+              itemRefs.current[index] = el;
+            }}
+            id={`project-card-${index}`}
+            onClick={() => handleFocusIndex(index)}
+            onFocusCapture={() => handleFocusIndex(index)}
+            className={cn(
+              "space-y-3 rounded-lg bg-panel p-3 shadow-xs transition-all duration-200 border",
+              focusedIndex === index
+                ? "border-primary/60 ring-2 ring-primary/20 shadow-sm"
+                : "border-transparent"
+            )}
           >
             <div className="flex items-center justify-between gap-3 pb-3">
-              <h3 className="font-semibold text-ink-primary">
-                {item.name || `Project #${index + 1}`}
-              </h3>
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                className="text-red-500 hover:bg-red-500/10 hover:text-red-600"
-                Icon={Trash2}
-                onClick={() => removeItem(index)}
-              >
-                Delete Project
-              </Button>
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-md bg-primary/10 px-1.5 text-[11px] font-bold text-primary shrink-0">
+                  {index + 1}
+                </span>
+                <h3 className="font-semibold text-ink-primary truncate text-sm">
+                  {item.name || `Project #${index + 1}`}
+                </h3>
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  type="button"
+                  title="Move project up"
+                  aria-label="Move project up"
+                  disabled={index === 0}
+                  onClick={() => moveItem(index, "up")}
+                  className="p-1 rounded-md text-ink-secondary hover:text-ink-primary hover:bg-background-secondary disabled:opacity-30 cursor-pointer"
+                >
+                  <ChevronUp className="size-4" />
+                </button>
+                <button
+                  type="button"
+                  title="Move project down"
+                  aria-label="Move project down"
+                  disabled={index === items.length - 1}
+                  onClick={() => moveItem(index, "down")}
+                  className="p-1 rounded-md text-ink-secondary hover:text-ink-primary hover:bg-background-secondary disabled:opacity-30 cursor-pointer"
+                >
+                  <ChevronDown className="size-4" />
+                </button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="text-red-500 hover:bg-red-500/10 hover:text-red-600"
+                  Icon={Trash2}
+                  onClick={() => removeItem(index)}
+                >
+                  Delete Project
+                </Button>
+              </div>
             </div>
 
             <div className="grid gap-3 md:grid-cols-2">
@@ -671,8 +884,14 @@ export function ProjectsEditor({
                 Project Highlights / Features (Drag to reorder)
               </label>
               <BulletListInput
-                values={item.description ?? []}
-                placeholder="Add a project feature or achievement point..."
+                values={
+                  Array.isArray(item.description)
+                    ? item.description
+                    : typeof item.description === 'string' && (item.description as string).trim()
+                    ? [(item.description as string).trim()]
+                    : []
+                }
+                placeholder="Add a project feature or achievement point... (paste multi-line text to auto-split)"
                 onChange={(desc) => updateItem(index, { description: desc })}
               />
             </div>
@@ -682,11 +901,17 @@ export function ProjectsEditor({
                 Technologies Used
               </label>
               <TagInput
-                values={item.technologies ?? []}
+                values={
+                  Array.isArray(item.technologies)
+                    ? item.technologies
+                    : typeof item.technologies === 'string' && (item.technologies as string).trim()
+                    ? [(item.technologies as string).trim()]
+                    : []
+                }
                 placeholder={[
                   "Add technologies (e.g. React, TailwindCSS, AWS)",
-                  "Tip: Type multiple items separated by commas (,)",
-                  "Press Enter or comma to add tags",
+                  "Tip: Type multiple items separated by commas, | or •",
+                  "Press Enter, comma, | or • to add tags",
                 ]}
                 onChange={(techs) => updateItem(index, { technologies: techs })}
               />
@@ -704,7 +929,7 @@ export function ProjectsEditor({
           Add Project
         </Button>
       </div>
-      <ModalFooter onClose={onClose} onSave={handleSave} saving={saving} />
+      {!hideFooter && <ModalFooter onClose={onClose} onSave={handleSave} saving={saving} />}
     </div>
   );
 }
@@ -717,6 +942,9 @@ export function CoreCompetenciesEditor({
   onSave,
   onClose,
   initialCoreCompetencies,
+  hideHeader = false,
+  hideFooter = false,
+  onChange,
 }: {
   data: MasterResumeData;
   onSave: (
@@ -725,6 +953,9 @@ export function CoreCompetenciesEditor({
   ) => Promise<void>;
   onClose: () => void;
   initialCoreCompetencies?: string[];
+  hideHeader?: boolean;
+  hideFooter?: boolean;
+  onChange?: (next: MasterResumeData, nextCoreCompetencies?: string[]) => void;
 }) {
   const [coreCompetencies, setCoreCompetencies] = useState<string[]>(
     initialCoreCompetencies ??
@@ -733,12 +964,22 @@ export function CoreCompetenciesEditor({
       [],
   );
   const [saving, setSaving] = useState(false);
+  const dataRef = useRef(data);
+  dataRef.current = data;
+
+  const updateCompetencies = (next: string[]) => {
+    setCoreCompetencies(next);
+    onChange?.(
+      { ...dataRef.current, core_competencies: next },
+      next,
+    );
+  };
 
   const handleSave = async () => {
     setSaving(true);
     try {
       await onSave(
-        { ...data, core_competencies: coreCompetencies },
+        { ...dataRef.current, core_competencies: coreCompetencies },
         coreCompetencies,
       );
     } finally {
@@ -748,21 +989,26 @@ export function CoreCompetenciesEditor({
 
   return (
     <div className="flex max-h-[88vh] min-h-[320px] flex-col">
-      <ModalHeader title="Core Competencies" onClose={onClose} />
+      {!hideHeader && <ModalHeader title="Core Competencies" onClose={onClose} />}
       <div className="flex-1 overflow-y-auto custom-scrollbar py-3 pr-1">
         <div className="space-y-3 rounded-lg bg-primary/5 p-3">
           <div className="flex items-center justify-between gap-3">
-            <label className="body-sm font-bold text-ink-primary">
-              Competencies (Drag to reorder)
-            </label>
+            {!hideHeader && (
+              <label className="body-sm font-bold text-ink-primary">
+                Competencies (Drag to reorder)
+              </label>
+            )}
             {coreCompetencies.length > 0 && (
               <Button
                 type="button"
                 size="sm"
                 variant="ghost"
-                className="self-start text-red-500 hover:bg-red-500/10 hover:text-red-600"
+                className={cn(
+                  "text-red-500 hover:bg-red-500/10 hover:text-red-600",
+                  hideHeader ? "ml-auto" : "self-start"
+                )}
                 Icon={Trash2}
-                onClick={() => setCoreCompetencies([])}
+                onClick={() => updateCompetencies([])}
               >
                 Clear All
               </Button>
@@ -772,14 +1018,14 @@ export function CoreCompetenciesEditor({
             values={coreCompetencies}
             placeholder={[
               "Add core competencies (e.g. AWS Cloud & Serverless Architecture)",
-              "Tip: Type or paste multiple competencies separated by commas (,)",
-              "Press Enter or comma to add tags",
+              "Tip: Type or paste multiple competencies separated by commas, | or •",
+              "Press Enter, comma, | or • to add tags",
             ]}
-            onChange={setCoreCompetencies}
+            onChange={updateCompetencies}
           />
         </div>
       </div>
-      <ModalFooter onClose={onClose} onSave={handleSave} saving={saving} />
+      {!hideFooter && <ModalFooter onClose={onClose} onSave={handleSave} saving={saving} />}
     </div>
   );
 }
@@ -791,28 +1037,80 @@ export function SkillsEditor({
   data,
   onSave,
   onClose,
+  initialIndex,
+  onItemFocus,
+  onChange,
+  hideHeader = false,
+  hideFooter = false,
 }: {
   data: MasterResumeData;
   onSave: (next: MasterResumeData) => Promise<void>;
   onClose: () => void;
+  initialIndex?: number | null;
+  onItemFocus?: (index: number) => void;
+  onChange?: (next: MasterResumeData) => void;
+  hideHeader?: boolean;
+  hideFooter?: boolean;
 }) {
   const [groups, setGroups] = useState<ResumeSkillGroup[]>(
     Array.isArray(data.skills) ? data.skills : [],
   );
   const [saving, setSaving] = useState(false);
+  const [focusedIndex, setFocusedIndex] = useState<number>(initialIndex ?? 0);
+  const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  const handleFocusIndex = (index: number) => {
+    setFocusedIndex(index);
+    onItemFocus?.(index);
+  };
+
+  useEffect(() => {
+    if (initialIndex != null && initialIndex >= 0 && initialIndex < groups.length) {
+      setFocusedIndex(initialIndex);
+    }
+  }, [initialIndex, groups.length]);
+
+  useEffect(() => {
+    if (focusedIndex != null && itemRefs.current[focusedIndex]) {
+      itemRefs.current[focusedIndex]?.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+      });
+    }
+  }, [focusedIndex]);
 
   const updateGroup = (index: number, patch: Partial<ResumeSkillGroup>) => {
     const list = [...groups];
     list[index] = { ...list[index], ...patch };
     setGroups(list);
+    onChange?.({ ...data, skills: list });
   };
 
   const removeGroup = (index: number) => {
-    setGroups(groups.filter((_, i) => i !== index));
+    const list = groups.filter((_, i) => i !== index);
+    setGroups(list);
+    if (focusedIndex >= groups.length - 1) {
+      handleFocusIndex(Math.max(0, groups.length - 2));
+    }
+    onChange?.({ ...data, skills: list });
+  };
+
+  const moveGroup = (index: number, direction: "up" | "down") => {
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= groups.length) return;
+    const next = [...groups];
+    const [moved] = next.splice(index, 1);
+    next.splice(targetIndex, 0, moved);
+    setGroups(next);
+    handleFocusIndex(targetIndex);
+    onChange?.({ ...data, skills: next });
   };
 
   const addGroup = () => {
-    setGroups([...groups, { type: "Languages & Frameworks", skills: [] }]);
+    const list = [...groups, { type: "Languages & Frameworks", skills: [] }];
+    setGroups(list);
+    handleFocusIndex(groups.length);
+    onChange?.({ ...data, skills: list });
   };
 
   const handleSave = async () => {
@@ -826,19 +1124,25 @@ export function SkillsEditor({
 
   return (
     <div className="flex max-h-[88vh] min-h-[380px] flex-col">
-      <ModalHeader title="Skills" onClose={onClose} />
+      {!hideHeader && <ModalHeader title="Skills" onClose={onClose} />}
+
       <div className="flex-1 overflow-y-auto custom-scrollbar py-3 pr-1">
         <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h4 className="text-sm font-bold text-ink-primary">
-              Skill Categories
-            </h4>
-          </div>
-
           {groups.map((group, index) => (
             <div
               key={`skill-group-${index}`}
-              className="space-y-3 rounded-lg bg-panel p-3"
+              ref={(el) => {
+                itemRefs.current[index] = el;
+              }}
+              id={`skill-card-${index}`}
+              onClick={() => handleFocusIndex(index)}
+              onFocusCapture={() => handleFocusIndex(index)}
+              className={cn(
+                "space-y-3 rounded-lg bg-panel p-3 border transition-all duration-200",
+                focusedIndex === index
+                  ? "border-primary/60 ring-2 ring-primary/20 shadow-sm"
+                  : "border-border/60 shadow-xs"
+              )}
             >
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0 flex-1">
@@ -853,16 +1157,34 @@ export function SkillsEditor({
                     }
                   />
                 </div>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  className="text-red-500 hover:bg-red-500/10 hover:text-red-600 self-end"
-                  Icon={Trash2}
-                  onClick={() => removeGroup(index)}
-                >
-                  Remove Category
-                </Button>
+                <div className="flex items-center gap-1 shrink-0 self-end">
+                  <button
+                    type="button"
+                    title="Move category up"
+                    disabled={index === 0}
+                    onClick={() => moveGroup(index, "up")}
+                    className="flex h-8 w-8 items-center justify-center rounded-lg border border-border/60 text-ink-secondary hover:bg-background-secondary hover:text-ink-primary disabled:opacity-30 disabled:pointer-events-none cursor-pointer transition-colors"
+                  >
+                    <ChevronUp className="size-4" />
+                  </button>
+                  <button
+                    type="button"
+                    title="Move category down"
+                    disabled={index === groups.length - 1}
+                    onClick={() => moveGroup(index, "down")}
+                    className="flex h-8 w-8 items-center justify-center rounded-lg border border-border/60 text-ink-secondary hover:bg-background-secondary hover:text-ink-primary disabled:opacity-30 disabled:pointer-events-none cursor-pointer transition-colors"
+                  >
+                    <ChevronDown className="size-4" />
+                  </button>
+                  <button
+                    type="button"
+                    title="Remove category"
+                    onClick={() => removeGroup(index)}
+                    className="flex h-8 w-8 items-center justify-center rounded-lg border border-red-200/60 text-red-500 hover:bg-red-500/10 hover:text-red-600 cursor-pointer transition-colors"
+                  >
+                    <Trash2 className="size-4" />
+                  </button>
+                </div>
               </div>
 
               <div>
@@ -873,8 +1195,8 @@ export function SkillsEditor({
                   values={group.skills ?? []}
                   placeholder={[
                     "Add skills (e.g. React, TypeScript, Python, Docker)",
-                    "Tip: Type or paste multiple skills separated by commas (,)",
-                    "Press Enter or comma to add tags in bulk",
+                    "Tip: Type or paste multiple skills separated by commas, | or •",
+                    "Press Enter, comma, | or • to add tags in bulk",
                   ]}
                   onChange={(skills) => updateGroup(index, { skills })}
                 />
@@ -893,7 +1215,7 @@ export function SkillsEditor({
           </Button>
         </div>
       </div>
-      <ModalFooter onClose={onClose} onSave={handleSave} saving={saving} />
+      {!hideFooter && <ModalFooter onClose={onClose} onSave={handleSave} saving={saving} />}
     </div>
   );
 }
@@ -905,28 +1227,79 @@ export function EducationEditor({
   data,
   onSave,
   onClose,
+  initialIndex,
+  onItemFocus,
+  onChange,
+  hideHeader = false,
+  hideFooter = false,
 }: {
   data: MasterResumeData;
   onSave: (next: MasterResumeData) => Promise<void>;
   onClose: () => void;
+  initialIndex?: number | null;
+  onItemFocus?: (index: number) => void;
+  onChange?: (next: MasterResumeData) => void;
+  hideHeader?: boolean;
+  hideFooter?: boolean;
 }) {
   const [items, setItems] = useState<ResumeEducation[]>(
     Array.isArray(data.education) ? data.education : [],
   );
   const [saving, setSaving] = useState(false);
+  const [focusedIndex, setFocusedIndex] = useState<number>(initialIndex ?? 0);
+  const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const dataRef = useRef(data);
+  dataRef.current = data;
+
+  const handleFocusIndex = (index: number) => {
+    setFocusedIndex(index);
+    onItemFocus?.(index);
+  };
+
+  useEffect(() => {
+    if (initialIndex != null && initialIndex >= 0 && initialIndex < items.length) {
+      setFocusedIndex(initialIndex);
+    }
+  }, [initialIndex, items.length]);
+
+  useEffect(() => {
+    if (focusedIndex != null && itemRefs.current[focusedIndex]) {
+      itemRefs.current[focusedIndex]?.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+      });
+    }
+  }, [focusedIndex]);
 
   const updateItem = (index: number, patch: Partial<ResumeEducation>) => {
     const list = [...items];
     list[index] = { ...list[index], ...patch };
     setItems(list);
+    onChange?.({ ...dataRef.current, education: list });
   };
 
   const removeItem = (index: number) => {
-    setItems(items.filter((_, i) => i !== index));
+    const list = items.filter((_, i) => i !== index);
+    setItems(list);
+    if (focusedIndex >= items.length - 1) {
+      handleFocusIndex(Math.max(0, items.length - 2));
+    }
+    onChange?.({ ...dataRef.current, education: list });
+  };
+
+  const moveItem = (index: number, direction: "up" | "down") => {
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= items.length) return;
+    const next = [...items];
+    const [moved] = next.splice(index, 1);
+    next.splice(targetIndex, 0, moved);
+    setItems(next);
+    handleFocusIndex(targetIndex);
+    onChange?.({ ...dataRef.current, education: next });
   };
 
   const addItem = () => {
-    setItems([
+    const next = [
       ...items,
       {
         institution: "",
@@ -937,13 +1310,16 @@ export function EducationEditor({
         end_date: "",
         highlights: [],
       },
-    ]);
+    ];
+    setItems(next);
+    handleFocusIndex(items.length);
+    onChange?.({ ...dataRef.current, education: next });
   };
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      await onSave({ ...data, education: items });
+      await onSave({ ...dataRef.current, education: items });
     } finally {
       setSaving(false);
     }
@@ -951,29 +1327,68 @@ export function EducationEditor({
 
   return (
     <div className="flex max-h-[88vh] min-h-[400px] flex-col">
-      <ModalHeader title="Education" onClose={onClose} />
-      <div className="flex-1 overflow-y-auto custom-scrollbar py-3 pr-1">
+      {!hideHeader && <ModalHeader title="Education" onClose={onClose} />}
+
+      <div className="flex-1 space-y-3 overflow-y-auto custom-scrollbar py-3 pr-1">
         {items.map((item, index) => (
           <div
             key={`edu-${index}`}
-            className="space-y-3 rounded-lg bg-panel p-3"
+            ref={(el) => {
+              itemRefs.current[index] = el;
+            }}
+            id={`edu-card-${index}`}
+            onClick={() => handleFocusIndex(index)}
+            onFocusCapture={() => handleFocusIndex(index)}
+            className={cn(
+              "space-y-3 rounded-lg bg-panel p-3 shadow-xs transition-all duration-200 border",
+              focusedIndex === index
+                ? "border-primary/60 ring-2 ring-primary/20 shadow-sm"
+                : "border-transparent"
+            )}
           >
             <div className="flex items-center justify-between gap-3 pb-3">
-              <h3 className="font-semibold text-ink-primary">
-                {item.degree || item.institution
-                  ? `${item.degree || "Education"} - ${item.institution || "School"}`
-                  : `Education #${index + 1}`}
-              </h3>
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                className="text-red-500 hover:bg-red-500/10 hover:text-red-600"
-                Icon={Trash2}
-                onClick={() => removeItem(index)}
-              >
-                Delete Entry
-              </Button>
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-md bg-primary/10 px-1.5 text-[11px] font-bold text-primary shrink-0">
+                  {index + 1}
+                </span>
+                <h3 className="font-semibold text-ink-primary truncate text-sm">
+                  {item.degree || item.institution
+                    ? `${item.degree || "Education"} - ${item.institution || "School"}`
+                    : `Education #${index + 1}`}
+                </h3>
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  type="button"
+                  title="Move education up"
+                  aria-label="Move education up"
+                  disabled={index === 0}
+                  onClick={() => moveItem(index, "up")}
+                  className="p-1 rounded-md text-ink-secondary hover:text-ink-primary hover:bg-background-secondary disabled:opacity-30 cursor-pointer"
+                >
+                  <ChevronUp className="size-4" />
+                </button>
+                <button
+                  type="button"
+                  title="Move education down"
+                  aria-label="Move education down"
+                  disabled={index === items.length - 1}
+                  onClick={() => moveItem(index, "down")}
+                  className="p-1 rounded-md text-ink-secondary hover:text-ink-primary hover:bg-background-secondary disabled:opacity-30 cursor-pointer"
+                >
+                  <ChevronDown className="size-4" />
+                </button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="text-red-500 hover:bg-red-500/10 hover:text-red-600"
+                  Icon={Trash2}
+                  onClick={() => removeItem(index)}
+                >
+                  Delete Entry
+                </Button>
+              </div>
             </div>
 
             <div className="grid gap-3 md:grid-cols-2">
@@ -1060,7 +1475,13 @@ export function EducationEditor({
                 Highlights / Honors (Drag to reorder)
               </label>
               <BulletListInput
-                values={item.highlights ?? []}
+                values={
+                  Array.isArray(item.highlights)
+                    ? item.highlights
+                    : typeof item.highlights === 'string' && (item.highlights as string).trim()
+                    ? [(item.highlights as string).trim()]
+                    : []
+                }
                 placeholder="Add an education highlight or honor..."
                 onChange={(highlights) => updateItem(index, { highlights })}
               />
@@ -1078,7 +1499,7 @@ export function EducationEditor({
           Add Education Entry
         </Button>
       </div>
-      <ModalFooter onClose={onClose} onSave={handleSave} saving={saving} />
+      {!hideFooter && <ModalFooter onClose={onClose} onSave={handleSave} saving={saving} />}
     </div>
   );
 }
@@ -1090,15 +1511,23 @@ export function CertificationsEditor({
   data,
   onSave,
   onClose,
+  hideHeader = false,
+  hideFooter = false,
+  onChange,
 }: {
   data: MasterResumeData;
   onSave: (next: MasterResumeData) => Promise<void>;
   onClose: () => void;
+  hideHeader?: boolean;
+  hideFooter?: boolean;
+  onChange?: (next: MasterResumeData) => void;
 }) {
   const [groups, setGroups] = useState<ResumeCertificationGroup[]>(
     Array.isArray(data.certifications) ? data.certifications : [],
   );
   const [saving, setSaving] = useState(false);
+  const dataRef = useRef(data);
+  dataRef.current = data;
 
   const updateGroup = (
     index: number,
@@ -1107,17 +1536,22 @@ export function CertificationsEditor({
     const list = [...groups];
     list[index] = { ...list[index], ...patch };
     setGroups(list);
+    onChange?.({ ...dataRef.current, certifications: list });
   };
 
   const removeGroup = (index: number) => {
-    setGroups(groups.filter((_, i) => i !== index));
+    const list = groups.filter((_, i) => i !== index);
+    setGroups(list);
+    onChange?.({ ...dataRef.current, certifications: list });
   };
 
   const addGroup = () => {
-    setGroups([
+    const list = [
       ...groups,
       { type: "Professional Certifications", certifications: [] },
-    ]);
+    ];
+    setGroups(list);
+    onChange?.({ ...dataRef.current, certifications: list });
   };
 
   const addCert = (groupIndex: number) => {
@@ -1132,6 +1566,7 @@ export function CertificationsEditor({
     });
     list[groupIndex] = { ...list[groupIndex], certifications: certs };
     setGroups(list);
+    onChange?.({ ...dataRef.current, certifications: list });
   };
 
   const updateCert = (
@@ -1144,6 +1579,7 @@ export function CertificationsEditor({
     certs[certIndex] = { ...certs[certIndex], ...patch };
     list[groupIndex] = { ...list[groupIndex], certifications: certs };
     setGroups(list);
+    onChange?.({ ...dataRef.current, certifications: list });
   };
 
   const removeCert = (groupIndex: number, certIndex: number) => {
@@ -1153,12 +1589,13 @@ export function CertificationsEditor({
     );
     list[groupIndex] = { ...list[groupIndex], certifications: certs };
     setGroups(list);
+    onChange?.({ ...dataRef.current, certifications: list });
   };
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      await onSave({ ...data, certifications: groups });
+      await onSave({ ...dataRef.current, certifications: groups });
     } finally {
       setSaving(false);
     }
@@ -1166,7 +1603,7 @@ export function CertificationsEditor({
 
   return (
     <div className="flex max-h-[88vh] min-h-[400px] flex-col">
-      <ModalHeader title="Certifications" onClose={onClose} />
+      {!hideHeader && <ModalHeader title="Certifications" onClose={onClose} />}
       <div className="flex-1 overflow-y-auto custom-scrollbar py-3 pr-1">
         {groups.map((group, groupIndex) => (
           <div
@@ -1291,7 +1728,7 @@ export function CertificationsEditor({
           Add Certification Group
         </Button>
       </div>
-      <ModalFooter onClose={onClose} onSave={handleSave} saving={saving} />
+      {!hideFooter && <ModalFooter onClose={onClose} onSave={handleSave} saving={saving} />}
     </div>
   );
 }

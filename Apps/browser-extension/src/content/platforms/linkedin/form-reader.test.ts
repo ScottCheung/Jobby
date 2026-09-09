@@ -101,6 +101,32 @@ describe('LinkedIn Easy Apply form scope', () => {
     ]);
   });
 
+  it('recognizes SDUI resume cards with a button and no mounted file input', () => {
+    document.body.innerHTML = `
+      <dialog open data-testid="dialog" aria-labelledby="dialog-header">
+        <h2 id="dialog-header">Apply to Example</h2>
+        <div data-testid="dialog-content">
+          <p>Resume*</p>
+          <p>Select or upload a resume in DOC, DOCX, or PDF format that is less than 2MB</p>
+          <fieldset role="radiogroup" aria-describedby="error-message-r1">
+            <div><div role="radio" tabindex="0" aria-label="Previous Resume.pdf" aria-checked="true"><input type="radio" checked /></div></div>
+            <div><div role="radio" tabindex="0" aria-label="Other Resume.pdf" aria-checked="false"><input type="radio" /></div></div>
+          </fieldset>
+          <div><button type="button">Upload resume</button></div>
+        </div>
+        <button>Back</button><button>Next</button>
+      </dialog>`;
+    const inspection = readLinkedInFormPage();
+    expect(inspection.kind).toBe('application_form');
+    if (inspection.kind !== 'application_form') return;
+    expect(inspection.fields).toEqual([expect.objectContaining({
+      key: 'linkedin-resume-upload', type: 'file', label: 'Resume', required: true,
+      currentValue: 'Previous Resume.pdf', upload: { state: 'ready', filename: 'Previous Resume.pdf' },
+    })]);
+    expect(document.querySelector('[data-jobby-linkedin-resume-upload]')?.textContent).toBe('Upload resume');
+    expect(resolveLinkedInApplySurface()?.fieldRoot).toBe(document.querySelector('dialog'));
+  });
+
   it('does not misidentify "Set job alert for Full Stack Developer in Sydney" as an application form when Easy Apply is not open', () => {
     document.body.innerHTML = `
       <div class="jobs-search-box">

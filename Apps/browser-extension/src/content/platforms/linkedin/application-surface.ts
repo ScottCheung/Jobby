@@ -4,6 +4,7 @@ import {
   queryAllInScope,
   type FormScope,
 } from '../../dom/form-inspector';
+import { findLinkedInResumeUpload } from './resume-upload';
 
 export type LinkedInApplySurfaceState =
   | 'classic-modal'
@@ -345,6 +346,9 @@ function hasClearlyValidForm(
 }
 
 function resolveFieldRoot(applicationRoot: HTMLElement): HTMLElement {
+  if (findLinkedInResumeUpload(applicationRoot) && !applicationRoot.querySelector('input[type="file"]')) {
+    return applicationRoot;
+  }
   const forms = elementsMatching(applicationRoot, ['form'])
     .filter((form) => hasClearlyValidForm(form, applicationRoot));
   const easyApplyForm = forms.find((form) =>

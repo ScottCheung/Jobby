@@ -21,10 +21,132 @@ type ItemWrapper = {
   val: string;
 };
 
+const BULLET_PREFIX_REGEX =
+  /^[\s\t]*([•·*○●▪▫◆◇➢▶✓✔\-–—]+|\d+、|[一二三四五六七八九十]+[、\.]|\d+[\.\)\]](?:\s+|$)|(?:\([0-9a-zA-Z]+\)|\[[0-9a-zA-Z]+\])\s*|[a-zA-Z][\.\)\]](?:\s+|$)|[a-zA-Z]、)\s*/;
+
+export function cleanBulletText(text: string): string {
+  let cleaned = text.trim();
+  let prev = '';
+  while (cleaned && cleaned !== prev) {
+    prev = cleaned;
+    cleaned = cleaned.replace(BULLET_PREFIX_REGEX, '').trim();
+  }
+  return cleaned;
+}
+
+function splitInlineBullets(text: string): string[] {
+  const trimmed = text.trim();
+  if (!trimmed) return [];
+
+  if (/[•·○●▪▫◆◇➢▶✓✔]/.test(trimmed)) {
+    const segments = trimmed
+      .split(/(?:^|\s+)[•·○●▪▫◆◇➢▶✓✔]\s*/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (segments.length > 1) {
+      return segments;
+    }
+  }
+
+  const numberedMatches = trimmed.match(
+    /(?:^|\s+)(?:\d+[\.\)\]、]|\([0-9a-zA-Z]+\)|\[[0-9a-zA-Z]+\])\s+/g,
+  );
+  if (numberedMatches && numberedMatches.length >= 2) {
+    const segments = trimmed
+      .split(/(?:^|\s+)(?:\d+[\.\)\]、]|\([0-9a-zA-Z]+\)|\[[0-9a-zA-Z]+\])\s+/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (segments.length > 1) {
+      return segments;
+    }
+  }
+
+  const letteredMatches = trimmed.match(/(?:^|\s+)[a-zA-Z][\.\)\]、]\s+/g);
+  if (letteredMatches && letteredMatches.length >= 2) {
+    const segments = trimmed
+      .split(/(?:^|\s+)[a-zA-Z][\.\)\]、]\s+/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (segments.length > 1) {
+      return segments;
+    }
+  }
+
+  if (/^[-–—]\s+/.test(trimmed) && /\s+[-–—]\s+/.test(trimmed)) {
+    const segments = trimmed
+      .split(/(?:^|\s+)[-–—]\s+/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (segments.length > 1) {
+      return segments;
+    }
+  }
+
+  return [trimmed];
+}
+
+export function parseBulletPoints(rawText: string): string[] {
+  if (!rawText || !rawText.trim()) return [];
+
+  const normalized = rawText.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
+
+  if (normalized.includes('\n')) {
+    const rawLines = normalized.split('\n');
+    const isBulletStart = (line: string) => BULLET_PREFIX_REGEX.test(line.trim());
+    const hasAnyBulletMarker = rawLines.some(
+      (l) => l.trim() && isBulletStart(l),
+    );
+
+    if (hasAnyBulletMarker) {
+      const points: string[] = [];
+      let current = '';
+
+      for (const line of rawLines) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+
+        if (isBulletStart(trimmed)) {
+          if (current) {
+            points.push(...splitInlineBullets(current));
+          }
+          current = trimmed;
+        } else {
+          if (current) {
+            current += ' ' + trimmed;
+          } else {
+            current = trimmed;
+          }
+        }
+      }
+
+      if (current) {
+        points.push(...splitInlineBullets(current));
+      }
+
+      const result = points.map(cleanBulletText).filter(Boolean);
+      if (result.length > 0) return result;
+    } else {
+      const points: string[] = [];
+      for (const line of rawLines) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+        points.push(...splitInlineBullets(trimmed));
+      }
+      const result = points.map(cleanBulletText).filter(Boolean);
+      if (result.length > 0) return result;
+    }
+  }
+
+  const inlinePoints = splitInlineBullets(normalized);
+  return inlinePoints.map(cleanBulletText).filter(Boolean);
+}
+
 function AutoResizeTextarea({
   value,
   onChange,
   onKeyDown,
+  onPaste,
+  onBlur,
   placeholder,
   disabled,
   className,
@@ -32,6 +154,8 @@ function AutoResizeTextarea({
   value: string;
   onChange: (val: string) => void;
   onKeyDown?: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
+  onPaste?: (e: React.ClipboardEvent<HTMLTextAreaElement>) => void;
+  onBlur?: (e: React.FocusEvent<HTMLTextAreaElement>) => void;
   placeholder?: string;
   disabled?: boolean;
   className?: string;
@@ -61,6 +185,8 @@ function AutoResizeTextarea({
         adjustHeight();
       }}
       onKeyDown={onKeyDown}
+      onPaste={onPaste}
+      onBlur={onBlur}
       onPointerDown={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.stopPropagation()}
       className={cn(
@@ -77,14 +203,41 @@ function ReorderableBulletItem({
   disabled,
   onUpdate,
   onRemove,
+  onPasteMulti,
 }: {
   item: ItemWrapper;
   index: number;
   disabled?: boolean;
   onUpdate: (val: string) => void;
   onRemove: () => void;
+  onPasteMulti?: (points: string[]) => void;
 }) {
   const dragControls = useDragControls();
+
+  const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const text = e.clipboardData.getData('text');
+    const parsed = parseBulletPoints(text);
+    if (parsed.length > 1) {
+      e.preventDefault();
+      onPasteMulti?.(parsed);
+    } else if (parsed.length === 1 && parsed[0] !== text.trim()) {
+      const target = e.currentTarget;
+      if (
+        target.selectionStart === 0 &&
+        target.selectionEnd === target.value.length
+      ) {
+        e.preventDefault();
+        onUpdate(parsed[0]);
+      }
+    }
+  };
+
+  const handleBlur = () => {
+    const cleaned = cleanBulletText(item.val);
+    if (cleaned !== item.val) {
+      onUpdate(cleaned);
+    }
+  };
 
   return (
     <Reorder.Item
@@ -132,6 +285,8 @@ function ReorderableBulletItem({
         value={item.val}
         disabled={disabled}
         onChange={onUpdate}
+        onPaste={handlePaste}
+        onBlur={handleBlur}
         placeholder='Point details...'
       />
 
@@ -193,14 +348,50 @@ export function BulletListInput({
   const handleAdd = () => {
     const trimmed = newPoint.trim();
     if (!trimmed || disabled) return;
-    const newItem = {
+    const parsed = parseBulletPoints(trimmed);
+    if (!parsed.length) return;
+    const newItems = parsed.map((val) => ({
       id: `bullet-${Math.random().toString(36).substring(2, 9)}`,
-      val: trimmed,
-    };
-    const nextItems = [...items, newItem];
+      val,
+    }));
+    const nextItems = [...items, ...newItems];
     setItems(nextItems);
     onChange(nextItems.map((i) => i.val));
     setNewPoint('');
+  };
+
+  const handleNewPointPaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const text = e.clipboardData.getData('text');
+    const parsed = parseBulletPoints(text);
+    if (parsed.length > 1) {
+      e.preventDefault();
+      const newItems = parsed.map((val) => ({
+        id: `bullet-${Math.random().toString(36).substring(2, 9)}`,
+        val,
+      }));
+      const nextItems = [...items, ...newItems];
+      setItems(nextItems);
+      onChange(nextItems.map((i) => i.val));
+      setNewPoint('');
+    } else if (parsed.length === 1 && parsed[0] !== text.trim()) {
+      if (!newPoint.trim()) {
+        e.preventDefault();
+        setNewPoint(parsed[0]);
+      }
+    }
+  };
+
+  const handlePasteMultiAt = (index: number, newPoints: string[]) => {
+    if (!newPoints.length) return;
+    const next = [...items];
+    next[index] = { ...next[index], val: newPoints[0] };
+    const additional = newPoints.slice(1).map((val) => ({
+      id: `bullet-${Math.random().toString(36).substring(2, 9)}`,
+      val,
+    }));
+    next.splice(index + 1, 0, ...additional);
+    setItems(next);
+    onChange(next.map((i) => i.val));
   };
 
   const handleUpdate = (index: number, val: string) => {
@@ -250,6 +441,9 @@ export function BulletListInput({
               disabled={disabled}
               onUpdate={(val) => handleUpdate(index, val)}
               onRemove={() => handleRemove(index)}
+              onPasteMulti={(newPoints) =>
+                handlePasteMultiAt(index, newPoints)
+              }
             />
           ))}
         </Reorder.Group>
@@ -262,8 +456,12 @@ export function BulletListInput({
             disabled={disabled}
             placeholder={placeholder}
             onChange={(val) => setNewPoint(val)}
+            onPaste={handleNewPointPaste}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+              if (
+                (e.key === 'Enter' && !e.shiftKey) ||
+                (e.key === 'Enter' && (e.metaKey || e.ctrlKey))
+              ) {
                 e.preventDefault();
                 handleAdd();
               }

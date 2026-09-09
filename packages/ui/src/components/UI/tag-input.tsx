@@ -23,9 +23,31 @@ type TagItemWrapper = {
   val: string;
 };
 
+const TAG_SPLIT_REGEX = /[,，|•·*;\n\r\t；、]+/;
+const TAG_PREFIX_REGEX =
+  /^[\s\t]*([•·*○●▪▫◆◇➢▶✓✔\-–—]+|\d+、|[一二三四五六七八九十]+[、\.]|\d+[\.\)\]](?:\s+|$)|(?:\([0-9a-zA-Z]+\)|\[[0-9a-zA-Z]+\])\s*|[a-zA-Z][\.\)\]](?:\s+|$)|[a-zA-Z]、)\s*/;
+
+export function cleanTagText(text: string): string {
+  let cleaned = text.trim();
+  let prev = '';
+  while (cleaned && cleaned !== prev) {
+    prev = cleaned;
+    cleaned = cleaned.replace(TAG_PREFIX_REGEX, '').trim();
+  }
+  return cleaned;
+}
+
+export function parseTags(raw: string): string[] {
+  if (!raw || !raw.trim()) return [];
+  return raw
+    .split(TAG_SPLIT_REGEX)
+    .map((item) => cleanTagText(item))
+    .filter(Boolean);
+}
+
 function normalizeValues(values: string[]) {
   return values.reduce<string[]>((result, raw) => {
-    const value = raw.trim();
+    const value = cleanTagText(raw);
     if (
       value &&
       !result.some((item) => item.toLowerCase() === value.toLowerCase())
@@ -57,6 +79,8 @@ function computeNewOrder<T>(
   return result;
 }
 
+const DELIMITER_KEYS = [',', '，', '|', '•', '·', '、', ';', '；'];
+
 export function TagInput({
   values,
   onChange,
@@ -81,14 +105,14 @@ export function TagInput({
     if (typeof placeholder === 'string' && placeholder.trim()) {
       return [
         placeholder,
-        'Tip: Type multiple items separated by commas (,)',
-        'Press Enter or comma to add tags',
+        'Tip: Type multiple items separated by commas, | or •',
+        'Press Enter, comma, | or • to add tags',
       ];
     }
     return [
       'Type skill(s) or tag(s)...',
-      'Tip: Separate multiple items with commas (e.g. React, TypeScript)',
-      'Press Enter or comma to add tags',
+      'Tip: Separate multiple items with commas, | or • (e.g. React | TypeScript • Next.js)',
+      'Press Enter, comma, | or • to add tags',
     ];
   }, [placeholder]);
 
@@ -135,12 +159,9 @@ export function TagInput({
     }
   }, [values]);
 
-  const addTags = () => {
+  const addTagsFromRaw = (rawText: string) => {
     if (!canAdd) return;
-    const additions = draft
-      .split(',')
-      .map((value) => value.trim())
-      .filter(Boolean);
+    const additions = parseTags(rawText);
     if (!additions.length) return;
     const normalized = normalizeValues([...values, ...additions]).slice(
       0,
@@ -156,6 +177,19 @@ export function TagInput({
     setItems(newItems);
     onChange(normalized);
     setDraft('');
+  };
+
+  const addTags = () => {
+    addTagsFromRaw(draft);
+  };
+
+  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const pastedText = e.clipboardData.getData('text');
+    if (TAG_SPLIT_REGEX.test(pastedText)) {
+      e.preventDefault();
+      const combined = draft.trim() ? `${draft} ${pastedText}` : pastedText;
+      addTagsFromRaw(combined);
+    }
   };
 
   const handleDragStart = (e: DragEvent<HTMLSpanElement>, index: number) => {
@@ -290,8 +324,14 @@ export function TagInput({
           disabled={!canAdd}
           placeholder={resolvedPlaceholder}
           onChange={(event) => setDraft(event.target.value)}
+          onPaste={handlePaste}
+          onBlur={() => {
+            if (draft.trim()) {
+              addTags();
+            }
+          }}
           onKeyDown={(event) => {
-            if (event.key === 'Enter' || event.key === ',') {
+            if (event.key === 'Enter' || DELIMITER_KEYS.includes(event.key)) {
               event.preventDefault();
               addTags();
             }

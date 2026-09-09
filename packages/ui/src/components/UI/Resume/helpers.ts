@@ -192,6 +192,45 @@ export function templateCssVariables(config: ResumeTemplateConfig) {
   } as CSSProperties;
 }
 
+export function mergeResumeData(
+  tailored?: MasterResumeData | null,
+  fallback?: MasterResumeData | null,
+): MasterResumeData {
+  if (!tailored && !fallback) return {};
+  if (!tailored) return fallback || {};
+  if (!fallback) return tailored;
+  return {
+    ...fallback,
+    ...tailored,
+    basics: tailored.basics || fallback.basics,
+    summary: tailored.summary || fallback.summary,
+    core_competencies:
+      tailored.core_competencies?.length ?
+        tailored.core_competencies
+      : fallback.core_competencies,
+    experience:
+      tailored.experience?.length ?
+        tailored.experience
+      : fallback.experience,
+    education:
+      tailored.education?.length ?
+        tailored.education
+      : fallback.education,
+    projects:
+      tailored.projects?.length ? tailored.projects : fallback.projects,
+    skills: tailored.skills?.length ? tailored.skills : fallback.skills,
+    certifications:
+      tailored.certifications?.length ?
+        tailored.certifications
+      : fallback.certifications,
+    languages:
+      tailored.languages?.length ?
+        tailored.languages
+      : fallback.languages,
+    other: tailored.other?.length ? tailored.other : fallback.other,
+  };
+}
+
 export function formatResumeAsPlainText(
   resume: MasterResumeData,
   competencies?: string[],
@@ -200,15 +239,24 @@ export function formatResumeAsPlainText(
   const basics = resume.basics;
 
   if (basics) {
-    const name = [basics.first_name, basics.middle_name, basics.last_name]
-      .filter(Boolean)
-      .join(' ');
+    const name =
+      [basics.first_name, basics.middle_name, basics.last_name]
+        .filter(Boolean)
+        .join(' ') || (basics as any).full_name || (basics as any).name;
     if (name) parts.push(name);
     if (basics.headline) parts.push(basics.headline);
 
     const locationStr =
-      basics.location ?
-        [basics.location.city, basics.location.state, basics.location.country]
+      typeof basics.location === 'string' ?
+        basics.location
+      : basics.location ?
+        [
+          basics.location.address,
+          basics.location.city,
+          basics.location.state,
+          basics.location.postal_code,
+          basics.location.country,
+        ]
           .filter(Boolean)
           .join(', ')
       : '';
@@ -216,7 +264,9 @@ export function formatResumeAsPlainText(
       basics.email,
       basics.phone,
       locationStr,
-      basics.website || basics.portfolio_url || basics.linkedin_id,
+      basics.linkedin_id,
+      basics.portfolio_url,
+      basics.website,
     ].filter(Boolean);
     if (contacts.length) parts.push(contacts.join(' | '));
   }
@@ -229,6 +279,7 @@ export function formatResumeAsPlainText(
   const allCompetencies = [
     ...(competencies || []),
     ...(resume.core_competencies || []),
+    ...((resume as any).key_qualifications || []),
   ].filter((v, i, a): v is string => Boolean(v) && a.indexOf(v) === i);
 
   if (allCompetencies.length > 0) {
@@ -238,13 +289,23 @@ export function formatResumeAsPlainText(
   if (resume.experience && resume.experience.length > 0) {
     const expStrings = resume.experience.map((exp) => {
       const header = [exp.title, exp.company].filter(Boolean).join(' at ');
-      const dates = [exp.start_date, exp.end_date].filter(Boolean).join(' - ');
+      const endDate = exp.end_date || (exp.is_current ? 'Present' : '');
+      const dates = [exp.start_date, endDate].filter(Boolean).join(' - ');
       const loc = exp.location ? ` (${exp.location})` : '';
       const top = [header, dates].filter(Boolean).join(' | ') + loc;
-      const bullets = (exp.description || []).map((h) => `• ${h}`).join('\n');
+      const descList =
+        Array.isArray(exp.description) ? exp.description
+        : typeof exp.description === 'string' ? [exp.description]
+        : [];
+      const bullets = descList
+        .filter(Boolean)
+        .map((h) => (h.trim().startsWith('•') ? h.trim() : `• ${h.trim()}`))
+        .join('\n');
       const techs =
-        exp.technologies && exp.technologies.length > 0 ?
+        Array.isArray(exp.technologies) && exp.technologies.length > 0 ?
           `Technologies: ${exp.technologies.join(', ')}`
+        : typeof exp.technologies === 'string' && exp.technologies ?
+          `Technologies: ${exp.technologies}`
         : '';
       return [top, bullets, techs].filter(Boolean).join('\n');
     });
@@ -257,11 +318,21 @@ export function formatResumeAsPlainText(
       const dates = [proj.start_date, proj.end_date]
         .filter(Boolean)
         .join(' - ');
-      const top = [title, dates].filter(Boolean).join(' | ');
-      const bullets = (proj.description || []).map((h) => `• ${h}`).join('\n');
+      const meta = [dates, proj.url].filter(Boolean).join(' | ');
+      const top = [title, meta].filter(Boolean).join(' | ');
+      const descList =
+        Array.isArray(proj.description) ? proj.description
+        : typeof proj.description === 'string' ? [proj.description]
+        : [];
+      const bullets = descList
+        .filter(Boolean)
+        .map((h) => (h.trim().startsWith('•') ? h.trim() : `• ${h.trim()}`))
+        .join('\n');
       const techs =
-        proj.technologies && proj.technologies.length > 0 ?
+        Array.isArray(proj.technologies) && proj.technologies.length > 0 ?
           `Technologies: ${proj.technologies.join(', ')}`
+        : typeof proj.technologies === 'string' && proj.technologies ?
+          `Technologies: ${proj.technologies}`
         : '';
       return [top, bullets, techs].filter(Boolean).join('\n');
     });
@@ -269,9 +340,12 @@ export function formatResumeAsPlainText(
   }
 
   if (resume.skills && resume.skills.length > 0) {
-    const skillStrings = resume.skills.map((cat) => {
-      const skills = (cat.skills || []).filter(Boolean).join(', ');
-      const categoryName = cat.type;
+    const skillStrings = resume.skills.map((cat: any) => {
+      if (typeof cat === 'string') return cat;
+      const skills = (Array.isArray(cat.skills) ? cat.skills : [cat.skills])
+        .filter(Boolean)
+        .join(', ');
+      const categoryName = cat.type || cat.name || cat.category;
       return categoryName ? `${categoryName}: ${skills}` : skills;
     });
     parts.push(`\nSKILLS\n${skillStrings.join('\n')}`);
@@ -285,20 +359,44 @@ export function formatResumeAsPlainText(
       const inst = edu.institution;
       const header = [degree, inst].filter(Boolean).join(' - ');
       const dates = [edu.start_date, edu.end_date].filter(Boolean).join(' - ');
-      const bullets = (edu.highlights || []).map((h) => `• ${h}`).join('\n');
-      return [header, dates, bullets].filter(Boolean).join('\n');
+      const loc = edu.location ? ` (${edu.location})` : '';
+      const top = [header, dates].filter(Boolean).join(' | ') + loc;
+      const rawBullets = edu.highlights || (edu as any).description || [];
+      const bulletList =
+        Array.isArray(rawBullets) ? rawBullets
+        : typeof rawBullets === 'string' ? [rawBullets]
+        : [];
+      const bullets = bulletList
+        .filter(Boolean)
+        .map((h) => (h.trim().startsWith('•') ? h.trim() : `• ${h.trim()}`))
+        .join('\n');
+      return [top, bullets].filter(Boolean).join('\n');
     });
     parts.push(`\nEDUCATION\n${eduStrings.join('\n\n')}`);
   }
 
   if (resume.certifications && resume.certifications.length > 0) {
-    const certStrings = resume.certifications.flatMap((group) =>
-      (group.certifications || []).map((c) =>
-        [c.name, c.issuer, c.issue_date || (c as any).date]
-          .filter(Boolean)
-          .join(' - '),
-      ),
+    const certItems: Array<{
+      name?: string | null;
+      issuer?: string | null;
+      issue_date?: string | null;
+      expiry_date?: string | null;
+      url?: string | null;
+      credential_url?: string | null;
+    }> = resume.certifications.flatMap((group: any) =>
+      Array.isArray(group.certifications) ? group.certifications
+      : group.name ? [group]
+      : []
     );
+    const certStrings = certItems
+      .map((c: any) => {
+        const dates = [c.issue_date || c.date, c.expiry_date]
+          .filter(Boolean)
+          .join(' - ');
+        const url = c.credential_url || c.url;
+        return [c.name, c.issuer, dates, url].filter(Boolean).join(' - ');
+      })
+      .filter(Boolean);
     if (certStrings.length > 0) {
       parts.push(`\nCERTIFICATIONS\n${certStrings.join('\n')}`);
     }
@@ -311,6 +409,28 @@ export function formatResumeAsPlainText(
     if (langStrings.length > 0) {
       parts.push(`\nLANGUAGES\n${langStrings.join(', ')}`);
     }
+  }
+
+  if (resume.other && resume.other.length > 0) {
+    const otherStrings = resume.other.map((item) => {
+      const title =
+        [item.title, item.organization].filter(Boolean).join(' - ') ||
+        item.type ||
+        'Other';
+      const loc = (item as any).location;
+      const details = [loc, item.date].filter(Boolean).join(' | ');
+      const top = [title, details].filter(Boolean).join(' | ');
+      const descList =
+        Array.isArray(item.description) ? item.description
+        : typeof item.description === 'string' ? [item.description]
+        : [];
+      const bullets = descList
+        .filter(Boolean)
+        .map((h) => (h.trim().startsWith('•') ? h.trim() : `• ${h.trim()}`))
+        .join('\n');
+      return [top, bullets].filter(Boolean).join('\n');
+    });
+    parts.push(`\nOTHER\n${otherStrings.join('\n\n')}`);
   }
 
   return parts.join('\n');

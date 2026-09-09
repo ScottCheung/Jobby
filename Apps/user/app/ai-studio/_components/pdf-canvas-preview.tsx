@@ -6,6 +6,7 @@ import type {
   TextItem,
 } from 'pdfjs-dist/types/src/display/api';
 import { cn } from '@/lib/utils';
+import type { MasterResumeData } from '@/lib/types';
 
 export type PdfEditableSectionKey =
   | 'basics'
@@ -23,6 +24,7 @@ type PdfZone = {
   label: string;
   top: number;
   height: number;
+  itemIndex?: number;
 };
 
 type PdfPageDescriptor = {
@@ -37,26 +39,35 @@ type PdfCanvasPreviewProps = {
   documentType: 'resume' | 'cover_letter';
   interactive?: boolean;
   activeSection: PdfEditableSectionKey | null;
-  onSectionSelect: (section: PdfEditableSectionKey) => void;
+  activeItemIndex?: number | null;
+  onSectionSelect: (section: PdfEditableSectionKey, itemIndex?: number) => void;
+  resumeData?: MasterResumeData;
 };
 
 const PAGE_WIDTH = 780;
 
-const sectionByHeading: Record<
-  string,
-  | Exclude<PdfEditableSectionKey, 'basics' | 'cover_letter'>
-  | 'uneditable'
-> = {
-  SUMMARY: 'summary',
-  CORECOMPETENCIES: 'core_competencies',
-  EXPERIENCE: 'experience',
-  EDUCATION: 'education',
-  PROJECTS: 'projects',
-  SKILLS: 'skills',
-  CERTIFICATIONS: 'certifications',
-  LANGUAGES: 'uneditable',
-  OTHER: 'uneditable',
-};
+function matchSectionHeading(text: string): {
+  section: Exclude<PdfEditableSectionKey, 'basics' | 'cover_letter'> | 'uneditable';
+} | null {
+  const normalized = text.replace(/[^A-Z&]/g, '');
+  if (/^(SUMMARY|PROFESSIONALSUMMARY|ABOUTME|EXECUTIVEPROFILE)$/.test(normalized))
+    return { section: 'summary' };
+  if (/^(CORECOMPETENCIES|KEYQUALIFICATIONS|COMPETENCIES|AREASOFEXPERTISE)$/.test(normalized))
+    return { section: 'core_competencies' };
+  if (/^(EXPERIENCE|WORKEXPERIENCE|PROFESSIONALEXPERIENCE|EMPLOYMENTHISTORY|WORKHISTORY)$/.test(normalized))
+    return { section: 'experience' };
+  if (/^(EDUCATION|ACADEMICBACKGROUND|EDUCATIONANDTRAINING)$/.test(normalized))
+    return { section: 'education' };
+  if (/^(PROJECTS|KEYPROJECTS|PERSONALPROJECTS|NOTABLEPROJECTS)$/.test(normalized))
+    return { section: 'projects' };
+  if (/^(SKILLS|TECHNICALSKILLS|SKILLS&TECHNOLOGIES|SKILLSANDTECHNOLOGIES|TOOLSANDTECHNOLOGIES|CORETECHNOLOGIES)$/.test(normalized))
+    return { section: 'skills' };
+  if (/^(CERTIFICATIONS|CERTIFICATES|LICENSES&CERTIFICATIONS|LICENSESANDCERTIFICATIONS|CERTIFICATION)$/.test(normalized))
+    return { section: 'certifications' };
+  if (/^(LANGUAGES|OTHER|PUBLICATIONS|AWARDS|VOLUNTEER)$/.test(normalized))
+    return { section: 'uneditable' };
+  return null;
+}
 
 const sectionLabel: Record<PdfEditableSectionKey, string> = {
   basics: 'Contact info',
@@ -76,6 +87,7 @@ function mergeAdjacentZones(zones: PdfZone[]) {
     if (
       previous &&
       previous.section === zone.section &&
+      previous.itemIndex === zone.itemIndex &&
       Math.abs(previous.top + previous.height - zone.top) < 2
     ) {
       previous.height += zone.height;
@@ -86,13 +98,162 @@ function mergeAdjacentZones(zones: PdfZone[]) {
   }, []);
 }
 
+type PdfTextLine = {
+  text: string;
+  top: number;
+  bottom: number;
+};
+
+type PageData = {
+  pageNumber: number;
+  height: number;
+  scale: number;
+  contentTop: number;
+  contentBottom: number;
+  lines: PdfTextLine[];
+};
+
+function groupTextItemsIntoLines(
+  items: { text: string; top: number; bottom: number }[],
+): PdfTextLine[] {
+  if (items.length === 0) return [];
+  const sorted = [...items].sort((a, b) => a.top - b.top);
+  const lines: PdfTextLine[] = [];
+
+  for (const item of sorted) {
+    const currentLine = lines.find(
+      (l) => Math.abs(l.top - item.top) <= 3.5 || Math.abs(l.bottom - item.bottom) <= 3.5,
+    );
+    if (currentLine) {
+      currentLine.text = `${currentLine.text} ${item.text}`.trim();
+      currentLine.top = Math.min(currentLine.top, item.top);
+      currentLine.bottom = Math.max(currentLine.bottom, item.bottom);
+    } else {
+      lines.push({ text: item.text, top: item.top, bottom: item.bottom });
+    }
+  }
+
+  return lines.sort((a, b) => a.top - b.top);
+}
+
+type ExperienceItem = NonNullable<MasterResumeData['experience']>[number];
+type ProjectItem = NonNullable<MasterResumeData['projects']>[number];
+type EducationItem = NonNullable<MasterResumeData['education']>[number];
+type SkillGroupItem = NonNullable<MasterResumeData['skills']>[number];
+
+function matchesExperienceEntry(entry: ExperienceItem, lineText: string): boolean {
+  const company = entry.company?.trim().toUpperCase();
+  const title = entry.title?.trim().toUpperCase();
+  const startDate = entry.start_date?.trim().toUpperCase();
+  const endDate = entry.end_date?.trim().toUpperCase();
+
+  if (company && company.length >= 2 && lineText.includes(company)) return true;
+  if (title && title.length >= 2 && lineText.includes(title)) return true;
+  if (company && company.length >= 4) {
+    const words: string[] = company.split(/\s+/).filter((w: string) => w.length >= 3);
+    if (words.length >= 2 && words.every((w: string) => lineText.includes(w))) return true;
+  }
+  if (startDate && startDate.length >= 3 && lineText.includes(startDate)) {
+    if (endDate && lineText.includes(endDate)) return true;
+  }
+  return false;
+}
+
+function matchesProjectEntry(entry: ProjectItem, lineText: string): boolean {
+  const name = entry.name?.trim().toUpperCase();
+  if (name && name.length >= 2 && lineText.includes(name)) return true;
+  if (name && name.length >= 4) {
+    const words: string[] = name.split(/\s+/).filter((w: string) => w.length >= 3);
+    if (words.length >= 2 && words.every((w: string) => lineText.includes(w))) return true;
+  }
+  return false;
+}
+
+function matchesEducationEntry(entry: EducationItem, lineText: string): boolean {
+  const degree = entry.degree?.trim().toUpperCase();
+  const inst = entry.institution?.trim().toUpperCase();
+  if (degree && degree.length >= 2 && lineText.includes(degree)) return true;
+  if (inst && inst.length >= 2 && lineText.includes(inst)) return true;
+  if (inst && inst.length >= 4) {
+    const words: string[] = inst.split(/\s+/).filter((w: string) => w.length >= 3);
+    if (words.length >= 2 && words.every((w: string) => lineText.includes(w))) return true;
+  }
+  return false;
+}
+
+function matchesSkillGroup(entry: SkillGroupItem, lineText: string): boolean {
+  const type = entry.type?.trim().toUpperCase();
+  if (type && type.length >= 2 && lineText.includes(type)) return true;
+  if (type && type.length >= 4) {
+    const words: string[] = type.split(/[\s&/]+/).filter((w: string) => w.length >= 3);
+    if (words.length >= 2 && words.every((w: string) => lineText.includes(w))) return true;
+  }
+  return false;
+}
+
+function checkNextItemMatch(
+  section: PdfEditableSectionKey,
+  currentIndex: number,
+  lineText: string,
+  resumeData?: MasterResumeData,
+): number | null {
+  if (!resumeData) return null;
+  if (section === 'experience' && resumeData.experience) {
+    for (let k = currentIndex + 1; k < resumeData.experience.length; k++) {
+      if (matchesExperienceEntry(resumeData.experience[k], lineText)) return k;
+    }
+  }
+  if (section === 'projects' && resumeData.projects) {
+    for (let k = currentIndex + 1; k < resumeData.projects.length; k++) {
+      if (matchesProjectEntry(resumeData.projects[k], lineText)) return k;
+    }
+  }
+  if (section === 'education' && resumeData.education) {
+    for (let k = currentIndex + 1; k < resumeData.education.length; k++) {
+      if (matchesEducationEntry(resumeData.education[k], lineText)) return k;
+    }
+  }
+  if (section === 'skills' && resumeData.skills) {
+    for (let k = currentIndex + 1; k < resumeData.skills.length; k++) {
+      if (matchesSkillGroup(resumeData.skills[k], lineText)) return k;
+    }
+  }
+  return null;
+}
+
+function getItemLabel(
+  section: PdfEditableSectionKey,
+  itemIndex: number | undefined,
+  resumeData?: MasterResumeData,
+): string {
+  if (itemIndex == null || !resumeData) {
+    return sectionLabel[section] || section;
+  }
+  if (section === 'experience') {
+    const entry = resumeData.experience?.[itemIndex];
+    return entry?.title || entry?.company || `Role #${itemIndex + 1}`;
+  }
+  if (section === 'projects') {
+    const entry = resumeData.projects?.[itemIndex];
+    return entry?.name || `Project #${itemIndex + 1}`;
+  }
+  if (section === 'education') {
+    const entry = resumeData.education?.[itemIndex];
+    return entry?.degree || entry?.institution || `Education #${itemIndex + 1}`;
+  }
+  if (section === 'skills') {
+    const entry = resumeData.skills?.[itemIndex];
+    return entry?.type || `Category #${itemIndex + 1}`;
+  }
+  return sectionLabel[section] || section;
+}
+
 async function describePdfPages(
   pdf: PDFDocumentProxy,
   documentType: PdfCanvasPreviewProps['documentType'],
+  resumeData?: MasterResumeData,
 ) {
-  const descriptors: PdfPageDescriptor[] = [];
-  let carriedSection: PdfEditableSectionKey | 'uneditable' =
-    documentType === 'cover_letter' ? 'cover_letter' : 'basics';
+  const pageDataList: PageData[] = [];
 
   for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
     const page = await pdf.getPage(pageNumber);
@@ -125,21 +286,33 @@ async function describePdfPages(
       Math.max(...textItems.map((item) => item.bottom), 0) + 12,
     );
 
-    if (documentType === 'cover_letter') {
-      const salutation = textItems.find((item) => item.text.startsWith('DEAR '));
-      const signoff = textItems.find((item) =>
+    pageDataList.push({
+      pageNumber,
+      height: viewport.height,
+      scale,
+      contentTop,
+      contentBottom,
+      lines: groupTextItemsIntoLines(textItems),
+    });
+  }
+
+  if (documentType === 'cover_letter') {
+    const descriptors: PdfPageDescriptor[] = [];
+    for (const page of pageDataList) {
+      const salutation = page.lines.find((item) => item.text.startsWith('DEAR '));
+      const signoff = page.lines.find((item) =>
         /^(?:SINCERELY|BEST REGARDS|KIND REGARDS|WARM REGARDS|REGARDS|RESPECTFULLY|YOURS SINCERELY),?$/.test(
           item.text,
         ),
       );
-      const bodyTop = salutation ? salutation.bottom + 6 : contentTop;
+      const bodyTop = salutation ? salutation.bottom + 6 : page.contentTop;
       const bodyBottom =
-        signoff && signoff.top > bodyTop ? signoff.top - 6 : Math.max(bodyTop + 40, contentBottom);
+        signoff && signoff.top > bodyTop ? signoff.top - 6 : Math.max(bodyTop + 40, page.contentBottom);
 
       descriptors.push({
-        pageNumber,
-        height: viewport.height,
-        scale,
+        pageNumber: page.pageNumber,
+        height: page.height,
+        scale: page.scale,
         zones: [
           {
             section: 'cover_letter',
@@ -149,62 +322,155 @@ async function describePdfPages(
           },
         ],
       });
-      continue;
     }
-
-    const headings = textItems
-      .map((item) => ({
-        ...item,
-        section: sectionByHeading[item.text.replace(/\s+/g, '')],
-      }))
-      .filter(
-        (
-          item,
-        ): item is typeof item & {
-          section:
-            | Exclude<PdfEditableSectionKey, 'basics' | 'cover_letter'>
-            | 'uneditable';
-        } => Boolean(item.section),
-      )
-      .sort((a, b) => a.top - b.top);
-
-    const zones: PdfZone[] = [];
-    let cursor = pageNumber === 1 ? 0 : contentTop;
-    let currentSection: PdfEditableSectionKey | 'uneditable' = carriedSection;
-
-    for (const heading of headings) {
-      const headingTop = Math.max(cursor, heading.top - 7);
-      if (headingTop - cursor >= 18 && currentSection !== 'uneditable') {
-        zones.push({
-          section: currentSection,
-          label: sectionLabel[currentSection],
-          top: cursor,
-          height: headingTop - cursor,
-        });
-      }
-      currentSection = heading.section;
-      cursor = headingTop;
-    }
-
-    if (contentBottom - cursor >= 18 && currentSection !== 'uneditable') {
-      zones.push({
-        section: currentSection,
-        label: sectionLabel[currentSection],
-        top: cursor,
-        height: contentBottom - cursor,
-      });
-    }
-
-    carriedSection = currentSection;
-    descriptors.push({
-      pageNumber,
-      height: viewport.height,
-      scale,
-      zones: mergeAdjacentZones(zones),
-    });
+    return descriptors;
   }
 
+  type TaggedLine = {
+    top: number;
+    bottom: number;
+    section: PdfEditableSectionKey | 'uneditable';
+    itemIndex?: number;
+  };
+
+  const pageTaggedLines: Record<number, TaggedLine[]> = {};
+  for (const page of pageDataList) {
+    pageTaggedLines[page.pageNumber] = [];
+  }
+
+  let currentSection: PdfEditableSectionKey | 'uneditable' = 'basics';
+  let currentItemIndex = 0;
+
+  for (const page of pageDataList) {
+    for (const line of page.lines) {
+      const headingMatch = matchSectionHeading(line.text);
+      if (headingMatch) {
+        currentSection = headingMatch.section;
+        currentItemIndex = 0;
+      } else if (currentSection !== 'uneditable') {
+        const nextIdx = checkNextItemMatch(currentSection, currentItemIndex, line.text, resumeData);
+        if (nextIdx != null) {
+          currentItemIndex = nextIdx;
+        }
+      }
+
+      const isMulti =
+        currentSection === 'experience' ||
+        currentSection === 'projects' ||
+        currentSection === 'education' ||
+        currentSection === 'skills';
+
+      pageTaggedLines[page.pageNumber].push({
+        top: line.top,
+        bottom: line.bottom,
+        section: currentSection,
+        itemIndex: isMulti ? currentItemIndex : undefined,
+      });
+    }
+  }
+
+  const descriptors: PdfPageDescriptor[] = pageDataList.map((page) => {
+    const lines = pageTaggedLines[page.pageNumber] || [];
+    const zones: PdfZone[] = [];
+    let group: TaggedLine[] = [];
+
+    const flush = () => {
+      if (group.length === 0) return;
+      const first = group[0];
+      if (first.section === 'uneditable') {
+        group = [];
+        return;
+      }
+      const top = Math.max(0, Math.min(...group.map((l) => l.top)) - 4);
+      const bottom = Math.max(...group.map((l) => l.bottom)) + 4;
+      const height = Math.max(16, bottom - top);
+      const label = getItemLabel(first.section, first.itemIndex, resumeData);
+
+      zones.push({
+        section: first.section,
+        itemIndex: first.itemIndex,
+        label,
+        top,
+        height,
+      });
+      group = [];
+    };
+
+    for (const line of lines) {
+      const prev = group.at(-1);
+      if (prev && (prev.section !== line.section || prev.itemIndex !== line.itemIndex)) {
+        flush();
+      }
+      group.push(line);
+    }
+    flush();
+
+    return {
+      pageNumber: page.pageNumber,
+      height: page.height,
+      scale: page.scale,
+      zones: mergeAdjacentZones(zones),
+    };
+  });
+
   return descriptors;
+}
+
+function PdfZoneButton({
+  zone,
+  isActive,
+  pageHeight,
+  onSelect,
+}: {
+  zone: PdfZone;
+  isActive: boolean;
+  pageHeight: number;
+  onSelect: () => void;
+}) {
+  const buttonRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    if (isActive && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      const inView = rect.top >= 40 && rect.bottom <= (window.innerHeight || 800) - 40;
+      if (!inView) {
+        buttonRef.current.scrollIntoView({
+          behavior: 'smooth',
+          block: 'nearest',
+        });
+      }
+    }
+  }, [isActive]);
+
+  return (
+    <button
+      ref={buttonRef}
+      type='button'
+      aria-label={`Edit ${zone.label}`}
+      onClick={onSelect}
+      className={cn(
+        'group absolute left-0 z-10 w-full cursor-pointer border border-transparent bg-transparent text-left transition-all duration-150',
+        isActive ?
+          'border-primary bg-primary/10 ring-1 ring-primary/40'
+        : 'hover:border-primary/50 hover:bg-primary/[0.04]',
+      )}
+      style={{
+        top: `${(zone.top / pageHeight) * 100}%`,
+        height: `${(zone.height / pageHeight) * 100}%`,
+      }}
+    >
+      <span
+        className={cn(
+          'absolute top-1 right-2 pointer-events-none rounded-md px-1.5 py-0.5 text-[10px] shadow-2xs transition-opacity duration-150 backdrop-blur-xs max-w-[80%] truncate',
+          isActive ?
+            'opacity-100 bg-primary text-primary-foreground font-semibold'
+          : 'opacity-0 group-hover:opacity-100 bg-panel/90 text-ink-primary border border-border/80 font-medium',
+        )}
+      >
+        ✏️ {zone.label}
+      </span>
+    </button>
+  );
 }
 
 function PdfCanvasPage({
@@ -212,12 +478,14 @@ function PdfCanvasPage({
   descriptor,
   interactive = true,
   activeSection,
+  activeItemIndex,
   onSectionSelect,
 }: {
   pdf: PDFDocumentProxy;
   descriptor: PdfPageDescriptor;
   interactive?: boolean;
   activeSection: PdfEditableSectionKey | null;
+  activeItemIndex?: number | null;
   onSectionSelect: PdfCanvasPreviewProps['onSectionSelect'];
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -267,24 +535,29 @@ function PdfCanvasPage({
       <canvas ref={canvasRef} className='absolute inset-0 block h-full w-full bg-white' />
 
       {interactive &&
-        descriptor.zones.map((zone, index) => (
-          <button
-            key={`${zone.section}-${index}`}
-            type='button'
-            aria-label={`Edit ${zone.label}`}
-            onClick={() => onSectionSelect(zone.section)}
-            className={cn(
-              'group absolute left-0 z-10 w-full cursor-pointer border border-transparent bg-transparent text-left transition-colors',
-              activeSection === zone.section ?
-                'border-primary bg-primary/10'
-              : 'hover:border-primary/40 hover:bg-primary/[0.03]',
-            )}
-            style={{
-              top: `${(zone.top / descriptor.height) * 100}%`,
-              height: `${(zone.height / descriptor.height) * 100}%`,
-            }}
-          />
-        ))}
+        descriptor.zones.map((zone, index) => {
+          const isSectionActive = activeSection === zone.section;
+          const isMultiItem =
+            zone.section === 'experience' ||
+            zone.section === 'projects' ||
+            zone.section === 'education' ||
+            zone.section === 'skills';
+
+          const isActive =
+            isSectionActive &&
+            (!isMultiItem ||
+              (zone.itemIndex != null && zone.itemIndex === (activeItemIndex ?? 0)));
+
+          return (
+            <PdfZoneButton
+              key={`${zone.section}-${zone.itemIndex ?? 'all'}-${index}`}
+              zone={zone}
+              isActive={isActive}
+              pageHeight={descriptor.height}
+              onSelect={() => onSectionSelect(zone.section, zone.itemIndex)}
+            />
+          );
+        })}
 
       <span className='pointer-events-none absolute bottom-4 left-1/2 transform -translate-x-1/2 text-[0.4rem] text-ink-secondary/70'>
 {descriptor.pageNumber} 
@@ -298,11 +571,15 @@ export function PdfCanvasPreview({
   documentType,
   interactive = true,
   activeSection,
+  activeItemIndex,
   onSectionSelect,
+  resumeData,
 }: PdfCanvasPreviewProps) {
   const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null);
   const [pages, setPages] = useState<PdfPageDescriptor[]>([]);
   const [error, setError] = useState('');
+  const resumeDataRef = useRef(resumeData);
+  resumeDataRef.current = resumeData;
 
   useEffect(() => {
     let cancelled = false;
@@ -310,8 +587,6 @@ export function PdfCanvasPreview({
       null;
     let loadedPdf: PDFDocumentProxy | null = null;
 
-    setPdf(null);
-    setPages([]);
     setError('');
 
     void (async () => {
@@ -322,9 +597,15 @@ export function PdfCanvasPreview({
           import.meta.url,
         ).toString();
         const data = new Uint8Array(await (await fetch(url)).arrayBuffer());
+        if (cancelled) return;
         loadingTask = pdfjs.getDocument({ data });
         loadedPdf = await loadingTask.promise;
-        const descriptors = await describePdfPages(loadedPdf, documentType);
+        if (cancelled) return;
+        const descriptors = await describePdfPages(
+          loadedPdf,
+          documentType,
+          resumeDataRef.current,
+        );
         if (cancelled) return;
         setPdf(loadedPdf);
         setPages(descriptors);
@@ -343,6 +624,19 @@ export function PdfCanvasPreview({
       if (!loadingTask) void loadedPdf?.destroy();
     };
   }, [documentType, url]);
+
+  useEffect(() => {
+    if (!pdf) return;
+    let cancelled = false;
+    void describePdfPages(pdf, documentType, resumeData).then((descriptors) => {
+      if (!cancelled) {
+        setPages(descriptors);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [resumeData, documentType, pdf]);
 
   if (error) {
     return (
@@ -373,6 +667,7 @@ export function PdfCanvasPreview({
             descriptor={descriptor}
             interactive={interactive}
             activeSection={activeSection}
+            activeItemIndex={activeItemIndex}
             onSectionSelect={onSectionSelect}
           />
         ))}

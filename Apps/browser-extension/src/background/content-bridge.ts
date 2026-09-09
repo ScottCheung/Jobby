@@ -493,6 +493,12 @@ export async function highlightJobRequirementInActiveTab(searchTerms: string[]):
 }
 
 export async function uploadActiveTabFile(instruction: FileUploadInstruction): Promise<FieldFillResult> {
+  const activeTab = await findActiveTab();
+  if (activeTab?.id && isSupportedUrl(activeTab.url)) {
+    const uploadFile = findProviderDefinitionForUrl(activeTab.url)?.driver?.uploadFile;
+    const providerResult = await uploadFile?.(instruction, { tabId: activeTab.id });
+    if (providerResult) return providerResult;
+  }
   const rawResponse = await sendToActiveTab(instruction, instruction.target.frameId);
   const parsed = fillResponseSchema.safeParse(rawResponse);
   if (!parsed.success) throw new Error("The page returned an invalid file upload response.");
