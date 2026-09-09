@@ -173,15 +173,19 @@ function companyFromMetadata(): string {
 
 export function readAtsJobPage(platform: AtsJobPlatform): PageInspection {
   clearJobDescriptionRoot(platform);
-  const config = getAtsProviderDefinition(platform).job;
+  const provider = getAtsProviderDefinition(platform);
+  const config = provider.job;
   const url = window.location.href;
   const root = firstElement(document, config.roots);
+  const applicationRoot = config.applicationPage
+    ? firstElement(document, provider.applicationRoots)
+    : null;
   const structured = jobPostingFromStructuredData() || jobPostingFromMicrodata();
 
   // A supported hostname can also host search, account, and application
   // routes. Without a platform job root or JobPosting data this provider is
   // explicitly unable to handle the page, allowing the router to try generic.
-  if (!root && !structured) {
+  if (!root && !structured && !applicationRoot) {
     const directTitle = firstText(document, config.title);
     const directDesc = descriptionResult(document, config.description);
     if (!directTitle || directDesc.text.length < 40) {
@@ -216,6 +220,7 @@ export function readAtsJobPage(platform: AtsJobPlatform): PageInspection {
   const applyAction = Boolean(firstElement(source, config.apply) || firstElement(document, config.apply));
   const enoughEvidence = Boolean(title) && (
     Boolean(rootStructured) || description.length >= 40 || (Boolean(company) && applyAction)
+    || (Boolean(applicationRoot) && applyAction)
   );
 
   if (!enoughEvidence) {

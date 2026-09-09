@@ -166,6 +166,7 @@ def _find_job_review_tailored_resume(
     job: dict[str, Any],
     tailored_resume_id: UUID | str | None,
 ) -> TailoredResume | None:
+    description = str(job.get("job_description") or "").strip()
     if tailored_resume_id:
         try:
             target_id = UUID(str(tailored_resume_id))
@@ -174,9 +175,14 @@ def _find_job_review_tailored_resume(
         if target_id:
             target = db.get(TailoredResume, target_id)
             if target and target.user_id == current_user.id:
-                return target
+                same_job = (
+                    _job_key(target.job_title) == _job_key(job.get("title"))
+                    and _job_key(target.company) == _job_key(job.get("company"))
+                    and _job_key(target.job_description) == _job_key(description)
+                )
+                if same_job:
+                    return target
 
-    description = str(job.get("job_description") or "").strip()
     records = db.scalars(
         select(TailoredResume)
         .where(TailoredResume.user_id == current_user.id)

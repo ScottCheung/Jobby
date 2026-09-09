@@ -297,6 +297,8 @@ export function useTailoredResumeStudio(
       setCompany(snapshot.company || '');
       setDatePosted(snapshot.lastPostedAt || '');
       setJobDescription(snapshot.description || '');
+      setResult(null);
+      setActiveOptimisticId(null);
       return;
     }
 
@@ -418,9 +420,11 @@ export function useTailoredResumeStudio(
     const targetTitle = draft?.jobTitle?.trim() || jobTitle.trim() || detectedJob?.title || 'Target Role';
     const targetCompany = draft?.company?.trim() || company.trim() || detectedJob?.company || 'Target Company';
     const targetDescription = draftDescription.trim();
-    const existingTailoredDoc =
-      result?.tailored_resume ||
-      findTailoredDocumentForJob(savedResumes, targetTitle, targetCompany);
+    const existingTailoredDoc = findTailoredDocumentForJob(
+      savedResumes,
+      targetTitle,
+      targetCompany,
+    );
     const existingTailoredId = existingTailoredDoc?.id;
     const fingerprint = tailorGenerationFingerprint(
       chosenType,

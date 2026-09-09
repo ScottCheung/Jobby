@@ -1,11 +1,12 @@
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
+from uuid import uuid4
 
 from fastapi import BackgroundTasks
 
 from services.api.routers import applications, job_review
 from services.domain import tailored_resumes
-from services.shared.models import JobApplication, TailoredResume
+from services.shared.models import Job, JobApplication, TailoredResume
 
 
 def test_existing_processing_generation_is_idempotent() -> None:
@@ -178,3 +179,107 @@ def test_job_review_persists_processing_before_mocked_generation() -> None:
     assert tailored_resume.status == "ready"
     assert tailored_resume.resume_data == {"summary": "Tailored"}
     assert result["tailored_resume"] == {"id": "resume-1"}
+
+
+def test_job_review_does_not_reuse_another_jobs_record_but_reuses_current_job_record() -> None:
+    db = MagicMock()
+    db.scalars.return_value.all.return_value = []
+    user = SimpleNamespace(id="user-1")
+    profile = SimpleNamespace(
+        id="profile-1",
+        extra_data={"resume_data": {"summary": "Candidate"}},
+    )
+    job_a_id = str(uuid4())
+    job_b_id = str(uuid4())
+    job_a_record = SimpleNamespace(
+        id=job_a_id,
+        user_id="user-1",
+        job_title="Job A",
+        company="Company A",
+        job_description="Build product A",
+    )
+    added: list[object] = []
+    application = None
+    created = None
+
+    def add(record: object) -> None:
+        nonlocal application, created
+        added.append(record)
+        if isinstance(record, JobApplication):
+            record.id = "application-b"
+            application = record
+        elif isinstance(record, TailoredResume):
+            record.id = job_b_id
+            created = record
+
+    def get(model: object, record_id: object) -> object | None:
+        if model is TailoredResume:
+            if str(record_id) == job_a_id:
+                return job_a_record
+            if str(record_id) == job_b_id:
+                return created
+        if model is JobApplication:
+            return application
+        return None
+
+    db.add.side_effect = add
+    db.get.side_effect = get
+    reviewer_jobs: list[dict] = []
+
+    def mocked_review(job: dict, *_args, **_kwargs) -> dict:
+        reviewer_jobs.append(job)
+        return {
+            "resume_data": {"summary": "Tailored"},
+            "core_competencies": ["Python"],
+            "raw_ai_response": {},
+        }
+
+    job_b = {
+        "job_description": "Build product B",
+        "title": "Job B",
+        "company": "Company B",
+    }
+
+    with (
+        patch.object(tailored_resumes, "_default_career_profile", return_value=profile),
+        patch.object(
+            tailored_resumes,
+            "upsert_job",
+            return_value=SimpleNamespace(
+                job=Job(
+                    id="job-b",
+                    title="Job B",
+                    company="Company B",
+                    description="Build product B",
+                )
+            ),
+        ),
+    ):
+        _, first_record = tailored_resumes.generate_tailored_document(
+            db,
+            user,
+            job=job_b,
+            doc_type="resume",
+            tailored_resume_id=job_a_id,
+            generation_id="generation-b-resume",
+            reviewer=mocked_review,
+        )
+        second, _ = tailored_resumes.generate_tailored_document(
+            db,
+            user,
+            job=job_b,
+            doc_type="cover_letter",
+            tailored_resume_id=first_record.id,
+            generation_id="generation-b-cover-letter",
+            reviewer=mocked_review,
+        )
+
+    assert created is first_record
+    assert second["resume_data"] == {"summary": "Tailored"}
+    assert len([record for record in added if isinstance(record, TailoredResume)]) == 1
+    assert [job["title"] for job in reviewer_jobs] == ["Job B", "Job B"]
+    assert [job["company"] for job in reviewer_jobs] == ["Company B", "Company B"]
+    assert [job["job_description"] for job in reviewer_jobs] == [
+        "Build product B",
+        "Build product B",
+    ]

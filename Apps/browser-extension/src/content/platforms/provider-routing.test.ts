@@ -29,6 +29,7 @@ describe("platform provider routing", () => {
     ["jobs.taleo.net", "/careersection/jobdetail.ftl", "taleo"],
     ["careers-acme.icims.com", "/jobs/123/role", "icims"],
     ["career4.successfactors.com", "/career?jobId=123", "successfactors"],
+    ["career10.successfactors.com", "/portalcareer", "successfactors"],
     ["fa.ocs.oraclecloud.com", "/hcmUI/CandidateExperience/en/sites/CX/job/123", "oracle"],
     ["apply.workable.com", "/company/j/123ABC", "workable"],
     ["acme.bamboohr.com", "/careers/123", "bamboohr"],

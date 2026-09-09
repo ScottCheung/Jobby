@@ -42,6 +42,7 @@ export type AtsJobConfig = {
   locationFromRoot?: (root: ParentNode) => string;
   dateFromPage?: (externalId: string) => string | undefined;
   companyFromPage?: (title: string) => string;
+  applicationPage?: boolean;
   readinessWaitUntilAttempt?: number;
   postingDateWaitUntilAttempt?: number;
 };

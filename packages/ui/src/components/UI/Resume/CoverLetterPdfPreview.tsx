@@ -15,6 +15,7 @@ import {
   X,
 } from '@jobby/ui/components/icons';
 import { Button } from '../Button';
+import { Tooltip } from '../tooltip';
 import { Mail, Phone, MapPin, FolderGit2, Globe } from '@jobby/ui/components/icons';
 import {
   formatCoverLetterFilename,
@@ -596,7 +597,7 @@ export function CoverLetterPdfPreview({
       <div
         ref={containerRef}
         onClick={openPreview}
-        className={`group relative h-56 sm:h-64 w-full cursor-zoom-in bg-background-secondary/60 overflow-hidden rounded-xl p-3 flex items-center justify-center border border-border/60 ${thumbnailClassName}`}
+        className={`group relative h-48 sm:h-56 w-full cursor-zoom-in bg-background-secondary/60 overflow-hidden rounded-lg p-3 flex items-center justify-center  ${thumbnailClassName}`}
       >
         <div className='pointer-events-none flex items-center justify-center'>
           <div
@@ -638,75 +639,83 @@ export function CoverLetterPdfPreview({
         )}
 
         {/* Hover overlay actions */}
-        <div className='absolute inset-0 z-20 flex items-center justify-center gap-1.5 bg-slate-950/20 opacity-0 transition-opacity group-hover:opacity-100 backdrop-blur-xs'>
-          <button
-            type='button'
-            title='In-Page Preview'
-            aria-label='Preview Cover Letter PDF'
-            onClick={(event) => {
-              event.stopPropagation();
-              openPreview();
-            }}
-            className='flex h-9 w-9 items-center justify-center rounded-xl bg-white/95 dark:bg-slate-900/95 text-slate-800 dark:text-slate-100 hover:scale-105 hover:text-primary hover:border-primary/40 border border-black/[0.06] dark:border-white/[0.1] cursor-pointer shadow-md transition-all'
-          >
-            <Maximize2 className='h-3.5 w-3.5' />
-          </button>
-
-          <button
-            type='button'
-            title='Open in New Window'
-            aria-label='Open in new window'
-            onClick={(event) => {
-              event.stopPropagation();
-              if (onNewWindow) {
-                onNewWindow();
-              } else if (pdfUrl) {
-                window.open(pdfUrl, '_blank');
-              } else {
-                openPreview();
-              }
-            }}
-            className='flex h-9 w-9 items-center justify-center rounded-xl bg-white/95 dark:bg-slate-900/95 text-slate-800 dark:text-slate-100 hover:scale-105 hover:text-primary hover:border-primary/40 border border-black/[0.06] dark:border-white/[0.1] cursor-pointer shadow-md transition-all'
-          >
-            <ExternalLink className='h-3.5 w-3.5' />
-          </button>
-
-          {onEdit && (
+        <div className='absolute inset-0 z-20 flex items-center justify-center gap-2.5 bg-slate-950/20 opacity-0 transition-opacity group-hover:opacity-100 backdrop-blur-xs'>
+          <Tooltip content='In-Page Preview' side='top'>
             <button
               type='button'
-              title='Edit on Web'
-              aria-label='Edit cover letter'
+              title='In-Page Preview'
+              aria-label='Preview Cover Letter PDF'
               onClick={(event) => {
                 event.stopPropagation();
-                onEdit();
+                openPreview();
               }}
-            className='flex h-9 w-9 items-center justify-center rounded-xl bg-white/95 dark:bg-slate-900/95 text-slate-800 dark:text-slate-100 hover:scale-105 hover:text-primary hover:border-primary/40 border border-black/[0.06] dark:border-white/[0.1] cursor-pointer shadow-md transition-all'
+              className='flex h-10 w-10 items-center justify-center rounded-xl bg-white/95 dark:bg-slate-900/95 text-slate-800 dark:text-slate-100 hover:scale-105 hover:text-primary hover:border-primary/40 border border-black/[0.06] dark:border-white/[0.1] cursor-pointer shadow-md transition-all'
             >
-              <Edit3 className='h-3.5 w-3.5' />
+              <Maximize2 className='h-3.5 w-3.5' />
             </button>
+          </Tooltip>
+
+          <Tooltip content='Open in New Window' side='top'>
+            <button
+              type='button'
+              title='Open in New Window'
+              aria-label='Open in new window'
+              onClick={(event) => {
+                event.stopPropagation();
+                if (onNewWindow) {
+                  onNewWindow();
+                } else if (pdfUrl) {
+                  window.open(pdfUrl, '_blank');
+                } else {
+                  openPreview();
+                }
+              }}
+              className='flex h-10 w-10 items-center justify-center rounded-xl bg-white/95 dark:bg-slate-900/95 text-slate-800 dark:text-slate-100 hover:scale-105 hover:text-primary hover:border-primary/40 border border-black/[0.06] dark:border-white/[0.1] cursor-pointer shadow-md transition-all'
+            >
+              <ExternalLink className='h-3.5 w-3.5' />
+            </button>
+          </Tooltip>
+
+          {onEdit && (
+            <Tooltip content='Edit on Web' side='top'>
+              <button
+                type='button'
+                title='Edit on Web'
+                aria-label='Edit cover letter'
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onEdit();
+                }}
+                className='flex h-10 w-10 items-center justify-center rounded-xl bg-white/95 dark:bg-slate-900/95 text-slate-800 dark:text-slate-100 hover:scale-105 hover:text-primary hover:border-primary/40 border border-black/[0.06] dark:border-white/[0.1] cursor-pointer shadow-md transition-all'
+              >
+                <Edit3 className='h-3.5 w-3.5' />
+              </button>
+            </Tooltip>
           )}
 
-          <button
-            type='button'
-            title='Download PDF'
-            aria-label='Download cover letter PDF'
-            onClick={(event) => {
-              event.stopPropagation();
-              if (onDownload) {
-                onDownload();
-              } else {
-                download();
-              }
-            }}
-            className='flex h-9 w-9 items-center justify-center rounded-xl bg-white/95 dark:bg-slate-900/95 text-slate-800 dark:text-slate-100 hover:scale-105 hover:text-primary hover:border-primary/40 border border-black/[0.06] dark:border-white/[0.1] cursor-pointer shadow-md disabled:opacity-50 transition-all'
-            disabled={!onDownload && (!pdfUrl || isGenerating)}
-          >
-            <Download className='h-3.5 w-3.5' />
-          </button>
+          <Tooltip content='Download PDF' side='top'>
+            <button
+              type='button'
+              title='Download PDF'
+              aria-label='Download cover letter PDF'
+              onClick={(event) => {
+                event.stopPropagation();
+                if (onDownload) {
+                  onDownload();
+                } else {
+                  download();
+                }
+              }}
+              className='flex h-10 w-10 items-center justify-center rounded-xl bg-white/95 dark:bg-slate-900/95 text-slate-800 dark:text-slate-100 hover:scale-105 hover:text-primary hover:border-primary/40 border border-black/[0.06] dark:border-white/[0.1] cursor-pointer shadow-md disabled:opacity-50 transition-all'
+              disabled={!onDownload && (!pdfUrl || isGenerating)}
+            >
+              <Download className='h-3.5 w-3.5' />
+            </button>
+          </Tooltip>
         </div>
 
         {/* Bottom-left pill badge */}
-        <div className='absolute bottom-2 left-2 z-10 flex items-center gap-1.5 rounded-lg bg-panel/80 backdrop-blur-xs px-2 py-1 text-[10px] font-medium text-ink-primary shadow-xs'>
+        <div className='absolute bottom-2 left-2 z-10 flex items-center gap-1.5 rounded-md bg-panel/80 backdrop-blur-xs px-2 py-1 text-[10px] font-medium text-ink-primary shadow-xs'>
           <FileText className='h-3 w-3 text-primary shrink-0' />
           <span>
             {pages ?? 1} page{pages === 1 ? '' : 's'}

@@ -349,18 +349,22 @@ function TokenInlineBar({
   className?: string;
 }) {
   const { total } = calcTokenParts(usage);
+  const roleLabel = [company, jobTitle].filter(Boolean).join(' - ');
+
   return (
     <div className={cn('flex flex-col gap-1 w-full min-w-0', className)}>
-      <div className='flex items-center justify-between gap-2'>
-        <span className='text-[9px] font-mono text-muted-foreground'>
-          {(company || jobTitle) && (
-            <span>
-              {[company, jobTitle].filter(Boolean).join(' - ')}
+      <div className='flex min-w-0 items-center justify-between gap-2'>
+        {roleLabel ? (
+          <UsageTooltip content={roleLabel} side='bottom'>
+            <span className='min-w-0 flex-1 truncate text-[9px] font-mono text-muted-foreground'>
+              {roleLabel}
             </span>
-          )}
-        </span>
-        <span className='text-[9px] font-mono text-muted-foreground'>
-           {(usage.duration_ms / 1000).toFixed(1)}s {formatTokenCount(total)} tokens
+          </UsageTooltip>
+        ) : (
+          <span className='min-w-0 flex-1' />
+        )}
+        <span className='shrink-0 whitespace-nowrap text-[9px] font-mono text-muted-foreground'>
+          {(usage.duration_ms / 1000).toFixed(1)}s {formatTokenCount(total)} tokens
         </span>
       </div>
       <UsageTooltip content={<TokenBreakdownRow usage={usage} />} side='bottom'>
@@ -1691,7 +1695,7 @@ export function TailorStudioCard({
 
       {/* ── 4. RESUME PREVIEW SHOWCASE (Tailored or Default Base Resume) ── */}
       {!isViewingGenerating && displayResume && (
-        <div className='page-class-banner page-class-banner--job flex-col !items-stretch gap-3 !rounded-2xl !p-3 w-full min-w-0 max-w-full box-border'>
+        <div className='page-class-banner page-class-banner--job flex-col !items-stretch gap-3  !p-3 w-full min-w-0 max-w-full box-border !rouned-xl'>
           {/* Header row: title + actions */}
           <div className='flex items-center justify-between gap-3 w-full min-w-0'>
             <div className='flex items-center gap-1.5 min-w-0 flex-1'>
@@ -1714,6 +1718,7 @@ export function TailorStudioCard({
             <div className='flex items-center gap-2 shrink-0'>
               <Button
                 size='sm'
+                className='!rounded-lg'
                 variant='outline'
                 Icon={copiedResume ? Check : Copy}
                 onClick={() => void handleCopyResume()}
@@ -1723,6 +1728,7 @@ export function TailorStudioCard({
               </Button>
               <Button
                 size='sm'
+                className='!rounded-lg'
                 variant='default'
                 Icon={Download}
                 onClick={() => void handleDownloadResume()}
@@ -1762,7 +1768,7 @@ export function TailorStudioCard({
 
       {/* ── 5. COVER LETTER SHOWCASE (Tailored or Default Template) ── */}
       {!isViewingGenerating && effectiveCoverLetter && (
-        <div className='page-class-banner page-class-banner--job flex-col !items-stretch gap-3 !rounded-2xl !p-3 w-full min-w-0 max-w-full box-border'>
+        <div className='page-class-banner page-class-banner--job flex-col !items-stretch gap-3  !p-3 w-full min-w-0 max-w-full box-border !rouned-xl'>
           <div className='flex items-center justify-between gap-3 w-full min-w-0'>
             <div className='flex items-center gap-1.5 min-w-0 flex-1'>
               <Sparkles className='w-3.5 h-3.5 text-primary shrink-0' />
@@ -1779,6 +1785,7 @@ export function TailorStudioCard({
               <Button
                 size='sm'
                 variant='outline'
+                className='!rounded-lg'
                 Icon={copiedCoverLetter ? Check : Copy}
                 onClick={handleCopyCoverLetter}
                 title='Copy cover letter text'
@@ -1788,6 +1795,7 @@ export function TailorStudioCard({
               <Button
                 size='sm'
                 variant='default'
+                className='!rounded-lg'
                 Icon={Download}
                 onClick={() => void handleDownloadCoverLetter()}
                 title='Download cover letter PDF'
