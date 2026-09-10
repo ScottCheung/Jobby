@@ -1,29 +1,53 @@
 import type { TailoredResume } from '../../shared/contracts/tailored-resume';
 
+function normalizeJobField(value: string | null | undefined): string {
+  return (value || '').trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+export function tailoredDocumentMatchesJob(
+  item: TailoredResume,
+  title: string,
+  company: string,
+  jobDescription: string,
+): boolean {
+  return (
+    normalizeJobField(item.job_title) === normalizeJobField(title) &&
+    normalizeJobField(item.company) === normalizeJobField(company) &&
+    normalizeJobField(item.job_description) === normalizeJobField(jobDescription)
+  );
+}
+
 export function findTailoredDocumentForJob(
   resumes: TailoredResume[],
   title: string,
   company: string,
+  jobDescription?: string,
 ): TailoredResume | null {
-  const currentTitle = title.trim().toLowerCase();
-  const currentCompany = company.trim().toLowerCase();
+  const currentTitle = normalizeJobField(title);
+  const currentCompany = normalizeJobField(company);
+  const currentDescription = jobDescription ? normalizeJobField(jobDescription) : '';
   if (!currentTitle || !currentCompany) return null;
 
   const matches = resumes.filter((item) => {
     if (item.isGenerating) return false;
-    const itemTitle = (item.job_title || '').trim().toLowerCase();
-    const itemCompany = (item.company || '').trim().toLowerCase();
+    const itemTitle = normalizeJobField(item.job_title);
+    const itemCompany = normalizeJobField(item.company);
+    const descriptionMatches =
+      !currentDescription ||
+      normalizeJobField(item.job_description) === currentDescription;
     const titleMatches =
       Boolean(itemTitle) &&
-      (itemTitle === currentTitle ||
+      (currentDescription ?
+        itemTitle === currentTitle
+      : itemTitle === currentTitle ||
         itemTitle.includes(currentTitle) ||
         currentTitle.includes(itemTitle));
     const companyMatches = Boolean(itemCompany) && itemCompany === currentCompany;
-    return titleMatches && companyMatches;
+    return titleMatches && companyMatches && descriptionMatches;
   });
 
   if (matches.length === 0) return null;
-  if (matches.length === 1) return matches[0];
+  if (matches.length === 1) return matches[0] || null;
 
   const both = matches.find((item) => {
     const avail = tailoredDocumentAvailability(item);
@@ -32,6 +56,7 @@ export function findTailoredDocumentForJob(
   if (both) return both;
 
   const primary = matches[0];
+  if (!primary) return null;
   const resumeItem = matches.find(
     (item) => tailoredDocumentAvailability(item).resume,
   );

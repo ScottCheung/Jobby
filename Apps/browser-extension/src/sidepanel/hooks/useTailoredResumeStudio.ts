@@ -4,7 +4,10 @@ import { defaultMasterResumeData } from '@jobby/ui/components/UI/Resume/helpers'
 import { ApiClientError, apiClient } from '../../background/api-client';
 import { renderCoverLetterPdfForExtension } from '../services/cover-letter-pdf-renderer';
 import { renderResumePdfOnce } from '@jobby/ui/components/UI/Resume/ResumePdfPreview';
-import { findTailoredDocumentForJob } from '../services/tailored-document-state';
+import {
+  findTailoredDocumentForJob,
+  tailoredDocumentMatchesJob,
+} from '../services/tailored-document-state';
 import type { PageInspection } from '../../shared/contracts/page-inspection';
 import type {
   CareerProfile,
@@ -389,6 +392,7 @@ export function useTailoredResumeStudio(
         company: company.trim() || undefined,
         last_posted_at: datePosted.trim() || undefined,
         doc_type: chosenType,
+        output_language: 'en',
       });
       setPreview(p);
       setShowPreviewModal(true);
@@ -404,7 +408,12 @@ export function useTailoredResumeStudio(
   // Generate tailored resume / cover letter / both
   const generateTailoredResume = useCallback(async (
     targetType?: DocType,
-    draft?: { jobTitle?: string; company?: string; jobDescription?: string },
+    draft?: {
+      jobTitle?: string;
+      company?: string;
+      jobDescription?: string;
+      tailoredResumeId?: string;
+    },
   ) => {
     const draftDescription = draft?.jobDescription ?? jobDescription;
     if (!draftDescription.trim()) {
@@ -420,11 +429,23 @@ export function useTailoredResumeStudio(
     const targetTitle = draft?.jobTitle?.trim() || jobTitle.trim() || detectedJob?.title || 'Target Role';
     const targetCompany = draft?.company?.trim() || company.trim() || detectedJob?.company || 'Target Company';
     const targetDescription = draftDescription.trim();
-    const existingTailoredDoc = findTailoredDocumentForJob(
-      savedResumes,
-      targetTitle,
-      targetCompany,
-    );
+    const requestedTailoredDoc = draft?.tailoredResumeId ?
+      savedResumes.find((item) => item.id === draft.tailoredResumeId) || null
+    : null;
+    const existingTailoredDoc =
+      (requestedTailoredDoc &&
+      tailoredDocumentMatchesJob(
+        requestedTailoredDoc,
+        targetTitle,
+        targetCompany,
+        targetDescription,
+      ) ? requestedTailoredDoc : null) ||
+      findTailoredDocumentForJob(
+        savedResumes,
+        targetTitle,
+        targetCompany,
+        targetDescription,
+      );
     const existingTailoredId = existingTailoredDoc?.id;
     const fingerprint = tailorGenerationFingerprint(
       chosenType,
@@ -462,11 +483,11 @@ export function useTailoredResumeStudio(
       job_title: targetTitle,
       company: targetCompany,
       job_description: targetDescription,
-      resume_data: (chosenType === 'cover_letter' ? (existingTailoredDoc?.resume_data || result?.resume_data || {}) : {}) as MasterResumeData,
-      core_competencies: chosenType === 'cover_letter' ? (existingTailoredDoc?.core_competencies || result?.core_competencies || []) : [],
-      key_qualifications: chosenType === 'cover_letter' ? (existingTailoredDoc?.key_qualifications || result?.key_qualifications || []) : [],
-      targeted_projects: chosenType === 'cover_letter' ? (existingTailoredDoc?.targeted_projects || result?.targeted_projects || []) : [],
-      cover_letter: chosenType === 'resume' ? (existingTailoredDoc?.cover_letter || result?.cover_letter || null) : null,
+      resume_data: (chosenType === 'cover_letter' ? (existingTailoredDoc?.resume_data || {}) : {}) as MasterResumeData,
+      core_competencies: chosenType === 'cover_letter' ? (existingTailoredDoc?.core_competencies || []) : [],
+      key_qualifications: chosenType === 'cover_letter' ? (existingTailoredDoc?.key_qualifications || []) : [],
+      targeted_projects: chosenType === 'cover_letter' ? (existingTailoredDoc?.targeted_projects || []) : [],
+      cover_letter: chosenType === 'resume' ? (existingTailoredDoc?.cover_letter || null) : null,
       raw_ai_response: undefined,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -501,6 +522,7 @@ export function useTailoredResumeStudio(
         company: targetCompany,
         last_posted_at: datePosted.trim() || undefined,
         doc_type: chosenType,
+        output_language: 'en',
         mock: mockMode,
         generation_id: generationId,
         tailored_resume_id: existingTailoredId,
@@ -566,24 +588,23 @@ export function useTailoredResumeStudio(
       const resolvedResumeData =
         nextResult.resume_data && Object.keys(nextResult.resume_data).length > 0 ?
           nextResult.resume_data
-        : (existingTailoredDoc?.resume_data || result?.resume_data || null);
+        : (existingTailoredDoc?.resume_data || null);
       const resolvedCoverLetter =
         nextResult.cover_letter ||
         existingTailoredDoc?.cover_letter ||
-        result?.cover_letter ||
         null;
       const resolvedCoreCompetencies =
         nextResult.core_competencies && nextResult.core_competencies.length > 0 ?
           nextResult.core_competencies
-        : (existingTailoredDoc?.core_competencies || result?.core_competencies || []);
+        : (existingTailoredDoc?.core_competencies || []);
       const resolvedKeyQualifications =
         nextResult.key_qualifications && nextResult.key_qualifications.length > 0 ?
           nextResult.key_qualifications
-        : (existingTailoredDoc?.key_qualifications || result?.key_qualifications);
+        : (existingTailoredDoc?.key_qualifications || []);
       const resolvedTargetedProjects =
         nextResult.targeted_projects && nextResult.targeted_projects.length > 0 ?
           nextResult.targeted_projects
-        : (existingTailoredDoc?.targeted_projects || result?.targeted_projects);
+        : (existingTailoredDoc?.targeted_projects || []);
 
       const mergedNextResult: JobReviewResult = {
         ...nextResult,
@@ -828,6 +849,49 @@ export function useTailoredResumeStudio(
     [refreshSavedResumes],
   );
 
+  const deleteTailoredDocument = useCallback(
+    async (id: string, documentType: 'resume' | 'cover_letter') => {
+      const updated = await apiClient.deleteTailoredDocument(id, documentType);
+      setSavedResumes((current) =>
+        current.map((item) =>
+          item.id === id ?
+            {
+              ...item,
+              ...updated,
+              usage: updated.usage ?? item.usage,
+              usage_breakdown: updated.usage_breakdown ?? item.usage_breakdown,
+            }
+          : item,
+        ),
+      );
+      setResult((current) => {
+        if (current?.tailored_resume?.id !== id) return current;
+        const updatedRecord = {
+          ...current.tailored_resume,
+          ...updated,
+          usage: updated.usage ?? current.tailored_resume.usage,
+          usage_breakdown:
+            updated.usage_breakdown ?? current.tailored_resume.usage_breakdown,
+        };
+        return {
+          ...current,
+          resume_data: updated.resume_data,
+          core_competencies: updated.core_competencies || [],
+          key_qualifications: updated.key_qualifications || [],
+          targeted_projects: updated.targeted_projects || [],
+          cover_letter: updated.cover_letter || null,
+          raw_ai_response: updated.raw_ai_response,
+          tailored_resume: updatedRecord,
+        };
+      });
+      notify.success(
+        documentType === 'resume' ? 'CV deleted.' : 'Cover letter deleted.',
+      );
+      return updated;
+    },
+    [],
+  );
+
   const makeDefaultProfile = useCallback(
     async (profileId: string) => {
       try {
@@ -891,6 +955,7 @@ export function useTailoredResumeStudio(
     generateTailoredResume,
     cancelGeneration,
     deleteSavedResume,
+    deleteTailoredDocument,
     simulateDevGeneration,
     clearDevGeneration,
     refreshSavedResumes,

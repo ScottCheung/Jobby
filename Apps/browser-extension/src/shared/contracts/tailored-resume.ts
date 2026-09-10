@@ -40,6 +40,7 @@ import type { MasterResumeData as UiMasterResumeData } from '@jobby/ui/component
 export type MasterResumeData = UiMasterResumeData;
 
 export type DocType = 'resume' | 'cover_letter' | 'both';
+export type OutputLanguage = 'en' | 'zh-CN';
 
 export type LLMUsageSummary = {
   calls: number;
@@ -70,6 +71,7 @@ export type TailoredResume = {
   core_competencies?: string[];
   targeted_projects?: Array<Record<string, unknown>>;
   cover_letter?: string | null;
+  output_language?: OutputLanguage | null;
   usage?: LLMUsageSummary | null;
   usage_breakdown?: {
     resume?: LLMUsageSummary | null;
@@ -89,6 +91,7 @@ export type TailoredResume = {
 
 export type JobReviewResult = {
   resume_data: MasterResumeData | null;
+  output_language?: OutputLanguage | null;
   core_competencies: string[];
   key_qualifications?: string[];
   targeted_projects?: Array<Record<string, unknown>>;
@@ -107,6 +110,7 @@ export type JobReviewPayload = {
   company?: string;
   last_posted_at?: string;
   doc_type?: DocType;
+  output_language?: OutputLanguage;
   mock?: boolean;
   generation_id?: string;
   tailored_resume_id?: string;

@@ -1,13 +1,18 @@
 import {
+  clearAuthSessionIfCurrent,
   clearAuthSession,
+  commitAuthSessionIfCurrent,
+  getAuthRefreshCompletedAt,
   getAuthSession,
   getAuthStatus as readAuthStatus,
+  setAuthRefreshCompletedAt,
   setAuthSession,
   setExplicitDisconnect,
 } from "./session-store";
 import type { AuthSession, AuthStatus } from "../shared/contracts/auth";
 
 const REFRESH_SKEW_MS = 60_000;
+const REFRESH_COOLDOWN_MS = 5_000;
 
 function webAppUrl(): string {
   return (import.meta.env.VITE_WEB_APP_URL || "http://localhost:3000").replace(/\/$/, "");
@@ -87,9 +92,24 @@ export async function refreshAuthSessionOnce(): Promise<AuthSession | null> {
     return refreshInFlight;
   }
 
+  const lastRefreshCompletedAt = await getAuthRefreshCompletedAt();
+  if (refreshInFlight) {
+    return refreshInFlight;
+  }
+  if (
+    lastRefreshCompletedAt > 0 &&
+    Date.now() - lastRefreshCompletedAt < REFRESH_COOLDOWN_MS
+  ) {
+    return getAuthSession();
+  }
+
   refreshInFlight = (async () => {
     try {
-      return await performRefresh();
+      const session = await performRefresh();
+      if (session) {
+        await setAuthRefreshCompletedAt(Date.now());
+      }
+      return session;
     } finally {
       refreshInFlight = null;
     }
@@ -105,7 +125,6 @@ export async function refreshAuthSession(_current?: AuthSession): Promise<AuthSe
 async function performRefresh(): Promise<AuthSession | null> {
   const current = await getAuthSession();
   if (!current?.refreshToken) {
-    await clearAuthSession();
     return null;
   }
 
@@ -127,15 +146,22 @@ async function performRefresh(): Promise<AuthSession | null> {
     });
 
     if (!response.ok) {
-      await clearAuthSession();
+      const error = await readRefreshError(response);
+      if (isDefinitelyRevokedRefreshToken(response.status, error)) {
+        await clearAuthSessionIfCurrent(current.refreshToken);
+      }
       return null;
     }
 
-    const data = await response.json();
-    const nextAccessToken = data.access_token;
-    const nextRefreshToken = data.refresh_token;
-    if (!nextAccessToken || !nextRefreshToken) {
-      await clearAuthSession();
+    const data = await readRefreshResponse(response);
+    const nextAccessToken = data?.access_token;
+    const nextRefreshToken = data?.refresh_token;
+    if (
+      typeof nextAccessToken !== "string" ||
+      typeof nextRefreshToken !== "string" ||
+      !nextAccessToken ||
+      !nextRefreshToken
+    ) {
       return null;
     }
 
@@ -149,16 +175,64 @@ async function performRefresh(): Promise<AuthSession | null> {
       refreshToken: nextRefreshToken,
       expiresAt,
       user: {
-        id: data.user?.id || current.user.id,
-        email: data.user?.email || current.user.email,
+        id: typeof data.user?.id === "string" ? data.user.id : current.user.id,
+        email: typeof data.user?.email === "string" ? data.user.email : current.user.email,
       },
     };
 
-    await setAuthSession(nextSession);
-    return nextSession;
+    return commitAuthSessionIfCurrent(current.refreshToken, nextSession);
   } catch {
     return null;
   }
+}
+
+type RefreshResponse = {
+  access_token?: unknown;
+  refresh_token?: unknown;
+  expires_at?: unknown;
+  expires_in?: unknown;
+  user?: { id?: unknown; email?: unknown };
+};
+
+async function readRefreshResponse(response: Response): Promise<RefreshResponse | null> {
+  try {
+    const data: unknown = await response.json();
+    return typeof data === "object" && data !== null ? data as RefreshResponse : null;
+  } catch {
+    return null;
+  }
+}
+
+async function readRefreshError(response: Response): Promise<Record<string, unknown>> {
+  try {
+    const data: unknown = await response.json();
+    return typeof data === "object" && data !== null ? data as Record<string, unknown> : {};
+  } catch {
+    return {};
+  }
+}
+
+function isDefinitelyRevokedRefreshToken(
+  status: number,
+  error: Record<string, unknown>,
+): boolean {
+  if (status !== 400) return false;
+
+  const errorCode = [error.error, error.error_code]
+    .filter((value): value is string => typeof value === "string")
+    .map((value) => value.toLowerCase());
+  if (errorCode.includes("invalid_grant") || errorCode.includes("invalid_refresh_token")) {
+    return true;
+  }
+
+  const description = [error.error_description, error.message, error.msg]
+    .filter((value): value is string => typeof value === "string")
+    .join(" ")
+    .toLowerCase();
+  return (
+    description.includes("refresh token") &&
+    /(invalid|revoked|not found|expired|already used)/.test(description)
+  );
 }
 
 export async function getValidAuthSession(): Promise<AuthSession | null> {
@@ -197,5 +271,13 @@ export async function getAuthStatus(): Promise<AuthStatus> {
     return readAuthStatus();
   }
 
-  return { connected: false };
+  const latest = await getAuthSession();
+  if (!latest) return { connected: false };
+
+  return {
+    connected: true,
+    reconnecting: true,
+    expiresAt: latest.expiresAt,
+    user: latest.user,
+  };
 }

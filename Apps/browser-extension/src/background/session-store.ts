@@ -14,6 +14,7 @@ const DIAGNOSTICS_KEY = "jobby.runtime.diagnostics";
 const AUTH_KEY = "jobby.auth.session";
 const AUTOFILL_SESSIONS_KEY = "jobby.autofill.sessions";
 const PROVIDER_JOB_INSPECTIONS_KEY = "jobby.provider.job-inspections";
+const AUTH_REFRESH_COMPLETED_AT_KEY = "jobby.auth.refresh.completedAt";
 const MAX_DIAGNOSTIC_ENTRIES = 200;
 
 let writeQueue: Promise<void> = Promise.resolve();
@@ -65,23 +66,80 @@ export async function clearDiagnostics(): Promise<void> {
 }
 
 export async function getAuthSession(): Promise<AuthSession | null> {
+  return readRawAuthSession();
+}
+
+export async function readRawAuthSession(): Promise<AuthSession | null> {
   const stored = await chrome.storage.local.get(AUTH_KEY);
   if (!stored[AUTH_KEY]) return null;
   const parsed = authSessionSchema.safeParse(stored[AUTH_KEY]);
-  if (!parsed.success) {
-    await clearAuthSession();
-    return null;
-  }
-  return parsed.data;
+  return parsed.success ? parsed.data : null;
 }
 
 export async function setAuthSession(session: AuthSession): Promise<void> {
   const parsed = authSessionSchema.parse(session);
-  await chrome.storage.local.set({ [AUTH_KEY]: parsed });
+  await serializeWrite(async () => {
+    await chrome.storage.local.set({ [AUTH_KEY]: parsed });
+  });
 }
 
 export async function clearAuthSession(): Promise<void> {
-  await chrome.storage.local.remove(AUTH_KEY);
+  await serializeWrite(async () => {
+    await chrome.storage.local.remove(AUTH_KEY);
+  });
+}
+
+export async function commitAuthSessionIfCurrent(
+  expectedRefreshToken: string,
+  session: AuthSession,
+): Promise<AuthSession | null> {
+  const parsed = authSessionSchema.parse(session);
+  let committed: AuthSession | null = null;
+
+  await serializeWrite(async () => {
+    const latest = await readRawAuthSession();
+    if (!latest) return;
+
+    if (latest.refreshToken !== expectedRefreshToken) {
+      committed = latest;
+      return;
+    }
+
+    await chrome.storage.local.set({ [AUTH_KEY]: parsed });
+    committed = parsed;
+  });
+
+  return committed;
+}
+
+export async function clearAuthSessionIfCurrent(
+  expectedRefreshToken: string,
+): Promise<boolean> {
+  let cleared = false;
+
+  await serializeWrite(async () => {
+    const latest = await readRawAuthSession();
+    if (!latest || latest.refreshToken !== expectedRefreshToken) return;
+
+    await chrome.storage.local.remove(AUTH_KEY);
+    cleared = true;
+  });
+
+  return cleared;
+}
+
+export async function getAuthRefreshCompletedAt(): Promise<number> {
+  const stored = await chrome.storage.session.get(AUTH_REFRESH_COMPLETED_AT_KEY);
+  const value = stored[AUTH_REFRESH_COMPLETED_AT_KEY];
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+
+export async function setAuthRefreshCompletedAt(timestamp: number): Promise<void> {
+  await serializeWrite(async () => {
+    await chrome.storage.session.set({
+      [AUTH_REFRESH_COMPLETED_AT_KEY]: timestamp,
+    });
+  });
 }
 
 const EXPLICIT_DISCONNECT_KEY = "jobby.auth.explicit_disconnect";

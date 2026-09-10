@@ -12,6 +12,11 @@ from uuid import UUID, uuid4
 
 from pypdf import PdfReader
 
+try:
+    import fitz
+except ImportError:  # pragma: no cover - available in deployed API environments
+    fitz = None
+
 from services.shared.deepseek import DeepSeekError, _complete
 
 
@@ -658,16 +663,61 @@ def _extract_source_languages(lines: list[str]) -> list[dict[str, str]]:
     return []
 
 
+def _usable_pdf_text(text: str) -> bool:
+    if not text.strip() or "\ufffd" in text:
+        return False
+    private_use = sum(0xE000 <= ord(char) <= 0xF8FF for char in text)
+    if private_use:
+        return False
+    visible = [char for char in text if not char.isspace()]
+    if not visible:
+        return False
+    printable_ratio = sum(char.isprintable() for char in visible) / len(visible)
+    if printable_ratio < 0.85:
+        return False
+    return not re.search(r"([^\s])\1{8,}", text)
+
+
+def _extract_pdf_text_with_pymupdf(content: bytes) -> tuple[int, str]:
+    if fitz is None:
+        return 0, ""
+    try:
+        document = fitz.open(stream=content, filetype="pdf")
+        try:
+            text = "\n\n".join(page.get_text("text", sort=True) or "" for page in document).strip()
+            return len(document), text
+        finally:
+            document.close()
+    except Exception:
+        logger.exception("PyMuPDF fallback failed while extracting resume text")
+        return 0, ""
+
+
 def extract_pdf_source(content: bytes) -> dict:
+    reader = None
+    pypdf_error: Exception | None = None
     try:
         reader = PdfReader(BytesIO(content))
         text = "\n\n".join(page.extract_text() or "" for page in reader.pages).strip()
     except Exception as exc:
-        raise ResumeParseError("The PDF could not be read. Upload a text-based PDF.") from exc
+        pypdf_error = exc
+        text = ""
+
+    page_count = len(reader.pages) if reader is not None else 0
+    if not _usable_pdf_text(text):
+        fallback_page_count, fallback_text = _extract_pdf_text_with_pymupdf(content)
+        if _usable_pdf_text(fallback_text):
+            page_count = fallback_page_count
+            text = fallback_text
+
+    if pypdf_error is not None and not text:
+        raise ResumeParseError("The PDF could not be read. Upload a text-based PDF.") from pypdf_error
     if not text:
         raise ResumeParseError("No selectable text was found in this PDF. Upload a text-based PDF.")
+    if not _usable_pdf_text(text):
+        raise ResumeParseError("The PDF text could not be decoded reliably. Upload a text-based PDF with selectable text.")
     return {
-        "page_count": len(reader.pages),
+        "page_count": page_count,
         "character_count": len(text),
         "text": text,
     }

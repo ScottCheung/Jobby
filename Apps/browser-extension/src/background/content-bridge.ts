@@ -1,11 +1,21 @@
-import { bindTabJobInspection, getTabJobInspection } from "./job-binding-service";
 import { cacheProviderJobInspection, getCachedProviderJobInspection } from "./session-store";
+import {
+  getApplicationSessionForTab,
+  getApplicationSessionInspection,
+  isInheritedApplicationSessionTab,
+  resolveApplicationSession,
+} from "./application-session-store";
 import { z } from "zod";
 
 import { pageInspectionSchema, type PageInspection } from "../shared/contracts/page-inspection";
 import { formInspectionSchema, type FormInspection } from "../shared/contracts/form-inspection";
 import { fieldFillResultSchema, formFocusResultSchema, type FieldFillInstruction, type FieldFillResult, type FileUploadInstruction, type FormFieldTarget, type FormFocusResult } from "../shared/contracts/form-actions";
 import type { MasterResumeData } from "../shared/contracts/tailored-resume";
+import {
+  applicationActionResultSchema,
+  type ApplicationAction,
+  type ApplicationActionResult,
+} from "../shared/contracts/application-navigation";
 import { isAtsJobConfig } from "../content/platforms/platform-definition";
 import { findProviderDefinitionForUrl } from "../content/platforms/registry";
 
@@ -44,6 +54,11 @@ const highlightResponseSchema = z.discriminatedUnion("ok", [
   z.object({ ok: z.literal(false), error: z.string().min(1) }),
 ]);
 
+const applicationActionResponseSchema = z.discriminatedUnion("ok", [
+  z.object({ ok: z.literal(true), applicationAction: applicationActionResultSchema }),
+  z.object({ ok: z.literal(false), error: z.string().min(1) }),
+]);
+
 let targetedTabId: number | undefined;
 const activeFormFrameByTab = new Map<number, number>();
 const inFlightJobInspections = new Map<string, Promise<PageInspection>>();
@@ -74,7 +89,10 @@ export async function inspectActiveTab(
   const provider = findProviderDefinitionForUrl(activeUrl);
   const jobInspection = provider?.background?.jobInspection;
   const activePageUrl = new URL(activeUrl);
-  const isApplicationPage = Boolean(jobInspection?.isApplicationUrl?.(activePageUrl));
+  const isApplicationPage = Boolean(
+    jobInspection?.isApplicationUrl?.(activePageUrl) ||
+      /\/(?:apply|application)(?:\/|$)/i.test(activePageUrl.pathname),
+  );
   const externalId = provider && isAtsJobConfig(provider.job)
     ? provider.job.idFromUrl(activePageUrl)
     : "";
@@ -88,8 +106,11 @@ export async function inspectActiveTab(
           url: activeUrl,
         },
       };
-      bindTabJobInspection(activeTab.id, resolvedInspection);
-      return resolvedInspection;
+      return (
+        await resolveApplicationSession(activeTab.id, resolvedInspection, {
+          lock: isApplicationPage,
+        })
+      ).inspection;
     }
   }
 
@@ -107,7 +128,10 @@ export async function inspectActiveTab(
     jobInspection?.recoverJobFromApplication &&
     isApplicationPage
   ) {
-    const boundInspection = getTabJobInspection(activeTab.id, resolvedActiveUrl);
+    const boundInspection = await getApplicationSessionInspection(
+      activeTab.id,
+      resolvedActiveUrl,
+    );
     if (boundInspection) return boundInspection;
 
     const detailInspection = await inspectJobUrl(resolvedActiveUrl).catch(() => undefined);
@@ -120,26 +144,22 @@ export async function inspectActiveTab(
         },
       };
       if (jobInspection.cacheInspection) await cacheProviderJobInspection(resolvedInspection);
-      bindTabJobInspection(activeTab.id, resolvedInspection);
-      return resolvedInspection;
+      return (
+        await resolveApplicationSession(activeTab.id, resolvedInspection, {
+          lock: true,
+        })
+      ).inspection;
     }
   }
 
   if (activeTab?.id && inspection.kind === "job") {
-    const boundInspection = getTabJobInspection(activeTab.id, resolvedActiveUrl);
-    if (
-      boundInspection?.kind === "job" &&
-      boundInspection.snapshot.platform === inspection.snapshot.platform &&
-      boundInspection.snapshot.externalId === inspection.snapshot.externalId
-    ) {
-      return boundInspection;
-    }
-
     let resolvedInspection = inspection;
+    const existingSession = await getApplicationSessionForTab(activeTab.id);
     const shouldReadDetailPage =
       !inspection.snapshot.description?.trim() &&
       jobInspection?.inspectDetailsFromApplication &&
-      isApplicationPage;
+      isApplicationPage &&
+      !existingSession;
 
     if (shouldReadDetailPage) {
       const detailInspection = await inspectJobUrl(resolvedActiveUrl).catch(() => undefined);
@@ -183,20 +203,41 @@ export async function inspectActiveTab(
     }
 
     if (jobInspection?.cacheInspection) await cacheProviderJobInspection(resolvedInspection);
-    bindTabJobInspection(activeTab.id, resolvedInspection);
-    return resolvedInspection;
+    return (
+      await resolveApplicationSession(activeTab.id, resolvedInspection, {
+        lock: isApplicationPage,
+      })
+    ).inspection;
   }
 
-  // If the active page does not identify a job directly (e.g. an external ATS
-  // child tab opened from a job posting), check if this tab inherited a job binding.
   if (activeTab?.id) {
-    const inherited = getTabJobInspection(activeTab.id, activeTab.url);
+    const inherited =
+      isApplicationPage || (await isInheritedApplicationSessionTab(activeTab.id));
     if (inherited) {
-      return inherited;
+      const sessionInspection = await getApplicationSessionInspection(
+        activeTab.id,
+        activeTab.url,
+      );
+      if (sessionInspection) return sessionInspection;
     }
   }
 
   return inspection;
+}
+
+export async function clickActiveApplicationAction(
+  action: ApplicationAction,
+): Promise<ApplicationActionResult> {
+  const rawResponse = await sendToActiveTab({
+    type: "content.application-action",
+    action,
+  });
+  const parsed = applicationActionResponseSchema.safeParse(rawResponse);
+  if (!parsed.success) {
+    throw new Error("The page returned an invalid application action response.");
+  }
+  if (!parsed.data.ok) throw new Error(parsed.data.error);
+  return parsed.data.applicationAction;
 }
 
 export function jobInspectionUrl(rawUrl: string): string {

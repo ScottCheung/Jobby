@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
-import { X } from 'lucide-react';
+import { ChevronDown, MoreHorizontal, RefreshCw, Trash2, X } from 'lucide-react';
 import {
   Button,
   EmptyPlaceHolder,
@@ -82,7 +82,10 @@ export function TailoredResumeStudio({
   const [isDirty, setIsDirty] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isSwitcherOpen, setIsSwitcherOpen] = useState(false);
-  const [isClGenerating, setIsClGenerating] = useState(false);
+  const [isActionsOpen, setIsActionsOpen] = useState(false);
+  const [regeneratingDoc, setRegeneratingDoc] = useState<
+    'resume' | 'cover_letter' | null
+  >(null);
 
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [isCompilingPdf, setIsCompilingPdf] = useState(false);
@@ -361,6 +364,7 @@ export function TailoredResumeStudio({
         title: currentResume.job_title || undefined,
         company: currentResume.company || undefined,
         doc_type: 'cover_letter',
+        output_language: currentResume.output_language || 'en',
       });
 
       if (result.tailored_resume) {

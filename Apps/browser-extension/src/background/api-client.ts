@@ -1,6 +1,7 @@
 /** @format */
 
 import { getValidAuthSession, refreshAuthSessionOnce } from './auth-service';
+import { getAuthSession } from './session-store';
 import {
   formAutofillInstructionsResponseSchema,
   type FormAutofillInstructionsResponse,
@@ -166,6 +167,7 @@ export class ApiClient {
     headers.set('Accept', 'application/json');
     if (init.body && !headers.has('Content-Type'))
       headers.set('Content-Type', 'application/json');
+    let tokenUsed: string | null = null;
 
     if (authenticated) {
       let session = null;
@@ -184,6 +186,7 @@ export class ApiClient {
           'Please sign in to Jobby before using autofill.',
           401,
         );
+      tokenUsed = session.accessToken;
       headers.set('Authorization', `Bearer ${session.accessToken}`);
     }
 
@@ -203,7 +206,11 @@ export class ApiClient {
     }
 
     if (response.status === 401 && authenticated) {
-      const refreshed = await refreshAuthSessionOnce();
+      const latest = await getAuthSession();
+      const refreshed =
+        latest && latest.accessToken !== tokenUsed ?
+          latest
+        : await refreshAuthSessionOnce();
       if (refreshed) {
         headers.set('Authorization', `Bearer ${refreshed.accessToken}`);
         try {
@@ -243,6 +250,7 @@ export class ApiClient {
 
   async recordSubmittedApplication(
     snapshot: JobSnapshot,
+    applicationSessionId?: string,
   ): Promise<{ id: string; status: string }> {
     return this.request<{ id: string; status: string }>('/api/applications', {
       method: 'POST',
@@ -263,7 +271,12 @@ export class ApiClient {
         pipeline_stage: 'applied',
         date_applied: new Date().toISOString(),
         application_type: 'manual',
-        raw_data: { created_from: 'browser_extension' },
+        raw_data: {
+          created_from: 'browser_extension',
+          ...(applicationSessionId
+            ? { application_session_id: applicationSessionId }
+            : {}),
+        },
       }),
     });
   }
@@ -558,6 +571,16 @@ export class ApiClient {
       {
         method: 'DELETE',
       },
+    );
+  }
+
+  async deleteTailoredDocument(
+    id: string,
+    documentType: 'resume' | 'cover_letter',
+  ): Promise<TailoredResume> {
+    return this.request<TailoredResume>(
+      `/api/tailored-resumes/${encodeURIComponent(id)}/documents/${documentType}`,
+      { method: 'DELETE' },
     );
   }
 }

@@ -106,6 +106,8 @@ export function App() {
   const {
     latestInspection,
     setLatestInspection,
+    applicationSession,
+    setApplicationSession,
     latestForm,
     inspectionError,
     setInspectionError,
@@ -350,6 +352,9 @@ export function App() {
     latestInspection?.kind === 'job' ?
       latestInspection.snapshot.company || ''
     : '',
+    latestInspection?.kind === 'job' ?
+      latestInspection.snapshot.description || ''
+    : undefined,
   );
   const existingDocuments = tailoredDocumentAvailability(matchingTailoredDoc);
 
@@ -419,6 +424,7 @@ export function App() {
     autofillForm,
     cancelAutofill,
     recordApplication,
+    navigateApplication,
     canRecordApplication,
     isApplicationRecorded,
   } = useApplicationTools(
@@ -430,6 +436,8 @@ export function App() {
     authStatus?.connected,
     signIn,
     autofillDocuments,
+    applicationSession,
+    setApplicationSession,
   );
 
   const handlePreviewDocument = useCallback(
@@ -981,6 +989,7 @@ export function App() {
                 isClearingForm={isClearingForm}
                 onAutofill={autofillForm}
                 onCancelAutofill={cancelAutofill}
+                onApplicationAction={navigateApplication}
                 isCancellingAutofill={isCancellingAutofill}
                 onClearAll={clearAllFormFields}
                 autofillOnly

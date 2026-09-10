@@ -11,11 +11,19 @@ import {
   View,
   pdf,
 } from '@react-pdf/renderer';
+import type { ReactNode } from 'react';
 import { resumeContactItems, resumeFullName, COVER_LETTER_SIGNATURE_STYLE } from './helpers';
 import type { MasterResumeData } from './types';
 import { CLBG_MAIN_PATH_D } from './cover-letter-contour';
 import { SACRAMENTO_FONT_SOURCE } from './cover-letter-font';
 import { coverLetterBody } from './cover-letter-content';
+import {
+  cjkFallbackStyle,
+  RESUME_CJK_FONT_BOLD_URL,
+  RESUME_CJK_FONT_FAMILY,
+  RESUME_CJK_FONT_REGULAR_URL,
+  splitResumeText,
+} from './cjk-font';
 import {
   createResumeHighlightRules,
   tokenizeResumeText,
@@ -30,6 +38,28 @@ Font.register({
   family: 'Sacramento',
   src: SACRAMENTO_FONT_SOURCE,
 });
+
+Font.register({
+  family: RESUME_CJK_FONT_FAMILY,
+  fonts: [
+    { src: RESUME_CJK_FONT_REGULAR_URL, fontWeight: 400 },
+    { src: RESUME_CJK_FONT_BOLD_URL, fontWeight: 700 },
+    { src: RESUME_CJK_FONT_REGULAR_URL, fontWeight: 400, fontStyle: 'italic' },
+    { src: RESUME_CJK_FONT_BOLD_URL, fontWeight: 700, fontStyle: 'italic' },
+  ],
+});
+
+function renderPdfText(value: string, style?: any): ReactNode {
+  const segments = splitResumeText(value);
+  if (segments.length === 1 && !segments[0].isCjk) return value;
+  return segments.map((segment, index) =>
+    segment.isCjk ?
+      <Text key={`${segment.text}-${index}`} style={cjkFallbackStyle(style)}>
+        {segment.text}
+      </Text>
+    : segment.text,
+  );
+}
 
 interface CoverLetterMetrics {
   bodyFontSize: number;
@@ -182,18 +212,17 @@ function renderPdfFormattedParagraph(
           part.startsWith('**') && part.endsWith('**');
         const value = manuallyEmphasized ? part.slice(2, -2) : part;
 
-        return tokenizeResumeText(value, rules).map((token, tokenIndex) => (
-          <Text
-            key={`${index}-${tokenIndex}`}
-            style={
-              manuallyEmphasized || token.kind !== 'plain' ?
-                { fontFamily: 'Helvetica-Bold', color: '#1C1917' }
-              : undefined
-            }
-          >
-            {token.value}
-          </Text>
-        ));
+        return tokenizeResumeText(value, rules).map((token, tokenIndex) => {
+          const tokenStyle =
+            manuallyEmphasized || token.kind !== 'plain' ?
+              { fontFamily: 'Helvetica-Bold', color: '#1C1917' }
+            : undefined;
+          return (
+            <Text key={`${index}-${tokenIndex}`} style={tokenStyle}>
+              {renderPdfText(token.value, tokenStyle)}
+            </Text>
+          );
+        });
       })}
     </Text>
   );
@@ -403,7 +432,7 @@ export function CoverLetterPdfDocument({
                 letterSpacing: 0.2,
               }}
             >
-              {subjectTitle}
+              {renderPdfText(subjectTitle, { fontFamily: 'Helvetica-Bold' })}
             </Text>
           </View>
         </View>
@@ -425,7 +454,7 @@ export function CoverLetterPdfDocument({
               marginBottom: metrics.namePaddingBottom,
             }}
           >
-            {name}
+            {renderPdfText(name, { fontFamily: 'Helvetica-Bold' })}
           </Text>
 
           {headline && (
@@ -437,7 +466,7 @@ export function CoverLetterPdfDocument({
                 marginBottom: 3,
               }}
             >
-              {headline}
+              {renderPdfText(headline, { fontFamily: 'Helvetica-Bold' })}
             </Text>
           )}
 
@@ -480,10 +509,10 @@ export function CoverLetterPdfDocument({
                         textDecoration: 'none',
                       }}
                     >
-                      {item.text}
+                      {renderPdfText(item.text, { fontFamily: 'Helvetica' })}
                     </PdfLink>
                   : <Text style={{ fontSize: 8.5, color: '#57534E' }}>
-                      {item.text}
+                      {renderPdfText(item.text, { fontFamily: 'Helvetica' })}
                     </Text>
                   }
                 </View>
@@ -523,7 +552,7 @@ export function CoverLetterPdfDocument({
               marginBottom: metrics.namePaddingBottom,
             }}
           >
-            {salutation},
+            {renderPdfText(salutation, { fontFamily: 'Helvetica-Bold' })},
           </Text>
 
           <Text
@@ -533,7 +562,7 @@ export function CoverLetterPdfDocument({
               fontFamily: 'Helvetica',
             }}
           >
-            {formattedDate}
+            {renderPdfText(formattedDate, { fontFamily: 'Helvetica' })}
           </Text>
         </View>
 
@@ -569,7 +598,7 @@ export function CoverLetterPdfDocument({
               fontFamily: 'Helvetica',
             }}
           >
-            {signoff},
+            {renderPdfText(signoff, { fontFamily: 'Helvetica' })},
           </Text>
           <Text
             style={{
@@ -579,7 +608,7 @@ export function CoverLetterPdfDocument({
               transform: 'rotate(-4deg)',
             }}
           >
-            {signoffName}
+            {renderPdfText(signoffName, { fontFamily: 'Sacramento' })}
           </Text>
         </View>
       </Page>

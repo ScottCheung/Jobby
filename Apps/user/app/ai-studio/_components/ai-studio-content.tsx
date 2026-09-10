@@ -517,6 +517,7 @@ export function AiStudioContent() {
         company: params.company || undefined,
         last_posted_at: params.lastPostedAt || undefined,
         doc_type: params.docType,
+        output_language: 'en',
         mock: params.mock,
         career_profile_id: params.careerProfileId,
       });

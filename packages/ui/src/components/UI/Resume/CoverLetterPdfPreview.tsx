@@ -34,6 +34,10 @@ import {
 import { COVER_LETTER_GOLD_SVG_DATA_URI } from './cover-letter-contour';
 import { SACRAMENTO_FONT_URL } from './cover-letter-font';
 import {
+  RESUME_CJK_FONT_BOLD_URL,
+  RESUME_CJK_FONT_REGULAR_URL,
+} from './cjk-font';
+import {
   computeLayoutMetrics,
   parseCoverLetterContent,
   renderCoverLetterPdfOnce,
@@ -198,7 +202,7 @@ export function CoverLetterHtmlDocument({
         backgroundColor: '#ffffff',
         color: '#292524',
         fontFamily:
-          'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+          'Arial, "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif',
         boxSizing: 'border-box',
         position: 'relative',
         overflow: 'hidden',
@@ -206,7 +210,7 @@ export function CoverLetterHtmlDocument({
       className='flex flex-col text-left select-none'
     >
       <style>
-        {`@font-face { font-family: 'Sacramento'; src: url('${SACRAMENTO_FONT_URL}') format('truetype'); font-style: normal; font-weight: 400; }`}
+        {`@font-face { font-family: 'Sacramento'; src: url('${SACRAMENTO_FONT_URL}') format('truetype'); font-style: normal; font-weight: 400; } @font-face { font-family: 'Noto Sans SC'; src: url('${RESUME_CJK_FONT_REGULAR_URL}') format('opentype'); font-style: normal; font-weight: 400; } @font-face { font-family: 'Noto Sans SC'; src: url('${RESUME_CJK_FONT_BOLD_URL}') format('opentype'); font-style: normal; font-weight: 700; }`}
       </style>
       {/* Top-Right Decorative Contour: Exact vector SVG from clbg.svg in matching Warm Gold */}
       <img

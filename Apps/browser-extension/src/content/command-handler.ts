@@ -1,6 +1,10 @@
 /** @format */
 
 import { pageInspectionSchema } from '../shared/contracts/page-inspection';
+import {
+  applicationActionResultSchema,
+  applicationActionSchema,
+} from '../shared/contracts/application-navigation';
 import { formInspectionSchema } from '../shared/contracts/form-inspection';
 import {
   fieldFillInstructionSchema,
@@ -116,6 +120,26 @@ export async function handleContentCommand(message: unknown): Promise<unknown> {
     );
     return { inspection };
   }
+  if (isApplicationActionCommand(message)) {
+    const action = applicationActionSchema.parse(
+      (message as { action: unknown }).action,
+    );
+    const navigation = detectDedicatedProvider()?.applicationNavigation;
+    if (!navigation?.clickAction) {
+      return {
+        applicationAction: applicationActionResultSchema.parse({
+          status: 'unavailable',
+          message: 'Application navigation is unavailable on this page.',
+          url: window.location.href,
+        }),
+      };
+    }
+    return {
+      applicationAction: applicationActionResultSchema.parse(
+        await navigation.clickAction(action),
+      ),
+    };
+  }
   if (isInspectFormCommand(message)) {
     const form = formInspectionSchema.parse(readCurrentForm());
     if (hasObservableFields(form)) {
@@ -205,6 +229,14 @@ function isInspectFormCommand(message: unknown): boolean {
     typeof message === 'object' &&
     message !== null &&
     (message as { type?: unknown }).type === 'content.inspect-form'
+  );
+}
+
+function isApplicationActionCommand(message: unknown): boolean {
+  return (
+    typeof message === 'object' &&
+    message !== null &&
+    (message as { type?: unknown }).type === 'content.application-action'
   );
 }
 

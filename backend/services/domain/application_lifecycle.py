@@ -336,11 +336,27 @@ def find_existing_application(
     external_job_link = str(values.get("external_job_link") or "").strip()
     title = _normalized_text(values.get("title"))
     company = _normalized_text(values.get("company"))
+    raw_data = values.get("raw_data")
+    application_session_id = (
+        str(raw_data.get("application_session_id") or "").strip()
+        if isinstance(raw_data, dict)
+        else ""
+    )
 
     query = select(JobApplication).options(selectinload(JobApplication.job)).where(
         JobApplication.user_id == current_user.id,
         JobApplication.deleted_at.is_(None),
     )
+
+    if application_session_id:
+        session_match = db.scalar(
+            query.where(
+                JobApplication.raw_data["application_session_id"].as_string()
+                == application_session_id
+            )
+        )
+        if session_match:
+            return session_match
 
     link_clauses = []
     if job_link:
@@ -546,4 +562,3 @@ def sync_worker_application_from_link(application: JobApplication, values: dict)
         return
     if not (application.job_link or application.external_job_link):
         return
-

@@ -1217,6 +1217,7 @@ export class LinkedInAdapter {
       message,
       url: currentUrl,
       ...(actionLabel ? { actionLabel } : {}),
+      ...(action === 'submit' ? { verified: true } : {}),
     };
   }
 

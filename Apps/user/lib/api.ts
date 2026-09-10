@@ -71,6 +71,7 @@ import { dedup } from "./request-dedup";
 
 export type JobReviewResult = {
   resume_data?: MasterResumeData | null;
+  output_language?: 'en' | 'zh-CN' | null;
   key_qualifications?: string[];
   core_competencies?: string[];
   targeted_projects?: Array<Record<string, unknown>>;
@@ -124,6 +125,7 @@ export type TailoredResume = {
   targeted_projects: Array<Record<string, unknown>>;
   cover_letter?: string | null;
   usage?: LLMUsageSummary | null;
+  output_language?: 'en' | 'zh-CN' | null;
   prompt_version?: string;
   status: 'processing' | 'ready' | 'failed';
   error_message?: string | null;
@@ -323,6 +325,7 @@ export const api = {
     company?: string;
     last_posted_at?: string;
     doc_type?: 'resume' | 'cover_letter' | 'both';
+    output_language?: 'en' | 'zh-CN';
     career_profile_id?: string;
     mock?: boolean;
   }) =>
@@ -336,6 +339,7 @@ export const api = {
     company?: string;
     last_posted_at?: string;
     doc_type?: 'resume' | 'cover_letter' | 'both';
+    output_language?: 'en' | 'zh-CN';
     career_profile_id?: string;
     mock?: boolean;
   }) =>
@@ -384,6 +388,14 @@ export const api = {
     apiRequest<{ success: boolean; id: string }>(`/api/tailored-resumes/${id}`, {
       method: 'DELETE',
     }),
+  deleteTailoredDocument: (
+    id: string,
+    documentType: 'resume' | 'cover_letter',
+  ) =>
+    apiRequest<TailoredResume>(
+      `/api/tailored-resumes/${id}/documents/${documentType}`,
+      { method: 'DELETE' },
+    ),
   me: () => dedup("me", () => apiRequest<User>("/api/me")),
   uploadAvatar: async (file: File) => {
     const apiBaseUrl = await resolveApiBaseUrl();

@@ -16,7 +16,7 @@ export const classicResumeTemplate: ResumeTemplateConfig = {
     paddingLeft: 28,
   },
   typography: {
-    fontFamily: 'Arial, Helvetica, sans-serif',
+    fontFamily: 'Arial, "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif',
     pdfFontFamily: 'Helvetica',
     bodySize: 9.5,
     bodyLineHeight: 1.42,

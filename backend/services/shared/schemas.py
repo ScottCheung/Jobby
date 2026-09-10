@@ -249,6 +249,7 @@ class TailoredResumeRead(OrmModel):
     cover_letter: str | None = None
     usage: LLMUsageSummaryRead | None = None
     usage_breakdown: dict[str, LLMUsageSummaryRead] | None = None
+    output_language: str | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -258,6 +259,8 @@ class TailoredResumeRead(OrmModel):
             self.cover_letter = self.raw_ai_response.get("cover_letter")
         if not self.core_competencies:
             self.core_competencies = self.key_qualifications or []
+        if not self.output_language and isinstance(self.raw_ai_response, dict):
+            self.output_language = self.raw_ai_response.get("output_language")
         return self
 
 

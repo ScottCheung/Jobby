@@ -15,7 +15,7 @@ from services.domain.errors import (
 from services.domain.master_resumes import _default_career_profile
 from services.shared.database import SessionLocal
 from services.shared.deepseek import DeepSeekError
-from services.shared.job_review import review_job
+from services.shared.job_review import normalize_output_language, review_job
 from services.shared.jobs import upsert_job
 from services.shared.models import (
     JobApplication,
@@ -37,14 +37,21 @@ def _run_tailored_resume_generation(
     doc_type: str = "resume",
     mock: bool = False,
     correlation_id: str | None = None,
+    output_language: str | None = None,
     resume_data: dict[str, Any] | None = None,
     reviewer: Callable[..., dict] | None = None,
 ) -> dict:
+    output_language = normalize_output_language(
+        output_language
+        if output_language is not None
+        else (tailored_resume.raw_ai_response or {}).get("output_language")
+    )
     job = {
         "job_description": tailored_resume.job_description,
         "title": tailored_resume.job_title,
         "company": tailored_resume.company,
         "date_posted": application.last_posted_at,
+        "output_language": output_language,
     }
     return (reviewer or review_job)(
         job,
@@ -53,6 +60,7 @@ def _run_tailored_resume_generation(
         mock=mock,
         correlation_id=correlation_id or str(tailored_resume.id),
         user_id=tailored_resume.user_id,
+        output_language=output_language,
     )
 
 
@@ -66,6 +74,8 @@ def _persist_tailored_resume_result(
     if not generation_id:
         tailored_resume.resume_data = result.get("resume_data") or {}
         tailored_resume.raw_ai_response = result.get("raw_ai_response") or {}
+        if result.get("output_language"):
+            tailored_resume.raw_ai_response["output_language"] = result["output_language"]
         tailored_resume.core_competencies = result.get("core_competencies") or result.get("key_qualifications") or []
         tailored_resume.key_qualifications = result.get("key_qualifications") or []
         tailored_resume.targeted_projects = result.get("targeted_projects") or []
@@ -81,6 +91,8 @@ def _persist_tailored_resume_result(
         tailored_resume.targeted_projects = result.get("targeted_projects") or []
 
     raw_ai_response = dict(result.get("raw_ai_response") or {})
+    if result.get("output_language"):
+        raw_ai_response["output_language"] = result["output_language"]
     previous_raw_ai_response.pop("generation_id", None)
     previous_raw_ai_response.pop("generation_doc_type", None)
     if previous_raw_ai_response.get("cover_letter") and not result.get("cover_letter"):
@@ -209,6 +221,7 @@ def generate_tailored_document(
     generation_id: str | None = None,
     tailored_resume_id: UUID | str | None = None,
     mock: bool = False,
+    output_language: str | None = None,
     career_profile_provider: Callable[[Session, User], JobHuntingProfile] | None = None,
     reviewer: Callable[..., dict] | None = None,
     broadcaster: Callable[..., Any] | None = None,
@@ -217,6 +230,10 @@ def generate_tailored_document(
     career_profile = (career_profile_provider or _default_career_profile)(db, current_user)
     profile_resume = dict((career_profile.extra_data or {}).get("resume_data") or {})
     generation_id = generation_id or str(uuid4())
+    output_language = normalize_output_language(
+        output_language if output_language is not None else job.get("output_language")
+    )
+    job = {**job, "output_language": output_language}
     broadcaster = broadcaster or broadcast_sync
     tailored_resume = _find_job_review_tailored_resume(
         db,
@@ -257,6 +274,7 @@ def generate_tailored_document(
             raw_ai_response={
                 "generation_id": generation_id,
                 "generation_doc_type": doc_type,
+                "output_language": output_language,
             },
             core_competencies=[],
             key_qualifications=[],
@@ -274,6 +292,7 @@ def generate_tailored_document(
             **(tailored_resume.raw_ai_response or {}),
             "generation_id": generation_id,
             "generation_doc_type": doc_type,
+            "output_language": output_language,
         }
 
     db.commit()
@@ -286,6 +305,7 @@ def generate_tailored_document(
             doc_type=doc_type,
             mock=mock,
             correlation_id=generation_id,
+            output_language=output_language,
             resume_data=profile_resume,
             reviewer=reviewer,
         )

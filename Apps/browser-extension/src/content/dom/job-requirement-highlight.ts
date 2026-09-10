@@ -612,9 +612,9 @@ function showActiveRangePulse(range?: Range): void {
       width: ${rect.width + 8}px;
       height: ${rect.height + 6}px;
       border-radius: 5px;
-      border: 1px solid rgba(245, 158, 11, 0.52);
+      border: 1px solid rgba(245, 158, 11, 0.36);
       box-shadow: 0 0 0 0 rgba(250, 204, 21, 0.55), 0 0 18px 2px rgba(245, 158, 11, 0.45);
-      animation: jobbySkillPulse 1100ms cubic-bezier(0.22, 1, 0.36, 1) 3;
+      animation: jobbySkillPulse 1500ms cubic-bezier(0.22, 1, 0.36, 1) 2;
     `;
     root.appendChild(pulse);
   }
@@ -627,7 +627,7 @@ function showActiveRangePulse(range?: Range): void {
     style.textContent = `
       @keyframes jobbySkillPulse {
         0% { opacity: 0; transform: scale(0.985); box-shadow: 0 0 0 0 rgba(250, 204, 21, 0), 0 0 6px 0 rgba(245, 158, 11, 0); }
-        38% { opacity: 0.72; transform: scale(1.01); box-shadow: 0 0 0 3px rgba(250, 204, 21, 0.06), 0 0 10px 1px rgba(245, 158, 11, 0.18); }
+        38% { opacity: 0.44; transform: scale(1.006); box-shadow: 0 0 0 2px rgba(250, 204, 21, 0.04), 0 0 7px 1px rgba(245, 158, 11, 0.1); }
         100% { opacity: 0; transform: scale(1); box-shadow: 0 0 0 7px rgba(250, 204, 21, 0), 0 0 4px 0 rgba(245, 158, 11, 0); }
       }
       @media (prefers-reduced-motion: reduce) {
@@ -647,9 +647,9 @@ function showActiveRangePulse(range?: Range): void {
       top: 0;
       width: 100vw;
       height: 100vh;
-      border: 1px solid rgba(250, 204, 21, 0.2);
+      border: 1px solid rgba(250, 204, 21, 0.12);
       border-radius: 0;
-      box-shadow: inset 0 0 70px 4px rgba(245, 158, 11, 0.07);
+      box-shadow: inset 0 0 70px 3px rgba(245, 158, 11, 0.04);
       pointer-events: none;
       animation: jobbySkillFocus 1250ms cubic-bezier(0.22, 1, 0.36, 1) both;
     `;
@@ -658,7 +658,7 @@ function showActiveRangePulse(range?: Range): void {
       focus.getAnimations().forEach((animation) => animation.cancel());
       focus.animate(
         [
-          { left: '0px', top: '0px', width: '100vw', height: '100vh', borderRadius: '0px', opacity: 0.42 },
+          { left: '0px', top: '0px', width: '100vw', height: '100vh', borderRadius: '0px', opacity: 0.24 },
           { left: `${firstRect.left - 7}px`, top: `${firstRect.top - 6}px`, width: `${firstRect.width + 14}px`, height: `${firstRect.height + 12}px`, borderRadius: '7px', opacity: 0 },
         ],
         { duration: 1250, easing: 'cubic-bezier(0.22, 1, 0.36, 1)', fill: 'both' },
@@ -678,7 +678,7 @@ function showActiveRangePulse(range?: Range): void {
     `;
     document.head.appendChild(style);
   }
-  activeRangePulseTimer = window.setTimeout(() => root.remove(), 3600);
+  activeRangePulseTimer = window.setTimeout(() => root.remove(), 3400);
 }
 
 function showTextHighlight(allRanges: Range[], activeRange?: Range): void {
@@ -1153,7 +1153,7 @@ export async function highlightJobRequirement(
 
 
   showTextHighlight(allRanges, target.range);
-  await new Promise((resolve) => window.setTimeout(resolve, 720));
+  await new Promise((resolve) => window.setTimeout(resolve, 850));
   showActiveRangePulse(target.range);
   showInPageNavFeedback(
     target.term || terms[0] || '',

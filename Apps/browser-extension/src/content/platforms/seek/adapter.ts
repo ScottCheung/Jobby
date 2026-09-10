@@ -75,8 +75,9 @@ export async function clickSeekApplicationAction(action: ApplicationAction): Pro
       ? "SEEK application moved to the previous step."
       : action === "next"
         ? "SEEK application continued to the next step."
-        : "SEEK application submitted.",
+        : "SEEK submission click was dispatched, but confirmation is unavailable.",
     url: window.location.href,
     ...(actionLabel ? { actionLabel } : {}),
+    ...(action === "submit" ? { verified: false } : {}),
   };
 }

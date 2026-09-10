@@ -3,6 +3,11 @@
 import { z } from 'zod';
 
 import type { AuthStatus } from './auth';
+import {
+  applicationActionSchema,
+  type ApplicationActionResult,
+} from './application-navigation';
+import type { ApplicationSession } from './application-session';
 import type { PageInspection } from './page-inspection';
 import type { FormInspection } from './form-inspection';
 import { formFieldTargetSchema } from './form-actions';
@@ -29,6 +34,21 @@ export const runtimeMessageSchema = z.discriminatedUnion('type', [
     url: z.string().url(),
   }),
   z.object({ type: z.literal('content.inspect-form-active') }),
+  z.object({
+    type: z.literal('content.application-action-active'),
+    action: applicationActionSchema,
+  }),
+  z.object({ type: z.literal('application.session-lock-active') }),
+  z.object({ type: z.literal('application.session-start-submit-active') }),
+  z.object({
+    type: z.literal('application.session-mark-submitted'),
+    submission: z.object({
+      platform: z.string().min(1),
+      url: z.string().url(),
+      verified: z.literal(true),
+    }),
+  }),
+  z.object({ type: z.literal('application.session-mark-unknown') }),
   z.object({
     type: z.literal('content.highlight-job-requirement-active'),
     searchTerms: z.array(z.string().trim().min(1).max(80)).min(1).max(32),
@@ -78,6 +98,8 @@ export type RuntimeMessageResponse =
       auth?: AuthStatus;
       inspection?: PageInspection;
       form?: FormInspection;
+      applicationAction?: ApplicationActionResult;
+      applicationSession?: ApplicationSession | null;
       fillResults?: FieldFillResult[];
       fillResult?: FieldFillResult;
       unansweredFields?: Array<{ key: string; label: string; reason: string }>;

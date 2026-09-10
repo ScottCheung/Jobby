@@ -113,6 +113,8 @@ def tailored_resume_response(resume: TailoredResume, db: Session | None = None) 
         result["core_competencies"] = result.get("key_qualifications") or []
     if (resume.raw_ai_response or {}).get("cover_letter"):
         result["cover_letter"] = resume.raw_ai_response["cover_letter"]
+    if (resume.raw_ai_response or {}).get("output_language"):
+        result["output_language"] = resume.raw_ai_response["output_language"]
     generation_ids = [
         str(gid) for gid in (resume.raw_ai_response or {}).get("generation_ids") or [] if gid
     ]
@@ -856,3 +858,55 @@ def delete_tailored_resume(
     db.delete(tailored)
     db.commit()
     return {"success": True, "id": str(tailored_resume_id)}
+
+
+@router.delete(
+    "/tailored-resumes/{tailored_resume_id}/documents/{document_type}",
+    response_model=TailoredResumeRead,
+)
+def delete_tailored_document(
+    tailored_resume_id: UUID,
+    document_type: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_or_create_current_user),
+) -> TailoredResume:
+    tailored = db.get(TailoredResume, tailored_resume_id)
+    if not tailored or tailored.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Tailored resume not found")
+    if document_type not in {"resume", "cover_letter"}:
+        raise HTTPException(status_code=400, detail="Unsupported document type")
+
+    raw_ai_response = dict(tailored.raw_ai_response or {})
+    generated_documents = dict(raw_ai_response.get("generated_documents") or {})
+    if document_type == "resume":
+        tailored.resume_data = {}
+        tailored.core_competencies = []
+        tailored.key_qualifications = []
+        tailored.targeted_projects = []
+        for key in (
+            "summary",
+            "core_competencies",
+            "key_qualifications",
+            "skills",
+            "experience",
+            "projects",
+            "resume_data",
+            "targeted_projects",
+        ):
+            raw_ai_response.pop(key, None)
+    else:
+        raw_ai_response.pop("cover_letter", None)
+
+    generated_documents.pop(document_type, None)
+    if generated_documents:
+        raw_ai_response["generated_documents"] = generated_documents
+    else:
+        raw_ai_response["generated_documents"] = {
+            "resume": False,
+            "cover_letter": False,
+        }
+    tailored.raw_ai_response = raw_ai_response
+    tailored.updated_at = utc_now()
+    db.commit()
+    db.refresh(tailored)
+    return tailored

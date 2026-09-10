@@ -17,6 +17,7 @@ import {
 import {
   Defs,
   Document,
+  Font,
   LinearGradient,
   Link,
   Page,
@@ -41,11 +42,28 @@ import {
   type ResumeHighlightRules,
 } from './highlights';
 import { useSmartOnePage } from './use-smart-one-page';
+import {
+  cjkFallbackStyle,
+  RESUME_CJK_FONT_BOLD_URL,
+  RESUME_CJK_FONT_FAMILY,
+  RESUME_CJK_FONT_REGULAR_URL,
+  splitResumeText,
+} from './cjk-font';
 import type {
   MasterResumeData,
   ResumeSectionKey,
   ResumeTemplateConfig,
 } from './types';
+
+Font.register({
+  family: RESUME_CJK_FONT_FAMILY,
+  fonts: [
+    { src: RESUME_CJK_FONT_REGULAR_URL, fontWeight: 400 },
+    { src: RESUME_CJK_FONT_BOLD_URL, fontWeight: 700 },
+    { src: RESUME_CJK_FONT_REGULAR_URL, fontWeight: 400, fontStyle: 'italic' },
+    { src: RESUME_CJK_FONT_BOLD_URL, fontWeight: 700, fontStyle: 'italic' },
+  ],
+});
 
 export type ResumePdfPreviewProps = {
   data: MasterResumeData;
@@ -302,6 +320,18 @@ function dateRange(start?: string | null, end?: string | null) {
   return [start, end].filter(Boolean).join(' - ');
 }
 
+function renderPdfText(value: string, style?: any): ReactNode {
+  const segments = splitResumeText(value);
+  if (segments.length === 1 && !segments[0].isCjk) return value;
+  return segments.map((segment, index) =>
+    segment.isCjk ?
+      <Text key={`${segment.text}-${index}`} style={cjkFallbackStyle(style)}>
+        {segment.text}
+      </Text>
+    : segment.text,
+  );
+}
+
 function PdfHighlightedText({
   value,
   rules,
@@ -317,7 +347,7 @@ function PdfHighlightedText({
     <Text style={style}>
       {tokenizeResumeText(value, rules).map((token, index) =>
         token.kind === 'plain' ?
-          token.value
+          renderPdfText(token.value, style)
         : <Text
             key={`${token.value}-${index}`}
             style={
@@ -326,7 +356,10 @@ function PdfHighlightedText({
               : styles.highlightMetric
             }
           >
-            {token.value}
+            {renderPdfText(
+              token.value,
+              token.kind === 'skill' ? styles.highlightSkill : styles.highlightMetric,
+            )}
           </Text>,
       )}
     </Text>
@@ -384,7 +417,7 @@ function PdfTechnologies({
   return (
     <Text style={styles.technologies} wrap={false}>
       <Text style={styles.technologiesLabel}>Technologies: </Text>
-      {list.join(template.separators.technologies)}
+      {renderPdfText(list.join(template.separators.technologies), styles.technologies)}
     </Text>
   );
 }
@@ -420,7 +453,7 @@ function PdfSection({
           <Rect width={24} height={24} rx={4.5} fill='url(#goldLightGradPdf)' />
           <Path d='M 0,0 L 24,24 L 0,24 Z' fill='url(#goldDarkGradPdf)' />
         </Svg>
-        <Text style={styles.sectionTitle}>{title}</Text>
+        <Text style={styles.sectionTitle}>{renderPdfText(title, styles.sectionTitle)}</Text>
       </View>
       {children}
     </View>
@@ -480,7 +513,9 @@ function PdfResumeSection({
                 >
                   {effectiveCompetencies.map((item: string, idx: number) => (
                     <View key={idx} style={styles.skillPill} wrap={false}>
-                      <Text style={styles.skillPillText}>{item}</Text>
+                      <Text style={styles.skillPillText}>
+                        {renderPdfText(item, styles.skillPillText)}
+                      </Text>
                     </View>
                   ))}
                 </View>
@@ -498,26 +533,40 @@ function PdfResumeSection({
                   <View style={styles.row}>
                     <Text style={styles.entryTitle}>
                       {item.company ? (
-                        <Text style={styles.companyTitle}>{item.company}</Text>
+                        <Text style={styles.companyTitle}>
+                          {renderPdfText(item.company, styles.companyTitle)}
+                        </Text>
                       ) : null}
                       {item.company && item.location ? (
                         <Text style={styles.titleSeparator}>
-                          {template.separators.inline}
+                          {renderPdfText(
+                            template.separators.inline,
+                            styles.titleSeparator,
+                          )}
                         </Text>
                       ) : null}
                       {item.location ? (
-                        <Text style={styles.locationTitle}>{item.location}</Text>
+                        <Text style={styles.locationTitle}>
+                          {renderPdfText(item.location, styles.locationTitle)}
+                        </Text>
                       ) : null}
                     </Text>
                     <Text style={styles.date}>
-                      {dateRange(item.start_date, item.end_date)}
+                      {renderPdfText(
+                        dateRange(item.start_date, item.end_date),
+                        styles.date,
+                      )}
                     </Text>
                   </View>
                   {item.title ? (
-                    <Text style={styles.experienceTitle}>{item.title}</Text>
+                    <Text style={styles.experienceTitle}>
+                      {renderPdfText(item.title, styles.experienceTitle)}
+                    </Text>
                   ) : null}
                   {item.summary ? (
-                    <Text style={styles.experienceSummary}>{item.summary}</Text>
+                    <Text style={styles.experienceSummary}>
+                      {renderPdfText(item.summary, styles.experienceSummary)}
+                    </Text>
                   ) : null}
                 </View>
                 <PdfBullets
@@ -552,30 +601,40 @@ function PdfResumeSection({
                     <View style={styles.row}>
                       <Text style={styles.entryTitle}>
                         {item.degree ?
-                          <Text style={styles.companyTitle}>{item.degree}</Text>
+                          <Text style={styles.companyTitle}>
+                            {renderPdfText(item.degree, styles.companyTitle)}
+                          </Text>
                         : null}
                         {item.degree && item.field_of_study ?
                           <Text style={styles.titleSeparator}>
-                            {template.separators.inline}
+                            {renderPdfText(
+                              template.separators.inline,
+                              styles.titleSeparator,
+                            )}
                           </Text>
                         : null}
                         {item.field_of_study ?
                           <Text style={styles.jobTitle}>
-                            {item.field_of_study}
+                            {renderPdfText(item.field_of_study, styles.jobTitle)}
                           </Text>
                         : null}
                         {!hasDegreeInfo && item.institution ?
                           <Text style={styles.companyTitle}>
-                            {item.institution}
+                            {renderPdfText(item.institution, styles.companyTitle)}
                           </Text>
                         : null}
                       </Text>
                       <Text style={styles.date}>
-                        {dateRange(item.start_date, item.end_date)}
+                        {renderPdfText(
+                          dateRange(item.start_date, item.end_date),
+                          styles.date,
+                        )}
                       </Text>
                     </View>
                     {subInfo ?
-                      <Text style={styles.detail}>{subInfo}</Text>
+                    <Text style={styles.detail}>
+                      {renderPdfText(subInfo, styles.detail)}
+                    </Text>
                     : null}
                   </View>
                   <PdfBullets
@@ -594,15 +653,20 @@ function PdfResumeSection({
             {data.projects.map((item, index) => (
               <View key={`${item.name}-${index}`} style={styles.entry}>
                 <View wrap={false} minPresenceAhead={32}>
-                  <View style={styles.row}>
-                    <Text style={styles.entryTitle}>{item.name}</Text>
+                    <View style={styles.row}>
+                    <Text style={styles.entryTitle}>
+                      {renderPdfText(item.name || '', styles.entryTitle)}
+                    </Text>
                     <Text style={styles.date}>
-                      {dateRange(item.start_date, item.end_date)}
+                      {renderPdfText(
+                        dateRange(item.start_date, item.end_date),
+                        styles.date,
+                      )}
                     </Text>
                   </View>
                   {item.url && (
                     <Link src={item.url} style={styles.url}>
-                      {item.url}
+                      {renderPdfText(item.url, styles.url)}
                     </Link>
                   )}
                 </View>
@@ -630,10 +694,15 @@ function PdfResumeSection({
                 wrap={false}
               >
                 {group.type && (
-                  <Text style={styles.skillLabel}>{group.type}</Text>
+                  <Text style={styles.skillLabel}>
+                    {renderPdfText(group.type, styles.skillLabel)}
+                  </Text>
                 )}
                 <Text style={styles.skillValues}>
-                  {(group.skills ?? []).join(template.separators.inline)}
+                  {renderPdfText(
+                    (group.skills ?? []).join(template.separators.inline),
+                    styles.skillValues,
+                  )}
                 </Text>
               </View>
             ))}
@@ -656,13 +725,16 @@ function PdfResumeSection({
                     { marginTop: template.spacing.skillGap },
                   ]}
                 >
-                  {[
-                    item.name,
-                    item.issuer,
-                    dateRange(item.issue_date, item.expiry_date),
-                  ]
-                    .filter(Boolean)
-                    .join(template.separators.inline)}
+                  {renderPdfText(
+                    [
+                      item.name,
+                      item.issuer,
+                      dateRange(item.issue_date, item.expiry_date),
+                    ]
+                      .filter(Boolean)
+                      .join(template.separators.inline),
+                    styles.bodyText,
+                  )}
                 </Text>
               ))}
           </PdfSection>
@@ -677,11 +749,14 @@ function PdfResumeSection({
                 { marginTop: template.spacing.skillGap },
               ]}
             >
-              {data.languages
-                .map((item) =>
-                  [item.name, item.proficiency].filter(Boolean).join(' - '),
-                )
-                .join(template.separators.inline)}
+              {renderPdfText(
+                data.languages
+                  .map((item) =>
+                    [item.name, item.proficiency].filter(Boolean).join(' - '),
+                  )
+                  .join(template.separators.inline),
+                styles.bodyText,
+              )}
             </Text>
           </PdfSection>
         : null;
@@ -694,17 +769,23 @@ function PdfResumeSection({
                 <View key={`${item.title}-${index}`} style={styles.entry}>
                   <View wrap={false} minPresenceAhead={32}>
                     <Text style={styles.entryTitle}>
-                      {[item.title, item.organization]
-                        .filter(Boolean)
-                        .join(template.separators.inline) ||
-                        item.type ||
-                        template.sectionLabels.other}
+                      {renderPdfText(
+                        [item.title, item.organization]
+                          .filter(Boolean)
+                          .join(template.separators.inline) ||
+                          item.type ||
+                          template.sectionLabels.other,
+                        styles.entryTitle,
+                      )}
                     </Text>
                     {(itemLocation || item.date) && (
                       <Text style={styles.detail}>
-                        {[itemLocation, item.date]
-                          .filter(Boolean)
-                          .join(template.separators.inline)}
+                        {renderPdfText(
+                          [itemLocation, item.date]
+                            .filter(Boolean)
+                            .join(template.separators.inline),
+                          styles.detail,
+                        )}
                       </Text>
                     )}
                   </View>
@@ -852,9 +933,13 @@ function ResumePdfDocument({
     >
       <Page size={template.paper.format} style={styles.page}>
         <View style={styles.header} wrap={false}>
-          <Text style={styles.name}>{fullName(data)}</Text>
+          <Text style={styles.name}>
+            {renderPdfText(fullName(data), styles.name)}
+          </Text>
           {basics.headline && (
-            <Text style={styles.headline}>{basics.headline}</Text>
+            <Text style={styles.headline}>
+              {renderPdfText(basics.headline, styles.headline)}
+            </Text>
           )}
           {contactItems.length > 0 && (
             <View style={styles.contact}>
@@ -867,9 +952,11 @@ function ResumePdfDocument({
                   />
                   {item.href ?
                     <Link src={item.href} style={styles.contactLink}>
-                      {item.text}
+                      {renderPdfText(item.text, styles.contactLink)}
                     </Link>
-                  : <Text style={styles.contactText}>{item.text}</Text>}
+                  : <Text style={styles.contactText}>
+                      {renderPdfText(item.text, styles.contactText)}
+                    </Text>}
                 </View>
               ))}
             </View>

@@ -85,7 +85,11 @@ export function AuthCard({
               title='Sign out of Jobby account'
             >
               <span className='account-dot' />
-              <span>{authStatus.user?.email.split('@')[0]}</span>
+              <span>
+                {authStatus.reconnecting ?
+                  'Reconnecting...'
+                : authStatus.user?.email.split('@')[0]}
+              </span>
             </button>
           }
         </div>

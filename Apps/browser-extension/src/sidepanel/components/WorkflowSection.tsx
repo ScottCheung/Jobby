@@ -1,6 +1,7 @@
 import { Button } from '@jobby/ui/components/UI/Button';
 
 import type { FormInspection } from '../../shared/contracts/form-inspection';
+import type { ApplicationAction } from '../../shared/contracts/application-navigation';
 
 interface WorkflowSectionProps {
   latestForm: FormInspection | null;
@@ -13,6 +14,7 @@ interface WorkflowSectionProps {
   isCancellingAutofill?: boolean;
   onClearAll: () => void;
   onRecordApplication?: () => void;
+  onApplicationAction?: (action: ApplicationAction) => void;
   autofillOnly?: boolean;
   authConnected?: boolean;
   onSignIn?: () => void;
@@ -29,6 +31,7 @@ export function WorkflowSection({
   isCancellingAutofill = false,
   onClearAll,
   onRecordApplication,
+  onApplicationAction,
   autofillOnly = false,
   authConnected = true,
   onSignIn,
@@ -49,6 +52,35 @@ export function WorkflowSection({
   const total = fields.length;
   const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
   const autofillDisabled = loadingButton !== null || isClearingForm;
+  const applicationForm =
+    latestForm?.kind === 'application_form' ? latestForm : null;
+  const nextAction = applicationForm?.action;
+  const applicationNavigationActions = applicationForm && onApplicationAction ? (
+    <div className='autofill-actions'>
+      <Button
+        type='button'
+        size='md'
+        className='flex-1'
+        disabled={!applicationForm.canGoBack || autofillDisabled}
+        isLoading={loadingButton === 'previous'}
+        onClick={() => handleAction(() => onApplicationAction('previous'))}
+      >
+        Previous
+      </Button>
+      <Button
+        type='button'
+        size='md'
+        className='flex-1'
+        disabled={!nextAction || autofillDisabled}
+        isLoading={loadingButton === nextAction}
+        onClick={() =>
+          handleAction(() => onApplicationAction(nextAction || 'next'))
+        }
+      >
+        {nextAction === 'submit' ? 'Submit' : 'Next'}
+      </Button>
+    </div>
+  ) : null;
 
   const autofillActions = (
     <div className='autofill-actions'>
@@ -82,7 +114,14 @@ export function WorkflowSection({
     </div>
   );
 
-  if (autofillOnly) return autofillActions;
+  if (autofillOnly) {
+    return (
+      <>
+        {autofillActions}
+        {applicationNavigationActions}
+      </>
+    );
+  }
 
   return (
     <div className='workflow-controls'>

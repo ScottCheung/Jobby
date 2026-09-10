@@ -8,6 +8,7 @@ export const applicationActionResultSchema = z.object({
   message: z.string().min(1),
   url: z.string().url().optional(),
   actionLabel: z.string().min(1).optional(),
+  verified: z.boolean().optional(),
 });
 
 export type ApplicationActionResult = z.infer<typeof applicationActionResultSchema>;

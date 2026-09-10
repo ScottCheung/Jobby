@@ -2,6 +2,11 @@
 
 import type { PageInspection } from '../shared/contracts/page-inspection';
 import { findProviderDefinition } from '../content/platforms/registry';
+import {
+  bindTabToApplicationSession,
+  getApplicationSessionForTab,
+  unbindApplicationSessionTab,
+} from './application-session-store';
 
 interface BoundJobEntry {
   inspection: PageInspection;
@@ -86,30 +91,18 @@ export function initializeJobBindingListeners(): void {
 
   chrome.tabs.onCreated.addListener((tab) => {
     if (tab.id === undefined || tab.openerTabId === undefined) return;
+    void getApplicationSessionForTab(tab.openerTabId).then((session) => {
+      if (session) void bindTabToApplicationSession(tab.id!, session.id, true);
+    });
+
     const parentJob = tabJobMap.get(tab.openerTabId);
     if (parentJob && parentJob.inspection.kind === 'job') {
       bindTabJobInspection(tab.id, parentJob.inspection, true);
     }
   });
 
-  chrome.tabs.onUpdated?.addListener((tabId, changeInfo) => {
-    if (changeInfo.url) {
-      const entry = tabJobMap.get(tabId);
-      if (entry && !entry.isInheritedChildTab && entry.originUrl) {
-        try {
-          const next = new URL(changeInfo.url);
-          const prev = new URL(entry.originUrl);
-          if (next.origin !== prev.origin || next.pathname !== prev.pathname) {
-            tabJobMap.delete(tabId);
-          }
-        } catch {
-          tabJobMap.delete(tabId);
-        }
-      }
-    }
-  });
-
   chrome.tabs.onRemoved.addListener((tabId) => {
     tabJobMap.delete(tabId);
+    void unbindApplicationSessionTab(tabId);
   });
 }

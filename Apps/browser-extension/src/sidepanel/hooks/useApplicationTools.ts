@@ -1,21 +1,16 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { notify } from '@jobby/ui/components/UI/toast/toast-store';
 
 import { apiClient } from '../../background/api-client';
 import type { FieldFillResult } from '../../shared/contracts/form-actions';
 import type { FormInspection } from '../../shared/contracts/form-inspection';
-import type {
-  JobSnapshot,
-  PageInspection,
-} from '../../shared/contracts/page-inspection';
+import type { PageInspection } from '../../shared/contracts/page-inspection';
+import type { ApplicationAction } from '../../shared/contracts/application-navigation';
+import type { ApplicationSession } from '../../shared/contracts/application-session';
 import { send, wait } from '../services/messaging';
 
-function jobKey(snapshot: JobSnapshot): string {
-  return `${snapshot.platform}:${snapshot.externalId}`;
-}
-
 export function useApplicationTools(
-  latestInspection: PageInspection | null,
+  _latestInspection: PageInspection | null,
   latestForm: FormInspection | null,
   inspectForm: () => Promise<FormInspection | null>,
   reportError: (message: string) => void,
@@ -26,23 +21,12 @@ export function useApplicationTools(
   authConnected = false,
   onSignIn?: () => void,
   autofillDocuments?: (form: FormInspection) => Promise<void>,
+  applicationSession?: ApplicationSession | null,
+  onApplicationSessionChange?: (session: ApplicationSession | null) => void,
 ) {
   const [loadingButton, setLoadingButton] = useState<string | null>(null);
   const [isCancellingAutofill, setIsCancellingAutofill] = useState(false);
-  const [recordedJobKey, setRecordedJobKey] = useState<string | null>(null);
-  const latestJobRef = useRef<JobSnapshot | null>(null);
-
-  useEffect(() => {
-    if (latestInspection?.kind !== 'job') return;
-    const snapshot = latestInspection.snapshot;
-    if (
-      latestJobRef.current &&
-      jobKey(latestJobRef.current) !== jobKey(snapshot)
-    ) {
-      setRecordedJobKey(null);
-    }
-    latestJobRef.current = snapshot;
-  }, [latestInspection]);
+  const [recordedSessionId, setRecordedSessionId] = useState<string | null>(null);
 
   const requireSignIn = useCallback(
     (message: string): boolean => {
@@ -85,6 +69,25 @@ export function useApplicationTools(
         return;
       }
 
+      if (applicationSession !== undefined) {
+        if (!applicationSession) {
+          reportError('Detect the job before autofilling this application.');
+          return;
+        }
+        const lockResponse = await send({
+          type: 'application.session-lock-active',
+        });
+        if (!lockResponse.ok || !lockResponse.applicationSession) {
+          reportError(
+            lockResponse.ok
+              ? 'The application session is no longer available.'
+              : lockResponse.error,
+          );
+          return;
+        }
+        onApplicationSessionChange?.(lockResponse.applicationSession);
+      }
+
       const response = await send({ type: 'form.autofill-active' }).catch(
         (error: unknown) => ({
           ok: false as const,
@@ -118,6 +121,8 @@ export function useApplicationTools(
     autofillDocuments,
     inspectForm,
     latestForm,
+    applicationSession,
+    onApplicationSessionChange,
     reportError,
     requireSignIn,
   ]);
@@ -142,19 +147,29 @@ export function useApplicationTools(
       return;
     }
 
-    const snapshot =
-      latestInspection?.kind === 'job' ?
-        latestInspection.snapshot
-      : latestJobRef.current;
-    if (!snapshot) {
+    if (applicationSession === undefined || !applicationSession) {
       notify.error('Detect the job page before recording this application.');
       return;
     }
 
     setLoadingButton('record');
     try {
-      await apiClient.recordSubmittedApplication(snapshot);
-      setRecordedJobKey(jobKey(snapshot));
+      await apiClient.recordSubmittedApplication(
+        applicationSession.job,
+        applicationSession.id,
+      );
+      const sessionResponse = await send({
+        type: 'application.session-mark-submitted',
+        submission: {
+          platform: applicationSession.job.platform,
+          url: applicationSession.job.url,
+          verified: true,
+        },
+      });
+      if (sessionResponse.ok && sessionResponse.applicationSession) {
+        onApplicationSessionChange?.(sessionResponse.applicationSession);
+      }
+      setRecordedSessionId(applicationSession.id);
       notify.success('Application recorded.');
     } catch (error) {
       notify.error(
@@ -165,12 +180,144 @@ export function useApplicationTools(
     } finally {
       setLoadingButton(null);
     }
-  }, [latestInspection, requireSignIn]);
+  }, [applicationSession, onApplicationSessionChange, requireSignIn]);
 
-  const currentJob =
-    latestInspection?.kind === 'job' ?
-      latestInspection.snapshot
-    : latestJobRef.current;
+  const navigateApplication = useCallback(
+    async (action: ApplicationAction) => {
+      if (!requireSignIn('Please sign in to use application navigation.')) return;
+      if (applicationSession === undefined || !applicationSession) {
+        reportError('Detect the job before navigating this application.');
+        return;
+      }
+
+      setLoadingButton(action);
+      try {
+        const sessionResponse = await send({
+          type:
+            action === 'submit'
+              ? 'application.session-start-submit-active'
+              : 'application.session-lock-active',
+        });
+        if (!sessionResponse.ok || !sessionResponse.applicationSession) {
+          reportError(
+            sessionResponse.ok
+              ? 'The application session is no longer available.'
+              : sessionResponse.error,
+          );
+          return;
+        }
+        const session = sessionResponse.applicationSession;
+        onApplicationSessionChange?.(session);
+
+        const response = await send({
+          type: 'content.application-action-active',
+          action,
+        });
+        if (!response.ok || !response.applicationAction) {
+          if (action === 'submit') {
+            const unknownResponse = await send({
+              type: 'application.session-mark-unknown',
+            });
+            if (unknownResponse.ok && unknownResponse.applicationSession) {
+              onApplicationSessionChange?.(unknownResponse.applicationSession);
+            }
+          }
+          reportError(response.ok ? 'Application action is unavailable.' : response.error);
+          return;
+        }
+
+        const actionResult = response.applicationAction;
+        if (action === 'submit') {
+          if (actionResult.status !== 'clicked' || actionResult.verified !== true) {
+            const unknownResponse = await send({
+              type: 'application.session-mark-unknown',
+            });
+            if (unknownResponse.ok && unknownResponse.applicationSession) {
+              onApplicationSessionChange?.(unknownResponse.applicationSession);
+            }
+            reportError(
+              actionResult.message ||
+                'The application submission could not be confirmed.',
+            );
+            return;
+          }
+
+          const tab = await chrome.tabs.query({
+            active: true,
+            currentWindow: true,
+          });
+          const submissionUrl = tab[0]?.url || actionResult.url;
+          if (!submissionUrl) {
+            const unknownResponse = await send({
+              type: 'application.session-mark-unknown',
+            });
+            if (unknownResponse.ok && unknownResponse.applicationSession) {
+              onApplicationSessionChange?.(unknownResponse.applicationSession);
+            }
+            reportError('The application was submitted without a verifiable URL.');
+            return;
+          }
+          try {
+            await apiClient.recordSubmittedApplication(session.job, session.id);
+            const submittedResponse = await send({
+              type: 'application.session-mark-submitted',
+              submission: {
+                platform: session.job.platform,
+                url: submissionUrl,
+                verified: true,
+              },
+            });
+            if (submittedResponse.ok && submittedResponse.applicationSession) {
+              onApplicationSessionChange?.(submittedResponse.applicationSession);
+            }
+            setRecordedSessionId(session.id);
+            notify.success('Application submitted and recorded.');
+          } catch (error) {
+            const unknownResponse = await send({
+              type: 'application.session-mark-unknown',
+            });
+            if (unknownResponse.ok && unknownResponse.applicationSession) {
+              onApplicationSessionChange?.(unknownResponse.applicationSession);
+            }
+            notify.error(
+              error instanceof Error
+                ? error.message
+                : 'The application was submitted, but could not be recorded.',
+            );
+          }
+          return;
+        }
+
+        await inspectForm();
+        reportError('');
+      } catch (error) {
+        if (action === 'submit') {
+          const unknownResponse = await send({
+            type: 'application.session-mark-unknown',
+          }).catch(() => null);
+          if (unknownResponse?.ok && unknownResponse.applicationSession) {
+            onApplicationSessionChange?.(unknownResponse.applicationSession);
+          }
+        }
+        reportError(
+          error instanceof Error
+            ? error.message
+            : 'Could not navigate the application.',
+        );
+      } finally {
+        setLoadingButton(null);
+      }
+    },
+    [
+      applicationSession,
+      inspectForm,
+      onApplicationSessionChange,
+      reportError,
+      requireSignIn,
+    ],
+  );
+
+  const currentJob = applicationSession?.job;
 
   return {
     loadingButton,
@@ -178,9 +325,10 @@ export function useApplicationTools(
     autofillForm,
     cancelAutofill,
     recordApplication,
+    navigateApplication,
     canRecordApplication: Boolean(currentJob),
     isApplicationRecorded: Boolean(
-      currentJob && recordedJobKey === jobKey(currentJob),
+      currentJob && recordedSessionId === applicationSession?.id,
     ),
   };
 }

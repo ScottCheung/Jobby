@@ -35,16 +35,16 @@ class JobReviewTests(unittest.TestCase):
         prompt = job_review.TAILOR_PROMPT
 
         self.assertIn("简历编辑专家", prompt)
-        self.assertIn("SUMMARY", prompt)
-        self.assertIn("CORE COMPETENCIES", prompt)
-        self.assertIn("EXPERIENCE", prompt)
-        self.assertIn("PROJECTS", prompt)
+        self.assertIn("职业简介（summary）", prompt)
+        self.assertIn("核心能力（core_competencies）", prompt)
+        self.assertIn("工作经历（experience）", prompt)
+        self.assertIn("项目（projects）", prompt)
 
-    def test_tailor_input_excludes_old_summary_to_avoid_anchoring(self):
+    def test_tailor_input_includes_source_style_anchors(self):
         messages = job_review.build_tailor_messages(self.job, self.resume)
         prompt_input = json.loads(messages[1]["content"])
 
-        self.assertNotIn("summary", prompt_input["resume"])
+        self.assertEqual(prompt_input["resume"]["summary"], self.resume["summary"])
         self.assertIn("experience", prompt_input["resume"])
         self.assertIn("projects", prompt_input["resume"])
 
@@ -61,6 +61,7 @@ class JobReviewTests(unittest.TestCase):
             "title": "Platform Engineer",
             "company": "Example Co",
             "job_description": "Build C# APIs on AWS with CI/CD.",
+            "output_language": "en",
         })
         self.assertEqual(prompt_input["resume"]["education"], resume["education"])
         self.assertEqual(prompt_input["resume"]["certifications"], resume["certifications"])
@@ -109,9 +110,10 @@ class JobReviewTests(unittest.TestCase):
     def test_prompt_uses_relevance_based_experience_bullet_guidance(self):
         prompt = job_review.TAILOR_PROMPT
 
-        self.assertIn("5–6", prompt)
-        self.assertIn("4–5", prompt)
-        self.assertIn("3–4", prompt)
+        self.assertIn("3–5", prompt)
+        self.assertIn("2–4", prompt)
+        self.assertIn("1–2", prompt)
+        self.assertIn("10–14", prompt)
         self.assertIn("指导，不是最低配额", prompt)
         self.assertNotIn("默认每段经历最多 3 条", prompt)
 
@@ -127,9 +129,9 @@ class JobReviewTests(unittest.TestCase):
 
         self.assertNotIn("JD Evidence Coverage Check", prompt)
         self.assertIn("最强或唯一", prompt)
-        self.assertIn("customer discovery", prompt)
+        self.assertIn("客户调研", prompt)
         self.assertIn("JD 只能决定什么重要，不能决定候选人做过什么", prompt)
-        self.assertIn("不得因为证据来自 Project 就自动降权", prompt)
+        self.assertIn("不得因为证据来自项目就自动降权", prompt)
         self.assertIn("特定产品/领域能力", prompt)
         self.assertNotIn("map-based software", prompt)
 
@@ -151,9 +153,30 @@ class JobReviewTests(unittest.TestCase):
     def test_cover_letter_prompt_uses_the_jd_primary_language(self):
         prompt = job_review.COVER_LETTER_PROMPT
 
-        self.assertIn("输出语言由 JD 的主要语言决定", prompt)
-        self.assertIn("JD 主要为英文时，cover_letter 必须全英文，不得输出中文", prompt)
-        self.assertIn("系统提示或源简历的语言不得改变这一规则", prompt)
+        self.assertIn("要求输出语言：英文（en）", prompt)
+        self.assertIn("`cover_letter` 必须使用“输出语言”规定的语言", prompt)
+
+    def test_requested_output_language_reaches_prompt(self):
+        messages = job_review.build_tailor_messages(
+            {**self.job, "output_language": "zh-CN"},
+            self.resume,
+        )
+        prompt_input = json.loads(messages[1]["content"])
+
+        self.assertIn("要求输出语言：简体中文（zh-CN）", messages[0]["content"])
+        self.assertEqual(prompt_input["job"]["output_language"], "zh-CN")
+
+    def test_english_language_drift_retries_once(self):
+        with patch.object(
+            job_review,
+            "_complete",
+            side_effect=[{"summary": "这是一个中文职业简介，负责构建可靠的软件系统。"}, {"summary": "English professional summary."}],
+        ) as complete:
+            result = job_review.review_job(self.job, self.resume)
+
+        self.assertEqual(complete.call_count, 2)
+        self.assertEqual(result["resume_data"]["summary"], "English professional summary.")
+        self.assertIn("语言校验失败", complete.call_args_list[1].args[0][-1]["content"])
 
     def test_both_generation_mock_and_ai(self):
         mock_res = job_review.review_job(self.job, self.resume, doc_type="both", mock=True)
@@ -161,11 +184,12 @@ class JobReviewTests(unittest.TestCase):
         self.assertIsNotNone(mock_res.get("resume_data"))
         self.assertIn("Full-Stack Engineering", mock_res["core_competencies"])
 
-    def test_both_generation_uses_separate_usage_operations(self):
+    def test_both_generation_uses_one_combined_usage_operation(self):
         def complete(_messages, **kwargs):
-            if kwargs["operation"] == "cover_letter":
-                return {"cover_letter": "Tailored cover letter."}
-            return {"summary": "Tailored"}
+            return {
+                "summary": "Tailored",
+                "cover_letter": "Tailored cover letter.",
+            }
 
         with patch.object(job_review, "_complete", side_effect=complete) as complete_mock:
             result = job_review.review_job(
@@ -175,18 +199,18 @@ class JobReviewTests(unittest.TestCase):
                 correlation_id="generation-1",
             )
 
-        self.assertEqual(complete_mock.call_count, 2)
+        self.assertEqual(complete_mock.call_count, 1)
         calls = complete_mock.call_args_list
         self.assertEqual(
             {call.kwargs["operation"] for call in calls},
-            {"resume_tailor", "cover_letter"},
+            {"resume_and_cover_letter"},
         )
         self.assertEqual({call.kwargs["correlation_id"] for call in calls}, {"generation-1"})
         self.assertTrue(all(call.kwargs["reasoning_effort"] == "low" for call in calls))
         self.assertEqual(result["cover_letter"], "Tailored cover letter.")
 
     def test_tailor_operations_use_low_thinking(self):
-        for doc_type, operations in (("resume", {"resume_tailor"}), ("cover_letter", {"cover_letter"}), ("both", {"resume_tailor", "cover_letter"})):
+        for doc_type, operations in (("resume", {"resume_tailor"}), ("cover_letter", {"cover_letter"}), ("both", {"resume_and_cover_letter"})):
             with self.subTest(doc_type=doc_type), patch.object(job_review, "_complete", return_value={"summary": "Tailored"}) as complete:
                 job_review.review_job(self.job, self.resume, doc_type=doc_type)
 
@@ -437,16 +461,15 @@ class JobReviewTests(unittest.TestCase):
         self.assertEqual(result["resume_data"]["summary"], "Async tailored summary.")
         self.assertEqual(result["core_competencies"], ["C#", "AWS"])
 
-    def test_async_both_review_uses_separate_usage_operations(self):
+    def test_async_both_review_uses_one_combined_usage_operation(self):
         async def complete(_messages, **kwargs):
-            if kwargs["operation"] == "cover_letter":
-                return {"cover_letter": "Async tailored cover letter."}
             return {
                 "summary": "Async tailored summary.",
                 "core_competencies": ["C#", "AWS"],
                 "skills": [],
                 "experience": [],
                 "projects": [],
+                "cover_letter": "Async tailored cover letter.",
             }
 
         with patch.object(
@@ -463,11 +486,11 @@ class JobReviewTests(unittest.TestCase):
                 )
             )
 
-        self.assertEqual(complete_mock.await_count, 2)
+        self.assertEqual(complete_mock.await_count, 1)
         calls = complete_mock.await_args_list
         self.assertEqual(
             {call.kwargs["operation"] for call in calls},
-            {"resume_tailor", "cover_letter"},
+            {"resume_and_cover_letter"},
         )
         self.assertEqual({call.kwargs["correlation_id"] for call in calls}, {"generation-1"})
         self.assertEqual(result["cover_letter"], "Async tailored cover letter.")
@@ -498,6 +521,108 @@ class JobReviewTests(unittest.TestCase):
         self.assertEqual(res["id"], str(tailored_id))
         db.delete.assert_called_once_with(tailored)
         db.commit.assert_called_once()
+
+    def test_delete_tailored_document_keeps_the_other_document(self):
+        import sys
+        from uuid import uuid4
+        from unittest.mock import MagicMock
+        from services.api.routers.resumes import delete_tailored_document
+        from services.shared.models import TailoredResume, User
+
+        user_id = uuid4()
+        user = MagicMock(spec=User)
+        user.id = user_id
+
+        for document_type in ("resume", "cover_letter"):
+            with self.subTest(document_type=document_type):
+                tailored_id = uuid4()
+                tailored = MagicMock(spec=TailoredResume)
+                tailored.id = tailored_id
+                tailored.user_id = user_id
+                tailored.resume_data = {"summary": "Resume content"}
+                tailored.core_competencies = ["Python"]
+                tailored.key_qualifications = ["APIs"]
+                tailored.targeted_projects = [{"name": "Jobby"}]
+                tailored.raw_ai_response = {
+                    "summary": "Resume content",
+                    "cover_letter": "Cover letter content",
+                    "generated_documents": {"resume": True, "cover_letter": True},
+                }
+
+                db = MagicMock()
+                db.get.return_value = tailored
+
+                delete_tailored_document(
+                    tailored_id,
+                    document_type,
+                    db=db,
+                    current_user=user,
+                )
+
+                if document_type == "resume":
+                    self.assertEqual(tailored.resume_data, {})
+                    self.assertEqual(tailored.core_competencies, [])
+                    self.assertEqual(tailored.key_qualifications, [])
+                    self.assertEqual(tailored.targeted_projects, [])
+                    self.assertNotIn("summary", tailored.raw_ai_response)
+                    self.assertEqual(
+                        tailored.raw_ai_response["cover_letter"],
+                        "Cover letter content",
+                    )
+                    self.assertEqual(
+                        tailored.raw_ai_response["generated_documents"],
+                        {"cover_letter": True},
+                    )
+                else:
+                    self.assertEqual(
+                        tailored.resume_data,
+                        {"summary": "Resume content"},
+                    )
+                    self.assertNotIn("cover_letter", tailored.raw_ai_response)
+                    self.assertEqual(
+                        tailored.raw_ai_response["generated_documents"],
+                        {"resume": True},
+                    )
+                db.commit.assert_called_once()
+                db.refresh.assert_called_once_with(tailored)
+
+        for document_type in ("resume", "cover_letter"):
+            with self.subTest(only=document_type):
+                tailored_id = uuid4()
+                tailored = MagicMock(spec=TailoredResume)
+                tailored.id = tailored_id
+                tailored.user_id = user_id
+                tailored.resume_data = {"basics": {"first_name": "Candidate"}}
+                tailored.core_competencies = ["Python"]
+                tailored.key_qualifications = ["APIs"]
+                tailored.targeted_projects = [{"name": "Jobby"}]
+                tailored.raw_ai_response = {
+                    "summary": "Resume content",
+                    "cover_letter": "Cover letter content",
+                    "generated_documents": {document_type: True},
+                }
+
+                db = MagicMock()
+                db.get.return_value = tailored
+
+                delete_tailored_document(
+                    tailored_id,
+                    document_type,
+                    db=db,
+                    current_user=user,
+                )
+
+                self.assertEqual(
+                    tailored.raw_ai_response["generated_documents"],
+                    {"resume": False, "cover_letter": False},
+                )
+                if document_type == "resume":
+                    self.assertEqual(tailored.resume_data, {})
+                else:
+                    self.assertEqual(
+                        tailored.resume_data,
+                        {"basics": {"first_name": "Candidate"}},
+                    )
 
     def test_update_tailored_resume_persists_cover_letter(self):
         import sys

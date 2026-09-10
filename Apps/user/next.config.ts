@@ -22,6 +22,10 @@ const nextConfig: NextConfig = {
       path.resolve(__dirname, "../../node_modules"),
       path.resolve(__dirname, "../../packages/ui/node_modules"),
     ];
+    config.module.rules.push({
+      test: /\.(?:otf|ttf|woff2?)$/i,
+      type: "asset/resource",
+    });
     return config;
   },
   images: {

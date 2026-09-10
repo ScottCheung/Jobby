@@ -17,6 +17,10 @@ import {
   tokenizeResumeText,
   type ResumeHighlightRules,
 } from './highlights';
+import {
+  RESUME_CJK_FONT_BOLD_URL,
+  RESUME_CJK_FONT_REGULAR_URL,
+} from './cjk-font';
 
 type ResumeHtmlDocumentProps = {
   config: ResumeTemplateConfig;
@@ -549,6 +553,7 @@ export function ResumeHtmlDocument({
       }}
       className='box-border bg-white text-[length:var(--resume-body-size)] leading-[var(--resume-line-height)] text-[var(--resume-ink)] shadow-2xs font-[var(--resume-font)] select-text'
     >
+      <style>{`@font-face { font-family: 'Noto Sans SC'; src: url('${RESUME_CJK_FONT_REGULAR_URL}') format('opentype'); font-style: normal; font-weight: 400; } @font-face { font-family: 'Noto Sans SC'; src: url('${RESUME_CJK_FONT_BOLD_URL}') format('opentype'); font-style: normal; font-weight: 700; }`}</style>
       <div data-resume-content='true'>
         <header
           className='border-[var(--resume-header-rule)] pb-[var(--resume-header-rule-width)]'

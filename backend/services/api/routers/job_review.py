@@ -14,7 +14,11 @@ from services.domain.errors import (
 from services.domain.master_resumes import _default_career_profile, _default_career_profile_resume
 from services.domain.tailored_resumes import generate_tailored_document
 from services.shared.database import get_db
-from services.shared.job_review import build_tailor_messages, review_job
+from services.shared.job_review import (
+    build_tailor_messages,
+    normalize_output_language,
+    review_job,
+)
 from services.shared.models import User
 from services.shared.realtime import broadcast_sync
 
@@ -31,11 +35,12 @@ def preview_job_review(
     if not description:
         raise HTTPException(status_code=400, detail="A job description is required")
     doc_type = str(payload.get("doc_type") or "resume").strip().lower()
+    output_language = normalize_output_language(payload.get("output_language"))
     try:
         resume = _default_career_profile_resume(db, current_user)
     except CareerProfileNotReady as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-    job = {"job_description": description}
+    job = {"job_description": description, "output_language": output_language}
     return {"messages": build_tailor_messages(job, resume, doc_type=doc_type)}
 
 
@@ -50,11 +55,13 @@ def review_job_from_jd(
     if not description:
         raise HTTPException(status_code=400, detail="A job description is required")
     doc_type = str(payload.get("doc_type") or "resume").strip().lower()
+    output_language = normalize_output_language(payload.get("output_language"))
     job = {
         "job_description": description,
         "title": str(payload.get("title") or "").strip() or None,
         "company": str(payload.get("company") or "").strip() or None,
         "last_posted_at": payload.get("last_posted_at"),
+        "output_language": output_language,
     }
     try:
         result, tailored_resume = generate_tailored_document(
@@ -62,6 +69,7 @@ def review_job_from_jd(
             current_user,
             job=job,
             doc_type=doc_type,
+            output_language=output_language,
             generation_id=str(payload.get("generation_id") or uuid4()),
             tailored_resume_id=payload.get("tailored_resume_id"),
             mock=bool(payload.get("mock")),

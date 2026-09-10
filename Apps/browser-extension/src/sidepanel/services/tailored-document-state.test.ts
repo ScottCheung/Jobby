@@ -3,6 +3,7 @@ import type { TailoredResume } from '../../shared/contracts/tailored-resume';
 import {
   findTailoredDocumentForJob,
   resolveAutofillDocument,
+  tailoredDocumentMatchesJob,
   tailoredDocumentAvailability,
 } from './tailored-document-state';
 
@@ -43,6 +44,42 @@ describe('tailored document state', () => {
 
     expect(
       findTailoredDocumentForJob([saved], 'Full Stack Engineer', ''),
+    ).toBeNull();
+  });
+
+  it('matches an explicit record only when its complete job identity matches', () => {
+    const saved = tailoredResume({
+      job_title: 'Backend Engineer',
+      company: 'Acme',
+      job_description: 'Build APIs',
+    });
+
+    expect(
+      tailoredDocumentMatchesJob(saved, ' backend engineer ', 'ACME', 'Build   APIs'),
+    ).toBe(true);
+    expect(
+      tailoredDocumentMatchesJob(saved, 'Backend Engineer', 'Acme', 'Build product UIs'),
+    ).toBe(false);
+  });
+
+  it('requires exact title and description when matching for generation', () => {
+    const saved = tailoredResume({ job_description: 'Build APIs' });
+
+    expect(
+      findTailoredDocumentForJob(
+        [saved],
+        'Senior Backend Engineer',
+        'Acme',
+        'Build APIs',
+      ),
+    ).toBeNull();
+    expect(
+      findTailoredDocumentForJob(
+        [saved],
+        'Backend Engineer',
+        'Acme',
+        'Build product UIs',
+      ),
     ).toBeNull();
   });
 

@@ -2,7 +2,6 @@
 
 import { Fragment, useEffect, useRef, useState } from 'react';
 import {
-  Check,
   ChevronLeft,
   ChevronRight,
   ChevronDown,
@@ -16,6 +15,7 @@ import {
   Layers,
   Loader2,
   Maximize2,
+  MoreHorizontal,
   RefreshCw,
   SlidersHorizontal,
   Sparkles,
@@ -72,9 +72,13 @@ function documentTypeLabel(item: TailoredResume): string[] {
   const generated = item.raw_ai_response?.generated_documents as
     | { resume?: boolean; cover_letter?: boolean }
     | undefined;
-  if (generated?.resume && generated?.cover_letter) return ['CV', 'CL'];
-  if (generated?.cover_letter) return ['CL'];
-  return ['CV'];
+  const hasResume =
+    Boolean(generated?.resume) || Object.keys(item.resume_data || {}).length > 0;
+  const hasCoverLetter = Boolean(generated?.cover_letter) || Boolean(savedCoverLetter(item));
+  if (hasResume && hasCoverLetter) return ['CV', 'CL'];
+  if (hasCoverLetter) return ['CL'];
+  if (hasResume) return ['CV'];
+  return [];
 }
 
 function savedCoverLetter(item: TailoredResume): string | null {
@@ -405,6 +409,15 @@ export function TailorStudioCard({
     null,
   );
   const [isDeleting, setIsDeleting] = useState(false);
+  const [openDocumentMenu, setOpenDocumentMenu] = useState<
+    'resume' | 'cover_letter' | null
+  >(null);
+  const [documentAction, setDocumentAction] = useState<{
+    action: 'delete' | 'regenerate';
+    documentType: 'resume' | 'cover_letter';
+  } | null>(null);
+  const [isDocumentActionLoading, setIsDocumentActionLoading] =
+    useState(false);
   const historyRailRef = useRef<HTMLDivElement>(null);
   const [renderedCoverLetterFileSize, setRenderedCoverLetterFileSize] =
     useState<number | null>(null);
@@ -444,6 +457,7 @@ export function TailorStudioCard({
     generateTailoredResume,
     cancelGeneration,
     deleteSavedResume,
+    deleteTailoredDocument,
     simulateDevGeneration,
     clearDevGeneration,
   } = studio;
@@ -459,16 +473,17 @@ export function TailorStudioCard({
     | undefined;
   // A CL-only result carries base resume data solely for the letter's
   // candidate details. Do not present that data as a newly generated CV.
+  const hasResumeData = Boolean(resume && Object.keys(resume).length > 0);
   const hasGeneratedResume =
     (
       generatedDocuments &&
       ('resume' in generatedDocuments || 'cover_letter' in generatedDocuments)
     ) ?
       generatedDocuments.resume === true
-    : Boolean(resume);
+    : hasResumeData;
   const baseResume = originalResume || defaultMasterResumeData;
   const effectiveResume = mergeResumeData(resume, baseResume);
-  const displayResume = hasGeneratedResume ? effectiveResume : null;
+  const displayResume = hasGeneratedResume && hasResumeData ? effectiveResume : null;
   const competencies =
     result?.core_competencies?.length ?
       result.core_competencies
@@ -620,6 +635,44 @@ export function TailorStudioCard({
       }
     } catch {
       notify.error('Failed to copy to clipboard');
+    }
+  };
+
+  const requestDocumentAction = (
+    action: 'delete' | 'regenerate',
+    documentType: 'resume' | 'cover_letter',
+  ) => {
+    setOpenDocumentMenu(null);
+    setDocumentAction({ action, documentType });
+  };
+
+  const handleConfirmDocumentAction = async () => {
+    if (!documentAction || !activeRecord?.id) return;
+    const { action, documentType } = documentAction;
+    const documentLabel = documentType === 'resume' ? 'CV' : 'cover letter';
+    setIsDocumentActionLoading(true);
+    try {
+      if (action === 'delete') {
+        await deleteTailoredDocument(activeRecord.id, documentType);
+        setDocumentAction(null);
+      } else {
+        setDocumentAction(null);
+        await generateTailoredResume(documentType, {
+          tailoredResumeId: activeRecord.id,
+          jobTitle: activeRecord.job_title || activeJobTitle,
+          company: activeRecord.company || activeCompany,
+          jobDescription: activeRecord.job_description,
+        });
+        return;
+      }
+    } catch (error) {
+      notify.error(
+        error instanceof Error ?
+          error.message
+        : `Failed to ${action} ${documentLabel}`,
+      );
+    } finally {
+      setIsDocumentActionLoading(false);
     }
   };
 
@@ -1719,16 +1772,6 @@ export function TailorStudioCard({
               <Button
                 size='sm'
                 className='!rounded-lg'
-                variant='outline'
-                Icon={copiedResume ? Check : Copy}
-                onClick={() => void handleCopyResume()}
-                title='Copy formatted resume text'
-              >
-                {copiedResume ? 'Copied' : 'Copy'}
-              </Button>
-              <Button
-                size='sm'
-                className='!rounded-lg'
                 variant='default'
                 Icon={Download}
                 onClick={() => void handleDownloadResume()}
@@ -1736,6 +1779,69 @@ export function TailorStudioCard({
               >
                 Download
               </Button>
+              <div className='relative'>
+                <button
+                  type='button'
+                  onClick={() =>
+                    setOpenDocumentMenu((current) =>
+                      current === 'resume' ? null : 'resume',
+                    )
+                  }
+                  className='inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border/60 text-muted-foreground transition hover:border-primary/50 hover:bg-primary/10 hover:text-primary'
+                  aria-label='Resume actions'
+                  aria-haspopup='menu'
+                  aria-expanded={openDocumentMenu === 'resume'}
+                >
+                  <MoreHorizontal className='h-4 w-4' />
+                </button>
+                {openDocumentMenu === 'resume' && (
+                  <>
+                    <button
+                      type='button'
+                      aria-label='Close resume actions'
+                      className='fixed inset-0 z-20 cursor-default'
+                      onClick={() => setOpenDocumentMenu(null)}
+                    />
+                    <div
+                      role='menu'
+                      className='absolute right-0 top-full z-30 mt-1 w-44 rounded-xl border border-border/70 bg-panel p-1.5 shadow-xl'
+                    >
+                      <button
+                        type='button'
+                        role='menuitem'
+                        onClick={() => {
+                          setOpenDocumentMenu(null);
+                          void handleCopyResume();
+                        }}
+                        className='flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[11px] font-semibold text-foreground transition hover:bg-primary/10 hover:text-primary'
+                      >
+                        <Copy className='h-3.5 w-3.5 shrink-0' />
+                        {copiedResume ? 'Copied' : 'Copy'}
+                      </button>
+                      <button
+                        type='button'
+                        role='menuitem'
+                        disabled={hasActiveGeneration}
+                        onClick={() => requestDocumentAction('regenerate', 'resume')}
+                        className='flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[11px] font-semibold text-foreground transition hover:bg-primary/10 hover:text-primary disabled:cursor-not-allowed disabled:opacity-50'
+                      >
+                        <RefreshCw className='h-3.5 w-3.5 shrink-0' />
+                        Regenerate CV
+                      </button>
+                      <button
+                        type='button'
+                        role='menuitem'
+                        disabled={hasActiveGeneration}
+                        onClick={() => requestDocumentAction('delete', 'resume')}
+                        className='flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[11px] font-semibold text-rose-600 transition hover:bg-rose-500/10 disabled:cursor-not-allowed disabled:opacity-50'
+                      >
+                        <Trash2 className='h-3.5 w-3.5 shrink-0' />
+                        Delete CV
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           </div>
 
@@ -1784,16 +1890,6 @@ export function TailorStudioCard({
             <div className='flex items-center gap-2 shrink-0'>
               <Button
                 size='sm'
-                variant='outline'
-                className='!rounded-lg'
-                Icon={copiedCoverLetter ? Check : Copy}
-                onClick={handleCopyCoverLetter}
-                title='Copy cover letter text'
-              >
-                {copiedCoverLetter ? 'Copied' : 'Copy'}
-              </Button>
-              <Button
-                size='sm'
                 variant='default'
                 className='!rounded-lg'
                 Icon={Download}
@@ -1802,6 +1898,73 @@ export function TailorStudioCard({
               >
                 Download
               </Button>
+              <div className='relative'>
+                <button
+                  type='button'
+                  onClick={() =>
+                    setOpenDocumentMenu((current) =>
+                      current === 'cover_letter' ? null : 'cover_letter',
+                    )
+                  }
+                  className='inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border/60 text-muted-foreground transition hover:border-primary/50 hover:bg-primary/10 hover:text-primary'
+                  aria-label='Cover letter actions'
+                  aria-haspopup='menu'
+                  aria-expanded={openDocumentMenu === 'cover_letter'}
+                >
+                  <MoreHorizontal className='h-4 w-4' />
+                </button>
+                {openDocumentMenu === 'cover_letter' && (
+                  <>
+                    <button
+                      type='button'
+                      aria-label='Close cover letter actions'
+                      className='fixed inset-0 z-20 cursor-default'
+                      onClick={() => setOpenDocumentMenu(null)}
+                    />
+                    <div
+                      role='menu'
+                      className='absolute right-0 top-full z-30 mt-1 w-48 rounded-xl border border-border/70 bg-panel p-1.5 shadow-xl'
+                    >
+                      <button
+                        type='button'
+                        role='menuitem'
+                        onClick={() => {
+                          setOpenDocumentMenu(null);
+                          void handleCopyCoverLetter();
+                        }}
+                        className='flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[11px] font-semibold text-foreground transition hover:bg-primary/10 hover:text-primary'
+                      >
+                        <Copy className='h-3.5 w-3.5 shrink-0' />
+                        {copiedCoverLetter ? 'Copied' : 'Copy'}
+                      </button>
+                      <button
+                        type='button'
+                        role='menuitem'
+                        disabled={hasActiveGeneration}
+                        onClick={() =>
+                          requestDocumentAction('regenerate', 'cover_letter')
+                        }
+                        className='flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[11px] font-semibold text-foreground transition hover:bg-primary/10 hover:text-primary disabled:cursor-not-allowed disabled:opacity-50'
+                      >
+                        <RefreshCw className='h-3.5 w-3.5 shrink-0' />
+                        Regenerate CL
+                      </button>
+                      <button
+                        type='button'
+                        role='menuitem'
+                        disabled={hasActiveGeneration}
+                        onClick={() =>
+                          requestDocumentAction('delete', 'cover_letter')
+                        }
+                        className='flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[11px] font-semibold text-rose-600 transition hover:bg-rose-500/10 disabled:cursor-not-allowed disabled:opacity-50'
+                      >
+                        <Trash2 className='h-3.5 w-3.5 shrink-0' />
+                        Delete CL
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           </div>
 
@@ -1950,6 +2113,69 @@ export function TailorStudioCard({
           </div>
         )}
       </div>
+
+      {/* ── Document Action Confirmation Modal ── */}
+      {documentAction && (
+        <div
+          className='modal-backdrop'
+          onClick={() => !isDocumentActionLoading && setDocumentAction(null)}
+        >
+          <div
+            className='!w-full !max-w-[390px] flex flex-col bg-panel !border-0 rounded-2xl shadow-2xl overflow-hidden'
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className='flex items-start justify-between px-5 pt-5 pb-2'>
+              <h3 className='text-sm font-bold text-foreground'>
+                {documentAction.action === 'delete' ? 'Delete' : 'Regenerate'}{' '}
+                {documentAction.documentType === 'resume' ? 'CV' : 'Cover Letter'}
+              </h3>
+              <button
+                type='button'
+                className='close-btn !border-0 text-muted-foreground hover:text-foreground'
+                disabled={isDocumentActionLoading}
+                onClick={() => setDocumentAction(null)}
+                aria-label='Close'
+              >
+                &times;
+              </button>
+            </div>
+            <div className='px-5 py-3'>
+              <p className='text-xs leading-relaxed text-muted-foreground'>
+                {documentAction.action === 'delete' ?
+                  `Are you sure you want to delete only this ${documentAction.documentType === 'resume' ? 'CV' : 'cover letter'}? The other document will be kept and this action cannot be undone.`
+                : `Are you sure you want to regenerate this ${documentAction.documentType === 'resume' ? 'CV' : 'cover letter'}? The current version will be replaced.`}
+              </p>
+            </div>
+            <div className='flex items-center justify-end gap-2.5 px-5 pb-5 pt-2'>
+              <Button
+                variant='ghost'
+                size='sm'
+                disabled={isDocumentActionLoading}
+                onClick={() => setDocumentAction(null)}
+                className='!rounded-xl font-semibold text-xs'
+              >
+                Cancel
+              </Button>
+              <Button
+                variant='default'
+                size='sm'
+                Icon={documentAction.action === 'delete' ? Trash2 : RefreshCw}
+                isLoading={isDocumentActionLoading}
+                disabled={isDocumentActionLoading}
+                onClick={() => void handleConfirmDocumentAction()}
+                className={cn(
+                  '!rounded-xl !text-white !border-0 font-semibold text-xs shadow-md',
+                  documentAction.action === 'delete' ?
+                    '!bg-rose-600 hover:!bg-rose-700'
+                  : '!bg-primary hover:!bg-primary/90',
+                )}
+              >
+                {documentAction.action === 'delete' ? 'Delete' : 'Regenerate'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Permanent Deletion Confirmation Modal ── */}
       {deleteCandidate && (

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  disconnect,
   extensionRedirectWithState,
   getAuthStatus,
   getValidAuthSession,
@@ -8,11 +9,14 @@ import {
   refreshAuthSessionOnce,
 } from "./auth-service";
 import { apiClient } from "./api-client";
+import { setAuthSession } from "./session-store";
 
 const localStorage = new Map<string, unknown>();
+const sessionStorage = new Map<string, unknown>();
 
 beforeEach(() => {
   localStorage.clear();
+  sessionStorage.clear();
   vi.restoreAllMocks();
   vi.stubGlobal("chrome", {
     identity: {
@@ -27,6 +31,15 @@ beforeEach(() => {
         },
         remove: async (key: string) => {
           localStorage.delete(key);
+        },
+      },
+      session: {
+        get: async (key: string) => ({ [key]: sessionStorage.get(key) }),
+        set: async (values: Record<string, unknown>) => {
+          Object.entries(values).forEach(([key, value]) => sessionStorage.set(key, value));
+        },
+        remove: async (key: string) => {
+          sessionStorage.delete(key);
         },
       },
     },
@@ -152,6 +165,118 @@ describe("auth lifecycle and silent refresh", () => {
     }
   });
 
+  it("does not refresh again during the cooldown window", async () => {
+    localStorage.set("jobby.auth.session", {
+      accessToken: "expired-token",
+      refreshToken: "refresh-token",
+      expiresAt: new Date(Date.now() - 60_000).toISOString(),
+      user: { id: "user-id", email: "user@example.com" },
+    });
+
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          access_token: "refreshed-token",
+          refresh_token: "next-refresh",
+          expires_in: 3600,
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+
+    await expect(refreshAuthSessionOnce()).resolves.toMatchObject({
+      accessToken: "refreshed-token",
+    });
+    await expect(refreshAuthSessionOnce()).resolves.toMatchObject({
+      accessToken: "refreshed-token",
+    });
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the session when refresh fails temporarily", async () => {
+    const session = {
+      accessToken: "expired-token",
+      refreshToken: "refresh-token",
+      expiresAt: new Date(Date.now() - 60_000).toISOString(),
+      user: { id: "user-id", email: "user@example.com" },
+    };
+    localStorage.set("jobby.auth.session", session);
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: "server_error" }), { status: 500 }),
+    );
+
+    await expect(refreshAuthSessionOnce()).resolves.toBeNull();
+    expect(localStorage.get("jobby.auth.session")).toEqual(session);
+    await expect(getAuthStatus()).resolves.toMatchObject({
+      connected: true,
+      reconnecting: true,
+    });
+  });
+
+  it("does not let a stale refresh failure clear a newer login session", async () => {
+    localStorage.set("jobby.auth.session", {
+      accessToken: "old-access-token",
+      refreshToken: "old-refresh-token",
+      expiresAt: new Date(Date.now() - 60_000).toISOString(),
+      user: { id: "user-id", email: "user@example.com" },
+    });
+
+    let releaseRefresh!: (response: Response) => void;
+    const refreshResponse = new Promise<Response>((resolve) => {
+      releaseRefresh = resolve;
+    });
+    vi.mocked(fetch).mockReturnValueOnce(refreshResponse);
+
+    const refresh = refreshAuthSessionOnce();
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
+
+    const newerSession = {
+      accessToken: "new-access-token",
+      refreshToken: "new-refresh-token",
+      expiresAt: new Date(Date.now() + 3600_000).toISOString(),
+      user: { id: "user-id", email: "user@example.com" },
+    };
+    await setAuthSession(newerSession);
+    releaseRefresh(
+      new Response(JSON.stringify({ error: "invalid_grant" }), { status: 400 }),
+    );
+
+    await expect(refresh).resolves.toBeNull();
+    expect(localStorage.get("jobby.auth.session")).toEqual(newerSession);
+  });
+
+  it("does not let a refresh commit after logout", async () => {
+    localStorage.set("jobby.auth.session", {
+      accessToken: "old-access-token",
+      refreshToken: "old-refresh-token",
+      expiresAt: new Date(Date.now() - 60_000).toISOString(),
+      user: { id: "user-id", email: "user@example.com" },
+    });
+
+    let releaseRefresh!: (response: Response) => void;
+    const refreshResponse = new Promise<Response>((resolve) => {
+      releaseRefresh = resolve;
+    });
+    vi.mocked(fetch).mockReturnValueOnce(refreshResponse);
+
+    const refresh = refreshAuthSessionOnce();
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
+    await disconnect();
+    releaseRefresh(
+      new Response(
+        JSON.stringify({
+          access_token: "new-access-token",
+          refresh_token: "new-refresh-token",
+          expires_in: 3600,
+        }),
+        { status: 200 },
+      ),
+    );
+
+    await expect(refresh).resolves.toBeNull();
+    expect(localStorage.has("jobby.auth.session")).toBe(false);
+  });
+
   it("clears an expired session when refresh token is rejected and does not open a login flow", async () => {
     localStorage.set("jobby.auth.session", {
       accessToken: "expired-token",
@@ -231,6 +356,48 @@ describe("auth lifecycle and silent refresh", () => {
     expect(localStorage.get("jobby.auth.session")).toMatchObject({
       accessToken: "retried-token",
     });
+  });
+
+  it("uses a newer stored access token after a 401 without refreshing again", async () => {
+    localStorage.set("jobby.auth.session", {
+      accessToken: "initial-token",
+      refreshToken: "valid-refresh",
+      expiresAt: new Date(Date.now() + 3600_000).toISOString(),
+      user: { id: "user-id", email: "user@example.com" },
+    });
+
+    vi.mocked(fetch).mockImplementation(async (input, init) => {
+      const url = String(input);
+      if (url.includes("/api/test")) {
+        const headers = init?.headers as Headers | undefined;
+        const auth = headers?.get?.("Authorization");
+        if (auth === "Bearer initial-token") {
+          localStorage.set("jobby.auth.session", {
+            accessToken: "already-refreshed-token",
+            refreshToken: "already-next-refresh",
+            expiresAt: new Date(Date.now() + 3600_000).toISOString(),
+            user: { id: "user-id", email: "user@example.com" },
+          });
+          return new Response(JSON.stringify({ detail: "Token expired" }), {
+            status: 401,
+          });
+        }
+        if (auth === "Bearer already-refreshed-token") {
+          return new Response(JSON.stringify({ data: "success" }), {
+            status: 200,
+          });
+        }
+      }
+      if (url.includes("grant_type=refresh_token")) {
+        throw new Error("A second refresh should not be requested");
+      }
+      return new Response("Not found", { status: 404 });
+    });
+
+    await expect(apiClient.request<{ data: string }>("/api/test")).resolves.toEqual({
+      data: "success",
+    });
+    expect(fetch).toHaveBeenCalledTimes(2);
   });
 
   it("throws 401 and does not open a login flow when API returns 401 and refresh fails", async () => {

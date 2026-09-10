@@ -4,6 +4,7 @@ import { formInspectionSchema } from '../../shared/contracts/form-inspection';
 import type { FormInspection } from '../../shared/contracts/form-inspection';
 import type { FormFieldObservation } from '../../shared/contracts/form-inspection';
 import type { PageInspection } from '../../shared/contracts/page-inspection';
+import type { ApplicationSession } from '../../shared/contracts/application-session';
 import type {
   MasterResumeData,
   TailoredResume,
@@ -301,6 +302,8 @@ function isLinkedInTransientEmptyForm(form: FormInspection): boolean {
 export function useInspection(onJobChanged?: () => void) {
   const [latestInspection, setLatestInspection] =
     useState<PageInspection | null>(null);
+  const [applicationSession, setApplicationSession] =
+    useState<ApplicationSession | null>(null);
   const [latestForm, setLatestForm] = useState<FormInspection | null>(null);
   const [inspectionError, setInspectionError] = useState<string>('');
   const [isInspectingPage, setIsInspectingPage] = useState(false);
@@ -348,6 +351,7 @@ export function useInspection(onJobChanged?: () => void) {
 
   const resetInspectionState = useCallback(() => {
     setLatestInspection(null);
+    setApplicationSession(null);
     setLatestForm(null);
     setUploadStates({});
     lastFormSignature.current = '';
@@ -375,6 +379,7 @@ export function useInspection(onJobChanged?: () => void) {
       setInspectionError('');
       if (response.inspection) {
         setLatestInspection(response.inspection);
+        setApplicationSession(response.applicationSession || null);
         const tab = await getActiveTab();
         lastObservedActiveTabId.current = tab?.id ?? null;
         lastObservedActiveUrl.current = inspectionUrl(response.inspection);
@@ -432,6 +437,7 @@ export function useInspection(onJobChanged?: () => void) {
         }
 
         setInspectionError('');
+        setApplicationSession(response.applicationSession || null);
         setLatestInspection((prev) => {
           const mergedInspection = mergePageInspection(
             prev,
@@ -1166,6 +1172,8 @@ export function useInspection(onJobChanged?: () => void) {
   return {
     latestInspection,
     setLatestInspection,
+    applicationSession,
+    setApplicationSession,
     updateJobTechnologies,
     latestForm,
     setLatestForm,

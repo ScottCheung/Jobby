@@ -65,4 +65,27 @@ describe('WorkflowSection component', () => {
 
     expect(html).toContain('Autofill Form 1/2 (50%)');
   });
+
+  it('renders application navigation controls from the current form action', () => {
+    const html = renderToStaticMarkup(
+      createElement(WorkflowSection, {
+        latestForm: {
+          ...mockForm,
+          hasSubmitAction: true,
+          action: 'submit',
+          canGoBack: true,
+        },
+        loadingButton: null,
+        isClearingForm: false,
+        onAutofill: vi.fn(),
+        onCancelAutofill: vi.fn(),
+        onClearAll: vi.fn(),
+        onApplicationAction: vi.fn(),
+        autofillOnly: true,
+      }),
+    );
+
+    expect(html).toContain('Previous');
+    expect(html).toContain('Submit');
+  });
 });

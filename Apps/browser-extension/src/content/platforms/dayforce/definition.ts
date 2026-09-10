@@ -86,6 +86,18 @@ function dateFromDayforcePage(): string | undefined {
   return undefined;
 }
 
+function getDayforceApplicationAction(
+  action: "previous" | "next" | "submit",
+): HTMLElement | null {
+  const selector =
+    action === "submit"
+      ? "[test-id='application-submit']"
+      : action === "next"
+        ? "[test-id='application-next-step']"
+        : "[test-id='application-previous-step']";
+  return document.querySelector<HTMLElement>(selector);
+}
+
 export const dayforceDefinition = {
   platform: "dayforce",
   detection: {
@@ -153,6 +165,26 @@ export const dayforceDefinition = {
       const next = document.querySelector<HTMLElement>("[test-id='application-next-step']");
       if (next) return cleanText(next.textContent);
       return undefined;
+    },
+    async clickAction(action) {
+      const button = getDayforceApplicationAction(action);
+      if (!button) {
+        return {
+          status: "unavailable",
+          message: "The Dayforce application action is not available.",
+          url: window.location.href,
+        };
+      }
+      button.click();
+      return {
+        status: "clicked",
+        message:
+          action === "submit"
+            ? "Dayforce submission click was dispatched, but confirmation is unavailable."
+            : "The Dayforce application action was clicked.",
+        url: window.location.href,
+        ...(action === "submit" ? { verified: false } : {}),
+      };
     },
   },
 } satisfies AtsProviderDefinition<"dayforce">;

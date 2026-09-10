@@ -18,4 +18,5 @@ export type AuthStatus =
       connected: true;
       expiresAt: string;
       user: AuthSession["user"];
+      reconnecting?: boolean;
   };

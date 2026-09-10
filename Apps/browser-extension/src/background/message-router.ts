@@ -12,11 +12,19 @@ import {
   editActiveTabField,
   focusActiveTabField,
   highlightJobRequirementInActiveTab,
+  clickActiveApplicationAction,
   inspectActiveTab,
   inspectJobUrl,
   inspectFormActiveTab,
   setTargetedTabId,
 } from './content-bridge';
+import {
+  getApplicationSessionForTab,
+  lockApplicationSessionForTab,
+  markApplicationSessionSubmitted,
+  markApplicationSessionUnknown,
+  startApplicationSessionSubmission,
+} from './application-session-store';
 import { logDiagnostic } from './diagnostics';
 import {
   autofillDetectedFormForActiveTab,
@@ -101,6 +109,13 @@ export async function handleRuntimeMessage(
           ok: true,
           snapshot: await getRuntimeSnapshot(),
           inspection: await inspectActiveTab(messageTargetTabId),
+          ...(messageTargetTabId !== undefined
+            ? {
+                applicationSession: await getApplicationSessionForTab(
+                  messageTargetTabId,
+                ),
+              }
+            : {}),
         };
       case 'content.inspect-url':
         if (!isJobbyWebAppSender(sender))
@@ -123,6 +138,80 @@ export async function handleRuntimeMessage(
           ok: true,
           snapshot: await getRuntimeSnapshot(),
           form: await inspectFormActiveTab(),
+        };
+      case 'content.application-action-active':
+        if (!isExtensionUiSender(sender))
+          return {
+            ok: false,
+            error: 'Only the extension UI can navigate application forms.',
+          };
+        return {
+          ok: true,
+          snapshot: await getRuntimeSnapshot(),
+          applicationAction: await clickActiveApplicationAction(
+            parsed.data.action,
+          ),
+        };
+      case 'application.session-lock-active':
+        if (!isExtensionUiSender(sender))
+          return {
+            ok: false,
+            error: 'Only the extension UI can lock application sessions.',
+          };
+        if (messageTargetTabId === undefined)
+          return { ok: false, error: 'No active application tab.' };
+        return {
+          ok: true,
+          snapshot: await getRuntimeSnapshot(),
+          applicationSession: await lockApplicationSessionForTab(
+            messageTargetTabId,
+          ),
+        };
+      case 'application.session-start-submit-active':
+        if (!isExtensionUiSender(sender))
+          return {
+            ok: false,
+            error: 'Only the extension UI can submit applications.',
+          };
+        if (messageTargetTabId === undefined)
+          return { ok: false, error: 'No active application tab.' };
+        return {
+          ok: true,
+          snapshot: await getRuntimeSnapshot(),
+          applicationSession: await startApplicationSessionSubmission(
+            messageTargetTabId,
+          ),
+        };
+      case 'application.session-mark-submitted':
+        if (!isExtensionUiSender(sender))
+          return {
+            ok: false,
+            error: 'Only the extension UI can mark applications submitted.',
+          };
+        if (messageTargetTabId === undefined)
+          return { ok: false, error: 'No active application tab.' };
+        return {
+          ok: true,
+          snapshot: await getRuntimeSnapshot(),
+          applicationSession: await markApplicationSessionSubmitted(
+            messageTargetTabId,
+            parsed.data.submission,
+          ),
+        };
+      case 'application.session-mark-unknown':
+        if (!isExtensionUiSender(sender))
+          return {
+            ok: false,
+            error: 'Only the extension UI can update application sessions.',
+          };
+        if (messageTargetTabId === undefined)
+          return { ok: false, error: 'No active application tab.' };
+        return {
+          ok: true,
+          snapshot: await getRuntimeSnapshot(),
+          applicationSession: await markApplicationSessionUnknown(
+            messageTargetTabId,
+          ),
         };
       case 'form.autofill-active':
         if (!isExtensionUiSender(sender))
