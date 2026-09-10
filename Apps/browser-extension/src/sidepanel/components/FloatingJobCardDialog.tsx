@@ -34,7 +34,7 @@ const { inspectingDescriptions } = jobRecognitionDescriptions;
 const PAGE_READY_DELAY_MS = 150;
 
 export function FloatingJobCardDialog() {
-  const { authStatus, refreshAuth, signIn, isCheckingAuth } = useAuth();
+  const { authStatus, signIn, isCheckingAuth } = useAuth();
   useThemeSync(authStatus);
 
   const [ballPosition, setBallPosition] = useState<{
@@ -293,7 +293,6 @@ export function FloatingJobCardDialog() {
   }, [isShowingLoading, isJobPage]);
 
   useEffect(() => {
-    refreshAuth();
     const inspectCurrentPage = createPageInspectionQueue(
       async ({ showLoading, force }) => {
         const isJob = await autoInspectActivePage(force, showLoading);
@@ -366,7 +365,7 @@ export function FloatingJobCardDialog() {
         chrome.runtime.onMessage.removeListener(onRuntimeMessage);
       }
     };
-  }, [autoInspectActivePage, inspectForm, refreshAuth]);
+  }, [autoInspectActivePage, inspectForm]);
 
   const isAlignRight = ballPosition.edge === 'right';
   const isAlignTop = ballPosition.pos === 'top';

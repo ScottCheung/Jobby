@@ -315,7 +315,7 @@ export function useInspection(onJobChanged?: () => void) {
 
   const pageInspectionInFlight = useRef(false);
   const pageInspectionSequence = useRef(0);
-  const formInspectionInFlight = useRef(false);
+  const formInspectionPromise = useRef<Promise<FormInspection | null> | null>(null);
   const lastObservedActiveUrl = useRef<string | null>(null);
   const lastObservedActiveTabId = useRef<number | null>(null);
   const lastFormSignature = useRef<string>('');
@@ -483,25 +483,28 @@ export function useInspection(onJobChanged?: () => void) {
 
   const inspectForm = useCallback(
     async (silent = false): Promise<FormInspection | null> => {
-      if (formInspectionInFlight.current) return null;
-      formInspectionInFlight.current = true;
-      if (!silent) setIsInspectingForm(true);
-      try {
-        const response = await send({ type: 'content.inspect-form-active' });
-        if (!response.ok) {
-          setInspectionError(response.error);
+      if (formInspectionPromise.current) return formInspectionPromise.current;
+      const request = (async () => {
+        if (!silent) setIsInspectingForm(true);
+        try {
+          const response = await send({ type: 'content.inspect-form-active' });
+          if (!response.ok) {
+            setInspectionError(response.error);
+            return null;
+          }
+          setInspectionError('');
+          if (response.form) {
+            setFormIfChanged(response.form);
+            return response.form;
+          }
           return null;
+        } finally {
+          formInspectionPromise.current = null;
+          if (!silent) setIsInspectingForm(false);
         }
-        setInspectionError('');
-        if (response.form) {
-          setFormIfChanged(response.form);
-          return response.form;
-        }
-        return null;
-      } finally {
-        formInspectionInFlight.current = false;
-        if (!silent) setIsInspectingForm(false);
-      }
+      })();
+      formInspectionPromise.current = request;
+      return request;
     },
     [setFormIfChanged],
   );

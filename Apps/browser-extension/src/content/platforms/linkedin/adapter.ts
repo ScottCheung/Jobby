@@ -140,11 +140,13 @@ const SELECTORS = {
   ],
   submitAction: [
     "[data-live-test-easy-apply-submit-button]",
-    "button[aria-label*='Submit application']",
-    "button[aria-label*='Submit']",
-    "button[aria-label*='提交应用']",
-    "button[aria-label*='提交申请']",
-    "button[aria-label*='提交']",
+    "button[aria-label*='Submit application' i]",
+    "button[aria-label*='Submit' i]",
+    "button[aria-label*='提交应用' i]",
+    "button[aria-label*='提交申请' i]",
+    "button[aria-label*='提交' i]",
+    "button[type='submit']",
+    "input[type='submit']",
   ],
 } as const;
 
@@ -360,6 +362,34 @@ function findVisible(
         predicate(candidate) && isVisible(candidate) && isEnabled(candidate),
     );
     if (element) return element;
+  }
+  return null;
+}
+
+function isFinalSubmitAction(element: HTMLElement): boolean {
+  const label = cleanText(
+    element.textContent ||
+      element.getAttribute('aria-label') ||
+      element.getAttribute('value'),
+  );
+  return (
+    SELECTORS.submitAction.some((selector) => element.matches(selector)) ||
+    /(?:submit application|submit|提交应用|提交申请|提交)/i.test(label)
+  );
+}
+
+function findFinalSubmitAction(root?: ParentNode | null): HTMLElement | null {
+  const selectors = [
+    ...SELECTORS.submitAction,
+    'button',
+    'input[type="button"]',
+    '[role="button"]',
+  ];
+  const roots: ParentNode[] = root ? [root] : [];
+  if (root !== document) roots.push(document);
+  for (const searchRoot of roots) {
+    const action = findVisible(searchRoot, selectors, isFinalSubmitAction);
+    if (action) return action;
   }
   return null;
 }
@@ -988,6 +1018,14 @@ export class LinkedInAdapter {
     action: ApplicationAction,
   ): HTMLElement | null {
     const surface = this.getApplicationSurface();
+    const root = surface?.root || null;
+    if (action === 'submit') {
+      const finalSubmit = findFinalSubmitAction(root);
+      if (finalSubmit) {
+        this.applicationActionCache.set(action, finalSubmit);
+        return finalSubmit;
+      }
+    }
     const cached = this.applicationActionCache.get(action);
     if (
       cached &&
@@ -999,7 +1037,6 @@ export class LinkedInAdapter {
       return cached;
     }
     this.applicationActionCache.delete(action);
-    const root = surface?.root || null;
     if (!root) {
       return null;
     }
@@ -1090,8 +1127,7 @@ export class LinkedInAdapter {
   }
 
   getCurrentApplicationActionKind(): "next" | "submit" | undefined {
-    const submit = this.getCurrentApplicationAction('submit');
-    if (submit) {
+    if (findFinalSubmitAction(this.getApplicationSurface()?.root)) {
       return 'submit';
     }
     if (this.getCurrentApplicationAction('next')) return 'next';

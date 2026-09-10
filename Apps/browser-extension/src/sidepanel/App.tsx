@@ -90,7 +90,6 @@ export function App() {
   const {
     authStatus,
     authError,
-    refreshAuth,
     signIn,
     disconnect,
     isSigningIn,
@@ -698,7 +697,6 @@ export function App() {
 
   useEffect(() => {
     refresh();
-    refreshAuth();
     const inspectCurrentPage = createPageInspectionQueue(
       async ({ showLoading, force }) => {
         const isJob = await autoInspectActivePage(force, showLoading);
@@ -765,7 +763,7 @@ export function App() {
         chrome.runtime.onMessage.removeListener(onRuntimeMessage);
       }
     };
-  }, [refresh, refreshAuth, autoInspectActivePage, inspectForm]);
+  }, [refresh, autoInspectActivePage, inspectForm]);
 
   const [navVisible, setNavVisible] = useState(true);
   const lastScrollYRef = useRef(0);

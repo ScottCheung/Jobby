@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { AuthStatus } from "../../shared/contracts/auth";
 import { send } from "../services/messaging";
 
@@ -25,6 +25,10 @@ export function useAuth() {
       setIsCheckingAuth(false);
     }
   }, []);
+
+  useEffect(() => {
+    void refreshAuth();
+  }, [refreshAuth]);
 
   const signIn = useCallback(async () => {
     setIsSigningIn(true);

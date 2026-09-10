@@ -69,23 +69,13 @@ export function useApplicationTools(
         return;
       }
 
-      if (applicationSession !== undefined) {
-        if (!applicationSession) {
-          reportError('Detect the job before autofilling this application.');
-          return;
-        }
+      if (applicationSession) {
         const lockResponse = await send({
           type: 'application.session-lock-active',
-        });
-        if (!lockResponse.ok || !lockResponse.applicationSession) {
-          reportError(
-            lockResponse.ok
-              ? 'The application session is no longer available.'
-              : lockResponse.error,
-          );
-          return;
+        }).catch(() => null);
+        if (lockResponse?.ok && lockResponse.applicationSession) {
+          onApplicationSessionChange?.(lockResponse.applicationSession);
         }
-        onApplicationSessionChange?.(lockResponse.applicationSession);
       }
 
       const response = await send({ type: 'form.autofill-active' }).catch(

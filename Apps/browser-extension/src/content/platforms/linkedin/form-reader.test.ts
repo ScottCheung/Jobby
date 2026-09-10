@@ -329,6 +329,29 @@ describe('LinkedIn Easy Apply form scope', () => {
     expect(surface?.fieldRoot).toBeInstanceOf(HTMLElement);
   });
 
+  it('prefers a final submit action outside a stale application surface', () => {
+    document.body.innerHTML = `
+      <div class="jobs-easy-apply-modal" role="dialog" aria-modal="true">
+        <h2>Apply to Northstar</h2>
+        <label for="stale-question">Current question</label>
+        <input id="stale-question" name="stale_question" />
+        <button type="button" aria-label="Back">Back</button>
+        <button type="button">Next</button>
+      </div>
+      <div id="final-submit-outlet" aria-label="Review your application">
+        <button type="button" data-live-test-easy-apply-submit-button>
+          Submit application
+        </button>
+      </div>
+    `;
+
+    const inspection = readLinkedInFormPage();
+    expect(inspection.kind).toBe('application_form');
+    if (inspection.kind !== 'application_form') return;
+    expect(inspection.action).toBe('submit');
+    expect(inspection.canGoBack).toBe(true);
+  });
+
   it('supports a full-page Easy Apply flow without falling back to the whole document', () => {
     window.history.replaceState({}, '', '/jobs/view/123/apply');
     document.body.innerHTML = `
