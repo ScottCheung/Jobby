@@ -1,13 +1,11 @@
 import type { FormInspection } from "../../../shared/contracts/form-inspection";
 
 import { readApplicationForm } from "../../dom/form-inspector";
-import type { FormScope } from "../../dom/form-inspector";
+import { isVisibleElement, type FormScope } from "../../dom/form-inspector";
 import { findActiveFormScope } from "../../dom/form-scope";
 import { adaptRegisteredFormFields } from "../form-field-adapter";
 import {
-  getSeekApplicationAction,
-  getSeekApplicationActionKind,
-  getSeekApplicationActionLabel,
+  getSeekApplicationNavigation,
 } from "./adapter";
 
 function findVisibleSeekApplicationRoot(): HTMLElement | null {
@@ -25,12 +23,12 @@ function findVisibleSeekApplicationRoot(): HTMLElement | null {
   ];
   for (const selector of modalSelectors) {
     const el = document.querySelector<HTMLElement>(selector);
-    if (el) return el;
+    if (el && isVisibleElement(el)) return el;
   }
   const dialogs = Array.from(document.querySelectorAll<HTMLElement>("[role='dialog'], dialog"));
   for (const dialog of dialogs) {
     const text = (dialog.textContent || "").replace(/\s+/g, " ").trim();
-    if (/application|personal details|resume|cover letter/i.test(text)) {
+    if (isVisibleElement(dialog) && /application|personal details|resume|cover letter/i.test(text)) {
       return dialog;
     }
   }
@@ -110,14 +108,13 @@ export function readSeekFormPage(): FormInspection {
   }
 
   const scope = getSeekApplicationScope() || document;
+  const navigation = getSeekApplicationNavigation(scope);
   let inspection = readApplicationForm(
     url,
     "seek",
     isApp,
-    getSeekApplicationActionLabel(),
+    navigation,
     scope,
-    getSeekApplicationActionKind(),
-    Boolean(getSeekApplicationAction("previous")),
     (fields) => adaptRegisteredFormFields("seek", fields, scope),
   );
   if (
@@ -129,10 +126,8 @@ export function readSeekFormPage(): FormInspection {
       url,
       "seek",
       isApp,
-      getSeekApplicationActionLabel(),
+      getSeekApplicationNavigation(document),
       document,
-      getSeekApplicationActionKind(),
-      Boolean(getSeekApplicationAction("previous")),
       (fields) => adaptRegisteredFormFields("seek", fields, document),
     );
     if (docInspection.kind === "application_form" && docInspection.fields.length > 0) {

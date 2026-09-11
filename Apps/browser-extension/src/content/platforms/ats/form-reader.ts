@@ -11,8 +11,8 @@ import {
   readApplicationForm,
 } from "../../dom/form-inspector";
 import {
-  hasGenericBackAction,
   readGenericAction,
+  readGenericNavigation,
 } from "../../dom/form-scope";
 import { adaptRegisteredFormFields } from "../form-field-adapter";
 import { getApplicationRoots } from "../registry";
@@ -59,15 +59,12 @@ export function readDedicatedFormPage(
 ): FormInspection | null {
   const scope = findDedicatedApplicationScope(platform);
   if (!scope) return null;
-  const action = readGenericAction(scope);
   return readApplicationForm(
     window.location.href,
     platform,
     true,
-    action.label,
+    readGenericNavigation(scope),
     scope,
-    action.action,
-    hasGenericBackAction(scope),
     (fields) => adaptFields(platform, fields, scope),
   );
 }

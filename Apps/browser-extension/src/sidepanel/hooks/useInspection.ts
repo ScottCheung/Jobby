@@ -21,6 +21,7 @@ import {
 } from '../../shared/utils/form-field-resolution';
 import { renderCoverLetterPdfForExtension } from '../services/cover-letter-pdf-renderer';
 import { getActiveTab, send, wait } from '../services/messaging';
+import { fireCelebrationBurst } from '@jobby/ui/components/UI/celebration/celebration-burst';
 
 export type UploadSyncState = {
   phase: 'idle' | 'uploading' | 'confirmed' | 'unconfirmed' | 'failed';
@@ -235,9 +236,7 @@ function formSignature(form: FormInspection): string {
       })),
       ...(form.kind === 'application_form' ?
         {
-          action: form.action,
-          canGoBack: form.canGoBack,
-          submitLabel: form.submitLabel,
+          navigation: form.navigation,
         }
       : {}),
     });
@@ -299,6 +298,31 @@ function isLinkedInTransientEmptyForm(form: FormInspection): boolean {
   return form.kind === 'not_application_form' && form.platform === 'linkedin';
 }
 
+function applicationNavigationStepKey(
+  form: Extract<FormInspection, { kind: 'application_form' }>,
+): string {
+  return JSON.stringify({
+    url: form.url,
+    fields: form.fields.map((field) => ({
+      key: field.key,
+      type: field.type,
+      label: field.label,
+    })),
+    back: form.navigation.back
+      ? {
+          kind: form.navigation.back.kind,
+          label: form.navigation.back.label,
+        }
+      : null,
+    forward: form.navigation.forward
+      ? {
+          kind: form.navigation.forward.kind,
+          label: form.navigation.forward.label,
+        }
+      : null,
+  });
+}
+
 export function useInspection(onJobChanged?: () => void) {
   const [latestInspection, setLatestInspection] =
     useState<PageInspection | null>(null);
@@ -324,6 +348,9 @@ export function useInspection(onJobChanged?: () => void) {
   const linkedInClearTimer = useRef<number | undefined>(undefined);
   const latestFormRef = useRef<FormInspection | null>(null);
   const latestInspectionRef = useRef<PageInspection | null>(null);
+  const navigationSessionId = useRef<string | null>(null);
+  const navigationEnabledByStep = useRef(new Map<string, boolean>());
+  const celebratedNavigationSteps = useRef(new Set<string>());
 
   useEffect(() => {
     latestFormRef.current = latestForm;
@@ -332,6 +359,39 @@ export function useInspection(onJobChanged?: () => void) {
   useEffect(() => {
     latestInspectionRef.current = latestInspection;
   }, [latestInspection]);
+
+  useEffect(() => {
+    const sessionId = applicationSession?.id || null;
+    if (navigationSessionId.current !== sessionId) {
+      navigationSessionId.current = sessionId;
+      navigationEnabledByStep.current.clear();
+      celebratedNavigationSteps.current.clear();
+    }
+
+    if (
+      !applicationSession ||
+      applicationSession.status !== 'active' ||
+      latestForm?.kind !== 'application_form' ||
+      !latestForm.navigation.forward
+    ) {
+      return;
+    }
+
+    const stepKey = `${sessionId}:${applicationNavigationStepKey(latestForm)}`;
+    const forwardEnabled = latestForm.navigation.forward.enabled;
+    const previousEnabled = navigationEnabledByStep.current.get(stepKey);
+    navigationEnabledByStep.current.set(stepKey, forwardEnabled);
+
+    if (
+      previousEnabled === false &&
+      forwardEnabled &&
+      !celebratedNavigationSteps.current.has(stepKey)
+    ) {
+      celebratedNavigationSteps.current.add(stepKey);
+      void fireCelebrationBurst('light').catch(() => undefined);
+      notify.success('Ready for the next step.');
+    }
+  }, [applicationSession, latestForm]);
 
   const setFormIfChanged = useCallback((form: FormInspection) => {
     const reconciledForm = retainUploadedFileFields(

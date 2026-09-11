@@ -1,7 +1,7 @@
 import type { FormInspection } from "../../../shared/contracts/form-inspection";
 
 import { readApplicationForm } from "../../dom/form-inspector";
-import { hasGenericBackAction, readGenericAction } from "../../dom/form-scope";
+import { readGenericNavigation } from "../../dom/form-scope";
 import { adaptRegisteredFormFields } from "../form-field-adapter";
 import { linkedinAdapter } from "./adapter";
 
@@ -12,19 +12,21 @@ export function readLinkedInFormPage(): FormInspection {
   linkedinAdapter.invalidateApplicationActionCache();
   const surface = linkedinAdapter.getApplicationSurface();
   const applicationRoot = surface?.root || null;
-  const genericAction = applicationRoot ? readGenericAction(applicationRoot) : {};
+  const genericNavigation = applicationRoot
+    ? readGenericNavigation(applicationRoot)
+    : {};
   const fieldScope = surface?.fieldRoot || null;
-  const actionLabel = linkedinAdapter.getCurrentApplicationActionLabel() || genericAction.label;
-  const actionKind = linkedinAdapter.getCurrentApplicationActionKind() || genericAction.action;
+  const navigation = linkedinAdapter.getCurrentApplicationNavigation();
+  const mergedNavigation = {
+    ...genericNavigation,
+    ...navigation,
+  };
   const inspection = readApplicationForm(
     url,
     "linkedin",
     Boolean(applicationRoot),
-    actionLabel,
+    mergedNavigation,
     fieldScope,
-    actionKind,
-    Boolean(linkedinAdapter.getCurrentApplicationAction("previous")) ||
-      Boolean(applicationRoot && hasGenericBackAction(applicationRoot)),
     (fields) => adaptRegisteredFormFields("linkedin", fields, fieldScope || document),
   );
   if (inspection.kind === "not_application_form" && linkedinAdapter.isJobPageUrl(url)) {

@@ -1,5 +1,6 @@
 import type { FormScope } from "./form-inspector";
 import { inspectVisibleFormFields, isVisibleElement } from "./form-inspector";
+import type { FormNavigation } from "../../shared/contracts/form-inspection";
 
 const CANDIDATE_SELECTOR = [
   "form",
@@ -72,6 +73,10 @@ const NEXT_ACTION_REGEX = /(?:continue|next|review|proceed|save|继续|下一步
 const PREVIOUS_ACTION_REGEX = /(?:back|previous|返回|上一步)/i;
 const APPLICATION_INTENT_REGEX = /(?:application questions?|apply for (?:this|the) (?:job|role)|candidate (?:details|information)|resume|curriculum vitae|cover letter|work authori[sz]ation|right to work|sponsorship|employment history|work experience)/i;
 
+function isEnabled(element: HTMLElement): boolean {
+  return !element.matches(":disabled") && element.getAttribute("aria-disabled") !== "true";
+}
+
 function hasFormAction(scope: FormScope): boolean {
   const actions = Array.from(scope.querySelectorAll<HTMLElement>(ACTION_SELECTOR));
   return actions.some((element) => {
@@ -135,33 +140,64 @@ export function findActiveFormScope(root: Document | ShadowRoot = document): For
   return best;
 }
 
-export function readGenericAction(scope: FormScope): { label?: string; action?: "next" | "submit" } {
-  let actions = Array.from(scope.querySelectorAll<HTMLElement>(ACTION_SELECTOR))
-    .filter((element) => isVisibleElement(element))
-    .map(actionLabel)
-    .filter(Boolean);
-
-  let submit = actions.find((label) => SUBMIT_ACTION_REGEX.test(label));
-  if (submit) return { label: submit, action: "submit" };
-
-  if (scope !== document) {
-    const docActions = Array.from(document.querySelectorAll<HTMLElement>(ACTION_SELECTOR))
-      .filter((element) => isVisibleElement(element))
-      .map(actionLabel)
-      .filter(Boolean);
-    submit = docActions.find((label) => SUBMIT_ACTION_REGEX.test(label));
-    if (submit) return { label: submit, action: "submit" };
-    actions = docActions;
-  }
-
-  const next = actions.find((label) => NEXT_ACTION_REGEX.test(label));
-  return next ? { label: next, action: "next" } : {};
+function genericForwardKind(label: string): "next" | "review" | "submit" | undefined {
+  if (SUBMIT_ACTION_REGEX.test(label)) return "submit";
+  if (/(?:review|审核)/i.test(label)) return "review";
+  if (NEXT_ACTION_REGEX.test(label)) return "next";
+  return undefined;
 }
 
-export function hasGenericBackAction(scope: FormScope): boolean {
-  const check = (s: FormScope) => Array.from(s.querySelectorAll<HTMLElement>(ACTION_SELECTOR)).some((element) => {
-    if (!isVisibleElement(element)) return false;
-    return PREVIOUS_ACTION_REGEX.test(actionLabel(element));
-  });
-  return check(scope) || (scope !== document ? check(document) : false);
+function visibleActionEntries(scope: FormScope) {
+  return Array.from(scope.querySelectorAll<HTMLElement>(ACTION_SELECTOR))
+    .filter((element) => isVisibleElement(element))
+    .map((element) => ({
+      element,
+      label: actionLabel(element),
+      enabled: isEnabled(element),
+    }))
+    .filter((entry) => Boolean(entry.label));
+}
+
+export function readGenericNavigation(scope: FormScope): FormNavigation {
+  const actions = visibleActionEntries(scope);
+  const back = actions.find((entry) => PREVIOUS_ACTION_REGEX.test(entry.label));
+  const submit = actions.find((entry) => SUBMIT_ACTION_REGEX.test(entry.label));
+  const next = actions.find((entry) => NEXT_ACTION_REGEX.test(entry.label));
+  const forward = submit || next;
+  return {
+    ...(back
+      ? {
+          back: {
+            kind: "previous" as const,
+            label: back.label,
+            visible: true,
+            enabled: back.enabled,
+          },
+        }
+      : {}),
+    ...(forward
+      ? {
+          forward: {
+            kind: genericForwardKind(forward.label) || "next",
+            label: forward.label,
+            visible: true,
+            enabled: forward.enabled,
+          },
+        }
+      : {}),
+  };
+}
+
+export function readGenericAction(scope: FormScope): {
+  label?: string;
+  action?: "next" | "submit";
+  enabled?: boolean;
+} {
+  const forward = readGenericNavigation(scope).forward;
+  if (!forward) return {};
+  return {
+    label: forward.label,
+    action: forward.kind === "submit" ? "submit" : "next",
+    enabled: forward.enabled,
+  };
 }

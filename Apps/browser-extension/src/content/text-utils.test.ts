@@ -76,6 +76,16 @@ describe('extractStructuredText', () => {
 });
 
 describe('cleanDescription', () => {
+  it('converts non-breaking spaces to normal spaces', () => {
+    const result = cleanDescription(
+      'Senior\u00a0software\u00a0engineer\u00a0with\u202fstrong\u00a0systems\u00a0skills.',
+    );
+
+    expect(result).toBe(
+      'Senior software engineer with strong systems skills.',
+    );
+  });
+
   it('parses HTML description strings structurally', () => {
     const html = `<div><p>Paragraph 1</p><p>Paragraph 2</p></div>`;
     const result = cleanDescription(html);

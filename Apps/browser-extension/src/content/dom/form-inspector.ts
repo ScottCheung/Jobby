@@ -2,6 +2,7 @@ import type {
   FormFieldObservation,
   FormInspection,
   FormPlatform,
+  FormNavigation,
 } from "../../shared/contracts/form-inspection";
 import { canonicalizeFormFields } from "../../shared/utils/form-field-resolution";
 
@@ -426,10 +427,8 @@ export function readApplicationForm(
   url: string,
   platform: FormPlatform,
   isApplicationPage: boolean,
-  submitLabel?: string,
+  navigation: FormNavigation = {},
   scope: FormScope | null = document,
-  action?: "next" | "submit",
-  canGoBack = false,
   adaptFields?: (fields: FormFieldObservation[]) => FormFieldObservation[],
 ): FormInspection {
   const inspectedFields = scope ? inspectVisibleFormFields(scope) : [];
@@ -451,10 +450,7 @@ export function readApplicationForm(
     platform,
     url,
     fields,
-    hasSubmitAction: Boolean(submitLabel),
-    canGoBack,
-    ...(submitLabel ? { submitLabel } : {}),
-    ...(action ? { action } : {}),
+    navigation,
   };
 }
 

@@ -30,6 +30,7 @@ import { HeaderQuickActions } from './components/HeaderQuickActions';
 import { ResultsDisplay } from './components/ResultsDisplay';
 import { SettingsSection } from './components/SettingsSection';
 import { WorkflowSection } from './components/WorkflowSection';
+import { FormNavigationActions } from './components/FormNavigationActions';
 import { useApplicationTools } from './hooks/useApplicationTools';
 import { useAuth } from './hooks/useAuth';
 import { useDiagnostics } from './hooks/useDiagnostics';
@@ -987,7 +988,6 @@ export function App() {
                 isClearingForm={isClearingForm}
                 onAutofill={autofillForm}
                 onCancelAutofill={cancelAutofill}
-                onApplicationAction={navigateApplication}
                 isCancellingAutofill={isCancellingAutofill}
                 onClearAll={clearAllFormFields}
                 autofillOnly
@@ -1027,6 +1027,14 @@ export function App() {
                 onSelectDocument={setSelectedAutofillDocumentId}
               />
             </section>
+            <FormNavigationActions
+              latestForm={latestForm}
+              loadingButton={loadingButton}
+              isClearingForm={isClearingForm}
+              onApplicationAction={navigateApplication}
+              authConnected={authStatus?.connected}
+              onSignIn={signIn}
+            />
           </div>
         )}
 

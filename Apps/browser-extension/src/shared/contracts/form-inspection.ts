@@ -62,16 +62,33 @@ export const formFieldObservationSchema = z.object({
 
 export type FormFieldObservation = z.infer<typeof formFieldObservationSchema>;
 
+export const formNavigationActionSchema = z.object({
+  kind: z.enum(["previous", "next", "review", "submit"]),
+  label: z.string().min(1),
+  visible: z.boolean(),
+  enabled: z.boolean(),
+});
+
+export type FormNavigationAction = z.infer<typeof formNavigationActionSchema>;
+
+export const formNavigationSchema = z.object({
+  back: formNavigationActionSchema
+    .extend({ kind: z.literal("previous") })
+    .optional(),
+  forward: formNavigationActionSchema
+    .extend({ kind: z.enum(["next", "review", "submit"]) })
+    .optional(),
+});
+
+export type FormNavigation = z.infer<typeof formNavigationSchema>;
+
 export const formInspectionSchema = z.discriminatedUnion("kind", [
   z.object({
     kind: z.literal("application_form"),
     platform: formPlatformSchema,
     url: z.string().url(),
     fields: z.array(formFieldObservationSchema),
-    hasSubmitAction: z.boolean(),
-    submitLabel: z.string().optional(),
-    action: z.enum(["next", "submit"]).optional(),
-    canGoBack: z.boolean(),
+    navigation: formNavigationSchema,
   }),
   z.object({
     kind: z.literal("not_application_form"),

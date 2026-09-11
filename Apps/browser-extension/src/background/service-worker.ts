@@ -267,11 +267,11 @@ function recordFormChurn(tabId: number, frameId: number, form: unknown): void {
   const candidate = form as {
     kind?: unknown;
     platform?: unknown;
-    action?: unknown;
+    navigation?: unknown;
     fields?: unknown;
   };
   const fieldCount = Array.isArray(candidate.fields) ? candidate.fields.length : 0;
-  const signature = `${String(candidate.kind || "unknown")}:${String(candidate.platform || "")}:${String(candidate.action || "")}:${fieldCount}`;
+  const signature = `${String(candidate.kind || "unknown")}:${String(candidate.platform || "")}:${JSON.stringify(candidate.navigation || {})}:${fieldCount}`;
   const now = Date.now();
   const previous = formChurnByTab.get(tabId);
   const withinWindow = previous && now - previous.windowStartedAt <= 2_000;
@@ -308,7 +308,7 @@ function recordFormChurn(tabId: number, frameId: number, form: unknown): void {
         fieldCount,
         formKind: candidate.kind,
         platform: candidate.platform,
-        action: candidate.action,
+        navigation: candidate.navigation,
         distinctSnapshotCount: state.distinctSnapshotCount,
       },
     );

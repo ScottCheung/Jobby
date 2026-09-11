@@ -33,9 +33,14 @@ describe("form discovery", () => {
           options: [],
         },
       ],
-      hasSubmitAction: true,
-      canGoBack: false,
-      action: "next",
+      navigation: {
+        forward: {
+          kind: "next",
+          label: "Next",
+          visible: true,
+          enabled: true,
+        },
+      },
     }));
 
     await vi.advanceTimersByTimeAsync(500);

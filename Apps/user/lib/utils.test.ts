@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { parseDescriptionBlocks } from './utils';
+import { cleanDescription, parseDescriptionBlocks } from './utils';
 
 describe('parseDescriptionBlocks', () => {
+  it('converts non-breaking spaces to normal spaces', () => {
+    expect(
+      cleanDescription('Senior\u00a0software\u00a0engineer with\u00a0strong skills.'),
+    ).toBe('Senior software engineer with strong skills.');
+  });
+
   it('parses section titles followed by continuous bullet points', () => {
     const text = `About the role:\n• We're looking for a Full Stack Software Engineer who enjoys building things end to end.\n• This role can flex to suit you.`;
     const blocks = parseDescriptionBlocks(text);

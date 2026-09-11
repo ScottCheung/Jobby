@@ -90,8 +90,7 @@ function signature(form: FormInspection): string {
     url: form.url,
     ...(form.kind === "application_form"
       ? {
-          action: form.action,
-          canGoBack: form.canGoBack,
+          navigation: form.navigation,
           fields: form.fields.map((field) => ({
             key: field.key,
             id: field.id,

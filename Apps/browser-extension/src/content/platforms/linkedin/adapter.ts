@@ -5,6 +5,7 @@ import type {
   ApplicationAction,
   ApplicationActionResult,
 } from '../../../shared/contracts/application-navigation';
+import type { FormNavigation } from '../../../shared/contracts/form-inspection';
 import { extractLinkedInPostedDate } from './date-parser';
 import { extractStructuredText } from '../../text-utils';
 import type { LinkedInJobApiData } from './api-client';
@@ -1132,6 +1133,42 @@ export class LinkedInAdapter {
     }
     if (this.getCurrentApplicationAction('next')) return 'next';
     return undefined;
+  }
+
+  getCurrentApplicationNavigation(): FormNavigation {
+    const previous = this.getCurrentApplicationAction('previous');
+    const forwardKind = this.getCurrentApplicationActionKind();
+    const forward = forwardKind
+      ? this.getCurrentApplicationAction(forwardKind)
+      : null;
+    const navigation: FormNavigation = {};
+    if (previous) {
+      navigation.back = {
+        kind: 'previous',
+        label: cleanText(
+          previous.textContent || previous.getAttribute('aria-label'),
+        ),
+        visible: true,
+        enabled: true,
+      };
+    }
+    if (forward && forwardKind) {
+      const label = cleanText(
+        forward.textContent || forward.getAttribute('aria-label'),
+      );
+      navigation.forward = {
+        kind:
+          forwardKind === 'submit'
+            ? 'submit'
+            : /(?:review|审核)/i.test(label)
+              ? 'review'
+              : 'next',
+        label,
+        visible: true,
+        enabled: true,
+      };
+    }
+    return navigation;
   }
 
   async openApplication(): Promise<ApplicationActionResult> {

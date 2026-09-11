@@ -33,7 +33,7 @@ export function StructuredJobDescription({
   return (
     <div
       className={cn(
-        'font-sans text-foreground select-text ',
+        'font-sans text-foreground select-text w-full min-w-0 max-w-full break-normal',
         isSm ? 'space-y-3 text-[11px]' : 'space-y-4 text-[13px]',
         className,
       )}
@@ -66,7 +66,7 @@ export function StructuredJobDescription({
                 : undefined
               }
               className={cn(
-                'group/hdr flex items-center gap-2.5 transition-all select-none',
+                'group/hdr flex min-w-0 max-w-full items-center gap-2.5 transition-all select-none',
                 onHighlightHeader &&
                   'cursor-pointer hover:opacity-90',
                 isSm ? 'mt-3.5 mb-1.5 first:mt-0' : 'mt-6 mb-3 first:mt-0',
@@ -82,7 +82,7 @@ export function StructuredJobDescription({
               />
               <h4
                 className={cn(
-                  'font-bold text-foreground tracking-tight transition-colors duration-150',
+                  'min-w-0 break-normal font-bold text-foreground tracking-tight transition-colors duration-150',
                   onHighlightHeader &&
                     'group-hover/hdr:text-primary group-hover/hdr:underline underline-offset-2',
                   isSm ? 'text-[12px]' : 'text-[14.5px]',
@@ -108,7 +108,7 @@ export function StructuredJobDescription({
             <ul
               key={index}
               className={cn(
-                'pl-3 sm:pl-3.5',
+                'w-full min-w-0 max-w-full pl-3 sm:pl-3.5',
                 isSm ? 'space-y-1.5 my-1.5' : 'space-y-2.5 my-2.5',
               )}
             >
@@ -116,7 +116,7 @@ export function StructuredJobDescription({
                 <li
                   key={itemIdx}
                   className={cn(
-                    'flex items-start gap-2.5 leading-relaxed text-muted-foreground group/li',
+                    'flex min-w-0 max-w-full items-start gap-2.5 leading-relaxed text-muted-foreground group/li break-normal',
                     isSm ? 'text-[11px]' : 'text-[13px]',
                   )}
                 >
@@ -135,7 +135,7 @@ export function StructuredJobDescription({
                       )}
                     />
                   </span>
-                  <span className='flex-1 min-w-0'>{item}</span>
+                  <span className='flex-1 min-w-0 break-normal'>{item}</span>
                 </li>
               ))}
             </ul>
@@ -146,7 +146,7 @@ export function StructuredJobDescription({
           <p
             key={index}
             className={cn(
-              'pl-4 leading-relaxed text-muted-foreground whitespace-pre-wrap',
+              'w-full max-w-full pl-4 leading-relaxed text-muted-foreground whitespace-pre-wrap break-normal',
               isSm ? 'text-[11px] my-1.5' : 'text-[13px] my-2',
             )}
           >

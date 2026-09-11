@@ -406,7 +406,7 @@ export function FloatingJobCardDialog() {
           </div>
         ) : isJobPage ? (
           <div
-            className='pointer-events-auto flex flex-col w-[376px] h-full max-h-screen bg-background-primary p-2 border border-primary/20 overflow-hidden box-border shadow-xl transition-opacity duration-200 ease-out'
+            className='pointer-events-auto flex min-w-0 max-w-full flex-col w-[376px] h-full max-h-screen bg-background-primary p-2 border border-primary/20 overflow-hidden box-border shadow-xl transition-opacity duration-200 ease-out'
             style={{
               contain: 'layout paint',
               willChange: 'opacity, transform',
@@ -415,7 +415,7 @@ export function FloatingJobCardDialog() {
             }}
           >
             <div
-              className='flex flex-col gap-2.5 w-full h-full overflow-y-auto overflow-x-hidden overscroll-contain custom-scrollbar'
+              className='flex min-w-0 flex-col gap-2.5 w-full h-full overflow-y-auto overflow-x-hidden overscroll-contain custom-scrollbar'
               style={{
                 borderRadius:
                   'var(--score-card-radius-accent) var(--score-card-radius-base) var(--score-card-radius-base) var(--score-card-radius-base)',

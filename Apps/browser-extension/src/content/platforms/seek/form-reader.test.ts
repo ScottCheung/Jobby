@@ -87,6 +87,30 @@ describe('SEEK form recognition and filter exclusion', () => {
     expect(inspection.fields.some((f) => f.label.includes('Strong applicant'))).toBe(false);
   });
 
+  it('reports a visible disabled application action without using background actions', () => {
+    document.body.innerHTML = `
+      <button type="button">Submit application</button>
+      <div data-automation="apply-container" role="dialog" aria-modal="true">
+        <h2>Apply for Senior Full Stack Engineer</h2>
+        <label for="first-name">First name *</label>
+        <input id="first-name" required value="John" />
+        <label for="last-name">Last name *</label>
+        <input id="last-name" required value="Doe" />
+        <button type="button" aria-label="Continue" disabled>Continue</button>
+      </div>
+    `;
+
+    const inspection = readSeekFormPage();
+    expect(inspection.kind).toBe('application_form');
+    if (inspection.kind !== 'application_form') return;
+    expect(inspection.navigation.forward).toMatchObject({
+      kind: 'next',
+      label: 'Continue',
+      visible: true,
+      enabled: false,
+    });
+  });
+
   it('filterSeekFormFields filters out search and refinement controls', () => {
     const fields = [
       { label: 'First name' },

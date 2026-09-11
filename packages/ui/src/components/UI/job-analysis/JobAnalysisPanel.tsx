@@ -62,7 +62,7 @@ export function JobAnalysisPanel({
         }}
         className={cn(
           hasBackground &&
-            'flex flex-col gap-3 w-full max-h-full rounded-xl bg-primary/10 dark:bg-primary/20',
+            'flex min-w-0 max-w-full flex-col gap-3 w-full max-h-full rounded-xl bg-primary/10 dark:bg-primary/20',
         )}
       >
       <JobScoreCard

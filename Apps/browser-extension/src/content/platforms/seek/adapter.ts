@@ -1,4 +1,6 @@
 import type { ApplicationAction, ApplicationActionResult } from "../../../shared/contracts/application-navigation";
+import type { FormNavigation } from "../../../shared/contracts/form-inspection";
+import type { FormScope } from "../../dom/form-inspector";
 
 const ACTION_SELECTOR = "button, input[type='button'], input[type='submit'], [role='button']";
 
@@ -33,25 +35,64 @@ function matchesAction(label: string, action: ApplicationAction): boolean {
   );
 }
 
-export function getSeekApplicationAction(action: ApplicationAction): HTMLElement | null {
-  return Array.from(document.querySelectorAll<HTMLElement>(ACTION_SELECTOR)).find(
-    (element) => isVisible(element) && isEnabled(element) && matchesAction(labelFor(element), action),
+export function getSeekApplicationAction(
+  action: ApplicationAction,
+  scope: FormScope | null = document,
+): HTMLElement | null {
+  if (!scope) return null;
+  return Array.from(scope.querySelectorAll<HTMLElement>(ACTION_SELECTOR)).find(
+    (element) => isVisible(element) && matchesAction(labelFor(element), action),
   ) || null;
 }
 
-export function getSeekApplicationActionLabel(): string | undefined {
-  const action = getSeekApplicationAction("submit") || getSeekApplicationAction("next") || getSeekApplicationAction("previous");
-  return action ? labelFor(action) || undefined : undefined;
-}
-
-export function getSeekApplicationActionKind(): "next" | "submit" | undefined {
-  if (getSeekApplicationAction("submit")) return "submit";
-  if (getSeekApplicationAction("next")) return "next";
+export function getSeekApplicationActionKind(
+  scope: FormScope | null = document,
+): "next" | "submit" | undefined {
+  if (getSeekApplicationAction("submit", scope)) return "submit";
+  if (getSeekApplicationAction("next", scope)) return "next";
   return undefined;
 }
 
-export async function clickSeekApplicationAction(action: ApplicationAction): Promise<ApplicationActionResult> {
-  const button = getSeekApplicationAction(action);
+export function getSeekApplicationNavigation(
+  scope: FormScope | null = document,
+): FormNavigation {
+  const previous = getSeekApplicationAction("previous", scope);
+  const forwardKind = getSeekApplicationActionKind(scope);
+  const forward = forwardKind
+    ? getSeekApplicationAction(forwardKind, scope)
+    : null;
+  return {
+    ...(previous
+      ? {
+          back: {
+            kind: "previous" as const,
+            label: labelFor(previous),
+            visible: true,
+            enabled: isEnabled(previous),
+          },
+        }
+      : {}),
+    ...(forward
+      ? {
+          forward: {
+            kind:
+              /(?:review|审核)/i.test(labelFor(forward))
+                ? ("review" as const)
+                : forwardKind || "next",
+            label: labelFor(forward),
+            visible: true,
+            enabled: isEnabled(forward),
+          },
+        }
+      : {}),
+  };
+}
+
+export async function clickSeekApplicationAction(
+  action: ApplicationAction,
+  scope: FormScope | null = document,
+): Promise<ApplicationActionResult> {
+  const button = getSeekApplicationAction(action, scope);
   if (!button) {
     return {
       status: "unavailable",
@@ -60,6 +101,13 @@ export async function clickSeekApplicationAction(action: ApplicationAction): Pro
         : action === "next"
           ? "The SEEK Continue action is not available."
           : "The SEEK submit action is not available.",
+      url: window.location.href,
+    };
+  }
+  if (!isEnabled(button)) {
+    return {
+      status: "unavailable",
+      message: "The SEEK application action is not enabled yet.",
       url: window.location.href,
     };
   }

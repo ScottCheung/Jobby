@@ -3,6 +3,7 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 
 import { WorkflowSection } from './WorkflowSection';
+import { FormNavigationActions } from './FormNavigationActions';
 import type { FormInspection } from '../../shared/contracts/form-inspection';
 
 describe('WorkflowSection component', () => {
@@ -21,6 +22,14 @@ describe('WorkflowSection component', () => {
         options: [],
       },
     ],
+    navigation: {
+      forward: {
+        kind: 'next',
+        label: 'Next',
+        visible: true,
+        enabled: true,
+      },
+    },
   };
 
   it('renders Autofill Form and Clear All buttons in autofillOnly mode', () => {
@@ -68,24 +77,31 @@ describe('WorkflowSection component', () => {
 
   it('renders application navigation controls from the current form action', () => {
     const html = renderToStaticMarkup(
-      createElement(WorkflowSection, {
+      createElement(FormNavigationActions, {
         latestForm: {
           ...mockForm,
-          hasSubmitAction: true,
-          action: 'submit',
-          canGoBack: true,
+          navigation: {
+            back: {
+              kind: 'previous',
+              label: 'Back',
+              visible: true,
+              enabled: true,
+            },
+            forward: {
+              kind: 'submit',
+              label: 'Submit application',
+              visible: true,
+              enabled: true,
+            },
+          },
         },
         loadingButton: null,
         isClearingForm: false,
-        onAutofill: vi.fn(),
-        onCancelAutofill: vi.fn(),
-        onClearAll: vi.fn(),
         onApplicationAction: vi.fn(),
-        autofillOnly: true,
       }),
     );
 
-    expect(html).toContain('Previous');
-    expect(html).toContain('Submit');
+    expect(html).toContain('Back');
+    expect(html).toContain('Submit application');
   });
 });

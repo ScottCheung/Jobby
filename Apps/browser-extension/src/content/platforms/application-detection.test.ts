@@ -420,7 +420,7 @@ describe("platform-specific application question detection", () => {
     const inspection = readCurrentForm();
     expect(inspection.kind).toBe("application_form");
     if (inspection.kind !== "application_form") return;
-    expect(inspection.action).toBe("next");
+    expect(inspection.navigation.forward?.kind).toBe("next");
     expect(inspection.fields).toEqual(expect.arrayContaining([
       expect.objectContaining({ label: "Resumé", type: "radio" }),
       expect.objectContaining({ id: "resume-fileFile", type: "file" }),

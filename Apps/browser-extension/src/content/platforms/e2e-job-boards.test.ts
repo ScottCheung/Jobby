@@ -1373,8 +1373,8 @@ describe("End-to-End Job Boards Multi-Job Recognition (5+ Jobs per Platform)", (
         const resume = formInspection.fields.find((f) => f.type === "file");
         expect(resume?.label).toBe("Resume");
 
-        expect(formInspection.submitLabel).toBe("Next");
-        expect(formInspection.action).toBe("next");
+        expect(formInspection.navigation.forward?.label).toBe("Next");
+        expect(formInspection.navigation.forward?.kind).toBe("next");
       }
     });
   });

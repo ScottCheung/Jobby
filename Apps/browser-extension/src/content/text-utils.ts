@@ -60,6 +60,7 @@ export function cleanDescriptionText(rawText: string): string {
   if (!rawText) return '';
 
   let text = rawText
+    .replace(/[\u00a0\u202f]/g, ' ')
     .replace(/TypeScript/g, '___TYPESCRIPT___')
     .replace(/JavaScript/g, '___JAVASCRIPT___')
     .replace(/NodeJS/gi, '___NODEJS___')

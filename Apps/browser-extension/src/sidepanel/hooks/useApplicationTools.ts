@@ -8,6 +8,7 @@ import type { PageInspection } from '../../shared/contracts/page-inspection';
 import type { ApplicationAction } from '../../shared/contracts/application-navigation';
 import type { ApplicationSession } from '../../shared/contracts/application-session';
 import { send, wait } from '../services/messaging';
+import { fireCelebrationBurst } from '@jobby/ui/components/UI/celebration/celebration-burst';
 
 export function useApplicationTools(
   _latestInspection: PageInspection | null,
@@ -261,7 +262,12 @@ export function useApplicationTools(
               onApplicationSessionChange?.(submittedResponse.applicationSession);
             }
             setRecordedSessionId(session.id);
-            notify.success('Application submitted and recorded.');
+            void fireCelebrationBurst('full').catch(() => undefined);
+            notify.success(
+              'Congratulations! Your application has been submitted and recorded.',
+              undefined,
+              2600,
+            );
           } catch (error) {
             const unknownResponse = await send({
               type: 'application.session-mark-unknown',

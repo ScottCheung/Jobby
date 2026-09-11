@@ -606,10 +606,10 @@ export function JobDetails({
 
     return (
       <div
-        className='page-class-banner page-class-banner--job flex-col !items-stretch gap-2.5'
+        className='page-class-banner page-class-banner--job flex-col !items-stretch gap-2.5 min-w-0'
         role='status'
       >
-        <div className='flex w-full items-center justify-between gap-2 border-b border-primary/20 pb-2'>
+        <div className='flex w-full min-w-0 items-center justify-between gap-2 border-b border-primary/20 pb-2'>
           <div className='flex items-center gap-1.5'>
             <strong className='text-xs font-bold text-foreground'>
               Job Identified
@@ -648,7 +648,7 @@ export function JobDetails({
         </div>
 
         {/* Full Identified Information */}
-        <div className='grid gap-1.5 text-xs text-foreground/90'>
+        <div className='grid w-full min-w-0 gap-1.5 text-xs text-foreground/90'>
           <CopyableFieldRow
             label='Job ID'
             value={externalId}
@@ -689,7 +689,7 @@ export function JobDetails({
               <span className='text-muted-foreground text-[11px] font-medium pt-0.5'>
                 Eligibility:
               </span>
-              <div className='flex flex-wrap gap-1'>
+              <div className='flex min-w-0 max-w-full flex-wrap gap-1'>
                 {eligibilityRequirements.map((requirement) => {
                   if (!requirement || typeof requirement.label !== 'string')
                     return null;
@@ -1293,13 +1293,13 @@ export function JobDetails({
 
               return (
                 <LayoutGroup id='job-technologies-layout'>
-                  <div className='flex flex-col gap-3.5 pt-0.5'>
+                  <div className='flex min-w-0 w-full max-w-full flex-col gap-3.5 pt-0.5'>
                     {/* Core Skills */}
-                    <div className='flex flex-col gap-1.5'>
+                    <div className='flex min-w-0 flex-col gap-1.5'>
                       <div className='text-muted-foreground text-[11px] font-medium'>
                         Core ({coreMatched}/{coreSkills.length})
                       </div>
-                      <div className='ml-1.5 pl-2 border-l-2 border-primary/20 flex flex-wrap gap-1 items-center'>
+                      <div className='ml-1.5 min-w-0 max-w-full pl-2 border-l-2 border-primary/20 flex flex-wrap gap-1 items-center'>
                         {coreSkills.map((tech: string) =>
                           renderSkillPill(tech),
                         )}
@@ -1319,7 +1319,7 @@ export function JobDetails({
                           : `Bonus - ${singleGroupName || 'Other'} (${bonusMatched}/${bonusSkills.length})`;
 
                         return (
-                          <div className='flex flex-col gap-1.5'>
+                          <div className='flex min-w-0 flex-col gap-1.5'>
                             <div className='flex items-center justify-between'>
                               <span className='text-muted-foreground text-[11px] font-medium'>
                                 {headerLabel}
@@ -1355,7 +1355,7 @@ export function JobDetails({
 
                             {/* Categorized view when expanded vs Aggregated view */}
                             {hasMultipleGroups && showBonusCategories ?
-                              <div className='flex flex-col gap-2 pt-0.5 ml-1.5 pl-2 border-l-2 border-primary/20'>
+                              <div className='flex min-w-0 max-w-full flex-col gap-2 pt-0.5 ml-1.5 pl-2 border-l-2 border-primary/20'>
                                 {classifiedSkills.bonusGroups.map(
                                   (group, groupIndex) => {
                                     const groupMatched = getMatchCount(
@@ -1385,7 +1385,7 @@ export function JobDetails({
                                             )
                                           </span>
                                         </motion.div>
-                                        <div className='flex flex-wrap gap-1 items-center'>
+                                        <div className='flex min-w-0 max-w-full flex-wrap gap-1 items-center'>
                                           {group.skills.map((tech: string) =>
                                             renderSkillPill(tech),
                                           )}
@@ -1395,7 +1395,7 @@ export function JobDetails({
                                   },
                                 )}
                               </div>
-                            : <div className='ml-1.5 pl-2 border-l-2 border-primary/20 flex flex-wrap gap-1 items-center'>
+                            : <div className='ml-1.5 min-w-0 max-w-full pl-2 border-l-2 border-primary/20 flex flex-wrap gap-1 items-center'>
                                 {bonusSkills.map((tech: string) =>
                                   renderSkillPill(tech),
                                 )}
@@ -1438,7 +1438,7 @@ export function JobDetails({
           )}
 
           {description && (
-            <div className='mt-1 pt-2 grid gap-1.5'>
+            <div className='mt-1 min-w-0 w-full max-w-full pt-2 grid gap-1.5'>
               <div className='flex items-center justify-between'>
                 <span className='text-muted-foreground text-[11px] font-semibold uppercase tracking-wider'>
                   Job Description
@@ -1468,7 +1468,7 @@ export function JobDetails({
               </div>
               <div
                 className={cn(
-                  'transition-all duration-200',
+                  'min-w-0 max-w-full transition-all duration-200',
                   isDescriptionFullyVisible ?
                     'pr-1'
                   : 'max-h-[110px] overflow-hidden relative',

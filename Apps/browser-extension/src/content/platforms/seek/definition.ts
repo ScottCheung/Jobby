@@ -7,8 +7,6 @@ import { seekJobSelection } from "./job-selection";
 import {
   clickSeekApplicationAction,
   getSeekApplicationAction,
-  getSeekApplicationActionKind,
-  getSeekApplicationActionLabel,
 } from "./adapter";
 
 const SEEK_IGNORED_FIELD_LABELS =
@@ -64,9 +62,7 @@ export const seekDefinition = {
   },
   jobSelection: seekJobSelection,
   applicationNavigation: {
-    getAction: (action) => getSeekApplicationAction(action),
-    getActionLabel: () => getSeekApplicationActionLabel(),
-    getActionKind: () => getSeekApplicationActionKind(),
-    clickAction: (action) => clickSeekApplicationAction(action),
+    getAction: (action) => getSeekApplicationAction(action, getSeekApplicationScope()),
+    clickAction: (action) => clickSeekApplicationAction(action, getSeekApplicationScope()),
   },
 } satisfies ProviderDefinition<"seek">;

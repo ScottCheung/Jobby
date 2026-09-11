@@ -1,7 +1,11 @@
 import type { FormFieldObservation, FormInspection } from "../../../shared/contracts/form-inspection";
 import type { FormScope } from "../../dom/form-inspector";
 
-import { findActiveFormScope, readGenericAction } from "../../dom/form-scope";
+import {
+  findActiveFormScope,
+  readGenericAction,
+  readGenericNavigation,
+} from "../../dom/form-scope";
 import { inspectVisibleFormFields, readApplicationForm } from "../../dom/form-inspector";
 import { adaptRegisteredFormFields } from '../form-field-adapter';
 import { detectFormPlatform } from '../provider-routing';
@@ -112,10 +116,8 @@ export function readGenericFormPage(): FormInspection {
     url,
     platform,
     true,
-    action.label,
+    readGenericNavigation(scope),
     scope,
-    action.action,
-    false,
     adaptFields,
   );
 }

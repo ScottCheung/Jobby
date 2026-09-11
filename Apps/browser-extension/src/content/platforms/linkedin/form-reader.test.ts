@@ -348,8 +348,9 @@ describe('LinkedIn Easy Apply form scope', () => {
     const inspection = readLinkedInFormPage();
     expect(inspection.kind).toBe('application_form');
     if (inspection.kind !== 'application_form') return;
-    expect(inspection.action).toBe('submit');
-    expect(inspection.canGoBack).toBe(true);
+    expect(inspection.navigation.forward?.kind).toBe('submit');
+    expect(inspection.navigation.forward?.label).toBe('Submit application');
+    expect(inspection.navigation.back?.enabled).toBe(true);
   });
 
   it('supports a full-page Easy Apply flow without falling back to the whole document', () => {
