@@ -35,6 +35,10 @@ beforeEach(() => {
     configurable: true,
     value: vi.fn(),
   });
+  Object.defineProperty(Range.prototype, 'getClientRects', {
+    configurable: true,
+    value: () => [visibleRect],
+  });
 });
 
 describe('highlightJobRequirement', () => {
@@ -233,6 +237,19 @@ describe('highlightJobRequirement', () => {
     expect(style?.textContent).toContain('rgba(245, 158, 11, 0.45)');
     expect(style?.textContent).not.toContain('jobbySweepAndSettle');
     expect(style?.textContent).not.toContain('jobby-sweep-settle');
+
+    const pulse = document.getElementById('jobby-skill-active-range-pulse');
+    const pulseElement = pulse?.querySelector('span');
+    const pulseStyle = document.getElementById(
+      'jobby-skill-active-range-pulse-style',
+    );
+    expect(pulseElement?.style.animation).toContain('650ms');
+    expect(pulseElement?.style.animation).toContain(' 2');
+    expect(pulseStyle?.textContent).toContain('scale(0.96)');
+    expect(pulseStyle?.textContent).toContain('opacity: 0.7');
+    expect(
+      document.getElementById('jobby-skill-active-range-pulse-focus-style'),
+    ).toBeNull();
   });
 
   it('does not modify the matching host element styles', async () => {
