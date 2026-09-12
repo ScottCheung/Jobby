@@ -408,7 +408,7 @@ export function FloatingJobCardDialog() {
           <div
             className='pointer-events-auto flex min-w-0 max-w-full flex-col w-[376px] h-full max-h-screen bg-background-primary p-2 border border-primary/20 overflow-hidden box-border shadow-xl transition-opacity duration-200 ease-out'
             style={{
-              contain: 'layout paint',
+              contain: 'layout',
               willChange: 'opacity, transform',
               borderRadius:
                 'var(--score-card-radius-shell-accent) var(--score-card-radius-shell-base) var(--score-card-radius-shell-base) var(--score-card-radius-shell-base)',
